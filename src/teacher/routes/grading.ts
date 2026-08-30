@@ -7,6 +7,11 @@ import { error, getRouteParam, getSearchParams, json, parseBody, stringValue } f
 import type { RouteDefinition } from "../../server/route-types";
 import { normalizeSamplePlanData } from "../../student/experiment/sample-plan-display";
 import { readPopulationData } from "../../student/experiment/population-data";
+import { previewSamplingResults } from "../../student/experiment/sampling-results-preview";
+import {
+    buildSamplingResultsCsvExport,
+    parseSamplingExportType,
+} from "../../student/experiment/sampling-results-export";
 import {
     hydrateSamplingResults,
     inspectSamplingResultsStorage,
@@ -193,7 +198,7 @@ const gradingDetailRoutes: RouteDefinition = {
         const storedSamplingResults = snapshot?.samplingResults ?? parseStoredJson(row.samplingResults);
         const inspection = inspectSamplingResultsStorage(storedSamplingResults);
         if (!inspection.ok) return error(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
-        let samplingResults = storedSamplingResults;
+        let samplingResults: unknown = storedSamplingResults;
         if (inspection.needsPopulation) {
             if (!row.excelFilePath) return error("总体数据为空或读取失败", "READ_FAILED", 500);
             const population = await readPopulationData(row.excelFilePath);
@@ -219,7 +224,7 @@ const gradingDetailRoutes: RouteDefinition = {
                 snapshot?.samplePlan ?? parseStoredJson(row.samplePlan),
                 populationSize,
             ),
-            samplingResults,
+            samplingResults: previewSamplingResults(samplingResults),
             reportContent: snapshot?.reportContent ?? row.reportContent ?? "",
             scoreQuestionnaire: numeric(row.scoreQuestionnaire),
             scoreProcess: numeric(row.scoreProcess),
@@ -287,6 +292,49 @@ const gradingDetailRoutes: RouteDefinition = {
     },
 };
 
+const gradingSamplingExportRoutes: RouteDefinition = {
+    async GET(req) {
+        const current = getTeacherUser(req);
+        const experimentId = Number(getRouteParam(req, "id"));
+        if (!Number.isInteger(experimentId) || experimentId <= 0) {
+            return error("无效的实验ID", "INVALID_ID");
+        }
+        const type = parseSamplingExportType(getSearchParams(req).get("type"));
+        if (!type) return error("无效的导出类型", "VALIDATION_ERROR", 400);
+
+        const row = await findOwnedExperiment(experimentId, current.id);
+        if (!row) return error("提交记录不存在", "NOT_FOUND", 404);
+        const snapshot = parseStoredJson<{ samplingResults?: unknown }>(row.submissionSnapshot);
+        const storedSamplingResults = snapshot?.samplingResults ?? parseStoredJson(row.samplingResults);
+        if (!storedSamplingResults) return error("暂无抽样结果", "NO_DATA", 404);
+
+        const inspection = inspectSamplingResultsStorage(storedSamplingResults);
+        if (!inspection.ok) {
+            return error(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
+        }
+        let samplingResults: unknown = storedSamplingResults;
+        if (inspection.needsPopulation) {
+            if (!row.excelFilePath) return error("总体数据为空或读取失败", "READ_FAILED", 500);
+            const population = await readPopulationData(row.excelFilePath);
+            if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
+            const hydrated = hydrateSamplingResults(storedSamplingResults, population);
+            if (!hydrated.ok) {
+                return error(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
+            }
+            samplingResults = hydrated.value;
+        }
+
+        const exported = buildSamplingResultsCsvExport(samplingResults, type);
+        if (!exported) return error("暂无可导出的数据", "NO_DATA", 404);
+        return new Response(exported.csv, {
+            headers: {
+                "Content-Type": "text/csv; charset=utf-8",
+                "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(exported.filename)}`,
+            },
+        });
+    },
+};
+
 const gradingRejectRoutes: RouteDefinition = {
     async POST(req) {
         const current = getTeacherUser(req);
@@ -325,4 +373,4 @@ const gradingRejectRoutes: RouteDefinition = {
     },
 };
 
-export { gradingDetailRoutes, gradingRejectRoutes, gradingRoutes };
+export { gradingDetailRoutes, gradingRejectRoutes, gradingRoutes, gradingSamplingExportRoutes };

@@ -16,6 +16,10 @@ import {
     readPopulationData,
 } from "../experiment/population-data";
 import { normalizeSamplePlanData } from "../experiment/sample-plan-display";
+import {
+    previewSamplingMethodResult,
+    previewSamplingResults,
+} from "../experiment/sampling-results-preview";
 import { trimSamplingAttempts } from "../experiment/sampling-attempt-retention";
 import { PPS_UNAVAILABLE_REASON } from "../experiment/sampling-messages";
 import { executeSamplingAction, type SamplingMethod } from "../experiment/sampling-service";
@@ -43,25 +47,6 @@ import { ensureTaskIsOpen, ensureTaskSubmissionWindow, hasTaskDeadlinePassed } f
 import { buildStageCompletionUpdates, buildStageReopenUpdates } from "../experiment/update-service";
 import { getOrCreateStudentExperiment } from "../experiment/workflow";
 import { requireAuth } from "./auth";
-
-const SAMPLING_PREVIEW_ROWS = 50;
-
-function previewSamplingResults(value: unknown) {
-    if (!value || typeof value !== "object") return value;
-    const results = value as Record<string, Record<string, unknown>>;
-    const previewed: Record<string, Record<string, unknown>> = {};
-    for (const [method, section] of Object.entries(results)) {
-        if (!section || typeof section !== "object") {
-            previewed[method] = section;
-            continue;
-        }
-        const data = section.data;
-        previewed[method] = Array.isArray(data) && data.length > SAMPLING_PREVIEW_ROWS
-            ? { ...section, data: data.slice(0, SAMPLING_PREVIEW_ROWS) }
-            : section;
-    }
-    return previewed;
-}
 
 function getTaskId(req: Request) {
     const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
@@ -453,8 +438,7 @@ const samplingActionRoutes: RouteDefinition = {
         );
         if (!persisted) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
 
-        const previewRows = Array.isArray(result.result.data) ? result.result.data.slice(0, 50) : result.result.data;
-        return json({ success: true, result: { ...result.result, data: previewRows } });
+        return json({ success: true, result: previewSamplingMethodResult(result.result) });
     },
 };
 

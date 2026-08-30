@@ -46,7 +46,11 @@ function inspectHeaderNames(sheet: XLSX.WorkSheet) {
     return { duplicateColumns: [...duplicates], blankColumnIndexes };
 }
 
-export async function parseSpreadsheetFile(buffer: ArrayBuffer, fileName?: string | null) {
+export async function parseSpreadsheetFile(
+    buffer: ArrayBuffer,
+    fileName?: string | null,
+    options: { includeColumnValues?: boolean } = {},
+) {
     const normalizedName = fileName?.toLowerCase() ?? "";
     const workbook = normalizedName.endsWith(".csv")
         ? XLSX.read(new TextDecoder("utf-8").decode(buffer), { type: "string" })
@@ -66,7 +70,7 @@ export async function parseSpreadsheetFile(buffer: ArrayBuffer, fileName?: strin
         rowCount: rows.length,
         colCount: columns.length,
         preview: rows.slice(0, 20),
-        columnValues: uniqueColumnValues(rows, columns),
+        columnValues: options.includeColumnValues === false ? {} : uniqueColumnValues(rows, columns),
     };
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { ArrowLeft, BarChart3, KeyRound, Loader2, LogOut, User } from "lucide-react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -20,13 +20,14 @@ import { STUDENT_PASSWORD_POLICY } from "@/lib/password-policy";
 import { usePasswordChange } from "@/hooks/usePasswordChange";
 import { authApi } from "./api-client";
 import { StudentProvider, useStudent } from "./contexts/StudentContext";
-import { ExperimentLayout } from "./pages/ExperimentLayout";
 import { Login } from "./pages/Login";
-import { Profile } from "./pages/Profile";
-import { SubmissionDetailPage } from "./pages/SubmissionDetail";
-import { SubmissionPreview } from "./pages/SubmissionPreview";
-import { TaskHall } from "./pages/TaskHall";
-import { TopicDetails } from "./pages/TopicDetails";
+
+const ExperimentLayout = lazy(() => import("./pages/ExperimentLayout"));
+const Profile = lazy(() => import("./pages/Profile"));
+const SubmissionDetailPage = lazy(() => import("./pages/SubmissionDetail"));
+const SubmissionPreview = lazy(() => import("./pages/SubmissionPreview"));
+const TaskHall = lazy(() => import("./pages/TaskHall"));
+const TopicDetails = lazy(() => import("./pages/TopicDetails"));
 
 function LoadingScreen() {
     return <div className="min-h-screen grid place-items-center bg-background"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
@@ -125,15 +126,15 @@ function StudentAppContent() {
             <main className="mx-auto max-w-7xl py-8 px-8">
                 {mustChangePassword ? (
                     <div className="grid min-h-[60vh] place-items-center text-sm text-muted-foreground">请先修改初始密码后再开始实验。</div>
-                ) : <Routes>
-                    <Route index element={<TaskHall />} />
-                    <Route path="task/:taskId" element={<TopicDetails />} />
-                    <Route path="task/:taskId/experiment" element={<ExperimentLayout />} />
-                    <Route path="task/:taskId/preview" element={<SubmissionPreview />} />
-                    <Route path="task/:taskId/result" element={<SubmissionDetailPage />} />
-                    <Route path="profile" element={<Profile />} />
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>}
+                ) : <Suspense fallback={<LoadingScreen />}><Routes>
+                        <Route index element={<TaskHall />} />
+                        <Route path="task/:taskId" element={<TopicDetails />} />
+                        <Route path="task/:taskId/experiment" element={<ExperimentLayout />} />
+                        <Route path="task/:taskId/preview" element={<SubmissionPreview />} />
+                        <Route path="task/:taskId/result" element={<SubmissionDetailPage />} />
+                        <Route path="profile" element={<Profile />} />
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes></Suspense>}
             </main>
 
             <PasswordChangeDialog

@@ -4,6 +4,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { installDomGlobals } from "@/test-utils/dom";
 import { getAccessibilityViolations } from "@/test-utils/accessibility";
 import type { AnalysisMetricsData } from "../../api-client";
+import { writeExperimentDraft } from "../../experiment/experiment-draft";
 
 const mockExperimentApi = {
     getAnalysisMetrics: mock(async () => ({
@@ -109,6 +110,7 @@ beforeEach(() => {
         experiment: {
             id: 88,
             taskId: 2,
+            version: 6,
             currentStage: 4,
             populationSize: 8000,
             reportContent: "<p>服务器基线报告。</p>",
@@ -153,6 +155,19 @@ test("AnalysisReport does not refetch metrics when sampling results receive a ne
 
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(1);
+});
+
+test("AnalysisReport restores a version-matched local report draft", async () => {
+    writeExperimentDraft(
+        { experimentId: 88, experimentVersion: 6, stage: 4 },
+        { reportContent: "<p>浏览器恢复的报告草稿。</p>" },
+    );
+
+    const view = render(<AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />);
+
+    await waitFor(() => expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(1));
+    expect(view.getByTestId("student-analysis-report-editor").textContent).toContain("浏览器恢复的报告草稿");
+    expect(view.getByTestId("student-analysis-report-editor").textContent).not.toContain("服务器基线报告");
 });
 
 test("AnalysisReport labels full-population metrics as virtual-population oracle comparisons", async () => {

@@ -48,6 +48,18 @@ test("spreadsheet parser collects unique column values from all rows, not only t
     expect(parsed.columnValues.年级).toEqual(["大一", "大四"]);
 });
 
+test("spreadsheet parser can skip high-cardinality column value collection", async () => {
+    const csv = "编号,年级\n1,大一\n2,大四\n";
+    const parsed = await parseSpreadsheetFile(
+        new TextEncoder().encode(csv).buffer,
+        "population.csv",
+        { includeColumnValues: false },
+    );
+
+    expect(parsed.rows).toHaveLength(2);
+    expect(parsed.columnValues).toEqual({});
+});
+
 test("spreadsheet multipart preflight rejects declared oversized bodies", () => {
     expect(spreadsheetRequestExceedsLimit(new Request("https://example.com", {
         headers: { "content-length": String(MAX_SPREADSHEET_MULTIPART_BYTES + 1) },

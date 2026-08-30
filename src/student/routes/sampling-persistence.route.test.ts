@@ -97,6 +97,11 @@ test("sampling action atomically persists its server-generated method result", a
     expect(storedResult).toMatchObject({ serverGenerated: true, indices: expect.any(Array) });
     expect(storedResult).not.toHaveProperty("data");
 
+    const payload = await response.json() as any;
+    expect(payload.data.result.data).toHaveLength(2);
+    expect(payload.data.result).not.toHaveProperty("indices");
+    expect(payload.data.result).not.toHaveProperty("inclusionProbabilities");
+
     const attemptInsert = operations.find((operation) => operation.kind === "insert");
     expect(attemptInsert?.values).toMatchObject({
         experimentId: 9,
@@ -130,6 +135,7 @@ test("experiment reads hydrate compact stored indices for the SPA", async () => 
         { id: 2, gender: "A", weight: 2 },
         { id: 4, gender: "B", weight: 4 },
     ]);
+    expect(payload.data.samplingResults.simple).not.toHaveProperty("indices");
 });
 
 test("experiment reads fail closed when compact replay indices are corrupted", async () => {

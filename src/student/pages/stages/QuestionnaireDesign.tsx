@@ -23,6 +23,10 @@ import { RichTextEditor } from "../../components/RichTextEditor";
 import { ImmersiveQuestionnairePreview } from "../../components/ImmersiveQuestionnairePreview";
 import { tasksApi, type Question, type QuestionType, type QuestionnaireData } from "../../api-client";
 import { calculateQuestionnaireScoreSummary, getInvalidOptionQuestionIndexes } from "./questionnaire-scoring";
+import {
+    readExperimentDraft,
+    useExperimentDraft,
+} from "../../experiment/experiment-draft";
 
 const questionTypeLabels: Record<QuestionType, string> = {
     boolean: "是/否题",
@@ -75,10 +79,22 @@ function generateId(): string {
 export function QuestionnaireDesign() {
     const { experiment, completeStage } = useExperiment();
 
-    // Initialize from experiment data
-    const initialData = experiment?.questionnaire as QuestionnaireData | null;
+    const restoredDraft = useMemo(() => readExperimentDraft<{
+        questionnaire: QuestionnaireData;
+        step: 1 | 2 | 3 | 4;
+        previewCompleted: boolean;
+        previewContentHash: string;
+    }>({
+        experimentId: experiment?.id,
+        experimentVersion: experiment?.version,
+        stage: 1,
+    }), [experiment?.id, experiment?.version]);
 
-    const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+    // Prefer the version-matched browser draft, then fall back to server data.
+    const initialData = restoredDraft?.questionnaire
+        ?? experiment?.questionnaire as QuestionnaireData | null;
+
+    const [step, setStep] = useState<1 | 2 | 3 | 4>(restoredDraft?.step ?? 1);
     const [title, setTitle] = useState(initialData?.title ?? "");
     const [welcomeText, setWelcomeText] = useState(initialData?.welcomeText ?? "");
     const [endingText, setEndingText] = useState(initialData?.endingText ?? "");
@@ -97,8 +113,8 @@ export function QuestionnaireDesign() {
 
     // Immersive preview state
     const [previewOpen, setPreviewOpen] = useState(false);
-    const [previewCompleted, setPreviewCompleted] = useState(false);
-    const [previewContentHash, setPreviewContentHash] = useState("");
+    const [previewCompleted, setPreviewCompleted] = useState(restoredDraft?.previewCompleted ?? false);
+    const [previewContentHash, setPreviewContentHash] = useState(restoredDraft?.previewContentHash ?? "");
 
     useEffect(() => {
         async function loadRecommendQuestions() {
@@ -133,6 +149,19 @@ export function QuestionnaireDesign() {
         [title, welcomeText, endingText, questions],
     );
     const isPreviewValid = previewCompleted && previewContentHash === contentFingerprint;
+    const questionnaireDraft = useMemo(() => ({
+        questionnaire: questionnaireData,
+        step,
+        previewCompleted: isPreviewValid,
+        previewContentHash: isPreviewValid ? previewContentHash : "",
+    }), [isPreviewValid, previewContentHash, questionnaireData, step]);
+    const clearDraft = useExperimentDraft({
+        experimentId: experiment?.id,
+        experimentVersion: experiment?.version,
+        stage: 1,
+        data: questionnaireDraft,
+        enabled: Boolean(experiment),
+    });
     const handlePreviewComplete = useCallback(() => {
         setPreviewCompleted(true);
         setPreviewContentHash(contentFingerprint);
@@ -310,7 +339,8 @@ export function QuestionnaireDesign() {
     const warningCount = scoreItems.filter((item) => item.status === "warning").length;
 
     const handleConfirmComplete = async () => {
-        await completeStage(1, { questionnaire: questionnaireData });
+        const completed = await completeStage(1, { questionnaire: questionnaireData });
+        if (completed) clearDraft();
     };
 
     const renderStep = () => {

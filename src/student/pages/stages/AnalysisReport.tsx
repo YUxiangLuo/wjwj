@@ -28,6 +28,10 @@ import {
 import { downloadChartAsSvg, sanitizeFileName } from "./chart-svg-export";
 import { SamplePlanDecisionPanel, SamplingMethodParamsPanel } from "./analysis-params-panels";
 import { notifyAuthExpiredFromResponse } from "@/lib/auth-expired";
+import {
+    readExperimentDraft,
+    useExperimentDraft,
+} from "../../experiment/experiment-draft";
 
 interface AnalysisReportProps {
     onPrev: () => void;
@@ -185,7 +189,22 @@ function FieldSelect({
 export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const { experiment, populationSize, completeStage } = useExperiment();
 
-    const [reportContent, setReportContent] = useState(experiment?.reportContent ?? "");
+    const restoredDraft = useMemo(() => readExperimentDraft<{ reportContent: string }>({
+        experimentId: experiment?.id,
+        experimentVersion: experiment?.version,
+        stage: 4,
+    }), [experiment?.id, experiment?.version]);
+    const [reportContent, setReportContent] = useState(
+        restoredDraft?.reportContent ?? experiment?.reportContent ?? "",
+    );
+    const reportDraft = useMemo(() => ({ reportContent }), [reportContent]);
+    const clearDraft = useExperimentDraft({
+        experimentId: experiment?.id,
+        experimentVersion: experiment?.version,
+        stage: 4,
+        data: reportDraft,
+        enabled: Boolean(experiment),
+    });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [exportType, setExportType] = useState<MethodKey | "all">("all");
     const [zoomChart, setZoomChart] = useState<ZoomChartType>(null);
@@ -437,6 +456,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         try {
             const success = await completeStage(4, { reportContent });
             if (!success) return;
+            clearDraft();
             onSubmit();
         } finally {
             setIsSubmitting(false);

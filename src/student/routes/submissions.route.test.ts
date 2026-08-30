@@ -114,6 +114,7 @@ test("submission endpoint hydrates compact immutable snapshot samples", async ()
         const response = await module.submissionByTaskRoutes.GET!(withId(new Request("https://example.com"), "40"));
         const payload = await response.json() as any;
         expect(payload.data.snapshot.samplingResults.simple.data).toEqual([{ id: 2, city: "上海" }]);
+        expect(payload.data.snapshot.samplingResults.simple).not.toHaveProperty("indices");
     } finally {
         await unlink(absolutePath).catch(() => undefined);
     }

@@ -11,15 +11,52 @@ export interface TopicFieldMapping {
     analysisTarget?: AnalysisTarget;
 }
 
-const POPULATION_CACHE_MAX_ENTRIES = 2;
-const POPULATION_CACHE_MAX_ROWS = 20_000;
+const POPULATION_CACHE_MAX_ENTRIES = 4;
+// The upload limit is 100k rows. This budget keeps one maximum-size classroom
+// population hot alongside a few small topics without allowing unbounded growth.
+const POPULATION_CACHE_MAX_TOTAL_ROWS = 120_000;
 
 type PopulationCacheEntry = {
     key: string;
+    fullPath: string;
     rows: Record<string, any>[];
 };
 
 const populationCache: PopulationCacheEntry[] = [];
+const populationReadsInFlight = new Map<string, Promise<Record<string, any>[]>>();
+
+function getCachedPopulation(cacheKey: string) {
+    const index = populationCache.findIndex((entry) => entry.key === cacheKey);
+    if (index < 0) return null;
+    const [cached] = populationCache.splice(index, 1);
+    if (!cached) return null;
+    populationCache.unshift(cached);
+    return cached.rows;
+}
+
+function cachePopulation(fullPath: string, cacheKey: string, rows: Record<string, any>[]) {
+    if (rows.length > POPULATION_CACHE_MAX_TOTAL_ROWS) return;
+
+    // A changed file at the same path must not leave its old parsed copy resident.
+    for (let index = populationCache.length - 1; index >= 0; index -= 1) {
+        if (populationCache[index]?.fullPath === fullPath) populationCache.splice(index, 1);
+    }
+    populationCache.unshift({ key: cacheKey, fullPath, rows });
+
+    let totalRows = populationCache.reduce((sum, entry) => sum + entry.rows.length, 0);
+    while (
+        populationCache.length > POPULATION_CACHE_MAX_ENTRIES
+        || totalRows > POPULATION_CACHE_MAX_TOTAL_ROWS
+    ) {
+        const removed = populationCache.pop();
+        totalRows -= removed?.rows.length ?? 0;
+    }
+}
+
+export function clearPopulationDataCacheForTests() {
+    populationCache.length = 0;
+    populationReadsInFlight.clear();
+}
 
 export async function readPopulationData(filePath: string): Promise<Record<string, any>[]> {
     let fullPath: string;
@@ -33,16 +70,26 @@ export async function readPopulationData(filePath: string): Promise<Record<strin
     try {
         const file = Bun.file(fullPath);
         const cacheKey = `${fullPath}:${file.size}:${file.lastModified}`;
-        const cached = populationCache.find((entry) => entry.key === cacheKey);
-        if (cached) return cached.rows;
+        const cached = getCachedPopulation(cacheKey);
+        if (cached) return cached;
 
-        const fileBuffer = await file.arrayBuffer();
-        const parsed = await parseSpreadsheetFile(fileBuffer, filePath);
-        if (parsed.rows.length <= POPULATION_CACHE_MAX_ROWS) {
-            populationCache.unshift({ key: cacheKey, rows: parsed.rows });
-            populationCache.splice(POPULATION_CACHE_MAX_ENTRIES);
+        const inFlight = populationReadsInFlight.get(cacheKey);
+        if (inFlight) return await inFlight;
+
+        const readPromise = (async () => {
+            const fileBuffer = await file.arrayBuffer();
+            const parsed = await parseSpreadsheetFile(fileBuffer, filePath, {
+                includeColumnValues: false,
+            });
+            cachePopulation(fullPath, cacheKey, parsed.rows);
+            return parsed.rows;
+        })();
+        populationReadsInFlight.set(cacheKey, readPromise);
+        try {
+            return await readPromise;
+        } finally {
+            populationReadsInFlight.delete(cacheKey);
         }
-        return parsed.rows;
     } catch (error) {
         console.error("Failed to read population data:", error);
         return [];

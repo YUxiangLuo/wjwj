@@ -3,6 +3,7 @@ import { db } from "../../db";
 import { experiment, task, teacher, topic } from "../../db/schema";
 import { scoringWeightsFrom } from "../../lib/scoring-weights";
 import { readPopulationData } from "../experiment/population-data";
+import { previewSamplingResults } from "../experiment/sampling-results-preview";
 import {
     hydrateSamplingResults,
     inspectSamplingResultsStorage,
@@ -89,7 +90,7 @@ const submissionByTaskRoutes: RouteDefinition = {
             populationSize: snapshot?.populationSize ?? row.populationSize,
             questionnaire: snapshot?.questionnaire ?? parseStoredJson(row.questionnaire),
             samplePlan: snapshot?.samplePlan ?? parseStoredJson(row.samplePlan),
-            samplingResults,
+            samplingResults: previewSamplingResults(samplingResults),
             reportContent: snapshot?.reportContent ?? row.reportContent ?? "",
         };
         return json({

@@ -1,7 +1,8 @@
 import tailwind from "bun-plugin-tailwind";
-import { rm, mkdir } from "node:fs/promises";
+import { rm, mkdir, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { parse, relative, resolve } from "node:path";
+import { gzipSync } from "node:zlib";
 import { countHardcodedPaletteClasses } from "./check-styles";
 
 const projectRoot = resolve(import.meta.dir, "..");
@@ -25,6 +26,8 @@ await rm(outdir, { recursive: true, force: true });
 await mkdir(outdir, { recursive: true });
 
 let outputCount = 0;
+const MAX_INITIAL_JS_GZIP_BYTES = 350 * 1024;
+const MAX_FONT_BYTES = 300 * 1024;
 
 // Building the HTML entrypoints separately lets identical minified Tailwind
 // chunks share their content hash without Bun treating the shared path as an
@@ -35,6 +38,7 @@ for (const entrypoint of entrypoints) {
         outdir,
         plugins: [tailwind],
         target: "browser",
+        splitting: true,
         publicPath: "/",
         define: {
             "process.env.NODE_ENV": JSON.stringify("production"),
@@ -63,6 +67,42 @@ for (const entrypoint of entrypoints) {
     }
 
     outputCount += result.outputs.length;
+}
+
+async function collectInitialJavaScript(entryFile: string, seen = new Set<string>()) {
+    if (seen.has(entryFile)) return seen;
+    seen.add(entryFile);
+    const source = await Bun.file(resolve(outdir, entryFile)).text();
+    for (const match of source.matchAll(/(?:from|import)"\/(chunk-[^"]+\.js)"/g)) {
+        const imported = match[1];
+        if (imported) await collectInitialJavaScript(imported, seen);
+    }
+    return seen;
+}
+
+for (const entrypoint of entrypoints) {
+    const htmlName = `${parse(entrypoint).name}.html`;
+    const html = await Bun.file(resolve(outdir, htmlName)).text();
+    const entryScript = html.match(/src="\/(chunk-[^"]+\.js)"/)?.[1];
+    if (!entryScript) throw new Error(`${htmlName} 缺少生产入口脚本`);
+
+    const initialFiles = await collectInitialJavaScript(entryScript);
+    let initialGzipBytes = 0;
+    for (const fileName of initialFiles) {
+        initialGzipBytes += gzipSync(await Bun.file(resolve(outdir, fileName)).arrayBuffer()).byteLength;
+    }
+    if (initialGzipBytes > MAX_INITIAL_JS_GZIP_BYTES) {
+        throw new Error(`${htmlName} 首屏静态 JS 为 ${initialGzipBytes} bytes gzip，超过 ${MAX_INITIAL_JS_GZIP_BYTES} bytes 预算`);
+    }
+    console.log(`${htmlName} initial static JS: ${initialGzipBytes} bytes gzip across ${initialFiles.size} files.`);
+}
+
+for (const fileName of await readdir(outdir)) {
+    if (!/\.(?:woff2?|otf|ttf)$/i.test(fileName)) continue;
+    const size = Bun.file(resolve(outdir, fileName)).size;
+    if (size > MAX_FONT_BYTES) {
+        throw new Error(`${fileName} 为 ${size} bytes，超过 ${MAX_FONT_BYTES} bytes 字体预算`);
+    }
 }
 
 console.log(`Built ${outputCount} assets to ${outdir} with production React and Tailwind processing enabled.`);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { BarChart3, Calendar, GraduationCap, KeyRound, LayoutDashboard, Loader2, LogOut, Megaphone, School, Users } from "lucide-react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -11,13 +11,18 @@ import { DEV_AUTH_MODE } from "@/lib/dev-mode";
 import { usePasswordChange } from "@/hooks/usePasswordChange";
 import { AUTH_EXPIRED_EVENT } from "@/lib/auth-expired";
 import { authApi, type AdminUser } from "./api-client";
-import { AnnouncementManagement } from "./pages/AnnouncementManagement";
-import { ClassManagement } from "./pages/ClassManagement";
-import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
-import { SemesterManagement } from "./pages/SemesterManagement";
-import { StudentManagement } from "./pages/StudentManagement";
-import { TeacherManagement } from "./pages/TeacherManagement";
+
+const AnnouncementManagement = lazy(async () => ({ default: (await import("./pages/AnnouncementManagement")).AnnouncementManagement }));
+const ClassManagement = lazy(async () => ({ default: (await import("./pages/ClassManagement")).ClassManagement }));
+const Dashboard = lazy(async () => ({ default: (await import("./pages/Dashboard")).Dashboard }));
+const SemesterManagement = lazy(async () => ({ default: (await import("./pages/SemesterManagement")).SemesterManagement }));
+const StudentManagement = lazy(async () => ({ default: (await import("./pages/StudentManagement")).StudentManagement }));
+const TeacherManagement = lazy(async () => ({ default: (await import("./pages/TeacherManagement")).TeacherManagement }));
+
+function RouteLoading() {
+    return <div className="grid min-h-[60vh] place-items-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+}
 
 const menu = [
     { path: "/", label: "首页概览", icon: LayoutDashboard },
@@ -61,15 +66,15 @@ function AdminWorkspace({ user, onLogout, onPasswordChanged }: { user: AdminUser
                 <div className="p-6">
                     {mustChangePassword ? (
                         <div className="grid min-h-[60vh] place-items-center text-sm text-muted-foreground">请先修改初始密码后再使用管理功能。</div>
-                    ) : <Routes>
-                        <Route index element={<Dashboard />} />
-                        <Route path="semester" element={<SemesterManagement />} />
-                        <Route path="teacher" element={<TeacherManagement />} />
-                        <Route path="class" element={<ClassManagement />} />
-                        <Route path="student" element={<StudentManagement />} />
-                        <Route path="announcement" element={<AnnouncementManagement />} />
-                        <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>}
+                    ) : <Suspense fallback={<RouteLoading />}><Routes>
+                            <Route index element={<Dashboard />} />
+                            <Route path="semester" element={<SemesterManagement />} />
+                            <Route path="teacher" element={<TeacherManagement />} />
+                            <Route path="class" element={<ClassManagement />} />
+                            <Route path="student" element={<StudentManagement />} />
+                            <Route path="announcement" element={<AnnouncementManagement />} />
+                            <Route path="*" element={<Navigate to="/" replace />} />
+                        </Routes></Suspense>}
                 </div>
             </main>
             <PasswordChangeDialog open={mustChangePassword || passwordOpen} onOpenChange={(open) => { if (!mustChangePassword) setPasswordOpen(open); }} allowClose={!mustChangePassword} title={mustChangePassword ? "首次登录请修改密码" : "修改密码"} description={mustChangePassword ? "当前使用初始密码，设置新密码后才能进入管理后台。" : "输入当前密码并设置新密码。"} form={passwordChange.form} onFieldChange={passwordChange.setField} error={passwordChange.error} saving={passwordChange.saving} onSubmit={passwordChange.submit} submitLabel="保存" />

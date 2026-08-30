@@ -95,4 +95,15 @@ describe("usePhaseState", () => {
         });
         expect(result.current.phase).toEqual({ type: "decision" });
     });
+
+    test("restores both the current phase and the completed challenge snapshot", () => {
+        const { result } = renderHook(() => usePhaseState({
+            phase: { type: "precision" },
+            challenge: { guess: 64, revealed: true },
+        }));
+
+        expect(result.current.phase).toEqual({ type: "precision" });
+        act(() => result.current.goPrev());
+        expect(result.current.phase).toEqual({ type: "challenge", guess: 64, revealed: true });
+    });
 });

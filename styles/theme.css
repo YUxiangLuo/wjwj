@@ -9,7 +9,8 @@
 
 @font-face {
     font-family: "Noto Sans SC";
-    src: url("../public/fonts/NotoSansSC-Regular.otf") format("opentype");
+    src: local("Noto Sans SC"), local("Noto Sans CJK SC"),
+        url("../public/fonts/NotoSansSC-Regular.woff2") format("woff2");
     font-style: normal;
     font-weight: 400;
     font-display: swap;

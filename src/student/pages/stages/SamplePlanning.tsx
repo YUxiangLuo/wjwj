@@ -1,15 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-    AlertDialog,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Users, ClipboardList, Sparkles, ChevronLeft, ChevronRight, Info, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useExperiment } from "../ExperimentLayout";
@@ -25,10 +16,21 @@ import { ImmersiveExperimentLaunch } from "../../components/ImmersiveExperimentL
 import {
     getFinalSampleSizeBounds,
     type SampleParams,
+    type SamplePlanningWizardDraft,
 } from "../../components/immersive-sample-planning/types";
+import {
+    readExperimentDraft,
+    useExperimentDraft,
+    writeExperimentDraft,
+} from "../../experiment/experiment-draft";
 
 interface SamplePlanningProps {
     onPrev: () => void;
+}
+
+interface SamplePlanningStageDraft {
+    samplePlan: SamplePlanData | null;
+    wizard: SamplePlanningWizardDraft | null;
 }
 
 export function SamplePlanning({ onPrev }: SamplePlanningProps) {
@@ -36,16 +38,21 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
 
     const N = populationSize;
     const lockedEstimationType = experiment?.analysisTarget?.target.kind;
+    const restoredDraft = useMemo(() => readExperimentDraft<Partial<SamplePlanningStageDraft>>({
+        experimentId: experiment?.id,
+        experimentVersion: experiment?.version,
+        stage: 2,
+    }), [experiment?.id, experiment?.version]);
     const initialData = useMemo(
         () => {
-            const normalized = normalizeSamplePlanData(experiment?.samplePlan, N);
+            const normalized = normalizeSamplePlanData(restoredDraft?.samplePlan ?? experiment?.samplePlan, N);
             if (!normalized || !lockedEstimationType) return normalized;
             return { ...normalized, estimationType: lockedEstimationType };
         },
-        [experiment?.samplePlan, lockedEstimationType, N],
+        [experiment?.samplePlan, lockedEstimationType, N, restoredDraft?.samplePlan],
     );
     const [targetVariance, setTargetVariance] = useState<number | null>(
-        experiment?.samplePlan?.populationVariance ?? null,
+        initialData?.populationVariance ?? null,
     );
     const needsTargetVariance = lockedEstimationType === "mean";
     const [targetVarianceReady, setTargetVarianceReady] = useState(
@@ -73,7 +80,6 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
         };
     }, [experiment?.analysisTarget, experiment?.taskId, lockedEstimationType]);
 
-    const [confirmNextOpen, setConfirmNextOpen] = useState(false);
     const [confirmNextSaving, setConfirmNextSaving] = useState(false);
     // 进入抽样执行前的启动动画：点击“确认进入”后先播放，动画结束再保存。
     // 若保存失败，重试时不再重复播放。
@@ -82,15 +88,42 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
 
     // Display state — updated from planning flow completion or loaded from saved data
     const [displayData, setDisplayData] = useState<SamplePlanData | null>(initialData);
+    const [wizardDraft, setWizardDraft] = useState<SamplePlanningWizardDraft | null>(
+        restoredDraft?.wizard ?? null,
+    );
+    const samplePlanDraft = useMemo<SamplePlanningStageDraft>(
+        () => ({ samplePlan: displayData, wizard: wizardDraft }),
+        [displayData, wizardDraft],
+    );
+    const clearDraft = useExperimentDraft({
+        experimentId: experiment?.id,
+        experimentVersion: experiment?.version,
+        stage: 2,
+        data: samplePlanDraft,
+        enabled: Boolean(experiment && (displayData || wizardDraft)),
+    });
 
     const [immersiveOpen, setImmersiveOpen] = useState(false);
     const autoOpenedRef = useRef(false);
 
     useEffect(() => {
-        if (autoOpenedRef.current || initialData || !targetVarianceReady) return;
+        if (autoOpenedRef.current || !targetVarianceReady) return;
+        if (initialData && !restoredDraft?.wizard) return;
         autoOpenedRef.current = true;
         setImmersiveOpen(true);
-    }, [initialData, targetVarianceReady]);
+    }, [initialData, restoredDraft?.wizard, targetVarianceReady]);
+
+    const handleImmersiveDraftChange = useCallback((draft: SamplePlanningWizardDraft) => {
+        writeExperimentDraft({
+            experimentId: experiment?.id,
+            experimentVersion: experiment?.version,
+            stage: 2,
+        }, {
+            samplePlan: displayData,
+            wizard: draft,
+        } satisfies SamplePlanningStageDraft);
+        setWizardDraft(draft);
+    }, [displayData, experiment?.id, experiment?.version]);
 
     const handleImmersiveComplete = useCallback((result: SampleParams) => {
         const estimationType = lockedEstimationType ?? result.estimationType;
@@ -107,6 +140,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             finalSampleSize: result.finalSampleSize,
             ...(result.advancedPlanSource ? { advancedPlanSource: result.advancedPlanSource } : {}),
         });
+        setWizardDraft(null);
         setImmersiveOpen(false);
     }, [lockedEstimationType]);
 
@@ -133,18 +167,19 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             const ok = await completeStage(2, { samplePlan: displayData });
             if (!ok) {
                 toast.error("保存失败，请重试");
+            } else {
+                clearDraft();
             }
         } finally {
             setConfirmNextSaving(false);
         }
-    }, [completeStage, displayData, experiment]);
+    }, [clearDraft, completeStage, displayData, experiment]);
 
     const handleConfirmNext = () => {
         if (!displayData || experiment == null) {
             toast.error("实验数据未就绪，请稍后重试");
             return;
         }
-        setConfirmNextOpen(false);
         if (launchPlayedRef.current) {
             void saveStage();
             return;
@@ -157,11 +192,6 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
         setLaunching(false);
         void saveStage();
     }, [saveStage]);
-
-    const handleConfirmNextDialogOpenChange = (open: boolean) => {
-        if (!open && confirmNextSaving) return;
-        setConfirmNextOpen(open);
-    };
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-sample-plan">
@@ -177,6 +207,8 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                     initialPopulationVariance={targetVariance ?? displayData?.populationVariance ?? 100}
                     initialAdvancedPlanSource={displayData?.advancedPlanSource ?? null}
                     estimationLocked={Boolean(lockedEstimationType)}
+                    initialDraft={wizardDraft}
+                    onDraftChange={handleImmersiveDraftChange}
                     onComplete={handleImmersiveComplete}
                     onClose={() => setImmersiveOpen(false)}
                 />
@@ -258,7 +290,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                             className="border-primary text-primary hover:bg-primary/10"
                         >
                             <Sparkles className="w-4 h-4 mr-1.5" />
-                            重新规划样本量
+                            {wizardDraft ? "继续规划样本量" : "重新规划样本量"}
                         </Button>
                     </div>
 
@@ -314,13 +346,16 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                 {displayData && (
                     <Button
                         type="button"
-                        onClick={() => setConfirmNextOpen(true)}
-                        disabled={!isValidFinalSize}
+                        onClick={handleConfirmNext}
+                        disabled={!isValidFinalSize || confirmNextSaving || launching}
                         data-testid="student-sample-plan-next"
                         className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 disabled:opacity-40 disabled:shadow-none"
                     >
-                        确认并进入下一阶段
-                        <ChevronRight className="w-4 h-4 ml-1" />
+                        {confirmNextSaving ? (
+                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" />保存中…</>
+                        ) : (
+                            <>确认并进入下一阶段<ChevronRight className="w-4 h-4 ml-1" /></>
+                        )}
                     </Button>
                 )}
             </div>
@@ -338,36 +373,6 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                 />
             )}
 
-            <AlertDialog open={confirmNextOpen} onOpenChange={handleConfirmNextDialogOpenChange}>
-                <AlertDialogContent className="bg-card border-border">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>进入抽样执行？</AlertDialogTitle>
-                        <AlertDialogDescription className="text-muted-foreground">
-                            将保存当前样本量规划并进入「抽样执行」阶段。若之后返回修改本阶段，后续阶段已填数据可能被清空。
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel type="button" disabled={confirmNextSaving}>
-                            取消
-                        </AlertDialogCancel>
-                        <Button
-                            type="button"
-                            onClick={() => handleConfirmNext()}
-                            disabled={confirmNextSaving}
-                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                        >
-                            {confirmNextSaving ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    保存中…
-                                </>
-                            ) : (
-                                "确认进入"
-                            )}
-                        </Button>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     );
 }

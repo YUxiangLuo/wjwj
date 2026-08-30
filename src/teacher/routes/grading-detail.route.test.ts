@@ -73,3 +73,38 @@ test("compact grading detail returns READ_FAILED when population storage is miss
         console.error = originalConsoleError;
     }
 });
+
+test("teacher sampling export returns every row from the immutable submission snapshot", async () => {
+    const submittedRows = Array.from({ length: 60 }, (_, index) => ({
+        rowId: index + 1,
+        source: `提交-${index + 1}`,
+    }));
+    const { db } = createMockDb({ select: [[{
+        id: 99,
+        status: "submitted",
+        excelFilePath: null,
+        submissionSnapshot: {
+            samplingResults: {
+                simple: { completed: true, sampleCount: 60, data: submittedRows },
+            },
+        },
+        samplingResults: {
+            simple: { completed: true, sampleCount: 1, data: [{ rowId: 1, source: "当前值" }] },
+        },
+    }]] });
+    mock.module("../../db", () => ({ db }));
+    mock.module("./auth", () => createTeacherAuthModuleMock());
+    const module = await import(`./grading.ts?sampling-export=${crypto.randomUUID()}`);
+
+    const response = await module.gradingSamplingExportRoutes.GET!(withId(
+        new Request("https://example.com/api/teacher/grading/99/sampling-export?type=all"),
+        "99",
+    ));
+    const csv = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-disposition")).toContain("all_sampling.csv");
+    expect(csv.split("\n")).toHaveLength(61);
+    expect(csv).toContain("提交-60");
+    expect(csv).not.toContain("当前值");
+});

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, History, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Download, History, XCircle } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -116,6 +116,21 @@ export function GradingDetail() {
                         <TabsContent value="questionnaire" className="mt-4"><QuestionnaireSnapshot questionnaire={data.questionnaire} /></TabsContent>
                         <TabsContent value="plan" className="mt-4"><SamplePlanSnapshot value={data.samplePlan} populationSize={data.populationSize} /></TabsContent>
                         <TabsContent value="sampling" className="mt-4 space-y-4">
+                            {data.samplingResults && (
+                                <div className="flex items-center justify-between gap-3 rounded-xl border border-info/20 bg-info/10 p-4">
+                                    <p className="text-sm text-info">页面最多预览每种抽样方法的前 50 行；CSV 包含本次提交的完整样本。</p>
+                                    <Button asChild variant="outline" className="shrink-0 border-info/30 text-info hover:bg-info/10">
+                                        <a
+                                            href={`/api/teacher/grading/${id}/sampling-export?type=all`}
+                                            download
+                                            data-testid="teacher-sampling-export"
+                                        >
+                                            <Download className="mr-2 h-4 w-4" />
+                                            导出完整样本
+                                        </a>
+                                    </Button>
+                                </div>
+                            )}
                             <SamplingResultsSnapshot value={data.samplingResults} />
                             <div className="rounded-xl border border-border bg-card p-4">
                                 <h3 className="flex items-center gap-2 font-medium"><History className="h-4 w-4 text-primary" />抽样执行记录</h3>

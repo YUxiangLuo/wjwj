@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, useRef, useId } from "react";
+import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useId } from "react";
 import { X, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +20,12 @@ import type { Domain } from "../DomainEstimationManager";
 import type { SurveyVariable } from "../MultiVariableSamplePlan";
 import { ImmersiveExperimentLaunch } from "../ImmersiveExperimentLaunch";
 import { usePhaseState } from "./usePhaseState";
-import { PHASE_ORDER, type EstimationType, type SampleParams } from "./types";
+import {
+    PHASE_ORDER,
+    type EstimationType,
+    type SampleParams,
+    type SamplePlanningWizardDraft,
+} from "./types";
 import { ChallengePhase } from "./phases/ChallengePhase";
 import { PrecisionPhase } from "./phases/PrecisionPhase";
 import { FactorsPhase } from "./phases/FactorsPhase";
@@ -61,6 +66,8 @@ interface Props {
     initialPopulationVariance?: number;
     initialAdvancedPlanSource?: AdvancedNonStandardSampleSource | null;
     estimationLocked?: boolean;
+    initialDraft?: SamplePlanningWizardDraft | null;
+    onDraftChange?: (draft: SamplePlanningWizardDraft) => void;
     onComplete: (params: SampleParams) => void;
     onClose: () => void;
     /** Called after the launch animation completes (phase reaches "done"). */
@@ -78,23 +85,31 @@ export function ImmersiveSamplePlanning({
     initialPopulationVariance = 100,
     initialAdvancedPlanSource = null,
     estimationLocked = false,
+    initialDraft = null,
+    onDraftChange,
     onComplete,
     onClose,
     onLaunchComplete,
 }: Props) {
     // --- Parameter state (shared across all phases) ---
     const [confidenceLevel, setConfidenceLevel] = useState<ConfidenceLevel>(() =>
-        normalizeConfidenceLevel(initialConfidenceLevel ?? "95"),
+        initialDraft?.confidenceLevel ?? normalizeConfidenceLevel(initialConfidenceLevel ?? "95"),
     );
     const [marginOfError, setMarginOfError] = useState(
-        initialMarginOfError ?? (initialEstimationType === "mean" ? 2 : 5),
+        initialDraft?.marginOfError ?? initialMarginOfError ?? (initialEstimationType === "mean" ? 2 : 5),
     );
-    const [designEffect, setDesignEffect] = useState(initialDesignEffect);
-    const [nonResponseRate, setNonResponseRate] = useState(initialNonResponseRate);
-    const [estimationType, setEstimationType] = useState<EstimationType>(initialEstimationType);
-    const [populationVariance, setPopulationVariance] = useState(initialPopulationVariance);
+    const [designEffect, setDesignEffect] = useState(initialDraft?.designEffect ?? initialDesignEffect);
+    const [nonResponseRate, setNonResponseRate] = useState(initialDraft?.nonResponseRate ?? initialNonResponseRate);
+    const [estimationType, setEstimationType] = useState<EstimationType>(
+        estimationLocked ? initialEstimationType : initialDraft?.estimationType ?? initialEstimationType,
+    );
+    const [populationVariance, setPopulationVariance] = useState(
+        initialDraft?.populationVariance ?? initialPopulationVariance,
+    );
 
-    const [advancedPlanSource, setAdvancedPlanSource] = useState<AdvancedNonStandardSampleSource | null>(initialAdvancedPlanSource);
+    const [advancedPlanSource, setAdvancedPlanSource] = useState<AdvancedNonStandardSampleSource | null>(
+        initialDraft?.advancedPlanSource ?? initialAdvancedPlanSource,
+    );
 
     const clearAdvancedPlanSource = useCallback(() => {
         setAdvancedPlanSource(null);
@@ -130,15 +145,19 @@ export function ImmersiveSamplePlanning({
         }) ?? Math.min(30, populationSize);
     }, [estimationType, confidenceLevel, marginOfError, populationSize, populationVariance, designEffect, nonResponseRate]);
 
-    const [finalSampleSize, setFinalSampleSize] = useState(initialFinalSampleSize ?? recommendedSize);
+    const [finalSampleSize, setFinalSampleSize] = useState(
+        initialDraft?.finalSampleSize ?? initialFinalSampleSize ?? recommendedSize,
+    );
 
     // Keep final in sync with recommended when user hasn't touched it yet
-    const userTouchedFinal = useRef(initialFinalSampleSize != null);
+    const [userTouchedFinal, setUserTouchedFinal] = useState(
+        initialDraft?.userTouchedFinal ?? initialFinalSampleSize != null,
+    );
     useEffect(() => {
-        if (!userTouchedFinal.current) {
+        if (!userTouchedFinal) {
             setFinalSampleSize(recommendedSize);
         }
-    }, [recommendedSize]);
+    }, [recommendedSize, userTouchedFinal]);
 
     const params: SampleParams = {
         populationSize,
@@ -157,8 +176,8 @@ export function ImmersiveSamplePlanning({
     paramsRef.current = params;
 
     // --- Advanced tools state (session-only, not persisted to backend / SamplePlanData) ---
-    const [domains, setDomains] = useState<Domain[]>([]);
-    const [surveyVariables, setSurveyVariables] = useState<SurveyVariable[]>([]);
+    const [domains, setDomains] = useState<Domain[]>(() => initialDraft?.domains ?? []);
+    const [surveyVariables, setSurveyVariables] = useState<SurveyVariable[]>(() => initialDraft?.surveyVariables ?? []);
 
     /** Tracks when final sample size currently comes from a non-standard tool. */
     const handleAdvancedApplied = useCallback((source: AdvancedNonStandardSampleSource) => {
@@ -166,7 +185,51 @@ export function ImmersiveSamplePlanning({
     }, []);
 
     // --- Phase navigation ---
-    const { phase, setPhase, direction, progress, goNext, goPrev, jumpTo, skipQuiz } = usePhaseState();
+    const {
+        phase,
+        setPhase,
+        direction,
+        progress,
+        navigationSnapshot,
+        goNext,
+        goPrev,
+        jumpTo,
+        skipQuiz,
+    } = usePhaseState(initialDraft?.navigation);
+
+    const onDraftChangeRef = useRef(onDraftChange);
+    onDraftChangeRef.current = onDraftChange;
+    useLayoutEffect(() => {
+        if (phase.type === "done" || phase.type === "launching") return;
+        onDraftChangeRef.current?.({
+            navigation: navigationSnapshot,
+            confidenceLevel,
+            marginOfError,
+            designEffect,
+            nonResponseRate,
+            estimationType,
+            populationVariance,
+            finalSampleSize,
+            userTouchedFinal,
+            advancedPlanSource,
+            domains,
+            surveyVariables,
+        });
+    }, [
+        advancedPlanSource,
+        confidenceLevel,
+        designEffect,
+        domains,
+        estimationType,
+        finalSampleSize,
+        marginOfError,
+        navigationSnapshot,
+        nonResponseRate,
+        phase.type,
+        populationVariance,
+        surveyVariables,
+        userTouchedFinal,
+    ]);
 
     // 确认规划结果仅完成规划并返回阶段页；进入抽样执行的启动动画由阶段页的
     // “确认并进入下一阶段”触发（见 SamplePlanning.tsx）。
@@ -312,13 +375,13 @@ export function ImmersiveSamplePlanning({
 
     // --- Handle setting final size (marks user-touched) ---
     const handleSetFinalSize = useCallback((v: number) => {
-        userTouchedFinal.current = true;
+        setUserTouchedFinal(true);
         setFinalSampleSize(v);
     }, []);
 
     const resetFinalSize = useCallback(() => {
         clearAdvancedPlanSource();
-        userTouchedFinal.current = false;
+        setUserTouchedFinal(false);
         setFinalSampleSize(recommendedSize);
     }, [clearAdvancedPlanSource, recommendedSize]);
 
@@ -603,7 +666,7 @@ export function ImmersiveSamplePlanning({
                     <AlertDialogHeader>
                         <AlertDialogTitle>退出样本量规划？</AlertDialogTitle>
                         <AlertDialogDescription>
-                            本次规划结果不会带回阶段页。你可以稍后重新规划。
+                            当前规划进度已自动保存。下次打开本阶段时可以从这里继续。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

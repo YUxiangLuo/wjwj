@@ -2,7 +2,10 @@ import { afterEach, beforeEach, expect, mock, test } from "bun:test";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
 import { installDomGlobals } from "@/test-utils/dom";
-import type { SampleParams } from "../../components/immersive-sample-planning/types";
+import type {
+    SampleParams,
+    SamplePlanningWizardDraft,
+} from "../../components/immersive-sample-planning/types";
 
 const mockExperimentApi = {
     getStats: mock(async () => ({
@@ -25,6 +28,8 @@ let lastPlanningProps: {
     initialMarginOfError?: number;
     initialPopulationVariance?: number;
     initialEstimationType?: string;
+    initialDraft?: SamplePlanningWizardDraft | null;
+    onDraftChange?: (draft: SamplePlanningWizardDraft) => void;
     onComplete?: (params: SampleParams) => void;
 } | null = null;
 
@@ -67,6 +72,8 @@ mock.module("../../components/immersive-sample-planning", () => ({
         initialMarginOfError?: number;
         initialPopulationVariance?: number;
         initialEstimationType?: string;
+        initialDraft?: SamplePlanningWizardDraft | null;
+        onDraftChange?: (draft: SamplePlanningWizardDraft) => void;
         onComplete: (params: SampleParams) => void;
     }) => {
         lastPlanningProps = props;
@@ -88,6 +95,29 @@ mock.module("../../components/immersive-sample-planning", () => ({
                     })}
                 >
                     complete
+                </button>
+                <button
+                    type="button"
+                    data-testid="mock-planning-progress"
+                    onClick={() => props.onDraftChange?.({
+                        navigation: {
+                            phase: { type: "quiz", questionIndex: 1 },
+                            challenge: { guess: 48, revealed: true },
+                        },
+                        confidenceLevel: "99",
+                        marginOfError: 3,
+                        designEffect: 1.5,
+                        nonResponseRate: 0.1,
+                        estimationType: "mean",
+                        populationVariance: 67.128040201005,
+                        finalSampleSize: 75,
+                        userTouchedFinal: true,
+                        advancedPlanSource: null,
+                        domains: [],
+                        surveyVariables: [],
+                    })}
+                >
+                    progress
                 </button>
             </div>
         );
@@ -111,6 +141,7 @@ beforeEach(() => {
         populationSize: 200,
         experiment: {
             id: 88,
+            version: 1,
             taskId: 2,
             currentStage: 2,
             analysisTarget: { target: { kind: "mean", field: "每周学习时长" }, inferred: false },
@@ -160,4 +191,19 @@ test("completing the overlay persists the variance used to compute n, not a late
     const summary = view.getByTestId("student-sample-plan-summary").textContent ?? "";
     expect(summary).toContain("67.128040201005");
     expect(summary).toContain("49");
+});
+
+test("first-visit immersive progress is flushed and restored before a final plan exists", async () => {
+    const firstView = render(<SamplePlanning onPrev={() => undefined} />);
+    await waitFor(() => expect(firstView.getByTestId("mock-immersive-planning")).toBeTruthy());
+    fireEvent.click(firstView.getByTestId("mock-planning-progress"));
+    firstView.unmount();
+
+    const restoredView = render(<SamplePlanning onPrev={() => undefined} />);
+    await waitFor(() => expect(restoredView.getByTestId("mock-immersive-planning")).toBeTruthy());
+    expect(lastPlanningProps?.initialDraft).toMatchObject({
+        navigation: { phase: { type: "quiz", questionIndex: 1 } },
+        confidenceLevel: "99",
+        finalSampleSize: 75,
+    });
 });

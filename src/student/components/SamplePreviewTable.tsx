@@ -142,7 +142,9 @@ export function SamplePreviewTable({ data, total }: { data: unknown[]; total: nu
             )}
             <div className="mt-3 flex items-center justify-between gap-2">
                 <p className="text-xs text-muted-foreground">
-                    显示第 {start + 1}-{end} 条，共 {Math.max(total, samples.length)} 条
+                    {total > samples.length
+                        ? `当前预览第 ${start + 1}-${end} 条（预览前 ${samples.length} 条，共 ${total} 条；完整数据请导出）`
+                        : `显示第 ${start + 1}-${end} 条，共 ${Math.max(total, samples.length)} 条`}
                 </p>
                 <div className="flex items-center gap-2">
                     <Button

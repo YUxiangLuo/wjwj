@@ -14,29 +14,11 @@ import {
     INVALID_SAMPLING_STORAGE_MESSAGE,
 } from "../experiment/sampling-storage";
 import { parseStoredJson } from "../experiment/serialization";
+import {
+    buildSamplingResultsCsvExport,
+    parseSamplingExportType,
+} from "../experiment/sampling-results-export";
 import { requireAuth } from "./auth";
-
-function toCsv(data: Record<string, unknown>[], extraHeaders: string[] = []) {
-    if (data.length === 0) return "";
-    const headerSet = new Set<string>();
-    data.forEach((row) => Object.keys(row).forEach((key) => headerSet.add(key)));
-    extraHeaders.forEach((h) => headerSet.add(h));
-    const headers = Array.from(headerSet);
-
-    const escape = (v: unknown) => {
-        if (v === null || v === undefined) return "";
-        const s = typeof v === "string" ? v : JSON.stringify(v);
-        if (s.includes(",") || s.includes("\n") || s.includes('"')) {
-            return `"${s.replace(/"/g, '""')}"`;
-        }
-        return s;
-    };
-    const lines = [headers.join(",")];
-    for (const row of data) {
-        lines.push(headers.map((h) => escape(row[h])).join(","));
-    }
-    return lines.join("\n");
-}
 
 export function resolveAttachmentPath(filePath: string) {
     return resolveStoragePath(filePath);
@@ -79,17 +61,6 @@ const attachmentDownloadRoutes: RouteDefinition = {
     },
 };
 
-interface SamplingResultSection {
-    data?: Record<string, unknown>[];
-}
-
-interface SamplingResultsExportData {
-    simple?: SamplingResultSection;
-    systematic?: SamplingResultSection;
-    pps?: SamplingResultSection;
-    stratified?: SamplingResultSection;
-}
-
 const exportRoutes: RouteDefinition = {
     async GET(req) {
         const auth = await requireAuth(req);
@@ -102,9 +73,8 @@ const exportRoutes: RouteDefinition = {
         const taskAccessError = await getStudentTaskAccessError(taskId, currentStudent.classId);
         if (taskAccessError) return taskAccessError;
 
-        const type = getSearchParams(req).get("type") ?? "all";
-        const ALLOWED_EXPORT_TYPES = ["simple", "systematic", "pps", "stratified", "all"];
-        if (!ALLOWED_EXPORT_TYPES.includes(type)) {
+        const type = parseSamplingExportType(getSearchParams(req).get("type"));
+        if (!type) {
             return error("无效的导出类型", "VALIDATION_ERROR", 400);
         }
 
@@ -122,7 +92,7 @@ const exportRoutes: RouteDefinition = {
             return error("暂无抽样结果", "NO_DATA", 404);
         }
 
-        const storedResults = parseStoredJson<SamplingResultsExportData>(exp.samplingResults);
+        const storedResults = parseStoredJson(exp.samplingResults);
         const inspection = inspectSamplingResultsStorage(storedResults);
         if (!inspection.ok) return error(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
         let results = storedResults;
@@ -132,50 +102,21 @@ const exportRoutes: RouteDefinition = {
             if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
             const hydrated = hydrateSamplingResults(storedResults, population);
             if (!hydrated.ok) return error(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
-            results = hydrated.value as SamplingResultsExportData;
+            results = hydrated.value;
         }
         if (!results) {
             return error("暂无抽样结果", "NO_DATA", 404);
         }
 
-        const simpleData = (results.simple?.data ?? []) as Record<string, unknown>[];
-        const systematicData = (results.systematic?.data ?? []) as Record<string, unknown>[];
-        const ppsData = (results.pps?.data ?? []) as Record<string, unknown>[];
-        const stratifiedData = (results.stratified?.data ?? []) as Record<string, unknown>[];
-
-        let data: Record<string, unknown>[] = [];
-        let filename = "sampling_results.csv";
-        if (type === "simple") {
-            data = simpleData;
-            filename = "simple_sampling.csv";
-        } else if (type === "systematic") {
-            data = systematicData;
-            filename = "systematic_sampling.csv";
-        } else if (type === "pps") {
-            data = ppsData;
-            filename = "pps_sampling.csv";
-        } else if (type === "stratified") {
-            data = stratifiedData;
-            filename = "stratified_sampling.csv";
-        } else {
-            data = [
-                ...simpleData.map((row) => ({ __method: "simple", ...row })),
-                ...systematicData.map((row) => ({ __method: "systematic", ...row })),
-                ...ppsData.map((row) => ({ __method: "pps", ...row })),
-                ...stratifiedData.map((row) => ({ __method: "stratified", ...row })),
-            ];
-            filename = "all_sampling.csv";
-        }
-
-        if (data.length === 0) {
+        const exported = buildSamplingResultsCsvExport(results, type);
+        if (!exported) {
             return error("暂无可导出的数据", "NO_DATA", 404);
         }
 
-        const csv = toCsv(data, type === "all" ? ["__method"] : []);
-        return new Response(csv, {
+        return new Response(exported.csv, {
             headers: {
                 "Content-Type": "text/csv; charset=utf-8",
-                "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+                "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(exported.filename)}`,
             },
         });
     },

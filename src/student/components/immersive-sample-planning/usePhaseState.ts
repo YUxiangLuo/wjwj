@@ -1,5 +1,11 @@
 import { useState, useCallback, useMemo, useRef } from "react";
-import { PHASE_ORDER, type Phase, type PhaseType, initialPhase } from "./types";
+import {
+    PHASE_ORDER,
+    type Phase,
+    type PhaseNavigationSnapshot,
+    type PhaseType,
+    initialPhase,
+} from "./types";
 import { QUIZ_QUESTION_COUNT } from "./phases/QuizPhase";
 
 function phaseIndex(type: PhaseType): number {
@@ -42,20 +48,26 @@ function defaultPhaseFor(type: PhaseType): Phase {
     }
 }
 
-export function usePhaseState() {
-    const [phase, setPhase] = useState<Phase>(initialPhase);
+export function usePhaseState(initial?: PhaseNavigationSnapshot | null) {
+    const [phase, setPhase] = useState<Phase>(() => initial?.phase ?? initialPhase());
     const [direction, setDirection] = useState<"forward" | "backward">("forward");
 
     /** Last completed challenge state — used when navigating back from formula step "z" so guess is not lost. */
     const challengeSnapshotRef = useRef<{ guess: number | null; revealed: boolean }>({
-        guess: null,
-        revealed: false,
+        guess: initial?.challenge.guess ?? (initial?.phase.type === "challenge" ? initial.phase.guess : null),
+        revealed: initial?.challenge.revealed ?? (initial?.phase.type === "challenge" ? initial.phase.revealed : false),
     });
     /** Always latest phase — avoids stale `phase.type` in jumpTo after async gaps. */
     const phaseRef = useRef(phase);
     phaseRef.current = phase;
 
     const progress = useMemo(() => phaseProgress(phase), [phase]);
+    const navigationSnapshot = useMemo<PhaseNavigationSnapshot>(() => ({
+        phase,
+        challenge: phase.type === "challenge"
+            ? { guess: phase.guess, revealed: phase.revealed }
+            : { ...challengeSnapshotRef.current },
+    }), [phase]);
 
     const goNext = useCallback(() => {
         setDirection("forward");
@@ -124,6 +136,7 @@ export function usePhaseState() {
 
     return {
         phase,
+        navigationSnapshot,
         setPhase,
         direction,
         progress,

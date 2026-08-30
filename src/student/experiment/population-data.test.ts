@@ -1,7 +1,8 @@
-import { expect, test } from "bun:test";
+import { afterEach, expect, test } from "bun:test";
 import {
     buildPopulationNumericStats,
     buildStratifiedStats,
+    clearPopulationDataCacheForTests,
     getPpsEligibleNumericFields,
     readPopulationData,
 } from "./population-data";
@@ -13,6 +14,8 @@ const UTF8_CSV = [
     "A002,二线,21,2200,1.5,计算机",
     "A003,一线,22,2600,1.8,统计学",
 ].join("\n");
+
+afterEach(() => clearPopulationDataCacheForTests());
 
 test("population numeric stats do not coerce blank cells to zero", () => {
     const stats = buildPopulationNumericStats([{ x: 10 }, { x: "" }, { x: null }, { x: 20 }], ["x"]);
@@ -43,5 +46,44 @@ test("readPopulationData preserves Chinese UTF-8 CSV fields without a BOM", asyn
         expect(getPpsEligibleNumericFields(rows, ["抽样权重"])).toEqual(["抽样权重"]);
     } finally {
         await deleteStorageFileIfExists(storagePath);
+    }
+});
+
+test("readPopulationData caches populations larger than the former 20k-row cutoff", async () => {
+    const storagePath = `/storage/uploads/population-large-${crypto.randomUUID()}.csv`;
+    const csv = [
+        "id,value",
+        ...Array.from({ length: 20_001 }, (_, index) => `${index + 1},${index % 7}`),
+    ].join("\n");
+    await writeStorageFile(storagePath, csv);
+
+    try {
+        const [first, concurrent] = await Promise.all([
+            readPopulationData(storagePath),
+            readPopulationData(storagePath),
+        ]);
+        const cached = await readPopulationData(storagePath);
+
+        expect(first).toHaveLength(20_001);
+        expect(concurrent).toBe(first);
+        expect(cached).toBe(first);
+    } finally {
+        await deleteStorageFileIfExists(storagePath);
+    }
+});
+
+test("concurrent unreadable population requests share the failure contract", async () => {
+    const originalConsoleError = console.error;
+    console.error = () => undefined;
+    try {
+        const missing = `/storage/uploads/missing-${crypto.randomUUID()}.csv`;
+        const [first, second] = await Promise.all([
+            readPopulationData(missing),
+            readPopulationData(missing),
+        ]);
+        expect(first).toEqual([]);
+        expect(second).toEqual([]);
+    } finally {
+        console.error = originalConsoleError;
     }
 });

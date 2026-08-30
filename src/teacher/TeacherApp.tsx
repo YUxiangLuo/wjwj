@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { BarChart3, BookOpen, ClipboardList, Download, KeyRound, LayoutDashboard, Loader2, LogOut, PenLine, School } from "lucide-react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -11,16 +11,21 @@ import { DEV_AUTH_MODE } from "@/lib/dev-mode";
 import { usePasswordChange } from "@/hooks/usePasswordChange";
 import { AUTH_EXPIRED_EVENT } from "@/lib/auth-expired";
 import { authApi, type TeacherUser } from "./api-client";
-import { ClassManagement } from "./pages/ClassManagement";
-import { Dashboard } from "./pages/Dashboard";
-import { GradeExport } from "./pages/GradeExport";
-import { GradingDetail } from "./pages/GradingDetail";
-import { GradingManagement } from "./pages/GradingManagement";
 import { Login } from "./pages/Login";
-import { StudentManagement } from "./pages/StudentManagement";
-import { TaskManagement } from "./pages/TaskManagement";
-import { TaskProgressDetail } from "./pages/TaskProgressDetail";
-import { TopicManagement } from "./pages/TopicManagement";
+
+const ClassManagement = lazy(async () => ({ default: (await import("./pages/ClassManagement")).ClassManagement }));
+const Dashboard = lazy(async () => ({ default: (await import("./pages/Dashboard")).Dashboard }));
+const GradeExport = lazy(async () => ({ default: (await import("./pages/GradeExport")).GradeExport }));
+const GradingDetail = lazy(async () => ({ default: (await import("./pages/GradingDetail")).GradingDetail }));
+const GradingManagement = lazy(async () => ({ default: (await import("./pages/GradingManagement")).GradingManagement }));
+const StudentManagement = lazy(async () => ({ default: (await import("./pages/StudentManagement")).StudentManagement }));
+const TaskManagement = lazy(async () => ({ default: (await import("./pages/TaskManagement")).TaskManagement }));
+const TaskProgressDetail = lazy(async () => ({ default: (await import("./pages/TaskProgressDetail")).TaskProgressDetail }));
+const TopicManagement = lazy(async () => ({ default: (await import("./pages/TopicManagement")).TopicManagement }));
+
+function RouteLoading() {
+    return <div className="grid min-h-[60vh] place-items-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+}
 
 const menu = [
     { path: "/", label: "教学概览", icon: LayoutDashboard },
@@ -79,18 +84,18 @@ function TeacherWorkspace({
                 <div className="p-6">
                     {mustChangePassword ? (
                         <div className="grid min-h-[60vh] place-items-center text-sm text-muted-foreground">请先修改初始密码后再使用教学功能。</div>
-                    ) : <Routes>
-                        <Route index element={<Dashboard />} />
-                        <Route path="class" element={<ClassManagement />} />
-                        <Route path="class/:classId/students" element={<StudentManagement />} />
-                        <Route path="topic" element={<TopicManagement />} />
-                        <Route path="task" element={<TaskManagement />} />
-                        <Route path="task/:taskId/progress" element={<TaskProgressDetail />} />
-                        <Route path="grading" element={<GradingManagement />} />
-                        <Route path="grading/:submissionId" element={<GradingDetail />} />
-                        <Route path="export" element={<GradeExport />} />
-                        <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>}
+                    ) : <Suspense fallback={<RouteLoading />}><Routes>
+                            <Route index element={<Dashboard />} />
+                            <Route path="class" element={<ClassManagement />} />
+                            <Route path="class/:classId/students" element={<StudentManagement />} />
+                            <Route path="topic" element={<TopicManagement />} />
+                            <Route path="task" element={<TaskManagement />} />
+                            <Route path="task/:taskId/progress" element={<TaskProgressDetail />} />
+                            <Route path="grading" element={<GradingManagement />} />
+                            <Route path="grading/:submissionId" element={<GradingDetail />} />
+                            <Route path="export" element={<GradeExport />} />
+                            <Route path="*" element={<Navigate to="/" replace />} />
+                        </Routes></Suspense>}
                 </div>
             </main>
             <PasswordChangeDialog

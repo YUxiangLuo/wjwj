@@ -54,6 +54,30 @@ export interface SampleParams {
     advancedPlanSource?: "cost" | "multivar" | "cv" | "cluster";
 }
 
+export interface PhaseNavigationSnapshot {
+    phase: Phase;
+    challenge: {
+        guess: number | null;
+        revealed: boolean;
+    };
+}
+
+/** Serializable state required to resume the immersive planning flow exactly where it stopped. */
+export interface SamplePlanningWizardDraft {
+    navigation: PhaseNavigationSnapshot;
+    confidenceLevel: ConfidenceLevel;
+    marginOfError: number;
+    designEffect: number;
+    nonResponseRate: number;
+    estimationType: EstimationType;
+    populationVariance: number;
+    finalSampleSize: number;
+    userTouchedFinal: boolean;
+    advancedPlanSource: SampleParams["advancedPlanSource"] | null;
+    domains: import("../DomainEstimationManager").Domain[];
+    surveyVariables: import("../MultiVariableSamplePlan").SurveyVariable[];
+}
+
 export function initialPhase(): Phase {
     return { type: "challenge", guess: null, revealed: false };
 }

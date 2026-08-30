@@ -8,7 +8,12 @@ import {
 import { classRoutes, classStudentsImportRoutes, classStudentsRoutes, studentRoutes } from "./routes/classroom";
 import { dashboardRoutes } from "./routes/dashboard";
 import { gradeExportDataRoutes, gradeExportExcelRoutes, gradeExportPreviewRoutes } from "./routes/export";
-import { gradingDetailRoutes, gradingRejectRoutes, gradingRoutes } from "./routes/grading";
+import {
+    gradingDetailRoutes,
+    gradingRejectRoutes,
+    gradingRoutes,
+    gradingSamplingExportRoutes,
+} from "./routes/grading";
 import { teacherAnnouncementsRoutes } from "./routes/announcements";
 import {
     taskExtendRoutes,
@@ -57,6 +62,7 @@ export const teacherApiRoutes = {
 
     "/api/teacher/grading": withTeacherAuth(gradingRoutes),
     "/api/teacher/grading/:id": withTeacherAuth(gradingDetailRoutes),
+    "/api/teacher/grading/:id/sampling-export": withTeacherAuth(gradingSamplingExportRoutes),
     "/api/teacher/grading/:id/reject": withTeacherAuth(gradingRejectRoutes),
     "/api/teacher/announcements": withTeacherAuth(teacherAnnouncementsRoutes),
     "/api/teacher/grade-export/preview": withTeacherAuth(gradeExportPreviewRoutes),
