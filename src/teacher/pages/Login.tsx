@@ -39,9 +39,9 @@ export function Login() {
     };
 
     return (
-        <main className="min-h-screen grid grid-cols-2 bg-background font-sans text-foreground">
+        <main className="grid min-h-screen grid-cols-1 bg-background font-sans text-foreground lg:grid-cols-2">
             {/* Left Side: Hero / Branding */}
-            <div className="flex flex-col justify-between bg-card relative overflow-hidden p-12 border-r border-border">
+            <div className="relative hidden flex-col justify-between overflow-hidden border-r border-border bg-card p-12 lg:flex">
                 <div className="absolute inset-0 z-0 opacity-40">
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/40 via-card to-background z-10" />
                     <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-card/5 to-transparent" />
@@ -99,7 +99,7 @@ export function Login() {
             </div>
 
             {/* Right Side: Login Form */}
-            <div className="flex flex-col justify-center items-center p-8 bg-background relative">
+            <div className="relative flex flex-col items-center justify-center bg-background p-4 sm:p-8">
                 <div className="w-full max-w-md space-y-10">
                     <div className="flex flex-col space-y-3 text-center">
                         <h2 className="text-3xl font-bold tracking-tight text-foreground">
@@ -170,7 +170,7 @@ export function Login() {
                                 <p className="text-xs font-medium tracking-[0.2em] text-muted-foreground text-center">
                                     其他端入口
                                 </p>
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                     <a
                                         href="/admin/login"
                                         className="inline-flex h-11 items-center justify-center rounded-xl border border-border bg-background text-sm font-medium text-foreground/90 transition-all hover:border-primary hover:text-primary"

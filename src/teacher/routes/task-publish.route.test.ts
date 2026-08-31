@@ -9,6 +9,20 @@ async function load(select: unknown[], update: unknown[] = []) {
     return { module, operations };
 }
 
+const readyFieldMapping = {
+    identifier: "id",
+    stratified: ["组"],
+    numeric: ["值"],
+    analysisTarget: { kind: "mean", field: "值" },
+    studyContract: {
+        version: 1,
+        researchQuestion: "总体平均值是多少？",
+        targetPopulation: "全部单位",
+        unitOfAnalysis: "一个单位",
+        target: { kind: "mean", field: "值" },
+    },
+};
+
 test("task publish requires a topic and at least one class", async () => {
     const { module, operations } = await load([]);
     expect(await module.publishTopicTasks({ teacherId: 9, topicId: 12, classIds: [] })).toMatchObject({ ok: false, code: "VALIDATION_ERROR" });
@@ -40,7 +54,7 @@ test("task publish rejects duplicate class IDs before taking the mutation lock",
 
 test("task publish creates one task per newly selected class without notifications", async () => {
     const { module, operations } = await load([
-        [{ id: 12, name: "抽样课题", status: 1, excelFilePath: "/storage/topic.xlsx", fieldMapping: { identifier: "id", stratified: ["组"], numeric: ["值"], analysisTarget: { kind: "mean", field: "值" } }, weightConfig: { questionnaire: 30, process: 30, report: 40 } }],
+        [{ id: 12, name: "抽样课题", status: 1, excelFilePath: "/storage/topic.xlsx", fieldMapping: readyFieldMapping, weightConfig: { questionnaire: 30, process: 30, report: 40 } }],
         [{ id: 101 }, { id: 102 }],
         [],
     ]);
@@ -57,9 +71,26 @@ test("task publish creates one task per newly selected class without notificatio
     expect(operations.findIndex((item) => item.kind === "select")).toBeGreaterThan(1);
 });
 
+test("task publish preserves legacy analysisTarget-only topics", async () => {
+    const legacyFieldMapping = {
+        identifier: "id",
+        stratified: ["组"],
+        numeric: ["值"],
+        analysisTarget: { kind: "mean", field: "值" },
+    };
+    const { module } = await load([
+        [{ id: 12, name: "旧课题", status: 1, excelFilePath: "/storage/topic.xlsx", fieldMapping: legacyFieldMapping, weightConfig: { questionnaire: 30, process: 30, report: 40 } }],
+        [{ id: 101 }],
+        [],
+    ]);
+
+    expect(await module.publishTopicTasks({ teacherId: 9, topicId: 12, classIds: [101] }))
+        .toEqual({ ok: true, skipped: [] });
+});
+
 test("task publish advances updatedAt when reviving a deleted task", async () => {
     const { module, operations } = await load([
-        [{ id: 12, name: "抽样课题", status: 1, excelFilePath: "/storage/topic.xlsx", fieldMapping: { identifier: "id", stratified: ["组"], numeric: ["值"], analysisTarget: { kind: "mean", field: "值" } }, weightConfig: { questionnaire: 30, process: 30, report: 40 } }],
+        [{ id: 12, name: "抽样课题", status: 1, excelFilePath: "/storage/topic.xlsx", fieldMapping: readyFieldMapping, weightConfig: { questionnaire: 30, process: 30, report: 40 } }],
         [{ id: 101 }],
         [{ id: 88, classId: 101, deletedAt: new Date("2026-01-01T00:00:00Z") }],
     ]);

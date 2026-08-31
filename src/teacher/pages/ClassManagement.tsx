@@ -57,7 +57,7 @@ export function ClassManagement() {
                 <p className="text-sm text-muted-foreground mt-1">查看班级名单与学期分布。</p>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>

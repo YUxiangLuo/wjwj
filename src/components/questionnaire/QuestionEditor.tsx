@@ -181,7 +181,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                         <div className="space-y-2">
                             <Label className="text-muted-foreground">题目类型</Label>
                             <Tabs value={type} onValueChange={(v) => setType(v as QuestionType)}>
-                                <TabsList className="grid grid-cols-4 w-full bg-background/50 border border-border p-1" data-testid="student-question-type-list">
+                                <TabsList className="grid w-full grid-cols-2 border border-border bg-background/50 p-1 sm:grid-cols-4" data-testid="student-question-type-list">
                                     {(Object.keys(questionTypeLabels) as QuestionType[]).map((t) => (
                                         <TabsTrigger
                                             key={t}
@@ -276,7 +276,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                     )}
 
                     {type === "multiple" && (
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div className="space-y-2">
                                 <Label htmlFor="minSelect" className="text-muted-foreground">最少选择数</Label>
                                 <Input
@@ -333,7 +333,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                     ))}
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div className="space-y-2">
                                     <Label htmlFor="scaleMin" className="text-muted-foreground">评分最小值</Label>
                                     <Input
@@ -364,7 +364,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                             <p className="text-sm text-muted-foreground">
                                 评分范围：{scaleMin} - {scaleMax} 分
                             </p>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div className="space-y-2">
                                     <Label htmlFor="scaleMinLabel" className="text-muted-foreground">左端标签 ({scaleMin}分)</Label>
                                     <Input

@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment, task, teacher, topic } from "../../db/schema";
 import { scoringWeightsFrom } from "../../lib/scoring-weights";
+import type { ResolvedStudyContract } from "../../lib/analysis-target";
 import { readPopulationData } from "../experiment/population-data";
 import { previewSamplingResults } from "../experiment/sampling-results-preview";
 import {
@@ -27,7 +28,6 @@ const submissionByTaskRoutes: RouteDefinition = {
         const taskId = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!taskId) return error("无效的任务ID", "INVALID_ID");
         const accessError = await getStudentTaskAccessError(taskId, auth.student.classId);
-        if (accessError) return accessError;
 
         const [row] = await db
             .select({
@@ -61,7 +61,10 @@ const submissionByTaskRoutes: RouteDefinition = {
             .leftJoin(teacher, eq(experiment.gradedByTeacherId, teacher.id))
             .where(and(eq(experiment.studentId, auth.student.id), eq(experiment.taskId, taskId)));
 
-        if (!row || row.status === "in_progress") return error("尚未提交实验", "NOT_FOUND", 404);
+        if (!row || row.status === "in_progress") {
+            if (accessError) return accessError;
+            return error("尚未提交实验", "NOT_FOUND", 404);
+        }
         const snapshot = parseStoredJson<{
             topicName?: string;
             studentName?: string;
@@ -71,6 +74,7 @@ const submissionByTaskRoutes: RouteDefinition = {
             samplingResults?: unknown;
             reportContent?: string;
             weightConfig?: unknown;
+            studyContract?: ResolvedStudyContract | null;
         }>(row.submissionSnapshot);
         const storedSamplingResults = snapshot?.samplingResults ?? parseStoredJson(row.samplingResults);
         const inspection = inspectSamplingResultsStorage(storedSamplingResults);
@@ -92,6 +96,7 @@ const submissionByTaskRoutes: RouteDefinition = {
             samplePlan: snapshot?.samplePlan ?? parseStoredJson(row.samplePlan),
             samplingResults: previewSamplingResults(samplingResults),
             reportContent: snapshot?.reportContent ?? row.reportContent ?? "",
+            studyContract: snapshot?.studyContract ?? null,
         };
         return json({
             id: row.id,

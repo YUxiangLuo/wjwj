@@ -57,7 +57,7 @@ test("student management initializes its request from the classId query", async 
     fireEvent.click(view.getByText("查看全部学生"));
 
     await waitFor(() => {
-        expect(requestedUrls.some((url) => url.endsWith("/api/admin/students"))).toBe(true);
+        expect(requestedUrls.some((url) => url.endsWith("/api/admin/students?page=1&pageSize=20"))).toBe(true);
         expect(view.getByTestId("location-search").textContent).toBe("");
     });
 });

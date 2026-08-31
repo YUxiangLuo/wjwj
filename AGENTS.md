@@ -113,6 +113,7 @@ For more information, read the Bun API docs in `node_modules/bun-types/docs/**.m
 - `X-foreground` always means "text on a filled `bg-X`" (e.g. `bg-auxiliary text-auxiliary-foreground`). For standalone emphasized auxiliary text on normal backgrounds, use `text-auxiliary-strong`.
 - Status badges should use `StatusBadge`; repeated icon stat tiles should use `IconTile`; repeated page section headers should use `PageHeader`.
 - The project is light-only: there is no dark theme, no theme toggle, and `dark:` variants must never be used.
+- Layout is desktop-first but must reflow for browser zoom and narrow viewports. Use only the shared `sm:`, `md:`, `lg:`, and `xl:` breakpoints; keep tables and charts in local horizontal scrollers instead of imposing a page-wide minimum width.
 - Run `bun run check:styles` after style changes.
 
 ## This repository

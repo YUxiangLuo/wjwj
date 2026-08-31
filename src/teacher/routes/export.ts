@@ -35,8 +35,6 @@ async function getGradeExportRows(teacherId: number, params: URLSearchParams) {
     if ([classId, topicId, taskId].some(Number.isNaN)) return null;
     const conditions = [
         eq(class_.teacherId, teacherId),
-        ...activeEntityFilters(),
-        isNull(student.deletedAt),
         inArray(experiment.status, ["submitted", "graded", "rejected"]),
     ];
     const semesterName = params.get("semester");

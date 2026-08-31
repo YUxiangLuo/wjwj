@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, Download, History, XCircle } from "lucide-react";
+import { Archive, ArrowLeft, CheckCircle2, Download, History, XCircle } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { RichTextContent } from "@/components/RichTextContent";
 import { SamplingResultsSnapshot } from "@/components/SamplingResultsSnapshot";
 import { QuestionnaireSnapshot } from "@/components/QuestionnaireSnapshot";
 import { SamplePlanSnapshot } from "@/components/SamplePlanSnapshot";
+import { StudyContractSnapshot } from "@/components/StudyContractSnapshot";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -54,7 +55,7 @@ export function GradingDetail() {
         + (Number(scores.report) || 0) * weights.report
     ) / 100, [scores, weights]);
     const grade = async () => {
-        if (!data) return;
+        if (!data || data.archived) return;
         setSaving(true);
         const response = await teacherApi.submitGrade(id, data.version, {
             scoreQuestionnaire: Number(scores.questionnaire),
@@ -72,7 +73,7 @@ export function GradingDetail() {
         navigate("/grading");
     };
     const reject = async () => {
-        if (!data) return;
+        if (!data || data.archived) return;
         const response = await teacherApi.rejectSubmission(id, data.version, rejectReason);
         if (!response.success) {
             toast.error(response.error?.message ?? "驳回失败");
@@ -84,7 +85,8 @@ export function GradingDetail() {
     };
     if (loading) return <p role="status" aria-live="polite" className="py-12 text-center text-muted-foreground">加载中...</p>;
     if (!data) return <p className="py-12 text-center text-muted-foreground">未找到提交记录</p>;
-    const canGrade = data.status === "submitted" || data.status === "graded";
+    const canGrade = !data.archived && (data.status === "submitted" || data.status === "graded");
+    const canReject = !data.archived && data.status === "submitted";
     const scoreLabels = {
         questionnaire: `问卷设计（${weights.questionnaire}%）`,
         process: `实验过程（${weights.process}%）`,
@@ -94,10 +96,22 @@ export function GradingDetail() {
         <div className="space-y-5">
             <div className="flex items-center justify-between">
                 <Button variant="ghost" onClick={() => navigate("/grading")}><ArrowLeft className="mr-2 h-4 w-4" />返回列表</Button>
-                <StatusBadge intent={data.status === "graded" ? "success" : data.status === "rejected" ? "destructive" : "warning"}>
-                    {data.status === "graded" ? "已批改" : data.status === "rejected" ? "已驳回" : "待批改"}
-                </StatusBadge>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                    {data.archived && <StatusBadge intent="neutral">归档记录</StatusBadge>}
+                    <StatusBadge intent={data.status === "graded" ? "success" : data.status === "rejected" ? "destructive" : "warning"}>
+                        {data.status === "graded" ? "已批改" : data.status === "rejected" ? "已驳回" : "待批改"}
+                    </StatusBadge>
+                </div>
             </div>
+            {data.archived && (
+                <div
+                    className="flex items-start gap-2 rounded-xl border border-info/20 bg-info/10 p-4 text-sm text-info"
+                    data-testid="teacher-grading-archived-notice"
+                >
+                    <Archive className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>该提交关联的学生、任务或课题已归档，仅可查看与导出，不能评分或驳回。</span>
+                </div>
+            )}
             <Card>
                 <CardHeader>
                     <CardTitle>
@@ -106,8 +120,9 @@ export function GradingDetail() {
                     <p className="text-sm text-muted-foreground">{data.className} · {data.studentId}</p>
                 </CardHeader>
                 <CardContent>
+                    <StudyContractSnapshot value={data.studyContract} />
                     <Tabs defaultValue="questionnaire">
-                        <TabsList className="grid w-full grid-cols-4">
+                        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
                             <TabsTrigger value="questionnaire">问卷</TabsTrigger>
                             <TabsTrigger value="plan">方案</TabsTrigger>
                             <TabsTrigger value="sampling">抽样结果</TabsTrigger>
@@ -168,7 +183,7 @@ export function GradingDetail() {
                 <Card>
                     <CardHeader><CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-success" />评分</CardTitle></CardHeader>
                     <CardContent className="space-y-5">
-                        <div className="grid gap-4 grid-cols-3">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                             {(["questionnaire", "process", "report"] as const).map((key) => {
                                 const inputId = `grading-score-${key}`;
                                 return (
@@ -194,14 +209,14 @@ export function GradingDetail() {
                         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-muted p-4">
                             <p>加权总分：<span className="text-2xl font-bold text-primary">{total.toFixed(2)}</span></p>
                             <div className="flex gap-2">
-                                {data.status === "submitted" && <Button variant="destructive" onClick={() => setRejectOpen(true)}>驳回修改</Button>}
+                                {canReject && <Button variant="destructive" onClick={() => setRejectOpen(true)}>驳回修改</Button>}
                                 <Button disabled={!canGrade || saving} onClick={() => void grade()}>{saving ? "保存中..." : data.status === "graded" ? "更新评分" : "提交评分"}</Button>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
             )}
-            <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
+            <Dialog open={canReject && rejectOpen} onOpenChange={(open) => { if (canReject) setRejectOpen(open); }}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>驳回实验</DialogTitle>

@@ -1,4 +1,4 @@
-import { validateAnalysisTarget } from "../../lib/analysis-target";
+import { validateAnalysisTarget, validateStudyContract, type StudyContract } from "../../lib/analysis-target";
 import { isRowEmpty } from "./file-utils";
 
 interface ParsedExcelFile {
@@ -16,6 +16,7 @@ interface TopicFieldMappingInput {
     numeric?: string[];
     others?: string[];
     analysisTarget?: { kind?: string; field?: string; value?: string };
+    studyContract?: StudyContract;
 }
 
 interface TopicWeightConfigInput {
@@ -85,12 +86,17 @@ export function validateTopicFieldMappingConfig(fieldMapping: unknown) {
     const numeric = (input.numeric ?? []) as string[];
     const others = (input.others ?? []) as string[];
 
-    const uniqueFields = new Set([identifier, ...stratified, ...numeric, ...others].filter(Boolean));
+    const mappedFields = [identifier, ...stratified, ...numeric, ...others].filter(Boolean) as string[];
+    const uniqueFields = new Set(mappedFields);
     if (!identifier) return "必须选择1个标识符字段";
     if (stratified.length < 1) return "至少选择1个分层变量";
     if (numeric.length < 1) return "至少选择1个数值变量";
     if (uniqueFields.size < 3) return "至少选择3个字段";
-    if (input.analysisTarget !== undefined) {
+    if (uniqueFields.size !== mappedFields.length) return "同一字段不能重复分配到多个角色";
+    if (input.studyContract !== undefined) {
+        const contractError = validateStudyContract(input);
+        if (contractError) return contractError;
+    } else if (input.analysisTarget !== undefined) {
         const analysisError = validateAnalysisTarget(input);
         if (analysisError) return analysisError;
     }
@@ -125,8 +131,17 @@ export function validateTopicPublishReadiness(topicInfo: TopicPublishReadyInput 
     if (!fieldMapping || validateTopicFieldMappingConfig(fieldMapping)) {
         return "课题需先完成字段映射后才能发布";
     }
-    const analysisError = validateAnalysisTarget(fieldMapping);
-    if (analysisError) return "课题需先指定对照变量后才能发布";
+    if (fieldMapping.studyContract !== undefined) {
+        const contractError = validateStudyContract(fieldMapping);
+        if (contractError) return "课题需先完成研究合同后才能发布";
+    } else if (fieldMapping.analysisTarget !== undefined) {
+        // Compatibility for topics configured before StudyContract existed. New
+        // mapping writes still require an explicit contract in manage-service.
+        const targetError = validateAnalysisTarget(fieldMapping);
+        if (targetError) return "课题需先完成研究合同后才能发布";
+    } else {
+        return "课题需先完成研究合同后才能发布";
+    }
 
     const weightConfig = parseObjectLike<TopicWeightConfigInput>(topicInfo.weightConfig);
     if (!weightConfig || validateWeightConfig(weightConfig)) {
@@ -163,11 +178,18 @@ export function validateStratifiedValueCardinality(
             if (value) values.add(value);
         }
         if (values.size > 20) {
-            return `分层变量 ${field} 的唯一值数量超过20`;
+            return `分类变量 ${field} 的唯一值数量超过20`;
         }
     }
 
     return null;
+}
+
+export function validateCategoricalValueCardinality(
+    rows: Array<Record<string, any>>,
+    categoricalFields: string[],
+) {
+    return validateStratifiedValueCardinality(rows, categoricalFields);
 }
 
 export function validateTopicAttachmentUpload(input: TopicAttachmentInput, attachmentType: string) {

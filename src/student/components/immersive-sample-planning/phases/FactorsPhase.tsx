@@ -459,7 +459,7 @@ function SummaryContent() {
                 它们会一起决定“多少样本才够”。
             </p>
 
-            <div className="mx-auto max-w-lg grid grid-cols-2 gap-3">
+            <div className="mx-auto grid max-w-lg grid-cols-1 gap-3 sm:grid-cols-2">
                 {factors.map(({ icon: FIcon, title, desc }) => (
                     <div key={title} className="rounded-2xl border border-border bg-background p-4 shadow-sm space-y-2">
                         <div className="w-9 h-9 rounded-xl bg-info/10 flex items-center justify-center">

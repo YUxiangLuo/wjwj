@@ -2,16 +2,16 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../../db";
 import { task, topic, topicAttachment } from "../../db/schema";
 import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
-import { validateAnalysisTarget } from "../../lib/analysis-target";
+import { validateAnalysisTarget, validateStudyContract, type StudyContract } from "../../lib/analysis-target";
 import { validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
 import { createStorageUploadPath, deleteStorageFileIfExists, resolveStoragePath, writeStorageFile } from "../../server/storage-files";
 import { parseExcelFile, sanitizeUploadFileName } from "./file-utils";
 import { deleteTopicStorageFileIfUnreferenced } from "./storage-cleanup";
 import {
     validateParsedExcelUpload,
+    validateCategoricalValueCardinality,
     validateNumericFieldValues,
     validateTopicPublishReadiness,
-    validateStratifiedValueCardinality,
     validateTopicFieldMappingColumns,
     validateTopicFieldMappingConfig,
     validateTopicName,
@@ -253,9 +253,13 @@ export async function updateTopicFieldMapping(params: {
         numeric?: string[];
         others?: string[];
         analysisTarget?: { kind?: string; field?: string; value?: string };
+        studyContract?: StudyContract;
     };
 }) {
-    const mappingError = validateTopicFieldMappingConfig(params.fieldMapping);
+    const normalizedMapping = params.fieldMapping.studyContract
+        ? { ...params.fieldMapping, analysisTarget: params.fieldMapping.studyContract.target }
+        : params.fieldMapping;
+    const mappingError = validateTopicFieldMappingConfig(normalizedMapping);
     if (mappingError) return fail(mappingError);
 
     return db.transaction(async (tx) => {
@@ -273,18 +277,23 @@ export async function updateTopicFieldMapping(params: {
 
         const buffer = await Bun.file(resolveStoragePath(topicInfo.excelFilePath)).arrayBuffer();
         const parsed = await parseExcelFile(buffer, topicInfo.excelFilePath);
-        const columnsError = validateTopicFieldMappingColumns(params.fieldMapping, parsed.columns);
+        const columnsError = validateTopicFieldMappingColumns(normalizedMapping, parsed.columns);
         if (columnsError) return fail(columnsError);
-        const cardinalityError = validateStratifiedValueCardinality(parsed.rows, params.fieldMapping.stratified ?? []);
+        const cardinalityError = validateCategoricalValueCardinality(
+            parsed.rows,
+            [...(normalizedMapping.stratified ?? []), ...(normalizedMapping.others ?? [])],
+        );
         if (cardinalityError) return fail(cardinalityError);
-        const numericValueError = validateNumericFieldValues(parsed.rows, params.fieldMapping.numeric ?? []);
+        const numericValueError = validateNumericFieldValues(parsed.rows, normalizedMapping.numeric ?? []);
         if (numericValueError) return fail(numericValueError);
-        const analysisError = validateAnalysisTarget(params.fieldMapping, parsed.rows);
+        const contractError = validateStudyContract(normalizedMapping, parsed.rows);
+        if (contractError) return fail(contractError);
+        const analysisError = validateAnalysisTarget(normalizedMapping, parsed.rows);
         if (analysisError) return fail(analysisError);
 
         const [updated] = await tx
             .update(topic)
-            .set({ fieldMapping: params.fieldMapping, updatedAt: new Date() })
+            .set({ fieldMapping: normalizedMapping, updatedAt: new Date() })
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)))
             .returning({ id: topic.id });
         return updated ? { ok: true as const } : fail("课题不存在", "NOT_FOUND", 404);

@@ -42,6 +42,7 @@ import { ClusterSamplingCalculator } from "../../../components/ClusterSamplingCa
 import { EnhancedMetricsCard } from "../../../components/EnhancedMetricsCard";
 import { PValueComparisonCard } from "../../../components/PValueComparisonCard";
 import { SensitivityAnalysisCard } from "../../../components/SensitivityAnalysisCard";
+import type { AdvancedPlanSnapshot } from "../../../experiment/advanced-plan";
 
 /** 成本/CV/整群等非标准路径：仅写最终 n；左侧常规建议继续显示，但解释该 n 时以本工具为准 */
 const TOAST_APPLY_SAMPLE_SIZE_ONLY_DESC =
@@ -69,6 +70,7 @@ interface Props {
     /** 样本量来自非标准公式时，记录来源（仅 cost / multivar / cv / cluster） */
     advancedPlanSource: AdvancedNonStandardSampleSource | null;
     onAdvancedApplied: (source: AdvancedNonStandardSampleSource) => void;
+    onAdvancedPlanSnapshot: (snapshot: AdvancedPlanSnapshot) => void;
     onClearAdvancedSource: () => void;
 }
 
@@ -87,6 +89,7 @@ export function DecisionPhase({
     onSurveyVariablesChange: externalOnSurveyVariablesChange,
     advancedPlanSource,
     onAdvancedApplied,
+    onAdvancedPlanSnapshot,
     onClearAdvancedSource,
 }: Props) {
     const { populationSize: N, recommendedSize, finalSampleSize } = params;
@@ -273,7 +276,7 @@ export function DecisionPhase({
                 </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {/* Left: Parameter controls */}
                 <div className="rounded-2xl border border-border bg-background p-5 space-y-5 shadow-sm transition-colors">
                     <h3 className="text-sm font-semibold text-foreground/90">常规公式参数</h3>
@@ -379,7 +382,7 @@ export function DecisionPhase({
                             ，大于目标 {currentMarginValue}。
                         </p>
                     )}
-                    <div className="grid grid-cols-3 gap-3 w-full text-center">
+                    <div className="grid w-full grid-cols-1 gap-3 text-center sm:grid-cols-3">
                         {metricCards.map((card) => (
                             <MetricBadge key={card.label} label={card.label} value={card.value} />
                         ))}
@@ -412,7 +415,7 @@ export function DecisionPhase({
                     高级工具（可选）
                 </summary>
                 <div className="mt-3 space-y-3">
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
                     {ADVANCED_TAB_CONFIG.map(({ key, label }) => {
                         const isActiveSource = advancedPlanSource === key;
                         const isDisabled =
@@ -467,7 +470,7 @@ export function DecisionPhase({
                                     {config?.description}
                                 </DialogDescription>
                                 {config && (
-                                    <div className="grid grid-cols-3 gap-2 pt-2 text-xs leading-relaxed" data-testid="student-advanced-tool-scope">
+                                    <div className="grid grid-cols-1 gap-2 pt-2 text-xs leading-relaxed md:grid-cols-3" data-testid="student-advanced-tool-scope">
                                         <div className="rounded-lg border border-border bg-card p-2">
                                             <p className="font-semibold text-foreground">目标估计量</p>
                                             <p className="mt-1 text-muted-foreground">{config.targetEstimand}</p>
@@ -510,8 +513,28 @@ export function DecisionPhase({
                                 </Button>
                                 <Button
                                     type="button"
+                                    disabled={domainDraft.length === 0 || domainDraft.some((item) => (
+                                        !item.name.trim()
+                                        || !Number.isInteger(item.populationSize)
+                                        || item.populationSize <= 0
+                                        || !Number.isInteger(item.requiredSampleSize)
+                                        || item.requiredSampleSize <= 0
+                                    ))}
                                     onClick={() => {
                                         onDomainsChange(domainDraft);
+                                        onAdvancedPlanSnapshot({
+                                            version: 1,
+                                            kind: "domain",
+                                            appliedAt: new Date().toISOString(),
+                                            inputs: {
+                                                estimationType: params.estimationType,
+                                                ...(params.populationVariance !== undefined ? { populationVariance: params.populationVariance } : {}),
+                                                domains: domainDraft.map(({ name, populationSize, confidenceLevel, marginOfError, requiredSampleSize }) => ({
+                                                    name, populationSize, confidenceLevel, marginOfError, requiredSampleSize,
+                                                })),
+                                            },
+                                            result: { requiredSampleSize: Math.max(0, ...domainDraft.map((item) => item.requiredSampleSize)) },
+                                        });
                                         toast.success("已应用子总体设置");
                                         closeAdvancedDialog();
                                     }}
@@ -530,9 +553,16 @@ export function DecisionPhase({
                             designEffect={params.designEffect}
                             nonResponseRate={params.nonResponseRate}
                             initialMarginOfError={params.marginOfError}
-                            onApplyBudget={(_budget, sampleSize) => {
+                            onApplyBudget={(application) => {
+                                const sampleSize = application.result.requiredSampleSize;
                                 applyAdvancedSource("cost", () => {
                                     onFinalSizeChange(sampleSize);
+                                });
+                                onAdvancedPlanSnapshot({
+                                    version: 1,
+                                    kind: "cost",
+                                    appliedAt: new Date().toISOString(),
+                                    ...application,
                                 });
                                 toast.success(`已应用样本量 ${sampleSize}`, {
                                     description: TOAST_APPLY_SAMPLE_SIZE_ONLY_DESC,
@@ -561,6 +591,13 @@ export function DecisionPhase({
                                     type="button"
                                     onClick={() => {
                                         onDesignEffectChange(deffDraft);
+                                        onAdvancedPlanSnapshot({
+                                            version: 1,
+                                            kind: "deff",
+                                            appliedAt: new Date().toISOString(),
+                                            inputs: { designEffect: deffDraft },
+                                            result: { appliedDesignEffect: deffDraft },
+                                        });
                                         toast.success(`已应用设计效应 deff = ${deffDraft.toFixed(1)}`);
                                         closeAdvancedDialog();
                                     }}
@@ -586,6 +623,24 @@ export function DecisionPhase({
                                 const hasRecommendation =
                                     variables.length > 0 && recommendedSampleSize > 0;
                                 onSurveyVariablesChange(variables);
+                                onAdvancedPlanSnapshot({
+                                    version: 1,
+                                    kind: "multivar",
+                                    appliedAt: new Date().toISOString(),
+                                    inputs: {
+                                        variables: variables.map(({ name, type, estimatedValue, estimatedStdDev, importance, confidenceLevel, marginOfError, requiredSampleSize }) => ({
+                                            name,
+                                            type,
+                                            estimatedValue,
+                                            ...(estimatedStdDev !== undefined ? { estimatedStdDev } : {}),
+                                            importance,
+                                            confidenceLevel,
+                                            marginOfError,
+                                            requiredSampleSize,
+                                        })),
+                                    },
+                                    result: { requiredSampleSize: recommendedSampleSize },
+                                });
                                 if (recommendedSampleSize > 0) {
                                     onFinalSizeChange(recommendedSampleSize);
                                 }
@@ -605,9 +660,16 @@ export function DecisionPhase({
                             estimationType={params.estimationType}
                             initialDesignEffect={params.designEffect}
                             initialNonResponseRate={params.nonResponseRate}
-                            onApplySampleSize={(size) => {
+                            onApplySampleSize={(application) => {
+                                const size = application.result.requiredSampleSize;
                                 applyAdvancedSource("cv", () => {
                                     onFinalSizeChange(size);
+                                });
+                                onAdvancedPlanSnapshot({
+                                    version: 1,
+                                    kind: "cv",
+                                    appliedAt: new Date().toISOString(),
+                                    ...application,
                                 });
                                 toast.success(`已应用样本量 ${size}`, {
                                     description: TOAST_APPLY_SAMPLE_SIZE_ONLY_DESC,
@@ -623,9 +685,17 @@ export function DecisionPhase({
                             confidenceLevel={params.confidenceLevel}
                             marginOfError={params.marginOfError}
                             initialNonResponseRate={params.nonResponseRate}
-                            onApplyResult={(clusters, sampleSize) => {
+                            onApplyResult={(application) => {
+                                const clusters = application.result.requiredClusters;
+                                const sampleSize = application.result.requiredSampleSize;
                                 applyAdvancedSource("cluster", () => {
                                     onFinalSizeChange(sampleSize);
+                                });
+                                onAdvancedPlanSnapshot({
+                                    version: 1,
+                                    kind: "cluster",
+                                    appliedAt: new Date().toISOString(),
+                                    ...application,
                                 });
                                 toast.success(`整群方案：${clusters} 个群，共 ${sampleSize} 人`, {
                                     description: TOAST_APPLY_SAMPLE_SIZE_ONLY_DESC,
@@ -637,7 +707,7 @@ export function DecisionPhase({
 
                     {activeAdvancedTab === "metrics" && metrics && (
                         <>
-                            <div className={cn("grid min-w-0 grid-cols-1 gap-5", !isMeanEstimation && "grid-cols-3 gap-6")}>
+                            <div className={cn("grid min-w-0 grid-cols-1 gap-5", !isMeanEstimation && "lg:grid-cols-3 lg:gap-6")}>
                                 <EnhancedMetricsCard
                                     metrics={metrics}
                                     estimationType={params.estimationType}

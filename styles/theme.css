@@ -23,10 +23,6 @@
     }
 }
 
-@theme {
-    --breakpoint-*: initial;
-}
-
 @theme inline {
     --font-sans: "Noto Sans SC", ui-sans-serif, system-ui, -apple-system,
         BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC",
@@ -156,13 +152,6 @@
 @layer base {
     * {
         @apply border-border;
-    }
-
-    /* The three application shells intentionally support desktop viewports only. */
-    html,
-    body,
-    #root {
-        min-width: 80rem;
     }
 
     body {

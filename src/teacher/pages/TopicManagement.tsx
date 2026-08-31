@@ -22,6 +22,16 @@ import { toast } from "sonner";
 import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import type { AnalysisTarget, StudyContract } from "@/lib/analysis-target";
+
+interface TopicFieldMappingState {
+    identifier?: string;
+    stratified: string[];
+    numeric: string[];
+    others: string[];
+    analysisTarget?: AnalysisTarget;
+    studyContract?: StudyContract;
+}
 
 export function TopicManagement() {
     const [topics, setTopics] = useState<Topic[]>([]);
@@ -38,13 +48,7 @@ export function TopicManagement() {
         columnValues?: Record<string, string[]>;
     } | null>(null);
     const [columns, setColumns] = useState<string[]>([]);
-    const [fieldMapping, setFieldMapping] = useState<{
-        identifier?: string;
-        stratified: string[];
-        numeric: string[];
-        others: string[];
-        analysisTarget?: { kind: "mean"; field: string } | { kind: "proportion"; field: string; value: string };
-    }>({
+    const [fieldMapping, setFieldMapping] = useState<TopicFieldMappingState>({
         stratified: [],
         numeric: [],
         others: [],
@@ -97,12 +101,21 @@ export function TopicManagement() {
             }
             const mapping = res.data.topic?.fieldMapping ?? null;
             const parsed = typeof mapping === "string" ? (() => { try { return JSON.parse(mapping); } catch { return null; } })() : mapping;
+            const legacyTarget = parsed?.analysisTarget as AnalysisTarget | undefined;
+            const inferredStudyContract = legacyTarget ? {
+                version: 1 as const,
+                researchQuestion: topicRow?.name || "本课题的目标估计量是什么？",
+                targetPopulation: "上传总体数据中的全部单位",
+                unitOfAnalysis: "总体数据中的一行记录",
+                target: legacyTarget,
+            } : undefined;
             setFieldMapping({
                 identifier: parsed?.identifier ?? undefined,
                 stratified: parsed?.stratified ?? [],
                 numeric: parsed?.numeric ?? [],
                 others: parsed?.others ?? [],
-                analysisTarget: parsed?.analysisTarget,
+                analysisTarget: parsed?.studyContract?.target ?? legacyTarget,
+                studyContract: parsed?.studyContract ?? inferredStudyContract,
             });
             if (res.data.excelInfo?.columns?.length) {
                 setColumns(res.data.excelInfo.columns);
@@ -249,8 +262,16 @@ export function TopicManagement() {
             toast.error("至少选择1个分层变量和1个数值变量");
             return;
         }
-        if (!fieldMapping.analysisTarget?.field || (fieldMapping.analysisTarget.kind === "proportion" && !fieldMapping.analysisTarget.value)) {
-            toast.error("请指定对照变量");
+        const contract = fieldMapping.studyContract;
+        if (
+            !contract
+            || !contract.researchQuestion.trim()
+            || !contract.targetPopulation.trim()
+            || !contract.unitOfAnalysis.trim()
+            || !contract.target.field
+            || (contract.target.kind === "proportion" && !contract.target.value)
+        ) {
+            toast.error("请填写完整的研究合同和对照变量");
             return;
         }
         const res = await teacherApi.updateFieldMapping(editingTopicId, fieldMapping);
@@ -350,7 +371,7 @@ export function TopicManagement() {
                 <p className="text-sm text-muted-foreground mt-1">配置课题信息、数据与评分权重。</p>
             </div>
 
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>

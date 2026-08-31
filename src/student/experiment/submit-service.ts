@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment } from "../../db/schema";
 import { validateObservedVersion } from "../../lib/observed-version";
-import { resolveAnalysisTarget } from "../../lib/analysis-target";
+import { resolveAnalysisTarget, resolveStudyContract, type ResolvedStudyContract } from "../../lib/analysis-target";
 import { scoringWeightsFrom, type ScoringWeights } from "../../lib/scoring-weights";
 import { normalizeSamplePlanData } from "./sample-plan-display";
 import { parseStoredJson } from "./serialization";
@@ -27,6 +27,7 @@ export interface SubmissionSnapshot {
     samplingResults: Record<string, unknown> | null;
     reportContent: string;
     weightConfig: ScoringWeights;
+    studyContract: ResolvedStudyContract | null;
 }
 
 interface SubmitTaskInfo {
@@ -116,6 +117,7 @@ export async function submitStudentExperiment(params: {
         samplingResults,
         reportContent: params.experimentRecord.reportContent ?? "",
         weightConfig: scoringWeightsFrom(params.taskInfo.weightConfig),
+        studyContract: resolveStudyContract(params.taskInfo.fieldMapping, { topicName: params.taskInfo.topicName }),
     };
     const submittedAt = new Date();
 

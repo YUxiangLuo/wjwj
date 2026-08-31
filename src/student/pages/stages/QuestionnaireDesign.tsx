@@ -347,8 +347,8 @@ export function QuestionnaireDesign() {
         switch (step) {
             case 1:
                 return (
-                    <div className="grid grid-cols-3 gap-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                        <Card className="col-span-2 rounded-2xl border-border bg-card/50 shadow-sm">
+                    <div className="grid grid-cols-1 gap-6 animate-in fade-in slide-in-from-right-4 duration-300 lg:grid-cols-3">
+                        <Card className="rounded-2xl border-border bg-card/50 shadow-sm lg:col-span-2">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2 text-foreground">
                                     <MessageSquare className="w-5 h-5 text-primary" />
@@ -416,8 +416,8 @@ export function QuestionnaireDesign() {
 
             case 2:
                 return (
-                    <div className="grid grid-cols-3 gap-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                        <div className="col-span-2 space-y-4">
+                    <div className="grid grid-cols-1 gap-6 animate-in fade-in slide-in-from-right-4 duration-300 lg:grid-cols-3">
+                        <div className="space-y-4 lg:col-span-2">
                             <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
                                 <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
                                     <div>
@@ -717,7 +717,7 @@ export function QuestionnaireDesign() {
                         </Card>
 
                         {/* Validation checklist and score */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <Card className="rounded-2xl border-border bg-card/50 shadow-sm h-fit">
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-sm text-foreground">校验清单</CardTitle>

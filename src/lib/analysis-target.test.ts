@@ -3,8 +3,11 @@ import {
     analysisTargetConflictsWithSizeField,
     formatAnalysisTargetSummary,
     parseAnalysisTarget,
+    parseStudyContract,
     resolveAnalysisTarget,
+    resolveStudyContract,
     validateAnalysisTarget,
+    validateStudyContract,
 } from "./analysis-target";
 
 const mapping = {
@@ -58,4 +61,19 @@ test("validateAnalysisTarget requires a mapped field and existing proportion cat
 test("PPS size field cannot equal the analysis target field", () => {
     expect(analysisTargetConflictsWithSizeField({ kind: "mean", field: "月生活费" }, "月生活费")).toBe(true);
     expect(analysisTargetConflictsWithSizeField({ kind: "mean", field: "每周学习时长" }, "月生活费")).toBe(false);
+});
+
+test("study contract is authoritative while legacy targets remain readable", () => {
+    const studyContract = {
+        version: 1 as const,
+        researchQuestion: "学生每周学习时长的平均水平是多少？",
+        targetPopulation: "总体中的全部学生",
+        unitOfAnalysis: "一名学生",
+        target: { kind: "mean" as const, field: "每周学习时长" },
+    };
+    const value = { ...mapping, studyContract, analysisTarget: studyContract.target };
+    expect(parseStudyContract(value)).toEqual(studyContract);
+    expect(resolveStudyContract(value)).toEqual({ contract: studyContract, inferred: false });
+    expect(validateStudyContract(value)).toBeNull();
+    expect(validateStudyContract({ ...mapping, analysisTarget: studyContract.target })).toContain("研究问题");
 });

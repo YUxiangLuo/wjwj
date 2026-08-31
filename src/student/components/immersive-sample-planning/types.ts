@@ -52,6 +52,8 @@ export interface SampleParams {
     finalSampleSize: number;
     recommendedSize: number;
     advancedPlanSource?: "cost" | "multivar" | "cv" | "cluster";
+    finalSizeSource?: import("../../experiment/advanced-plan").FinalSizeSource;
+    advancedPlans?: import("../../experiment/advanced-plan").AdvancedPlanSnapshot[];
 }
 
 export interface PhaseNavigationSnapshot {
@@ -74,6 +76,8 @@ export interface SamplePlanningWizardDraft {
     finalSampleSize: number;
     userTouchedFinal: boolean;
     advancedPlanSource: SampleParams["advancedPlanSource"] | null;
+    finalSizeSource?: import("../../experiment/advanced-plan").FinalSizeSource;
+    advancedPlans?: import("../../experiment/advanced-plan").AdvancedPlanSnapshot[];
     domains: import("../DomainEstimationManager").Domain[];
     surveyVariables: import("../MultiVariableSamplePlan").SurveyVariable[];
 }

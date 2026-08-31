@@ -26,6 +26,19 @@ interface CostScenario {
     totalBudget: number;         // 总预算
 }
 
+export interface CostPlanApplication {
+    inputs: {
+        confidenceLevel: string;
+        targetMarginOfError: number;
+        designEffect: number;
+        nonResponseRate: number;
+        fixedCost: number;
+        variableCostPerUnit: number;
+        totalBudget: number;
+    };
+    result: { requiredSampleSize: number; totalCost: number; feasible: boolean };
+}
+
 interface PrecisionCostTradeoffProps {
     populationSize: number;
     /** 决策面板传入，作为本工具内可改的初值 */
@@ -34,7 +47,7 @@ interface PrecisionCostTradeoffProps {
     nonResponseRate: number;
     /** 与决策面板「允许误差」一致（%），用于「目标精度」滑块初值 */
     initialMarginOfError?: number;
-    onApplyBudget: (budget: number, maxSampleSize: number) => void;
+    onApplyBudget: (application: CostPlanApplication) => void;
 }
 
 const PRESET_SCENARIOS: CostScenario[] = [
@@ -469,7 +482,22 @@ export function PrecisionCostTradeoff({
                                     「应用」仅将样本量写入最终样本量。若抽样假设与左侧不一致，理解此 n 时以本工具为准；左侧不会随本工具更新，勿用左侧参数代回验算。
                                 </p>
                                 <Button
-                                    onClick={() => onApplyBudget(currentScenario.totalBudget, targetAnalysis.requiredSampleSize)}
+                                    onClick={() => onApplyBudget({
+                                        inputs: {
+                                            confidenceLevel: confidenceLevelLocal,
+                                            targetMarginOfError,
+                                            designEffect: designEffectLocal,
+                                            nonResponseRate: nonResponseRateLocal,
+                                            fixedCost: currentScenario.fixedCost,
+                                            variableCostPerUnit: currentScenario.variableCostPerUnit,
+                                            totalBudget: currentScenario.totalBudget,
+                                        },
+                                        result: {
+                                            requiredSampleSize: targetAnalysis.requiredSampleSize,
+                                            totalCost: targetAnalysis.totalCost,
+                                            feasible: targetAnalysis.isFeasible,
+                                        },
+                                    })}
                                     className="w-full mt-2 bg-primary text-primary-foreground hover:bg-primary/90"
                                     size="sm"
                                 >

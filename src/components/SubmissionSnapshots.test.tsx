@@ -103,3 +103,26 @@ test("sample plan snapshot supports legacy plans and handles invalid values", ()
     const invalid = render(<SamplePlanSnapshot value="not-an-object" />);
     expect(invalid.getByText("暂无抽样方案")).toBeTruthy();
 });
+
+test("sample plan snapshot safely ignores malformed stored advanced plans", () => {
+    const view = render(<SamplePlanSnapshot value={{
+        estimationType: "proportion",
+        confidenceLevel: "95",
+        marginOfError: 5,
+        designEffect: 1,
+        nonResponseRate: 0,
+        recommendedSize: 132,
+        finalSampleSize: 132,
+        finalSizeSource: "manual",
+        advancedPlans: [{
+            version: 1,
+            kind: "cost",
+            appliedAt: "2026-08-31T00:00:00.000Z",
+            inputs: {},
+            result: {},
+        }],
+    }} />);
+
+    expect(view.getByText("最终样本量")).toBeTruthy();
+    expect(view.queryByText("已应用的高级规划依据")).toBeNull();
+});

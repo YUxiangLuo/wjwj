@@ -149,6 +149,8 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             recommendedSize: result.recommendedSize,
             finalSampleSize: result.finalSampleSize,
             ...(result.advancedPlanSource ? { advancedPlanSource: result.advancedPlanSource } : {}),
+            finalSizeSource: result.finalSizeSource ?? (result.advancedPlanSource ? "advanced" : "manual"),
+            ...(result.advancedPlans?.length ? { advancedPlans: result.advancedPlans } : {}),
         });
         setWizardDraft(null);
         closeImmersivePlanning();
@@ -216,6 +218,8 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                     initialEstimationType={lockedEstimationType ?? displayData?.estimationType ?? "proportion"}
                     initialPopulationVariance={targetVariance ?? displayData?.populationVariance ?? 100}
                     initialAdvancedPlanSource={displayData?.advancedPlanSource ?? null}
+                    initialAdvancedPlans={displayData?.advancedPlans ?? []}
+                    initialFinalSizeSource={displayData?.finalSizeSource}
                     estimationLocked={Boolean(lockedEstimationType)}
                     initialDraft={wizardDraft}
                     onDraftChange={handleImmersiveDraftChange}
@@ -258,7 +262,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="px-4 pb-2 pt-3" data-testid="student-sample-plan-summary">
-                            <div className="grid gap-x-6 gap-y-0 grid-cols-2">
+                            <div className="grid grid-cols-1 gap-x-6 gap-y-0 sm:grid-cols-2">
                                 <SummaryRow
                                     label="估计类型"
                                     value={getEstimationTypeLabel(displayData.estimationType)}
@@ -277,7 +281,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                                 <SummaryRow label="设计效应" value={displayData.designEffect.toFixed(1)} />
                                 <SummaryRow label="无回答率" value={`${Math.round(displayData.nonResponseRate * 100)}%`} />
                             </div>
-                            <div className="mt-2 grid grid-cols-2 gap-3 rounded-lg border border-border bg-background/50 px-3 py-2">
+                            <div className="mt-2 grid grid-cols-1 gap-3 rounded-lg border border-border bg-background/50 px-3 py-2 sm:grid-cols-2">
                                 <div>
                                     <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">建议样本量</p>
                                     <p className="text-base font-bold font-mono tabular-nums text-info">{displayData.recommendedSize.toLocaleString()}</p>

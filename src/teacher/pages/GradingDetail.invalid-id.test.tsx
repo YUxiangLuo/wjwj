@@ -87,3 +87,48 @@ test("grading inputs are programmatically associated with their labels", async (
     expect(view.getByLabelText("实验报告（40%）")).toBeTruthy();
     expect(view.getByLabelText("教师评语")).toBeTruthy();
 });
+
+test("archived grading details are visibly read-only", async () => {
+    globalThis.fetch = mock(async () => Response.json({
+        success: true,
+        data: {
+            id: 7,
+            version: 2,
+            studentName: "张三",
+            studentId: "S001",
+            topic: "归档课题",
+            className: "统计一班",
+            submittedAt: "2026-07-23T00:00:00.000Z",
+            status: "submitted",
+            archived: true,
+            topicDesc: "",
+            reportContent: "<p>报告正文</p>",
+            samplePlan: null,
+            questionnaire: null,
+            samplingResults: null,
+            populationSize: 240,
+            scoreQuestionnaire: null,
+            scoreProcess: null,
+            scoreReport: null,
+            totalScore: null,
+            teacherComment: null,
+            rejectReason: null,
+            weights: { questionnaire: 30, process: 30, report: 40 },
+        },
+    })) as unknown as typeof fetch;
+
+    const view = render(
+        <MemoryRouter initialEntries={["/grading/7"]}>
+            <Routes>
+                <Route path="/grading/:submissionId" element={<GradingDetail />} />
+            </Routes>
+        </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(view.getByTestId("teacher-grading-archived-notice")).toBeTruthy());
+    expect(view.getByTestId("teacher-grading-archived-notice").textContent).toContain("仅可查看与导出");
+    expect((view.getByLabelText("问卷设计（30%）") as HTMLInputElement).disabled).toBe(true);
+    expect((view.getByLabelText("教师评语") as HTMLTextAreaElement).disabled).toBe(true);
+    expect(view.queryByText("驳回修改")).toBeNull();
+    expect((view.getByText("提交评分") as HTMLButtonElement).disabled).toBe(true);
+});

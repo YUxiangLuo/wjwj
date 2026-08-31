@@ -60,6 +60,7 @@ export async function findStudentTaskSamplingInfo(taskId: number, classId: numbe
     const [row] = await db
         .select({
             topicId: task.topicId,
+            topicName: topic.name,
             excelFilePath: topic.excelFilePath,
             fieldMapping: topic.fieldMapping,
         })

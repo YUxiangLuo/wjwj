@@ -1,15 +1,12 @@
-import type { ResolvedAnalysisTarget } from "@/lib/analysis-target";
+import type { ResolvedAnalysisTarget, ResolvedStudyContract } from "@/lib/analysis-target";
 import type { Question, QuestionnaireData, QuestionType } from "@/lib/questionnaire-types";
-import { notifyAuthExpired } from "@/lib/auth-expired";
+import { requestJson as request, type ApiResponse } from "@/lib/api-client";
+import type { AdvancedPlanSnapshot, FinalSizeSource } from "./experiment/advanced-plan";
 
 export type MethodKey = "simple" | "systematic" | "pps" | "stratified";
 export type ExperimentStatus = "in_progress" | "submitted" | "graded" | "rejected";
 
-export interface ApiResponse<T> {
-    success: boolean;
-    data?: T;
-    error?: { code: string; message: string };
-}
+export type { ApiResponse };
 
 export interface CurrentStudent {
     id: number;
@@ -56,6 +53,8 @@ export interface SamplePlanData {
     nonResponseRate: number;
     recommendedSize: number;
     finalSampleSize: number;
+    finalSizeSource?: FinalSizeSource;
+    advancedPlans?: AdvancedPlanSnapshot[];
 }
 
 export interface SamplingResultsData {
@@ -114,6 +113,7 @@ export interface ExperimentData {
     stage4CompletedAt: string | null;
     populationSize: number;
     analysisTarget?: ResolvedAnalysisTarget | null;
+    studyContract?: ResolvedStudyContract | null;
 }
 
 export interface AnalysisNumericFieldMetrics {
@@ -125,6 +125,9 @@ export interface AnalysisCategoricalFieldMetrics {
     population: Record<string, number>;
     methods: Record<MethodKey, Record<string, number>>;
     representativeness: Record<MethodKey, number | null>;
+    truncated?: boolean;
+    totalCategoryCount?: number;
+    aggregatedCategoryLabel?: string;
 }
 export interface AnalysisMetricsData {
     ppsMonteCarloReplicates?: number;
@@ -133,6 +136,24 @@ export interface AnalysisMetricsData {
     categoricalFields: string[];
     numeric: Record<string, AnalysisNumericFieldMetrics>;
     categorical: Record<string, AnalysisCategoricalFieldMetrics>;
+    target?: {
+        contract: ResolvedStudyContract;
+        confidenceLevel: "90" | "95" | "99";
+        plannedMarginOfError: number | null;
+        populationValue: number;
+        methods: Record<MethodKey, {
+            estimate: number | null;
+            standardError: number | null;
+            marginOfError: number | null;
+            sampleSize: number | null;
+            effectiveSampleSize: number | null;
+            reliability: {
+                status: "ok" | "caution" | "census" | "unavailable";
+                reasons: string[];
+            };
+        }>;
+    } | null;
+    fieldCatalog?: { numeric: string[]; categorical: string[] };
 }
 
 export interface Announcement {
@@ -167,25 +188,8 @@ export interface SubmissionDetail {
         samplePlan: SamplePlanData | null;
         samplingResults: SamplingResultsData | null;
         reportContent: string;
+        studyContract?: ResolvedStudyContract | null;
     };
-}
-
-async function request<T>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
-    try {
-        const response = await fetch(url, {
-            credentials: "include",
-            ...options,
-            headers: { "Content-Type": "application/json", ...options?.headers },
-        });
-        const payload = await response.json() as ApiResponse<T>;
-        notifyAuthExpired(response, payload.error?.code);
-        return payload;
-    } catch (cause) {
-        return {
-            success: false,
-            error: { code: "NETWORK_ERROR", message: cause instanceof Error ? cause.message : "网络请求失败" },
-        };
-    }
 }
 
 export const meApi = { get: () => request<CurrentStudent>("/api/student/me") };
@@ -234,7 +238,12 @@ export const experimentApi = {
         ppsEligibleFields?: string[];
         stratumNumericStats?: Record<string, Record<string, Record<string, { mean: number; stdDev: number }>>>;
     }>(`/api/student/tasks/${taskId}/stats`),
-    getAnalysisMetrics: (taskId: number) => request<AnalysisMetricsData>(`/api/student/tasks/${taskId}/analysis-metrics`),
+    getAnalysisMetrics: (taskId: number, options?: { mode?: "target" | "field" | "all"; field?: string }) => {
+        const search = new URLSearchParams();
+        if (options?.mode) search.set("mode", options.mode);
+        if (options?.field) search.set("field", options.field);
+        return request<AnalysisMetricsData>(`/api/student/tasks/${taskId}/analysis-metrics${search.size ? `?${search}` : ""}`);
+    },
 };
 
 export const announcementsApi = { list: () => request<Announcement[]>("/api/student/announcements") };

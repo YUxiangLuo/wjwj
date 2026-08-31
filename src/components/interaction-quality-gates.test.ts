@@ -39,11 +39,11 @@ test("the shared theme disables decorative motion for reduced-motion users", asy
     expect(reducedMotionBlock).toContain("scroll-behavior: auto !important");
 });
 
-test("the explicit desktop-only viewport contract remains enabled", async () => {
+test("the shared theme permits viewport reflow without a page-wide minimum", async () => {
     const theme = await Bun.file("styles/theme.css").text();
     const styleCheck = await Bun.file("scripts/check-styles.ts").text();
-    expect(theme).toContain("min-width: 80rem");
-    expect(styleCheck).toContain("The frontend is desktop-only.");
+    expect(theme).not.toContain("min-width: 80rem");
+    expect(styleCheck).toContain("device-width viewport for reflow");
 });
 
 test("the topic wizard follows the standard Escape close behavior", async () => {

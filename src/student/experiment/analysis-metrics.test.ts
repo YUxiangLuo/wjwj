@@ -237,3 +237,109 @@ test("analysis metrics use PPS inclusion probabilities for weighted mean estimat
     ) / (replicateEstimates.length - 1));
     expect(numericValue.methods.pps.standardError).toBeCloseTo(expectedSe, 10);
 });
+
+test("proportion study target receives design-matched estimates and standard errors", () => {
+    const population = Array.from({ length: 10 }, (_, index) => ({
+        id: index + 1,
+        stratum: index < 6 ? "A" : "B",
+        choice: index % 2 === 0 ? "是" : "否",
+        size: index + 1,
+    }));
+    const systematic = performSystematicSampling(population, 4, createSeededRandom(42));
+    const pps = performPPSSampling(population, "size", 4, createSeededRandom(43));
+    const metrics = buildAnalysisMetrics({
+        population,
+        fieldMapping: {
+            identifier: "id",
+            stratified: ["stratum"],
+            numeric: ["size"],
+            others: ["choice"],
+            studyContract: {
+                version: 1,
+                researchQuestion: "总体中选择“是”的单位占比是多少？",
+                targetPopulation: "测试总体",
+                unitOfAnalysis: "一个单位",
+                target: { kind: "proportion", field: "choice", value: "是" },
+            },
+        },
+        samplePlan: { confidenceLevel: "95", marginOfError: 5 },
+        samplingResults: {
+            simple: { completed: true, sampleCount: 4, data: population.slice(0, 4) },
+            systematic: { completed: true, sampleCount: 4, interval: systematic.interval, randomStart: systematic.randomStart, data: systematic.data },
+            pps: { completed: true, sampleCount: 4, sizeField: "size", inclusionProbabilities: pps.inclusionProbabilities, data: pps.data },
+            stratified: {
+                completed: true,
+                stratifyBy: "stratum",
+                layers: [
+                    { name: "A", count: 6, ratio: 0.6, sampleCount: 2 },
+                    { name: "B", count: 4, ratio: 0.4, sampleCount: 2 },
+                ],
+                data: [population[0]!, population[1]!, population[6]!, population[7]!],
+            },
+        },
+    });
+
+    expect(metrics.target?.populationValue).toBe(0.5);
+    expect(metrics.target?.plannedMarginOfError).toBe(0.05);
+    for (const method of ["simple", "systematic", "pps", "stratified"] as const) {
+        expect(metrics.target?.methods[method].estimate).not.toBeNull();
+        expect(metrics.target?.methods[method].standardError).not.toBeNull();
+        expect(metrics.target?.methods[method].marginOfError).not.toBeNull();
+    }
+    expect(metrics.target?.methods.simple.reliability.status).toBe("caution");
+});
+
+test("high-cardinality categorical exploration keeps the study target and caps the payload", () => {
+    const population = Array.from({ length: 100 }, (_, index) => ({
+        id: index,
+        group: `类别${index}`,
+        size: index + 1,
+    }));
+    const metrics = buildAnalysisMetrics({
+        population,
+        fieldMapping: {
+            numeric: ["size"],
+            others: ["group"],
+            studyContract: {
+                version: 1,
+                researchQuestion: "稀有目标类别占比是多少？",
+                targetPopulation: "全部单位",
+                unitOfAnalysis: "一个单位",
+                target: { kind: "proportion", field: "group", value: "类别99" },
+            },
+        },
+        fieldFilter: "group",
+        samplingResults: null,
+    });
+
+    const categorical = metrics.categorical.group!;
+    expect(categorical.truncated).toBe(true);
+    expect(categorical.totalCategoryCount).toBe(100);
+    expect(Object.keys(categorical.population)).toHaveLength(20);
+    expect(categorical.population["类别99"]).toBeDefined();
+    expect(categorical.population["其他"]).toBeDefined();
+});
+
+test("target-only and field-filter modes keep a complete catalog without eager exploration", () => {
+    const population = [{ x: 1, y: 2, group: "A" }, { x: 3, y: 4, group: "B" }];
+    const fieldMapping = {
+        numeric: ["x", "y"],
+        others: ["group"],
+        studyContract: {
+            version: 1 as const,
+            researchQuestion: "总体 x 的均值是多少？",
+            targetPopulation: "全部单位",
+            unitOfAnalysis: "一个单位",
+            target: { kind: "mean" as const, field: "x" },
+        },
+    };
+    const targetOnly = buildAnalysisMetrics({ population, fieldMapping, samplingResults: null, targetOnly: true });
+    expect(targetOnly.fieldCatalog).toEqual({ numeric: ["x", "y"], categorical: ["group"] });
+    expect(targetOnly.numericFields).toEqual([]);
+    expect(targetOnly.categoricalFields).toEqual([]);
+    expect(targetOnly.target?.populationValue).toBe(2);
+
+    const oneField = buildAnalysisMetrics({ population, fieldMapping, samplingResults: null, fieldFilter: "y" });
+    expect(oneField.numericFields).toEqual(["y"]);
+    expect(oneField.categoricalFields).toEqual([]);
+});

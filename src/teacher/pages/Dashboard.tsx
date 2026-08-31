@@ -130,7 +130,7 @@ export function Dashboard() {
                 );
             })()}
 
-            <div className="grid grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:gap-6">
                 {stats.length > 0 ? stats.map((stat) => {
                     const { icon, color, to } = getIconAndColor(stat.label);
                     return (
@@ -152,7 +152,7 @@ export function Dashboard() {
                 )}
             </div>
 
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 {/* Recent Submissions */}
                 <Card className="border-border bg-card">
                     <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
@@ -168,7 +168,7 @@ export function Dashboard() {
                             <div className="text-center text-sm text-muted-foreground py-8">暂无提交记录</div>
                         ) : (
                             recentSubmissions.map((item, idx) => (
-                                <div key={idx} className="flex flex-row items-center justify-between p-4 rounded-xl border border-border bg-background/30 hover:bg-muted/50 hover:border-input transition-all gap-4">
+                                <div key={idx} className="flex flex-col items-start justify-between gap-3 rounded-xl border border-border bg-background/30 p-4 transition-all hover:border-input hover:bg-muted/50 sm:flex-row sm:items-center sm:gap-4">
                                     <div className="flex min-w-0 items-center gap-4">
                                         <Avatar className="w-10 h-10 shrink-0 border border-input">
                                             <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">{item.student?.[0] ?? "?"}</AvatarFallback>
@@ -182,7 +182,7 @@ export function Dashboard() {
                                             </div>
                                         </div>
                                     </div>
-                                    <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground font-mono">{item.time}</span>
+                                    <span className="self-end whitespace-nowrap font-mono text-xs text-muted-foreground sm:self-auto">{item.time}</span>
                                 </div>
                             ))
                         )}
@@ -204,7 +204,7 @@ export function Dashboard() {
                             <div className="text-center text-sm text-muted-foreground py-8">暂无批改记录</div>
                         ) : (
                             recentGradings.map((item, idx) => (
-                                <div key={idx} className="flex flex-row items-center justify-between p-4 rounded-xl border border-border bg-background/30 hover:bg-muted/50 hover:border-input transition-all gap-4">
+                                <div key={idx} className="flex flex-col items-start justify-between gap-3 rounded-xl border border-border bg-background/30 p-4 transition-all hover:border-input hover:bg-muted/50 sm:flex-row sm:items-center sm:gap-4">
                                     <div className="flex min-w-0 items-center gap-4">
                                         <Avatar className="w-10 h-10 shrink-0 border border-input">
                                             <AvatarFallback className={`text-sm font-semibold ${item.rejected ? "bg-destructive text-destructive-foreground" : "bg-success text-success-foreground"}`}>{item.student?.[0] ?? "?"}</AvatarFallback>
@@ -218,7 +218,7 @@ export function Dashboard() {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex shrink-0 items-center gap-3 whitespace-nowrap">
+                                    <div className="flex w-full shrink-0 items-center justify-between gap-3 whitespace-nowrap sm:w-auto sm:justify-end">
                                         {item.rejected ? (
                                             <span className="flex shrink-0 items-center gap-1 text-xs text-destructive">
                                                 <XCircle className="w-3.5 h-3.5" />

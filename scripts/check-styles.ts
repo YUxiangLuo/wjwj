@@ -52,7 +52,7 @@ const MAX_DARK_CLASSES = 0;
 const MAX_SAME_INTENT_FILLED_CLASSES = 0;
 const MAX_SAME_INTENT_SOLID_HOVER_CLASSES = 0;
 const MAX_SEMANTIC_ALPHA_TEXT_CLASSES = 0;
-const MAX_RESPONSIVE_VIEWPORT_CLASSES = 0;
+const MAX_UNSUPPORTED_RESPONSIVE_CLASSES = 0;
 
 const palettePattern = PALETTE_COLORS.join("|");
 const prefixPattern = COLOR_UTILITY_PREFIXES
@@ -76,6 +76,7 @@ const sameIntentSolidHoverClassPattern = new RegExp(
 );
 const semanticAlphaTextClassPattern = new RegExp(`text-(?:${semanticIntentPattern})/[0-9]+`, "g");
 const responsiveViewportClassPattern = /(?<![\w-])(?:sm|md|lg|xl|2xl|(?:min|max)-(?:sm|md|lg|xl|2xl)|(?:min|max)-\[[^\]]+\]|@(?:sm|md|lg|xl|2xl)(?:\/[\w-]+)?|@\[[^\]]+\]|portrait|landscape|(?:any-)?pointer-(?:fine|coarse)):(?=\S)/g;
+const unsupportedResponsiveClassPattern = /(?<![\w-])(?:2xl|(?:min|max)-(?:sm|md|lg|xl|2xl)|(?:min|max)-\[[^\]]+\]|@(?:sm|md|lg|xl|2xl)(?:\/[\w-]+)?|@\[[^\]]+\]|portrait|landscape|(?:any-)?pointer-(?:fine|coarse)):(?=\S)/g;
 
 type FileStats = {
     path: string;
@@ -85,6 +86,7 @@ type FileStats = {
     sameIntentSolidHoverClasses: number;
     semanticAlphaTextClasses: number;
     responsiveViewportClasses: number;
+    unsupportedResponsiveClasses: number;
 };
 
 async function listSourceFiles() {
@@ -104,6 +106,10 @@ export function countHardcodedPaletteClasses(text: string) {
 
 export function countResponsiveViewportClasses(text: string) {
     return countMatches(text, responsiveViewportClassPattern);
+}
+
+export function countUnsupportedResponsiveClasses(text: string) {
+    return countMatches(text, unsupportedResponsiveClassPattern);
 }
 
 function quotedEnd(text: string, start: number) {
@@ -363,6 +369,7 @@ async function collectStats() {
             sameIntentSolidHoverClasses: countMatches(text, sameIntentSolidHoverClassPattern),
             semanticAlphaTextClasses: countMatches(text, semanticAlphaTextClassPattern),
             responsiveViewportClasses: countMatches(text, responsiveViewportClassPattern),
+            unsupportedResponsiveClasses: countMatches(text, unsupportedResponsiveClassPattern),
         });
     }
 
@@ -386,6 +393,7 @@ async function main() {
     const sameIntentSolidHoverClasses = stats.reduce((sum, item) => sum + item.sameIntentSolidHoverClasses, 0);
     const semanticAlphaTextClasses = stats.reduce((sum, item) => sum + item.semanticAlphaTextClasses, 0);
     const responsiveViewportClasses = stats.reduce((sum, item) => sum + item.responsiveViewportClasses, 0);
+    const unsupportedResponsiveClasses = stats.reduce((sum, item) => sum + item.unsupportedResponsiveClasses, 0);
     const uiHardcodedColorClasses = stats
         .filter((item) => item.path.startsWith("src/components/ui/"))
         .reduce((sum, item) => sum + item.hardcodedColorClasses, 0);
@@ -436,27 +444,24 @@ async function main() {
             `Alpha semantic text classes increased to ${semanticAlphaTextClasses}; maximum is ${MAX_SEMANTIC_ALPHA_TEXT_CLASSES}. Use the full semantic text token, or move opacity to a safe background/border.`,
         );
     }
-    if (responsiveViewportClasses > MAX_RESPONSIVE_VIEWPORT_CLASSES) {
+    if (unsupportedResponsiveClasses > MAX_UNSUPPORTED_RESPONSIVE_CLASSES) {
         failures.push(
-            `Viewport-responsive classes increased to ${responsiveViewportClasses}; maximum is ${MAX_RESPONSIVE_VIEWPORT_CLASSES}. The frontend is desktop-only.`,
+            `Unsupported responsive variants increased to ${unsupportedResponsiveClasses}; use only the shared sm/md/lg/xl breakpoints.`,
         );
     }
 
     const appHtmlFiles = ["src/admin/admin.html", "src/teacher/teacher.html", "src/student/student.html"];
     for (const path of appHtmlFiles) {
         const html = await Bun.file(path).text();
-        if (/<meta\s+name=["']viewport["']/i.test(html)) {
-            failures.push(`${path} must not declare a mobile viewport; the frontend is desktop-only.`);
+        if (!/<meta\s+name=["']viewport["'][^>]+content=["'][^"']*width=device-width[^"']*["']/i.test(html)) {
+            failures.push(`${path} must declare a device-width viewport for reflow.`);
         }
     }
-    if (!themeCss.includes("--breakpoint-*: initial;")) {
-        failures.push("styles/theme.css must disable Tailwind's viewport breakpoints.");
+    if (themeCss.includes("--breakpoint-*: initial;")) {
+        failures.push("styles/theme.css must keep Tailwind's shared viewport breakpoints enabled.");
     }
-    if (!/html,\s*\n\s*body,\s*\n\s*#root\s*\{\s*\n\s*min-width:\s*80rem;/m.test(themeCss)) {
-        failures.push("styles/theme.css must enforce the 80rem desktop minimum width on html, body, and #root.");
-    }
-    if (/@media\s*[^\{]*(?:(?:min|max)-width|orientation|(?:any-)?pointer|hover)|@container\b/i.test(themeCss)) {
-        failures.push("styles/theme.css must not contain device-responsive media or container queries; the frontend is desktop-only.");
+    if (/html,\s*\n\s*body,\s*\n\s*#root\s*\{[^}]*min-width:/m.test(themeCss)) {
+        failures.push("styles/theme.css must not impose a page-wide minimum width; use local overflow for two-dimensional content.");
     }
 
     console.log("Style usage:");
@@ -465,7 +470,8 @@ async function main() {
     console.log(`  same-intent filled pairs:  ${sameIntentFilledClasses}/${MAX_SAME_INTENT_FILLED_CLASSES}`);
     console.log(`  solid same-intent hovers:  ${sameIntentSolidHoverClasses}/${MAX_SAME_INTENT_SOLID_HOVER_CLASSES}`);
     console.log(`  semantic alpha text:       ${semanticAlphaTextClasses}/${MAX_SEMANTIC_ALPHA_TEXT_CLASSES}`);
-    console.log(`  responsive viewport:       ${responsiveViewportClasses}/${MAX_RESPONSIVE_VIEWPORT_CLASSES}`);
+    console.log(`  responsive viewport:       ${responsiveViewportClasses} allowed`);
+    console.log(`  unsupported responsive:    ${unsupportedResponsiveClasses}/${MAX_UNSUPPORTED_RESPONSIVE_CLASSES}`);
     console.log(`  ui palette classes:        ${uiHardcodedColorClasses}`);
 
     if (failures.length === 0) return;
@@ -487,6 +493,7 @@ async function main() {
         ["Top alpha semantic text files:", topFiles(stats, "semanticAlphaTextClasses")],
         ["Top dark: variant files:", topFiles(stats, "darkClasses")],
         ["Top responsive viewport files:", topFiles(stats, "responsiveViewportClasses")],
+        ["Top unsupported responsive files:", topFiles(stats, "unsupportedResponsiveClasses")],
     ];
 
     for (const [heading, report] of reports) {

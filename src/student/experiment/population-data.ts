@@ -1,4 +1,4 @@
-import type { AnalysisTarget } from "../../lib/analysis-target";
+import type { AnalysisTarget, StudyContract } from "../../lib/analysis-target";
 import { parseSpreadsheetFile } from "../../lib/spreadsheet";
 import { resolveStoragePath } from "../../server/storage-files";
 import { stratumKey } from "../sampling";
@@ -9,6 +9,7 @@ export interface TopicFieldMapping {
     numeric?: string[];
     others?: string[];
     analysisTarget?: AnalysisTarget;
+    studyContract?: StudyContract;
 }
 
 const POPULATION_CACHE_MAX_ENTRIES = 4;

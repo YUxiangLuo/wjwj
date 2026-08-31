@@ -1,5 +1,6 @@
 import type { SamplePlanData } from "../api-client";
 import { attachCalculatedSampleSize } from "./sample-plan";
+import { parseAdvancedPlans, type FinalSizeSource } from "./advanced-plan";
 
 export type SamplePlanEstimationType = "proportion" | "mean";
 export type SamplePlanAdvancedSource = "cost" | "multivar" | "cv" | "cluster";
@@ -40,7 +41,12 @@ export function normalizeSamplePlanData(
     const confidenceLevel = typeof data.confidenceLevel === "string"
         ? data.confidenceLevel
         : String(data.confidenceLevel ?? "");
-    const { advancedPlanSource: _ignoredAdvancedSource, ...restData } = data;
+    const {
+        advancedPlanSource: _ignoredAdvancedSource,
+        advancedPlans: _ignoredAdvancedPlans,
+        finalSizeSource: _ignoredFinalSizeSource,
+        ...restData
+    } = data;
     const estimationType = normalizeSamplePlanEstimationType(data.estimationType);
     const marginOfError = toFiniteNumber(data.marginOfError);
     const finalSampleSize = toFiniteNumber(data.finalSampleSize);
@@ -51,6 +57,12 @@ export function normalizeSamplePlanData(
     const nonResponseRate = toFiniteNumber(data.nonResponseRate);
     const populationVariance = toFiniteNumber(data.populationVariance);
     const advancedPlanSource = normalizeSamplePlanAdvancedSource(data.advancedPlanSource);
+    const advancedPlans = parseAdvancedPlans(data.advancedPlans);
+    const finalSizeSource: FinalSizeSource = data.finalSizeSource === "basic"
+        || data.finalSizeSource === "manual"
+        || data.finalSizeSource === "advanced"
+        ? data.finalSizeSource
+        : advancedPlanSource ? "advanced" : "manual";
 
     if (!confidenceLevel || marginOfError == null || finalSampleSize == null || finalSampleSize <= 0) {
         return null;
@@ -62,6 +74,8 @@ export function normalizeSamplePlanData(
         confidenceLevel,
         marginOfError,
         ...(advancedPlanSource ? { advancedPlanSource } : {}),
+        finalSizeSource,
+        ...(advancedPlans.length ? { advancedPlans } : {}),
         ...(estimationType === "mean" && populationVariance != null && populationVariance > 0
             ? { populationVariance }
             : {}),

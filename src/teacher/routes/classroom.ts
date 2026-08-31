@@ -3,6 +3,7 @@ import * as XLSX from "xlsx";
 import { db } from "../../db";
 import { class_, semester, student } from "../../db/schema";
 import { isValidOptionalEmail } from "../../lib/email";
+import { mapWithConcurrency } from "../../lib/promise-pool";
 import { spreadsheetRequestExceedsLimit, validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
 import { error, getRouteParam, json, parseBody, stringValue } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
@@ -192,7 +193,7 @@ const classStudentsImportRoutes: RouteDefinition = {
             }
         }
         const inserts = candidates.filter((item) => !existingIds.has(item.normalizedStudentId));
-        const hashes = await Promise.all(inserts.map((item) => Bun.password.hash(item.studentId)));
+        const hashes = await mapWithConcurrency(inserts, 4, (item) => Bun.password.hash(item.studentId));
 
         if (inserts.length) {
             await db.insert(student).values(

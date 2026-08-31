@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>抽样调查虚拟实验说明</title>
+  <style>
+    body { font-family: "Noto Sans CJK SC", "Noto Sans SC", sans-serif; color: #0f172a; line-height: 1.75; margin: 32mm 24mm; }
+    h1 { color: #4f46e5; font-size: 24pt; margin-bottom: 8mm; }
+    h2 { color: #1d4ed8; font-size: 15pt; margin-top: 8mm; }
+    .notice { border: 1px solid #bfdbfe; background: #eff6ff; padding: 4mm; border-radius: 3mm; }
+    li { margin: 2mm 0; }
+  </style>
+</head>
+<body>
+  <h1>抽样调查虚拟实验说明</h1>
+  <p>本实验帮助你理解如何从一个已知虚拟总体中规划样本量、执行概率抽样，并比较不同设计的估计结果。</p>
+
+  <h2>四个阶段</h2>
+  <ol>
+    <li><strong>问卷预试：</strong>设计问卷原型并以受访者身份完成认知预试。预试答案不进入后续估计。</li>
+    <li><strong>样本量规划：</strong>围绕教师指定的研究目标设置置信水平、误差限、设计效应和无回答率。</li>
+    <li><strong>抽样执行：</strong>完成简单随机、系统、PPS 和分层抽样；系统会保存随机种子和抽样参数。</li>
+    <li><strong>分析与报告：</strong>比较各方法对同一目标估计量的结果、设计标准误和与虚拟总体真值的差异。</li>
+  </ol>
+
+  <div class="notice">
+    <strong>请始终围绕页面顶部的研究合同：</strong>研究问题、目标总体、分析单位和目标估计量在四个阶段保持一致。
+  </div>
+
+  <h2>结果解释</h2>
+  <ul>
+    <li>虚拟总体真值仅用于教学对照；现实调查通常看不到未入样单位。</li>
+    <li>PPS 的规模变量应是抽样前已知的辅助信息，不能与目标变量混为一谈。</li>
+    <li>无回答率膨胀只能补偿预期完成数量，不能自动消除无回答偏差。</li>
+    <li>比例接近 0 或 1、样本量较小时，正态近似误差半宽需要谨慎解释。</li>
+  </ul>
+
+  <h2>提交前检查</h2>
+  <ul>
+    <li>四种方法均已完成，或 PPS 已由系统判定为不可用。</li>
+    <li>报告明确写出研究目标、抽样设计、主要估计结果、误差和限制。</li>
+    <li>不要把问卷预试答案误写成正式调查结果。</li>
+  </ul>
+</body>
+</html>

@@ -2,7 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment, samplingAttempt } from "../../db/schema";
 import { validateObservedVersion } from "../../lib/observed-version";
-import { error, getRouteParam, json, parseBody } from "../../server/http";
+import { error, getRouteParam, getSearchParams, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { buildAnalysisMetrics } from "../experiment/analysis-metrics";
 import {
@@ -34,7 +34,7 @@ import { parseStoredJson } from "../experiment/serialization";
 import { ExperimentStatus } from "../experiment/status";
 import { submitStudentExperiment } from "../experiment/submit-service";
 import { getTargetSampleSizeFromSamplePlan } from "../experiment/submit-validation";
-import { resolveAnalysisTarget } from "../../lib/analysis-target";
+import { resolveAnalysisTarget, resolveStudyContract } from "../../lib/analysis-target";
 import { getStudentTaskAccessError } from "../experiment/task-access";
 import {
     findStudentTaskPopulationSize,
@@ -119,6 +119,7 @@ async function buildExperimentResponse(
         stage4CompletedAt: iso(record.stage4CompletedAt),
         populationSize: populationSize ?? 10_000,
         analysisTarget: resolveAnalysisTarget(taskInfo?.fieldMapping),
+        studyContract: resolveStudyContract(taskInfo?.fieldMapping, { topicName: taskInfo?.topicName }),
     } };
 }
 
@@ -455,6 +456,20 @@ const analysisMetricsRoutes: RouteDefinition = {
         if (!record || !taskInfo?.excelFilePath) return error("实验或总体数据不存在", "NOT_FOUND", 404);
         const population = await readPopulationData(taskInfo.excelFilePath);
         if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
+        const search = getSearchParams(req);
+        const mode = search.get("mode") ?? "all";
+        if (mode !== "all" && mode !== "target" && mode !== "field") {
+            return error("分析模式无效", "VALIDATION_ERROR", 400);
+        }
+        const fieldMapping = parseTopicFieldMapping(taskInfo.fieldMapping);
+        const field = search.get("field")?.trim() ?? "";
+        if (mode === "field") {
+            const mappedFields = new Set([
+                ...(fieldMapping?.numeric ?? []),
+                ...getCategoricalFieldsFromTopicMapping(fieldMapping),
+            ]);
+            if (!field || !mappedFields.has(field)) return error("分析字段无效", "VALIDATION_ERROR", 400);
+        }
         const hydrated = hydrateSamplingResults(parseStoredJson(record.samplingResults), population);
         if (!hydrated.ok) {
             return error(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
@@ -462,8 +477,12 @@ const analysisMetricsRoutes: RouteDefinition = {
         return json(
             buildAnalysisMetrics({
                 population,
-                fieldMapping: parseTopicFieldMapping(taskInfo.fieldMapping),
+                fieldMapping,
                 samplingResults: hydrated.value as Parameters<typeof buildAnalysisMetrics>[0]["samplingResults"],
+                studyContract: resolveStudyContract(taskInfo.fieldMapping, { topicName: taskInfo.topicName }),
+                samplePlan: parseStoredJson(record.samplePlan),
+                targetOnly: mode === "target",
+                fieldFilter: mode === "field" ? field : null,
             }),
         );
     },

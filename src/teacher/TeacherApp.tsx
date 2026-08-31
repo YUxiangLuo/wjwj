@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { BarChart3, BookOpen, ClipboardList, Download, KeyRound, LayoutDashboard, LogOut, PenLine, School } from "lucide-react";
+import { BarChart3, BookOpen, ClipboardList, Download, KeyRound, LayoutDashboard, LogOut, Menu, PenLine, School } from "lucide-react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { IconButton } from "@/components/ui/button";
@@ -51,6 +51,7 @@ function TeacherWorkspace({
 }) {
     const location = useLocation();
     const [passwordOpen, setPasswordOpen] = useState(false);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const mustChangePassword = !DEV_AUTH_MODE && user.isFirstLogin === 1;
     const passwordChange = usePasswordChange({
         policy: TEACHER_PASSWORD_POLICY,
@@ -70,6 +71,8 @@ function TeacherWorkspace({
                 title="教师工作台"
                 titleIcon={BarChart3}
                 items={menu}
+                mobileOpen={sidebarOpen}
+                onMobileOpenChange={setSidebarOpen}
                 footer={
                     <div className="flex items-center gap-3">
                         <Avatar className="h-9 w-9"><AvatarFallback className="bg-primary text-primary-foreground">{user.name.charAt(0)}</AvatarFallback></Avatar>
@@ -79,14 +82,14 @@ function TeacherWorkspace({
             />
 
             <main className="min-w-0 flex-1">
-                <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/80 backdrop-blur px-6">
-                    <div><h1 className="font-semibold">{title}</h1><p className="text-xs text-muted-foreground">统计学虚拟仿真实验平台</p></div>
+                <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/80 px-4 backdrop-blur sm:px-6">
+                    <div className="flex min-w-0 items-center gap-2"><IconButton aria-label="打开导航" variant="ghost" className="lg:hidden" onClick={() => setSidebarOpen(true)}><Menu className="h-5 w-5" /></IconButton><div className="min-w-0"><h1 className="truncate font-semibold">{title}</h1><p className="truncate text-xs text-muted-foreground">统计学虚拟仿真实验平台</p></div></div>
                     <div className="flex items-center gap-1">
                         <IconButton aria-label="修改密码" variant="ghost" title="修改密码" onClick={() => { passwordChange.reset(); setPasswordOpen(true); }}><KeyRound className="h-5 w-5" /></IconButton>
                         <IconButton aria-label="退出登录" variant="ghost" title="退出登录" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => void onLogout()}><LogOut className="h-5 w-5" /></IconButton>
                     </div>
                 </header>
-                <div id="main-content" tabIndex={-1} className="p-6">
+                <div id="main-content" tabIndex={-1} className="p-4 sm:p-6">
                     {mustChangePassword ? (
                         <div className="grid min-h-[60vh] place-items-center text-sm text-muted-foreground">请先修改初始密码后再使用教学功能。</div>
                     ) : <Suspense fallback={<RouteLoading />}><Routes>

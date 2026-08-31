@@ -93,7 +93,7 @@ async function verify() {
         .innerJoin(task, eq(experiment.taskId, task.id))
         .innerJoin(topic, eq(task.topicId, topic.id))
         .where(eq(experiment.currentStage, 4));
-    check(authoritative.length === 8, `Expected 8 stage4/terminal authoritative fixtures, got ${authoritative.length}`);
+    check(authoritative.length === 9, `Expected 9 stage4/terminal authoritative fixtures, got ${authoritative.length}`);
 
     function checkAuthoritativeMethods(label: string, value: unknown, allowUnavailablePps: boolean) {
         const results = value as Record<string, Record<string, unknown> | undefined> | null;
@@ -127,6 +127,7 @@ async function verify() {
             const snapshotResults = checkAuthoritativeMethods(`${label}/snapshot`, storedSnapshot.samplingResults, isMeanFixture);
             check(JSON.stringify(snapshotResults) === JSON.stringify(liveResults), `${label} snapshot sampling results differ from the live record`);
             check(storedSnapshot.reportContent === row.reportContent, `${label} snapshot report differs from the live record`);
+            check(Boolean(storedSnapshot.studyContract), `${label} snapshot study contract is missing`);
             check(validateReportForSubmit(row.reportContent) === null, `${label} live report is invalid`);
             check(validateReportForSubmit(storedSnapshot.reportContent) === null, `${label} snapshot report is invalid`);
         }
@@ -193,8 +194,8 @@ async function verify() {
     const storedTopics = await db
         .select({ name: topic.name, path: topic.excelFilePath, rowCount: topic.excelRowCount, fieldMapping: topic.fieldMapping })
         .from(topic)
-        .where(and(inArray(topic.name, [DOGFOOD_NAMES.topicA, DOGFOOD_NAMES.topicB]), isNull(topic.deletedAt)));
-    check(storedTopics.length === 2, `Expected stored population metadata for topics A and B, got ${storedTopics.length}`);
+        .where(and(inArray(topic.name, [DOGFOOD_NAMES.topicA, DOGFOOD_NAMES.topicB, DOGFOOD_NAMES.topicH]), isNull(topic.deletedAt)));
+    check(storedTopics.length === 3, `Expected stored population metadata for topics A, B and H, got ${storedTopics.length}`);
 
     const expectedTopicFiles = {
         [DOGFOOD_NAMES.topicA]: {
@@ -209,6 +210,12 @@ async function verify() {
             columns: ["编号", "学院", "年级", "每周阅读时长", "是否住宿"],
             ppsFields: [],
         },
+        [DOGFOOD_NAMES.topicH]: {
+            path: PPS_POPULATION_PATH,
+            rowCount: 200,
+            columns: ["编号", "年级", "专业", "性别", "每周学习时长", "月生活费", "学习满意度"],
+            ppsFields: ["每周学习时长", "月生活费", "学习满意度"],
+        },
     } as const;
     const parsedRowCounts: Record<string, number> = {};
     for (const storedTopic of storedTopics) {
@@ -218,7 +225,9 @@ async function verify() {
         check(storedTopic.rowCount === expected.rowCount, `${storedTopic.name} stored row count differs: ${storedTopic.rowCount}`);
         const mapping = parseTopicFieldMapping(storedTopic.fieldMapping);
         check(mapping, `${storedTopic.name} field mapping is invalid`);
-        check(mapping?.analysisTarget?.kind === "mean", `${storedTopic.name} analysis target kind differs`);
+        const expectedTargetKind = storedTopic.name === DOGFOOD_NAMES.topicH ? "proportion" : "mean";
+        check(mapping?.analysisTarget?.kind === expectedTargetKind, `${storedTopic.name} analysis target kind differs`);
+        check(mapping?.studyContract?.target.kind === expectedTargetKind, `${storedTopic.name} study contract target differs`);
         check(Boolean(mapping?.analysisTarget && "field" in mapping.analysisTarget && mapping.analysisTarget.field), `${storedTopic.name} analysis target field missing`);
 
         const file = Bun.file(resolveStoragePath(storedTopic.path));

@@ -14,6 +14,7 @@ export const DOGFOOD_NAMES = {
     topicE: "尚未开放",
     topicF: "软删课题",
     topicG: "软删任务用课题",
+    topicH: "比例对照（PPS 可用）",
 } as const;
 
 export const DOGFOOD_COUNTS = {
@@ -22,9 +23,9 @@ export const DOGFOOD_COUNTS = {
     semester: 2,
     class: 2,
     student: 11,
-    topic: 7,
-    task: 6,
-    experiment: 11,
+    topic: 8,
+    task: 7,
+    experiment: 12,
     samplingAttempt: 4,
     announcement: 4,
     topicAttachment: 1,

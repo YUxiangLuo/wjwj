@@ -3,7 +3,15 @@ import { validateQuestionAtIndex } from "../../lib/validate-question";
 import { normalizeSamplePlanEstimationType } from "./sample-plan-display";
 import { getFinalSampleSizeBounds } from "./final-sample-bounds";
 import { getSamplingAcceptedRange } from "./sampling-tolerance";
-import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize } from "./sample-plan";
+import {
+    calculateClusterSamplingSize,
+    calculateFinitePopulationSampleSize,
+    calculateMeanEstimationSampleSize,
+    calculateSampleSizeByCV,
+    capSampleSizeAtPopulation,
+} from "./sample-plan";
+import { zForConfidenceLevel } from "./confidence-level";
+import { parseAdvancedPlans, type AdvancedPlanSnapshot } from "./advanced-plan";
 
 function toTrimmedString(value: unknown) {
     return typeof value === "string" ? value.trim() : "";
@@ -134,6 +142,35 @@ export function validateSamplePlanForSubmit(
         return "高级规划来源无效";
     }
 
+    const finalSizeSource = data.finalSizeSource;
+    if (finalSizeSource !== undefined && finalSizeSource !== "basic" && finalSizeSource !== "manual" && finalSizeSource !== "advanced") {
+        return "最终样本量来源无效";
+    }
+    if (data.advancedPlans !== undefined && !Array.isArray(data.advancedPlans)) {
+        return "高级规划快照格式无效";
+    }
+    const advancedPlans = parseAdvancedPlans(data.advancedPlans);
+    if (Array.isArray(data.advancedPlans) && advancedPlans.length !== data.advancedPlans.length) {
+        return "高级规划快照格式无效";
+    }
+    if (advancedPlans.length > 6 || new Set(advancedPlans.map((item) => item.kind)).size !== advancedPlans.length) {
+        return "每类高级规划最多保留一份快照";
+    }
+    let appliedAdvancedPlan: AdvancedPlanSnapshot | undefined;
+    if (finalSizeSource === "advanced") {
+        if (!advancedSource) return "高级样本量缺少来源";
+        appliedAdvancedPlan = advancedPlans.find((item) => item.kind === advancedSource);
+        if (!appliedAdvancedPlan) return "高级样本量缺少可复核快照";
+    }
+    for (const advancedPlan of advancedPlans) {
+        const consistencyError = validateAdvancedPlanConsistency(
+            advancedPlan,
+            populationSize,
+            advancedPlan === appliedAdvancedPlan ? finalSampleSize : null,
+        );
+        if (consistencyError) return consistencyError;
+    }
+
     if (populationSize !== null && Number.isFinite(populationSize) && populationSize > 0) {
         const { min, max } = getFinalSampleSizeBounds(populationSize);
         if (finalSampleSize < min || finalSampleSize > max) {
@@ -161,6 +198,124 @@ export function validateSamplePlanForSubmit(
         }
     }
 
+    return null;
+}
+
+function approximatelyEqual(left: number, right: number, tolerance = 1e-8) {
+    return Number.isFinite(left) && Number.isFinite(right) && Math.abs(left - right) <= tolerance;
+}
+
+function calculateMultivariableRequirement(
+    variable: Extract<AdvancedPlanSnapshot, { kind: "multivar" }>["inputs"]["variables"][number],
+    populationSize: number,
+) {
+    if (variable.type === "proportion") {
+        const p = variable.estimatedValue > 0 && variable.estimatedValue < 1 ? variable.estimatedValue : 0.5;
+        return calculateFinitePopulationSampleSize({
+            confidenceLevel: variable.confidenceLevel,
+            marginOfError: variable.marginOfError / 100,
+            populationSize,
+            designEffect: 1,
+            nonResponseRate: 0,
+            p,
+        }) ?? 0;
+    }
+    const sigma = Number(variable.estimatedStdDev);
+    const mean = Math.abs(variable.estimatedValue);
+    if (!(sigma > 0) || !(mean > 0) || !(variable.marginOfError > 0)) return 0;
+    const absoluteMargin = variable.marginOfError / 100 * mean;
+    const n0 = ((zForConfidenceLevel(variable.confidenceLevel) * sigma) / absoluteMargin) ** 2;
+    return capSampleSizeAtPopulation(n0 / (1 + (n0 - 1) / populationSize), populationSize);
+}
+
+function validateAdvancedPlanConsistency(
+    plan: AdvancedPlanSnapshot,
+    populationSize: number | null,
+    finalSampleSize: number | null,
+) {
+    const hasPopulation = Boolean(populationSize && populationSize > 0);
+    if (plan.kind === "domain") {
+        const requirements = plan.inputs.domains.map((domain) => (
+            plan.inputs.estimationType === "mean"
+                ? calculateMeanEstimationSampleSize({
+                    confidenceLevel: domain.confidenceLevel,
+                    marginOfError: domain.marginOfError,
+                    populationSize: domain.populationSize,
+                    populationVariance: plan.inputs.populationVariance!,
+                    designEffect: 1,
+                    nonResponseRate: 0,
+                })
+                : calculateFinitePopulationSampleSize({
+                    confidenceLevel: domain.confidenceLevel,
+                    marginOfError: domain.marginOfError,
+                    populationSize: domain.populationSize,
+                    designEffect: 1,
+                    nonResponseRate: 0,
+                })
+        ));
+        if (requirements.some((required, index) => required !== plan.inputs.domains[index]!.requiredSampleSize)) {
+            return "子总体规划快照与输入参数不一致";
+        }
+        const expected = Math.max(...plan.inputs.domains.map((domain) => domain.requiredSampleSize));
+        if (expected !== plan.result.requiredSampleSize) return "子总体规划快照与输入参数不一致";
+    } else if (plan.kind === "deff") {
+        if (!approximatelyEqual(plan.inputs.designEffect, plan.result.appliedDesignEffect)) return "设计效应快照与输入参数不一致";
+    } else if (plan.kind === "cost") {
+        const totalCost = plan.inputs.fixedCost + plan.result.requiredSampleSize * plan.inputs.variableCostPerUnit;
+        const feasible = totalCost <= plan.inputs.totalBudget;
+        if (!approximatelyEqual(totalCost, plan.result.totalCost) || feasible !== plan.result.feasible) return "成本规划快照与输入参数不一致";
+        if (hasPopulation) {
+            const expected = calculateFinitePopulationSampleSize({
+                confidenceLevel: plan.inputs.confidenceLevel,
+                marginOfError: plan.inputs.targetMarginOfError,
+                populationSize: populationSize!,
+                designEffect: plan.inputs.designEffect,
+                nonResponseRate: plan.inputs.nonResponseRate,
+            });
+            if (expected !== plan.result.requiredSampleSize) return "成本规划快照与输入参数不一致";
+        }
+    } else if (plan.kind === "cv") {
+        if (hasPopulation) {
+            const expected = calculateSampleSizeByCV({
+                confidenceLevel: plan.inputs.confidenceLevel,
+                targetCV: plan.inputs.targetCV,
+                populationSize: populationSize!,
+                estimatedCV: plan.inputs.estimatedCV,
+                designEffect: plan.inputs.designEffect,
+                nonResponseRate: plan.inputs.nonResponseRate,
+            });
+            if (!expected
+                || expected.requiredSampleSize !== plan.result.requiredSampleSize
+                || !approximatelyEqual(expected.expectedRespondentSampleSize, plan.result.expectedRespondentSampleSize)
+                || !approximatelyEqual(expected.achievedCV, plan.result.achievedCV)) return "CV规划快照与输入参数不一致";
+        }
+    } else if (plan.kind === "cluster") {
+        if (hasPopulation) {
+            const expected = calculateClusterSamplingSize({
+                populationSize: populationSize!,
+                confidenceLevel: plan.inputs.confidenceLevel,
+                marginOfError: plan.inputs.marginOfError,
+                clusterSize: plan.inputs.clusterSize,
+                deff: plan.inputs.designEffect,
+                nonResponseRate: plan.inputs.nonResponseRate,
+            });
+            if (!expected
+                || expected.requiredSampleSize !== plan.result.requiredSampleSize
+                || expected.requiredClusters !== plan.result.requiredClusters
+                || !approximatelyEqual(expected.intraClassCorrelation, plan.result.intraClassCorrelation)) return "整群规划快照与输入参数不一致";
+        }
+    } else if (plan.kind === "multivar") {
+        if (hasPopulation) {
+            const requirements = plan.inputs.variables.map((variable) => calculateMultivariableRequirement(variable, populationSize!));
+            const expected = Math.max(...requirements);
+            if (expected !== plan.result.requiredSampleSize) return "多变量规划快照与输入参数不一致";
+        }
+    }
+    if (finalSampleSize !== null
+        && (plan.kind === "cost" || plan.kind === "cv" || plan.kind === "cluster" || plan.kind === "multivar")
+        && plan.result.requiredSampleSize !== finalSampleSize) {
+        return "高级规划结果需与最终样本量一致";
+    }
     return null;
 }
 

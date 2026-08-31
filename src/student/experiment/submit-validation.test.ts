@@ -127,6 +127,98 @@ describe("validateSamplePlanForSubmit", () => {
             ),
         ).toBe("估计类型需与课题对照变量一致");
     });
+
+    test("高级规划快照需能由服务端复算且匹配最终样本量", () => {
+        const costSnapshot = {
+            version: 1,
+            kind: "cost",
+            appliedAt: "2026-08-31T00:00:00.000Z",
+            inputs: {
+                confidenceLevel: "95",
+                targetMarginOfError: 5,
+                designEffect: 1,
+                nonResponseRate: 0,
+                fixedCost: 5000,
+                variableCostPerUnit: 20,
+                totalBudget: 50000,
+            },
+            result: { requiredSampleSize: 132, totalCost: 7640, feasible: true },
+        };
+        expect(validateSamplePlanForSubmit(plan({
+            finalSampleSize: 132,
+            finalSizeSource: "advanced",
+            advancedPlanSource: "cost",
+            advancedPlans: [costSnapshot],
+        }), 200)).toBeNull();
+        expect(validateSamplePlanForSubmit(plan({
+            finalSampleSize: 131,
+            finalSizeSource: "advanced",
+            advancedPlanSource: "cost",
+            advancedPlans: [costSnapshot],
+        }), 200)).toBe("高级规划结果需与最终样本量一致");
+    });
+
+    test("即使不是最终样本量来源，也拒绝每一种畸形高级快照", () => {
+        for (const kind of ["domain", "cost", "deff", "multivar", "cv", "cluster"]) {
+            expect(validateSamplePlanForSubmit(plan({
+                finalSizeSource: "manual",
+                advancedPlans: [{
+                    version: 1,
+                    kind,
+                    appliedAt: "2026-08-31T00:00:00.000Z",
+                    inputs: {},
+                    result: {},
+                }],
+            }), 200)).toBe("高级规划快照格式无效");
+        }
+        expect(validateSamplePlanForSubmit(plan({ advancedPlans: {} }), 200)).toBe("高级规划快照格式无效");
+    });
+
+    test("非活动高级快照也必须与自身输入一致", () => {
+        expect(validateSamplePlanForSubmit(plan({
+            finalSizeSource: "manual",
+            advancedPlans: [{
+                version: 1,
+                kind: "cost",
+                appliedAt: "2026-08-31T00:00:00.000Z",
+                inputs: {
+                    confidenceLevel: "95",
+                    targetMarginOfError: 5,
+                    designEffect: 1,
+                    nonResponseRate: 0,
+                    fixedCost: 5000,
+                    variableCostPerUnit: 20,
+                    totalBudget: 50000,
+                },
+                result: { requiredSampleSize: 132, totalCost: 1, feasible: true },
+            }],
+        }), 200)).toBe("成本规划快照与输入参数不一致");
+    });
+
+    test("畸形的活动多变量快照返回校验错误而不是抛异常", () => {
+        expect(() => validateSamplePlanForSubmit(plan({
+            finalSizeSource: "advanced",
+            advancedPlanSource: "multivar",
+            advancedPlans: [{
+                version: 1,
+                kind: "multivar",
+                appliedAt: "2026-08-31T00:00:00.000Z",
+                inputs: { variables: [{}] },
+                result: { requiredSampleSize: 50 },
+            }],
+        }), 200)).not.toThrow();
+        expect(validateSamplePlanForSubmit(plan({
+            finalSizeSource: "advanced",
+            advancedPlanSource: "multivar",
+            advancedPlans: [{
+                version: 1,
+                kind: "multivar",
+                appliedAt: "2026-08-31T00:00:00.000Z",
+                inputs: { variables: [{}] },
+                result: { requiredSampleSize: 50 },
+            }],
+        }), 200)).toBe("高级规划快照格式无效");
+    });
 });
 
 describe("validateSamplingResultsForSubmit", () => {

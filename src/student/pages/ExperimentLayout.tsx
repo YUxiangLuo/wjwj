@@ -15,7 +15,7 @@ import {
 import { getRemainingDeadlineSummary } from "@/utils/format";
 import { LoadingStatus } from "@/components/LoadingStatus";
 import { experimentApi, tasksApi, type ExperimentData } from "../api-client";
-import { formatAnalysisTargetSummary } from "@/lib/analysis-target";
+import { formatStudyContractSummary } from "@/lib/analysis-target";
 import { formatMarginOfError } from "../experiment/sample-plan-display";
 import { TopicDeletedState } from "../components/TopicDeletedState";
 import { getExperimentRouteRedirect } from "../experiment/page-access";
@@ -169,14 +169,14 @@ export function ExperimentLayout() {
 
     return (
         <ExperimentContext.Provider value={{ experiment, populationSize: experiment.populationSize, isSaving, completeStage }}>
-            <div className="pb-12" data-testid="student-experiment-layout">
-                <div className="sticky top-16 z-40 -mt-2 border-b border-border/50 bg-background/90 backdrop-blur">
-                    <div className="flex items-center justify-between py-2">
-                        <div className="flex items-center gap-2"><Button asChild variant="ghost" size="icon"><Link to="/" aria-label="返回任务大厅"><Home className="h-4 w-4" /></Link></Button><Button asChild variant="ghost" className="gap-2 flex"><Link to={`/task/${numericTaskId}`}><ArrowLeft className="h-4 w-4" />退出实验</Link></Button><h1 className="ml-2 line-clamp-1 border-l border-border pl-4 text-sm font-semibold">{taskName}</h1></div>
+            <div className="max-w-full overflow-x-hidden pb-12" data-testid="student-experiment-layout">
+                <div className="sticky top-16 z-40 -mt-2 min-w-0 max-w-full border-b border-border/50 bg-background/90 backdrop-blur">
+                    <div className="flex flex-wrap items-center justify-between gap-2 py-2">
+                        <div className="flex min-w-0 items-center gap-1 sm:gap-2"><Button asChild variant="ghost" size="icon"><Link to="/" aria-label="返回任务大厅"><Home className="h-4 w-4" /></Link></Button><Button asChild variant="ghost" className="flex gap-2"><Link to={`/task/${numericTaskId}`} aria-label="退出实验"><ArrowLeft className="h-4 w-4" /><span className="hidden sm:inline">退出实验</span></Link></Button><h1 className="ml-1 line-clamp-1 border-l border-border pl-2 text-sm font-semibold sm:ml-2 sm:pl-4">{taskName}</h1></div>
                         {deadlineInfo && <span className={`items-center gap-1 text-xs flex ${deadlineInfo.urgent ? "text-destructive" : "text-muted-foreground"}`}>{deadlineInfo.urgent ? <AlertCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}{deadlineInfo.text}</span>}
                     </div>
                     {saveError && <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"><span>{saveError}</span>{versionConflict && <Button type="button" size="sm" variant="outline" disabled={isSaving} data-testid="student-load-latest-version" onClick={() => void loadLatestVersion()} className="border-destructive/30 bg-background text-destructive hover:bg-destructive/10 hover:text-destructive"><RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isSaving ? "animate-spin" : ""}`} />加载最新版本</Button>}</div>}
-                    <div className="flex items-center gap-2 overflow-x-auto pb-2.5" data-testid="student-experiment-stages">
+                    <div role="region" aria-label="实验阶段导航，可横向滚动" tabIndex={0} className="flex min-w-0 max-w-full items-center gap-2 overflow-x-auto pb-2.5" data-testid="student-experiment-stages">
                         {stages.map((stage, index) => {
                             const number = index + 1;
                             const isCurrent = number === currentStage;
@@ -188,7 +188,7 @@ export function ExperimentLayout() {
                 </div>
                 <div className="my-6 flex items-center gap-3 rounded-xl border border-border bg-card/50 px-4 py-3"><span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/15 text-primary">{(() => { const Icon = stages[currentStage - 1]!.icon; return <Icon className="h-4 w-4" />; })()}</span><div><p className="text-sm font-semibold">阶段 {currentStage}：{stages[currentStage - 1]!.name}</p><p className="text-xs text-muted-foreground">{stages[currentStage - 1]!.description}。编辑草稿自动保存在当前浏览器；抽样结果每次执行即保存，点击阶段完成后正式写入服务器。</p></div></div>
                 <p className="mb-6 rounded-xl border border-info/20 bg-info/10 px-4 py-3 text-sm text-info" data-testid="student-analysis-target-summary">
-                    {formatAnalysisTargetSummary(experiment.analysisTarget ?? null, experiment.samplePlan
+                    {formatStudyContractSummary(experiment.studyContract ?? null, experiment.samplePlan
                         ? { marginLabel: formatMarginOfError(experiment.samplePlan.marginOfError, experiment.analysisTarget?.target.kind ?? experiment.samplePlan.estimationType) }
                         : undefined)}
                 </p>

@@ -80,7 +80,7 @@ describe("topic validation helpers", () => {
 
     test("validateStratifiedValueCardinality rejects fields with too many unique values", () => {
         const rows = Array.from({ length: 21 }, (_, index) => ({ group: `g${index}` }));
-        expect(validateStratifiedValueCardinality(rows, ["group"])).toBe("分层变量 group 的唯一值数量超过20");
+        expect(validateStratifiedValueCardinality(rows, ["group"])).toBe("分类变量 group 的唯一值数量超过20");
     });
 
     test("validateTopicPublishReadiness requires data, mapping, and weights", () => {
@@ -101,6 +101,25 @@ describe("topic validation helpers", () => {
                     stratified: ["gender"],
                     numeric: ["score"],
                     analysisTarget: { kind: "mean", field: "score" },
+                    studyContract: {
+                        version: 1,
+                        researchQuestion: "学生平均分是多少？",
+                        targetPopulation: "全体学生",
+                        unitOfAnalysis: "一名学生",
+                        target: { kind: "mean", field: "score" },
+                    },
+                }),
+                weightConfig: JSON.stringify({ questionnaire: 30, process: 30, report: 40 }),
+            })
+        ).toBeNull();
+        expect(
+            validateTopicPublishReadiness({
+                excelFilePath: "/storage/uploads/legacy-topic.xlsx",
+                fieldMapping: JSON.stringify({
+                    identifier: "id",
+                    stratified: ["gender"],
+                    numeric: ["score"],
+                    analysisTarget: { kind: "mean", field: "score" },
                 }),
                 weightConfig: JSON.stringify({ questionnaire: 30, process: 30, report: 40 }),
             })
@@ -111,7 +130,7 @@ describe("topic validation helpers", () => {
                 fieldMapping: JSON.stringify({ identifier: "id", stratified: ["gender"], numeric: ["score"] }),
                 weightConfig: JSON.stringify({ questionnaire: 30, process: 30, report: 40 }),
             })
-        ).toBe("课题需先指定对照变量后才能发布");
+        ).toBe("课题需先完成研究合同后才能发布");
     });
 
     test("validateTopicAttachmentUpload enforces type and size limits", () => {

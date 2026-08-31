@@ -459,8 +459,8 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
                 {/* Simple Random Sampling */}
                 <TabsContent value="simple" className="mt-0 focus-visible:outline-none">
-                    <div className="grid grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <div className="col-span-2 space-y-4">
+                    <div className="grid grid-cols-1 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300 lg:grid-cols-3">
+                        <div className="space-y-4 lg:col-span-2">
                             <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
                                 <CardHeader>
                                     <CardTitle className="text-foreground flex items-center gap-2">
@@ -534,8 +534,8 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
                 {/* Systematic Sampling */}
                 <TabsContent value="systematic" className="mt-0 focus-visible:outline-none">
-                    <div className="grid grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <div className="col-span-2 space-y-4">
+                    <div className="grid grid-cols-1 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300 lg:grid-cols-3">
+                        <div className="space-y-4 lg:col-span-2">
                             <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
                                 <CardHeader>
                                     <CardTitle className="text-foreground flex items-center gap-2">
@@ -547,7 +547,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-4">
-                                    <div className="grid grid-cols-3 gap-6 p-4 bg-background/30 rounded-xl border border-border/50">
+                                    <div className="grid grid-cols-1 gap-6 rounded-xl border border-border/50 bg-background/30 p-4 sm:grid-cols-3">
                                         <div className="space-y-3">
                                             <p className="text-sm font-medium text-foreground/90">抽样间隔 K=N/n</p>
                                             <div
@@ -638,8 +638,8 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
                 {/* PPS Sampling */}
                 <TabsContent value="pps" className="mt-0 focus-visible:outline-none">
-                    <div className="grid grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <div className="col-span-2 space-y-4">
+                    <div className="grid grid-cols-1 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300 lg:grid-cols-3">
+                        <div className="space-y-4 lg:col-span-2">
                             <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
                                 <CardHeader>
                                     <CardTitle className="text-foreground flex items-center gap-2">
@@ -651,7 +651,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-4">
-                                    <div className="grid grid-cols-3 gap-6 p-4 bg-background/30 rounded-xl border border-border/50">
+                                    <div className="grid grid-cols-1 gap-6 rounded-xl border border-border/50 bg-background/30 p-4 sm:grid-cols-3">
                                         <div className="space-y-3">
                                             <Label className="text-foreground/90">选择规模变量</Label>
                                             {!statsLoaded ? (

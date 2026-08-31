@@ -4,8 +4,21 @@ export type AnalysisTarget =
     | { kind: "mean"; field: string }
     | { kind: "proportion"; field: string; value: string };
 
+export interface StudyContract {
+    version: 1;
+    researchQuestion: string;
+    targetPopulation: string;
+    unitOfAnalysis: string;
+    target: AnalysisTarget;
+}
+
 export interface ResolvedAnalysisTarget {
     target: AnalysisTarget;
+    inferred: boolean;
+}
+
+export interface ResolvedStudyContract {
+    contract: StudyContract;
     inferred: boolean;
 }
 
@@ -26,9 +39,7 @@ export function categoricalFieldsFromMapping(mapping: {
     return [...new Set([...(mapping.stratified ?? []), ...(mapping.others ?? [])].filter(Boolean))];
 }
 
-export function parseAnalysisTarget(fieldMapping: unknown): AnalysisTarget | null {
-    if (!isRecord(fieldMapping)) return null;
-    const raw = fieldMapping.analysisTarget;
+function parseTarget(raw: unknown): AnalysisTarget | null {
     if (!isRecord(raw)) return null;
     const field = toNonEmptyString(raw.field);
     if (!field) return null;
@@ -41,8 +52,26 @@ export function parseAnalysisTarget(fieldMapping: unknown): AnalysisTarget | nul
     return null;
 }
 
+export function parseStudyContract(fieldMapping: unknown): StudyContract | null {
+    if (!isRecord(fieldMapping) || !isRecord(fieldMapping.studyContract)) return null;
+    const raw = fieldMapping.studyContract;
+    const researchQuestion = toNonEmptyString(raw.researchQuestion);
+    const targetPopulation = toNonEmptyString(raw.targetPopulation);
+    const unitOfAnalysis = toNonEmptyString(raw.unitOfAnalysis);
+    const target = parseTarget(raw.target);
+    if (raw.version !== 1 || !researchQuestion || !targetPopulation || !unitOfAnalysis || !target) return null;
+    return { version: 1, researchQuestion, targetPopulation, unitOfAnalysis, target };
+}
+
+export function parseAnalysisTarget(fieldMapping: unknown): AnalysisTarget | null {
+    if (!isRecord(fieldMapping)) return null;
+    return parseStudyContract(fieldMapping)?.target ?? parseTarget(fieldMapping.analysisTarget);
+}
+
 export function resolveAnalysisTarget(fieldMapping: unknown): ResolvedAnalysisTarget | null {
-    const parsed = parseAnalysisTarget(fieldMapping);
+    const explicitContract = parseStudyContract(fieldMapping);
+    if (explicitContract) return { target: explicitContract.target, inferred: false };
+    const parsed = isRecord(fieldMapping) ? parseTarget(fieldMapping.analysisTarget) : null;
     if (parsed) return { target: parsed, inferred: false };
     if (!isRecord(fieldMapping)) return null;
     const numeric = Array.isArray(fieldMapping.numeric)
@@ -51,6 +80,52 @@ export function resolveAnalysisTarget(fieldMapping: unknown): ResolvedAnalysisTa
     const fallback = numeric[0];
     if (!fallback) return null;
     return { target: { kind: "mean", field: fallback }, inferred: true };
+}
+
+function defaultResearchQuestion(target: AnalysisTarget) {
+    return target.kind === "mean"
+        ? `总体中${target.field}的平均水平是多少？`
+        : `总体中${target.field}为“${target.value}”的单位占比是多少？`;
+}
+
+export function resolveStudyContract(
+    fieldMapping: unknown,
+    context: { topicName?: string | null; targetPopulation?: string | null; unitOfAnalysis?: string | null } = {},
+): ResolvedStudyContract | null {
+    const explicit = parseStudyContract(fieldMapping);
+    if (explicit) return { contract: explicit, inferred: false };
+    const resolvedTarget = resolveAnalysisTarget(fieldMapping);
+    if (!resolvedTarget) return null;
+    return {
+        inferred: true,
+        contract: {
+            version: 1,
+            researchQuestion: context.topicName?.trim() || defaultResearchQuestion(resolvedTarget.target),
+            targetPopulation: context.targetPopulation?.trim() || "上传总体数据中的全部单位",
+            unitOfAnalysis: context.unitOfAnalysis?.trim() || "总体数据中的一行记录",
+            target: resolvedTarget.target,
+        },
+    };
+}
+
+export function validateStudyContract(fieldMapping: unknown, rows?: Array<Record<string, unknown>>): string | null {
+    if (!isRecord(fieldMapping)) return "字段映射格式无效";
+    const contract = parseStudyContract(fieldMapping);
+    if (!contract) return "请填写完整的研究问题、目标总体、分析单位和对照变量";
+    if (contract.researchQuestion.length < 5 || contract.researchQuestion.length > 300) {
+        return "研究问题长度需在5-300字之间";
+    }
+    if (contract.targetPopulation.length < 2 || contract.targetPopulation.length > 200) {
+        return "目标总体长度需在2-200字之间";
+    }
+    if (contract.unitOfAnalysis.length < 1 || contract.unitOfAnalysis.length > 100) {
+        return "分析单位长度需在1-100字之间";
+    }
+    const legacy = fieldMapping.analysisTarget === undefined ? null : parseTarget(fieldMapping.analysisTarget);
+    if (legacy && JSON.stringify(legacy) !== JSON.stringify(contract.target)) {
+        return "研究合同与兼容对照变量不一致";
+    }
+    return validateAnalysisTarget({ ...fieldMapping, analysisTarget: contract.target, studyContract: undefined }, rows);
 }
 
 export function validateAnalysisTarget(
@@ -95,4 +170,18 @@ export function formatAnalysisTargetSummary(
         : `${resolved.target.field} 中「${resolved.target.value}」的比例`;
     const margin = extras?.marginLabel ? `；目标误差限 ${extras.marginLabel}` : "";
     return `${prefix}${core}${margin}。问卷是预试，不进入估计。`;
+}
+
+export function formatStudyContractSummary(
+    resolved: ResolvedStudyContract | null,
+    extras?: { marginLabel?: string },
+): string {
+    if (!resolved) return "课题未指定研究目标。问卷是预试，不进入估计。";
+    const { contract } = resolved;
+    const target = contract.target.kind === "mean"
+        ? `${contract.target.field}的均值`
+        : `${contract.target.field}中“${contract.target.value}”的比例`;
+    const margin = extras?.marginLabel ? `；目标误差限 ${extras.marginLabel}` : "";
+    const prefix = resolved.inferred ? "兼容目标" : "研究目标";
+    return `${prefix}：${contract.researchQuestion}；总体：${contract.targetPopulation}；分析单位：${contract.unitOfAnalysis}；估计量：${target}${margin}。问卷是认知预试，不进入估计。`;
 }

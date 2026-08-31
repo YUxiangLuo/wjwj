@@ -16,7 +16,7 @@ import {
     topic,
     topicAttachment,
 } from "../schema";
-import { calculateMeanEstimationSampleSize } from "../../student/experiment/sample-plan";
+import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize } from "../../student/experiment/sample-plan";
 import { executeSamplingAction, type SamplingMethod } from "../../student/experiment/sampling-service";
 import { PPS_UNAVAILABLE_REASON } from "../../student/experiment/sampling-messages";
 import {
@@ -60,7 +60,7 @@ const questionnaire = {
 const weightConfig = { questionnaire: 30, process: 30, report: 40 };
 const ppsPopulationForPlan = createPpsPopulation();
 const { recommendedSize: ppsMeanRecommendedSize, populationVariance: weeklyHoursVariance } = computePpsMeanPlan(ppsPopulationForPlan);
-const proportionPlan = {
+const ppsMeanPlan = {
     estimationType: "mean" as const,
     confidenceLevel: "95",
     marginOfError: 2,
@@ -90,9 +90,28 @@ const meanPlan = {
     recommendedSize: meanRecommendedSize,
     finalSampleSize: meanRecommendedSize,
 };
+const calculatedProportionSize = calculateFinitePopulationSampleSize({
+    confidenceLevel: "95",
+    marginOfError: 5,
+    populationSize: 200,
+    designEffect: 1,
+    nonResponseRate: 0,
+});
+if (calculatedProportionSize === null) throw new Error("Dogfood proportion sample plan could not be calculated");
+const proportionRecommendedSize: number = calculatedProportionSize;
+const proportionPlan = {
+    estimationType: "proportion" as const,
+    confidenceLevel: "95",
+    marginOfError: 5,
+    designEffect: 1,
+    nonResponseRate: 0,
+    recommendedSize: proportionRecommendedSize,
+    finalSampleSize: proportionRecommendedSize,
+};
 
 const reportContent = `<h2>实验目的</h2><p>本实验对照虚拟总体中每周学习时长的均值，比较四种抽样设计。问卷阶段是认知预试，答案不进入估计。</p><h2>方法与结果</h2><p>在百分之九十五置信水平和绝对误差限 2 下确定样本量，分别使用简单随机、系统、PPS 和分层抽样。PPS 使用月生活费作为规模变量，避免与对照变量循环。对不同方法的样本构成、每周学习时长与总体分布进行了比较，并记录随机种子以保证结果可复现。</p><h2>结论</h2><p>分层抽样能够稳定保持各层比例，简单随机抽样实现方便。实际调查中应结合总体结构、抽样框质量和执行成本选择方法，同时完整说明误差限和无回答率假设。</p>`;
 const meanReportContent = `<h2>实验目的</h2><p>本实验以每周阅读时长的均值为估计目标，使用总体方差估计、绝对误差限和有限总体校正确定样本量，并比较可执行抽样方法的结果。</p><h2>方法与结果</h2><p>总体中每周阅读时长包含零值，且没有其他对每个单位都为正数的数值字段，因此不存在合格的 PPS 规模变量。系统按规则将 PPS 标记为不可用并跳过该方法，随后完成简单随机、系统和按学院分层抽样。</p><h2>结论</h2><p>均值估计流程使用样本量 15。三种可用方法均保留随机种子和完整样本行；PPS 的跳过是由总体数据条件决定的有效结果，而不是执行失败。分析时应明确记录这一限制，避免为完成形式而选用不满足正值条件的规模变量。</p>`;
+const proportionReportContent = `<h2>实验目的</h2><p>本实验估计虚拟总体中女性学生的比例，并比较四种概率抽样设计的点估计和设计标准误。问卷阶段是认知预试，答案不进入估计。</p><h2>方法与结果</h2><p>按百分之九十五置信水平和五个百分点目标误差规划样本量。PPS 使用抽样前已知的月生活费作为规模变量，与性别目标变量分离；分析时将女性转换为指示变量并使用匹配抽样设计的标准误。</p><h2>结论</h2><p>比例估计必须明确分子类别与总体分母。小样本或估计接近零和一时，正态近似误差半宽需要谨慎解释。</p>`;
 
 const ppsFieldMapping = {
     identifier: "编号",
@@ -100,6 +119,13 @@ const ppsFieldMapping = {
     stratified: ["年级", "性别"],
     others: ["专业"],
     analysisTarget: { kind: "mean" as const, field: "每周学习时长" },
+    studyContract: {
+        version: 1 as const,
+        researchQuestion: "虚拟总体中学生每周学习时长的平均水平是多少？",
+        targetPopulation: "总体数据中的全部学生",
+        unitOfAnalysis: "一名学生",
+        target: { kind: "mean" as const, field: "每周学习时长" },
+    },
 };
 const meanFieldMapping = {
     identifier: "编号",
@@ -107,6 +133,24 @@ const meanFieldMapping = {
     stratified: ["学院", "是否住宿"],
     others: ["年级"],
     analysisTarget: { kind: "mean" as const, field: "每周阅读时长" },
+    studyContract: {
+        version: 1 as const,
+        researchQuestion: "虚拟总体中学生每周阅读时长的平均水平是多少？",
+        targetPopulation: "总体数据中的全部学生",
+        unitOfAnalysis: "一名学生",
+        target: { kind: "mean" as const, field: "每周阅读时长" },
+    },
+};
+const proportionFieldMapping = {
+    ...ppsFieldMapping,
+    analysisTarget: { kind: "proportion" as const, field: "性别", value: "女" },
+    studyContract: {
+        version: 1 as const,
+        researchQuestion: "虚拟总体中女性学生所占比例是多少？",
+        targetPopulation: "总体数据中的全部学生",
+        unitOfAnalysis: "一名学生",
+        target: { kind: "proportion" as const, field: "性别", value: "女" },
+    },
 };
 
 async function writePopulationFixtures(
@@ -131,7 +175,7 @@ async function writePopulationFixtures(
 }
 
 function guideSourceFile() {
-    return Bun.file(resolve(process.cwd(), "public/templates/数据上传规范.pdf"));
+    return Bun.file(resolve(process.cwd(), "public/templates/学生实验说明.pdf"));
 }
 
 async function preflightGuideSource() {
@@ -157,7 +201,7 @@ async function copyGuideAttachment(topicId: number) {
     }
     await db.insert(topicAttachment).values({
         topicId,
-        fileName: "课题说明与数据规范.pdf",
+        fileName: "抽样调查虚拟实验说明.pdf",
         filePath: GUIDE_ATTACHMENT_PATH,
         fileType: "application/pdf",
         fileSize: targetFile.size,
@@ -183,7 +227,7 @@ async function buildSamplingFixtures(
     const n = ppsMeanRecommendedSize;
     const [grade1 = 0, grade2 = 0, grade3 = 0, grade4 = 0] = allocateIntegerShares(n, [0.4, 0.3, 0.2, 0.1]);
     const [college1 = 0, college2 = 0, college3 = 0] = allocateIntegerShares(meanRecommendedSize, [1 / 3, 1 / 3, 1 / 3]);
-    const proportionResults = {
+    const ppsMeanResults = {
         simple: await runSampling({ method: "simple", rawParams: { sampleSize: n, seed: 202601 }, targetSampleSize: n, population: ppsPopulation, fieldMapping: ppsFieldMapping }),
         systematic: await runSampling({ method: "systematic", rawParams: { seed: 202602 }, targetSampleSize: n, population: ppsPopulation, fieldMapping: ppsFieldMapping }),
         pps: await runSampling({ method: "pps", rawParams: { sampleSize: n, sizeField: "月生活费", seed: 202603 }, targetSampleSize: n, population: ppsPopulation, fieldMapping: ppsFieldMapping }),
@@ -226,7 +270,33 @@ async function buildSamplingFixtures(
         }),
     };
 
-    return { proportionResults, meanResults };
+    const [proportionGrade1 = 0, proportionGrade2 = 0, proportionGrade3 = 0, proportionGrade4 = 0] = allocateIntegerShares(
+        proportionRecommendedSize,
+        [0.4, 0.3, 0.2, 0.1],
+    );
+    const proportionResults = {
+        simple: await runSampling({ method: "simple", rawParams: { sampleSize: proportionRecommendedSize, seed: 202621 }, targetSampleSize: proportionRecommendedSize, population: ppsPopulation, fieldMapping: proportionFieldMapping }),
+        systematic: await runSampling({ method: "systematic", rawParams: { seed: 202622 }, targetSampleSize: proportionRecommendedSize, population: ppsPopulation, fieldMapping: proportionFieldMapping }),
+        pps: await runSampling({ method: "pps", rawParams: { sampleSize: proportionRecommendedSize, sizeField: "月生活费", seed: 202623 }, targetSampleSize: proportionRecommendedSize, population: ppsPopulation, fieldMapping: proportionFieldMapping }),
+        stratified: await runSampling({
+            method: "stratified",
+            rawParams: {
+                stratifyBy: "年级",
+                seed: 202624,
+                layers: [
+                    { name: "大一", ratio: 0.4, sampleCount: proportionGrade1 },
+                    { name: "大二", ratio: 0.3, sampleCount: proportionGrade2 },
+                    { name: "大三", ratio: 0.2, sampleCount: proportionGrade3 },
+                    { name: "大四", ratio: 0.1, sampleCount: proportionGrade4 },
+                ],
+            },
+            targetSampleSize: proportionRecommendedSize,
+            population: ppsPopulation,
+            fieldMapping: proportionFieldMapping,
+        }),
+    };
+
+    return { ppsMeanResults, meanResults, proportionResults };
 }
 
 function buildSamplingAttemptDetails(result: Record<string, unknown>) {
@@ -256,7 +326,7 @@ function snapshot(params: {
     topicName: string;
     studentName: string;
     populationSize: number;
-    samplePlan: typeof proportionPlan | typeof meanPlan;
+    samplePlan: typeof ppsMeanPlan | typeof meanPlan | typeof proportionPlan;
     samplingResults: Record<string, unknown>;
     reportContent: string;
 }): SubmissionSnapshot {
@@ -269,6 +339,12 @@ function snapshot(params: {
         samplingResults: params.samplingResults,
         reportContent: params.reportContent,
         weightConfig,
+        studyContract: {
+            contract: params.samplePlan.estimationType === "proportion"
+                ? proportionFieldMapping.studyContract
+                : params.populationSize === 24 ? meanFieldMapping.studyContract : ppsFieldMapping.studyContract,
+            inferred: false,
+        },
     };
 }
 
@@ -283,12 +359,14 @@ async function seed() {
     const ppsPopulation = createPpsPopulation();
     const meanPopulation = createMeanPopulation();
     await writePopulationFixtures(ppsPopulation, meanPopulation);
-    const { proportionResults, meanResults } = await buildSamplingFixtures(ppsPopulation, meanPopulation);
-    assertCompleteSubmission(proportionPlan, proportionResults, ppsPopulation.length, reportContent);
+    const { ppsMeanResults, meanResults, proportionResults } = await buildSamplingFixtures(ppsPopulation, meanPopulation);
+    assertCompleteSubmission(ppsMeanPlan, ppsMeanResults, ppsPopulation.length, reportContent);
     assertCompleteSubmission(meanPlan, meanResults, meanPopulation.length, meanReportContent);
-    const compactProportionResults = compactSamplingResults(proportionResults);
+    assertCompleteSubmission(proportionPlan, proportionResults, ppsPopulation.length, proportionReportContent);
+    const compactPpsMeanResults = compactSamplingResults(ppsMeanResults);
     const compactMeanResults = compactSamplingResults(meanResults);
-    if (!compactProportionResults || !compactMeanResults) throw new Error("Dogfood sampling fixtures could not be compacted");
+    const compactProportionResults = compactSamplingResults(proportionResults);
+    if (!compactPpsMeanResults || !compactMeanResults || !compactProportionResults) throw new Error("Dogfood sampling fixtures could not be compacted");
 
     await db.insert(admin).values({
         username: "admin",
@@ -377,6 +455,7 @@ async function seed() {
         { ...validTopicValues, name: DOGFOOD_NAMES.topicE, description: "尚未到开放时间的发布课题。" },
         { ...validTopicValues, name: DOGFOOD_NAMES.topicF, description: "课题已软删除，但保留任务和历史提交用于过滤校验。", deletedAt: day(-2), updatedAt: day(-2) },
         { ...validTopicValues, name: DOGFOOD_NAMES.topicG, description: "课题仍发布，但任务已软删除并保留历史提交。" },
+        { ...validTopicValues, name: DOGFOOD_NAMES.topicH, description: "已发布的比例目标流程；估计女性学生比例，PPS 使用月生活费作为规模变量。", fieldMapping: proportionFieldMapping },
     ]).returning();
     const topicsByName = Object.fromEntries(topicRows.map((row) => [row.name, row]));
     await copyGuideAttachment(topicsByName[DOGFOOD_NAMES.topicA]!.id);
@@ -389,6 +468,7 @@ async function seed() {
         { topicId: topicsByName[DOGFOOD_NAMES.topicE]!.id, classId: mainClassId, openTime: day(7), deadline: day(30), createdAt: day(-1), updatedAt: day(-1) },
         { topicId: topicsByName[DOGFOOD_NAMES.topicF]!.id, classId: mainClassId, openTime: day(-10), deadline: day(30), createdAt: day(-10), updatedAt: day(-2) },
         { topicId: topicsByName[DOGFOOD_NAMES.topicG]!.id, classId: mainClassId, openTime: day(-10), deadline: day(30), deletedAt: day(-2), createdAt: day(-10), updatedAt: day(-2) },
+        { topicId: topicsByName[DOGFOOD_NAMES.topicH]!.id, classId: mainClassId, openTime: day(-5), deadline: day(30), createdAt: day(-5), updatedAt: day(-5) },
     ]).returning();
     const tasksByTopicId = Object.fromEntries(taskRows.map((row) => [row.topicId, row]));
     const taskFor = (topicName: string) => tasksByTopicId[topicsByName[topicName]!.id]!;
@@ -397,32 +477,32 @@ async function seed() {
     const completedBase = {
         currentStage: 4,
         questionnaire,
-        samplePlan: proportionPlan,
-        samplingResults: compactProportionResults,
+        samplePlan: ppsMeanPlan,
+        samplingResults: compactPpsMeanResults,
         reportContent,
         stage1CompletedAt: day(-5),
         stage2CompletedAt: day(-4),
         stage3CompletedAt: day(-3),
         stage4CompletedAt: day(-2),
     } as const;
-    const proportionSnapshot = (studentId: string, topicName: string = DOGFOOD_NAMES.topicA) => snapshot({
+    const ppsMeanSnapshot = (studentId: string, topicName: string = DOGFOOD_NAMES.topicA) => snapshot({
         topicName,
         studentName: studentsById[studentId]!.name,
         populationSize: 200,
-        samplePlan: proportionPlan,
-        samplingResults: compactProportionResults,
+        samplePlan: ppsMeanPlan,
+        samplingResults: compactPpsMeanResults,
         reportContent,
     });
 
     const experimentRows = await db.insert(experiment).values([
         { studentId: studentsById.S011!.id, taskId: aTask.id, currentStage: 1, status: "in_progress", questionnaire, createdAt: day(-2), updatedAt: day(-2) },
         { studentId: studentsById.S012!.id, taskId: aTask.id, currentStage: 2, status: "in_progress", questionnaire, stage1CompletedAt: day(-2), createdAt: day(-3), updatedAt: day(-2) },
-        { studentId: studentsById.S013!.id, taskId: aTask.id, currentStage: 3, status: "in_progress", questionnaire, samplePlan: proportionPlan, stage1CompletedAt: day(-3), stage2CompletedAt: day(-2), createdAt: day(-4), updatedAt: day(-2) },
+        { studentId: studentsById.S013!.id, taskId: aTask.id, currentStage: 3, status: "in_progress", questionnaire, samplePlan: ppsMeanPlan, stage1CompletedAt: day(-3), stage2CompletedAt: day(-2), createdAt: day(-4), updatedAt: day(-2) },
         { ...completedBase, studentId: studentsById.S014!.id, taskId: aTask.id, status: "in_progress", reportContent: "<p>四种抽样已完成，正在撰写实验报告。</p>", stage4CompletedAt: null, createdAt: day(-6), updatedAt: day(-1) },
-        { ...completedBase, studentId: studentsById.S015!.id, taskId: aTask.id, status: "submitted", submissionSnapshot: proportionSnapshot("S015"), submittedAt: day(-1), createdAt: day(-7), updatedAt: day(-1) },
-        { ...completedBase, studentId: studentsById.S016!.id, taskId: aTask.id, status: "graded", submissionSnapshot: proportionSnapshot("S016"), submittedAt: day(-2), scoreQuestionnaire: "92", scoreProcess: "88", scoreReport: "90", totalScore: "90.00", teacherComment: "结构完整，抽样方法比较清楚。", gradedByTeacherId: teachersById.T001!.id, gradedAt: day(-1), createdAt: day(-7), updatedAt: day(-1) },
-        { ...completedBase, studentId: studentsById.S017!.id, taskId: aTask.id, version: 2, status: "rejected", submissionSnapshot: proportionSnapshot("S017"), submittedAt: day(-2), rejectReason: "请补充四种抽样方法的比较，并说明分层分配依据。", gradedByTeacherId: teachersById.T001!.id, gradedAt: day(-1), createdAt: day(-7), updatedAt: day(-1) },
-        { ...completedBase, studentId: studentsById.S020!.id, taskId: aTask.id, status: "submitted", submissionSnapshot: proportionSnapshot("S020"), submittedAt: day(-3), createdAt: day(-8), updatedAt: day(-3) },
+        { ...completedBase, studentId: studentsById.S015!.id, taskId: aTask.id, status: "submitted", submissionSnapshot: ppsMeanSnapshot("S015"), submittedAt: day(-1), createdAt: day(-7), updatedAt: day(-1) },
+        { ...completedBase, studentId: studentsById.S016!.id, taskId: aTask.id, status: "graded", submissionSnapshot: ppsMeanSnapshot("S016"), submittedAt: day(-2), scoreQuestionnaire: "92", scoreProcess: "88", scoreReport: "90", totalScore: "90.00", teacherComment: "结构完整，抽样方法比较清楚。", gradedByTeacherId: teachersById.T001!.id, gradedAt: day(-1), createdAt: day(-7), updatedAt: day(-1) },
+        { ...completedBase, studentId: studentsById.S017!.id, taskId: aTask.id, version: 2, status: "rejected", submissionSnapshot: ppsMeanSnapshot("S017"), submittedAt: day(-2), rejectReason: "请补充四种抽样方法的比较，并说明分层分配依据。", gradedByTeacherId: teachersById.T001!.id, gradedAt: day(-1), createdAt: day(-7), updatedAt: day(-1) },
+        { ...completedBase, studentId: studentsById.S020!.id, taskId: aTask.id, status: "submitted", submissionSnapshot: ppsMeanSnapshot("S020"), submittedAt: day(-3), createdAt: day(-8), updatedAt: day(-3) },
         {
             studentId: studentsById.S015!.id,
             taskId: taskFor(DOGFOOD_NAMES.topicB).id,
@@ -441,8 +521,20 @@ async function seed() {
             createdAt: day(-6),
             updatedAt: day(-1),
         },
-        { ...completedBase, studentId: studentsById.S015!.id, taskId: taskFor(DOGFOOD_NAMES.topicF).id, status: "submitted", submissionSnapshot: proportionSnapshot("S015", DOGFOOD_NAMES.topicF), submittedAt: day(-3), createdAt: day(-9), updatedAt: day(-3) },
-        { ...completedBase, studentId: studentsById.S016!.id, taskId: taskFor(DOGFOOD_NAMES.topicG).id, status: "submitted", submissionSnapshot: proportionSnapshot("S016", DOGFOOD_NAMES.topicG), submittedAt: day(-3), createdAt: day(-9), updatedAt: day(-3) },
+        { ...completedBase, studentId: studentsById.S015!.id, taskId: taskFor(DOGFOOD_NAMES.topicF).id, status: "submitted", submissionSnapshot: ppsMeanSnapshot("S015", DOGFOOD_NAMES.topicF), submittedAt: day(-3), createdAt: day(-9), updatedAt: day(-3) },
+        { ...completedBase, studentId: studentsById.S016!.id, taskId: taskFor(DOGFOOD_NAMES.topicG).id, status: "submitted", submissionSnapshot: ppsMeanSnapshot("S016", DOGFOOD_NAMES.topicG), submittedAt: day(-3), createdAt: day(-9), updatedAt: day(-3) },
+        {
+            ...completedBase,
+            studentId: studentsById.S010!.id,
+            taskId: taskFor(DOGFOOD_NAMES.topicH).id,
+            status: "in_progress",
+            samplePlan: proportionPlan,
+            samplingResults: compactProportionResults,
+            reportContent: proportionReportContent,
+            stage4CompletedAt: null,
+            createdAt: day(-5),
+            updatedAt: day(-1),
+        },
     ]).returning({ id: experiment.id, studentId: experiment.studentId, taskId: experiment.taskId });
 
     const auditedExperiment = experimentRows.find((row) => (
@@ -450,7 +542,7 @@ async function seed() {
     ));
     if (!auditedExperiment) throw new Error("Dogfood audited experiment is missing");
     const auditedMethods = (["simple", "systematic", "pps", "stratified"] as const).map((method, index) => {
-        const result = proportionResults[method] as Record<string, unknown>;
+        const result = ppsMeanResults[method] as Record<string, unknown>;
         return {
             experimentId: auditedExperiment.id,
             method,

@@ -6,6 +6,7 @@ import { RichTextContent } from "@/components/RichTextContent";
 import { SamplingResultsSnapshot } from "@/components/SamplingResultsSnapshot";
 import { QuestionnaireSnapshot } from "@/components/QuestionnaireSnapshot";
 import { SamplePlanSnapshot } from "@/components/SamplePlanSnapshot";
+import { StudyContractSnapshot } from "@/components/StudyContractSnapshot";
 import { LoadingStatus } from "@/components/LoadingStatus";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -73,7 +74,8 @@ export function SubmissionDetailPage() {
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
-                    <div className="grid gap-4 grid-cols-4">
+                    <StudyContractSnapshot value={detail.snapshot.studyContract} />
+                    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                         {scores.map(([label, value, weight]) => (
                             <div key={label} className="rounded-xl border border-border bg-muted/40 p-4 text-center">
                                 <p className="text-xs text-muted-foreground">{label}</p>
@@ -94,7 +96,7 @@ export function SubmissionDetailPage() {
                         </div>
                         <div className="p-5">
                             <Tabs defaultValue="report">
-                                <TabsList className="grid h-auto w-full grid-cols-4">
+                                <TabsList className="grid h-auto w-full grid-cols-2 md:grid-cols-4">
                                     <TabsTrigger value="report">实验报告</TabsTrigger>
                                     <TabsTrigger value="questionnaire">问卷</TabsTrigger>
                                     <TabsTrigger value="plan">抽样方案</TabsTrigger>

@@ -3,6 +3,7 @@ import {
     countHardcodedPaletteClasses,
     countJsxSameIntentPairs,
     countResponsiveViewportClasses,
+    countUnsupportedResponsiveClasses,
 } from "./check-styles";
 
 function relativeLuminance(hex: string) {
@@ -29,7 +30,7 @@ describe("style guard", () => {
         expect(themeCss).toContain('@source not "../src/test-utils";');
     });
 
-    test("enforces the desktop-only document contract", async () => {
+    test("enforces the desktop-first reflow document contract", async () => {
         const themeCss = await Bun.file("styles/theme.css").text();
         const appHtml = await Promise.all([
             Bun.file("src/admin/admin.html").text(),
@@ -37,15 +38,15 @@ describe("style guard", () => {
             Bun.file("src/student/student.html").text(),
         ]);
 
-        expect(themeCss).toContain("--breakpoint-*: initial;");
-        expect(themeCss).toMatch(/html,\s*\n\s*body,\s*\n\s*#root\s*\{\s*\n\s*min-width:\s*80rem;/m);
-        expect(themeCss).not.toMatch(/@media\s*[^\{]*(?:(?:min|max)-width|orientation|(?:any-)?pointer|hover)|@container\b/i);
-        for (const html of appHtml) expect(html).not.toMatch(/<meta\s+name=["']viewport["']/i);
+        expect(themeCss).not.toContain("--breakpoint-*: initial;");
+        expect(themeCss).not.toMatch(/html,\s*\n\s*body,\s*\n\s*#root\s*\{[^}]*min-width:/m);
+        for (const html of appHtml) expect(html).toMatch(/<meta\s+name=["']viewport["'][^>]+width=device-width/i);
     });
 
     test("detects viewport-responsive utilities without confusing component sizes", () => {
         expect(countResponsiveViewportClasses("grid sm:grid-cols-2 xl:grid-cols-4 min-[900px]:flex max-2xl:block @md/card:flex landscape:grid")).toBe(6);
         expect(countResponsiveViewportClasses('sm: "h-8" lg: "h-10" backdrop-blur-sm')).toBe(0);
+        expect(countUnsupportedResponsiveClasses("sm:grid md:flex 2xl:grid min-[900px]:flex landscape:block")).toBe(3);
     });
 
     test("keeps normal success text above WCAG AA contrast on tinted surfaces", async () => {

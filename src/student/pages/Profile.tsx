@@ -100,8 +100,8 @@ export function Profile() {
                 </Button>
             </div>
 
-            <div className="grid grid-cols-3 gap-6">
-                <Card className="col-span-2 border-primary/20 bg-card/40 backdrop-blur-xl shadow-2xl overflow-hidden">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <Card className="overflow-hidden border-primary/20 bg-card/40 shadow-2xl backdrop-blur-xl lg:col-span-2">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-info opacity-20" />
                     <CardHeader className="border-b border-input/30 pb-4">
                         <CardTitle className="flex items-center gap-2 text-foreground">
@@ -111,7 +111,7 @@ export function Profile() {
                         <CardDescription className="text-muted-foreground">这些信息来自教务系统，无法直接修改。</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6 pt-6">
-                        <div className="grid grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                             <div className="space-y-2">
                                 <Label className="text-muted-foreground">姓名</Label>
                                 <div className="px-3 py-2 rounded-md bg-muted/50 border border-input/50 text-foreground" data-testid="student-profile-name">

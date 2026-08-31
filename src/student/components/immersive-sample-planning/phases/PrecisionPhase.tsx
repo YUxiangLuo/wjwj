@@ -60,7 +60,7 @@ export function PrecisionPhase({ params, onNext }: Props) {
                 </p>
             </div>
 
-            <div className={`grid gap-4 ${isMeanEstimation ? "grid-cols-2" : "grid-cols-3"}`}>
+            <div className={`grid grid-cols-1 gap-4 ${isMeanEstimation ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
                 <div className="rounded-2xl border border-border bg-background p-4 shadow-sm space-y-2">
                     <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">标准误差 SE</p>
                     <p className="font-mono text-sm text-foreground/90">
@@ -126,7 +126,7 @@ export function PrecisionPhase({ params, onNext }: Props) {
                         ))}
                     </div>
 
-                    <div className={`grid gap-3 text-center ${isMeanEstimation ? "grid-cols-2" : "grid-cols-3"}`}>
+                    <div className={`grid grid-cols-1 gap-3 text-center ${isMeanEstimation ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
                         <div className="rounded-xl bg-info/10 p-3">
                             <p className="text-[10px] font-medium uppercase tracking-wider text-info">SE</p>
                             <p className="text-lg font-bold tabular-nums text-info">{fmt(se)}</p>

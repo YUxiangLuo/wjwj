@@ -12,16 +12,8 @@ import { QuestionEditor } from "@/components/questionnaire/QuestionEditor";
 import { questionTypeLabels, questionTypeBadgeColors } from "@/lib/questionnaire-labels";
 import type { QuestionType } from "@/lib/questionnaire-types";
 
-import type { AnalysisTarget } from "@/lib/analysis-target";
 import { categoricalFieldsFromMapping } from "@/lib/analysis-target";
-
-interface FieldMappingState {
-    identifier?: string;
-    stratified: string[];
-    numeric: string[];
-    others: string[];
-    analysisTarget?: AnalysisTarget;
-}
+import { StudyContractEditor, type FieldMappingState } from "./StudyContractEditor";
 
 interface TopicWizardDialogProps {
     open: boolean;
@@ -259,12 +251,20 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
             if (fallback) numeric = [fallback];
         }
 
+        const target = numeric[0] ? { kind: "mean" as const, field: numeric[0] } : undefined;
         return {
             identifier,
             stratified,
             numeric,
             others: [] as string[],
-            analysisTarget: numeric[0] ? { kind: "mean" as const, field: numeric[0] } : undefined,
+            analysisTarget: target,
+            studyContract: target ? {
+                version: 1 as const,
+                researchQuestion: `${newTopicName.trim() || "本课题"}中${target.field}的平均水平是多少？`,
+                targetPopulation: "上传总体数据中的全部单位",
+                unitOfAnalysis: "总体数据中的一行记录",
+                target,
+            } : undefined,
         };
     }
 
@@ -273,15 +273,18 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
     }
 
     const uniqueFieldCount = new Set(
-        [fieldMapping.identifier, ...fieldMapping.stratified, ...fieldMapping.numeric].filter(Boolean)
+        [fieldMapping.identifier, ...fieldMapping.stratified, ...fieldMapping.numeric, ...fieldMapping.others].filter(Boolean)
     ).size;
-    const analysisTarget = fieldMapping.analysisTarget;
+    const studyContract = fieldMapping.studyContract;
+    const analysisTarget = studyContract?.target ?? fieldMapping.analysisTarget;
     const mappingRules = [
         { ok: Boolean(fieldMapping.identifier), text: "已选择 1 个标识符" },
         { ok: fieldMapping.stratified.length > 0, text: "至少 1 个分层变量" },
         { ok: fieldMapping.numeric.length > 0, text: "至少 1 个数值变量" },
         { ok: uniqueFieldCount >= 3, text: "至少 3 个不同字段" },
-        { ok: Boolean(analysisTarget?.kind && analysisTarget.field && (analysisTarget.kind === "mean" || analysisTarget.value)), text: "已指定对照变量" },
+        { ok: Boolean(studyContract?.researchQuestion.trim()), text: "已填写研究问题" },
+        { ok: Boolean(studyContract?.targetPopulation.trim() && studyContract.unitOfAnalysis.trim()), text: "已定义目标总体与分析单位" },
+        { ok: Boolean(analysisTarget?.kind && analysisTarget.field && (analysisTarget.kind === "mean" || analysisTarget.value)), text: "已指定目标估计量" },
     ];
     const categoricalFields = categoricalFieldsFromMapping(fieldMapping);
     const analysisCategoryValues = (() => {
@@ -303,7 +306,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
-                className="max-w-5xl h-[80vh] flex flex-col bg-card border-border text-foreground"
+                className="flex h-[90vh] w-[96vw] max-w-5xl flex-col border-border bg-card text-foreground"
                 onInteractOutside={(e) => e.preventDefault()}
             >
                 <DialogHeader>
@@ -509,6 +512,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 identifier: v,
                                                 stratified: prev.stratified.filter((item) => item !== v),
                                                 numeric: prev.numeric.filter((item) => item !== v),
+                                                others: prev.others.filter((item) => item !== v),
                                             }))}
                                         disabled={isPublishedTopic}
                                     >
@@ -524,7 +528,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     <p className="text-xs text-muted-foreground">用于唯一标识每条数据的字段，如“编号”、“ID”等</p>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                     {mappingRules.map((rule) => (
                                         <div
                                             key={rule.text}
@@ -538,7 +542,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     ))}
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                                     <div className="space-y-2">
                                         <Label className="text-foreground/90">分层变量（已选 {fieldMapping.stratified.length}）</Label>
                                         <p className="text-xs text-muted-foreground">用于按类别分组对比，建议 1-3 个，且每个字段唯一值不超过 20（如性别、学历、地区）。</p>
@@ -577,6 +581,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                                     ...prev,
                                                                     stratified: e.target.checked ? [...prev.stratified, c] : prev.stratified.filter(x => x !== c),
                                                                     numeric: e.target.checked ? prev.numeric.filter(x => x !== c) : prev.numeric,
+                                                                    others: e.target.checked ? prev.others.filter(x => x !== c) : prev.others,
                                                                 }));
                                                             }}
                                                         />
@@ -619,6 +624,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                                     ...prev,
                                                                     numeric: e.target.checked ? [...prev.numeric, c] : prev.numeric.filter(x => x !== c),
                                                                     stratified: e.target.checked ? prev.stratified.filter(x => x !== c) : prev.stratified,
+                                                                    others: e.target.checked ? prev.others.filter(x => x !== c) : prev.others,
                                                                 }));
                                                             }}
                                                         />
@@ -630,99 +636,14 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     </div>
                                 </div>
 
-                                <div className="space-y-3 rounded-lg border border-border bg-background p-4">
-                                    <div>
-                                        <Label className="text-foreground/90">对照变量（必选）</Label>
-                                        <p className="mt-1 text-xs text-muted-foreground">
-                                            学生规划和分析都钉在这个字段上。问卷是预试，答案不进入估计。PPS 规模变量不能与对照变量相同。
-                                        </p>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="space-y-1.5">
-                                            <Label className="text-xs text-muted-foreground">估计类型</Label>
-                                            <Select
-                                                value={analysisTarget?.kind ?? ""}
-                                                disabled={isPublishedTopic}
-                                                onValueChange={(kind) => {
-                                                    if (kind === "mean") {
-                                                        const field = fieldMapping.numeric.includes(analysisTarget?.field ?? "")
-                                                            ? analysisTarget!.field
-                                                            : (fieldMapping.numeric[0] ?? "");
-                                                        setFieldMapping((prev) => ({
-                                                            ...prev,
-                                                            analysisTarget: field ? { kind: "mean", field } : undefined,
-                                                        }));
-                                                        return;
-                                                    }
-                                                    const field = categoricalFields.includes(analysisTarget?.field ?? "")
-                                                        ? analysisTarget!.field
-                                                        : (categoricalFields[0] ?? "");
-                                                    setFieldMapping((prev) => ({
-                                                        ...prev,
-                                                        analysisTarget: field ? { kind: "proportion", field, value: "" } : undefined,
-                                                    }));
-                                                }}
-                                            >
-                                                <SelectTrigger aria-label="选择对照估计类型" data-testid="teacher-topic-analysis-kind" className="bg-background border-border">
-                                                    <SelectValue placeholder="选择均值或比例" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="mean">均值</SelectItem>
-                                                    <SelectItem value="proportion" disabled={categoricalFields.length === 0}>比例</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <Label className="text-xs text-muted-foreground">字段</Label>
-                                            <Select
-                                                value={analysisTarget?.field ?? ""}
-                                                disabled={isPublishedTopic || !analysisTarget?.kind}
-                                                onValueChange={(field) => {
-                                                    setFieldMapping((prev) => {
-                                                        if (prev.analysisTarget?.kind === "proportion") {
-                                                            return { ...prev, analysisTarget: { kind: "proportion", field, value: "" } };
-                                                        }
-                                                        return { ...prev, analysisTarget: { kind: "mean", field } };
-                                                    });
-                                                }}
-                                            >
-                                                <SelectTrigger aria-label="选择对照字段" data-testid="teacher-topic-analysis-field" className="bg-background border-border">
-                                                    <SelectValue placeholder="选择对照字段" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {(analysisTarget?.kind === "proportion" ? categoricalFields : fieldMapping.numeric).map((field) => (
-                                                        <SelectItem key={field} value={field}>{field}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
-                                    {analysisTarget?.kind === "proportion" && (
-                                        <div className="space-y-1.5">
-                                            <Label className="text-xs text-muted-foreground">成功类别</Label>
-                                            <Select
-                                                value={analysisTarget.value}
-                                                disabled={isPublishedTopic || analysisCategoryValues.length === 0}
-                                                onValueChange={(value) => {
-                                                    setFieldMapping((prev) => (
-                                                        prev.analysisTarget?.kind === "proportion"
-                                                            ? { ...prev, analysisTarget: { ...prev.analysisTarget, value } }
-                                                            : prev
-                                                    ));
-                                                }}
-                                            >
-                                                <SelectTrigger aria-label="选择比例对照类别" data-testid="teacher-topic-analysis-value" className="bg-background border-border">
-                                                    <SelectValue placeholder="选择要估计的类别" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {analysisCategoryValues.map((value) => (
-                                                        <SelectItem key={value} value={value}>{value}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    )}
-                                </div>
+                                <StudyContractEditor
+                                    value={fieldMapping}
+                                    onChange={setFieldMapping}
+                                    topicName={newTopicName}
+                                    categoricalFields={categoricalFields}
+                                    categoryValues={analysisCategoryValues}
+                                    disabled={isPublishedTopic}
+                                />
                             </div>
                         )}
 
@@ -879,7 +800,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
                         {!loadingDetail && currentStep === 6 && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <div className="grid grid-cols-3 gap-6">
+                                <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
                                     <div className="bg-background border border-border rounded-lg p-6 space-y-4">
                                         <Label htmlFor="teacher-topic-weight-questionnaire" className="text-foreground/90 text-lg">问卷设计权重</Label>
                                         <div className="flex items-center gap-2">

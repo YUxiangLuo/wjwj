@@ -1,5 +1,34 @@
 import type { MethodKey, SamplingResultsData } from "../api-client";
+import { resolveStudyContract, type ResolvedStudyContract } from "../../lib/analysis-target";
 import { createSeededRandom, drawPreparedPPSSample, preparePPSSampling, stratumKey } from "../sampling";
+import { zForConfidenceLevel } from "./confidence-level";
+import type {
+    AnalysisMetricsResult,
+    CategoricalFieldAnalysis,
+    NumericFieldAnalysis,
+    NumericMethodAnalysis,
+    TargetAnalysis,
+    TargetMethodAnalysis,
+} from "./analysis-metrics-types";
+import {
+    buildEmptyCategoricalMethodAnalysis,
+    buildEmptyRepresentativeness,
+    categoryValue,
+    computeDistributionRepresentativeness,
+    computeStratifiedDistributionEstimate,
+    estimateSimpleDistribution,
+    estimateWeightedDistribution,
+    limitCategoricalAnalysis,
+    toPopulationPercentages,
+} from "./analysis-categorical";
+export type {
+    AnalysisMetricsResult,
+    CategoricalFieldAnalysis,
+    NumericFieldAnalysis,
+    NumericMethodAnalysis,
+    TargetAnalysis,
+    TargetMethodAnalysis,
+} from "./analysis-metrics-types";
 import {
     buildPopulationCategoricalStats,
     buildPopulationNumericStats,
@@ -9,6 +38,7 @@ import {
 } from "./population-data";
 
 const METHODS: MethodKey[] = ["simple", "systematic", "pps", "stratified"];
+const TARGET_METRIC_KEY = "__study_target__";
 export const DEFAULT_PPS_MONTE_CARLO_REPLICATES = 512;
 
 /** 教学环境可调整重复次数；设置边界避免误配置导致无意义结果或过量计算。 */
@@ -24,31 +54,8 @@ interface PpsMonteCarloContext {
     standardErrors: Record<string, number | null>;
 }
 
-export interface NumericMethodAnalysis {
-    estimate: number | null;
-    standardError: number | null;
-}
-
-export interface NumericFieldAnalysis {
-    populationMean: number;
-    populationVariance: number;
-    methods: Record<MethodKey, NumericMethodAnalysis>;
-}
-
-export interface CategoricalFieldAnalysis {
-    population: Record<string, number>;
-    methods: Record<MethodKey, Record<string, number>>;
-    representativeness: Record<MethodKey, number | null>;
-}
-
-export interface AnalysisMetricsResult {
-    ppsMonteCarloReplicates: number;
-    numericFields: string[];
-    excludedNumericFields: string[];
-    categoricalFields: string[];
-    numeric: Record<string, NumericFieldAnalysis>;
-    categorical: Record<string, CategoricalFieldAnalysis>;
-}
+const ppsContextCache = new WeakMap<Array<Record<string, unknown>>, Map<string, PpsMonteCarloContext | null>>();
+const PPS_CONTEXT_CACHE_MAX_ENTRIES = 64;
 
 function unique<T>(values: T[]) {
     return Array.from(new Set(values));
@@ -63,24 +70,6 @@ function buildEmptyNumericMethodAnalysis(): Record<MethodKey, NumericMethodAnaly
     };
 }
 
-function buildEmptyCategoricalMethodAnalysis(): Record<MethodKey, Record<string, number>> {
-    return {
-        simple: {},
-        systematic: {},
-        pps: {},
-        stratified: {},
-    };
-}
-
-function buildEmptyRepresentativeness(): Record<MethodKey, number | null> {
-    return {
-        simple: null,
-        systematic: null,
-        pps: null,
-        stratified: null,
-    };
-}
-
 function toFiniteNumber(value: unknown) {
     if (value === undefined || value === null || (typeof value === "string" && value.trim() === "")) {
         return null;
@@ -89,10 +78,35 @@ function toFiniteNumber(value: unknown) {
     return Number.isFinite(numericValue) ? numericValue : null;
 }
 
-function toTrimmedCategory(value: unknown) {
-    if (value === undefined || value === null) return null;
-    const text = String(value).trim();
-    return text ? text : null;
+type NumericAccessor = (row: Record<string, unknown>) => number | null;
+
+function fieldAccessor(field: string): NumericAccessor {
+    return (row) => toFiniteNumber(row[field]);
+}
+
+function estimateSimpleValue(rows: Array<Record<string, unknown>>, accessor: NumericAccessor) {
+    const values = rows.map(accessor).filter((value): value is number => value !== null);
+    if (values.length === 0) return null;
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function estimateWeightedValue(
+    rows: Array<Record<string, unknown>>,
+    accessor: NumericAccessor,
+    inclusionProbabilities: number[] | undefined,
+) {
+    if (!Array.isArray(inclusionProbabilities) || inclusionProbabilities.length !== rows.length) return null;
+    let weightedSum = 0;
+    let totalWeight = 0;
+    for (let index = 0; index < rows.length; index += 1) {
+        const value = rows[index] ? accessor(rows[index]!) : null;
+        const inclusionProbability = Number(inclusionProbabilities[index]);
+        if (value === null || !Number.isFinite(inclusionProbability) || inclusionProbability <= 0) continue;
+        const weight = 1 / inclusionProbability;
+        weightedSum += weight * value;
+        totalWeight += weight;
+    }
+    return totalWeight > 0 ? weightedSum / totalWeight : null;
 }
 
 function extractFiniteValues(rows: Array<Record<string, unknown>>, field: string) {
@@ -102,9 +116,7 @@ function extractFiniteValues(rows: Array<Record<string, unknown>>, field: string
 }
 
 function estimateSimpleMean(rows: Array<Record<string, unknown>>, field: string) {
-    const values = extractFiniteValues(rows, field);
-    if (values.length === 0) return null;
-    return values.reduce((sum, value) => sum + value, 0) / values.length;
+    return estimateSimpleValue(rows, fieldAccessor(field));
 }
 
 /** Hájek 比估计：Σ (y_i/π_i) / Σ (1/π_i)，不是 (1/N) Σ (y_i/π_i) 的 HT 均值。 */
@@ -113,73 +125,7 @@ function estimateWeightedMean(
     field: string,
     inclusionProbabilities: number[] | undefined,
 ) {
-    if (!Array.isArray(inclusionProbabilities) || inclusionProbabilities.length !== rows.length) {
-        return null;
-    }
-
-    let weightedSum = 0;
-    let totalWeight = 0;
-
-    for (let index = 0; index < rows.length; index += 1) {
-        const value = toFiniteNumber(rows[index]?.[field]);
-        const inclusionProbability = Number(inclusionProbabilities[index]);
-        if (value === null || !Number.isFinite(inclusionProbability) || inclusionProbability <= 0) {
-            continue;
-        }
-        const weight = 1 / inclusionProbability;
-        weightedSum += weight * value;
-        totalWeight += weight;
-    }
-
-    return totalWeight > 0 ? weightedSum / totalWeight : null;
-}
-
-function estimateSimpleDistribution(rows: Array<Record<string, unknown>>, field: string) {
-    const counts: Record<string, number> = {};
-    let total = 0;
-
-    for (const row of rows) {
-        const category = toTrimmedCategory(row[field]);
-        if (!category) continue;
-        counts[category] = (counts[category] || 0) + 1;
-        total += 1;
-    }
-
-    if (total === 0) return {};
-
-    return Object.fromEntries(
-        Object.entries(counts).map(([category, count]) => [category, count / total * 100])
-    );
-}
-
-function estimateWeightedDistribution(
-    rows: Array<Record<string, unknown>>,
-    field: string,
-    inclusionProbabilities: number[] | undefined,
-) {
-    if (!Array.isArray(inclusionProbabilities) || inclusionProbabilities.length !== rows.length) {
-        return {};
-    }
-
-    const counts: Record<string, number> = {};
-    let totalWeight = 0;
-
-    for (let index = 0; index < rows.length; index += 1) {
-        const category = toTrimmedCategory(rows[index]?.[field]);
-        const inclusionProbability = Number(inclusionProbabilities[index]);
-        if (!category || !Number.isFinite(inclusionProbability) || inclusionProbability <= 0) {
-            continue;
-        }
-        const weight = 1 / inclusionProbability;
-        counts[category] = (counts[category] || 0) + weight;
-        totalWeight += weight;
-    }
-
-    if (totalWeight <= 0) return {};
-
-    return Object.fromEntries(
-        Object.entries(counts).map(([category, weightedCount]) => [category, weightedCount / totalWeight * 100])
-    );
+    return estimateWeightedValue(rows, fieldAccessor(field), inclusionProbabilities);
 }
 
 function computeSimpleRandomMeanSe(
@@ -195,7 +141,7 @@ function computeSimpleRandomMeanSe(
 
 function computeLegacySystematicMeanSe(
     population: Array<Record<string, unknown>>,
-    field: string,
+    accessor: NumericAccessor,
     kValue: number,
 ) {
     if (!Number.isInteger(kValue) || kValue < 1 || population.length === 0) return null;
@@ -204,7 +150,8 @@ function computeLegacySystematicMeanSe(
     for (let startIndex = 0; startIndex < kValue; startIndex += 1) {
         const values: number[] = [];
         for (let index = startIndex; index < population.length; index += kValue) {
-            const value = toFiniteNumber(population[index]?.[field]);
+            const row = population[index];
+            const value = row ? accessor(row) : null;
             if (value !== null) {
                 values.push(value);
             }
@@ -222,7 +169,7 @@ function computeLegacySystematicMeanSe(
 
 function computeFractionalSystematicMeanSe(
     population: Array<Record<string, unknown>>,
-    field: string,
+    accessor: NumericAccessor,
     interval: number,
     sampleSize: number,
 ) {
@@ -273,7 +220,8 @@ function computeFractionalSystematicMeanSe(
     let valueSum = 0;
     let valueCount = 0;
     for (const selectedIndex of selectedIndices) {
-        const value = toFiniteNumber(population[selectedIndex]?.[field]);
+        const row = population[selectedIndex];
+        const value = row ? accessor(row) : null;
         if (value !== null) {
             valueSum += value;
             valueCount += 1;
@@ -310,12 +258,14 @@ function computeFractionalSystematicMeanSe(
             const nextIndex = previousIndex + 1;
             if (nextIndex >= populationSize) return null;
 
-            const previousValue = toFiniteNumber(population[previousIndex]?.[field]);
+            const previousRow = population[previousIndex];
+            const previousValue = previousRow ? accessor(previousRow) : null;
             if (previousValue !== null) {
                 valueSum -= previousValue;
                 valueCount -= 1;
             }
-            const nextValue = toFiniteNumber(population[nextIndex]?.[field]);
+            const nextRow = population[nextIndex];
+            const nextValue = nextRow ? accessor(nextRow) : null;
             if (nextValue !== null) {
                 valueSum += nextValue;
                 valueCount += 1;
@@ -335,16 +285,16 @@ function computeFractionalSystematicMeanSe(
 
 function computeSystematicExactMeanSe(
     population: Array<Record<string, unknown>>,
-    field: string,
+    accessor: NumericAccessor,
     design: SamplingResultsData["systematic"] | undefined,
 ) {
     const interval = Number(design?.interval);
     const sampleSize = Number(design?.sampleCount);
     if (Number.isFinite(interval) && Number.isInteger(sampleSize)) {
-        return computeFractionalSystematicMeanSe(population, field, interval, sampleSize);
+        return computeFractionalSystematicMeanSe(population, accessor, interval, sampleSize);
     }
 
-    return computeLegacySystematicMeanSe(population, field, Number(design?.kValue));
+    return computeLegacySystematicMeanSe(population, accessor, Number(design?.kValue));
 }
 
 function computeStratifiedMeanEstimate(
@@ -352,7 +302,7 @@ function computeStratifiedMeanEstimate(
     stratifyBy: string | undefined,
     layers: Array<{ name: string; count: number; sampleCount: number }> | undefined,
     totalPopulation: number,
-    field: string,
+    accessor: NumericAccessor,
 ) {
     if (!stratifyBy || !Array.isArray(layers) || layers.length === 0 || totalPopulation < 1) {
         return null;
@@ -361,7 +311,7 @@ function computeStratifiedMeanEstimate(
     let estimate = 0;
     for (const layer of layers) {
         const layerRows = rows.filter((row) => stratumKey(row[stratifyBy]) === stratumKey(layer.name));
-        const values = extractFiniteValues(layerRows, field);
+        const values = layerRows.map(accessor).filter((value): value is number => value !== null);
         if (values.length === 0 || layer.count < 1) {
             return null;
         }
@@ -377,7 +327,7 @@ function computeStratifiedMeanSe(
     stratifyBy: string | undefined,
     layers: Array<{ name: string; count: number; sampleCount: number }> | undefined,
     totalPopulation: number,
-    field: string,
+    accessor: NumericAccessor,
 ) {
     if (!stratifyBy || !Array.isArray(layers) || layers.length === 0 || totalPopulation < 1) {
         return null;
@@ -392,7 +342,7 @@ function computeStratifiedMeanSe(
 
         const populationValues = population
             .filter((row) => stratumKey(row[stratifyBy]) === stratumKey(layer.name))
-            .map((row) => toFiniteNumber(row[field]))
+            .map(accessor)
             .filter((value): value is number => value !== null);
 
         if (populationValues.length === 0) {
@@ -416,12 +366,15 @@ function buildPpsMonteCarloContext(
     population: Array<Record<string, unknown>>,
     sizeField: string | undefined,
     sampleSize: number | undefined,
-    numericFields: string[],
+    accessors: Record<string, NumericAccessor>,
     replicateCount: number,
 ): PpsMonteCarloContext | null {
     const normalizedSampleSize = Number(sampleSize);
     if (!sizeField || !Number.isInteger(normalizedSampleSize) || normalizedSampleSize < 1) {
         return null;
+    }
+    if (normalizedSampleSize >= population.length && population.length > 0) {
+        return { standardErrors: Object.fromEntries(Object.keys(accessors).map((key) => [key, 0])) };
     }
 
     const prepared = preparePPSSampling(population, sizeField, normalizedSampleSize);
@@ -431,7 +384,8 @@ function buildPpsMonteCarloContext(
 
     // Welford accumulators keep memory at O(number of numeric fields) instead
     // of retaining every complete PPS sample at once.
-    const accumulators = Object.fromEntries(numericFields.map((field) => [field, {
+    const entries = Object.entries(accessors);
+    const accumulators = Object.fromEntries(entries.map(([key]) => [key, {
         count: 0,
         mean: 0,
         squaredDeviation: 0,
@@ -444,15 +398,15 @@ function buildPpsMonteCarloContext(
         );
         if (replicate.data.length !== normalizedSampleSize) continue;
 
-        for (const field of numericFields) {
-            const estimate = estimateWeightedMean(
+        for (const [key, accessor] of entries) {
+            const estimate = estimateWeightedValue(
                 replicate.data,
-                field,
+                accessor,
                 replicate.inclusionProbabilities,
             );
             if (estimate === null) continue;
 
-            const accumulator = accumulators[field]!;
+            const accumulator = accumulators[key]!;
             accumulator.count += 1;
             const delta = estimate - accumulator.mean;
             accumulator.mean += delta / accumulator.count;
@@ -460,10 +414,10 @@ function buildPpsMonteCarloContext(
         }
     }
 
-    const standardErrors = Object.fromEntries(numericFields.map((field) => {
-        const accumulator = accumulators[field]!;
+    const standardErrors = Object.fromEntries(entries.map(([key]) => {
+        const accumulator = accumulators[key]!;
         return [
-            field,
+            key,
             accumulator.count > 1
                 // 重复抽样结果用于估计设计分布的标准差，采用 Bessel 校正 R−1。
                 ? Math.sqrt(Math.max(0, accumulator.squaredDeviation / (accumulator.count - 1)))
@@ -473,6 +427,32 @@ function buildPpsMonteCarloContext(
     return { standardErrors };
 }
 
+function getCachedPpsMonteCarloContext(
+    population: Array<Record<string, unknown>>,
+    cacheKey: string,
+    compute: () => PpsMonteCarloContext | null,
+) {
+    let cache = ppsContextCache.get(population);
+    if (!cache) {
+        cache = new Map();
+        ppsContextCache.set(population, cache);
+    }
+    if (cache.has(cacheKey)) {
+        const hit = cache.get(cacheKey) ?? null;
+        cache.delete(cacheKey);
+        cache.set(cacheKey, hit);
+        return hit;
+    }
+    const value = compute();
+    cache.set(cacheKey, value);
+    while (cache.size > PPS_CONTEXT_CACHE_MAX_ENTRIES) {
+        const oldest = cache.keys().next().value as string | undefined;
+        if (oldest === undefined) break;
+        cache.delete(oldest);
+    }
+    return value;
+}
+
 function computeMonteCarloPpsMeanSe(
     field: string,
     context: PpsMonteCarloContext | null,
@@ -480,77 +460,116 @@ function computeMonteCarloPpsMeanSe(
     return context?.standardErrors[field] ?? null;
 }
 
-function computeStratifiedDistributionEstimate(
+function sampleVariance(values: number[]) {
+    if (values.length < 2) return 0;
+    const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+    return values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (values.length - 1);
+}
+
+function computeSimpleRandomAccessorSe(
+    population: Array<Record<string, unknown>>,
+    accessor: NumericAccessor,
+    sampleSize: number,
+) {
+    const values = population.map(accessor).filter((value): value is number => value !== null);
+    if (values.length !== population.length || sampleSize < 1) return null;
+    if (sampleSize >= population.length || population.length <= 1) return 0;
+    return Math.sqrt((1 - sampleSize / population.length) * sampleVariance(values) / sampleSize);
+}
+
+function normalizeConfidenceLevel(value: unknown): "90" | "95" | "99" {
+    return value === "90" || value === "99" ? value : "95";
+}
+
+function normalizePlannedMargin(value: unknown, kind: "mean" | "proportion") {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric <= 0) return null;
+    if (kind === "proportion") return numeric >= 1 ? numeric / 100 : numeric;
+    return numeric;
+}
+
+function methodSampleSize(
+    method: MethodKey,
+    samplingResults: SamplingResultsData | null | undefined,
     rows: Array<Record<string, unknown>>,
-    field: string,
-    stratifyBy: string | undefined,
-    layers: Array<{ name: string; count: number; sampleCount: number }> | undefined,
-    totalPopulation: number,
 ) {
-    if (!stratifyBy || !Array.isArray(layers) || layers.length === 0 || totalPopulation < 1) {
-        return {};
-    }
-
-    const distribution: Record<string, number> = {};
-
-    for (const layer of layers) {
-        if (layer.count < 1 || layer.sampleCount < 1) {
-            return {};
-        }
-
-        const layerRows = rows.filter((row) => stratumKey(row[stratifyBy]) === stratumKey(layer.name));
-        if (layerRows.length === 0) {
-            return {};
-        }
-
-        const layerDistribution = estimateSimpleDistribution(layerRows, field);
-        const weight = layer.count / totalPopulation;
-        for (const [category, proportion] of Object.entries(layerDistribution)) {
-            distribution[category] = (distribution[category] || 0) + weight * proportion;
-        }
-    }
-
-    return distribution;
+    const stored = Number(samplingResults?.[method]?.sampleCount);
+    return Number.isInteger(stored) && stored >= 0 ? stored : rows.length || null;
 }
 
-function computeDistributionRepresentativeness(
-    populationDistribution: Record<string, number>,
-    estimatedDistribution: Record<string, number>,
-) {
-    const categories = unique([
-        ...Object.keys(populationDistribution),
-        ...Object.keys(estimatedDistribution),
-    ]);
-
-    if (categories.length === 0) {
-        return null;
+function buildTargetMethodAnalysis(params: {
+    estimate: number | null;
+    standardError: number | null;
+    sampleSize: number | null;
+    populationSize: number;
+    z: number;
+    kind: "mean" | "proportion";
+}): TargetMethodAnalysis {
+    const { estimate, standardError, sampleSize, populationSize, z, kind } = params;
+    if (estimate === null || standardError === null || sampleSize === null) {
+        return {
+            estimate,
+            standardError,
+            marginOfError: null,
+            sampleSize,
+            effectiveSampleSize: null,
+            reliability: { status: "unavailable", reasons: ["该方法没有可用的目标估计或设计标准误"] },
+        };
+    }
+    if (sampleSize >= populationSize && standardError === 0) {
+        return {
+            estimate,
+            standardError,
+            marginOfError: 0,
+            sampleSize,
+            effectiveSampleSize: populationSize,
+            reliability: { status: "census", reasons: ["当前方法覆盖完整虚拟总体"] },
+        };
     }
 
-    let totalDifference = 0;
-    for (const category of categories) {
-        const populationValue = populationDistribution[category] ?? 0;
-        const estimateValue = estimatedDistribution[category] ?? 0;
-        totalDifference += Math.abs(estimateValue - populationValue);
+    let effectiveSampleSize: number | null = sampleSize;
+    const reasons: string[] = [];
+    if (kind === "proportion") {
+        effectiveSampleSize = estimate > 0 && estimate < 1 && standardError > 0
+            ? Math.min(populationSize, estimate * (1 - estimate) / (standardError ** 2))
+            : null;
+        if (sampleSize < 30) reasons.push("实际样本量低于30，比例正态近似可能不稳定");
+        if (effectiveSampleSize !== null && effectiveSampleSize < 30) reasons.push("设计有效样本量低于30");
+        if (estimate <= 0 || estimate >= 1) reasons.push("估计位于0或1边界，不展示为正式置信区间");
     }
 
-    return totalDifference / categories.length;
-}
-
-function toPopulationPercentages(counts: Record<string, number>) {
-    const total = Object.values(counts).reduce((sum, value) => sum + value, 0);
-    if (total <= 0) return {};
-    return Object.fromEntries(
-        Object.entries(counts).map(([category, count]) => [category, count / total * 100])
-    );
+    return {
+        estimate,
+        standardError,
+        marginOfError: z * standardError,
+        sampleSize,
+        effectiveSampleSize,
+        reliability: { status: reasons.length ? "caution" : "ok", reasons },
+    };
 }
 
 export function buildAnalysisMetrics(params: {
     population: Array<Record<string, unknown>>;
     fieldMapping: TopicFieldMapping | null;
     samplingResults: SamplingResultsData | null | undefined;
+    studyContract?: ResolvedStudyContract | null;
+    samplePlan?: { confidenceLevel?: unknown; marginOfError?: unknown } | null;
+    targetOnly?: boolean;
+    fieldFilter?: string | null;
 }): AnalysisMetricsResult {
-    const numericFields = unique(params.fieldMapping?.numeric ?? []);
-    const categoricalFields = getCategoricalFieldsFromTopicMapping(params.fieldMapping);
+    const allNumericFields = unique(params.fieldMapping?.numeric ?? []);
+    const allCategoricalFields = getCategoricalFieldsFromTopicMapping(params.fieldMapping);
+    const contract = params.studyContract ?? resolveStudyContract(params.fieldMapping);
+    const numericFields = params.targetOnly
+        ? []
+        : params.fieldFilter
+            ? allNumericFields.filter((field) => field === params.fieldFilter)
+            : allNumericFields;
+    const categoricalFields = params.targetOnly
+        ? []
+        : params.fieldFilter
+            ? allCategoricalFields.filter((field) => field === params.fieldFilter)
+            : allCategoricalFields;
     const populationSize = params.population.length;
     const ppsMonteCarloReplicates = resolvePpsMonteCarloReplicates(
         process.env.PPS_MONTE_CARLO_REPLICATES,
@@ -562,20 +581,36 @@ export function buildAnalysisMetrics(params: {
         populationNumericStats[field]?.count === populationSize
     ));
     const populationCategoricalCounts = buildPopulationCategoricalStats(params.population, categoricalFields);
+    let targetAccessor: NumericAccessor | null = null;
+    if (contract?.contract.target.kind === "mean") {
+        targetAccessor = fieldAccessor(contract.contract.target.field);
+    } else if (contract?.contract.target.kind === "proportion") {
+        const { field, value } = contract.contract.target;
+        targetAccessor = (row) => categoryValue(row[field]) === value ? 1 : 0;
+    }
+    const ppsAccessors = Object.fromEntries(completeNumericFields.map((field) => [field, fieldAccessor(field)]));
+    if (targetAccessor) ppsAccessors[TARGET_METRIC_KEY] = targetAccessor;
 
     const simpleRows = (params.samplingResults?.simple?.data ?? []) as Array<Record<string, unknown>>;
     const systematicRows = (params.samplingResults?.systematic?.data ?? []) as Array<Record<string, unknown>>;
     const ppsRows = (params.samplingResults?.pps?.data ?? []) as Array<Record<string, unknown>>;
     const stratifiedRows = (params.samplingResults?.stratified?.data ?? []) as Array<Record<string, unknown>>;
-    const ppsMonteCarloContext = params.samplingResults?.pps?.unavailable || completeNumericFields.length === 0
+    const ppsCacheKey = JSON.stringify({
+        sizeField: params.samplingResults?.pps?.sizeField,
+        sampleCount: params.samplingResults?.pps?.sampleCount,
+        fields: completeNumericFields,
+        target: contract?.contract.target ?? null,
+        replicates: ppsMonteCarloReplicates,
+    });
+    const ppsMonteCarloContext = params.samplingResults?.pps?.unavailable || Object.keys(ppsAccessors).length === 0
         ? null
-        : buildPpsMonteCarloContext(
-            params.population,
-            params.samplingResults?.pps?.sizeField,
-            params.samplingResults?.pps?.sampleCount,
-            completeNumericFields,
-            ppsMonteCarloReplicates,
-        );
+        : getCachedPpsMonteCarloContext(params.population, ppsCacheKey, () => buildPpsMonteCarloContext(
+                params.population,
+                params.samplingResults?.pps?.sizeField,
+                params.samplingResults?.pps?.sampleCount,
+                ppsAccessors,
+                ppsMonteCarloReplicates,
+            ));
 
     const numeric: Record<string, NumericFieldAnalysis> = {};
     for (const field of completeNumericFields) {
@@ -591,7 +626,7 @@ export function buildAnalysisMetrics(params: {
             estimate: estimateSimpleMean(systematicRows, field),
             standardError: computeSystematicExactMeanSe(
                 params.population,
-                field,
+                fieldAccessor(field),
                 params.samplingResults?.systematic,
             ),
         };
@@ -616,14 +651,14 @@ export function buildAnalysisMetrics(params: {
                 params.samplingResults?.stratified?.stratifyBy,
                 params.samplingResults?.stratified?.layers,
                 populationSize,
-                field,
+                fieldAccessor(field),
             ),
             standardError: computeStratifiedMeanSe(
                 params.population,
                 params.samplingResults?.stratified?.stratifyBy,
                 params.samplingResults?.stratified?.layers,
                 populationSize,
-                field,
+                fieldAccessor(field),
             ),
         };
 
@@ -670,11 +705,82 @@ export function buildAnalysisMetrics(params: {
             );
         }
 
-        categorical[field] = {
+        categorical[field] = limitCategoricalAnalysis({
             population: populationDistribution,
             methods,
             representativeness,
-        };
+        }, contract?.contract.target.kind === "proportion" && contract.contract.target.field === field
+            ? contract.contract.target.value
+            : undefined);
+    }
+
+    let target: TargetAnalysis | null = null;
+    if (contract && targetAccessor) {
+        const populationValues = params.population
+            .map(targetAccessor)
+            .filter((value): value is number => value !== null);
+        if (populationValues.length === populationSize && populationSize > 0) {
+            const kind = contract.contract.target.kind;
+            const confidenceLevel = normalizeConfidenceLevel(params.samplePlan?.confidenceLevel);
+            const z = zForConfidenceLevel(confidenceLevel);
+            const populationValue = populationValues.reduce((sum, value) => sum + value, 0) / populationValues.length;
+            const rowsByMethod: Record<MethodKey, Array<Record<string, unknown>>> = {
+                simple: simpleRows,
+                systematic: systematicRows,
+                pps: ppsRows,
+                stratified: stratifiedRows,
+            };
+            const estimates: Record<MethodKey, number | null> = {
+                simple: estimateSimpleValue(simpleRows, targetAccessor),
+                systematic: estimateSimpleValue(systematicRows, targetAccessor),
+                pps: params.samplingResults?.pps?.unavailable
+                    ? null
+                    : estimateWeightedValue(ppsRows, targetAccessor, params.samplingResults?.pps?.inclusionProbabilities),
+                stratified: computeStratifiedMeanEstimate(
+                    stratifiedRows,
+                    params.samplingResults?.stratified?.stratifyBy,
+                    params.samplingResults?.stratified?.layers,
+                    populationSize,
+                    targetAccessor,
+                ),
+            };
+            const standardErrors: Record<MethodKey, number | null> = {
+                simple: computeSimpleRandomAccessorSe(
+                    params.population,
+                    targetAccessor,
+                    methodSampleSize("simple", params.samplingResults, simpleRows) ?? 0,
+                ),
+                systematic: computeSystematicExactMeanSe(
+                    params.population,
+                    targetAccessor,
+                    params.samplingResults?.systematic,
+                ),
+                pps: params.samplingResults?.pps?.unavailable
+                    ? null
+                    : computeMonteCarloPpsMeanSe(TARGET_METRIC_KEY, ppsMonteCarloContext),
+                stratified: computeStratifiedMeanSe(
+                    params.population,
+                    params.samplingResults?.stratified?.stratifyBy,
+                    params.samplingResults?.stratified?.layers,
+                    populationSize,
+                    targetAccessor,
+                ),
+            };
+            target = {
+                contract,
+                confidenceLevel,
+                plannedMarginOfError: normalizePlannedMargin(params.samplePlan?.marginOfError, kind),
+                populationValue,
+                methods: Object.fromEntries(METHODS.map((method) => [method, buildTargetMethodAnalysis({
+                    estimate: estimates[method],
+                    standardError: standardErrors[method],
+                    sampleSize: methodSampleSize(method, params.samplingResults, rowsByMethod[method]),
+                    populationSize,
+                    z,
+                    kind,
+                })])) as Record<MethodKey, TargetMethodAnalysis>,
+            };
+        }
     }
 
     return {
@@ -684,5 +790,7 @@ export function buildAnalysisMetrics(params: {
         categoricalFields: Object.keys(categorical),
         numeric,
         categorical,
+        target,
+        fieldCatalog: { numeric: allNumericFields, categorical: allCategoricalFields },
     };
 }

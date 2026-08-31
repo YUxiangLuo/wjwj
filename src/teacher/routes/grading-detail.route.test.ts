@@ -34,6 +34,7 @@ test("grading detail prefers the immutable submission snapshot", async () => {
     const response = await module.gradingDetailRoutes.GET!(withId(new Request("https://example.com"), "99"));
     const payload = await response.json() as any;
     expect(payload.data).toMatchObject({ version: 7, studentName: "提交时学生", topicName: "提交时课题", populationSize: 7200, reportContent: "提交时报告" });
+    expect(payload.data.archived).toBe(false);
     expect(payload.data.samplePlan).toMatchObject({ finalSampleSize: 240, designEffect: 1, nonResponseRate: 0 });
     expect(payload.data.weights).toEqual({ questionnaire: 40, process: 35, report: 25 });
     expect(payload.data.samplingAttempts).toEqual([{
@@ -45,6 +46,29 @@ test("grading detail prefers the immutable submission snapshot", async () => {
         createdAt: attemptTime.toISOString(),
     }]);
     expect(payload.data).not.toHaveProperty("pdfStatus");
+});
+
+test("archived grading detail is explicitly marked read-only", async () => {
+    const { db } = createMockDb({ select: [
+        [{
+            id: 99, version: 7, studentName: "当前学生", studentId: "S001", className: "统计一班", topic: "当前课题", topicName: "当前课题", topicDesc: "描述",
+            populationSize: 200, excelFilePath: null, weightConfig: null, status: "submitted", submittedAt: new Date(),
+            submissionSnapshot: { studentName: "提交时学生", topicName: "提交时课题" },
+            reportContent: "报告", samplePlan: null, questionnaire: null, samplingResults: null,
+            scoreQuestionnaire: null, scoreProcess: null, scoreReport: null, totalScore: null, teacherComment: null, rejectReason: null, gradedAt: null, gradedByName: null,
+            studentDeletedAt: new Date("2026-08-30T00:00:00Z"), taskDeletedAt: null, topicDeletedAt: null,
+        }],
+        [],
+    ] });
+    mock.module("../../db", () => ({ db }));
+    mock.module("./auth", () => createTeacherAuthModuleMock());
+    const module = await import(`./grading.ts?archived-detail=${crypto.randomUUID()}`);
+
+    const response = await module.gradingDetailRoutes.GET!(withId(new Request("https://example.com"), "99"));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+        data: { archived: true, studentName: "提交时学生", topicName: "提交时课题" },
+    });
 });
 
 test("compact grading detail returns READ_FAILED when population storage is missing", async () => {

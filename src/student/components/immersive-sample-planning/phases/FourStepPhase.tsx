@@ -257,7 +257,7 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
                         ? "方案对比（课件例 7.2，互斥分层，N=10,000）"
                         : `方案对比（互斥分层，σ²=${populationVariance}，e=${params.marginOfError}，N=10,000）`}
                 </p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="rounded-xl bg-info/10 p-3 text-center">
                         <p className="text-[10px] font-medium uppercase tracking-wider text-info">方案1: 整体估计</p>
                         <p className="text-2xl font-black tabular-nums text-info">{plan1n.toLocaleString()}</p>

@@ -92,7 +92,7 @@ export function FormulaPhase({
                         </div>
                     </div>
 
-                    <div className="grid gap-3 grid-cols-2 max-w-2xl mx-auto">
+                    <div className="mx-auto grid max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
                         <EstimationMethodCard
                             active={isProportion}
                             title="比例估计"
@@ -357,7 +357,7 @@ export function FormulaPhase({
             {/* Dual-formula comparison card */}
             <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-5 space-y-3">
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">两种估计公式对比</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className={`rounded-xl p-3 text-center ${isProportion ? "bg-primary/10 ring-2 ring-primary" : "bg-background"}`}>
                         <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1">比例估计</p>
                         <p className="font-mono text-xs text-muted-foreground">n₀ = Z²p(1−p)/E²</p>

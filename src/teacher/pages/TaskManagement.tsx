@@ -178,7 +178,7 @@ export function TaskManagement() {
                 <p className="text-sm text-muted-foreground mt-1">管理发布任务与批改进度。</p>
             </div>
 
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>

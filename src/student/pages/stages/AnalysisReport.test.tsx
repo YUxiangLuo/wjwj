@@ -1,13 +1,16 @@
 import { afterEach, beforeEach, expect, mock, test } from "bun:test";
 import { act, cleanup, render, waitFor } from "@testing-library/react";
-import type { ComponentProps, ReactNode } from "react";
+import { createContext, useContext, type ComponentProps, type ReactNode } from "react";
 import { installDomGlobals } from "@/test-utils/dom";
 import { getAccessibilityViolations } from "@/test-utils/accessibility";
 import type { AnalysisMetricsData } from "../../api-client";
 import { writeExperimentDraft } from "../../experiment/experiment-draft";
 
 const mockExperimentApi = {
-    getAnalysisMetrics: mock(async () => ({
+    getAnalysisMetrics: mock(async (
+        _taskId: number,
+        _options?: { mode?: "target" | "field" | "all"; field?: string },
+    ) => ({
         success: true,
         data: {
             ppsMonteCarloReplicates: 256,
@@ -57,10 +60,19 @@ mock.module("@/components/ui/label", () => ({
     Label: ({ children, ...props }: ComponentProps<"label">) => <label {...props}>{children}</label>,
 }));
 
+const TabsChangeContext = createContext<((value: string) => void) | null>(null);
+
 mock.module("@/components/ui/tabs", () => ({
-    Tabs: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    Tabs: ({ children, value, onValueChange }: { children: ReactNode; value?: string; onValueChange?: (value: string) => void }) => (
+        <TabsChangeContext.Provider value={onValueChange ?? null}>
+            <div data-value={value}>{children}</div>
+        </TabsChangeContext.Provider>
+    ),
     TabsList: ({ children, ...props }: ComponentProps<"div">) => <div {...props}>{children}</div>,
-    TabsTrigger: ({ children, ...props }: ComponentProps<"button">) => <button {...props}>{children}</button>,
+    TabsTrigger: ({ children, value, ...props }: ComponentProps<"button"> & { value: string }) => {
+        const onValueChange = useContext(TabsChangeContext);
+        return <button {...props} value={value} onClick={() => onValueChange?.(value)}>{children}</button>;
+    },
     TabsContent: ({ children, ...props }: ComponentProps<"div">) => <div {...props}>{children}</div>,
 }));
 
@@ -229,6 +241,105 @@ test("AnalysisReport shows a visible error when analysis metrics fail to load", 
 
     expect(view.getByTestId("student-analysis-metrics-error").textContent).toContain("分析指标加载失败");
     expect(mockToastError).toHaveBeenCalledWith("分析指标加载失败，请刷新后重试");
+});
+
+test("AnalysisReport loads the complete catalog when the comparison tab opens", async () => {
+    mockExperimentContext.experiment = {
+        ...mockExperimentContext.experiment,
+        analysisTarget: { target: { kind: "mean", field: "成绩" }, inferred: false },
+    };
+    const numericMethods = {
+        simple: { estimate: 81, standardError: 1 },
+        systematic: { estimate: 80, standardError: 1 },
+        pps: { estimate: 79, standardError: 1 },
+        stratified: { estimate: 80, standardError: 1 },
+    };
+    const targetResponse = {
+        ppsMonteCarloReplicates: 128,
+        numericFields: ["成绩"],
+        categoricalFields: [],
+        numeric: { 成绩: { populationMean: 80, populationVariance: 100, methods: numericMethods } },
+        categorical: {},
+        fieldCatalog: { numeric: ["成绩", "收入"], categorical: ["小组"] },
+    } as AnalysisMetricsData;
+    const allResponse = {
+        ...targetResponse,
+        numericFields: ["成绩", "收入"],
+        categoricalFields: ["小组"],
+        numeric: {
+            ...targetResponse.numeric,
+            收入: { populationMean: 100, populationVariance: 400, methods: numericMethods },
+        },
+        categorical: {
+            小组: {
+                population: { A: 50, B: 50 },
+                methods: {
+                    simple: { A: 50, B: 50 },
+                    systematic: { A: 50, B: 50 },
+                    pps: { A: 50, B: 50 },
+                    stratified: { A: 50, B: 50 },
+                },
+                representativeness: { simple: 0, systematic: 0, pps: 0, stratified: 0 },
+            },
+        },
+    } as AnalysisMetricsData;
+    mockExperimentApi.getAnalysisMetrics
+        .mockResolvedValueOnce({ success: true, data: targetResponse })
+        .mockResolvedValueOnce({ success: true, data: allResponse });
+
+    const view = render(<AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />);
+    await waitFor(() => expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(1));
+    act(() => view.getByTestId("student-analysis-tab-represent").click());
+
+    await waitFor(() => expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(2));
+    expect(mockExperimentApi.getAnalysisMetrics.mock.calls[1]?.[1]).toEqual({ mode: "all" });
+    await waitFor(() => expect(view.getByText("收入（均值偏差）")).toBeTruthy());
+    expect(view.getByText("小组（分布偏差）")).toBeTruthy();
+});
+
+test("AnalysisReport surfaces a failed lazy field load and retries it", async () => {
+    mockExperimentContext.experiment = {
+        ...mockExperimentContext.experiment,
+        analysisTarget: { target: { kind: "proportion", field: "小组", value: "A" }, inferred: false },
+    };
+    const targetResponse = {
+        ppsMonteCarloReplicates: 128,
+        numericFields: [],
+        categoricalFields: [],
+        numeric: {},
+        categorical: {},
+        fieldCatalog: { numeric: [], categorical: ["小组"] },
+    } as AnalysisMetricsData;
+    const fieldResponse = {
+        ...targetResponse,
+        categoricalFields: ["小组"],
+        categorical: {
+            小组: {
+                population: { A: 60, B: 40 },
+                methods: {
+                    simple: { A: 55, B: 45 },
+                    systematic: { A: 60, B: 40 },
+                    pps: { A: 58, B: 42 },
+                    stratified: { A: 60, B: 40 },
+                },
+                representativeness: { simple: 5, systematic: 0, pps: 2, stratified: 0 },
+            },
+        },
+    } as AnalysisMetricsData;
+    mockExperimentApi.getAnalysisMetrics
+        .mockResolvedValueOnce({ success: true, data: targetResponse })
+        .mockResolvedValueOnce({ success: false, error: { message: "网络繁忙" } } as never)
+        .mockResolvedValueOnce({ success: true, data: fieldResponse });
+
+    const view = render(<AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />);
+    await waitFor(() => expect(view.getByTestId("student-analysis-lazy-error")).toBeTruthy());
+    expect(view.getByTestId("student-analysis-lazy-error").textContent).toContain("网络繁忙");
+    expect(mockExperimentApi.getAnalysisMetrics.mock.calls[1]?.[1]).toEqual({ mode: "field", field: "小组" });
+
+    act(() => view.getByTestId("student-analysis-lazy-retry").click());
+    await waitFor(() => expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(view.queryByTestId("student-analysis-lazy-error")).toBeNull());
+    expect(view.getAllByText("A").length).toBeGreaterThan(0);
 });
 
 test("AnalysisReport shows persisted advanced tool source in the sample plan panel", async () => {

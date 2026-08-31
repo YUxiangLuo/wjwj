@@ -18,6 +18,13 @@ import { formatMarginOfError } from "../../experiment/sample-plan-display";
 import type { AdvancedNonStandardSampleSource } from "../sample-planning/advancedTabs";
 import type { Domain } from "../DomainEstimationManager";
 import type { SurveyVariable } from "../MultiVariableSamplePlan";
+import {
+    leaveAdvancedFinalSizeSource,
+    normalizeFinalSizeSource,
+    replaceAdvancedPlan,
+    type AdvancedPlanSnapshot,
+    type FinalSizeSource,
+} from "../../experiment/advanced-plan";
 import { ImmersiveExperimentLaunch } from "../ImmersiveExperimentLaunch";
 import { usePhaseState } from "./usePhaseState";
 import {
@@ -65,6 +72,8 @@ interface Props {
     initialEstimationType?: EstimationType;
     initialPopulationVariance?: number;
     initialAdvancedPlanSource?: AdvancedNonStandardSampleSource | null;
+    initialAdvancedPlans?: AdvancedPlanSnapshot[];
+    initialFinalSizeSource?: FinalSizeSource;
     estimationLocked?: boolean;
     initialDraft?: SamplePlanningWizardDraft | null;
     onDraftChange?: (draft: SamplePlanningWizardDraft) => void;
@@ -84,6 +93,8 @@ export function ImmersiveSamplePlanning({
     initialEstimationType = "proportion",
     initialPopulationVariance = 100,
     initialAdvancedPlanSource = null,
+    initialAdvancedPlans = [],
+    initialFinalSizeSource,
     estimationLocked = false,
     initialDraft = null,
     onDraftChange,
@@ -107,12 +118,22 @@ export function ImmersiveSamplePlanning({
         initialDraft?.populationVariance ?? initialPopulationVariance,
     );
 
+    const restoredAdvancedPlanSource = initialDraft?.advancedPlanSource ?? initialAdvancedPlanSource;
     const [advancedPlanSource, setAdvancedPlanSource] = useState<AdvancedNonStandardSampleSource | null>(
-        initialDraft?.advancedPlanSource ?? initialAdvancedPlanSource,
+        restoredAdvancedPlanSource,
     );
+    const [advancedPlans, setAdvancedPlans] = useState<AdvancedPlanSnapshot[]>(
+        initialDraft?.advancedPlans ?? initialAdvancedPlans,
+    );
+    const [finalSizeSource, setFinalSizeSource] = useState<FinalSizeSource>(() => normalizeFinalSizeSource({
+        value: initialDraft?.finalSizeSource ?? initialFinalSizeSource,
+        hasAdvancedSource: restoredAdvancedPlanSource != null,
+        hasExplicitFinalSize: initialDraft?.finalSampleSize != null || initialFinalSampleSize != null,
+    }));
 
     const clearAdvancedPlanSource = useCallback(() => {
         setAdvancedPlanSource(null);
+        setFinalSizeSource(leaveAdvancedFinalSizeSource);
     }, []);
 
     const handleEstimationTypeChange = useCallback((next: EstimationType) => {
@@ -170,6 +191,8 @@ export function ImmersiveSamplePlanning({
         finalSampleSize,
         recommendedSize,
         ...(advancedPlanSource ? { advancedPlanSource } : {}),
+        finalSizeSource,
+        advancedPlans,
     };
 
     const paramsRef = useRef(params);
@@ -182,6 +205,11 @@ export function ImmersiveSamplePlanning({
     /** Tracks when final sample size currently comes from a non-standard tool. */
     const handleAdvancedApplied = useCallback((source: AdvancedNonStandardSampleSource) => {
         setAdvancedPlanSource(source);
+        setFinalSizeSource("advanced");
+    }, []);
+
+    const handleAdvancedPlanSnapshot = useCallback((snapshot: AdvancedPlanSnapshot) => {
+        setAdvancedPlans((current) => replaceAdvancedPlan(current, snapshot));
     }, []);
 
     // --- Phase navigation ---
@@ -212,16 +240,20 @@ export function ImmersiveSamplePlanning({
             finalSampleSize,
             userTouchedFinal,
             advancedPlanSource,
+            finalSizeSource,
+            advancedPlans,
             domains,
             surveyVariables,
         });
     }, [
         advancedPlanSource,
+        advancedPlans,
         confidenceLevel,
         designEffect,
         domains,
         estimationType,
         finalSampleSize,
+        finalSizeSource,
         marginOfError,
         navigationSnapshot,
         nonResponseRate,
@@ -376,14 +408,16 @@ export function ImmersiveSamplePlanning({
     // --- Handle setting final size (marks user-touched) ---
     const handleSetFinalSize = useCallback((v: number) => {
         setUserTouchedFinal(true);
+        setFinalSizeSource("manual");
         setFinalSampleSize(v);
     }, []);
 
     const resetFinalSize = useCallback(() => {
-        clearAdvancedPlanSource();
+        setAdvancedPlanSource(null);
+        setFinalSizeSource("basic");
         setUserTouchedFinal(false);
         setFinalSampleSize(recommendedSize);
-    }, [clearAdvancedPlanSource, recommendedSize]);
+    }, [recommendedSize]);
 
     // --- Render current phase ---
     const renderPhase = () => {
@@ -467,6 +501,7 @@ export function ImmersiveSamplePlanning({
                         onSurveyVariablesChange={setSurveyVariables}
                         advancedPlanSource={advancedPlanSource}
                         onAdvancedApplied={handleAdvancedApplied}
+                        onAdvancedPlanSnapshot={handleAdvancedPlanSnapshot}
                         onClearAdvancedSource={clearAdvancedPlanSource}
                     />
                 );
@@ -500,7 +535,7 @@ export function ImmersiveSamplePlanning({
                                 <p className="text-sm text-muted-foreground mt-1">建议值 {recommendedSize.toLocaleString()}</p>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                 <ParamSummaryItem label="估计类型" value={estimationType === "proportion" ? "比例" : "均值"} />
                                 <ParamSummaryItem label="置信水平" value={`${confidenceLevel}%`} />
                                 <ParamSummaryItem

@@ -26,6 +26,7 @@ export function GradingManagement() {
     const [page, setPage] = useState(1);
     const [status, setStatus] = useState("all");
     const [keyword, setKeyword] = useState("");
+    const [includeArchived, setIncludeArchived] = useState(false);
     const [loading, setLoading] = useState(true);
 
     const load = async (nextPage = 1) => {
@@ -35,6 +36,7 @@ export function GradingManagement() {
             keyword: keyword.trim() || undefined,
             page: nextPage,
             pageSize: PAGE_SIZE,
+            includeArchived,
         });
         if (response.success && response.data) {
             setItems(response.data.items);
@@ -46,7 +48,7 @@ export function GradingManagement() {
 
     useEffect(() => {
         void load(1);
-    }, [status]);
+    }, [includeArchived, status]);
 
     const badge = (item: GradingItem) => {
         if (item.status === "submitted") return <StatusBadge intent="warning">待批改</StatusBadge>;
@@ -88,6 +90,10 @@ export function GradingManagement() {
                                 <SelectItem value="rejected">已驳回</SelectItem>
                             </SelectContent>
                         </Select>
+                        <label className="flex items-center gap-2 rounded-lg border border-border px-3 text-xs text-muted-foreground">
+                            <input type="checkbox" checked={includeArchived} onChange={(event) => setIncludeArchived(event.target.checked)} />
+                            含归档
+                        </label>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -110,6 +116,7 @@ export function GradingManagement() {
                                     <span className="font-mono text-xs text-muted-foreground">{item.studentId}</span>
                                 </div>
                                 <p className="mt-1 text-sm text-muted-foreground">{item.className} · {item.topic}</p>
+                                {item.archived && <StatusBadge intent="neutral">归档记录</StatusBadge>}
                             </div>
                             <div className="text-right">
                                 {badge(item)}

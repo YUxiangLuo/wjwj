@@ -1,8 +1,9 @@
 import type { Question } from "@/lib/questionnaire-types";
-import { notifyAuthExpired } from "@/lib/auth-expired";
+import { requestJson as request, uploadFile, type ApiResponse } from "@/lib/api-client";
 import type { QuestionnaireData, SamplePlanData, SamplingResultsData } from "../student/api-client";
+import type { ResolvedStudyContract } from "@/lib/analysis-target";
 
-export interface ApiResponse<T> { success: boolean; data?: T; error?: { code: string; message: string } }
+export type { ApiResponse };
 export interface TeacherUser { id: number; employeeId: string; name: string; type: "teacher"; isFirstLogin: number }
 export interface TeacherStats {
     stats: Array<{ label: string; value: number }>;
@@ -34,9 +35,10 @@ export type GradingStatus = "submitted" | "graded" | "rejected";
 export interface GradingItem {
     id: number; studentName: string; studentId: string; topic: string; className: string;
     submittedAt: string; status: GradingStatus; score: number | null; gradedByName?: string | null; gradedAt?: string | null;
+    archived?: boolean;
 }
 export interface GradingListResponse { items: GradingItem[]; total: number; page: number; pageSize: number }
-export interface GradingListParams { status?: string; className?: string; topicName?: string; keyword?: string; page?: number; pageSize?: number }
+export interface GradingListParams { status?: string; className?: string; topicName?: string; keyword?: string; page?: number; pageSize?: number; includeArchived?: boolean }
 export interface SubmissionDetail extends GradingItem {
     version: number;
     topicDesc: string | null;
@@ -60,6 +62,7 @@ export interface SubmissionDetail extends GradingItem {
     teacherComment: string | null;
     rejectReason?: string | null;
     weights?: { questionnaire: number; process: number; report: number };
+    studyContract?: ResolvedStudyContract | null;
 }
 export interface Student { id: number; studentId: string; name: string; email: string | null; status: number; lockedUntil: string | null }
 export interface TeacherAnnouncement { id: number; title: string; content: string; createdAt: string }
@@ -70,33 +73,8 @@ export interface GradeExportRow {
     totalScore: string | number; status: string; gradedAt: string; gradedBy: string;
 }
 
-async function parseApiResponse<T>(response: Response): Promise<ApiResponse<T>> {
-    const payload = await response.json() as ApiResponse<T>;
-    notifyAuthExpired(response, payload.error?.code);
-    return payload;
-}
-
-async function request<T>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
-    try {
-        const response = await fetch(url, {
-            credentials: "include",
-            ...options,
-            headers: { "Content-Type": "application/json", ...options?.headers },
-        });
-        return await parseApiResponse<T>(response);
-    } catch (cause) {
-        return { success: false, error: { code: "NETWORK_ERROR", message: cause instanceof Error ? cause.message : "网络请求失败" } };
-    }
-}
-
 async function upload<T>(url: string, file: File): Promise<ApiResponse<T>> {
-    try {
-        const formData = new FormData();
-        formData.append("file", file);
-        return await parseApiResponse<T>(await fetch(url, { method: "POST", body: formData, credentials: "include" }));
-    } catch (cause) {
-        return { success: false, error: { code: "NETWORK_ERROR", message: cause instanceof Error ? cause.message : "网络请求失败" } };
-    }
+    return uploadFile<T>(url, file);
 }
 
 export const authApi = {
@@ -130,7 +108,11 @@ export const teacherApi = {
 
     getGradingList: (params: GradingListParams = {}) => {
         const search = new URLSearchParams();
-        for (const [key, value] of Object.entries(params)) if (value !== undefined && value !== "") search.set(key, String(value));
+        for (const [key, value] of Object.entries(params)) {
+            if (key === "includeArchived") {
+                if (value === true) search.set(key, "1");
+            } else if (value !== undefined && value !== "") search.set(key, String(value));
+        }
         return request<GradingListResponse>(`/api/teacher/grading${search.size ? `?${search}` : ""}`);
     },
     getSubmissionDetail: (id: number) => request<SubmissionDetail>(`/api/teacher/grading/${id}`),

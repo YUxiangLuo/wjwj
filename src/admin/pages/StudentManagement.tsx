@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Eye, Loader2, RotateCcw, Search, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, Loader2, RotateCcw, Search, Users } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
-import { getAccountState, matchesAccountState, type AccountStateFilter } from "@/lib/account-state";
+import { getAccountState, type AccountStateFilter } from "@/lib/account-state";
 import {
     Table,
     TableBody,
@@ -48,6 +48,8 @@ function renderAccountStatus(item: Student) {
     );
 }
 
+const PAGE_SIZE = 20;
+
 export function StudentManagement() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -64,23 +66,42 @@ export function StudentManagement() {
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState<Student | null>(null);
     const [experiments, setExperiments] = useState<StudentExperiment[]>([]);
+    const [page, setPage] = useState(1);
+    const [total, setTotal] = useState(0);
 
     const load = async ({
         nextClassId = classId,
         nextSearch = appliedSearch,
+        nextStatus = status,
+        nextPage = 1,
     }: {
         nextClassId?: string;
         nextSearch?: string;
+        nextStatus?: AccountStateFilter;
+        nextPage?: number;
     } = {}) => {
         setLoading(true);
-        const response = await studentApi.list({
+        const response = await studentApi.listPaged({
             classId: nextClassId,
             search: nextSearch || undefined,
+            status: nextStatus,
+            page: nextPage,
+            pageSize: PAGE_SIZE,
         });
         if (response.success && response.data) {
-            setStudents(response.data);
+            const payload = response.data as typeof response.data | Student[];
+            if (Array.isArray(payload)) {
+                setStudents(payload);
+                setTotal(payload.length);
+                setPage(1);
+            } else {
+                setStudents(payload.items);
+                setTotal(payload.total);
+                setPage(payload.page);
+            }
         } else {
             setStudents([]);
+            setTotal(0);
             toast.error(response.error?.message ?? "学生列表加载失败");
         }
         setLoading(false);
@@ -97,20 +118,17 @@ export function StudentManagement() {
     }, [requestedClassId]);
 
     useEffect(() => {
-        void load({ nextClassId: classId });
-    }, [classId]);
+        void load({ nextClassId: classId, nextStatus: status });
+    }, [classId, status]);
 
-    const filtered = useMemo(
-        () => students.filter((item) => matchesAccountState(item.status, item.lockedUntil, status)),
-        [students, status],
-    );
+    const filtered = students;
     const selectedClassName = classes.find((item) => String(item.id) === classId)?.name;
     const hasFilters = classId !== "all" || status !== "all" || Boolean(appliedSearch);
 
     const applySearch = () => {
         const nextSearch = search.trim();
         setAppliedSearch(nextSearch);
-        void load({ nextSearch });
+        void load({ nextSearch, nextPage: 1 });
     };
 
     const setClassFilter = (nextClassId: string) => {
@@ -126,7 +144,7 @@ export function StudentManagement() {
         setAppliedSearch("");
         setStatus("all");
         setClassFilter("all");
-        void load({ nextClassId: "all", nextSearch: "" });
+        void load({ nextClassId: "all", nextSearch: "", nextStatus: "all", nextPage: 1 });
     };
 
     const openExperiments = async (item: Student) => {
@@ -276,6 +294,17 @@ export function StudentManagement() {
                             ))}
                         </TableBody>
                     </Table>
+                )}
+                {!loading && total > PAGE_SIZE && (
+                    <div className="mt-4 flex items-center justify-end gap-2">
+                        <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => void load({ nextPage: page - 1 })} aria-label="上一页学生">
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-sm text-muted-foreground">{page} / {Math.ceil(total / PAGE_SIZE)}（共 {total} 人）</span>
+                        <Button variant="outline" size="sm" disabled={page >= Math.ceil(total / PAGE_SIZE)} onClick={() => void load({ nextPage: page + 1 })} aria-label="下一页学生">
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
                 )}
             </CardContent>
 

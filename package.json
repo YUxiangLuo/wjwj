@@ -15,8 +15,9 @@
     "test": "bun run test:unit",
     "typecheck": "bunx tsc --noEmit && bun run check:styles",
     "test:unit": "bun test src scripts",
-    "verify": "bun run typecheck && bun run test:unit && bun run build && bun run db:check && bun run audit:applicable",
+    "verify": "bun run typecheck && bun run check:docs && bun run test:unit && bun run build && bun run db:check && bun run audit:applicable",
     "check:styles": "bun run scripts/check-styles.ts",
+    "check:docs": "bun run scripts/check-docs.ts",
     "audit:applicable": "bun run scripts/audit-dependencies.ts",
     "db:generate": "bunx drizzle-kit generate",
     "db:migrate": "bun run src/db/migrate.ts",
@@ -27,6 +28,8 @@
     "db:reset": "bun run db:clean && bun run db:migrate && bun run db:seed",
     "storage:audit": "bun run scripts/audit-storage.ts",
     "storage:clean": "bun run scripts/audit-storage.ts --delete --force",
+    "benchmark:analysis": "bun run scripts/benchmark-analysis.ts",
+    "test:e2e": "bun run scripts/e2e-smoke.ts",
     "test:db": "REQUIRE_TEST_DATABASE=1 bun test src/db/postgresql.integration.test.ts"
   },
   "dependencies": {
@@ -65,6 +68,7 @@
     "@types/bun": "1.4.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "agent-browser": "0.35.1",
     "axe-core": "^4.12.1",
     "bun": "1.4.0",
     "drizzle-kit": "^0.31.8",
@@ -72,5 +76,8 @@
     "tailwindcss": "^4.1.11",
     "tw-animate-css": "^1.4.0",
     "typescript": "7.0.2"
-  }
+  },
+  "trustedDependencies": [
+    "agent-browser"
+  ]
 }

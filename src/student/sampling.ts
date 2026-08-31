@@ -150,6 +150,7 @@ interface PpsDesignFrame {
     certaintyProbabilities: number[];
     systematicIndices: number[];
     systematicProbabilities: number[];
+    systematicCumulativeProbabilities: number[];
     systematicSampleSize: number;
 }
 
@@ -199,6 +200,7 @@ function buildPpsWithoutReplacementDesign(sizes: number[], sampleSize: number): 
             certaintyProbabilities,
             systematicIndices: [],
             systematicProbabilities: [],
+            systematicCumulativeProbabilities: [],
             systematicSampleSize: 0,
         };
     }
@@ -211,12 +213,18 @@ function buildPpsWithoutReplacementDesign(sizes: number[], sampleSize: number): 
     const systematicProbabilities = systematicIndices.map((index) =>
         remainingSampleSize * sizes[index]! / remainingTotal
     );
+    let cumulative = 0;
+    const systematicCumulativeProbabilities = systematicProbabilities.map((probability) => {
+        cumulative += probability;
+        return cumulative;
+    });
 
     return {
         certaintyIndices,
         certaintyProbabilities,
         systematicIndices,
         systematicProbabilities,
+        systematicCumulativeProbabilities,
         systematicSampleSize: remainingSampleSize,
     };
 }
@@ -224,32 +232,27 @@ function buildPpsWithoutReplacementDesign(sizes: number[], sampleSize: number): 
 function selectFixedPiSystematicSample(
     indices: number[],
     inclusionProbabilities: number[],
+    cumulativeProbabilities: number[],
     randomStart: number,
 ) {
     const selectedIndices: number[] = [];
     const selectedProbabilities: number[] = [];
-    let cumulativeProbability = 0;
-    let thresholdIndex = 0;
     const targetSampleSize = Math.round(
         inclusionProbabilities.reduce((sum, probability) => sum + probability, 0)
     );
 
-    for (let position = 0; position < indices.length && thresholdIndex < targetSampleSize; position += 1) {
-        const index = indices[position]!;
-        const probability = inclusionProbabilities[position]!;
-        const nextCumulativeProbability = cumulativeProbability + probability;
+    for (let thresholdIndex = 0; thresholdIndex < targetSampleSize; thresholdIndex += 1) {
         const threshold = randomStart + thresholdIndex;
-
-        if (
-            threshold + PPS_EPSILON >= cumulativeProbability
-            && threshold < nextCumulativeProbability - PPS_EPSILON
-        ) {
-            selectedIndices.push(index);
-            selectedProbabilities.push(probability);
-            thresholdIndex += 1;
+        let low = 0;
+        let high = cumulativeProbabilities.length;
+        while (low < high) {
+            const middle = (low + high) >>> 1;
+            if (cumulativeProbabilities[middle]! > threshold + PPS_EPSILON) high = middle;
+            else low = middle + 1;
         }
-
-        cumulativeProbability = nextCumulativeProbability;
+        if (low >= indices.length) continue;
+        selectedIndices.push(indices[low]!);
+        selectedProbabilities.push(inclusionProbabilities[low]!);
     }
 
     return { selectedIndices, selectedProbabilities };
@@ -288,20 +291,33 @@ export function drawPreparedPPSSample(
         ? selectFixedPiSystematicSample(
             prepared.designFrame.systematicIndices,
             prepared.designFrame.systematicProbabilities,
+            prepared.designFrame.systematicCumulativeProbabilities,
             randomStart,
         )
         : { selectedIndices: [], selectedProbabilities: [] };
 
-    const combined = [
-        ...prepared.designFrame.certaintyIndices.map((index, position) => ({
+    const certaintyEntries = prepared.designFrame.certaintyIndices.map((index, position) => ({
             index,
             inclusionProbability: prepared.designFrame.certaintyProbabilities[position]!,
-        })),
-        ...systematicSelection.selectedIndices.map((index, position) => ({
+        }));
+    const systematicEntries = systematicSelection.selectedIndices.map((index, position) => ({
             index,
             inclusionProbability: systematicSelection.selectedProbabilities[position]!,
-        })),
-    ].sort((left, right) => left.index - right.index);
+        }));
+    const combined: Array<{ index: number; inclusionProbability: number }> = [];
+    let certaintyPosition = 0;
+    let systematicPosition = 0;
+    while (certaintyPosition < certaintyEntries.length || systematicPosition < systematicEntries.length) {
+        const certainty = certaintyEntries[certaintyPosition];
+        const systematic = systematicEntries[systematicPosition];
+        if (systematic === undefined || (certainty !== undefined && certainty.index < systematic.index)) {
+            combined.push(certainty!);
+            certaintyPosition += 1;
+        } else {
+            combined.push(systematic);
+            systematicPosition += 1;
+        }
+    }
 
     return {
         data: combined.map((entry) => prepared.data[entry.index]),

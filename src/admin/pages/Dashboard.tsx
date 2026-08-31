@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Briefcase, Calendar, GraduationCap, Megaphone, School, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { IconTile } from "@/components/IconTile";
 import { RichTextContent } from "@/components/RichTextContent";
 import { formatDateDisplay } from "@/utils/format";
 import { announcementApi, statsApi, type Announcement, type Stats } from "../api-client";
@@ -26,13 +27,13 @@ export function Dashboard() {
     ];
     return (
         <div className="space-y-6">
-            <div className="grid gap-4 grid-cols-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                 {cards.map(({ label, value, icon: Icon }) => (
-                    <Card key={label}><CardContent className="flex items-center justify-between gap-3 p-5"><div className="min-w-0"><p className="text-sm text-muted-foreground">{label}</p><p className={`mt-2 font-bold ${label === "当前学期" ? "whitespace-nowrap text-xl" : "text-2xl"}`}>{value}</p></div><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Icon className="h-5 w-5" /></span></CardContent></Card>
+                    <Card key={label}><CardContent className="flex min-w-0 items-center justify-between gap-3 p-4 sm:p-5"><div className="min-w-0"><p className="text-sm text-muted-foreground">{label}</p><p className={`mt-2 truncate font-bold ${label === "当前学期" ? "text-xl" : "text-2xl"}`}>{value}</p></div><IconTile intent="primary" className="h-11 w-11"><Icon className="h-5 w-5" /></IconTile></CardContent></Card>
                 ))}
             </div>
             <Card>
-                <CardHeader className="flex-row items-center justify-between">
+                <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <CardTitle>
                         <h2 className="flex items-center gap-2 text-lg">
                             <Megaphone className="h-5 w-5 text-primary" />
@@ -43,7 +44,7 @@ export function Dashboard() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                     {announcements.length ? announcements.map((item) => (
-                        <div key={item.id} className="rounded-xl border border-border p-4"><div className="flex items-center justify-between gap-4"><h3 className="font-medium">{item.title}</h3><span className="text-xs text-muted-foreground">{formatDateDisplay(item.createdAt, "-")}</span></div><RichTextContent html={item.content} className="mt-2 line-clamp-2 text-sm text-muted-foreground" /></div>
+                        <div key={item.id} className="min-w-0 rounded-xl border border-border p-4"><div className="flex min-w-0 flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4"><h3 className="min-w-0 break-words font-medium">{item.title}</h3><span className="shrink-0 text-xs text-muted-foreground">{formatDateDisplay(item.createdAt, "-")}</span></div><RichTextContent html={item.content} className="mt-2 line-clamp-2 break-words text-sm text-muted-foreground" /></div>
                     )) : <p className="py-8 text-center text-sm text-muted-foreground">暂无已发布公告</p>}
                 </CardContent>
             </Card>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type ReactNode } from "react";
+import { useState, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -23,11 +23,11 @@ import {
     type ChartRow,
     METHOD_META,
     POPULATION_SERIES,
-    preferAnalysisField,
 } from "./analysis-utils";
 import { downloadChartAsSvg, sanitizeFileName } from "./chart-svg-export";
 import { SamplePlanDecisionPanel, SamplingMethodParamsPanel } from "./analysis-params-panels";
 import { notifyAuthExpiredFromResponse } from "@/lib/auth-expired";
+import { TargetMetricsPanel } from "../../components/TargetMetricsPanel";
 import {
     readExperimentDraft,
     useExperimentDraft,
@@ -39,6 +39,24 @@ interface AnalysisReportProps {
 }
 
 type ZoomChartType = "mean" | "dist" | "error" | "represent" | null;
+const ALL_ANALYSIS_FIELDS_REQUEST = "__all_fields__";
+
+function mergeAnalysisMetrics(current: AnalysisMetricsData, next: AnalysisMetricsData): AnalysisMetricsData {
+    return {
+        ...current,
+        ppsMonteCarloReplicates: next.ppsMonteCarloReplicates ?? current.ppsMonteCarloReplicates,
+        numericFields: Array.from(new Set([...current.numericFields, ...next.numericFields])),
+        excludedNumericFields: Array.from(new Set([
+            ...(current.excludedNumericFields ?? []),
+            ...(next.excludedNumericFields ?? []),
+        ])),
+        categoricalFields: Array.from(new Set([...current.categoricalFields, ...next.categoricalFields])),
+        numeric: { ...current.numeric, ...next.numeric },
+        categorical: { ...current.categorical, ...next.categorical },
+        target: next.target ?? current.target,
+        fieldCatalog: next.fieldCatalog ?? current.fieldCatalog,
+    };
+}
 
 // ---------------------------------------------------------------------------
 // ChartBars — horizontal bar chart component
@@ -170,7 +188,7 @@ function FieldSelect({
 }) {
     return (
         <Select value={value} onValueChange={onChange}>
-            <SelectTrigger aria-label={placeholder} className="w-[220px] bg-background border-border text-foreground">
+            <SelectTrigger aria-label={placeholder} className="w-full bg-background border-border text-foreground sm:w-[220px]">
                 <SelectValue placeholder={placeholder} />
             </SelectTrigger>
             <SelectContent className="bg-card border-border text-foreground">
@@ -210,7 +228,12 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const [zoomChart, setZoomChart] = useState<ZoomChartType>(null);
     const [analysisMetrics, setAnalysisMetrics] = useState<AnalysisMetricsData | null>(null);
     const [analysisMetricsError, setAnalysisMetricsError] = useState<string | null>(null);
+    const [lazyMetricsError, setLazyMetricsError] = useState<string | null>(null);
+    const [lazyRetryVersion, setLazyRetryVersion] = useState(0);
     const [statsLoading, setStatsLoading] = useState(false);
+    const [lazyStatsLoading, setLazyStatsLoading] = useState(false);
+    const loadedFieldsRef = useRef(new Set<string>());
+    const allFieldsLoadedRef = useRef(false);
     const [selectedNumericField, setSelectedNumericField] = useState("");
     const [selectedCategoricalField, setSelectedCategoricalField] = useState("");
     const analysisTarget = experiment?.analysisTarget?.target;
@@ -228,18 +251,22 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     // ---- Data derivation ----
 
-    const numericFields = analysisMetrics?.numericFields ?? [];
-    const categoricalFields = analysisMetrics?.categoricalFields ?? [];
+    const numericFields = analysisMetrics?.fieldCatalog?.numeric ?? analysisMetrics?.numericFields ?? [];
+    const categoricalFields = analysisMetrics?.fieldCatalog?.categorical ?? analysisMetrics?.categoricalFields ?? [];
     const ppsMonteCarloReplicates = analysisMetrics?.ppsMonteCarloReplicates ?? 128;
 
     useEffect(() => {
         const preferred = analysisTarget?.kind === "mean" ? analysisTarget.field : "";
-        setSelectedNumericField((current) => preferAnalysisField(numericFields, current, preferred));
+        setSelectedNumericField((current) => current && numericFields.includes(current)
+            ? current
+            : preferred && numericFields.includes(preferred) ? preferred : "");
     }, [analysisTarget, numericFields]);
 
     useEffect(() => {
         const preferred = analysisTarget?.kind === "proportion" ? analysisTarget.field : "";
-        setSelectedCategoricalField((current) => preferAnalysisField(categoricalFields, current, preferred));
+        setSelectedCategoricalField((current) => current && categoricalFields.includes(current)
+            ? current
+            : preferred && categoricalFields.includes(preferred) ? preferred : "");
     }, [analysisTarget, categoricalFields]);
 
     useEffect(() => {
@@ -250,9 +277,12 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             if (!cancelled) {
                 setStatsLoading(true);
                 setAnalysisMetricsError(null);
+                setLazyMetricsError(null);
+                loadedFieldsRef.current.clear();
+                allFieldsLoadedRef.current = false;
             }
             try {
-                const res = await experimentApi.getAnalysisMetrics(experiment.taskId);
+                const res = await experimentApi.getAnalysisMetrics(experiment.taskId, { mode: "target" });
                 if (cancelled) return;
 
                 if (res.success && res.data) {
@@ -287,6 +317,58 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             cancelled = true;
         };
     }, [experiment?.taskId, samplingResultsKey]);
+
+    useEffect(() => {
+        if (!experiment?.taskId || !analysisMetrics) return;
+        const loadAllFields = chartTab === "represent";
+        const field = chartTab === "dist"
+            ? selectedCategoricalField
+            : selectedNumericField;
+        const requestKey = loadAllFields ? ALL_ANALYSIS_FIELDS_REQUEST : field;
+        const alreadyLoaded = loadAllFields
+            ? allFieldsLoadedRef.current
+            : Boolean(field && (analysisMetrics.numeric[field] || analysisMetrics.categorical[field]));
+        if (!requestKey || alreadyLoaded) {
+            setLazyMetricsError(null);
+            return;
+        }
+        if (loadedFieldsRef.current.has(requestKey)) return;
+        loadedFieldsRef.current.add(requestKey);
+        setLazyMetricsError(null);
+        setLazyStatsLoading(true);
+        let cancelled = false;
+        void (async () => {
+            try {
+                const response = await experimentApi.getAnalysisMetrics(
+                    experiment.taskId,
+                    loadAllFields ? { mode: "all" } : { mode: "field", field },
+                );
+                if (cancelled) {
+                    loadedFieldsRef.current.delete(requestKey);
+                    return;
+                }
+                if (!response.success || !response.data) {
+                    const detail = response.error?.message ? `：${response.error.message}` : "";
+                    throw new Error(`分析字段加载失败${detail}`);
+                }
+                if (loadAllFields) allFieldsLoadedRef.current = true;
+                setAnalysisMetrics((current) => current ? mergeAnalysisMetrics(current, response.data!) : response.data!);
+            } catch (error) {
+                loadedFieldsRef.current.delete(field);
+                loadedFieldsRef.current.delete(requestKey);
+                if (cancelled) return;
+                console.error("Failed to load analysis field metrics:", error);
+                const message = error instanceof Error && error.message.startsWith("分析字段加载失败")
+                    ? error.message
+                    : "分析字段加载失败，请重试";
+                setLazyMetricsError(message);
+                toast.error(message);
+            } finally {
+                if (!cancelled) setLazyStatsLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [analysisMetrics, chartTab, experiment?.taskId, lazyRetryVersion, selectedCategoricalField, selectedNumericField]);
 
     // ---- Chart data (memoized) ----
 
@@ -501,8 +583,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-analysis-report">
-            <div className="grid grid-cols-3 gap-6">
-                <div className="col-span-2 space-y-6">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <div className="space-y-6 lg:col-span-2">
                     <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
                         <CardHeader className="border-b border-border pb-4">
                             <CardTitle className="flex items-center gap-2 text-foreground">
@@ -510,7 +592,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 分析数据
                             </CardTitle>
                             <CardDescription className="text-muted-foreground">
-                                {statsLoading
+                                {statsLoading || lazyStatsLoading
                                     ? "正在加载总体统计数据…"
                                     : "在图表分析、样本量规划决策参数与抽样执行参数之间切换查看"}
                             </CardDescription>
@@ -523,6 +605,27 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 >
                                     <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                                     <span>{analysisMetricsError}</span>
+                                </div>
+                            )}
+                            {lazyMetricsError && (
+                                <div
+                                    className="mb-4 flex flex-col items-start gap-3 rounded-xl border border-destructive/70 bg-destructive/10 px-4 py-3 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between"
+                                    data-testid="student-analysis-lazy-error"
+                                >
+                                    <span className="flex items-start gap-2">
+                                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                                        <span>{lazyMetricsError}</span>
+                                    </span>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="border-destructive/40 bg-background text-destructive hover:bg-destructive/10"
+                                        data-testid="student-analysis-lazy-retry"
+                                        onClick={() => setLazyRetryVersion((version) => version + 1)}
+                                    >
+                                        重试
+                                    </Button>
                                 </div>
                             )}
                             {(analysisMetrics?.excludedNumericFields?.length ?? 0) > 0 && (
@@ -540,6 +643,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     {!isPpsUnavailable && <>PPS 标准误是 {ppsMonteCarloReplicates} 次重复抽样的 Monte Carlo 估计（按 R−1 计算重复间标准差），仍有模拟误差。</>}
                                 </span>
                             </div>
+                            {analysisMetrics?.target && <TargetMetricsPanel target={analysisMetrics.target} />}
                             <Tabs defaultValue="charts" className="w-full">
                                 <TabsList
                                     className="mb-6 flex h-auto w-full flex-wrap gap-1 rounded-xl border border-border bg-background p-1"
@@ -602,7 +706,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
                                 <TabsContent value="dist">
                                     <ChartTabPanel
-                                        description="比较各抽样方法在分类变量上的分布占比，并利用已知虚拟总体显示真值对照。"
+                                        description={`比较各抽样方法在分类变量上的分布占比，并利用已知虚拟总体显示真值对照。${selectedCategoricalField && analysisMetrics?.categorical[selectedCategoricalField]?.truncated ? `该字段共有 ${analysisMetrics.categorical[selectedCategoricalField]!.totalCategoryCount} 类，仅展示主要类别并将其余合并为“${analysisMetrics.categorical[selectedCategoricalField]!.aggregatedCategoryLabel ?? "其他"}”。` : ""}`}
                                         rows={distributionRows}
                                         series={distributionSeries}
                                         unit="%"
@@ -787,7 +891,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
             {/* Zoom dialog */}
             <Dialog open={zoomChart !== null} onOpenChange={(open) => { if (!open) setZoomChart(null); }}>
-                <DialogContent className="max-w-[50vw] bg-card border-border text-foreground" data-testid="student-analysis-zoom-dialog">
+                <DialogContent className="max-w-[96vw] bg-card border-border text-foreground lg:max-w-[70vw]" data-testid="student-analysis-zoom-dialog">
                     <DialogHeader>
                         <DialogTitle className="text-foreground">
                             {activeZoom?.title}（放大）

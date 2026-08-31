@@ -335,7 +335,7 @@ export function TaskHall() {
             )}
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-3 gap-4" data-testid="student-stats-section">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3" data-testid="student-stats-section">
                 <Card className="rounded-2xl border-border bg-card/50 shadow-sm hover:border-input transition-colors group" data-testid="student-stat-in-progress">
                     <CardContent className="p-6 flex items-center gap-5">
                         <div className="p-4 bg-primary/10 rounded-2xl text-primary group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-300">
@@ -410,7 +410,7 @@ export function TaskHall() {
             </div>
 
             {/* Task Grid */}
-            <div className="grid grid-cols-3 gap-6 min-h-[300px]" data-testid="student-task-grid">
+            <div className="grid min-h-[300px] grid-cols-1 gap-6 lg:grid-cols-3" data-testid="student-task-grid">
                 {taskError ? (
                     <div className="col-span-full flex flex-col items-center justify-center rounded-3xl border border-dashed border-destructive/40 bg-destructive/10 py-20">
                         <div className="w-16 h-16 bg-destructive rounded-full flex items-center justify-center mb-4 border border-destructive">
@@ -446,7 +446,7 @@ export function TaskHall() {
                         </DialogTitle>
                         <DialogDescription className="text-muted-foreground">查看实验室最新通知与动态</DialogDescription>
                     </DialogHeader>
-                    <div className="grid grid-cols-2 gap-6 mt-4 min-h-[400px]">
+                    <div className="mt-4 grid min-h-[400px] grid-cols-1 gap-6 md:grid-cols-2">
                         {/* List */}
                         <div
                             role="region"

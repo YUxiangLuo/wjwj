@@ -241,8 +241,8 @@ export function TopicDetails() {
                 </CardContent>
             </Card>
 
-            <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-2 space-y-4">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <div className="space-y-4 lg:col-span-2">
                     <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
                         <CardHeader className="border-b border-border pb-3">
                             <CardTitle className="text-sm text-foreground flex items-center gap-2">
@@ -268,7 +268,7 @@ export function TopicDetails() {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="pt-3 pb-3">
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                                     {task.attachments.map((file) => (
                                         <div key={file.id} className="flex items-center justify-between rounded-lg border border-input bg-muted/50 px-3 py-2 hover:bg-muted transition-colors group gap-2">
                                             <div className="flex items-center gap-2.5 overflow-hidden">

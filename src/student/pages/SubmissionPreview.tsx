@@ -15,6 +15,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { RichTextContent } from "@/components/RichTextContent";
+import { StudyContractSnapshot } from "@/components/StudyContractSnapshot";
 import { LoadingStatus } from "@/components/LoadingStatus";
 import { experimentApi, tasksApi, type ExperimentData, type TaskDetail, type Question } from "../api-client";
 import { TopicDeletedState } from "../components/TopicDeletedState";
@@ -203,6 +204,7 @@ export function SubmissionPreview() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-6">
+                    <StudyContractSnapshot value={experiment.studyContract} />
                     <Tabs defaultValue="report" className="w-full">
                         <TabsList className="bg-muted/50 border border-input/30 p-1 w-auto h-auto rounded-lg" data-testid="student-preview-tabs">
                             <TabsTrigger

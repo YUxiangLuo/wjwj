@@ -37,3 +37,13 @@ jobs:
       - run: bun run test:db
         env:
           TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/sampling_vlab_test
+      - run: bun run db:seed
+        env:
+          SEED_NOW: 2026-08-31T04:00:00.000Z
+          SEED_ADMIN_PASSWORD: Admin!CiValidation2026
+      - run: bun run db:seed:check
+      - run: bun run storage:audit
+      - run: bunx agent-browser install --with-deps
+      - run: bun run test:e2e
+        env:
+          E2E_ADMIN_PASSWORD: Admin!CiValidation2026
