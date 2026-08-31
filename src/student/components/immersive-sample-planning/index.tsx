@@ -604,7 +604,7 @@ export function ImmersiveSamplePlanning({
                 aria-modal="true"
                 aria-labelledby={titleId}
                 data-testid="immersive-sample-planning"
-                className="fixed inset-0 z-50 bg-gradient-to-br from-card via-background to-primary/40 outline-none"
+                className="fixed inset-0 z-50 flex min-h-0 flex-col bg-gradient-to-br from-card via-background to-primary/40 outline-none"
                 onKeyDown={focusTrap}
                 tabIndex={-1}
             >
@@ -617,7 +617,7 @@ export function ImmersiveSamplePlanning({
                 </div>
 
                 {/* Header */}
-                <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-6 pt-4 z-10">
+                <div className="relative z-10 flex shrink-0 items-center justify-between bg-background/90 px-6 pb-2 pt-4 backdrop-blur-sm">
                     <div className="flex items-center gap-3">
                         <span className="text-sm font-medium text-muted-foreground">
                             {PHASE_LABELS[phase.type] ?? ""}
@@ -650,8 +650,8 @@ export function ImmersiveSamplePlanning({
                 </div>
 
                 {/* Content */}
-                <div className="h-full flex flex-col items-center justify-center overflow-y-auto px-6 pt-16 pb-24">
-                    <div key={pageKey} className={`w-full max-w-2xl ${animationClass}`}>
+                <div data-testid="immersive-sp-scroll-region" className="min-h-0 flex-1 overflow-y-auto px-6 pb-24 pt-2">
+                    <div key={pageKey} className={`mx-auto flex min-h-full w-full max-w-2xl flex-col justify-center py-4 ${animationClass}`}>
                         <h1 id={titleId} className="sr-only">样本量规划</h1>
                         {renderPhase()}
                     </div>
@@ -659,12 +659,12 @@ export function ImmersiveSamplePlanning({
 
                 {/* Bottom bar */}
                 {canGoPrev && (
-                    <div className="fixed bottom-0 left-0 right-0 z-10 flex items-center justify-start px-6 pb-4 pt-2 bg-gradient-to-t from-background via-background/80 to-transparent">
+                    <div className="pointer-events-none fixed bottom-0 left-0 right-0 z-10 flex items-center justify-start bg-gradient-to-t from-background via-background/80 to-transparent px-6 pb-4 pt-2">
                         <Button
                             type="button"
                             variant="ghost"
                             onClick={goPrev}
-                            className="text-muted-foreground hover:text-foreground/90"
+                            className="pointer-events-auto text-muted-foreground hover:text-foreground/90"
                         >
                             <ChevronLeft className="w-4 h-4 mr-1" />
                             上一步

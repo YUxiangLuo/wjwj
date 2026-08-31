@@ -269,6 +269,7 @@ export function DecisionPhase({
                         variant="outline"
                         size="sm"
                         onClick={onClearAdvancedSource}
+                        data-testid="immersive-sp-clear-advanced-source"
                         className="shrink-0 border-warning bg-background text-warning hover:bg-warning/10"
                     >
                         按常规继续

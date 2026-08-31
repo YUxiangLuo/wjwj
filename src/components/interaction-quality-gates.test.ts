@@ -23,12 +23,18 @@ test("links and buttons are never nested as competing interactive controls", asy
 test("controlled alerts and immersive sampling preserve keyboard focus", async () => {
     const alertDialog = await Bun.file("src/components/ui/alert-dialog.tsx").text();
     const samplingAnimation = await Bun.file("src/student/components/ImmersiveSamplingAnimation.tsx").text();
+    const samplePlanning = await Bun.file("src/student/components/immersive-sample-planning/index.tsx").text();
     expect(alertDialog).toContain("restoreFocusRef");
     expect(alertDialog).toContain("opener?.isConnected");
     expect(samplingAnimation).toContain('role="dialog"');
     expect(samplingAnimation).toContain('aria-modal="true"');
     expect(samplingAnimation).toContain("closeButtonRef.current?.focus()");
     expect(samplingAnimation).toContain("if (opener?.isConnected) opener.focus()");
+    expect(samplePlanning).toContain('data-testid="immersive-sp-scroll-region"');
+    expect(samplePlanning).toContain("min-h-0 flex-1 overflow-y-auto");
+    expect(samplePlanning).toContain("min-h-full w-full max-w-2xl flex-col justify-center");
+    expect(samplePlanning).toContain("pointer-events-none fixed bottom-0");
+    expect(samplePlanning).not.toContain("h-full flex flex-col items-center justify-center overflow-y-auto");
 });
 
 test("the shared theme disables decorative motion for reduced-motion users", async () => {
@@ -42,8 +48,10 @@ test("the shared theme disables decorative motion for reduced-motion users", asy
 test("the shared theme permits viewport reflow without a page-wide minimum", async () => {
     const theme = await Bun.file("styles/theme.css").text();
     const styleCheck = await Bun.file("scripts/check-styles.ts").text();
+    const teacherDashboard = await Bun.file("src/teacher/pages/Dashboard.tsx").text();
     expect(theme).not.toContain("min-width: 80rem");
     expect(styleCheck).toContain("device-width viewport for reflow");
+    expect(teacherDashboard.match(/flex w-full min-w-0 items-center gap-4 sm:flex-1/g)).toHaveLength(2);
 });
 
 test("the topic wizard follows the standard Escape close behavior", async () => {

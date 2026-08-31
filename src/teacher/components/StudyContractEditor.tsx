@@ -13,6 +13,29 @@ export interface FieldMappingState {
     studyContract?: StudyContract;
 }
 
+export function buildDefaultResearchQuestion(topicName: string, target: AnalysisTarget) {
+    const subject = topicName.trim() || "本课题";
+    return target.kind === "mean"
+        ? `${subject}中${target.field}的平均水平是多少？`
+        : `${subject}中${target.field}为“${target.value || "目标类别"}”的单位占比是多少？`;
+}
+
+export function resolveResearchQuestionForTargetChange(params: {
+    topicName: string;
+    previousTarget?: AnalysisTarget;
+    previousQuestion?: string;
+    nextTarget: AnalysisTarget;
+}) {
+    const previousQuestion = params.previousQuestion ?? "";
+    const previousDefault = params.previousTarget
+        ? buildDefaultResearchQuestion(params.topicName, params.previousTarget)
+        : "";
+    if (!previousQuestion.trim() || (previousDefault && previousQuestion.trim() === previousDefault)) {
+        return buildDefaultResearchQuestion(params.topicName, params.nextTarget);
+    }
+    return previousQuestion;
+}
+
 export function StudyContractEditor({
     value,
     onChange,
@@ -36,10 +59,12 @@ export function StudyContractEditor({
             analysisTarget: next,
             studyContract: next ? {
                 version: 1,
-                researchQuestion: previous.studyContract?.researchQuestion
-                    || (next.kind === "mean"
-                        ? `${topicName.trim() || "本课题"}中${next.field}的平均水平是多少？`
-                        : `${topicName.trim() || "本课题"}中${next.field}为“${next.value || "目标类别"}”的单位占比是多少？`),
+                researchQuestion: resolveResearchQuestionForTargetChange({
+                    topicName,
+                    previousTarget: previous.studyContract?.target ?? previous.analysisTarget,
+                    previousQuestion: previous.studyContract?.researchQuestion,
+                    nextTarget: next,
+                }),
                 targetPopulation: previous.studyContract?.targetPopulation || "上传总体数据中的全部单位",
                 unitOfAnalysis: previous.studyContract?.unitOfAnalysis || "总体数据中的一行记录",
                 target: next,

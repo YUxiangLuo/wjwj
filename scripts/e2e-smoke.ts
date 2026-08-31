@@ -98,6 +98,7 @@ try {
     await teacher(["fill", "#password", "Teacher!2026"]);
     await teacher(["click", "[data-testid=teacher-login-submit]"]);
     await teacher(["wait", "--text", "关注班级、课题与待批改任务"]);
+    await assertNoPageOverflow("teacher dashboard at 320px", teacher, "teacher-overflow-debug.png");
     await teacher(["screenshot", "--full", `${outputDir}/teacher-reflow-320.png`]);
     await teacher(["close"]);
 

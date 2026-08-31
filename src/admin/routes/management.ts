@@ -326,7 +326,7 @@ const studentRoutes: RouteDefinition = {
             .from(student)
             .leftJoin(class_, eq(student.classId, class_.id))
             .where(and(...conditions))
-            .orderBy(desc(student.createdAt));
+            .orderBy(desc(student.createdAt), desc(student.id));
         const [rows, totalRow] = await Promise.all([
             paged ? baseQuery.limit(pageSize).offset((page - 1) * pageSize) : baseQuery,
             paged

@@ -13,7 +13,7 @@ import { questionTypeLabels, questionTypeBadgeColors } from "@/lib/questionnaire
 import type { QuestionType } from "@/lib/questionnaire-types";
 
 import { categoricalFieldsFromMapping } from "@/lib/analysis-target";
-import { StudyContractEditor, type FieldMappingState } from "./StudyContractEditor";
+import { buildDefaultResearchQuestion, StudyContractEditor, type FieldMappingState } from "./StudyContractEditor";
 
 interface TopicWizardDialogProps {
     open: boolean;
@@ -260,7 +260,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
             analysisTarget: target,
             studyContract: target ? {
                 version: 1 as const,
-                researchQuestion: `${newTopicName.trim() || "本课题"}中${target.field}的平均水平是多少？`,
+                researchQuestion: buildDefaultResearchQuestion(newTopicName, target),
                 targetPopulation: "上传总体数据中的全部单位",
                 unitOfAnalysis: "总体数据中的一行记录",
                 target,

@@ -1,4 +1,6 @@
 import { expect, mock, test } from "bun:test";
+import { sql, type SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
 import { createMockDb } from "../../test-utils/mock-db";
 
 test("admin student list exposes temporary lock state", async () => {
@@ -18,4 +20,10 @@ test("admin student list exposes temporary lock state", async () => {
 
     const selection = operations.find((operation) => operation.kind === "select")?.selection as Record<string, unknown>;
     expect(selection).toHaveProperty("lockedUntil");
+
+    const orderBy = operations.find((operation) => operation.kind === "select")?.orderBy as SQL[];
+    expect(orderBy).toHaveLength(2);
+    const orderSql = new PgDialect().sqlToQuery(sql.join(orderBy, sql`, `)).sql;
+    expect(orderSql).toContain('"student"."created_at" desc');
+    expect(orderSql).toContain('"student"."id" desc');
 });

@@ -16,6 +16,7 @@ export interface MockDbOperation {
     joins?: Array<{ type: string; table: unknown }>;
     selection?: unknown;
     query?: unknown;
+    orderBy?: unknown[];
 }
 
 interface MockDbClient {
@@ -71,7 +72,8 @@ function createBuilder(kind: QueryKind, operation: MockDbOperation, queues: Requ
         offset() {
             return builder;
         },
-        orderBy() {
+        orderBy(...values: unknown[]) {
+            operation.orderBy = values;
             return builder;
         },
         groupBy() {

@@ -169,7 +169,7 @@ export function Dashboard() {
                         ) : (
                             recentSubmissions.map((item, idx) => (
                                 <div key={idx} className="flex flex-col items-start justify-between gap-3 rounded-xl border border-border bg-background/30 p-4 transition-all hover:border-input hover:bg-muted/50 sm:flex-row sm:items-center sm:gap-4">
-                                    <div className="flex min-w-0 items-center gap-4">
+                                    <div className="flex w-full min-w-0 items-center gap-4 sm:flex-1">
                                         <Avatar className="w-10 h-10 shrink-0 border border-input">
                                             <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">{item.student?.[0] ?? "?"}</AvatarFallback>
                                         </Avatar>
@@ -205,7 +205,7 @@ export function Dashboard() {
                         ) : (
                             recentGradings.map((item, idx) => (
                                 <div key={idx} className="flex flex-col items-start justify-between gap-3 rounded-xl border border-border bg-background/30 p-4 transition-all hover:border-input hover:bg-muted/50 sm:flex-row sm:items-center sm:gap-4">
-                                    <div className="flex min-w-0 items-center gap-4">
+                                    <div className="flex w-full min-w-0 items-center gap-4 sm:flex-1">
                                         <Avatar className="w-10 h-10 shrink-0 border border-input">
                                             <AvatarFallback className={`text-sm font-semibold ${item.rejected ? "bg-destructive text-destructive-foreground" : "bg-success text-success-foreground"}`}>{item.student?.[0] ?? "?"}</AvatarFallback>
                                         </Avatar>
