@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, exists, isNull, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, experiment, student, task, topic, topicAttachment } from "../../db/schema";
 import { normalizeRecommendQuestionsFromDb } from "../../lib/questionnaire-normalize";
@@ -7,6 +7,11 @@ import { parseExcelFile } from "./file-utils";
 import { buildTaskProgressSnapshot } from "./task-progress";
 
 export async function listTeacherTopics(teacherId: number) {
+    const assignedTask = db
+        .select({ id: task.id })
+        .from(task)
+        .where(eq(task.topicId, topic.id));
+
     return db
         .select({
             id: topic.id,
@@ -14,6 +19,7 @@ export async function listTeacherTopics(teacherId: number) {
             description: topic.description,
             status: topic.status,
             dataRows: topic.excelRowCount,
+            hasTasks: exists(assignedTask),
             createdAt: topic.createdAt,
         })
         .from(topic)

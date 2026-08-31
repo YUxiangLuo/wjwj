@@ -91,6 +91,29 @@ test("updateTeacherTopicBasics allows publishing a fully configured topic", asyn
     expect(updates[0]?.set).toMatchObject({ status: 1, updatedAt: expect.any(Date) });
 });
 
+test("assigned topic basics remain immutable after the mutation lock is acquired", async () => {
+    const { module, operations } = await loadManageService({
+        select: [[{
+            excelFilePath: "/storage/uploads/topic.xlsx",
+            fieldMapping: { identifier: "id", stratified: ["gender"], numeric: ["score"] },
+            weightConfig: { questionnaire: 30, process: 30, report: 40 },
+        }], [{ id: 7 }]],
+    });
+
+    const result = await module.updateTeacherTopicBasics({
+        teacherId: 9,
+        topicId: 12,
+        body: { name: "发布后改名" },
+    });
+
+    expect(result).toMatchObject({
+        ok: false,
+        code: "TOPIC_ASSIGNED",
+        status: 409,
+    });
+    expect(operations.filter((operation) => operation.kind === "update")).toHaveLength(0);
+});
+
 test("soft deleting an unassigned topic removes its population and attachment files", async () => {
     const populationPath = `/storage/delete-topic-${crypto.randomUUID()}.csv`;
     const attachmentPath = `/storage/delete-topic-${crypto.randomUUID()}.pdf`;

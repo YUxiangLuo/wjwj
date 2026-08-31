@@ -30,6 +30,7 @@ test("topic attachment upload stores metadata and writes the file under storage"
         select: [
             [{ id: 12, status: 0 }],
             [{ id: 12 }],
+            [],
             [{ count: 0 }],
         ],
         insert: [[{ id: 18 }]],
@@ -175,6 +176,7 @@ test("topic attachment delete removes the attachment after ownership check", asy
         select: [
             [{ id: 12, status: 0 }],
             [{ id: 12 }],
+            [],
             [{ filePath }],
             [{ count: 0 }],
             [{ count: 0 }],
@@ -219,4 +221,42 @@ test("topic attachment delete returns 404 when the topic does not belong to the 
         },
     });
     expect(operations.filter((operation) => operation.kind === "delete")).toHaveLength(0);
+});
+
+test("assigned topics reject attachment changes before reading or writing storage", async () => {
+    const { module, operations } = await loadTopicRoutes({
+        select: [[{ id: 12, status: 1, hasTasks: true }]],
+    });
+    const form = new FormData();
+    form.append("file", new File(["%PDF-1.7\nbody"], "guide.pdf", { type: "application/pdf" }));
+
+    const response = await module.topicAttachmentRoutes.POST!(withRouteParams(new Request(
+        "https://example.com/api/teacher/topics/12/attachments",
+        { method: "POST", body: form },
+    ), { id: "12" }));
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: { code: "TOPIC_ASSIGNED" } });
+    expect(operations.filter((operation) => operation.kind === "insert")).toHaveLength(0);
+});
+
+test("assignment committed after the route check still blocks attachment storage", async () => {
+    const { module, operations } = await loadTopicRoutes({
+        select: [
+            [{ id: 12, status: 1, hasTasks: false }],
+            [{ id: 12 }],
+            [{ id: 99 }],
+        ],
+    });
+    const form = new FormData();
+    form.append("file", new File(["%PDF-1.7\nbody"], "guide.pdf", { type: "application/pdf" }));
+
+    const response = await module.topicAttachmentRoutes.POST!(withRouteParams(new Request(
+        "https://example.com/api/teacher/topics/12/attachments",
+        { method: "POST", body: form },
+    ), { id: "12" }));
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: { code: "TOPIC_ASSIGNED" } });
+    expect(operations.filter((operation) => operation.kind === "insert")).toHaveLength(0);
 });

@@ -128,6 +128,7 @@ export interface AnalysisCategoricalFieldMetrics {
 }
 export interface AnalysisMetricsData {
     ppsMonteCarloReplicates?: number;
+    ppsStandardErrorMode?: "monte_carlo" | "census_exact" | null;
     numericFields: string[];
     excludedNumericFields?: string[];
     categoricalFields: string[];

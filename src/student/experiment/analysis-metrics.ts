@@ -20,8 +20,55 @@ export function resolvePpsMonteCarloReplicates(rawValue?: string): number {
         : DEFAULT_PPS_MONTE_CARLO_REPLICATES;
 }
 
-interface PpsMonteCarloContext {
+interface PpsStandardErrorContext {
     standardErrors: Record<string, number | null>;
+    mode: "monte_carlo" | "census_exact";
+    replicateCount: number;
+}
+
+const PPS_CONTEXT_CACHE_MAX_ENTRIES_PER_POPULATION = 16;
+const ppsStandardErrorContextCache = new WeakMap<
+    Array<Record<string, unknown>>,
+    Map<string, PpsStandardErrorContext>
+>();
+
+function ppsContextCacheKey(
+    sizeField: string,
+    sampleSize: number,
+    numericFields: string[],
+    replicateCount: number,
+) {
+    return JSON.stringify([sizeField, sampleSize, numericFields, replicateCount]);
+}
+
+function getCachedPpsStandardErrorContext(
+    population: Array<Record<string, unknown>>,
+    key: string,
+) {
+    const populationCache = ppsStandardErrorContextCache.get(population);
+    const cached = populationCache?.get(key);
+    if (!cached || !populationCache) return null;
+
+    // Refresh insertion order so the small per-population map behaves as LRU.
+    populationCache.delete(key);
+    populationCache.set(key, cached);
+    return cached;
+}
+
+function cachePpsStandardErrorContext(
+    population: Array<Record<string, unknown>>,
+    key: string,
+    context: PpsStandardErrorContext,
+) {
+    const populationCache = ppsStandardErrorContextCache.get(population) ?? new Map<string, PpsStandardErrorContext>();
+    populationCache.set(key, context);
+    while (populationCache.size > PPS_CONTEXT_CACHE_MAX_ENTRIES_PER_POPULATION) {
+        const oldestKey = populationCache.keys().next().value;
+        if (oldestKey === undefined) break;
+        populationCache.delete(oldestKey);
+    }
+    ppsStandardErrorContextCache.set(population, populationCache);
+    return context;
 }
 
 export interface NumericMethodAnalysis {
@@ -43,6 +90,7 @@ export interface CategoricalFieldAnalysis {
 
 export interface AnalysisMetricsResult {
     ppsMonteCarloReplicates: number;
+    ppsStandardErrorMode: PpsStandardErrorContext["mode"] | null;
     numericFields: string[];
     excludedNumericFields: string[];
     categoricalFields: string[];
@@ -412,21 +460,36 @@ function computeStratifiedMeanSe(
     return Math.sqrt(variance);
 }
 
-function buildPpsMonteCarloContext(
+function buildPpsStandardErrorContext(
     population: Array<Record<string, unknown>>,
     sizeField: string | undefined,
     sampleSize: number | undefined,
     numericFields: string[],
     replicateCount: number,
-): PpsMonteCarloContext | null {
+): PpsStandardErrorContext | null {
     const normalizedSampleSize = Number(sampleSize);
     if (!sizeField || !Number.isInteger(normalizedSampleSize) || normalizedSampleSize < 1) {
         return null;
     }
 
+    const cacheKey = ppsContextCacheKey(sizeField, normalizedSampleSize, numericFields, replicateCount);
+    const cached = getCachedPpsStandardErrorContext(population, cacheKey);
+    if (cached) return cached;
+
     const prepared = preparePPSSampling(population, sizeField, normalizedSampleSize);
     if (!prepared) {
         return null;
+    }
+
+    // A valid census contains every unit with inclusion probability one, so its
+    // design distribution is degenerate. Repeating the identical draw hundreds
+    // of times only blocks the single Bun process and cannot change the SE.
+    if (normalizedSampleSize === population.length) {
+        return cachePpsStandardErrorContext(population, cacheKey, {
+            standardErrors: Object.fromEntries(numericFields.map((field) => [field, 0])),
+            mode: "census_exact",
+            replicateCount: 0,
+        });
     }
 
     // Welford accumulators keep memory at O(number of numeric fields) instead
@@ -437,12 +500,14 @@ function buildPpsMonteCarloContext(
         squaredDeviation: 0,
     }]));
 
+    let successfulReplicateCount = 0;
     for (let iteration = 0; iteration < replicateCount; iteration += 1) {
         const replicate = drawPreparedPPSSample(
             prepared,
             createSeededRandom(`analysis-pps-${iteration}`),
         );
         if (replicate.data.length !== normalizedSampleSize) continue;
+        successfulReplicateCount += 1;
 
         for (const field of numericFields) {
             const estimate = estimateWeightedMean(
@@ -470,12 +535,16 @@ function buildPpsMonteCarloContext(
                 : null,
         ];
     }));
-    return { standardErrors };
+    return cachePpsStandardErrorContext(population, cacheKey, {
+        standardErrors,
+        mode: "monte_carlo",
+        replicateCount: successfulReplicateCount,
+    });
 }
 
-function computeMonteCarloPpsMeanSe(
+function computePpsMeanSe(
     field: string,
-    context: PpsMonteCarloContext | null,
+    context: PpsStandardErrorContext | null,
 ) {
     return context?.standardErrors[field] ?? null;
 }
@@ -567,9 +636,9 @@ export function buildAnalysisMetrics(params: {
     const systematicRows = (params.samplingResults?.systematic?.data ?? []) as Array<Record<string, unknown>>;
     const ppsRows = (params.samplingResults?.pps?.data ?? []) as Array<Record<string, unknown>>;
     const stratifiedRows = (params.samplingResults?.stratified?.data ?? []) as Array<Record<string, unknown>>;
-    const ppsMonteCarloContext = params.samplingResults?.pps?.unavailable || completeNumericFields.length === 0
+    const ppsStandardErrorContext = params.samplingResults?.pps?.unavailable || completeNumericFields.length === 0
         ? null
-        : buildPpsMonteCarloContext(
+        : buildPpsStandardErrorContext(
             params.population,
             params.samplingResults?.pps?.sizeField,
             params.samplingResults?.pps?.sampleCount,
@@ -605,9 +674,9 @@ export function buildAnalysisMetrics(params: {
                 ),
             standardError: params.samplingResults?.pps?.unavailable
                 ? null
-                : computeMonteCarloPpsMeanSe(
+                : computePpsMeanSe(
                     field,
-                    ppsMonteCarloContext,
+                    ppsStandardErrorContext,
                 ),
         };
         methods.stratified = {
@@ -678,7 +747,10 @@ export function buildAnalysisMetrics(params: {
     }
 
     return {
-        ppsMonteCarloReplicates,
+        ppsMonteCarloReplicates: ppsStandardErrorContext?.mode === "monte_carlo"
+            ? ppsStandardErrorContext.replicateCount
+            : 0,
+        ppsStandardErrorMode: ppsStandardErrorContext?.mode ?? null,
         numericFields: Object.keys(numeric),
         excludedNumericFields: numericFields.filter((field) => !completeNumericFields.includes(field)),
         categoricalFields: Object.keys(categorical),

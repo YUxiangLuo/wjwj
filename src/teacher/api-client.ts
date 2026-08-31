@@ -10,7 +10,7 @@ export interface TeacherStats {
     recentGradings: Array<{ student: string; class: string; topic: string; score: string | null; rejected: boolean; time: string }>;
 }
 export interface TeacherClass { id: number; name: string; semester: string | null; studentCount: number; createdAt: string }
-export interface Topic { id: number; name: string; description: string | null; status: number; dataRows: number; createdAt: string }
+export interface Topic { id: number; name: string; description: string | null; status: number; dataRows: number; hasTasks?: boolean; createdAt: string }
 export interface TopicAttachment { id: number; topicId: number; fileName: string; fileType: string; fileSize: number; createdAt: string }
 export interface TopicExcelInfo {
     rowCount?: number;

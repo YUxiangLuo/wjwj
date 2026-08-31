@@ -11,6 +11,7 @@ const mockExperimentApi = {
         success: true,
         data: {
             ppsMonteCarloReplicates: 256,
+            ppsStandardErrorMode: "monte_carlo",
             numericFields: [],
             categoricalFields: [],
             numeric: {},
@@ -182,6 +183,31 @@ test("AnalysisReport labels full-population metrics as virtual-population oracle
     expect(view.getByTestId("student-analysis-tab-represent").textContent).toContain("总体对照偏差");
 });
 
+test("AnalysisReport labels a PPS census SE as exact instead of simulated", async () => {
+    mockExperimentApi.getAnalysisMetrics.mockResolvedValueOnce({
+        success: true,
+        data: {
+            ppsMonteCarloReplicates: 0,
+            ppsStandardErrorMode: "census_exact",
+            numericFields: [],
+            categoricalFields: [],
+            numeric: {},
+            categorical: {},
+        },
+    });
+
+    const view = render(<AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />);
+    await waitFor(() => expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(1));
+
+    const notice = view.getByTestId("student-analysis-oracle-notice").textContent ?? "";
+    expect(notice).toContain("全体入样");
+    expect(notice).toContain("精确为 0");
+    expect(notice).toContain("未执行 Monte Carlo");
+    expect(notice).not.toContain("模拟误差");
+    expect(view.container.textContent).toContain("PPS 为全体入样");
+    expect(view.container.textContent).not.toContain("有限重复次数会带来模拟误差");
+});
+
 test("AnalysisReport omits PPS-only guidance when PPS is unavailable", async () => {
     mockExperimentContext.experiment = {
         ...mockExperimentContext.experiment,
@@ -214,6 +240,7 @@ test("AnalysisReport warns when a historical numeric column is excluded for miss
     await waitFor(() => expect(view.getByTestId("student-analysis-invalid-numeric-warning")).toBeTruthy());
     expect(view.getByTestId("student-analysis-invalid-numeric-warning").textContent).toContain("收入");
     expect(view.getByTestId("student-analysis-invalid-numeric-warning").textContent).toContain("已停止");
+    expect(view.getByTestId("student-analysis-oracle-notice").textContent).not.toContain("PPS 标准误");
 });
 
 test("AnalysisReport shows a visible error when analysis metrics fail to load", async () => {

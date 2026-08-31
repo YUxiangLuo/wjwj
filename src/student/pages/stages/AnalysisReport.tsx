@@ -230,7 +230,24 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     const numericFields = analysisMetrics?.numericFields ?? [];
     const categoricalFields = analysisMetrics?.categoricalFields ?? [];
-    const ppsMonteCarloReplicates = analysisMetrics?.ppsMonteCarloReplicates ?? 128;
+    const reportedPpsMonteCarloReplicates = analysisMetrics?.ppsMonteCarloReplicates;
+    const ppsMonteCarloReplicates = reportedPpsMonteCarloReplicates ?? 512;
+    const ppsStandardErrorMode = analysisMetrics?.ppsStandardErrorMode
+        ?? (typeof reportedPpsMonteCarloReplicates === "number" && reportedPpsMonteCarloReplicates > 0
+            ? "monte_carlo"
+            : null);
+    const ppsStandardErrorNotice = ppsStandardErrorMode === "census_exact"
+        ? "PPS 本次为全体入样，每个单位的包含概率均为 1，设计标准误精确为 0；该结果未执行 Monte Carlo 重复抽样。"
+        : `PPS 标准误是 ${ppsMonteCarloReplicates} 次重复抽样的 Monte Carlo 估计（按 R−1 计算重复间标准差），仍有模拟误差。`;
+    const ppsStandardErrorDescription = isPpsUnavailable
+        ? "PPS 本任务按规则跳过，不计算设计标准误。"
+        : ppsStandardErrorMode === "census_exact"
+            ? "PPS 为全体入样，每个单位的包含概率均为 1，设计标准误精确为 0，未执行 Monte Carlo 重复抽样。"
+            : ppsStandardErrorMode === "monte_carlo"
+                ? `PPS 为 ${ppsMonteCarloReplicates} 次重复抽样的 Monte Carlo 估计（重复间标准差使用 R−1），有限重复次数会带来模拟误差。`
+                : analysisMetrics
+                    ? "PPS 当前没有可计算设计标准误的完整数值字段。"
+                    : "PPS 设计标准误的计算方式正在加载。";
 
     useEffect(() => {
         const preferred = analysisTarget?.kind === "mean" ? analysisTarget.field : "";
@@ -537,7 +554,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 <Info className="mt-0.5 h-4 w-4 shrink-0" />
                                 <span>
                                     本实验使用完整虚拟总体演示抽样设计，因此可以对照总体真值并计算设计层面的误差。现实调查通常看不到未入样单位，需使用与抽样设计匹配的权重和方差估计。样本量、设计效应和无回答率计算均是基于页面所列假设的规划近似，不替代预调查、抽样框评估和专业统计设计。
-                                    {!isPpsUnavailable && <>PPS 标准误是 {ppsMonteCarloReplicates} 次重复抽样的 Monte Carlo 估计（按 R−1 计算重复间标准差），仍有模拟误差。</>}
+                                    {analysisMetrics && !isPpsUnavailable && ppsStandardErrorMode && <>{ppsStandardErrorNotice}</>}
                                 </span>
                             </div>
                             <Tabs defaultValue="charts" className="w-full">
@@ -622,7 +639,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
                                 <TabsContent value="error">
                                     <ChartTabPanel
-                                        description={`利用完整虚拟总体比较均值估计的设计标准误：简单随机和分层采用设计公式，系统抽样枚举随机起点，PPS 为 ${ppsMonteCarloReplicates} 次重复抽样的 Monte Carlo 估计（重复间标准差使用 R−1）。有限重复次数会带来模拟误差；它们不是现实调查中仅凭当前样本直接得到的标准误。`}
+                                        description={`利用完整虚拟总体比较均值估计的设计标准误：简单随机和分层采用设计公式，系统抽样枚举随机起点，${ppsStandardErrorDescription}这些结果不是现实调查中仅凭当前样本直接得到的标准误。`}
                                         rows={errorRows}
                                         series={errorSeries}
                                         emptyMessage="暂无可用于误差分析的数值字段"

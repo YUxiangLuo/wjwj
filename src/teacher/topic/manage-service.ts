@@ -97,6 +97,18 @@ export async function updateTeacherTopicBasics(params: {
             .from(topic)
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
         if (!topicInfo) return fail("课题不存在", "NOT_FOUND", 404);
+        const [taskReference] = await tx
+            .select({ id: task.id })
+            .from(task)
+            .where(eq(task.topicId, params.topicId))
+            .limit(1);
+        if (taskReference) {
+            return fail(
+                "课题已分配任务，内容不能再修改；如需调整请复制为新课题",
+                "TOPIC_ASSIGNED",
+                409,
+            );
+        }
 
         if (params.body.status === 1) {
             const publishReadinessError = validateTopicPublishReadiness({

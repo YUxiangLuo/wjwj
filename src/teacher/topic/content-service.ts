@@ -1,7 +1,7 @@
 import { and, count, eq, isNull } from "drizzle-orm";
 import { basename } from "node:path";
 import { db } from "../../db";
-import { topic, topicAttachment } from "../../db/schema";
+import { task, topic, topicAttachment } from "../../db/schema";
 import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
 import { copyStorageFile, createStorageUploadPath, deleteStorageFileIfExists, writeStorageFile } from "../../server/storage-files";
 import {
@@ -63,6 +63,18 @@ export async function uploadTopicAttachment(params: {
                 .from(topic)
                 .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
             if (!activeTopic) return fail("课题不存在", "NOT_FOUND", 404);
+            const [taskReference] = await tx
+                .select({ id: task.id })
+                .from(task)
+                .where(eq(task.topicId, params.topicId))
+                .limit(1);
+            if (taskReference) {
+                return fail(
+                    "课题已分配任务，附件不能再修改；如需调整请复制为新课题",
+                    "TOPIC_ASSIGNED",
+                    409,
+                );
+            }
 
             const [countRow] = await tx
                 .select({ count: count() })
@@ -114,6 +126,18 @@ export async function replaceTopicRecommendQuestions(params: {
             .from(topic)
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
         if (!activeTopic) return fail("课题不存在", "NOT_FOUND", 404);
+        const [taskReference] = await tx
+            .select({ id: task.id })
+            .from(task)
+            .where(eq(task.topicId, params.topicId))
+            .limit(1);
+        if (taskReference) {
+            return fail(
+                "课题已分配任务，推荐题目不能再修改；如需调整请复制为新课题",
+                "TOPIC_ASSIGNED",
+                409,
+            );
+        }
         const [updated] = await tx
             .update(topic)
             .set({ recommendQuestions: parsed.questions, updatedAt: new Date() })
@@ -135,6 +159,18 @@ export async function deleteTopicAttachment(params: {
             .from(topic)
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
         if (!activeTopic) return fail("课题不存在", "NOT_FOUND", 404);
+        const [taskReference] = await tx
+            .select({ id: task.id })
+            .from(task)
+            .where(eq(task.topicId, params.topicId))
+            .limit(1);
+        if (taskReference) {
+            return fail(
+                "课题已分配任务，附件不能再修改；如需调整请复制为新课题",
+                "TOPIC_ASSIGNED",
+                409,
+            );
+        }
 
         const [attachment] = await tx
             .select({ filePath: topicAttachment.filePath })

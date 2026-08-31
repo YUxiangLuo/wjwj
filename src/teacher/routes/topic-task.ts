@@ -28,7 +28,21 @@ import {
 } from "../topic/query-service";
 import { extendTopicTaskDeadline, publishTopicTasks, softDeleteTeacherTask } from "../topic/task-service";
 import { getPrimaryTeacherIdOrThrow } from "./auth";
-import { hasTopicOwnership } from "./topic-guards";
+
+function assignedTopicContentError() {
+    return error(
+        "课题已分配任务，内容不能再修改；如需调整请复制为新课题",
+        "TOPIC_ASSIGNED",
+        409,
+    );
+}
+
+function parsePositiveRouteId(req: Request, name = "id") {
+    const raw = getRouteParam(req, name);
+    if (!raw || !/^\d+$/.test(raw)) return null;
+    const value = Number(raw);
+    return Number.isSafeInteger(value) && value > 0 ? value : null;
+}
 
 const topicRoutes: RouteDefinition = {
     async GET(req) {
@@ -54,11 +68,12 @@ const topicRoutes: RouteDefinition = {
 const topicItemRoutes: RouteDefinition = {
     async PUT(req) {
         const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-        const id = Number(getRouteParam(req, "id"));
-        if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
+        const id = parsePositiveRouteId(req);
+        if (!id) return error("Invalid ID", "INVALID_ID");
 
-        const ownsTopic = await hasTopicOwnership(id, currentTeacherId, requireTopicOwner);
-        if (!ownsTopic) return error("课题不存在", "NOT_FOUND", 404);
+        const topicRow = await requireTopicOwner(id, currentTeacherId);
+        if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
+        if (topicRow.hasTasks) return assignedTopicContentError();
 
         const body = await parseBody<{ name?: string; description?: string; status?: number }>(req);
         const updateResult = await updateTeacherTopicBasics({
@@ -73,11 +88,11 @@ const topicItemRoutes: RouteDefinition = {
 
     async DELETE(req) {
         const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-        const id = Number(getRouteParam(req, "id"));
-        if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
+        const id = parsePositiveRouteId(req);
+        if (!id) return error("Invalid ID", "INVALID_ID");
 
-        const ownsTopic = await hasTopicOwnership(id, currentTeacherId, requireTopicOwner);
-        if (!ownsTopic) return error("课题不存在", "NOT_FOUND", 404);
+        const topicRow = await requireTopicOwner(id, currentTeacherId);
+        if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
 
         const deleteResult = await softDeleteTeacherTopic({ teacherId: currentTeacherId, topicId: id });
         if (!deleteResult.ok) return error(deleteResult.message, deleteResult.code, deleteResult.status);
@@ -88,9 +103,8 @@ const topicItemRoutes: RouteDefinition = {
 const topicDetailRoutes: RouteDefinition = {
     async GET(req) {
         const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-        const id = Number(getRouteParam(req, "id"));
-
-        if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
+        const id = parsePositiveRouteId(req);
+        if (!id) return error("Invalid ID", "INVALID_ID");
 
         const topicRow = await requireTopicOwner(id, currentTeacherId);
         if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
@@ -102,8 +116,8 @@ const topicDetailRoutes: RouteDefinition = {
 const topicExcelUploadRoutes: RouteDefinition = {
     async POST(req) {
         const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-        const id = Number(getRouteParam(req, "id"));
-        if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
+        const id = parsePositiveRouteId(req);
+        if (!id) return error("Invalid ID", "INVALID_ID");
 
         const topicRow = await requireTopicOwner(id, currentTeacherId);
         if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
@@ -137,8 +151,8 @@ const topicExcelUploadRoutes: RouteDefinition = {
 const topicFieldMappingRoutes: RouteDefinition = {
     async PUT(req) {
         const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-        const id = Number(getRouteParam(req, "id"));
-        if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
+        const id = parsePositiveRouteId(req);
+        if (!id) return error("Invalid ID", "INVALID_ID");
 
         const topicRow = await requireTopicOwner(id, currentTeacherId);
         if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
@@ -161,11 +175,12 @@ const topicFieldMappingRoutes: RouteDefinition = {
 const topicAttachmentRoutes: RouteDefinition = {
     async POST(req) {
         const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-        const id = Number(getRouteParam(req, "id"));
-        if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
+        const id = parsePositiveRouteId(req);
+        if (!id) return error("Invalid ID", "INVALID_ID");
 
         const topicRow = await requireTopicOwner(id, currentTeacherId);
         if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
+        if (topicRow.hasTasks) return assignedTopicContentError();
 
         const formData = await req.formData();
         const file = formData.get("file");
@@ -180,9 +195,9 @@ const topicAttachmentRoutes: RouteDefinition = {
 const topicAttachmentDownloadRoutes: RouteDefinition = {
     async GET(req) {
         const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-        const topicId = Number(getRouteParam(req, "id"));
-        const attachmentId = Number(getRouteParam(req, "attachmentId"));
-        if (!Number.isInteger(topicId) || topicId <= 0 || !Number.isInteger(attachmentId) || attachmentId <= 0) {
+        const topicId = parsePositiveRouteId(req);
+        const attachmentId = parsePositiveRouteId(req, "attachmentId");
+        if (!topicId || !attachmentId) {
             return error("Invalid ID", "INVALID_ID");
         }
 
@@ -209,12 +224,13 @@ const topicAttachmentDownloadRoutes: RouteDefinition = {
 const topicAttachmentDeleteRoutes: RouteDefinition = {
     async DELETE(req) {
         const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-        const topicId = Number(getRouteParam(req, "id"));
-        const attachmentId = Number(getRouteParam(req, "attachmentId"));
-        if (isNaN(topicId) || isNaN(attachmentId)) return error("Invalid ID", "INVALID_ID");
+        const topicId = parsePositiveRouteId(req);
+        const attachmentId = parsePositiveRouteId(req, "attachmentId");
+        if (!topicId || !attachmentId) return error("Invalid ID", "INVALID_ID");
 
         const topicRow = await requireTopicOwner(topicId, currentTeacherId);
         if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
+        if (topicRow.hasTasks) return assignedTopicContentError();
 
         const deleteResult = await deleteTopicAttachment({ teacherId: currentTeacherId, topicId, attachmentId });
         if (!deleteResult.ok) return error(deleteResult.message, deleteResult.code, deleteResult.status);
@@ -225,11 +241,12 @@ const topicAttachmentDeleteRoutes: RouteDefinition = {
 const topicRecommendQuestionRoutes: RouteDefinition = {
     async PUT(req) {
         const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-        const id = Number(getRouteParam(req, "id"));
-        if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
+        const id = parsePositiveRouteId(req);
+        if (!id) return error("Invalid ID", "INVALID_ID");
 
         const topicRow = await requireTopicOwner(id, currentTeacherId);
         if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
+        if (topicRow.hasTasks) return assignedTopicContentError();
 
         const body = await parseBody<{ items?: unknown }>(req);
         const replaceResult = await replaceTopicRecommendQuestions({ teacherId: currentTeacherId, topicId: id, items: body.items });
@@ -242,8 +259,8 @@ const topicRecommendQuestionRoutes: RouteDefinition = {
 const topicWeightRoutes: RouteDefinition = {
     async PUT(req) {
         const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-        const id = Number(getRouteParam(req, "id"));
-        if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
+        const id = parsePositiveRouteId(req);
+        if (!id) return error("Invalid ID", "INVALID_ID");
 
         const topicRow = await requireTopicOwner(id, currentTeacherId);
         if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
@@ -266,8 +283,8 @@ const topicWeightRoutes: RouteDefinition = {
 const topicCopyRoutes: RouteDefinition = {
     async POST(req) {
         const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-        const id = Number(getRouteParam(req, "id"));
-        if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
+        const id = parsePositiveRouteId(req);
+        if (!id) return error("Invalid ID", "INVALID_ID");
 
         const topicRow = await requireTopicOwner(id, currentTeacherId);
         if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
@@ -304,8 +321,8 @@ const taskRoutes: RouteDefinition = {
 const taskItemRoutes: RouteDefinition = {
     async DELETE(req) {
         const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-        const taskId = Number(getRouteParam(req, "id"));
-        if (isNaN(taskId)) return error("Invalid ID", "INVALID_ID");
+        const taskId = parsePositiveRouteId(req);
+        if (!taskId) return error("Invalid ID", "INVALID_ID");
 
         const result = await softDeleteTeacherTask({ teacherId: currentTeacherId, taskId });
         if (!result.ok) {
@@ -319,8 +336,8 @@ const taskItemRoutes: RouteDefinition = {
 const taskExtendRoutes: RouteDefinition = {
     async PUT(req) {
         const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-        const taskId = Number(getRouteParam(req, "id"));
-        if (isNaN(taskId)) return error("Invalid ID", "INVALID_ID");
+        const taskId = parsePositiveRouteId(req);
+        if (!taskId) return error("Invalid ID", "INVALID_ID");
 
         const body = await parseBody<{ deadline: string }>(req);
         const extendResult = await extendTopicTaskDeadline({
@@ -339,8 +356,8 @@ const taskExtendRoutes: RouteDefinition = {
 const taskProgressRoutes: RouteDefinition = {
     async GET(req) {
         const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-        const taskId = Number(getRouteParam(req, "id"));
-        if (isNaN(taskId)) return error("Invalid ID", "INVALID_ID");
+        const taskId = parsePositiveRouteId(req);
+        if (!taskId) return error("Invalid ID", "INVALID_ID");
 
         const progress = await getTeacherTaskProgress(taskId, currentTeacherId);
         if (!progress) return error("任务不存在", "NOT_FOUND", 404);

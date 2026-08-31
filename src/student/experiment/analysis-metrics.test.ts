@@ -217,6 +217,7 @@ test("analysis metrics use PPS inclusion probabilities for weighted mean estimat
 
     const prepared = preparePPSSampling(population, "size", 2);
     if (!prepared) throw new Error("expected a valid PPS design");
+    expect(metrics.ppsStandardErrorMode).toBe("monte_carlo");
     expect(metrics.ppsMonteCarloReplicates).toBeGreaterThanOrEqual(32);
     expect(metrics.ppsMonteCarloReplicates).toBeLessThanOrEqual(1024);
     const replicateEstimates = Array.from({ length: metrics.ppsMonteCarloReplicates }, (_, iteration) => {
@@ -236,4 +237,35 @@ test("analysis metrics use PPS inclusion probabilities for weighted mean estimat
         0,
     ) / (replicateEstimates.length - 1));
     expect(numericValue.methods.pps.standardError).toBeCloseTo(expectedSe, 10);
+});
+
+test("PPS census short-circuits the degenerate Monte Carlo design", () => {
+    const population = [
+        { id: 1, value: 10, size: 1 },
+        { id: 2, value: 20, size: 2 },
+        { id: 3, value: 30, size: 3 },
+    ];
+
+    const metrics = buildAnalysisMetrics({
+        population,
+        fieldMapping: {
+            stratified: [],
+            numeric: ["value"],
+            others: [],
+        },
+        samplingResults: {
+            pps: {
+                completed: true,
+                sizeField: "size",
+                sampleCount: population.length,
+                inclusionProbabilities: [1, 1, 1],
+                data: population,
+            },
+        },
+    });
+
+    expect(metrics.numeric.value?.methods.pps.estimate).toBe(20);
+    expect(metrics.numeric.value?.methods.pps.standardError).toBe(0);
+    expect(metrics.ppsStandardErrorMode).toBe("census_exact");
+    expect(metrics.ppsMonteCarloReplicates).toBe(0);
 });

@@ -77,3 +77,25 @@ test("semester update explicitly advances updatedAt", async () => {
     const update = operations.find((operation) => operation.kind === "update");
     expect(update?.set).toMatchObject({ name: "2026 秋季", updatedAt: expect.any(Date) });
 });
+
+test("semester update returns not found when the target row does not exist", async () => {
+    const { db } = createMockDb({ select: [[]], update: [[]] });
+    mock.module("../../db", () => ({ db }));
+
+    const module = await import(`./semester?semester-update-not-found-test=${crypto.randomUUID()}`);
+    const req = Object.assign(createJsonRequest(
+        "https://example.com/api/admin/semesters/999999/update",
+        "PUT",
+        { name: "不存在学期" },
+    ), {
+        params: { id: "999999" },
+    });
+
+    const response = await module.semesterUpdateRoutes.PUT!(req);
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({
+        success: false,
+        error: { code: "NOT_FOUND", message: "学期不存在" },
+    });
+});

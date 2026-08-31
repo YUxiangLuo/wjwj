@@ -445,6 +445,7 @@ export function TopicManagement() {
                                             ) : (
                                                 <StatusBadge intent="warning">草稿</StatusBadge>
                                             )}
+                                            {topic.hasTasks && <StatusBadge intent="info">任务已分配 · 内容只读</StatusBadge>}
                                         </div>
                                         <div className="text-xs text-muted-foreground mt-1">创建于 {new Date(topic.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}</div>
                                         <div className="text-sm text-muted-foreground mt-2 line-clamp-2 max-w-2xl">{getRichTextPlainText(topic.description) || "暂无描述"}</div>
@@ -459,7 +460,33 @@ export function TopicManagement() {
                                     </span>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
-                                    {topic.status === 0 ? (
+                                    {topic.hasTasks ? (
+                                        <>
+                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-info hover:bg-info/10" onClick={() => openViewModal(topic)}>查看</Button>
+                                            <Button
+                                                data-testid={`teacher-topic-copy-${topic.id}`}
+                                                variant="ghost"
+                                                size="sm"
+                                                disabled={copyingTopicId !== null}
+                                                className="text-muted-foreground hover:text-info hover:bg-info/10"
+                                                onClick={async () => {
+                                                    setCopyingTopicId(topic.id);
+                                                    try {
+                                                        const res = await teacherApi.copyTopic(topic.id);
+                                                        if (res.success) {
+                                                            loadTopics();
+                                                        } else {
+                                                            toast.error("复制失败: " + res.error?.message);
+                                                        }
+                                                    } finally {
+                                                        setCopyingTopicId(null);
+                                                    }
+                                                }}
+                                            >
+                                                复制
+                                            </Button>
+                                        </>
+                                    ) : topic.status === 0 ? (
                                         <>
                                             <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-info hover:bg-info/10" onClick={() => openViewModal(topic)}>查看</Button>
                                             <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => openEditModal(topic)}>编辑</Button>
