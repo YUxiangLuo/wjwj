@@ -72,7 +72,14 @@ try {
     await browser(["screenshot", "--full", `${outputDir}/student-desktop.png`]);
     await assertNoCriticalAccessibilityViolations("student desktop task hall");
 
-    await browser(["open", `${baseUrl}/student/task/7/experiment`]);
+    const proportionTaskId = Number(JSON.parse(await browser([
+        "eval",
+        `(async () => { const payload = await (await fetch("/api/student/tasks")).json(); return payload.data?.find((item) => item.name === "比例对照（PPS 可用）")?.id ?? null; })()`,
+    ])));
+    if (!Number.isInteger(proportionTaskId) || proportionTaskId <= 0) {
+        throw new Error("proportion dogfood task was not found after login");
+    }
+    await browser(["open", `${baseUrl}/student/task/${proportionTaskId}/experiment`]);
     await browser(["wait", "--text", "研究目标结果"]);
     await browser(["screenshot", "--full", `${outputDir}/student-proportion-target.png`]);
 
