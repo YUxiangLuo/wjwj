@@ -27,6 +27,7 @@ import {
 } from "./analysis-utils";
 import { downloadChartAsSvg, sanitizeFileName } from "./chart-svg-export";
 import { SamplePlanDecisionPanel, SamplingMethodParamsPanel } from "./analysis-params-panels";
+import { TargetMetricsPanel } from "../../components/TargetMetricsPanel";
 import { notifyAuthExpiredFromResponse } from "@/lib/auth-expired";
 import {
     readExperimentDraft,
@@ -557,6 +558,9 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     {analysisMetrics && !isPpsUnavailable && ppsStandardErrorMode && <>{ppsStandardErrorNotice}</>}
                                 </span>
                             </div>
+                            {analysisMetrics?.target && (
+                                <TargetMetricsPanel target={analysisMetrics.target} />
+                            )}
                             <Tabs defaultValue="charts" className="w-full">
                                 <TabsList
                                     className="mb-6 flex h-auto w-full flex-wrap gap-1 rounded-xl border border-border bg-background p-1"
