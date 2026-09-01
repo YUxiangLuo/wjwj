@@ -38,7 +38,7 @@ version against a new empty database.
 `src/db/seeds/default.ts`: 1 admin, 3 teachers, 2 semesters, 2 classes,
 S010–S020, 7 topics, 6 tasks, 11 experiments, 4 bounded sampling-attempt audit
 rows, 4 announcements, 1 attachment, and two generated population files. The
-stage-4 and terminal fixtures use production-style compact replay indices. The main proportion/PPS task covers all
+stage-4 and terminal fixtures use production-style compact replay indices. The main mean/PPS task covers all
 eight teacher progress buckets; the mean task has a valid numeric analysis
 field but intentionally no eligible PPS size field. `SEED_NOW` optionally fixes
 the relative-time anchor, and `SEED_ADMIN_PASSWORD` overrides the generated
