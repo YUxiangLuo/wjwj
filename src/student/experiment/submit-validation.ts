@@ -4,6 +4,7 @@ import { normalizeSamplePlanEstimationType } from "./sample-plan-display";
 import { getFinalSampleSizeBounds } from "./final-sample-bounds";
 import { getSamplingAcceptedRange } from "./sampling-tolerance";
 import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize } from "./sample-plan";
+import { parseAdvancedPlans, validateAdvancedPlanConsistency } from "./advanced-plan";
 
 function toTrimmedString(value: unknown) {
     return typeof value === "string" ? value.trim() : "";
@@ -132,6 +133,31 @@ export function validateSamplePlanForSubmit(
         && advancedSource !== "cluster"
     ) {
         return "高级规划来源无效";
+    }
+
+    // 高级规划快照：形状严格校验、逐份复算 inputs→result；
+    // 当前来源种类的快照必须存在且其推荐样本量与最终样本量一致。
+    // 历史数据只有来源标记、没有快照时保持放行（grandfathered）。
+    if (data.advancedPlans !== undefined) {
+        const advancedPlans = parseAdvancedPlans(data.advancedPlans);
+        if (!advancedPlans) return "高级规划快照格式无效";
+        if (advancedPlans.length > 4 || new Set(advancedPlans.map((plan) => plan.kind)).size !== advancedPlans.length) {
+            return "每类高级规划最多保留一份快照";
+        }
+        const appliedPlan = advancedSource
+            ? advancedPlans.find((plan) => plan.kind === advancedSource)
+            : undefined;
+        if (advancedSource && !appliedPlan) {
+            return "高级样本量缺少可复核快照，请重新应用该高级规划";
+        }
+        for (const plan of advancedPlans) {
+            const consistencyError = validateAdvancedPlanConsistency(
+                plan,
+                populationSize,
+                plan === appliedPlan ? finalSampleSize : null,
+            );
+            if (consistencyError) return consistencyError;
+        }
     }
 
     if (populationSize !== null && Number.isFinite(populationSize) && populationSize > 0) {

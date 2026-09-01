@@ -35,6 +35,19 @@ interface PrecisionCostTradeoffProps {
     /** 与决策面板「允许误差」一致（%），用于「目标精度」滑块初值 */
     initialMarginOfError?: number;
     onApplyBudget: (budget: number, maxSampleSize: number) => void;
+    /** 应用时回传完整输入与结果（用于高级规划快照持久化与服务端复算）。 */
+    onSnapshot?: (snapshot: {
+        inputs: {
+            confidenceLevel: string;
+            targetMarginOfError: number;
+            designEffect: number;
+            nonResponseRate: number;
+            fixedCost: number;
+            variableCostPerUnit: number;
+            totalBudget: number;
+        };
+        result: { requiredSampleSize: number; totalCost: number; feasible: boolean };
+    }) => void;
 }
 
 const PRESET_SCENARIOS: CostScenario[] = [
@@ -68,6 +81,7 @@ export function PrecisionCostTradeoff({
     nonResponseRate,
     initialMarginOfError = 5,
     onApplyBudget,
+    onSnapshot,
 }: PrecisionCostTradeoffProps) {
     /** 与左侧决策面板解耦：继承为初值，在工具内可任意调整 */
     const [confidenceLevelLocal, setConfidenceLevelLocal] = useState(() => confidenceLevel);
@@ -469,7 +483,25 @@ export function PrecisionCostTradeoff({
                                     「应用」仅将样本量写入最终样本量。若抽样假设与左侧不一致，理解此 n 时以本工具为准；左侧不会随本工具更新，勿用左侧参数代回验算。
                                 </p>
                                 <Button
-                                    onClick={() => onApplyBudget(currentScenario.totalBudget, targetAnalysis.requiredSampleSize)}
+                                    onClick={() => {
+                                        onSnapshot?.({
+                                            inputs: {
+                                                confidenceLevel: confidenceLevelLocal,
+                                                targetMarginOfError,
+                                                designEffect: designEffectLocal,
+                                                nonResponseRate: nonResponseRateLocal,
+                                                fixedCost: currentScenario.fixedCost,
+                                                variableCostPerUnit: currentScenario.variableCostPerUnit,
+                                                totalBudget: currentScenario.totalBudget,
+                                            },
+                                            result: {
+                                                requiredSampleSize: targetAnalysis.requiredSampleSize,
+                                                totalCost: targetAnalysis.totalCost,
+                                                feasible: targetAnalysis.isFeasible,
+                                            },
+                                        });
+                                        onApplyBudget(currentScenario.totalBudget, targetAnalysis.requiredSampleSize);
+                                    }}
                                     className="w-full mt-2 bg-primary text-primary-foreground hover:bg-primary/90"
                                     size="sm"
                                 >

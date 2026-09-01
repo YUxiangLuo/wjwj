@@ -25,6 +25,17 @@ interface ClusterSamplingCalculatorProps {
     /** 与决策面板一致，小数形式 0～1（如 0.1 表示 10%） */
     initialNonResponseRate?: number;
     onApplyResult?: (clusters: number, sampleSize: number) => void;
+    /** 应用时回传完整输入与结果（用于高级规划快照持久化与服务端复算）。 */
+    onSnapshot?: (snapshot: {
+        inputs: {
+            confidenceLevel: string;
+            marginOfError: number;
+            clusterSize: number;
+            designEffect: number;
+            nonResponseRate: number;
+        };
+        result: { requiredClusters: number; requiredSampleSize: number; intraClassCorrelation: number };
+    }) => void;
 }
 
 export function ClusterSamplingCalculator({
@@ -32,7 +43,8 @@ export function ClusterSamplingCalculator({
     confidenceLevel,
     marginOfError,
     initialNonResponseRate,
-    onApplyResult
+    onApplyResult,
+    onSnapshot,
 }: ClusterSamplingCalculatorProps) {
     const [confidenceLevelLocal, setConfidenceLevelLocal] = useState(() => confidenceLevel);
     const [marginOfErrorLocal, setMarginOfErrorLocal] = useState(() => marginOfError);
@@ -275,7 +287,23 @@ export function ClusterSamplingCalculator({
                                         「应用」仅将总样本量写入最终样本量。若本工具内参数与左侧不一致，理解此 n 时以本工具为准；左侧不会随本工具更新，勿用左侧参数代回标准公式验算。
                                     </p>
                                     <Button
-                                        onClick={() => onApplyResult(result.requiredClusters, result.requiredSampleSize)}
+                                        onClick={() => {
+                                            onSnapshot?.({
+                                                inputs: {
+                                                    confidenceLevel: confidenceLevelLocal,
+                                                    marginOfError: marginOfErrorLocal,
+                                                    clusterSize,
+                                                    designEffect: deff,
+                                                    nonResponseRate,
+                                                },
+                                                result: {
+                                                    requiredClusters: result.requiredClusters,
+                                                    requiredSampleSize: result.requiredSampleSize,
+                                                    intraClassCorrelation: result.intraClassCorrelation,
+                                                },
+                                            });
+                                            onApplyResult(result.requiredClusters, result.requiredSampleSize);
+                                        }}
                                         className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                                     >
                                         应用整群抽样方案

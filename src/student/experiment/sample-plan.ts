@@ -916,3 +916,46 @@ function calculateOptimalVariance(
 
     return variance;
 }
+
+/** 多变量规划中的单个调查变量（与 MultiVariableSamplePlan 的 SurveyVariable 同形）。 */
+export interface SurveyVariableSpec {
+    id: string;
+    name: string;
+    type: "proportion" | "mean";
+    estimatedValue: number;      // 估计值 (p或均值)
+    estimatedStdDev?: number;    // 估计标准差 (均值类型时需要)
+    importance: "primary" | "secondary" | "tertiary";
+    confidenceLevel: string;
+    marginOfError: number;
+    requiredSampleSize: number;
+}
+
+/** 计算单个调查变量在有限总体下的所需样本量；输入不合法时返回 0。 */
+export function calculateSurveyVariableRequiredSampleSize(variable: SurveyVariableSpec, populationSize: number) {
+    if (!(populationSize > 0) || !(variable.marginOfError > 0)) return 0;
+
+    if (variable.type === "proportion") {
+        const p = variable.estimatedValue;
+        return calculateFinitePopulationSampleSize({
+            confidenceLevel: variable.confidenceLevel,
+            // 本组件的输入框始终以百分数显示和存储；底层兼容函数对 <1 的值
+            // 会视为小数比例，因此必须在组件边界显式换算，避免 0.5% 被当成 50%。
+            marginOfError: variable.marginOfError / 100,
+            populationSize,
+            designEffect: 1,
+            nonResponseRate: 0,
+            // 0、1 或非法值通常表示缺少可靠先验比例，按 p=.5 做保守规划。
+            p: p > 0 && p < 1 ? p : 0.5,
+        }) ?? 0;
+    }
+
+    const sigma = Number(variable.estimatedStdDev);
+    const meanMagnitude = Math.abs(variable.estimatedValue);
+    if (!(sigma > 0) || !Number.isFinite(sigma) || !(meanMagnitude > 0)) return 0;
+
+    const z = zForConfidenceLevel(variable.confidenceLevel);
+    const absoluteMargin = (variable.marginOfError / 100) * meanMagnitude;
+    const n0 = Math.pow((z * sigma) / absoluteMargin, 2);
+    const finitePopulationN = n0 / (1 + (n0 - 1) / populationSize);
+    return capSampleSizeAtPopulation(finitePopulationN, populationSize);
+}

@@ -16,6 +16,7 @@ import type { ConfidenceLevel } from "../../experiment/confidence-level";
 import { normalizeConfidenceLevel } from "../../experiment/confidence-level";
 import { formatMarginOfError } from "../../experiment/sample-plan-display";
 import type { AdvancedNonStandardSampleSource } from "../sample-planning/advancedTabs";
+import type { AdvancedPlanSnapshot } from "../../experiment/advanced-plan";
 import type { Domain } from "../DomainEstimationManager";
 import type { SurveyVariable } from "../MultiVariableSamplePlan";
 import { ImmersiveExperimentLaunch } from "../ImmersiveExperimentLaunch";
@@ -111,6 +112,14 @@ export function ImmersiveSamplePlanning({
         initialDraft?.advancedPlanSource ?? initialAdvancedPlanSource,
     );
 
+    // 高级规划快照：每类保留最新一份，随草稿持久化，提交时服务端复算。
+    const [advancedPlans, setAdvancedPlans] = useState<AdvancedPlanSnapshot[]>(
+        () => initialDraft?.advancedPlans ?? [],
+    );
+    const handleAdvancedPlanSnapshot = useCallback((snapshot: AdvancedPlanSnapshot) => {
+        setAdvancedPlans((previous) => [...previous.filter((plan) => plan.kind !== snapshot.kind), snapshot]);
+    }, []);
+
     const clearAdvancedPlanSource = useCallback(() => {
         setAdvancedPlanSource(null);
     }, []);
@@ -170,6 +179,7 @@ export function ImmersiveSamplePlanning({
         finalSampleSize,
         recommendedSize,
         ...(advancedPlanSource ? { advancedPlanSource } : {}),
+        ...(advancedPlans.length > 0 ? { advancedPlans } : {}),
     };
 
     const paramsRef = useRef(params);
@@ -212,11 +222,13 @@ export function ImmersiveSamplePlanning({
             finalSampleSize,
             userTouchedFinal,
             advancedPlanSource,
+            advancedPlans,
             domains,
             surveyVariables,
         });
     }, [
         advancedPlanSource,
+        advancedPlans,
         confidenceLevel,
         designEffect,
         domains,
@@ -375,9 +387,11 @@ export function ImmersiveSamplePlanning({
 
     // --- Handle setting final size (marks user-touched) ---
     const handleSetFinalSize = useCallback((v: number) => {
+        // 手动覆盖最终样本量即离开高级规划路径；高级工具应用时会在其后重新标记来源。
+        clearAdvancedPlanSource();
         setUserTouchedFinal(true);
         setFinalSampleSize(v);
-    }, []);
+    }, [clearAdvancedPlanSource]);
 
     const resetFinalSize = useCallback(() => {
         clearAdvancedPlanSource();
@@ -468,6 +482,7 @@ export function ImmersiveSamplePlanning({
                         advancedPlanSource={advancedPlanSource}
                         onAdvancedApplied={handleAdvancedApplied}
                         onClearAdvancedSource={clearAdvancedPlanSource}
+                        onAdvancedPlanSnapshot={handleAdvancedPlanSnapshot}
                     />
                 );
             case "quiz":

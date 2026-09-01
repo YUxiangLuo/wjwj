@@ -17,8 +17,7 @@ import {
     Star,
     ArrowRight,
 } from "lucide-react";
-import { zForConfidenceLevel } from "../experiment/confidence-level";
-import { calculateFinitePopulationSampleSize, capSampleSizeAtPopulation } from "../experiment/sample-plan";
+import { calculateSurveyVariableRequiredSampleSize as calculateSurveyVariableRequiredSampleSizeImpl } from "../experiment/sample-plan";
 
 export interface SurveyVariable {
     id: string;
@@ -69,32 +68,7 @@ const IMPORTANCE_LABELS: Record<string, { label: string; color: string; descript
 };
 
 export function calculateSurveyVariableRequiredSampleSize(variable: SurveyVariable, populationSize: number) {
-    if (!(populationSize > 0) || !(variable.marginOfError > 0)) return 0;
-
-    if (variable.type === "proportion") {
-        const p = variable.estimatedValue;
-        return calculateFinitePopulationSampleSize({
-            confidenceLevel: variable.confidenceLevel,
-            // 本组件的输入框始终以百分数显示和存储；底层兼容函数对 <1 的值
-            // 会视为小数比例，因此必须在组件边界显式换算，避免 0.5% 被当成 50%。
-            marginOfError: variable.marginOfError / 100,
-            populationSize,
-            designEffect: 1,
-            nonResponseRate: 0,
-            // 0、1 或非法值通常表示缺少可靠先验比例，按 p=.5 做保守规划。
-            p: p > 0 && p < 1 ? p : 0.5,
-        }) ?? 0;
-    }
-
-    const sigma = Number(variable.estimatedStdDev);
-    const meanMagnitude = Math.abs(variable.estimatedValue);
-    if (!(sigma > 0) || !Number.isFinite(sigma) || !(meanMagnitude > 0)) return 0;
-
-    const z = zForConfidenceLevel(variable.confidenceLevel);
-    const absoluteMargin = (variable.marginOfError / 100) * meanMagnitude;
-    const n0 = Math.pow((z * sigma) / absoluteMargin, 2);
-    const finitePopulationN = n0 / (1 + (n0 - 1) / populationSize);
-    return capSampleSizeAtPopulation(finitePopulationN, populationSize);
+    return calculateSurveyVariableRequiredSampleSizeImpl(variable, populationSize);
 }
 
 export function MultiVariableSamplePlan({

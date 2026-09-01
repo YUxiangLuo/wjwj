@@ -149,6 +149,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             recommendedSize: result.recommendedSize,
             finalSampleSize: result.finalSampleSize,
             ...(result.advancedPlanSource ? { advancedPlanSource: result.advancedPlanSource } : {}),
+            ...(result.advancedPlans && result.advancedPlans.length > 0 ? { advancedPlans: result.advancedPlans } : {}),
         });
         setWizardDraft(null);
         closeImmersivePlanning();

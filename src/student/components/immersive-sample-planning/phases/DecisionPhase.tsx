@@ -39,6 +39,7 @@ import { DesignEffectEstimator } from "../../../components/DesignEffectEstimator
 import { MultiVariableSamplePlan, type SurveyVariable } from "../../../components/MultiVariableSamplePlan";
 import { CVBasedSampleSizeCalculator } from "../../../components/CVBasedSampleSizeCalculator";
 import { ClusterSamplingCalculator } from "../../../components/ClusterSamplingCalculator";
+import type { AdvancedPlanSnapshot } from "../../../experiment/advanced-plan";
 import { EnhancedMetricsCard } from "../../../components/EnhancedMetricsCard";
 import { PValueComparisonCard } from "../../../components/PValueComparisonCard";
 import { SensitivityAnalysisCard } from "../../../components/SensitivityAnalysisCard";
@@ -70,6 +71,8 @@ interface Props {
     advancedPlanSource: AdvancedNonStandardSampleSource | null;
     onAdvancedApplied: (source: AdvancedNonStandardSampleSource) => void;
     onClearAdvancedSource: () => void;
+    /** 高级工具「应用」时回传完整快照（inputs/result），随 SamplePlanData 持久化并在提交时复算。 */
+    onAdvancedPlanSnapshot: (snapshot: AdvancedPlanSnapshot) => void;
 }
 
 export function DecisionPhase({
@@ -88,6 +91,7 @@ export function DecisionPhase({
     advancedPlanSource,
     onAdvancedApplied,
     onClearAdvancedSource,
+    onAdvancedPlanSnapshot,
 }: Props) {
     const { populationSize: N, recommendedSize, finalSampleSize } = params;
     const isMeanEstimation = params.estimationType === "mean";
@@ -215,6 +219,18 @@ export function DecisionPhase({
         (key: AdvancedTab) =>
             isMeanEstimation && (key === "cost" || key === "cluster"),
         [isMeanEstimation],
+    );
+
+    /** 统一构造高级规划快照并上报父级。 */
+    const emitAdvancedSnapshot = useCallback(
+        (snapshot: Omit<AdvancedPlanSnapshot, "version" | "appliedAt">) => {
+            onAdvancedPlanSnapshot({
+                version: 1,
+                appliedAt: new Date().toISOString(),
+                ...snapshot,
+            } as AdvancedPlanSnapshot);
+        },
+        [onAdvancedPlanSnapshot],
     );
 
     const [domainDraft, setDomainDraft] = useState<Domain[]>([]);
@@ -530,6 +546,7 @@ export function DecisionPhase({
                             designEffect={params.designEffect}
                             nonResponseRate={params.nonResponseRate}
                             initialMarginOfError={params.marginOfError}
+                            onSnapshot={(snapshot) => emitAdvancedSnapshot({ kind: "cost", ...snapshot })}
                             onApplyBudget={(_budget, sampleSize) => {
                                 applyAdvancedSource("cost", () => {
                                     onFinalSizeChange(sampleSize);
@@ -586,6 +603,13 @@ export function DecisionPhase({
                                 const hasRecommendation =
                                     variables.length > 0 && recommendedSampleSize > 0;
                                 onSurveyVariablesChange(variables);
+                                if (hasRecommendation) {
+                                    emitAdvancedSnapshot({
+                                        kind: "multivar",
+                                        inputs: { variables },
+                                        result: { requiredSampleSize: recommendedSampleSize },
+                                    });
+                                }
                                 if (recommendedSampleSize > 0) {
                                     onFinalSizeChange(recommendedSampleSize);
                                 }
@@ -605,6 +629,7 @@ export function DecisionPhase({
                             estimationType={params.estimationType}
                             initialDesignEffect={params.designEffect}
                             initialNonResponseRate={params.nonResponseRate}
+                            onSnapshot={(snapshot) => emitAdvancedSnapshot({ kind: "cv", ...snapshot })}
                             onApplySampleSize={(size) => {
                                 applyAdvancedSource("cv", () => {
                                     onFinalSizeChange(size);
@@ -623,6 +648,7 @@ export function DecisionPhase({
                             confidenceLevel={params.confidenceLevel}
                             marginOfError={params.marginOfError}
                             initialNonResponseRate={params.nonResponseRate}
+                            onSnapshot={(snapshot) => emitAdvancedSnapshot({ kind: "cluster", ...snapshot })}
                             onApplyResult={(clusters, sampleSize) => {
                                 applyAdvancedSource("cluster", () => {
                                     onFinalSizeChange(sampleSize);

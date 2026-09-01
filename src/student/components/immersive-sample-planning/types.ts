@@ -52,6 +52,8 @@ export interface SampleParams {
     finalSampleSize: number;
     recommendedSize: number;
     advancedPlanSource?: "cost" | "multivar" | "cv" | "cluster";
+    /** 高级规划快照（每类一份，最新覆盖）；随 SamplePlanData 持久化，提交时服务端复算。 */
+    advancedPlans?: import("../../experiment/advanced-plan").AdvancedPlanSnapshot[];
 }
 
 export interface PhaseNavigationSnapshot {
@@ -74,6 +76,7 @@ export interface SamplePlanningWizardDraft {
     finalSampleSize: number;
     userTouchedFinal: boolean;
     advancedPlanSource: SampleParams["advancedPlanSource"] | null;
+    advancedPlans?: import("../../experiment/advanced-plan").AdvancedPlanSnapshot[];
     domains: import("../DomainEstimationManager").Domain[];
     surveyVariables: import("../MultiVariableSamplePlan").SurveyVariable[];
 }

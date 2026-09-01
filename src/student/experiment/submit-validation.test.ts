@@ -1,5 +1,19 @@
 import { expect, test, describe } from "bun:test";
 import { getTargetSampleSizeFromSamplePlan, validateSamplePlanForSubmit, validateSamplingResultsForSubmit } from "./submit-validation";
+import { calculateFinitePopulationSampleSize } from "./sample-plan";
+
+/** 与复算路径同源的 cost 推荐样本量（95%、5%、N=1000、deff=1、nrr=0.1）。 */
+function genuineCostSizeImpl() {
+    const size = calculateFinitePopulationSampleSize({
+        confidenceLevel: "95",
+        marginOfError: 5,
+        populationSize: 1000,
+        designEffect: 1,
+        nonResponseRate: 0.1,
+    });
+    if (size === null) throw new Error("failed to compute genuine cost sample size");
+    return size;
+}
 
 /** 与后端/持久化字段一致的最小合法对象 */
 function plan(overrides: Record<string, unknown>) {
@@ -158,3 +172,86 @@ describe("getTargetSampleSizeFromSamplePlan", () => {
         expect(getTargetSampleSizeFromSamplePlan({ finalSampleSize: -3 })).toBeNull();
     });
 });
+
+    test("高级规划快照：来源种类快照缺失、结果被篡改、最终样本量不一致均拒绝", () => {
+        const populationSize = 1000;
+        // 基础路径复算要求 recommendedSize 始终等于基础公式结果（N=1000/95/5/1/0 → 278）。
+        const basicRecommended = 278;
+        const requiredSampleSize = 385;
+        // 用真实计算函数构造合法 cost 快照
+        const genuineCostSize = (() => {
+            // 与 advanced-plan 复算同路径：calculateFinitePopulationSampleSize(95, 5%, 1000, 1, 0.1)
+            // 直接引用 sample-plan 以避免测试里手写魔法数
+            return genuineCostSizeImpl();
+        })();
+        const costSnapshot = {
+            version: 1,
+            kind: "cost",
+            appliedAt: "2026-09-01T08:00:00.000Z",
+            inputs: {
+                confidenceLevel: "95",
+                targetMarginOfError: 5,
+                designEffect: 1,
+                nonResponseRate: 0.1,
+                fixedCost: 5000,
+                variableCostPerUnit: 20,
+                totalBudget: 1000000,
+            },
+            result: {
+                requiredSampleSize: genuineCostSize,
+                totalCost: 5000 + genuineCostSize * 20,
+                feasible: true,
+            },
+        };
+        // 合法：来源 + 快照 + 最终样本量一致
+        expect(validateSamplePlanForSubmit(plan({
+            recommendedSize: basicRecommended,
+            advancedPlanSource: "cost",
+            advancedPlans: [costSnapshot],
+            finalSampleSize: genuineCostSize,
+        }), populationSize)).toBeNull();
+
+        // 来源种类快照缺失
+        expect(validateSamplePlanForSubmit(plan({
+            recommendedSize: basicRecommended,
+            advancedPlanSource: "cv",
+            advancedPlans: [costSnapshot],
+            finalSampleSize: genuineCostSize,
+        }), populationSize)).toBe("高级样本量缺少可复核快照，请重新应用该高级规划");
+
+        // 快照结果被篡改
+        expect(validateSamplePlanForSubmit(plan({
+            recommendedSize: basicRecommended,
+            advancedPlanSource: "cost",
+            advancedPlans: [{ ...costSnapshot, result: { ...costSnapshot.result, requiredSampleSize: genuineCostSize + 1 } }],
+            finalSampleSize: genuineCostSize,
+        }), populationSize)).toContain("请重新应用");
+
+        // 快照推荐量与最终样本量不一致（手动改过最终样本量）
+        expect(validateSamplePlanForSubmit(plan({
+            recommendedSize: basicRecommended,
+            advancedPlanSource: "cost",
+            advancedPlans: [costSnapshot],
+            finalSampleSize: genuineCostSize + 5,
+        }), populationSize)).toContain("推荐样本量与最终样本量不一致");
+
+        // 快照格式非法
+        expect(validateSamplePlanForSubmit(plan({
+            recommendedSize: basicRecommended,
+            advancedPlans: [{ version: 2, kind: "cost" }],
+        }), populationSize)).toBe("高级规划快照格式无效");
+
+        // 每类最多一份
+        expect(validateSamplePlanForSubmit(plan({
+            recommendedSize: basicRecommended,
+            advancedPlans: [costSnapshot, costSnapshot],
+            finalSampleSize: genuineCostSize,
+        }), populationSize)).toBe("每类高级规划最多保留一份快照");
+
+        // 历史数据：只有来源标记、没有快照 → 放行（grandfathered）
+        expect(validateSamplePlanForSubmit(plan({
+            recommendedSize: basicRecommended,
+            advancedPlanSource: "cost",
+            finalSampleSize: requiredSampleSize,
+        }), populationSize)).toBeNull();
+    });

@@ -31,6 +31,17 @@ interface CVBasedSampleSizeCalculatorProps {
     /** 小数 0～1，与决策面板无回答率一致 */
     initialNonResponseRate?: number;
     onApplySampleSize?: (sampleSize: number) => void;
+    /** 应用时回传完整输入与结果（用于高级规划快照持久化与服务端复算）。 */
+    onSnapshot?: (snapshot: {
+        inputs: {
+            confidenceLevel: string;
+            targetCV: number;
+            estimatedCV: number;
+            designEffect: number;
+            nonResponseRate: number;
+        };
+        result: { requiredSampleSize: number; expectedRespondentSampleSize: number; achievedCV: number };
+    }) => void;
 }
 
 export function CVBasedSampleSizeCalculator({
@@ -40,6 +51,7 @@ export function CVBasedSampleSizeCalculator({
     initialDesignEffect,
     initialNonResponseRate,
     onApplySampleSize,
+    onSnapshot,
 }: CVBasedSampleSizeCalculatorProps) {
     const [confidenceLevelLocal, setConfidenceLevelLocal] = useState(() => confidenceLevel);
 
@@ -306,7 +318,23 @@ export function CVBasedSampleSizeCalculator({
                                         「应用」仅将上述发放量写入最终样本量。无回答膨胀只补足预期完成数量，不能修正回答概率与研究变量相关造成的选择偏差。若本工具内参数与左侧不一致，以本工具假设为准。
                                     </p>
                                     <Button
-                                        onClick={() => onApplySampleSize(result.requiredSampleSize)}
+                                        onClick={() => {
+                                            onSnapshot?.({
+                                                inputs: {
+                                                    confidenceLevel: confidenceLevelLocal,
+                                                    targetCV,
+                                                    estimatedCV,
+                                                    designEffect,
+                                                    nonResponseRate,
+                                                },
+                                                result: {
+                                                    requiredSampleSize: result.requiredSampleSize,
+                                                    expectedRespondentSampleSize: result.expectedRespondentSampleSize,
+                                                    achievedCV: result.achievedCV,
+                                                },
+                                            });
+                                            onApplySampleSize(result.requiredSampleSize);
+                                        }}
                                         className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                                     >
                                         应用此样本量
