@@ -12,7 +12,7 @@ function phaseIndex(type: PhaseType): number {
     return PHASE_ORDER.indexOf(type);
 }
 
-const FACTORS_STEPS = ["error_tolerance", "subpopulation", "variability", "cost_balance", "summary"] as const;
+const FACTORS_STEPS = ["error_tolerance", "subpopulation", "variability", "design_effect", "non_response", "cost_balance", "summary"] as const;
 
 /** Percentage progress through the sample planning flow (0–100). */
 function phaseProgress(phase: Phase): number {
@@ -78,9 +78,16 @@ export function usePhaseState(initial?: PhaseNavigationSnapshot | null) {
                 return { type: "precision" };
             }
             if (prev.type === "precision") {
+                return { type: "factors", step: "error_tolerance" };
+            }
+            if (prev.type === "factors") {
+                const idx = FACTORS_STEPS.indexOf(prev.step);
+                if (idx >= 0 && idx < FACTORS_STEPS.length - 1) {
+                    return { type: "factors", step: FACTORS_STEPS[idx + 1]! };
+                }
                 return { type: "fourstep", scenario: "summary" };
             }
-            if (prev.type === "factors" || prev.type === "formula" || prev.type === "fpc") {
+            if (prev.type === "formula" || prev.type === "fpc") {
                 return { type: "fourstep", scenario: "summary" };
             }
             if (prev.type === "fourstep") {
@@ -107,8 +114,18 @@ export function usePhaseState(initial?: PhaseNavigationSnapshot | null) {
                     revealed: challengeSnapshotRef.current.revealed,
                 };
             }
-            if (prev.type === "factors" || prev.type === "formula" || prev.type === "fpc" || prev.type === "fourstep") {
+            if (prev.type === "factors") {
+                const idx = FACTORS_STEPS.indexOf(prev.step);
+                if (idx > 0) {
+                    return { type: "factors", step: FACTORS_STEPS[idx - 1]! };
+                }
                 return { type: "precision" };
+            }
+            if (prev.type === "formula" || prev.type === "fpc") {
+                return { type: "precision" };
+            }
+            if (prev.type === "fourstep") {
+                return { type: "factors", step: "summary" };
             }
             if (prev.type === "quiz") {
                 if (prev.questionIndex > 0) return { type: "quiz", questionIndex: prev.questionIndex - 1 };

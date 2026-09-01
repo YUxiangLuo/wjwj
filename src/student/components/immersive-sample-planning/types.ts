@@ -2,7 +2,7 @@
 
 export type FormulaStep = "z" | "e" | "summary";
 export type FourStepScenario = "deff" | "nrr" | "summary";
-export type FactorsStep = "error_tolerance" | "subpopulation" | "variability" | "cost_balance" | "summary";
+export type FactorsStep = "error_tolerance" | "subpopulation" | "variability" | "design_effect" | "non_response" | "cost_balance" | "summary";
 export type EstimationType = "proportion" | "mean";
 
 export type Phase =

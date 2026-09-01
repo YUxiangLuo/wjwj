@@ -40,7 +40,7 @@ const FOCUSABLE_SELECTOR =
     'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 /** Phases shown as dots in the header — excludes internal/terminal phases. */
-const NAVIGABLE_PHASES = ["challenge", "precision", "fourstep", "decision", "quiz"] as const;
+const NAVIGABLE_PHASES = ["challenge", "precision", "factors", "fourstep", "decision", "quiz"] as const;
 
 const PHASE_LABELS: Record<string, string> = {
     challenge: "开始规划",

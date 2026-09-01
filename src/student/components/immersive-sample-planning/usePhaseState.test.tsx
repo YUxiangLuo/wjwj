@@ -44,7 +44,7 @@ describe("usePhaseState", () => {
         expect(result.current.phase).toEqual({ type: "challenge", guess: 42, revealed: true });
     });
 
-    test("precision → fourstep summary → decision", () => {
+    test("precision → factors 六步走 → fourstep summary → decision", () => {
         const { result } = renderHook(() => usePhaseState());
         act(() => {
             result.current.setPhase({ type: "precision" });
@@ -52,11 +52,27 @@ describe("usePhaseState", () => {
         act(() => {
             result.current.goNext();
         });
+        expect(result.current.phase).toEqual({ type: "factors", step: "error_tolerance" });
+        act(() => { result.current.goNext(); });
+        expect(result.current.phase).toEqual({ type: "factors", step: "subpopulation" });
+        act(() => { result.current.goNext(); });
+        expect(result.current.phase).toEqual({ type: "factors", step: "variability" });
+        act(() => { result.current.goNext(); });
+        expect(result.current.phase).toEqual({ type: "factors", step: "design_effect" });
+        act(() => { result.current.goNext(); });
+        expect(result.current.phase).toEqual({ type: "factors", step: "non_response" });
+        act(() => { result.current.goNext(); });
+        expect(result.current.phase).toEqual({ type: "factors", step: "cost_balance" });
+        act(() => { result.current.goNext(); });
+        expect(result.current.phase).toEqual({ type: "factors", step: "summary" });
+        act(() => { result.current.goNext(); });
         expect(result.current.phase).toEqual({ type: "fourstep", scenario: "summary" });
         act(() => { result.current.goNext(); });
         expect(result.current.phase).toEqual({ type: "decision" });
         act(() => { result.current.goPrev(); });
         expect(result.current.phase).toEqual({ type: "fourstep", scenario: "summary" });
+        act(() => { result.current.goPrev(); });
+        expect(result.current.phase).toEqual({ type: "factors", step: "summary" });
     });
 
     test("quiz 0→...→last→confirm，goPrev 从 confirm 回到 last quiz", () => {
@@ -107,3 +123,17 @@ describe("usePhaseState", () => {
         expect(result.current.phase).toEqual({ type: "challenge", guess: 64, revealed: true });
     });
 });
+
+    test("factors 阶段按六因素顺序推进：误差限→子总体→变异→设计效应→无回答率→成本→汇总", () => {
+        const { result } = renderHook(() => usePhaseState());
+        act(() => {
+            result.current.setPhase({ type: "factors", step: "error_tolerance" });
+        });
+        const expected = ["subpopulation", "variability", "design_effect", "non_response", "cost_balance", "summary"] as const;
+        for (const step of expected) {
+            act(() => { result.current.goNext(); });
+            expect(result.current.phase).toEqual({ type: "factors", step });
+        }
+        act(() => { result.current.goNext(); });
+        expect(result.current.phase.type).not.toBe("factors");
+    });

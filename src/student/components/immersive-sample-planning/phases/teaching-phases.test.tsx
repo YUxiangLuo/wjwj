@@ -121,3 +121,51 @@ test("QuizPhase 基础路径只考已出现的 SE、FPC 与 deff", () => {
     expect(third.container.textContent).toContain("deff = 2");
     expect(third.container.textContent).not.toContain("奈曼");
 });
+
+test("FactorsPhase 设计效应页：deff 越大所需样本量越大，并解释 deff 来源", () => {
+    const view = render(<FactorsPhase step="design_effect" params={proportionParams()} onNext={() => {}} />);
+    const text = view.container.textContent ?? "";
+
+    expect(text).toContain("因素 4");
+    expect(text).toContain("deff = 复杂设计的方差 ÷ 简单随机抽样的方差");
+    expect(text).toContain("整群抽样");
+    expect(text).toContain("1 + (平均群规模 − 1) × 群内相关 ρ");
+    expect(text).toContain("分层抽样");
+
+    // 四个 deff 档位的样本量应严格递增（N=200、95%、±5%）
+    const barNumbers = Array.from(view.container.querySelectorAll("span.w-16.text-right.font-medium"))
+        .map((span) => Number(span.textContent?.replace(/[^\d]/g, "")))
+        .filter((n) => Number.isFinite(n) && n > 0);
+    expect(barNumbers).toHaveLength(4);
+    for (let index = 1; index < barNumbers.length; index += 1) {
+        expect(barNumbers[index]!).toBeGreaterThan(barNumbers[index - 1]!);
+    }
+});
+
+test("FactorsPhase 无回答率页：发放量按 1/(1−r) 放大并以 N 封顶", () => {
+    const view = render(<FactorsPhase step="non_response" params={proportionParams()} onNext={() => {}} />);
+    const text = view.container.textContent ?? "";
+
+    expect(text).toContain("因素 5");
+    expect(text).toContain("n ÷ (1 − r)");
+    expect(text).toContain("目标完成 132 人");
+    // 默认 20%：invite = ceil(132/0.8) = 165，完成约 floor(165×0.8) = 132
+    expect(text).toContain("发 165 / 完成约 132");
+    // 0%：发放与完成相同
+    expect(text).toContain("发 132 / 完成约 132");
+    // 50%：invite = min(200, ceil(132/0.5)) = 200（封顶），完成约 100
+    expect(text).toContain("发 200 / 完成约 100");
+    expect(text).toContain("降低无回答本身");
+});
+
+test("FactorsPhase 汇总页展示六因素卡片", () => {
+    const view = render(<FactorsPhase step="summary" params={proportionParams()} onNext={() => {}} />);
+    const text = view.container.textContent ?? "";
+
+    expect(text).toContain("六类关键条件");
+    for (const title of ["误差限", "子总体估计", "总体变异", "设计效应", "无回答率", "精度与费用"]) {
+        expect(text).toContain(title);
+    }
+    expect(text).toContain("复杂设计的精度折扣 deff");
+    expect(text).toContain("发放量按 1/(1−r) 放大");
+});
