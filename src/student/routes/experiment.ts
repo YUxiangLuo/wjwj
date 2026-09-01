@@ -34,7 +34,7 @@ import { parseStoredJson } from "../experiment/serialization";
 import { ExperimentStatus } from "../experiment/status";
 import { submitStudentExperiment } from "../experiment/submit-service";
 import { getTargetSampleSizeFromSamplePlan } from "../experiment/submit-validation";
-import { resolveAnalysisTarget } from "../../lib/analysis-target";
+import { resolveAnalysisTarget, resolveStudyContract } from "../../lib/analysis-target";
 import { getStudentTaskAccessError } from "../experiment/task-access";
 import {
     findStudentTaskPopulationSize,
@@ -119,6 +119,7 @@ async function buildExperimentResponse(
         stage4CompletedAt: iso(record.stage4CompletedAt),
         populationSize: populationSize ?? 10_000,
         analysisTarget: resolveAnalysisTarget(taskInfo?.fieldMapping),
+        studyContract: resolveStudyContract(taskInfo?.fieldMapping, { topicName: taskInfo?.topicName }),
     } };
 }
 
@@ -464,6 +465,8 @@ const analysisMetricsRoutes: RouteDefinition = {
                 population,
                 fieldMapping: parseTopicFieldMapping(taskInfo.fieldMapping),
                 samplingResults: hydrated.value as Parameters<typeof buildAnalysisMetrics>[0]["samplingResults"],
+                samplePlan: normalizeSamplePlanData(parseStoredJson(record.samplePlan), population.length),
+                topicName: taskInfo.topicName,
             }),
         );
     },

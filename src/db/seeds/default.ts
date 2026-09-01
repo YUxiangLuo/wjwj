@@ -100,6 +100,13 @@ const ppsFieldMapping = {
     stratified: ["年级", "性别"],
     others: ["专业"],
     analysisTarget: { kind: "mean" as const, field: "每周学习时长" },
+    studyContract: {
+        version: 1 as const,
+        researchQuestion: "该校学生每周学习时长的平均水平是多少？",
+        targetPopulation: "该校全体学生",
+        unitOfAnalysis: "一名学生",
+        target: { kind: "mean" as const, field: "每周学习时长" },
+    },
 };
 const meanFieldMapping = {
     identifier: "编号",
@@ -107,6 +114,13 @@ const meanFieldMapping = {
     stratified: ["学院", "是否住宿"],
     others: ["年级"],
     analysisTarget: { kind: "mean" as const, field: "每周阅读时长" },
+    studyContract: {
+        version: 1 as const,
+        researchQuestion: "该校学生每周阅读时长的平均水平是多少？",
+        targetPopulation: "该校全体学生",
+        unitOfAnalysis: "一名学生",
+        target: { kind: "mean" as const, field: "每周阅读时长" },
+    },
 };
 
 async function writePopulationFixtures(

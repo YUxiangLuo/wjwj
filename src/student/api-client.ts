@@ -1,4 +1,4 @@
-import type { ResolvedAnalysisTarget } from "@/lib/analysis-target";
+import type { ResolvedAnalysisTarget, ResolvedStudyContract } from "@/lib/analysis-target";
 import type { Question, QuestionnaireData, QuestionType } from "@/lib/questionnaire-types";
 import { notifyAuthExpired } from "@/lib/auth-expired";
 
@@ -49,6 +49,7 @@ export type { QuestionType, Question, QuestionnaireData };
 export interface SamplePlanData {
     estimationType?: "proportion" | "mean";
     advancedPlanSource?: "cost" | "multivar" | "cv" | "cluster";
+    advancedPlans?: import("./experiment/advanced-plan").AdvancedPlanSnapshot[];
     confidenceLevel: string;
     marginOfError: number;
     populationVariance?: number;
@@ -114,6 +115,7 @@ export interface ExperimentData {
     stage4CompletedAt: string | null;
     populationSize: number;
     analysisTarget?: ResolvedAnalysisTarget | null;
+    studyContract?: ResolvedStudyContract | null;
 }
 
 export interface AnalysisNumericFieldMetrics {
@@ -125,7 +127,31 @@ export interface AnalysisCategoricalFieldMetrics {
     population: Record<string, number>;
     methods: Record<MethodKey, Record<string, number>>;
     representativeness: Record<MethodKey, number | null>;
+    truncated?: boolean;
+    totalCategoryCount?: number;
+    aggregatedCategoryLabel?: string;
 }
+
+export interface TargetMethodMetrics {
+    estimate: number | null;
+    standardError: number | null;
+    marginOfError: number | null;
+    sampleSize: number | null;
+    effectiveSampleSize: number | null;
+    reliability: {
+        status: "ok" | "caution" | "census" | "unavailable";
+        reasons: string[];
+    };
+}
+
+export interface TargetAnalysisMetrics {
+    contract: ResolvedStudyContract;
+    confidenceLevel: "90" | "95" | "99";
+    plannedMarginOfError: number | null;
+    populationValue: number;
+    methods: Record<MethodKey, TargetMethodMetrics>;
+}
+
 export interface AnalysisMetricsData {
     ppsMonteCarloReplicates?: number;
     ppsStandardErrorMode?: "monte_carlo" | "census_exact" | null;
@@ -134,6 +160,7 @@ export interface AnalysisMetricsData {
     categoricalFields: string[];
     numeric: Record<string, AnalysisNumericFieldMetrics>;
     categorical: Record<string, AnalysisCategoricalFieldMetrics>;
+    target?: TargetAnalysisMetrics | null;
 }
 
 export interface Announcement {

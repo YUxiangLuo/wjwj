@@ -114,6 +114,85 @@ describe("topic validation helpers", () => {
         ).toBe("课题需先指定对照变量后才能发布");
     });
 
+    test("validateTopicPublishReadiness accepts study contracts and keeps legacy targets working", () => {
+        const base = {
+            excelFilePath: "/storage/uploads/topic.xlsx",
+            weightConfig: JSON.stringify({ questionnaire: 30, process: 30, report: 40 }),
+        };
+        const contract = {
+            version: 1,
+            researchQuestion: "该校学生每周学习时长的平均水平是多少？",
+            targetPopulation: "该校全体学生",
+            unitOfAnalysis: "一名学生",
+            target: { kind: "mean", field: "score" },
+        };
+        // 完整研究合同 → 可发布
+        expect(
+            validateTopicPublishReadiness({
+                ...base,
+                fieldMapping: JSON.stringify({
+                    identifier: "id",
+                    stratified: ["gender"],
+                    numeric: ["score"],
+                    analysisTarget: { kind: "mean", field: "score" },
+                    studyContract: contract,
+                }),
+            })
+        ).toBeNull();
+        // 合同与旧版对照变量不一致 → 拒绝
+        expect(
+            validateTopicPublishReadiness({
+                ...base,
+                fieldMapping: JSON.stringify({
+                    identifier: "id",
+                    stratified: ["gender"],
+                    numeric: ["score"],
+                    analysisTarget: { kind: "mean", field: "score" },
+                    studyContract: { ...contract, target: { kind: "proportion", field: "gender", value: "女" } },
+                }),
+            })
+        ).toBe("研究合同与兼容对照变量不一致");
+        // 合同存在但不完整 → 拒绝并提示补全
+        expect(
+            validateTopicPublishReadiness({
+                ...base,
+                fieldMapping: JSON.stringify({
+                    identifier: "id",
+                    stratified: ["gender"],
+                    numeric: ["score"],
+                    studyContract: { ...contract, researchQuestion: "短" },
+                }),
+            })
+        ).toBe("研究问题长度需在 5-300 字之间");
+    });
+
+    test("validateTopicFieldMappingConfig validates study contract when present", () => {
+        const mapping = {
+            identifier: "id",
+            stratified: ["gender"],
+            numeric: ["score"],
+        };
+        expect(validateTopicFieldMappingConfig({
+            ...mapping,
+            studyContract: {
+                version: 1,
+                researchQuestion: "该校学生每周学习时长的平均水平是多少？",
+                targetPopulation: "该校全体学生",
+                unitOfAnalysis: "一名学生",
+                target: { kind: "mean", field: "score" },
+            },
+        })).toBeNull();
+        expect(validateTopicFieldMappingConfig({
+            ...mapping,
+            studyContract: { version: 1, researchQuestion: "短" },
+        })).toBe("请填写完整的研究问题、目标总体、分析单位和对照变量");
+        // 仅有旧版对照变量的历史课题不受影响
+        expect(validateTopicFieldMappingConfig({
+            ...mapping,
+            analysisTarget: { kind: "mean", field: "score" },
+        })).toBeNull();
+    });
+
     test("validateTopicAttachmentUpload enforces type and size limits", () => {
         expect(
             validateTopicAttachmentUpload(

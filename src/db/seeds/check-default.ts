@@ -220,6 +220,9 @@ async function verify() {
         check(mapping, `${storedTopic.name} field mapping is invalid`);
         check(mapping?.analysisTarget?.kind === "mean", `${storedTopic.name} analysis target kind differs`);
         check(Boolean(mapping?.analysisTarget && "field" in mapping.analysisTarget && mapping.analysisTarget.field), `${storedTopic.name} analysis target field missing`);
+        check(mapping?.studyContract?.version === 1, `${storedTopic.name} study contract missing`);
+        check(Boolean(mapping?.studyContract?.researchQuestion?.trim()), `${storedTopic.name} study contract research question missing`);
+        check(mapping?.studyContract?.target?.field === mapping?.analysisTarget?.field, `${storedTopic.name} study contract target differs from analysis target`);
 
         const file = Bun.file(resolveStoragePath(storedTopic.path));
         check(await file.exists(), `${storedTopic.name} population file is missing: ${storedTopic.path}`);

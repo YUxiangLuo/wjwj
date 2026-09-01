@@ -2,9 +2,13 @@ import { expect, test } from "bun:test";
 import {
     analysisTargetConflictsWithSizeField,
     formatAnalysisTargetSummary,
+    formatStudyContractSummary,
     parseAnalysisTarget,
+    parseStudyContract,
     resolveAnalysisTarget,
+    resolveStudyContract,
     validateAnalysisTarget,
+    validateStudyContract,
 } from "./analysis-target";
 
 const mapping = {
@@ -58,4 +62,91 @@ test("validateAnalysisTarget requires a mapped field and existing proportion cat
 test("PPS size field cannot equal the analysis target field", () => {
     expect(analysisTargetConflictsWithSizeField({ kind: "mean", field: "月生活费" }, "月生活费")).toBe(true);
     expect(analysisTargetConflictsWithSizeField({ kind: "mean", field: "每周学习时长" }, "月生活费")).toBe(false);
+});
+
+const contractMapping = {
+    ...mapping,
+    analysisTarget: { kind: "mean" as const, field: "每周学习时长" },
+    studyContract: {
+        version: 1 as const,
+        researchQuestion: "该校学生每周学习时长的平均水平是多少？",
+        targetPopulation: "该校全体学生",
+        unitOfAnalysis: "一名学生",
+        target: { kind: "mean" as const, field: "每周学习时长" },
+    },
+};
+
+test("parseStudyContract requires complete versioned payloads", () => {
+    expect(parseStudyContract(contractMapping)).toEqual(contractMapping.studyContract);
+    expect(parseStudyContract(mapping)).toBeNull();
+    expect(parseStudyContract({ ...contractMapping, studyContract: { ...contractMapping.studyContract, version: 2 } })).toBeNull();
+    expect(parseStudyContract({ ...contractMapping, studyContract: { ...contractMapping.studyContract, researchQuestion: " " } })).toBeNull();
+    expect(parseStudyContract({ ...contractMapping, studyContract: { ...contractMapping.studyContract, target: { kind: "mean", field: "" } } })).toBeNull();
+});
+
+test("parseAnalysisTarget prefers the study contract target over the legacy field", () => {
+    expect(parseAnalysisTarget({
+        ...contractMapping,
+        analysisTarget: { kind: "proportion", field: "性别", value: "女" },
+    })).toEqual({ kind: "mean", field: "每周学习时长" });
+});
+
+test("resolveStudyContract infers a compatible contract for legacy mappings", () => {
+    expect(resolveStudyContract(contractMapping)).toEqual({ contract: contractMapping.studyContract, inferred: false });
+    const inferred = resolveStudyContract({
+        ...mapping,
+        analysisTarget: { kind: "proportion" as const, field: "性别", value: "女" },
+    }, { topicName: "课堂调查" });
+    expect(inferred?.inferred).toBe(true);
+    expect(inferred?.contract).toEqual({
+        version: 1,
+        researchQuestion: "课堂调查",
+        targetPopulation: "上传总体数据中的全部单位",
+        unitOfAnalysis: "总体数据中的一行记录",
+        target: { kind: "proportion", field: "性别", value: "女" },
+    });
+    expect(resolveStudyContract({ ...mapping, numeric: [] })).toBeNull();
+    const inferredDefault = resolveStudyContract(mapping);
+    expect(inferredDefault?.contract.researchQuestion).toBe("总体中每周学习时长的平均水平是多少？");
+});
+
+test("validateStudyContract enforces completeness, lengths, and legacy consistency", () => {
+    expect(validateStudyContract(contractMapping)).toBeNull();
+    expect(validateStudyContract(mapping)).toBe("请填写完整的研究问题、目标总体、分析单位和对照变量");
+    expect(validateStudyContract({
+        ...contractMapping,
+        studyContract: { ...contractMapping.studyContract, researchQuestion: "太短" },
+    })).toBe("研究问题长度需在 5-300 字之间");
+    expect(validateStudyContract({
+        ...contractMapping,
+        studyContract: { ...contractMapping.studyContract, targetPopulation: "长".repeat(201) },
+    })).toBe("目标总体长度需在 2-200 字之间");
+    expect(validateStudyContract({
+        ...contractMapping,
+        studyContract: { ...contractMapping.studyContract, unitOfAnalysis: "" },
+    })).toBe("请填写完整的研究问题、目标总体、分析单位和对照变量");
+    expect(validateStudyContract({
+        ...contractMapping,
+        analysisTarget: { kind: "proportion", field: "性别", value: "女" },
+    })).toBe("研究合同与兼容对照变量不一致");
+    expect(validateStudyContract({
+        ...contractMapping,
+        studyContract: { ...contractMapping.studyContract, target: { kind: "mean", field: "性别" } },
+        analysisTarget: { kind: "mean", field: "性别" },
+    })).toBe("均值对照变量必须是已映射的数值字段");
+});
+
+test("formatStudyContractSummary renders explicit and inferred contracts", () => {
+    const explicit = formatStudyContractSummary({ contract: contractMapping.studyContract, inferred: false }, { marginLabel: "±5%" });
+    expect(explicit).toContain("研究目标：该校学生每周学习时长的平均水平是多少？");
+    expect(explicit).toContain("总体：该校全体学生");
+    expect(explicit).toContain("分析单位：一名学生");
+    expect(explicit).toContain("估计量：每周学习时长 的均值；目标误差限 ±5%");
+    const inferred = formatStudyContractSummary({
+        contract: { ...contractMapping.studyContract, target: { kind: "proportion", field: "性别", value: "女" } },
+        inferred: true,
+    });
+    expect(inferred).toContain("兼容目标：");
+    expect(inferred).toContain("估计量：性别 中「女」的比例");
+    expect(formatStudyContractSummary(null)).toBe("课题未指定研究目标。问卷是预试，不进入估计。");
 });

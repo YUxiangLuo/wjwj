@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { teacherApi, type Topic, type TopicDetail, type Question } from "../api-client";
 import { TopicWizardDialog } from "../components/TopicWizardDialog";
+import { isStudyContractComplete, type FieldMappingState } from "../components/StudyContractEditor";
+import { parseStudyContract } from "@/lib/analysis-target";
 import { TopicViewDialog } from "../components/TopicViewDialog";
 import { toast } from "sonner";
 import { IconTile } from "@/components/IconTile";
@@ -38,13 +40,7 @@ export function TopicManagement() {
         columnValues?: Record<string, string[]>;
     } | null>(null);
     const [columns, setColumns] = useState<string[]>([]);
-    const [fieldMapping, setFieldMapping] = useState<{
-        identifier?: string;
-        stratified: string[];
-        numeric: string[];
-        others: string[];
-        analysisTarget?: { kind: "mean"; field: string } | { kind: "proportion"; field: string; value: string };
-    }>({
+    const [fieldMapping, setFieldMapping] = useState<FieldMappingState>({
         stratified: [],
         numeric: [],
         others: [],
@@ -103,6 +99,7 @@ export function TopicManagement() {
                 numeric: parsed?.numeric ?? [],
                 others: parsed?.others ?? [],
                 analysisTarget: parsed?.analysisTarget,
+                studyContract: parsed?.studyContract,
             });
             if (res.data.excelInfo?.columns?.length) {
                 setColumns(res.data.excelInfo.columns);
@@ -249,7 +246,13 @@ export function TopicManagement() {
             toast.error("至少选择1个分层变量和1个数值变量");
             return;
         }
-        if (!fieldMapping.analysisTarget?.field || (fieldMapping.analysisTarget.kind === "proportion" && !fieldMapping.analysisTarget.value)) {
+        // 新课题要求研究合同完整；仅有旧版对照变量的历史课题保持可保存（兼容）。
+        if (parseStudyContract(fieldMapping) !== null || fieldMapping.studyContract !== undefined) {
+            if (!isStudyContractComplete(fieldMapping.studyContract)) {
+                toast.error("请完成研究合同：研究问题、目标总体、分析单位和对照变量");
+                return;
+            }
+        } else if (!fieldMapping.analysisTarget?.field || (fieldMapping.analysisTarget.kind === "proportion" && !fieldMapping.analysisTarget.value)) {
             toast.error("请指定对照变量");
             return;
         }

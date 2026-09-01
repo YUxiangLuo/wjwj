@@ -15,7 +15,7 @@ import {
 import { getRemainingDeadlineSummary } from "@/utils/format";
 import { LoadingStatus } from "@/components/LoadingStatus";
 import { experimentApi, tasksApi, type ExperimentData } from "../api-client";
-import { formatAnalysisTargetSummary } from "@/lib/analysis-target";
+import { formatStudyContractSummary } from "@/lib/analysis-target";
 import { formatMarginOfError } from "../experiment/sample-plan-display";
 import { TopicDeletedState } from "../components/TopicDeletedState";
 import { getExperimentRouteRedirect } from "../experiment/page-access";
@@ -188,8 +188,8 @@ export function ExperimentLayout() {
                 </div>
                 <div className="my-6 flex items-center gap-3 rounded-xl border border-border bg-card/50 px-4 py-3"><span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/15 text-primary">{(() => { const Icon = stages[currentStage - 1]!.icon; return <Icon className="h-4 w-4" />; })()}</span><div><p className="text-sm font-semibold">阶段 {currentStage}：{stages[currentStage - 1]!.name}</p><p className="text-xs text-muted-foreground">{stages[currentStage - 1]!.description}。编辑草稿自动保存在当前浏览器；抽样结果每次执行即保存，点击阶段完成后正式写入服务器。</p></div></div>
                 <p className="mb-6 rounded-xl border border-info/20 bg-info/10 px-4 py-3 text-sm text-info" data-testid="student-analysis-target-summary">
-                    {formatAnalysisTargetSummary(experiment.analysisTarget ?? null, experiment.samplePlan
-                        ? { marginLabel: formatMarginOfError(experiment.samplePlan.marginOfError, experiment.analysisTarget?.target.kind ?? experiment.samplePlan.estimationType) }
+                    {formatStudyContractSummary(experiment.studyContract ?? null, experiment.samplePlan
+                        ? { marginLabel: formatMarginOfError(experiment.samplePlan.marginOfError, experiment.studyContract?.contract.target.kind ?? experiment.samplePlan.estimationType) }
                         : undefined)}
                 </p>
                 {experiment.status === "rejected" && experiment.rejectReason?.trim() && (
