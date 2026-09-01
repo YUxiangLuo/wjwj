@@ -336,28 +336,47 @@ export function TaskHall() {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-3 gap-4" data-testid="student-stats-section">
-                <Card className="rounded-2xl border-border bg-card/50 shadow-sm hover:border-input transition-colors group" data-testid="student-stat-in-progress">
-                    <CardContent className="p-6 flex items-center gap-5">
-                        <div className="p-4 bg-primary/10 rounded-2xl text-primary group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-300">
-                            <FlaskConical className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <p className="text-3xl font-bold text-foreground group-hover:text-primary transition-colors">{inProgressCount}</p>
-                            <p className="text-sm text-muted-foreground">进行中的实验</p>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="rounded-2xl border-border bg-card/50 shadow-sm hover:border-input transition-colors group" data-testid="student-stat-graded">
-                    <CardContent className="p-6 flex items-center gap-5">
-                        <div className="p-4 bg-success/10 rounded-2xl text-success group-hover:bg-success/20 group-hover:scale-110 transition-all duration-300">
-                            <CheckCircle className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <p className="text-3xl font-bold text-foreground group-hover:text-success transition-colors">{gradedCount}</p>
-                            <p className="text-sm text-muted-foreground">已批改实验</p>
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* 统计卡同时是筛选器：点击切换任务筛选，再次点击回到全部 */}
+                <button
+                    type="button"
+                    onClick={() => setFilter(filter === "in_progress" ? "all" : "in_progress")}
+                    aria-pressed={filter === "in_progress"}
+                    aria-label="按进行中筛选任务"
+                    data-testid="student-stat-in-progress"
+                    className={`text-left rounded-2xl transition-all ${filter === "in_progress" ? "ring-2 ring-primary" : ""}`}
+                >
+                    <Card className="rounded-2xl border-border bg-card/50 shadow-sm hover:border-input transition-colors group cursor-pointer">
+                        <CardContent className="p-6 flex items-center gap-5">
+                            <div className="p-4 bg-primary/10 rounded-2xl text-primary group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-300">
+                                <FlaskConical className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-3xl font-bold text-foreground group-hover:text-primary transition-colors">{inProgressCount}</p>
+                                <p className="text-sm text-muted-foreground">进行中的实验</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setFilter(filter === "graded" ? "all" : "graded")}
+                    aria-pressed={filter === "graded"}
+                    aria-label="按已批改筛选任务"
+                    data-testid="student-stat-graded"
+                    className={`text-left rounded-2xl transition-all ${filter === "graded" ? "ring-2 ring-success" : ""}`}
+                >
+                    <Card className="rounded-2xl border-border bg-card/50 shadow-sm hover:border-input transition-colors group cursor-pointer">
+                        <CardContent className="p-6 flex items-center gap-5">
+                            <div className="p-4 bg-success/10 rounded-2xl text-success group-hover:bg-success/20 group-hover:scale-110 transition-all duration-300">
+                                <CheckCircle className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-3xl font-bold text-foreground group-hover:text-success transition-colors">{gradedCount}</p>
+                                <p className="text-sm text-muted-foreground">已批改实验</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </button>
                 <Card className="rounded-2xl border-border bg-card/50 shadow-sm hover:border-input transition-colors group" data-testid="student-stat-average">
                     <CardContent className="p-6 flex items-center gap-5">
                         <div className="p-4 bg-auxiliary/10 rounded-2xl text-auxiliary group-hover:bg-auxiliary/20 group-hover:scale-110 transition-all duration-300">

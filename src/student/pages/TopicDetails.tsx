@@ -221,7 +221,7 @@ export function TopicDetails() {
                                 <BookOpen className="w-3 h-3" />
                                 实验目标
                             </div>
-                            <p className="text-base font-medium text-foreground leading-relaxed">完成抽样统计实验，形成完整报告。</p>
+                            <p className="text-base font-medium text-foreground leading-relaxed">完成抽样实验，形成完整报告。</p>
                             <p className="text-sm text-muted-foreground">按步骤推进，及时提交，体验完整的数据分析流程。</p>
                         </div>
                         <div className="rounded-xl bg-card/80 border border-border px-5 py-3 shadow-sm backdrop-blur-sm min-w-[180px]">
