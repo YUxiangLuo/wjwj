@@ -5,12 +5,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authApi } from "../api-client";
 import { DEV_ADMIN_PASSWORD, DEV_ADMIN_USERNAME, DEV_AUTH_MODE } from "@/lib/dev-mode";
+import { DEMO_ADMIN_PASSWORD, DEMO_ADMIN_USERNAME, DEMO_MODE } from "@/lib/demo-mode";
+
+// 两个开关都是构建期内联、运行时求值：普通生产构建中两者都为 false，登录页不预填。
+const prefilledUsername = DEMO_MODE ? DEMO_ADMIN_USERNAME : DEV_AUTH_MODE ? DEV_ADMIN_USERNAME : "";
+const prefilledPassword = DEMO_MODE ? DEMO_ADMIN_PASSWORD : DEV_AUTH_MODE ? DEV_ADMIN_PASSWORD : "";
 
 export function Login() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [username, setUsername] = useState(DEV_AUTH_MODE ? DEV_ADMIN_USERNAME : "");
-    const [password, setPassword] = useState(DEV_AUTH_MODE ? DEV_ADMIN_PASSWORD : "");
+    const [username, setUsername] = useState(prefilledUsername);
+    const [password, setPassword] = useState(prefilledPassword);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

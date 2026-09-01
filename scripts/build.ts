@@ -25,6 +25,14 @@ if (!isChildPath(projectRoot, outdir) && !isChildPath(resolve(tmpdir()), outdir)
 await rm(outdir, { recursive: true, force: true });
 await mkdir(outdir, { recursive: true });
 
+// DEMO_MODE=1 produces a demo build: the three login pages pre-fill the seeded
+// demo credentials. Normal production builds must inline "0" so the prefill
+// stays disabled at runtime.
+const demoMode = process.env.DEMO_MODE === "1";
+if (demoMode) {
+    console.warn("⚠️  DEMO_MODE=1：演示构建会自动填入各端演示账号和密码，仅限演示环境，切勿用于正式教学部署。");
+}
+
 let outputCount = 0;
 const MAX_INITIAL_JS_GZIP_BYTES = 350 * 1024;
 const MAX_FONT_BYTES = 300 * 1024;
@@ -45,6 +53,7 @@ for (const entrypoint of entrypoints) {
             // Production must never skip the first-login password gates, even
             // when a stale development environment exports DEV_AUTH_MODE=1.
             "process.env.DEV_AUTH_MODE": JSON.stringify("0"),
+            "process.env.DEMO_MODE": JSON.stringify(demoMode ? "1" : "0"),
         },
         minify: true,
     });
@@ -106,3 +115,6 @@ for (const fileName of await readdir(outdir)) {
 }
 
 console.log(`Built ${outputCount} assets to ${outdir} with production React and Tailwind processing enabled.`);
+if (demoMode) {
+    console.warn("⚠️  演示构建完成：登录页已预填演示账号（S010 / T001 / admin），请勿对外公开部署。");
+}

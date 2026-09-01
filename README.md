@@ -84,6 +84,17 @@ bun run start
 
 等价于 `bun run build && NODE_ENV=production bun src/index.ts`。
 
+## 演示构建（demo 模式）
+
+```sh
+SEED_ADMIN_PASSWORD=admin123 bun run db:reset   # 演示库：固定管理员密码（会清空 DATABASE_URL 指向的库）
+bun run start:demo                              # 演示构建 + 生产进程
+```
+
+`bun run build:demo`（等价于 `DEMO_MODE=1 bun run scripts/build.ts`）产出演示构建：三个登录页自动填入与默认 seed 一致的演示账号和密码——学生 `S010` / `Student!010`、教师 `T001` / `Teacher!2026`、管理员 `admin` / `admin123`，点击即可登录。
+
+与 `DEV_AUTH_MODE` 不同，demo 模式只预填凭据，不跳过首次登录改密门禁，服务端行为不变：seed 的管理员是首次登录，首次进入会被要求完成一次改密（S010、T001 均非首次登录，不受门禁影响）。普通生产构建把 `DEMO_MODE` 内联为 `"0"`，预填在运行时恒为关闭，登录页不会自动填入任何账号。演示构建只适合内部演示，切勿对外公开部署。
+
 ## 默认 seed
 
 `src/db/seeds/default.ts` 面向空库写入一套固定的深度走查数据：1 管理员、3 教师、2 学期、2 班级、11 学生、7 课题、6 任务、11 实验、4 条服务端抽样审计记录、4 公告和 1 个附件。阶段 4 与终态实验使用与生产一致的 compact 抽样结果（只存重放索引，不重复存总体行），S015 的主任务可在教师批改页查看四种方法的审计记录。seed 还生成两份 clone-local 总体文件：200 行的比例/PPS 总体，以及 24 行、可做均值分析但无可用 PPS 规模变量的总体。可用 `SEED_NOW=2026-06-15T08:30:00.000Z` 固定开放/截止/锁定等相对时间；seed 会打印实际锚点。运行后用 `bun run db:seed:check` 做只读完整性检查。`db:seed` 非幂等，只用于空库；失败时先修复报错原因，再运行 `bun run db:reset` 清理并完整重建，不要在部分写入的库上重复 seed。
@@ -109,7 +120,9 @@ bun run start
 ```sh
 bun run dev              # 热更新开发
 bun run build            # 生产前端到 dist/
+bun run build:demo       # 演示构建：登录页预填演示账号密码
 bun run start            # 构建 + 生产进程
+bun run start:demo       # 演示构建 + 生产进程
 bun run verify           # 类型/样式、单测、构建、迁移检查、依赖门禁
 bun test                 # 单元测试
 bun run typecheck        # tsc + 样式门禁

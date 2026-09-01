@@ -12,6 +12,8 @@
     "dev": "bun --hot src/index.ts",
     "start": "bun run build && NODE_ENV=production bun src/index.ts",
     "build": "bun run scripts/build.ts",
+    "build:demo": "DEMO_MODE=1 bun run scripts/build.ts",
+    "start:demo": "bun run build:demo && NODE_ENV=production bun src/index.ts",
     "test": "bun run test:unit",
     "typecheck": "bunx tsc --noEmit && bun run check:styles",
     "test:unit": "bun test src scripts",

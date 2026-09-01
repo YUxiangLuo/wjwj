@@ -2,7 +2,7 @@
  * 开发模式开关（前后端共用）。
  *
  * 开启后：
- * - 三个登录页预填演示账号；
+ * - 三个登录页预填演示账号和密码；
  * - 跳过“首次登录 / 密码重置后必须修改密码”的强制流程
  *   （前端不再弹出强制改密对话框，服务端也不再以 PASSWORD_CHANGE_REQUIRED 拦截 API）。
  *
@@ -30,10 +30,12 @@ function readBundledEnv(): Record<string, string | undefined> {
 
 export const DEV_AUTH_MODE = resolveDevAuthMode(readBundledEnv());
 
-/** 开发模式下的演示账号（与 src/db/seeds/default.ts 一致）。 */
+/** 开发模式下的演示账号和密码（与 src/db/seeds/default.ts 一致）。 */
 export const DEV_STUDENT_ID = "S010";
+export const DEV_STUDENT_PASSWORD = "Student!010";
 export const DEV_TEACHER_ID = "T001";
+export const DEV_TEACHER_PASSWORD = "Teacher!2026";
 export const DEV_ADMIN_USERNAME = "admin";
 
-/** 开发模式下管理员演示密码（与 src/db/seeds/default.ts 中的默认值一致）。 */
+/** 开发模式下管理员演示密码（src/db/seeds/default.ts 在开发鉴权开启时写入该值）。 */
 export const DEV_ADMIN_PASSWORD = "admin123";
