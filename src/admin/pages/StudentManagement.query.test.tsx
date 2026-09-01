@@ -35,7 +35,7 @@ test("student management initializes its request from the classId query", async 
         requestedUrls.push(url);
         const data = url.includes("/api/admin/classes")
             ? [{ id: 7, name: "统计一班", semesterId: 1, semesterName: "本学期", teacherId: 9, teacherName: "教师", studentCount: 0, createdAt: new Date().toISOString() }]
-            : [];
+            : { items: [], total: 0, page: 1, pageSize: 20 };
         return new Response(JSON.stringify({ success: true, data }), {
             headers: { "Content-Type": "application/json" },
         });
@@ -57,7 +57,7 @@ test("student management initializes its request from the classId query", async 
     fireEvent.click(view.getByText("查看全部学生"));
 
     await waitFor(() => {
-        expect(requestedUrls.some((url) => url.endsWith("/api/admin/students"))).toBe(true);
+        expect(requestedUrls.some((url) => url.includes("/api/admin/students?page=1"))).toBe(true);
         expect(view.getByTestId("location-search").textContent).toBe("");
     });
 });
@@ -70,7 +70,9 @@ test("student management distinguishes locked accounts", async () => {
     ];
     globalThis.fetch = mock(async (input: RequestInfo | URL) => {
         const url = String(input);
-        const data = url.includes("/api/admin/classes") ? [] : students;
+        const data = url.includes("/api/admin/classes")
+            ? []
+            : { items: students, total: students.length, page: 1, pageSize: 20 };
         return new Response(JSON.stringify({ success: true, data }), {
             headers: { "Content-Type": "application/json" },
         });
@@ -105,17 +107,22 @@ test("resetting a locked student refreshes the displayed account state", async (
                 headers: { "Content-Type": "application/json" },
             });
         }
-        const data = url.includes("/api/admin/classes") ? [] : [{
-            id: 2,
-            studentId: "SLOCKED",
-            name: "锁定学生",
-            classId: 7,
-            className: "统计一班",
-            status: 1,
-            lockedUntil: locked ? "2099-01-01T00:00:00.000Z" : null,
-            progress: 0,
-            createdAt: new Date().toISOString(),
-        }];
+        const data = url.includes("/api/admin/classes") ? [] : {
+            items: [{
+                id: 2,
+                studentId: "SLOCKED",
+                name: "锁定学生",
+                classId: 7,
+                className: "统计一班",
+                status: 1,
+                lockedUntil: locked ? "2099-01-01T00:00:00.000Z" : null,
+                progress: 0,
+                createdAt: new Date().toISOString(),
+            }],
+            total: 1,
+            page: 1,
+            pageSize: 20,
+        };
         if (url.includes("/api/admin/students")) listRequests += 1;
         return new Response(JSON.stringify({ success: true, data }), {
             headers: { "Content-Type": "application/json" },

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Eye, Loader2, RotateCcw, Search, Users } from "lucide-react";
+import { Eye, ChevronLeft, ChevronRight, Loader2, RotateCcw, Search, Users } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
-import { getAccountState, matchesAccountState, type AccountStateFilter } from "@/lib/account-state";
+import { getAccountState, type AccountStateFilter } from "@/lib/account-state";
 import {
     Table,
     TableBody,
@@ -48,6 +48,8 @@ function renderAccountStatus(item: Student) {
     );
 }
 
+const PAGE_SIZE = 20;
+
 export function StudentManagement() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -61,6 +63,8 @@ export function StudentManagement() {
     const [search, setSearch] = useState("");
     const [appliedSearch, setAppliedSearch] = useState("");
     const [status, setStatus] = useState<AccountStateFilter>("all");
+    const [page, setPage] = useState(1);
+    const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState<Student | null>(null);
     const [experiments, setExperiments] = useState<StudentExperiment[]>([]);
@@ -68,19 +72,29 @@ export function StudentManagement() {
     const load = async ({
         nextClassId = classId,
         nextSearch = appliedSearch,
+        nextStatus = status,
+        nextPage = page,
     }: {
         nextClassId?: string;
         nextSearch?: string;
+        nextStatus?: AccountStateFilter;
+        nextPage?: number;
     } = {}) => {
         setLoading(true);
-        const response = await studentApi.list({
+        const response = await studentApi.listPaged({
             classId: nextClassId,
             search: nextSearch || undefined,
+            status: nextStatus === "all" ? undefined : nextStatus,
+            page: nextPage,
+            pageSize: PAGE_SIZE,
         });
         if (response.success && response.data) {
-            setStudents(response.data);
+            setStudents(response.data.items);
+            setTotal(response.data.total);
+            setPage(response.data.page);
         } else {
             setStudents([]);
+            setTotal(0);
             toast.error(response.error?.message ?? "学生列表加载失败");
         }
         setLoading(false);
@@ -97,20 +111,18 @@ export function StudentManagement() {
     }, [requestedClassId]);
 
     useEffect(() => {
-        void load({ nextClassId: classId });
+        void load({ nextClassId: classId, nextPage: 1 });
     }, [classId]);
 
-    const filtered = useMemo(
-        () => students.filter((item) => matchesAccountState(item.status, item.lockedUntil, status)),
-        [students, status],
-    );
+    // 状态筛选已下推到服务端，students 即当前页结果。
+    const filtered = students;
     const selectedClassName = classes.find((item) => String(item.id) === classId)?.name;
     const hasFilters = classId !== "all" || status !== "all" || Boolean(appliedSearch);
 
     const applySearch = () => {
         const nextSearch = search.trim();
         setAppliedSearch(nextSearch);
-        void load({ nextSearch });
+        void load({ nextSearch, nextPage: 1 });
     };
 
     const setClassFilter = (nextClassId: string) => {
@@ -126,7 +138,7 @@ export function StudentManagement() {
         setAppliedSearch("");
         setStatus("all");
         setClassFilter("all");
-        void load({ nextClassId: "all", nextSearch: "" });
+        void load({ nextClassId: "all", nextSearch: "", nextStatus: "all", nextPage: 1 });
     };
 
     const openExperiments = async (item: Student) => {
@@ -169,7 +181,11 @@ export function StudentManagement() {
                             ))}
                         </SelectContent>
                     </Select>
-                    <Select value={status} onValueChange={(value) => setStatus(value as AccountStateFilter)}>
+                    <Select value={status} onValueChange={(value) => {
+                        const nextStatus = value as AccountStateFilter;
+                        setStatus(nextStatus);
+                        void load({ nextStatus, nextPage: 1 });
+                    }}>
                         <SelectTrigger aria-label="按账号状态筛选学生" className="w-36">
                             <SelectValue />
                         </SelectTrigger>
@@ -276,6 +292,35 @@ export function StudentManagement() {
                             ))}
                         </TableBody>
                     </Table>
+                )}
+                {!loading && total > 0 && (
+                    <div className="flex items-center justify-between pt-2" data-testid="student-list-pagination">
+                        <p className="text-sm text-muted-foreground">
+                            共 {total} 人，第 {page} / {Math.max(1, Math.ceil(total / PAGE_SIZE))} 页
+                        </p>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={page <= 1}
+                                onClick={() => void load({ nextPage: page - 1 })}
+                                aria-label="上一页"
+                                data-testid="student-list-prev-page"
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={page >= Math.ceil(total / PAGE_SIZE)}
+                                onClick={() => void load({ nextPage: page + 1 })}
+                                aria-label="下一页"
+                                data-testid="student-list-next-page"
+                            >
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
                 )}
             </CardContent>
 

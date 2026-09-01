@@ -1,4 +1,4 @@
-import { and, count, desc, eq, ilike, inArray, isNull, or } from "drizzle-orm";
+import { and, count, desc, eq, gt, ilike, inArray, isNull, lte, or } from "drizzle-orm";
 import { db } from "../../db";
 import { announcement, class_, experiment, semester, student, task, teacher, topic } from "../../db/schema";
 import { experimentProgress } from "../../lib/experiment-progress";
@@ -288,6 +288,14 @@ const studentRoutes: RouteDefinition = {
         const params = getSearchParams(req);
         const classId = Number.parseInt(params.get("class_id") ?? "", 10);
         const search = (params.get("search") ?? "").trim().slice(0, 100);
+        const accountStatus = params.get("status") ?? "all";
+        if (!(["all", "normal", "locked", "disabled"] as const).includes(accountStatus as "all" | "normal" | "locked" | "disabled")) {
+            return error("学生状态筛选无效", "INVALID_PARAM", 400);
+        }
+        // 兼容：未传分页参数时保持旧版全量数组响应。
+        const paged = params.has("page") || params.has("pageSize");
+        const page = Math.max(1, Number.parseInt(params.get("page") ?? "1", 10) || 1);
+        const pageSize = Math.min(100, Math.max(1, Number.parseInt(params.get("pageSize") ?? "20", 10) || 20));
         const conditions = [isNull(student.deletedAt)];
         if (classId > 0) conditions.push(eq(student.classId, classId));
         if (search) {
@@ -298,7 +306,15 @@ const studentRoutes: RouteDefinition = {
                 )!,
             );
         }
-        const rows = await db
+        // 与 lib/account-state.ts 语义一致：停用 / 锁定中 / 正常。
+        const now = new Date();
+        if (accountStatus === "disabled") conditions.push(eq(student.status, 0));
+        if (accountStatus === "locked") conditions.push(and(eq(student.status, 1), gt(student.lockedUntil, now))!);
+        if (accountStatus === "normal") conditions.push(and(
+            eq(student.status, 1),
+            or(isNull(student.lockedUntil), lte(student.lockedUntil, now))!,
+        )!);
+        const baseQuery = db
             .select({
                 id: student.id,
                 studentId: student.studentId,
@@ -312,7 +328,10 @@ const studentRoutes: RouteDefinition = {
             .from(student)
             .leftJoin(class_, eq(student.classId, class_.id))
             .where(and(...conditions))
-            .orderBy(desc(student.createdAt));
+            .orderBy(desc(student.createdAt), desc(student.id));
+        const rows = paged
+            ? await baseQuery.limit(pageSize).offset((page - 1) * pageSize)
+            : await baseQuery;
         const ids = rows.map((row) => row.id);
         const experimentRows = ids.length
             ? await db
@@ -330,7 +349,14 @@ const studentRoutes: RouteDefinition = {
             const value = experimentProgress(item);
             progress.set(item.studentId, Math.max(progress.get(item.studentId) ?? 0, value));
         }
-        return json(rows.map((row) => ({ ...row, progress: progress.get(row.id) ?? 0 })));
+        const items = rows.map((row) => ({ ...row, progress: progress.get(row.id) ?? 0 }));
+        if (!paged) return json(items);
+        const [totalRow] = await db
+            .select({ count: count() })
+            .from(student)
+            .leftJoin(class_, eq(student.classId, class_.id))
+            .where(and(...conditions));
+        return json({ items, total: Number(totalRow?.count ?? 0), page, pageSize });
     },
 };
 
