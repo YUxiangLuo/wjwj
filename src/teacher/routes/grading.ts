@@ -37,23 +37,24 @@ function snapshotTextField(field: "studentName" | "topicName") {
     END`;
 }
 
-function baseConditions(teacherId: number) {
-    return [
+function baseConditions(teacherId: number, includeArchived = false) {
+    const conditions = [
         eq(class_.teacherId, teacherId),
-        isNull(student.deletedAt),
-        isNull(task.deletedAt),
-        isNull(topic.deletedAt),
         inArray(experiment.status, ["submitted", "graded", "rejected"]),
     ];
+    // 归档 = 学生/任务/课题任一被软删；默认不可见，显式 includeArchived 时纳入只读。
+    if (!includeArchived) conditions.push(isNull(student.deletedAt), isNull(task.deletedAt), isNull(topic.deletedAt));
+    return conditions;
 }
 
 const gradingRoutes: RouteDefinition = {
     async GET(req) {
         const current = getTeacherUser(req);
         const params = getSearchParams(req);
+        const includeArchived = params.get("includeArchived") === "1";
         const page = Math.max(1, Number(params.get("page")) || 1);
         const pageSize = Math.min(100, Math.max(1, Number(params.get("pageSize")) || 20));
-        const conditions = baseConditions(current.id);
+        const conditions = baseConditions(current.id, includeArchived);
         const status = params.get("status");
         if (status === "pending") conditions.push(eq(experiment.status, "submitted"));
         if (status === "graded") conditions.push(eq(experiment.status, "graded"));
@@ -94,6 +95,9 @@ const gradingRoutes: RouteDefinition = {
                 gradedByName: teacher.name,
                 gradedAt: experiment.gradedAt,
                 submissionSnapshot: experiment.submissionSnapshot,
+                studentDeletedAt: student.deletedAt,
+                taskDeletedAt: task.deletedAt,
+                topicDeletedAt: topic.deletedAt,
             })
                 .from(experiment)
                 .innerJoin(student, eq(experiment.studentId, student.id))
@@ -109,9 +113,16 @@ const gradingRoutes: RouteDefinition = {
         return json({
             items: rows.map((row) => {
                 const snapshot = parseStoredJson<{ studentName?: string; topicName?: string }>(row.submissionSnapshot);
-                const { submissionSnapshot: _, ...item } = row;
+                const {
+                    submissionSnapshot: _,
+                    studentDeletedAt,
+                    taskDeletedAt,
+                    topicDeletedAt,
+                    ...item
+                } = row;
                 return {
                     ...item,
+                    archived: Boolean(studentDeletedAt || taskDeletedAt || topicDeletedAt),
                     studentName: snapshot?.studentName ?? row.studentName,
                     topic: snapshot?.topicName ?? row.topic,
                     score: numeric(row.score),
@@ -124,7 +135,7 @@ const gradingRoutes: RouteDefinition = {
     },
 };
 
-async function findOwnedExperiment(experimentId: number, teacherId: number) {
+async function findOwnedExperiment(experimentId: number, teacherId: number, includeArchived = false) {
     const [row] = await db.select({
         id: experiment.id,
         version: experiment.version,
@@ -152,6 +163,9 @@ async function findOwnedExperiment(experimentId: number, teacherId: number) {
         rejectReason: experiment.rejectReason,
         gradedAt: experiment.gradedAt,
         gradedByName: teacher.name,
+        studentDeletedAt: student.deletedAt,
+        taskDeletedAt: task.deletedAt,
+        topicDeletedAt: topic.deletedAt,
     })
         .from(experiment)
         .innerJoin(student, eq(experiment.studentId, student.id))
@@ -159,8 +173,12 @@ async function findOwnedExperiment(experimentId: number, teacherId: number) {
         .innerJoin(topic, eq(task.topicId, topic.id))
         .innerJoin(class_, eq(task.classId, class_.id))
         .leftJoin(teacher, eq(experiment.gradedByTeacherId, teacher.id))
-        .where(and(eq(experiment.id, experimentId), ...baseConditions(teacherId)));
+        .where(and(eq(experiment.id, experimentId), ...baseConditions(teacherId, includeArchived)));
     return row ?? null;
+}
+
+function archivedFlag(row: { studentDeletedAt: Date | null; taskDeletedAt: Date | null; topicDeletedAt: Date | null }) {
+    return Boolean(row.studentDeletedAt || row.taskDeletedAt || row.topicDeletedAt);
 }
 
 const gradingDetailRoutes: RouteDefinition = {
@@ -168,8 +186,10 @@ const gradingDetailRoutes: RouteDefinition = {
         const current = getTeacherUser(req);
         const experimentId = Number(getRouteParam(req, "id"));
         if (!Number.isInteger(experimentId) || experimentId <= 0) return error("无效的实验ID", "INVALID_ID");
-        const row = await findOwnedExperiment(experimentId, current.id);
+        const includeArchived = getSearchParams(req).get("includeArchived") === "1";
+        const row = await findOwnedExperiment(experimentId, current.id, includeArchived);
         if (!row) return error("提交记录不存在", "NOT_FOUND", 404);
+        const archived = archivedFlag(row);
         const snapshot = parseStoredJson<{
             studentName?: string;
             topicName?: string;
@@ -211,10 +231,14 @@ const gradingDetailRoutes: RouteDefinition = {
             excelFilePath: _excelFilePath,
             submissionSnapshot: _submissionSnapshot,
             weightConfig: _weightConfig,
+            studentDeletedAt: _studentDeletedAt,
+            taskDeletedAt: _taskDeletedAt,
+            topicDeletedAt: _topicDeletedAt,
             ...publicRow
         } = row;
         return json({
             ...publicRow,
+            archived,
             studentName: snapshot?.studentName ?? row.studentName,
             topic: snapshot?.topicName ?? row.topic,
             topicName: snapshot?.topicName ?? row.topicName,
@@ -239,8 +263,9 @@ const gradingDetailRoutes: RouteDefinition = {
         const current = getTeacherUser(req);
         const experimentId = Number(getRouteParam(req, "id"));
         if (!Number.isInteger(experimentId) || experimentId <= 0) return error("无效的实验ID", "INVALID_ID");
-        const row = await findOwnedExperiment(experimentId, current.id);
+        const row = await findOwnedExperiment(experimentId, current.id, true);
         if (!row) return error("提交记录不存在", "NOT_FOUND", 404);
+        if (archivedFlag(row)) return error("该提交已归档，仅供查阅，不能评分", "ARCHIVED_READ_ONLY", 409);
         const body = await parseBody<{
             observedVersion?: unknown;
             scoreQuestionnaire?: number;
@@ -302,7 +327,8 @@ const gradingSamplingExportRoutes: RouteDefinition = {
         const type = parseSamplingExportType(getSearchParams(req).get("type"));
         if (!type) return error("无效的导出类型", "VALIDATION_ERROR", 400);
 
-        const row = await findOwnedExperiment(experimentId, current.id);
+        // 抽样导出属于只读操作，归档提交同样允许。
+        const row = await findOwnedExperiment(experimentId, current.id, true);
         if (!row) return error("提交记录不存在", "NOT_FOUND", 404);
         const snapshot = parseStoredJson<{ samplingResults?: unknown }>(row.submissionSnapshot);
         const storedSamplingResults = snapshot?.samplingResults ?? parseStoredJson(row.samplingResults);
@@ -340,8 +366,9 @@ const gradingRejectRoutes: RouteDefinition = {
         const current = getTeacherUser(req);
         const experimentId = Number(getRouteParam(req, "id"));
         if (!Number.isInteger(experimentId) || experimentId <= 0) return error("无效的实验ID", "INVALID_ID");
-        const row = await findOwnedExperiment(experimentId, current.id);
+        const row = await findOwnedExperiment(experimentId, current.id, true);
         if (!row) return error("提交记录不存在", "NOT_FOUND", 404);
+        if (archivedFlag(row)) return error("该提交已归档，仅供查阅，不能驳回", "ARCHIVED_READ_ONLY", 409);
         const body = await parseBody<{ observedVersion?: unknown; reason?: string }>(req);
         const versionResult = validateObservedVersion(body.observedVersion, row.version);
         if (!versionResult.ok) return error(versionResult.message, versionResult.code, versionResult.status);

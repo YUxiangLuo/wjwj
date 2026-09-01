@@ -34,9 +34,11 @@ export type GradingStatus = "submitted" | "graded" | "rejected";
 export interface GradingItem {
     id: number; studentName: string; studentId: string; topic: string; className: string;
     submittedAt: string; status: GradingStatus; score: number | null; gradedByName?: string | null; gradedAt?: string | null;
+    /** 归档 = 学生/任务/课题任一被软删；归档提交仅供查阅。 */
+    archived?: boolean;
 }
 export interface GradingListResponse { items: GradingItem[]; total: number; page: number; pageSize: number }
-export interface GradingListParams { status?: string; className?: string; topicName?: string; keyword?: string; page?: number; pageSize?: number }
+export interface GradingListParams { status?: string; className?: string; topicName?: string; keyword?: string; page?: number; pageSize?: number; includeArchived?: boolean }
 export interface SubmissionDetail extends GradingItem {
     version: number;
     topicDesc: string | null;
@@ -130,10 +132,10 @@ export const teacherApi = {
 
     getGradingList: (params: GradingListParams = {}) => {
         const search = new URLSearchParams();
-        for (const [key, value] of Object.entries(params)) if (value !== undefined && value !== "") search.set(key, String(value));
+        for (const [key, value] of Object.entries(params)) if (value !== undefined && value !== "") search.set(key, value === true ? "1" : String(value));
         return request<GradingListResponse>(`/api/teacher/grading${search.size ? `?${search}` : ""}`);
     },
-    getSubmissionDetail: (id: number) => request<SubmissionDetail>(`/api/teacher/grading/${id}`),
+    getSubmissionDetail: (id: number, options: { includeArchived?: boolean } = {}) => request<SubmissionDetail>(`/api/teacher/grading/${id}${options.includeArchived ? "?includeArchived=1" : ""}`),
     submitGrade: (id: number, observedVersion: number, data: { scoreQuestionnaire: number; scoreProcess: number; scoreReport: number; comment: string }) => request<{ success: boolean; totalScore: number }>(`/api/teacher/grading/${id}`, { method: "POST", body: JSON.stringify({ ...data, observedVersion }) }),
     rejectSubmission: (id: number, observedVersion: number, reason: string) => request<{ success: boolean }>(`/api/teacher/grading/${id}/reject`, { method: "POST", body: JSON.stringify({ reason, observedVersion }) }),
 

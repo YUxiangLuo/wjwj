@@ -30,7 +30,7 @@ export function GradingDetail() {
     const id = Number(submissionId);
     const load = async () => {
         setLoading(true);
-        const response = await teacherApi.getSubmissionDetail(id);
+        const response = await teacherApi.getSubmissionDetail(id, { includeArchived: true });
         if (response.success && response.data) {
             setData(response.data);
             setScores({ questionnaire: String(response.data.scoreQuestionnaire ?? 0), process: String(response.data.scoreProcess ?? 0), report: String(response.data.scoreReport ?? 0) });
@@ -84,7 +84,7 @@ export function GradingDetail() {
     };
     if (loading) return <p role="status" aria-live="polite" className="py-12 text-center text-muted-foreground">加载中...</p>;
     if (!data) return <p className="py-12 text-center text-muted-foreground">未找到提交记录</p>;
-    const canGrade = data.status === "submitted" || data.status === "graded";
+    const canGrade = !data.archived && (data.status === "submitted" || data.status === "graded");
     const scoreLabels = {
         questionnaire: `问卷设计（${weights.questionnaire}%）`,
         process: `实验过程（${weights.process}%）`,
@@ -94,10 +94,18 @@ export function GradingDetail() {
         <div className="space-y-5">
             <div className="flex items-center justify-between">
                 <Button variant="ghost" onClick={() => navigate("/grading")}><ArrowLeft className="mr-2 h-4 w-4" />返回列表</Button>
-                <StatusBadge intent={data.status === "graded" ? "success" : data.status === "rejected" ? "destructive" : "warning"}>
-                    {data.status === "graded" ? "已批改" : data.status === "rejected" ? "已驳回" : "待批改"}
-                </StatusBadge>
+                <div className="flex items-center gap-2">
+                    {data.archived && <StatusBadge intent="auxiliary" data-testid="grading-detail-archived">已归档</StatusBadge>}
+                    <StatusBadge intent={data.status === "graded" ? "success" : data.status === "rejected" ? "destructive" : "warning"}>
+                        {data.status === "graded" ? "已批改" : data.status === "rejected" ? "已驳回" : "待批改"}
+                    </StatusBadge>
+                </div>
             </div>
+            {data.archived && (
+                <div role="note" className="rounded-xl border border-auxiliary/20 bg-auxiliary/10 px-4 py-3 text-sm text-auxiliary-strong" data-testid="grading-archived-notice">
+                    该提交已归档（学生、任务或课题已被删除），内容仅供查阅，不能评分或驳回。
+                </div>
+            )}
             <Card>
                 <CardHeader>
                     <CardTitle>
@@ -194,7 +202,7 @@ export function GradingDetail() {
                         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-muted p-4">
                             <p>加权总分：<span className="text-2xl font-bold text-primary">{total.toFixed(2)}</span></p>
                             <div className="flex gap-2">
-                                {data.status === "submitted" && <Button variant="destructive" onClick={() => setRejectOpen(true)}>驳回修改</Button>}
+                                {data.status === "submitted" && !data.archived && <Button variant="destructive" onClick={() => setRejectOpen(true)}>驳回修改</Button>}
                                 <Button disabled={!canGrade || saving} onClick={() => void grade()}>{saving ? "保存中..." : data.status === "graded" ? "更新评分" : "提交评分"}</Button>
                             </div>
                         </div>

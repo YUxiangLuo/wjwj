@@ -38,3 +38,37 @@ test("grading list reads current experiment statuses directly", async () => {
     const sql = new PgDialect().sqlToQuery(listQuery?.where as SQL).sql;
     expect(sql).toContain('"student"."deleted_at" is null');
 });
+
+test("grading list includes archived rows only when requested", async () => {
+    const { db, operations } = createMockDb({ select: [
+        [{ count: 2 }],
+        [
+            {
+                id: 7, studentName: "学生甲", studentId: "S001", topic: "课题A", className: "统计一班",
+                submittedAt: new Date(), status: "submitted", score: null, gradedByName: null, gradedAt: null,
+                submissionSnapshot: null,
+                studentDeletedAt: null, taskDeletedAt: null, topicDeletedAt: null,
+            },
+            {
+                id: 8, studentName: "学生乙", studentId: "S002", topic: "课题B", className: "统计一班",
+                submittedAt: new Date(), status: "graded", score: "90.00", gradedByName: "张老师", gradedAt: new Date(),
+                submissionSnapshot: null,
+                studentDeletedAt: null, taskDeletedAt: new Date(), topicDeletedAt: null,
+            },
+        ],
+    ] });
+    mock.module("../../db", () => ({ db }));
+    mock.module("./auth", () => createTeacherAuthModuleMock());
+    const module = await import(`./grading.ts?list-archived=${crypto.randomUUID()}`);
+    const response = await module.gradingRoutes.GET!(new Request("https://example.com/api/teacher/grading?includeArchived=1"));
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.data.items).toHaveLength(2);
+    expect(payload.data.items[0]).toMatchObject({ id: 7, archived: false });
+    expect(payload.data.items[1]).toMatchObject({ id: 8, archived: true });
+
+    const listQuery = operations.find((item) => item.kind === "select");
+    const sql = new PgDialect().sqlToQuery(listQuery?.where as SQL).sql;
+    expect(sql).not.toContain('"student"."deleted_at" is null');
+    expect(sql).not.toContain('"task"."deleted_at" is null');
+});
