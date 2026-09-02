@@ -35,15 +35,18 @@ installation from before the simplification, first take a database and
 version against a new empty database.
 
 `db:seed` writes the deterministic dogfood fixture in
-`src/db/seeds/default.ts`: 1 admin, 3 teachers, 2 semesters, 2 classes,
-S010–S020, 7 topics, 6 tasks, 11 experiments, 4 bounded sampling-attempt audit
-rows, 4 announcements, 1 attachment, and two generated population files. The
-stage-4 and terminal fixtures use production-style compact replay indices. The main mean/PPS task covers all
-eight teacher progress buckets; the mean task has a valid numeric analysis
-field but intentionally no eligible PPS size field. `SEED_NOW` optionally fixes
-the relative-time anchor, and `SEED_ADMIN_PASSWORD` overrides the generated
-admin password. See the exact credentials/personas in [README.md](README.md).
-Seed is not applied by `db:migrate`.
+`src/db/seeds/default.ts`: 1 admin, 4 teachers, 3 semesters, 4 classes,
+17 students, 9 topics, 8 tasks, 18 experiments, 12 bounded sampling-attempt
+audit rows, 5 announcements, 1 attachment, and four generated population
+files. The stage-4 and terminal fixtures use production-style compact replay
+indices. The main mean/PPS task covers all eight teacher progress buckets. The
+four research scenarios cover mean and proportion targets, person and service-
+period units of analysis, multiple strata, and both eligible and unavailable
+PPS size fields. `SEED_NOW` optionally fixes the relative-time anchor, and
+`SEED_ADMIN_PASSWORD` overrides the generated admin password. `db:seed:demo`
+also marks the administrator demo-ready and supplies the fixed demo password.
+See the exact credentials/personas in [README.md](README.md). Seed is not
+applied by `db:migrate`.
 
 `db:seed` is non-idempotent and only supports an empty migrated database. It
 preflights the required guide source before inserting rows, but later failures

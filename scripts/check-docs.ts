@@ -18,17 +18,20 @@ const meanTaskSize = calculateMeanEstimationSampleSize({
     designEffect: 1,
     nonResponseRate: 0,
 });
-if (meanTaskSize === null) throw new Error("无法计算「均值-无PPS」任务的 fixture 样本量");
+if (meanTaskSize === null) throw new Error(`无法计算「${DOGFOOD_NAMES.topicB}」任务的 fixture 样本量`);
 
 const requiredReadmeFragments = [
     `${DOGFOOD_COUNTS.topic} 课题、${DOGFOOD_COUNTS.task} 任务、${DOGFOOD_COUNTS.experiment} 实验`,
     `主任务「${DOGFOOD_NAMES.topicA}」`,
     `主任务推荐样本量为 ${mainTaskRecommendedSize}`,
     `「${DOGFOOD_NAMES.topicB}」任务样本量由生产计算函数得到 ${meanTaskSize}`,
+    `160 名毕业生的直接就业比例/PPS`,
+    `96 个餐厅服务时段的平均等待时间/PPS`,
 ];
 const requiredDatabaseFragments = [
     `${DOGFOOD_COUNTS.topic} topics, ${DOGFOOD_COUNTS.task} tasks, ${DOGFOOD_COUNTS.experiment} experiments`,
     "The main mean/PPS task",
+    "mean and proportion targets",
 ];
 
 const missing = [

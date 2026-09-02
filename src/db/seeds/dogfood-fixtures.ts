@@ -1,37 +1,45 @@
 import { calculateMeanEstimationSampleSize } from "../../student/experiment/sample-plan";
+import { DEMO_CLASS_NAME } from "./demo-accounts";
 
 export const DAY_MS = 24 * 60 * 60 * 1_000;
 
 export const DOGFOOD_NAMES = {
     currentSemester: "2026-2027-1",
-    oldSemester: "2025-2026-2",
-    mainClass: "统计学一班",
-    oldClass: "历史空班",
-    topicA: "均值对照（PPS 可用）",
-    topicB: "均值-无PPS",
-    topicC: "未发布草稿",
-    topicD: "已截止",
-    topicE: "尚未开放",
-    topicF: "软删课题",
-    topicG: "软删任务用课题",
+    previousSemester: "2025-2026-2",
+    oldSemester: "2024-2025-2",
+    mainClass: DEMO_CLASS_NAME,
+    secondaryClass: "2024级公共管理调查班",
+    dataScienceClass: "2025级数据科学导论班",
+    oldClass: "2023级统计学2班",
+    topicA: "大学生学习投入与满意度",
+    topicB: "校园阅读行为与阅读时长",
+    topicC: "图书馆空间使用调查（草稿）",
+    topicD: "校内通勤方式调查（已截止）",
+    topicE: "新生数字素养调查（即将开放）",
+    topicF: "历史课题：校园消费结构",
+    topicG: "历史任务：宿舍学习环境",
+    topicH: "毕业生直接就业意向比例",
+    topicI: "校园餐厅午间等待时间",
 } as const;
 
 export const DOGFOOD_COUNTS = {
     admin: 1,
-    teacher: 3,
-    semester: 2,
-    class: 2,
-    student: 11,
-    topic: 7,
-    task: 6,
-    experiment: 11,
-    samplingAttempt: 4,
-    announcement: 4,
+    teacher: 4,
+    semester: 3,
+    class: 4,
+    student: 17,
+    topic: 9,
+    task: 8,
+    experiment: 18,
+    samplingAttempt: 12,
+    announcement: 5,
     topicAttachment: 1,
 } as const;
 
 export const PPS_POPULATION_PATH = "/storage/topics/seed-population-pps.xlsx";
 export const MEAN_POPULATION_PATH = "/storage/topics/seed-population-mean.csv";
+export const PROPORTION_POPULATION_PATH = "/storage/topics/seed-population-graduate-intentions.csv";
+export const DINING_POPULATION_PATH = "/storage/topics/seed-population-dining-service.csv";
 export const GUIDE_ATTACHMENT_PATH = "/storage/uploads/seed-topic-guide.pdf";
 
 export function resolveSeedAnchor(raw: string | undefined) {
@@ -126,5 +134,36 @@ export function createMeanPopulation() {
         年级: `大${index % 4 + 1}`,
         每周阅读时长: index === 0 ? 0 : 2 + (index % 13),
         是否住宿: index % 3 === 0 ? "否" : "是",
+    }));
+}
+
+export function createGraduateIntentionPopulation() {
+    const colleges = ["文学院", "理学院", "商学院", "工学院"];
+    const intentions = ["直接就业", "直接就业", "直接就业", "考研", "考研", "考公", "出国深造", "灵活就业"];
+    return Array.from({ length: 160 }, (_, index) => ({
+        样本编号: `G${String(index + 1).padStart(3, "0")}`,
+        学院: colleges[index % colleges.length]!,
+        培养层次: index % 5 === 0 ? "专业学位" : "学术学位",
+        毕业去向意向: intentions[index % intentions.length]!,
+        是否有实习经历: index % 3 === 0 ? "否" : "是",
+        每周职业准备时长: 2 + (index * 3) % 19,
+        求职准备度: 35 + (index * 7) % 66,
+    }));
+}
+
+export function createDiningServicePopulation() {
+    const campuses = ["东校区", "西校区"];
+    const diningHalls = ["学苑餐厅", "湖畔餐厅", "风味餐厅", "清真餐厅"];
+    const periods = ["11:30-11:45", "11:45-12:00", "12:00-12:15", "12:15-12:30"];
+    const weekdays = ["周一", "周二", "周三", "周四", "周五"];
+    return Array.from({ length: 96 }, (_, index) => ({
+        记录编号: `D${String(index + 1).padStart(3, "0")}`,
+        校区: campuses[index % campuses.length]!,
+        餐厅: diningHalls[index % diningHalls.length]!,
+        观测时段: periods[index % periods.length]!,
+        星期: weekdays[index % weekdays.length]!,
+        等待分钟: 3 + (index * 5) % 18,
+        客流量: 45 + (index * 11) % 156,
+        开放窗口数: 3 + index % 8,
     }));
 }

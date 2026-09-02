@@ -12,10 +12,13 @@ import { closeDatabase } from "./db";
 import { acceptsGzip, createGzipCache } from "./server/asset-gzip";
 import { buildResponseHeaders, handleServerError, withSecurityHeaders } from "./server/http";
 import type { RouteDefinition, RouteHandler } from "./server/route-types";
+import { resolveDemoMode } from "./lib/demo-mode";
+import { createDemoStudentRoutes } from "./server/demo-student";
 
 type RouteRequest = Request & { params: Record<string, string> };
 
 const isProduction = process.env.NODE_ENV === "production";
+const demoMode = resolveDemoMode(process.env);
 const distRoot = resolve(import.meta.dir, "../dist");
 const builtAssetNamePattern = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const gzipCache = createGzipCache();
@@ -108,6 +111,7 @@ function secureApiRoutes(routeMap: Record<string, RouteDefinition>) {
 const securedAdminApiRoutes = secureApiRoutes(adminApiRoutes);
 const securedStudentApiRoutes = secureApiRoutes(studentApiRoutes);
 const securedTeacherApiRoutes = secureApiRoutes(teacherApiRoutes);
+const securedDemoApiRoutes = secureApiRoutes(createDemoStudentRoutes(demoMode));
 
 async function faviconRoute(req: Request) {
   if (req.method !== "GET" && req.method !== "HEAD") {
@@ -168,6 +172,9 @@ const routes = {
   // Teacher API routes
   ...securedTeacherApiRoutes,
 
+  // Demo-only unauthenticated credential prefill. This route is absent otherwise.
+  ...securedDemoApiRoutes,
+
   // Static templates (teacher upload guides and csv templates)
   "/templates/:name": async (req: RouteRequest) => {
     if (req.method !== "GET" && req.method !== "HEAD") {
@@ -214,6 +221,7 @@ const server = serve({
 });
 
 console.log(`🚀 Server running at ${server.url}`);
+if (demoMode) console.warn("⚠️  DEMO_MODE=1：演示凭据端点已启用，请勿对外公开部署。");
 
 registerLongRunningProcessSignals({
     onShutdown: async () => {

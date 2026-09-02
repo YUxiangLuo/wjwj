@@ -219,6 +219,10 @@ async function request<T>(url: string, options?: RequestInit): Promise<ApiRespon
 export const meApi = { get: () => request<CurrentStudent>("/api/student/me") };
 
 export const authApi = {
+    getDemoStudentCredential: (signal?: AbortSignal) => request<{ studentId: string; password: string }>(
+        "/api/demo/student-credential",
+        { cache: "no-store", signal },
+    ),
     login: (data: { studentId: string; password: string }) => request<{ user: CurrentStudent }>("/api/student/login", {
         method: "POST",
         body: JSON.stringify(data),

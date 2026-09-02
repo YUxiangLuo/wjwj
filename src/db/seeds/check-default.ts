@@ -20,12 +20,15 @@ import { validateReportForSubmit } from "../../student/experiment/submit-validat
 import { buildTaskProgressSnapshot } from "../../teacher/topic/task-progress";
 import {
     computePpsMeanPlan,
+    DINING_POPULATION_PATH,
     DOGFOOD_COUNTS,
     DOGFOOD_NAMES,
     GUIDE_ATTACHMENT_PATH,
     MEAN_POPULATION_PATH,
     PPS_POPULATION_PATH,
+    PROPORTION_POPULATION_PATH,
 } from "./dogfood-fixtures";
+import { DEMO_STUDENT_ACCOUNTS } from "./demo-accounts";
 
 function check(condition: unknown, message: string): asserts condition {
     if (!condition) throw new Error(message);
@@ -78,6 +81,28 @@ async function verify() {
     const expectedProgress = { not_started: 3, stage1: 1, stage2: 1, stage3: 1, stage4: 1, submitted: 1, graded: 1, rejected: 1 };
     check(JSON.stringify(progress.counts) === JSON.stringify(expectedProgress), `A progress buckets differ: ${JSON.stringify(progress.counts)}`);
 
+    const demoStudentRows = await db
+        .select({
+            studentId: student.studentId,
+            name: student.name,
+            password: student.password,
+            isFirstLogin: student.isFirstLogin,
+            status: student.status,
+            deletedAt: student.deletedAt,
+            className: class_.name,
+        })
+        .from(student)
+        .innerJoin(class_, eq(student.classId, class_.id))
+        .where(inArray(student.studentId, DEMO_STUDENT_ACCOUNTS.map((account) => account.studentId)));
+    check(demoStudentRows.length === DEMO_STUDENT_ACCOUNTS.length, `Demo student count differs: ${demoStudentRows.length}`);
+    for (const account of DEMO_STUDENT_ACCOUNTS) {
+        const row = demoStudentRows.find((candidate) => candidate.studentId === account.studentId);
+        check(row?.name === account.name, `${account.studentId} demo name differs`);
+        check(row.className === DOGFOOD_NAMES.mainClass, `${account.studentId} is outside the demo class`);
+        check(row.status === 1 && row.isFirstLogin === 0 && !row.deletedAt, `${account.studentId} is not demo-login eligible`);
+        check(await Bun.password.verify(account.password, row.password), `${account.studentId} demo password differs`);
+    }
+
     const authoritative = await db
         .select({
             studentId: student.studentId,
@@ -93,7 +118,7 @@ async function verify() {
         .innerJoin(task, eq(experiment.taskId, task.id))
         .innerJoin(topic, eq(task.topicId, topic.id))
         .where(eq(experiment.currentStage, 4));
-    check(authoritative.length === 8, `Expected 8 stage4/terminal authoritative fixtures, got ${authoritative.length}`);
+    check(authoritative.length === 13, `Expected 13 stage4/terminal authoritative fixtures, got ${authoritative.length}`);
 
     function checkAuthoritativeMethods(label: string, value: unknown, allowUnavailablePps: boolean) {
         const results = value as Record<string, Record<string, unknown> | undefined> | null;
@@ -119,18 +144,18 @@ async function verify() {
 
     for (const row of authoritative) {
         const label = `${row.studentId}/${row.topicName}`;
-        const isMeanFixture = row.studentId === "S015" && row.topicName === DOGFOOD_NAMES.topicB;
-        const liveResults = checkAuthoritativeMethods(label, row.results, isMeanFixture);
+        const hasUnavailablePps = row.topicName === DOGFOOD_NAMES.topicB;
+        const liveResults = checkAuthoritativeMethods(label, row.results, hasUnavailablePps);
         if (row.status !== "in_progress") {
             const storedSnapshot = row.snapshot as Record<string, unknown> | null;
             check(storedSnapshot, `${label} has no submission snapshot`);
-            const snapshotResults = checkAuthoritativeMethods(`${label}/snapshot`, storedSnapshot.samplingResults, isMeanFixture);
+            const snapshotResults = checkAuthoritativeMethods(`${label}/snapshot`, storedSnapshot.samplingResults, hasUnavailablePps);
             check(JSON.stringify(snapshotResults) === JSON.stringify(liveResults), `${label} snapshot sampling results differ from the live record`);
             check(storedSnapshot.reportContent === row.reportContent, `${label} snapshot report differs from the live record`);
             check(validateReportForSubmit(row.reportContent) === null, `${label} live report is invalid`);
             check(validateReportForSubmit(storedSnapshot.reportContent) === null, `${label} snapshot report is invalid`);
         }
-        if (isMeanFixture) {
+        if (hasUnavailablePps) {
             check(row.reportContent?.includes("PPS") && row.reportContent.includes("跳过"), "Mean live report does not explain skipped PPS");
             const snapshotReport = (row.snapshot as Record<string, unknown> | null)?.reportContent;
             check(typeof snapshotReport === "string" && snapshotReport.includes("PPS") && snapshotReport.includes("跳过"), "Mean snapshot report does not explain skipped PPS");
@@ -155,6 +180,21 @@ async function verify() {
         { method: "stratified", seed: 202604, sampleCount: expectedPpsSampleCount },
     ]), `Sampling attempt fixtures differ: ${JSON.stringify(auditRows)}`);
 
+    const auditCoverage = await db
+        .select({ studentId: student.studentId, topicName: topic.name, method: samplingAttempt.method })
+        .from(samplingAttempt)
+        .innerJoin(experiment, eq(samplingAttempt.experimentId, experiment.id))
+        .innerJoin(student, eq(experiment.studentId, student.id))
+        .innerJoin(task, eq(experiment.taskId, task.id))
+        .innerJoin(topic, eq(task.topicId, topic.id))
+        .orderBy(asc(student.studentId), asc(topic.name), asc(samplingAttempt.method));
+    const auditedScenarioKeys = new Set(auditCoverage.map((row) => `${row.studentId}|${row.topicName}`));
+    check(auditCoverage.length === DOGFOOD_COUNTS.samplingAttempt, `Sampling audit coverage differs: ${auditCoverage.length}`);
+    check(auditedScenarioKeys.size === 3, `Expected three audited research scenarios, got ${[...auditedScenarioKeys].join(", ")}`);
+    for (const key of auditedScenarioKeys) {
+        check(auditCoverage.filter((row) => `${row.studentId}|${row.topicName}` === key).length === 4, `${key} does not cover four sampling methods`);
+    }
+
     const visible = await db
         .select({ studentId: student.studentId, topicName: topic.name })
         .from(experiment)
@@ -173,8 +213,12 @@ async function verify() {
     const expectedVisible = [
         `S015|${DOGFOOD_NAMES.topicA}`,
         `S015|${DOGFOOD_NAMES.topicB}`,
+        `S015|${DOGFOOD_NAMES.topicH}`,
         `S016|${DOGFOOD_NAMES.topicA}`,
+        `S016|${DOGFOOD_NAMES.topicH}`,
         `S017|${DOGFOOD_NAMES.topicA}`,
+        `P102|${DOGFOOD_NAMES.topicI}`,
+        `P103|${DOGFOOD_NAMES.topicI}`,
     ].sort();
     check(JSON.stringify(visibleKeys) === JSON.stringify(expectedVisible), `Visible grading fixtures differ: ${JSON.stringify(visibleKeys)}`);
 
@@ -193,8 +237,8 @@ async function verify() {
     const storedTopics = await db
         .select({ name: topic.name, path: topic.excelFilePath, rowCount: topic.excelRowCount, fieldMapping: topic.fieldMapping })
         .from(topic)
-        .where(and(inArray(topic.name, [DOGFOOD_NAMES.topicA, DOGFOOD_NAMES.topicB]), isNull(topic.deletedAt)));
-    check(storedTopics.length === 2, `Expected stored population metadata for topics A and B, got ${storedTopics.length}`);
+        .where(and(inArray(topic.name, [DOGFOOD_NAMES.topicA, DOGFOOD_NAMES.topicB, DOGFOOD_NAMES.topicH, DOGFOOD_NAMES.topicI]), isNull(topic.deletedAt)));
+    check(storedTopics.length === 4, `Expected stored population metadata for four research scenarios, got ${storedTopics.length}`);
 
     const expectedTopicFiles = {
         [DOGFOOD_NAMES.topicA]: {
@@ -202,12 +246,32 @@ async function verify() {
             rowCount: 200,
             columns: ["编号", "年级", "专业", "性别", "每周学习时长", "月生活费", "学习满意度"],
             ppsFields: ["每周学习时长", "月生活费", "学习满意度"],
+            targetKind: "mean",
+            targetValue: undefined,
         },
         [DOGFOOD_NAMES.topicB]: {
             path: MEAN_POPULATION_PATH,
             rowCount: 24,
             columns: ["编号", "学院", "年级", "每周阅读时长", "是否住宿"],
             ppsFields: [],
+            targetKind: "mean",
+            targetValue: undefined,
+        },
+        [DOGFOOD_NAMES.topicH]: {
+            path: PROPORTION_POPULATION_PATH,
+            rowCount: 160,
+            columns: ["样本编号", "学院", "培养层次", "毕业去向意向", "是否有实习经历", "每周职业准备时长", "求职准备度"],
+            ppsFields: ["每周职业准备时长", "求职准备度"],
+            targetKind: "proportion",
+            targetValue: "直接就业",
+        },
+        [DOGFOOD_NAMES.topicI]: {
+            path: DINING_POPULATION_PATH,
+            rowCount: 96,
+            columns: ["记录编号", "校区", "餐厅", "观测时段", "星期", "等待分钟", "客流量", "开放窗口数"],
+            ppsFields: ["等待分钟", "客流量", "开放窗口数"],
+            targetKind: "mean",
+            targetValue: undefined,
         },
     } as const;
     const parsedRowCounts: Record<string, number> = {};
@@ -218,7 +282,10 @@ async function verify() {
         check(storedTopic.rowCount === expected.rowCount, `${storedTopic.name} stored row count differs: ${storedTopic.rowCount}`);
         const mapping = parseTopicFieldMapping(storedTopic.fieldMapping);
         check(mapping, `${storedTopic.name} field mapping is invalid`);
-        check(mapping?.analysisTarget?.kind === "mean", `${storedTopic.name} analysis target kind differs`);
+        check(mapping?.analysisTarget?.kind === expected.targetKind, `${storedTopic.name} analysis target kind differs`);
+        if (mapping?.analysisTarget?.kind === "proportion") {
+            check(mapping.analysisTarget.value === expected.targetValue, `${storedTopic.name} analysis target value differs`);
+        }
         check(Boolean(mapping?.analysisTarget && "field" in mapping.analysisTarget && mapping.analysisTarget.field), `${storedTopic.name} analysis target field missing`);
         check(mapping?.studyContract?.version === 1, `${storedTopic.name} study contract missing`);
         check(Boolean(mapping?.studyContract?.researchQuestion?.trim()), `${storedTopic.name} study contract research question missing`);
@@ -251,7 +318,7 @@ async function verify() {
     console.log(`Counts: ${Object.entries(actualCounts).map(([key, value]) => `${key}=${value}`).join(" ")}`);
     console.log(`A progress: ${Object.entries(progress.counts).map(([key, value]) => `${key}=${value}`).join(" ")}`);
     console.log(`Visible grading fixtures: ${visibleKeys.join(", ")}`);
-    console.log(`Authoritative compact stage4/terminal fixtures: ${authoritative.length}; sampling attempts: ${auditRows.length}; population rows: A=${parsedRowCounts[DOGFOOD_NAMES.topicA]} B=${parsedRowCounts[DOGFOOD_NAMES.topicB]}`);
+    console.log(`Authoritative compact stage4/terminal fixtures: ${authoritative.length}; sampling attempts: ${auditCoverage.length}; population rows: ${storedTopics.map((row) => `${row.name}=${parsedRowCounts[row.name]}`).join(", ")}`);
 }
 
 try {

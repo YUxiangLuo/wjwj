@@ -9,6 +9,7 @@ import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
 import { WorkspaceShell } from "@/components/WorkspaceShell";
 import { ADMIN_PASSWORD_POLICY } from "@/lib/password-policy";
 import { DEV_AUTH_MODE } from "@/lib/dev-mode";
+import { DEMO_MODE, shouldRequireAdminPasswordChange } from "@/lib/demo-mode";
 import { usePasswordChange } from "@/hooks/usePasswordChange";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { AUTH_EXPIRED_EVENT } from "@/lib/auth-expired";
@@ -39,7 +40,10 @@ const menu = [
 function AdminWorkspace({ user, onLogout, onPasswordChanged }: { user: AdminUser; onLogout: () => Promise<void>; onPasswordChanged: () => void }) {
     const location = useLocation();
     const [passwordOpen, setPasswordOpen] = useState(false);
-    const mustChangePassword = !DEV_AUTH_MODE && user.isFirstLogin === 1;
+    const mustChangePassword = shouldRequireAdminPasswordChange(user.isFirstLogin, {
+        devAuthMode: DEV_AUTH_MODE,
+        demoMode: DEMO_MODE,
+    });
     const passwordChange = usePasswordChange({
         policy: ADMIN_PASSWORD_POLICY,
         forbiddenSubstrings: [user.username],

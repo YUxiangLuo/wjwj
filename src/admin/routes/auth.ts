@@ -3,6 +3,7 @@ import { db } from "../../db";
 import { admin } from "../../db/schema";
 import { ADMIN_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
 import { DEV_AUTH_MODE } from "../../lib/dev-mode";
+import { DEMO_MODE, shouldRequireAdminPasswordChange } from "../../lib/demo-mode";
 import { buildSessionCookie, clearSessionCookie, error, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
 import { buildAtomicFailedLoginUpdate, failedLoginMessage, isLoginLocked, nextFailedLoginState } from "../../server/login-lockout";
 import {
@@ -38,7 +39,10 @@ interface AdminAuthResult {
 type AdminRequestContext = Request & { [ADMIN_AUTH_CACHE]?: AdminAuthResult };
 
 function applyAdminPasswordGate(result: AdminAuthResult, options: AdminAuthOptions): AdminAuthResult {
-    if (!DEV_AUTH_MODE && result.admin?.isFirstLogin === 1 && !options.allowFirstLogin) {
+    if (result.admin && shouldRequireAdminPasswordChange(result.admin.isFirstLogin, {
+        devAuthMode: DEV_AUTH_MODE,
+        demoMode: DEMO_MODE,
+    }) && !options.allowFirstLogin) {
         return {
             admin: null,
             error: error("首次登录请先修改密码", "PASSWORD_CHANGE_REQUIRED", 403),

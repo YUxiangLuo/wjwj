@@ -8,6 +8,7 @@ import {
     DEMO_TEACHER_ID,
     DEMO_TEACHER_PASSWORD,
     resolveDemoMode,
+    shouldRequireAdminPasswordChange,
 } from "./demo-mode";
 
 test("demo mode is on only when DEMO_MODE=1", () => {
@@ -27,8 +28,15 @@ test("DEMO_MODE constant stays off in the test environment", () => {
     expect(DEMO_MODE).toBe(false);
 });
 
+test("demo mode skips only the administrator first-password gate", () => {
+    expect(shouldRequireAdminPasswordChange(1, { devAuthMode: false, demoMode: false })).toBe(true);
+    expect(shouldRequireAdminPasswordChange(1, { devAuthMode: false, demoMode: true })).toBe(false);
+    expect(shouldRequireAdminPasswordChange(1, { devAuthMode: true, demoMode: false })).toBe(false);
+    expect(shouldRequireAdminPasswordChange(0, { devAuthMode: false, demoMode: false })).toBe(false);
+});
+
 test("demo accounts match the default seed", () => {
-    // src/db/seeds/default.ts：S010、T001 非首次登录，管理员密码来自 SEED_ADMIN_PASSWORD。
+    // S010 is the static fallback; demo refresh normally replaces it from the seeded class.
     expect(DEMO_STUDENT_ID).toBe("S010");
     expect(DEMO_STUDENT_PASSWORD).toBe("Student!010");
     expect(DEMO_TEACHER_ID).toBe("T001");

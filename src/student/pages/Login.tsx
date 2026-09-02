@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { AuthLoginScreen } from "@/components/AuthLoginScreen";
 import { DEMO_MODE, DEMO_STUDENT_ID, DEMO_STUDENT_PASSWORD } from "@/lib/demo-mode";
@@ -13,6 +13,18 @@ export function Login() {
     const [error, setError] = useState<string | null>(null);
     const [username, setUsername] = useState(prefilledUsername);
     const [password, setPassword] = useState(prefilledPassword);
+    const editedRef = useRef(false);
+
+    useEffect(() => {
+        if (!DEMO_MODE) return;
+        const controller = new AbortController();
+        void authApi.getDemoStudentCredential(controller.signal).then((response) => {
+            if (!response.success || !response.data || editedRef.current) return;
+            setUsername(response.data.studentId);
+            setPassword(response.data.password);
+        });
+        return () => controller.abort();
+    }, []);
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -53,8 +65,14 @@ export function Login() {
                 { href: "/admin/login", label: "管理员登录" },
                 { href: "/teacher/login", label: "教师登录" },
             ]}
-            onUsernameChange={setUsername}
-            onPasswordChange={setPassword}
+            onUsernameChange={(value) => {
+                editedRef.current = true;
+                setUsername(value);
+            }}
+            onPasswordChange={(value) => {
+                editedRef.current = true;
+                setPassword(value);
+            }}
             onSubmit={handleSubmit}
         />
     );
