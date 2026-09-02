@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { useControlledOverlayFocusRestore } from "@/components/ui/controlled-overlay-focus";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -115,6 +116,8 @@ export function QuestionnaireDesign() {
     const [previewOpen, setPreviewOpen] = useState(false);
     const [previewCompleted, setPreviewCompleted] = useState(restoredDraft?.previewCompleted ?? false);
     const [previewContentHash, setPreviewContentHash] = useState(restoredDraft?.previewContentHash ?? "");
+    const previewTriggerRef = useRef<HTMLButtonElement>(null);
+    useControlledOverlayFocusRestore(previewOpen, previewTriggerRef);
 
     useEffect(() => {
         async function loadRecommendQuestions() {
@@ -668,6 +671,7 @@ export function QuestionnaireDesign() {
                                             </div>
                                         </div>
                                         <Button
+                                            ref={previewTriggerRef}
                                             variant="outline"
                                             onClick={() => setPreviewOpen(true)}
                                             data-testid="student-questionnaire-redo-preview"
@@ -698,6 +702,7 @@ export function QuestionnaireDesign() {
                                                 这将帮助您发现问卷中可能存在的问题，提升问卷质量。
                                             </p>
                                             <Button
+                                                ref={previewTriggerRef}
                                                 onClick={() => setPreviewOpen(true)}
                                                 disabled={!basicValidationPassed}
                                                 size="lg"

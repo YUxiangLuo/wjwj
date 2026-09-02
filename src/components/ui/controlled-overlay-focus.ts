@@ -1,10 +1,14 @@
 import * as React from "react";
 
 /**
- * Radix restores focus through its Trigger. Most application overlays are
- * controlled without a Trigger, so preserve the external opener explicitly.
+ * Controlled application overlays often have no Radix Trigger, so preserve
+ * their external opener explicitly. A fallback covers flows that replace the
+ * original opener while the overlay is closing.
  */
-export function useControlledOverlayFocusRestore(open: boolean | undefined) {
+export function useControlledOverlayFocusRestore(
+  open: boolean | undefined,
+  fallbackFocusRef?: React.RefObject<HTMLElement | null>,
+) {
   const wasOpenRef = React.useRef(Boolean(open));
   const restoreFocusRef = React.useRef<HTMLElement | null>(null);
 
@@ -21,9 +25,10 @@ export function useControlledOverlayFocusRestore(open: boolean | undefined) {
 
     const opener = restoreFocusRef.current;
     const frame = requestAnimationFrame(() => {
-      if (opener?.isConnected) opener.focus();
+      const target = opener?.isConnected ? opener : fallbackFocusRef?.current;
+      if (target?.isConnected) target.focus();
       restoreFocusRef.current = null;
     });
     return () => cancelAnimationFrame(frame);
-  }, [open]);
+  }, [fallbackFocusRef, open]);
 }
