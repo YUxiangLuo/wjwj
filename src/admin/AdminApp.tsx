@@ -58,16 +58,16 @@ function AdminWorkspace({ user, onLogout, onPasswordChanged }: { user: AdminUser
                 sidebarIcon={BarChart3}
                 menuItems={menu}
                 sidebarFooter={
-                    <div className="flex items-center gap-3"><Avatar className="h-9 w-9"><AvatarFallback className="bg-primary text-primary-foreground">{user.username.charAt(0).toUpperCase()}</AvatarFallback></Avatar><div><p className="text-sm font-medium">{user.username}</p><p className="text-xs text-muted-foreground">管理员</p></div></div>
+                    <div className="flex items-center gap-3"><Avatar className="h-9 w-9"><AvatarFallback className="bg-navigation-active text-navigation-active-foreground">{user.username.charAt(0).toUpperCase()}</AvatarFallback></Avatar><div><p className="text-label font-medium">{user.username}</p><p className="text-meta text-navigation-muted">管理员</p></div></div>
                 }
                 pageTitle={title}
                 pageSubtitle="内网教学系统"
                 headerActions={
-                    <div className="flex items-center gap-1"><IconButton aria-label="修改密码" variant="ghost" title="修改密码" onClick={() => { passwordChange.reset(); setPasswordOpen(true); }}><KeyRound className="h-5 w-5" /></IconButton><IconButton aria-label="退出登录" variant="ghost" title="退出登录" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => void onLogout()}><LogOut className="h-5 w-5" /></IconButton></div>
+                    <div className="flex items-center gap-1"><IconButton aria-label="修改密码" variant="ghost" title="修改密码" onClick={() => { passwordChange.reset(); setPasswordOpen(true); }}><KeyRound className="h-5 w-5" /></IconButton><IconButton aria-label="退出登录" variant="ghost" title="退出登录" className="text-destructive hover:bg-destructive-muted hover:text-destructive" onClick={() => void onLogout()}><LogOut className="h-5 w-5" /></IconButton></div>
                 }
             >
                 {mustChangePassword ? (
-                    <div className="grid min-h-[60vh] place-items-center text-sm text-muted-foreground">请先修改初始密码后再使用管理功能。</div>
+                    <div className="grid min-h-[60vh] place-items-center text-label text-muted-foreground">请先修改初始密码后再使用管理功能。</div>
                 ) : <Suspense fallback={<RouteLoading />}><Routes>
                         <Route index element={<Dashboard />} />
                         <Route path="semester" element={<SemesterManagement />} />

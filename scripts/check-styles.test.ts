@@ -1,28 +1,19 @@
 import { describe, expect, test } from "bun:test";
 import {
+    contrastRatio,
+    countDecorativeEffectClasses,
     countHardcodedPaletteClasses,
     countJsxSameIntentPairs,
     countLegacyColoredShadowClasses,
     countLegacyRadiusClasses,
     countLegacyShadowClasses,
+    countLegacyTypographyClasses,
     countNonSemanticRadiusClasses,
     countNonSemanticShadowClasses,
     countResponsiveViewportClasses,
+    countSemanticAlphaClasses,
+    readThemeHex,
 } from "./check-styles";
-
-function relativeLuminance(hex: string) {
-    const channels = hex.slice(1).match(/.{2}/g)?.map((value) => Number.parseInt(value, 16) / 255) ?? [];
-    const [red = 0, green = 0, blue = 0] = channels.map((value) =>
-        value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
-    );
-    return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
-}
-
-function contrastRatio(foreground: string, background: string) {
-    const lighter = Math.max(relativeLuminance(foreground), relativeLuminance(background));
-    const darker = Math.min(relativeLuminance(foreground), relativeLuminance(background));
-    return (lighter + 0.05) / (darker + 0.05);
-}
 
 describe("style guard", () => {
     test("excludes test fixtures from Tailwind production source detection", async () => {
@@ -54,7 +45,7 @@ describe("style guard", () => {
     });
 
     test("requires semantic shape and elevation classes in maintained design-system files", () => {
-        expect(countNonSemanticRadiusClasses("rounded-xs rounded-sm rounded-md rounded-2xl rounded-control rounded-full")).toBe(4);
+        expect(countNonSemanticRadiusClasses("rounded-xs rounded-sm rounded-md rounded-2xl rounded-control rounded-full")).toBe(5);
         expect(countNonSemanticShadowClasses("shadow-2xs shadow-sm shadow-lg shadow-surface shadow-primary/20")).toBe(3);
     });
 
@@ -64,13 +55,27 @@ describe("style guard", () => {
         expect(countLegacyColoredShadowClasses("shadow-primary/20 shadow-info shadow-destructive/20 shadow-card")).toBe(3);
     });
 
-    test("keeps normal success text above WCAG AA contrast on tinted surfaces", async () => {
-        const themeCss = await Bun.file("styles/theme.css").text();
-        const success = themeCss.match(/--success:\s*(#[0-9a-f]{6});/i)?.[1];
+    test("rejects raw typography, alpha color composition, and decorative effects", () => {
+        expect(countLegacyTypographyClasses("text-xs text-sm text-[11px] text-meta text-body")).toBe(3);
+        expect(countSemanticAlphaClasses("bg-primary/10 border-success/20 text-foreground/90 bg-heatmap-low/50 bg-primary-muted")).toBe(4);
+        expect(countDecorativeEffectClasses("bg-gradient-to-r bg-linear-to-r bg-linear-45 bg-radial bg-conic-180 bg-[linear-gradient(to_right,red,blue)] backdrop-blur-sm hover:scale-105 disabled:opacity-50 transition-all animate-spin")).toBe(10);
+        expect(countDecorativeEffectClasses("bg-primary bg-primary-muted transition-colors animate-spin")).toBe(0);
+    });
 
-        expect(success).toBeTruthy();
-        // Effective surface behind the success text in the graded-task score strip.
-        expect(contrastRatio(success!, "#dee9ed")).toBeGreaterThanOrEqual(4.5);
+    test("keeps body, muted, status, and input-boundary contrast readable", async () => {
+        const themeCss = await Bun.file("styles/theme.css").text();
+        const foreground = readThemeHex(themeCss, "foreground");
+        const mutedForeground = readThemeHex(themeCss, "muted-foreground");
+        const background = readThemeHex(themeCss, "background");
+        const card = readThemeHex(themeCss, "card");
+        const success = readThemeHex(themeCss, "success");
+        const successMuted = readThemeHex(themeCss, "success-muted");
+        const input = readThemeHex(themeCss, "input");
+
+        expect(contrastRatio(foreground!, background!)).toBeGreaterThanOrEqual(4.5);
+        expect(contrastRatio(mutedForeground!, background!)).toBeGreaterThanOrEqual(7);
+        expect(contrastRatio(success!, successMuted!)).toBeGreaterThanOrEqual(4.5);
+        expect(contrastRatio(input!, card!)).toBeGreaterThanOrEqual(3);
     });
 
     test("defines shared cursors for enabled and disabled interactive controls", async () => {
@@ -85,7 +90,7 @@ describe("style guard", () => {
         expect(themeCss).toContain("cursor: not-allowed;");
         expect(themeCss).toContain("@custom-variant hover");
         expect(themeCss).toContain('&:hover:not(:disabled):not([aria-disabled="true"]):not([data-disabled])');
-        expect(richTextEditor).toContain('disabled && "opacity-40 cursor-not-allowed"');
+        expect(richTextEditor).toContain('disabled && "cursor-not-allowed bg-muted text-muted-foreground"');
         expect(richTextEditor).not.toContain('disabled && "opacity-40 pointer-events-none"');
     });
 

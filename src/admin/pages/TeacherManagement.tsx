@@ -34,7 +34,7 @@ export function TeacherManagement() {
     };
     return (
         <Card>
-            <CardHeader className="flex-row items-center justify-between"><div><CardTitle>教师管理</CardTitle><p className="mt-1 text-sm text-muted-foreground">教师初始密码为工号，首次登录或重置后必须修改密码。</p></div><Button onClick={() => { setCreating(true); setForm({ employeeId: "", name: "" }); }}><Plus className="mr-2 h-4 w-4" />新增教师</Button></CardHeader>
+            <CardHeader className="flex-row items-center justify-between"><div><CardTitle>教师管理</CardTitle><p className="mt-1 text-label text-muted-foreground">教师初始密码为工号，首次登录或重置后必须修改密码。</p></div><Button onClick={() => { setCreating(true); setForm({ employeeId: "", name: "" }); }}><Plus className="mr-2 h-4 w-4" />新增教师</Button></CardHeader>
             <CardContent>
                 <div className="mb-4 flex max-w-md gap-2"><Input value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => event.key === "Enter" && void load()} placeholder="搜索工号或姓名" /><IconButton aria-label="搜索教师" title="搜索教师" variant="outline" onClick={() => void load()}><Search className="h-4 w-4" /></IconButton></div>
                 {loading ? <LoadingStatus className="py-12" label="正在加载教师列表" /> : (

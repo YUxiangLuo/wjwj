@@ -36,15 +36,15 @@ function labelField(key: string) {
 
 function ParamRow({ label, value }: { label: string; value: ReactNode }) {
     return (
-        <div className="grid border-b border-border/80 py-2.5 last:border-0 grid-cols-[minmax(140px,200px)_1fr] gap-4">
-            <div className="text-xs font-medium text-muted-foreground">{label}</div>
-            <div className="text-sm text-foreground break-words">{value}</div>
+        <div className="grid border-b border-border py-2.5 last:border-0 grid-cols-[minmax(140px,200px)_1fr] gap-4">
+            <div className="text-meta font-medium text-muted-foreground">{label}</div>
+            <div className="text-label text-foreground break-words">{value}</div>
         </div>
     );
 }
 
 const notDoneHint = (
-    <p className="text-xs text-muted-foreground">该方法尚未执行或结果未保存。</p>
+    <p className="text-meta text-muted-foreground">该方法尚未执行或结果未保存。</p>
 );
 
 function samplingMethodPanelForKey(
@@ -64,7 +64,7 @@ function samplingMethodPanelForKey(
                     <div className="space-y-0">
                         <ParamRow label="抽取样本量" value={r.sampleCount?.toLocaleString() ?? "—"} />
                         {targetSampleSize !== null && r.sampleCount !== targetSampleSize && (
-                            <p className="mt-2 text-[11px] text-warning">
+                            <p className="mt-2 text-meta text-warning">
                                 与规划目标 {targetSampleSize.toLocaleString()} 不一致时，请在报告中说明原因（若仅为整数舍入可简述）。
                             </p>
                         )}
@@ -91,7 +91,7 @@ function samplingMethodPanelForKey(
                         />
                         <ParamRow label="随机种子" value={r.seed !== undefined ? String(r.seed) : "未设置（每次随机）"} />
                         {targetSampleSize !== null && (
-                            <p className="mt-2 text-[11px] text-muted-foreground">
+                            <p className="mt-2 text-meta text-muted-foreground">
                                 分数间隔系统抽样固定抽取 {targetSampleSize.toLocaleString()} 个样本；随机起点只改变入选单位。
                             </p>
                         )}
@@ -107,7 +107,7 @@ function samplingMethodPanelForKey(
                     content: (
                         <div className="space-y-0">
                             <ParamRow label="执行状态" value={PPS_UNAVAILABLE_STATUS_MESSAGE} />
-                            <p className="mt-2 text-[11px] text-muted-foreground">
+                            <p className="mt-2 text-meta text-muted-foreground">
                                 {r.unavailableReason || PPS_UNAVAILABLE_REASON}
                             </p>
                         </div>
@@ -128,7 +128,7 @@ function samplingMethodPanelForKey(
                         <ParamRow label="抽样数量" value={r.sampleCount?.toLocaleString() ?? "—"} />
                         <ParamRow label="随机种子" value={r.seed !== undefined ? String(r.seed) : "未设置（每次随机）"} />
                         {targetSampleSize !== null && r.sampleCount !== targetSampleSize && (
-                            <p className="mt-2 text-[11px] text-muted-foreground">
+                            <p className="mt-2 text-meta text-muted-foreground">
                                 PPS 允许在规划样本量附近调整抽取数量；当前为 {r.sampleCount?.toLocaleString()}，规划目标 {targetSampleSize.toLocaleString()}。
                             </p>
                         )}
@@ -154,27 +154,27 @@ function samplingMethodPanelForKey(
                             <ParamRow label="随机种子" value={r.seed !== undefined ? String(r.seed) : "未设置（每次随机）"} />
                         </div>
                         {r.layers && r.layers.length > 0 && (
-                            <div className="overflow-hidden rounded-lg border border-border">
+                            <div className="overflow-hidden rounded-surface border border-border">
                                 <Table>
-                                    <TableHeader className="bg-card/80">
+                                    <TableHeader className="bg-card">
                                         <TableRow className="border-border hover:bg-transparent">
-                                            <TableHead className="text-xs">层</TableHead>
-                                            <TableHead className="text-xs text-right">Nₕ</TableHead>
-                                            <TableHead className="text-xs text-right">占比</TableHead>
-                                            <TableHead className="text-xs text-right">nₕ</TableHead>
+                                            <TableHead className="text-meta">层</TableHead>
+                                            <TableHead className="text-meta text-right">Nₕ</TableHead>
+                                            <TableHead className="text-meta text-right">占比</TableHead>
+                                            <TableHead className="text-meta text-right">nₕ</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {r.layers.map((layer) => (
                                             <TableRow key={layer.name} className="border-border">
-                                                <TableCell className="text-sm font-medium">{layer.name}</TableCell>
-                                                <TableCell className="text-right font-mono text-xs">{layer.count.toLocaleString()}</TableCell>
-                                                <TableCell className="text-right text-xs text-muted-foreground">
+                                                <TableCell className="text-label font-medium">{layer.name}</TableCell>
+                                                <TableCell className="text-right font-mono text-meta">{layer.count.toLocaleString()}</TableCell>
+                                                <TableCell className="text-right text-meta text-muted-foreground">
                                                     {typeof layer.ratio === "number" && layer.ratio <= 1
                                                         ? `${(layer.ratio * 100).toFixed(1)}%`
                                                         : `${Number(layer.ratio).toFixed(1)}%`}
                                                 </TableCell>
-                                                <TableCell className="text-right font-mono text-xs">{layer.sampleCount}</TableCell>
+                                                <TableCell className="text-right font-mono text-meta">{layer.sampleCount}</TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
@@ -182,7 +182,7 @@ function samplingMethodPanelForKey(
                             </div>
                         )}
                         {targetSampleSize !== null && (
-                            <p className="text-[11px] text-muted-foreground">
+                            <p className="text-meta text-muted-foreground">
                                 各层 nₕ 之和应等于规划目标 {targetSampleSize.toLocaleString()}（执行前已在阶段三校验）。
                             </p>
                         )}
@@ -204,10 +204,10 @@ export function SamplePlanDecisionPanel({
 
     return (
         <div className="space-y-4">
-            <div className="rounded-xl border border-warning/20 bg-warning/10 p-3">
+            <div className="rounded-surface border border-warning-border bg-warning-muted p-3">
                 <div className="flex gap-2">
                     <Info className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-                    <div className="space-y-1.5 text-xs leading-relaxed text-warning">
+                    <div className="space-y-1.5 text-meta leading-relaxed text-warning">
                         <p className="font-medium text-warning">关于高级工具（子总体、多变量、成本/CV/整群等）</p>
                         <p className="text-warning">
                             高级工具的<span className="font-medium">完整中间状态与推演明细不会完整写入实验存档</span>，
@@ -219,11 +219,11 @@ export function SamplePlanDecisionPanel({
             </div>
 
             {!samplePlan ? (
-                <div className="rounded-2xl border border-dashed border-input bg-background/40 py-12 text-center text-sm text-muted-foreground">
+                <div className="rounded-surface border border-dashed border-input bg-background py-12 text-center text-label text-muted-foreground">
                     尚未保存样本量规划数据
                 </div>
             ) : (
-                <div className="rounded-xl border border-border/90 bg-background/50 p-4">
+                <div className="rounded-surface border border-border bg-background p-4">
                     <ParamRow label="总体规模 N" value={populationSize > 0 ? populationSize.toLocaleString() : "—"} />
                     <ParamRow
                         label="估计类型"
@@ -263,7 +263,7 @@ export function SamplePlanDecisionPanel({
                     <ParamRow label="推荐样本量 n" value={samplePlan.recommendedSize?.toLocaleString() ?? "—"} />
                     <ParamRow label="最终样本量 n" value={samplePlan.finalSampleSize?.toLocaleString() ?? "—"} />
                     {advancedSourceLabel && (
-                        <p className="mt-2 text-[11px] text-warning">
+                        <p className="mt-2 text-meta text-warning">
                             当前最终样本量由「{advancedSourceLabel}」回写；此处的“推荐样本量 n”仍是常规公式建议值。
                         </p>
                     )}
@@ -284,7 +284,7 @@ export function SamplingMethodParamsPanel({
 }) {
     if (!samplingResults) {
         return (
-            <div className="rounded-2xl border border-dashed border-input bg-background/40 py-12 text-center text-sm text-muted-foreground">
+            <div className="rounded-surface border border-dashed border-input bg-background py-12 text-center text-label text-muted-foreground">
                 暂无抽样结果数据（请先在阶段三完成抽样）
             </div>
         );
@@ -295,8 +295,8 @@ export function SamplingMethodParamsPanel({
     return (
         <div className="space-y-5">
             {targetSampleSize !== null && (
-                <p className="text-xs text-muted-foreground">
-                    阶段二规划目标样本量：<span className="font-mono font-medium text-foreground/90">{targetSampleSize.toLocaleString()}</span>
+                <p className="text-meta text-muted-foreground">
+                    阶段二规划目标样本量：<span className="font-mono font-medium text-foreground">{targetSampleSize.toLocaleString()}</span>
                     {populationSize > 0 && (
                         <span className="ml-2">（总体 N = {populationSize.toLocaleString()}）</span>
                     )}
@@ -313,15 +313,15 @@ export function SamplingMethodParamsPanel({
                 return (
                     <div
                         key={key}
-                        className="rounded-xl border border-border/90 bg-background/50 p-4"
+                        className="rounded-surface border border-border bg-background p-4"
                         data-testid={`student-analysis-sampling-params-${key}`}
                     >
                         <div className="mb-3 flex items-center justify-between gap-2">
-                            <h4 className="text-sm font-semibold text-foreground">{meta.label}</h4>
+                            <h4 className="text-label font-semibold text-foreground">{meta.label}</h4>
                             <span
-                                className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                                className={`rounded-control px-2 py-0.5 text-meta font-medium ${
                                     completed
-                                        ? "bg-success/15 text-success"
+                                        ? "bg-success-muted text-success"
                                         : "bg-muted text-muted-foreground"
                                 }`}
                             >

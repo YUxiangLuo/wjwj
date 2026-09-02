@@ -48,27 +48,27 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
     const method = SAMPLING_METHODS.find((item) => item.key === selectedMethod)!;
 
     return (
-        <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm">
+        <Card className="rounded-surface border-primary-border bg-primary-muted ">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                         <Calculator className="w-5 h-5 text-primary" />
-                        <CardTitle className="text-base text-primary">设计效应假设检查</CardTitle>
+                        <CardTitle className="text-body text-primary">设计效应假设检查</CardTitle>
                     </div>
-                    <Badge variant="outline" className="text-xs bg-primary/10 border-primary/20 text-primary">
+                    <Badge variant="outline" className="text-meta bg-primary-muted border-primary-border text-primary">
                         当前假设 deff = {currentDeff.toFixed(1)}
                     </Badge>
                 </div>
-                <CardDescription className="text-foreground/90">
+                <CardDescription className="text-foreground">
                     抽样方法名称不能自动推出设计效应。这里说明需要核验的条件，不提供无来源的行业默认值。
                 </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-4">
                 <div className="space-y-2">
-                    <label className="text-xs text-primary font-medium">查看方法的假设</label>
+                    <label className="text-meta text-primary font-medium">查看方法的假设</label>
                     <Select value={selectedMethod} onValueChange={(value) => setSelectedMethod(value as typeof selectedMethod)}>
-                        <SelectTrigger aria-label="选择抽样方法" className="bg-background border-primary text-foreground">
+                        <SelectTrigger aria-label="选择抽样方法" className="bg-card border-primary text-foreground">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-background border-primary">
@@ -79,31 +79,31 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
                     </Select>
                 </div>
 
-                <div className="rounded-xl border border-primary bg-background p-3 space-y-3">
+                <div className="rounded-surface border border-primary bg-background p-3 space-y-3">
                     <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium text-primary">{method.name}</span>
+                        <span className="text-label font-medium text-primary">{method.name}</span>
                         {method.key === "srs" && (
                             <Button
                                 type="button"
                                 size="sm"
                                 variant="outline"
                                 onClick={() => onDeffChange(1)}
-                                className="h-7 border-primary text-xs text-primary hover:bg-primary/10"
+                                className="h-7 border-primary text-meta text-primary hover:bg-primary-muted"
                             >
                                 应用基准 1.0
                             </Button>
                         )}
                     </div>
-                    <p className="text-xs leading-relaxed text-primary">{method.description}</p>
-                    <ul className="list-disc space-y-1 pl-4 text-xs text-primary">
+                    <p className="text-meta leading-relaxed text-primary">{method.description}</p>
+                    <ul className="list-disc space-y-1 pl-4 text-meta text-primary">
                         {method.assumptions.map((assumption) => <li key={assumption}>{assumption}</li>)}
                     </ul>
                 </div>
 
-                <div className="rounded-xl border border-info/20 bg-info/10 p-3">
+                <div className="rounded-surface border border-info-border bg-info-muted p-3">
                     <div className="flex items-start gap-2">
                         <Info className="w-4 h-4 text-info shrink-0 mt-0.5" />
-                        <div className="space-y-1.5 text-xs leading-relaxed text-info">
+                        <div className="space-y-1.5 text-meta leading-relaxed text-info">
                             <p className="font-medium">如何设置当前参数</p>
                             <p>优先使用同一目标总体、同一估计量和相近抽样设计的历史方差，或用预调查/设计模拟估计 deff；同时记录来源和不确定性。</p>
                             <p>预期回答率也应来自同总体、同调查方式、同招募和跟访方案的数据。按回答率膨胀只能补足数量，不能消除非随机无回答偏差。</p>

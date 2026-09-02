@@ -70,8 +70,8 @@ function TeacherWorkspace({
                 menuItems={menu}
                 sidebarFooter={
                     <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9"><AvatarFallback className="bg-primary text-primary-foreground">{user.name.charAt(0)}</AvatarFallback></Avatar>
-                        <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{user.name}</p><p className="truncate text-xs text-muted-foreground">{user.employeeId}</p></div>
+                        <Avatar className="h-9 w-9"><AvatarFallback className="bg-navigation-active text-navigation-active-foreground">{user.name.charAt(0)}</AvatarFallback></Avatar>
+                        <div className="min-w-0 flex-1"><p className="truncate text-label font-medium">{user.name}</p><p className="truncate text-meta text-navigation-muted">{user.employeeId}</p></div>
                     </div>
                 }
                 pageTitle={title}
@@ -79,12 +79,12 @@ function TeacherWorkspace({
                 headerActions={
                     <div className="flex items-center gap-1">
                         <IconButton aria-label="修改密码" variant="ghost" title="修改密码" onClick={() => { passwordChange.reset(); setPasswordOpen(true); }}><KeyRound className="h-5 w-5" /></IconButton>
-                        <IconButton aria-label="退出登录" variant="ghost" title="退出登录" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => void onLogout()}><LogOut className="h-5 w-5" /></IconButton>
+                        <IconButton aria-label="退出登录" variant="ghost" title="退出登录" className="text-destructive hover:bg-destructive-muted hover:text-destructive" onClick={() => void onLogout()}><LogOut className="h-5 w-5" /></IconButton>
                     </div>
                 }
             >
                 {mustChangePassword ? (
-                    <div className="grid min-h-[60vh] place-items-center text-sm text-muted-foreground">请先修改初始密码后再使用教学功能。</div>
+                    <div className="grid min-h-[60vh] place-items-center text-label text-muted-foreground">请先修改初始密码后再使用教学功能。</div>
                 ) : <Suspense fallback={<RouteLoading />}><Routes>
                         <Route index element={<Dashboard />} />
                         <Route path="class" element={<ClassManagement />} />

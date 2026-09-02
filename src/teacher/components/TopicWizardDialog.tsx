@@ -318,16 +318,16 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 <div key={step} className="flex items-center shrink-0">
                                     <div
                                         data-testid={`teacher-topic-step-${idx + 1}`}
-                                        className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${isCurrent
-                                            ? "bg-primary text-primary-foreground ring-2 ring-primary/30"
+                                        className={`w-7 h-7 rounded-control flex items-center justify-center text-meta font-medium transition-colors ${isCurrent
+                                            ? "bg-primary text-primary-foreground ring-2 ring-ring"
                                             : isCompleted
-                                                ? "bg-success/20 text-success border border-success/30"
+                                                ? "bg-success-muted text-success border border-success-border"
                                                 : "bg-muted text-muted-foreground border border-input"
                                         }`}
                                     >
                                         {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5" /> : idx + 1}
                                     </div>
-                                    <span className={`text-xs ml-2 ${isCurrent ? "text-primary font-medium" : isCompleted ? "text-success" : "text-muted-foreground"}`}>{step}</span>
+                                    <span className={`text-meta ml-2 ${isCurrent ? "text-primary font-medium" : isCompleted ? "text-success" : "text-muted-foreground"}`}>{step}</span>
                                     {idx < 5 && <ChevronRight className="w-3 h-3 mx-2 text-muted-foreground" />}
                                 </div>
                             );
@@ -338,24 +338,24 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         {loadingDetail && currentStep > 1 && (
                             <div role="status" aria-live="polite" className="flex flex-col items-center justify-center py-20 text-muted-foreground animate-in fade-in duration-200">
                                 <Loader2 aria-hidden="true" className="w-6 h-6 animate-spin mb-3" />
-                                <span className="text-sm">加载中...</span>
+                                <span className="text-label">加载中...</span>
                             </div>
                         )}
                         {currentStep === 1 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="space-y-2">
-                                    <Label htmlFor="topicName" className="text-foreground/90">课题名称</Label>
+                                    <Label htmlFor="topicName" className="text-foreground">课题名称</Label>
                                     <Input
                                         id="topicName"
                                         data-testid="teacher-topic-name"
                                         placeholder="请输入课题名称"
                                         value={newTopicName}
                                         onChange={e => setNewTopicName(e.target.value)}
-                                        className="bg-background border-border text-foreground placeholder:text-muted-foreground"
+                                        className="bg-card border-input text-foreground placeholder:text-muted-foreground"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-foreground/90">背景描述</Label>
+                                    <Label className="text-foreground">背景描述</Label>
                                     <RichTextEditor
                                         dataTestId="teacher-topic-desc"
                                         value={newTopicDesc}
@@ -370,18 +370,18 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         {!loadingDetail && currentStep === 2 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 {isPublishedTopic && (
-                                    <div className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
+                                    <div className="rounded-surface border border-warning-border bg-warning-muted px-4 py-3 text-label text-warning">
                                         该课题已发布，总体数据文件不可更换，仅可查看当前数据。
                                     </div>
                                 )}
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-foreground/90">上传总体数据（Excel）</Label>
+                                    <Label className="text-foreground">上传总体数据（Excel）</Label>
                                     <div className="flex items-center gap-3">
                                         <a
                                             href="/templates/数据上传规范.pdf"
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-xs text-primary hover:text-primary flex items-center gap-1"
+                                            className="text-meta text-primary hover:text-primary flex items-center gap-1"
                                         >
                                             <HelpCircle className="w-3 h-3" />
                                             数据规范
@@ -389,7 +389,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         <a
                                             href="/templates/数据模板.csv"
                                             download
-                                            className="text-xs text-success hover:text-success flex items-center gap-1"
+                                            className="text-meta text-success hover:text-success flex items-center gap-1"
                                         >
                                             <Download className="w-3 h-3" />
                                             下载模板
@@ -397,13 +397,13 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     </div>
                                 </div>
                                 <div
-                                    className={`border-2 border-dashed border-input bg-background/50 rounded-lg p-8 text-center transition-colors ${isPublishedTopic ? "opacity-80 pointer-events-none" : "hover:border-primary/50"}`}
+                                    className={`border-2 border-dashed border-input bg-background rounded-surface p-8 text-center transition-colors ${isPublishedTopic ? "opacity-80 pointer-events-none" : "hover:border-primary-border"}`}
                                 >
                                     <Upload className="w-10 h-10 mx-auto text-muted-foreground mb-4" />
-                                    <p className="text-sm text-muted-foreground mb-2">
+                                    <p className="text-label text-muted-foreground mb-2">
                                         {isPublishedTopic ? "已上传的数据文件（不可更换）" : "点击或拖拽上传 Excel 文件"}
                                     </p>
-                                    <p className="text-xs text-muted-foreground mb-4">支持 .xlsx, .csv 格式，数据行数 1-100,000</p>
+                                    <p className="text-meta text-muted-foreground mb-4">支持 .xlsx, .csv 格式，数据行数 1-100,000</p>
                                     {!isPublishedTopic && (
                                         <>
                                             <Input
@@ -419,17 +419,17 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 }}
                                             />
                                             <div className="flex items-center justify-center gap-3">
-                                                <Button variant="outline" onClick={() => document.getElementById("excel-upload")?.click()} className="border-input bg-muted text-foreground/90 hover:text-foreground">
+                                                <Button variant="outline" onClick={() => document.getElementById("excel-upload")?.click()} className="border-input bg-muted text-foreground hover:text-foreground">
                                                     选择文件
                                                 </Button>
                                             </div>
                                         </>
                                     )}
                                 </div>
-                                {uploadingExcel && <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-primary"><Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" /> 上传中...</div>}
+                                {uploadingExcel && <div role="status" aria-live="polite" className="flex items-center gap-2 text-label text-primary"><Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" /> 上传中...</div>}
                                 {excelInfo && (
                                     <div className="space-y-3">
-                                        <div className="bg-background border border-border rounded-lg p-4 text-sm text-foreground/90">
+                                        <div className="bg-background border border-border rounded-surface p-4 text-label text-foreground">
                                             <div className={`flex items-center gap-2 mb-2 ${isPublishedTopic ? "text-muted-foreground" : "text-success"}`}>
                                                 <CheckCircle2 className="w-4 h-4" />
                                                 {isPublishedTopic ? "当前总体数据" : "上传成功"}
@@ -438,11 +438,11 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         </div>
                                         {excelInfo.preview && excelInfo.preview.length > 0 && (
                                             <div className="space-y-2">
-                                                <div className="text-xs text-muted-foreground font-medium">数据预览（前 {Math.min(excelInfo.preview.length, 5)} 行）</div>
-                                                <div className="overflow-x-auto border border-border rounded-lg">
-                                                    <table className="w-full text-xs">
+                                                <div className="text-meta text-muted-foreground font-medium">数据预览（前 {Math.min(excelInfo.preview.length, 5)} 行）</div>
+                                                <div className="overflow-x-auto border border-border rounded-surface">
+                                                    <table className="w-full text-meta">
                                                         <thead>
-                                                            <tr className="bg-muted/50 border-b border-border">
+                                                            <tr className="bg-muted border-b border-border">
                                                                 {excelInfo.columns.map((col) => (
                                                                     <th key={col} className="text-left px-3 py-2 text-muted-foreground font-medium whitespace-nowrap">{col}</th>
                                                                 ))}
@@ -450,9 +450,9 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                         </thead>
                                                         <tbody>
                                                             {excelInfo.preview.slice(0, 5).map((row, idx) => (
-                                                                <tr key={idx} className="border-b border-border/50 hover:bg-muted/30">
+                                                                <tr key={idx} className="border-b border-border hover:bg-muted">
                                                                     {excelInfo!.columns.map((col) => (
-                                                                        <td key={col} className="px-3 py-1.5 text-foreground/90 whitespace-nowrap max-w-[200px] truncate">
+                                                                        <td key={col} className="px-3 py-1.5 text-foreground whitespace-nowrap max-w-[200px] truncate">
                                                                             {row?.[col] != null ? String(row[col]) : <span className="text-muted-foreground">-</span>}
                                                                         </td>
                                                                     ))}
@@ -471,15 +471,15 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         {!loadingDetail && currentStep === 3 && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                                 {isPublishedTopic && (
-                                    <div className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
+                                    <div className="rounded-surface border border-warning-border bg-warning-muted px-4 py-3 text-label text-warning">
                                         该课题已发布，字段映射不可修改，仅可查看当前配置。
                                     </div>
                                 )}
-                                <div className={`rounded-lg border border-border bg-background/60 p-4 ${isPublishedTopic ? "opacity-70" : ""}`}>
+                                <div className={`rounded-surface border border-border bg-background p-4 ${isPublishedTopic ? "opacity-70" : ""}`}>
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
-                                            <div className="text-sm font-medium text-foreground">不知道怎么配？可先用智能推荐</div>
-                                            <p className="mt-1 text-xs text-muted-foreground">
+                                            <div className="text-label font-medium text-foreground">不知道怎么配？可先用智能推荐</div>
+                                            <p className="mt-1 text-meta text-muted-foreground">
                                                 系统会根据字段名称和样例数据自动推荐标识符、分层变量和数值变量，你再按教学需要微调即可。
                                             </p>
                                         </div>
@@ -488,7 +488,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                             variant="outline"
                                             disabled={isPublishedTopic}
                                             onClick={applyRecommendedMapping}
-                                            className="shrink-0 border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
+                                            className="shrink-0 border-primary-border bg-primary-muted text-primary hover:bg-primary-muted hover:text-primary"
                                         >
                                             <Sparkles className="mr-2 h-4 w-4" />
                                             智能推荐映射
@@ -497,7 +497,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-foreground/90">标识符（必选 1 个）</Label>
+                                    <Label className="text-foreground">标识符（必选 1 个）</Label>
                                     <Select
                                         value={fieldMapping.identifier ?? ""}
                                         onValueChange={(v) =>
@@ -509,7 +509,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                             }))}
                                         disabled={isPublishedTopic}
                                     >
-                                        <SelectTrigger aria-label="选择唯一标识字段" data-testid="teacher-topic-mapping-identifier" className="bg-background border-border text-foreground disabled:opacity-60">
+                                        <SelectTrigger aria-label="选择唯一标识字段" data-testid="teacher-topic-mapping-identifier" className="bg-card text-foreground disabled:border-input disabled:bg-muted disabled:text-muted-foreground">
                                             <SelectValue placeholder="选择标识符字段" />
                                         </SelectTrigger>
                                         <SelectContent className="bg-card border-border text-foreground">
@@ -518,15 +518,15 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    <p className="text-xs text-muted-foreground">用于唯一标识每条数据的字段，如“编号”、“ID”等</p>
+                                    <p className="text-meta text-muted-foreground">用于唯一标识每条数据的字段，如“编号”、“ID”等</p>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
                                     {mappingRules.map((rule) => (
                                         <div
                                             key={rule.text}
-                                            className={`rounded-md border px-3 py-2 text-xs ${rule.ok
-                                                ? "border-success/30 bg-success/10 text-success"
+                                            className={`rounded-control border px-3 py-2 text-meta ${rule.ok
+                                                ? "border-success-border bg-success-muted text-success"
                                                 : "border-input bg-card text-muted-foreground"
                                                 }`}
                                         >
@@ -537,14 +537,14 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <Label className="text-foreground/90">分层变量（已选 {fieldMapping.stratified.length}）</Label>
-                                        <p className="text-xs text-muted-foreground">用于按类别分组对比，建议 1-3 个，且每个字段唯一值不超过 20（如性别、学历、地区）。</p>
+                                        <Label className="text-foreground">分层变量（已选 {fieldMapping.stratified.length}）</Label>
+                                        <p className="text-meta text-muted-foreground">用于按类别分组对比，建议 1-3 个，且每个字段唯一值不超过 20（如性别、学历、地区）。</p>
                                         {riskyStratifiedFields.length > 0 && (
-                                            <p className="text-xs text-warning">
+                                            <p className="text-meta text-warning">
                                                 当前分层变量包含高基数或 ID 类字段（{riskyStratifiedFields.join("、")}），保存时可能失败，建议替换。
                                             </p>
                                         )}
-                                        <div className="bg-background border border-border rounded-lg p-3 max-h-60 overflow-y-auto space-y-2">
+                                        <div className="bg-background border border-border rounded-surface p-3 max-h-60 overflow-y-auto space-y-2">
                                             {columns.map((c) => {
                                                 const checked = fieldMapping.stratified.includes(c);
                                                 const blockedAsIdentifier = isLikelyIdentifier(c) && !checked;
@@ -558,15 +558,15 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                     <label
                                                         key={c}
                                                         title={reason}
-                                                        className={`flex items-center gap-2 text-sm p-1.5 rounded ${disabled
+                                                        className={`flex items-center gap-2 text-label p-1.5 rounded-control ${disabled
                                                             ? "text-muted-foreground cursor-not-allowed"
-                                                            : "text-foreground/90 hover:bg-card cursor-pointer"
+                                                            : "text-foreground hover:bg-card cursor-pointer"
                                                             }`}
                                                     >
                                                         <input
                                                             data-testid={`teacher-topic-mapping-stratified-${c}`}
                                                             type="checkbox"
-                                                            className="rounded border-input bg-card text-primary focus:ring-ring/20"
+                                                            className="rounded-control border-input bg-card text-primary focus:ring-ring"
                                                             disabled={disabled}
                                                             checked={checked}
                                                             onChange={(e) => {
@@ -584,9 +584,9 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-foreground/90">数值变量（已选 {fieldMapping.numeric.length}）</Label>
-                                        <p className="text-xs text-muted-foreground">用于统计计算，建议选择连续值/可比较大小的字段。</p>
-                                        <div className="bg-background border border-border rounded-lg p-3 max-h-60 overflow-y-auto space-y-2">
+                                        <Label className="text-foreground">数值变量（已选 {fieldMapping.numeric.length}）</Label>
+                                        <p className="text-meta text-muted-foreground">用于统计计算，建议选择连续值/可比较大小的字段。</p>
+                                        <div className="bg-background border border-border rounded-surface p-3 max-h-60 overflow-y-auto space-y-2">
                                             {columns.map((c) => {
                                                 const checked = fieldMapping.numeric.includes(c);
                                                 const blockedAsIdentifier = isLikelyIdentifier(c) && !checked;
@@ -600,15 +600,15 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                     <label
                                                         key={c}
                                                         title={reason}
-                                                        className={`flex items-center gap-2 text-sm p-1.5 rounded ${disabled
+                                                        className={`flex items-center gap-2 text-label p-1.5 rounded-control ${disabled
                                                             ? "text-muted-foreground cursor-not-allowed"
-                                                            : "text-foreground/90 hover:bg-card cursor-pointer"
+                                                            : "text-foreground hover:bg-card cursor-pointer"
                                                             }`}
                                                     >
                                                         <input
                                                             data-testid={`teacher-topic-mapping-numeric-${c}`}
                                                             type="checkbox"
-                                                            className="rounded border-input bg-card text-primary focus:ring-ring/20"
+                                                            className="rounded-control border-input bg-card text-primary focus:ring-ring"
                                                             disabled={disabled}
                                                             checked={checked}
                                                             onChange={(e) => {
@@ -640,38 +640,38 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
                         {!loadingDetail && currentStep === 4 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <Label htmlFor="teacher-topic-attachment-file" className="text-foreground/90">附件上传</Label>
+                                <Label htmlFor="teacher-topic-attachment-file" className="text-foreground">附件上传</Label>
                                 <Input
                                     id="teacher-topic-attachment-file"
                                     data-testid="teacher-topic-attachment-file"
                                     type="file"
-                                    className="bg-background border-border text-foreground/90 file:bg-muted file:text-foreground/90"
+                                    className="bg-card border-input text-foreground file:bg-muted file:text-foreground"
                                     onChange={(e) => {
                                         const file = e.target.files?.[0];
                                         if (file) onAttachmentUpload(file);
                                     }}
                                 />
-                                {uploadingAttachment && <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-primary"><Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" /> 上传中...</div>}
+                                {uploadingAttachment && <div role="status" aria-live="polite" className="flex items-center gap-2 text-label text-primary"><Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" /> 上传中...</div>}
                                 <div className="space-y-2 mt-4">
                                     {attachments.map((a) => (
-                                        <div key={a.id} className="flex items-center justify-between text-sm p-3 bg-background border border-border rounded-lg group">
+                                        <div key={a.id} className="flex items-center justify-between text-label p-3 bg-background border border-border rounded-surface group">
                                             <div className="flex items-center gap-3">
                                                 <FileText className="w-4 h-4 text-primary" />
-                                                <span className="text-foreground/90">{a.fileName}</span>
+                                                <span className="text-foreground">{a.fileName}</span>
                                             </div>
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
                                                 aria-label={`删除附件：${a.fileName}`}
                                                 title={`删除附件：${a.fileName}`}
-                                                className="opacity-0 text-destructive group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-destructive/10 hover:text-destructive"
+                                                className="opacity-0 text-destructive group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-destructive-muted hover:text-destructive"
                                                 onClick={() => teacherApi.deleteAttachment(editingTopicId!, a.id).then(() => onRefreshTopicDetail(editingTopicId!))}
                                             >
                                                 <X className="w-4 h-4" />
                                             </Button>
                                         </div>
                                     ))}
-                                    {attachments.length === 0 && <div className="text-sm text-muted-foreground text-center py-4">暂无附件</div>}
+                                    {attachments.length === 0 && <div className="text-label text-muted-foreground text-center py-4">暂无附件</div>}
                                 </div>
                             </div>
                         )}
@@ -679,8 +679,8 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         {!loadingDetail && currentStep === 5 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="flex justify-between items-center">
-                                    <Label className="text-foreground/90">推荐题目</Label>
-                                    <Button data-testid="teacher-topic-question-add" size="sm" onClick={handleAddQuestion} className="bg-primary hover:bg-primary/90">
+                                    <Label className="text-foreground">推荐题目</Label>
+                                    <Button data-testid="teacher-topic-question-add" size="sm" onClick={handleAddQuestion} className="bg-primary hover:bg-primary-hover">
                                         + 添加题目
                                     </Button>
                                 </div>
@@ -695,14 +695,14 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         const badge = questionTypeBadgeColors[qt] ?? "bg-muted text-muted-foreground border-border";
                                         const optionsArr = q.options ?? [];
                                         return (
-                                            <div key={q.id} className="border border-border bg-background rounded-lg p-4 relative group hover:border-input transition-colors">
+                                            <div key={q.id} className="border border-border bg-background rounded-surface p-4 relative group hover:border-input transition-colors">
                                                 <div className="flex items-start gap-3">
                                                     <div className="flex flex-col gap-0.5 pt-0.5">
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
                                                             aria-label={`上移第 ${idx + 1} 题`}
-                                                            className="h-6 w-6 text-muted-foreground hover:text-foreground/90 disabled:opacity-30"
+                                                            className="h-6 w-6 text-muted-foreground hover:text-foreground disabled:bg-muted disabled:text-muted-foreground disabled:border-border"
                                                             disabled={idx === 0}
                                                             onClick={() => handleMoveQuestion(idx, "up")}
                                                         >
@@ -712,7 +712,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                             variant="ghost"
                                                             size="icon"
                                                             aria-label={`下移第 ${idx + 1} 题`}
-                                                            className="h-6 w-6 text-muted-foreground hover:text-foreground/90 disabled:opacity-30"
+                                                            className="h-6 w-6 text-muted-foreground hover:text-foreground disabled:bg-muted disabled:text-muted-foreground disabled:border-border"
                                                             disabled={idx === recommendQuestions.length - 1}
                                                             onClick={() => handleMoveQuestion(idx, "down")}
                                                         >
@@ -722,28 +722,28 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-center gap-2 mb-1.5">
-                                                            <span className="text-muted-foreground text-xs font-mono">{idx + 1}.</span>
-                                                            <span className={`text-xs px-2 py-0.5 rounded-full border ${badge}`}>
+                                                            <span className="text-muted-foreground text-meta font-mono">{idx + 1}.</span>
+                                                            <span className={`text-meta px-2 py-0.5 rounded-control border ${badge}`}>
                                                                 {questionTypeLabels[qt] ?? "未知"}
                                                             </span>
                                                         </div>
-                                                        <p data-testid={`teacher-topic-question-content-${idx}`} className="text-sm text-foreground leading-relaxed">
+                                                        <p data-testid={`teacher-topic-question-content-${idx}`} className="text-label text-foreground leading-relaxed">
                                                             {q.content || <span className="text-muted-foreground italic">未填写题目内容</span>}
                                                         </p>
                                                         {(q.type === "single" || q.type === "multiple") && optionsArr.length > 0 && (
                                                             <div className="flex flex-wrap gap-1.5 mt-2">
                                                                 {optionsArr.map((opt, i) => (
-                                                                    <span key={i} className="text-xs px-2 py-0.5 bg-muted text-muted-foreground rounded border border-input/50">
+                                                                    <span key={i} className="text-meta px-2 py-0.5 bg-muted text-muted-foreground rounded-control border border-input">
                                                                         {String.fromCharCode(65 + i)}. {opt}
                                                                     </span>
                                                                 ))}
                                                             </div>
                                                         )}
                                                         {q.type === "boolean" && (
-                                                            <p className="text-xs text-muted-foreground mt-1">选项：是 / 否</p>
+                                                            <p className="text-meta text-muted-foreground mt-1">选项：是 / 否</p>
                                                         )}
                                                         {q.type === "scale" && (
-                                                            <p className="text-xs text-muted-foreground mt-1">
+                                                            <p className="text-meta text-muted-foreground mt-1">
                                                                 量表：{q.scaleMin ?? 1}–{q.scaleMax ?? 10} 分
                                                                 {q.scaleMinLabel || q.scaleMaxLabel
                                                                     ? `（${q.scaleMinLabel ?? ""} — ${q.scaleMaxLabel ?? ""}）`
@@ -757,7 +757,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                             variant="ghost"
                                                             size="icon"
                                                             aria-label={`编辑第 ${idx + 1} 题`}
-                                                            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary-muted"
                                                             onClick={() => handleEditQuestion(q)}
                                                         >
                                                             <Pencil className="w-4 h-4" />
@@ -766,7 +766,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                             variant="ghost"
                                                             size="icon"
                                                             aria-label={`删除第 ${idx + 1} 题`}
-                                                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive-muted"
                                                             onClick={() => handleDeleteQuestion(idx)}
                                                         >
                                                             <Trash2 className="w-4 h-4" />
@@ -792,8 +792,8 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         {!loadingDetail && currentStep === 6 && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="grid grid-cols-3 gap-6">
-                                    <div className="bg-background border border-border rounded-lg p-6 space-y-4">
-                                        <Label htmlFor="teacher-topic-weight-questionnaire" className="text-foreground/90 text-lg">问卷设计权重</Label>
+                                    <div className="bg-background border border-border rounded-surface p-6 space-y-4">
+                                        <Label htmlFor="teacher-topic-weight-questionnaire" className="text-foreground text-subheading">问卷设计权重</Label>
                                         <div className="flex items-center gap-2">
                                             <Input
                                                 id="teacher-topic-weight-questionnaire"
@@ -804,13 +804,13 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 disabled={isPublishedTopic}
                                                 value={weightConfig.questionnaire}
                                                 onChange={(e) => setWeightConfig(prev => ({ ...prev, questionnaire: Number(e.target.value) }))}
-                                                className="bg-card border-border text-foreground text-2xl font-bold h-16 text-center"
+                                                className="bg-card border-input text-foreground text-page-title font-bold h-16 text-center"
                                             />
-                                            <span className="text-muted-foreground font-bold text-xl">%</span>
+                                            <span className="text-muted-foreground font-bold text-section-title">%</span>
                                         </div>
                                     </div>
-                                    <div className="bg-background border border-border rounded-lg p-6 space-y-4">
-                                        <Label htmlFor="teacher-topic-weight-process" className="text-foreground/90 text-lg">实验过程权重</Label>
+                                    <div className="bg-background border border-border rounded-surface p-6 space-y-4">
+                                        <Label htmlFor="teacher-topic-weight-process" className="text-foreground text-subheading">实验过程权重</Label>
                                         <div className="flex items-center gap-2">
                                             <Input
                                                 id="teacher-topic-weight-process"
@@ -821,13 +821,13 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 disabled={isPublishedTopic}
                                                 value={weightConfig.process}
                                                 onChange={(e) => setWeightConfig(prev => ({ ...prev, process: Number(e.target.value) }))}
-                                                className="bg-card border-border text-foreground text-2xl font-bold h-16 text-center"
+                                                className="bg-card border-input text-foreground text-page-title font-bold h-16 text-center"
                                             />
-                                            <span className="text-muted-foreground font-bold text-xl">%</span>
+                                            <span className="text-muted-foreground font-bold text-section-title">%</span>
                                         </div>
                                     </div>
-                                    <div className="bg-background border border-border rounded-lg p-6 space-y-4">
-                                        <Label htmlFor="teacher-topic-weight-report" className="text-foreground/90 text-lg">实验报告权重</Label>
+                                    <div className="bg-background border border-border rounded-surface p-6 space-y-4">
+                                        <Label htmlFor="teacher-topic-weight-report" className="text-foreground text-subheading">实验报告权重</Label>
                                         <div className="flex items-center gap-2">
                                             <Input
                                                 id="teacher-topic-weight-report"
@@ -838,15 +838,15 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 disabled={isPublishedTopic}
                                                 value={weightConfig.report}
                                                 onChange={(e) => setWeightConfig(prev => ({ ...prev, report: Number(e.target.value) }))}
-                                                className="bg-card border-border text-foreground text-2xl font-bold h-16 text-center"
+                                                className="bg-card border-input text-foreground text-page-title font-bold h-16 text-center"
                                             />
-                                            <span className="text-muted-foreground font-bold text-xl">%</span>
+                                            <span className="text-muted-foreground font-bold text-section-title">%</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="bg-background/50 p-4 rounded-lg flex justify-between items-center border border-border">
+                                <div className="bg-background p-4 rounded-surface flex justify-between items-center border border-border">
                                     <span className="text-muted-foreground">当前总权重</span>
-                                    <span className={`text-2xl font-bold ${(weightConfig.questionnaire + weightConfig.process + weightConfig.report) === 100 ? "text-success" : "text-destructive"}`}>
+                                    <span className={`text-page-title font-bold ${(weightConfig.questionnaire + weightConfig.process + weightConfig.report) === 100 ? "text-success" : "text-destructive"}`}>
                                         {weightConfig.questionnaire + weightConfig.process + weightConfig.report}%
                                     </span>
                                 </div>
@@ -856,21 +856,21 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                 </div>
                 <DialogFooter className="border-t border-border pt-4 flex-shrink-0">
                     <div className="flex items-center justify-between w-full">
-                        <div className="text-xs text-muted-foreground">步骤 {currentStep} / 6</div>
+                        <div className="text-meta text-muted-foreground">步骤 {currentStep} / 6</div>
                         <div className="flex gap-2">
                             <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground hover:bg-muted">关闭</Button>
                             {currentStep > 1 && (
-                                <Button data-testid="teacher-topic-prev" variant="outline" onClick={() => setCurrentStep(prev => prev - 1)} className="border-input bg-muted text-foreground/90 hover:text-foreground hover:bg-muted">上一步</Button>
+                                <Button data-testid="teacher-topic-prev" variant="outline" onClick={() => setCurrentStep(prev => prev - 1)} className="border-input bg-muted text-foreground hover:text-foreground hover:bg-muted">上一步</Button>
                             )}
                             {currentStep === 1 && (
-                                <Button data-testid="teacher-topic-next" onClick={onSubmitTopic} className="bg-primary hover:bg-primary/90 text-primary-foreground">{editingTopicId ? "保存并继续" : "下一步"}</Button>
+                                <Button data-testid="teacher-topic-next" onClick={onSubmitTopic} className="bg-primary hover:bg-primary-hover text-primary-foreground">{editingTopicId ? "保存并继续" : "下一步"}</Button>
                             )}
                             {!loadingDetail && currentStep === 2 && (
                                 <Button
                                     data-testid="teacher-topic-next"
                                     onClick={() => setCurrentStep(3)}
                                     disabled={!isPublishedTopic && !excelInfo}
-                                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                                    className="bg-primary hover:bg-primary-hover text-primary-foreground"
                                 >
                                     下一步
                                 </Button>
@@ -880,19 +880,19 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     data-testid="teacher-topic-next"
                                     onClick={onSaveFieldMapping}
                                     disabled={!isPublishedTopic && !canProceedMapping}
-                                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                                    className="bg-primary hover:bg-primary-hover text-primary-foreground"
                                 >
                                     {isPublishedTopic ? "下一步" : "保存并继续"}
                                 </Button>
                             )}
                             {!loadingDetail && currentStep === 4 && (
-                                <Button data-testid="teacher-topic-next" onClick={() => setCurrentStep(5)} className="bg-primary hover:bg-primary/90 text-primary-foreground">下一步</Button>
+                                <Button data-testid="teacher-topic-next" onClick={() => setCurrentStep(5)} className="bg-primary hover:bg-primary-hover text-primary-foreground">下一步</Button>
                             )}
                             {!loadingDetail && currentStep === 5 && (
-                                <Button data-testid="teacher-topic-next" onClick={onSaveRecommendQuestions} className="bg-primary hover:bg-primary/90 text-primary-foreground">保存并继续</Button>
+                                <Button data-testid="teacher-topic-next" onClick={onSaveRecommendQuestions} className="bg-primary hover:bg-primary-hover text-primary-foreground">保存并继续</Button>
                             )}
                             {!loadingDetail && currentStep === 6 && (
-                                <Button data-testid="teacher-topic-finish" onClick={onSaveWeights} className="bg-primary hover:bg-primary/90 text-primary-foreground">{isPublishedTopic ? "关闭" : "完成"}</Button>
+                                <Button data-testid="teacher-topic-finish" onClick={onSaveWeights} className="bg-primary hover:bg-primary-hover text-primary-foreground">{isPublishedTopic ? "关闭" : "完成"}</Button>
                             )}
                         </div>
                     </div>

@@ -97,7 +97,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
             >
                 <DialogHeader>
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
+                        <div className="w-10 h-10 rounded-surface bg-primary-muted text-primary flex items-center justify-center border border-primary-border">
                             <Eye className="w-5 h-5" />
                         </div>
                         <div>
@@ -107,11 +107,11 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                             </DialogDescription>
                             <div className="flex items-center gap-2 mt-1">
                                 {topic.status === 1 ? (
-                                    <StatusBadge intent="success" className="text-xs">已发布</StatusBadge>
+                                    <StatusBadge intent="success" className="text-meta">已发布</StatusBadge>
                                 ) : (
-                                    <StatusBadge intent="warning" className="text-xs">草稿</StatusBadge>
+                                    <StatusBadge intent="warning" className="text-meta">草稿</StatusBadge>
                                 )}
-                                <span className="text-xs text-muted-foreground">创建于 {new Date(topic.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}</span>
+                                <span className="text-meta text-muted-foreground">创建于 {new Date(topic.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}</span>
                             </div>
                         </div>
                     </div>
@@ -123,10 +123,10 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                         <button
                             key={key}
                             onClick={() => setActiveTab(key)}
-                            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-md transition-colors border-b-2 whitespace-nowrap ${
+                            className={`flex items-center gap-1.5 px-3 py-2 text-meta font-medium rounded-control transition-colors border-b-2 whitespace-nowrap ${
                                 activeTab === key
-                                    ? "text-primary border-primary bg-primary/5"
-                                    : "text-muted-foreground border-transparent hover:text-foreground/90 hover:bg-muted/50"
+                                    ? "text-primary border-primary bg-primary-muted"
+                                    : "text-muted-foreground border-transparent hover:text-foreground hover:bg-muted"
                             }`}
                         >
                             <Icon className="w-3.5 h-3.5" />
@@ -150,13 +150,13 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                             {activeTab === "basic" && (
                                 <div className="space-y-4 py-4 animate-in fade-in duration-300">
                                     <div className="space-y-2">
-                                        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">课题名称</div>
-                                        <div className="text-base text-foreground font-medium">{topic.name}</div>
+                                        <div className="text-meta font-medium text-muted-foreground uppercase tracking-wider">课题名称</div>
+                                        <div className="text-body text-foreground font-medium">{topic.name}</div>
                                     </div>
                                     <Separator className="bg-muted" />
                                     <div className="space-y-2">
-                                        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">背景描述</div>
-                                        <div className="text-sm text-foreground/90 leading-relaxed bg-background/50 border border-border rounded-lg p-4 max-h-[300px] overflow-y-auto">
+                                        <div className="text-meta font-medium text-muted-foreground uppercase tracking-wider">背景描述</div>
+                                        <div className="text-label text-foreground leading-relaxed bg-background border border-border rounded-surface p-4 max-h-[300px] overflow-y-auto">
                                             <RichTextContent
                                                 html={detail?.topic?.description || topic.description || ""}
                                                 emptyFallback="暂无描述"
@@ -170,32 +170,32 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                             {activeTab === "data" && (
                                 <div className="space-y-4 py-4 animate-in fade-in duration-300">
                                     <div className="grid grid-cols-3 gap-4">
-                                        <div className="bg-background border border-border rounded-lg p-4 text-center">
-                                            <div className="text-2xl font-bold text-foreground">{detail?.topic?.excelRowCount ?? topic.dataRows ?? 0}</div>
-                                            <div className="text-xs text-muted-foreground mt-1">数据行数</div>
+                                        <div className="bg-background border border-border rounded-surface p-4 text-center">
+                                            <div className="text-page-title font-bold text-foreground">{detail?.topic?.excelRowCount ?? topic.dataRows ?? 0}</div>
+                                            <div className="text-meta text-muted-foreground mt-1">数据行数</div>
                                         </div>
-                                        <div className="bg-background border border-border rounded-lg p-4 text-center">
-                                            <div className="text-2xl font-bold text-foreground">{detail?.excelInfo?.columns?.length ?? 0}</div>
-                                            <div className="text-xs text-muted-foreground mt-1">数据列数</div>
+                                        <div className="bg-background border border-border rounded-surface p-4 text-center">
+                                            <div className="text-page-title font-bold text-foreground">{detail?.excelInfo?.columns?.length ?? 0}</div>
+                                            <div className="text-meta text-muted-foreground mt-1">数据列数</div>
                                         </div>
-                                        <div className="bg-background border border-border rounded-lg p-4 text-center">
-                                            <div className="text-2xl font-bold text-foreground">
+                                        <div className="bg-background border border-border rounded-surface p-4 text-center">
+                                            <div className="text-page-title font-bold text-foreground">
                                                 {detail?.hasExcelFile ? (
                                                     <CheckCircle2 className="w-6 h-6 text-success mx-auto" />
                                                 ) : (
                                                     <span className="text-muted-foreground">—</span>
                                                 )}
                                             </div>
-                                            <div className="text-xs text-muted-foreground mt-1">数据文件</div>
+                                            <div className="text-meta text-muted-foreground mt-1">数据文件</div>
                                         </div>
                                     </div>
                                     {detail?.excelInfo?.preview && detail.excelInfo.preview.length > 0 && (
                                         <div className="space-y-2">
-                                            <div className="text-xs text-muted-foreground font-medium">数据预览（前 {Math.min(detail.excelInfo.preview.length, 10)} 行）</div>
-                                            <div className="overflow-x-auto border border-border rounded-lg">
-                                                <table className="w-full text-xs">
+                                            <div className="text-meta text-muted-foreground font-medium">数据预览（前 {Math.min(detail.excelInfo.preview.length, 10)} 行）</div>
+                                            <div className="overflow-x-auto border border-border rounded-surface">
+                                                <table className="w-full text-meta">
                                                     <thead>
-                                                        <tr className="bg-muted/50 border-b border-border">
+                                                        <tr className="bg-muted border-b border-border">
                                                             {detail.excelInfo.columns.map((col) => (
                                                                 <th key={col} className="text-left px-3 py-2 text-muted-foreground font-medium whitespace-nowrap">{col}</th>
                                                             ))}
@@ -203,9 +203,9 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                                     </thead>
                                                     <tbody>
                                                         {detail.excelInfo.preview.slice(0, 10).map((row, idx) => (
-                                                            <tr key={idx} className="border-b border-border/50 hover:bg-muted/30">
+                                                            <tr key={idx} className="border-b border-border hover:bg-muted">
                                                                 {detail.excelInfo!.columns.map((col) => (
-                                                                    <td key={col} className="px-3 py-1.5 text-foreground/90 whitespace-nowrap max-w-[200px] truncate">
+                                                                    <td key={col} className="px-3 py-1.5 text-foreground whitespace-nowrap max-w-[200px] truncate">
                                                                         {row?.[col] != null ? String(row[col]) : <span className="text-muted-foreground">-</span>}
                                                                     </td>
                                                                 ))}
@@ -217,7 +217,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                         </div>
                                     )}
                                     {(!detail?.excelInfo?.preview || detail.excelInfo.preview.length === 0) && (
-                                        <div className="text-center py-8 text-sm text-muted-foreground">暂无数据预览</div>
+                                        <div className="text-center py-8 text-label text-muted-foreground">暂无数据预览</div>
                                     )}
                                 </div>
                             )}
@@ -227,30 +227,30 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                 <div className="space-y-4 py-4 animate-in fade-in duration-300">
                                     {resolvedStudyContract && (
                                         <div
-                                            className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-4"
+                                            className="space-y-3 rounded-surface border border-primary-border bg-primary-muted p-4"
                                             data-testid="teacher-topic-view-study-contract"
                                         >
                                             <div className="flex items-center justify-between gap-3">
-                                                <div className="text-sm font-semibold text-foreground">研究合同</div>
+                                                <div className="text-label font-semibold text-foreground">研究合同</div>
                                                 {resolvedStudyContract.inferred && (
-                                                    <StatusBadge intent="neutral" className="text-xs">兼容推断</StatusBadge>
+                                                    <StatusBadge intent="neutral" className="text-meta">兼容推断</StatusBadge>
                                                 )}
                                             </div>
-                                            <dl className="grid grid-cols-2 gap-3 text-sm">
-                                                <div className="col-span-2 rounded-md bg-background/70 p-3">
-                                                    <dt className="text-xs text-muted-foreground">研究问题</dt>
+                                            <dl className="grid grid-cols-2 gap-3 text-label">
+                                                <div className="col-span-2 rounded-control bg-background p-3">
+                                                    <dt className="text-meta text-muted-foreground">研究问题</dt>
                                                     <dd className="mt-1 text-foreground">{resolvedStudyContract.contract.researchQuestion}</dd>
                                                 </div>
-                                                <div className="rounded-md bg-background/70 p-3">
-                                                    <dt className="text-xs text-muted-foreground">目标总体</dt>
+                                                <div className="rounded-control bg-background p-3">
+                                                    <dt className="text-meta text-muted-foreground">目标总体</dt>
                                                     <dd className="mt-1 text-foreground">{resolvedStudyContract.contract.targetPopulation}</dd>
                                                 </div>
-                                                <div className="rounded-md bg-background/70 p-3">
-                                                    <dt className="text-xs text-muted-foreground">分析单位</dt>
+                                                <div className="rounded-control bg-background p-3">
+                                                    <dt className="text-meta text-muted-foreground">分析单位</dt>
                                                     <dd className="mt-1 text-foreground">{resolvedStudyContract.contract.unitOfAnalysis}</dd>
                                                 </div>
-                                                <div className="col-span-2 rounded-md bg-background/70 p-3">
-                                                    <dt className="text-xs text-muted-foreground">估计目标</dt>
+                                                <div className="col-span-2 rounded-control bg-background p-3">
+                                                    <dt className="text-meta text-muted-foreground">估计目标</dt>
                                                     <dd className="mt-1 text-foreground">
                                                         {resolvedStudyContract.contract.target.kind === "mean"
                                                             ? `${resolvedStudyContract.contract.target.field} 的均值`
@@ -262,48 +262,48 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                     )}
                                     {fieldMapping.identifier || fieldMapping.stratified.length > 0 || fieldMapping.numeric.length > 0 ? (
                                         <div className="grid grid-cols-3 gap-4">
-                                            <div className="bg-background border border-border rounded-lg p-4 space-y-3">
+                                            <div className="bg-background border border-border rounded-surface p-4 space-y-3">
                                                 <div className="flex items-center gap-2">
-                                                    <div className="w-2 h-2 rounded-full bg-info" />
-                                                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">标识符</div>
+                                                    <div className="w-2 h-2 rounded-circle bg-info" />
+                                                    <div className="text-meta font-medium text-muted-foreground uppercase tracking-wider">标识符</div>
                                                 </div>
                                                 {fieldMapping.identifier ? (
                                                     <StatusBadge intent="info">{fieldMapping.identifier}</StatusBadge>
                                                 ) : (
-                                                    <span className="text-sm text-muted-foreground">未设置</span>
+                                                    <span className="text-label text-muted-foreground">未设置</span>
                                                 )}
                                             </div>
-                                            <div className="bg-background border border-border rounded-lg p-4 space-y-3">
+                                            <div className="bg-background border border-border rounded-surface p-4 space-y-3">
                                                 <div className="flex items-center gap-2">
-                                                    <div className="w-2 h-2 rounded-full bg-warning" />
-                                                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">分层变量（{fieldMapping.stratified.length}）</div>
+                                                    <div className="w-2 h-2 rounded-circle bg-warning" />
+                                                    <div className="text-meta font-medium text-muted-foreground uppercase tracking-wider">分层变量（{fieldMapping.stratified.length}）</div>
                                                 </div>
                                                 <div className="flex flex-wrap gap-1.5">
                                                     {fieldMapping.stratified.length > 0
                                                         ? fieldMapping.stratified.map((f) => (
-                                                            <StatusBadge intent="warning" key={f} className="text-xs">{f}</StatusBadge>
+                                                            <StatusBadge intent="warning" key={f} className="text-meta">{f}</StatusBadge>
                                                         ))
-                                                        : <span className="text-sm text-muted-foreground">未设置</span>
+                                                        : <span className="text-label text-muted-foreground">未设置</span>
                                                     }
                                                 </div>
                                             </div>
-                                            <div className="bg-background border border-border rounded-lg p-4 space-y-3">
+                                            <div className="bg-background border border-border rounded-surface p-4 space-y-3">
                                                 <div className="flex items-center gap-2">
-                                                    <div className="w-2 h-2 rounded-full bg-success" />
-                                                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">数值变量（{fieldMapping.numeric.length}）</div>
+                                                    <div className="w-2 h-2 rounded-circle bg-success" />
+                                                    <div className="text-meta font-medium text-muted-foreground uppercase tracking-wider">数值变量（{fieldMapping.numeric.length}）</div>
                                                 </div>
                                                 <div className="flex flex-wrap gap-1.5">
                                                     {fieldMapping.numeric.length > 0
                                                         ? fieldMapping.numeric.map((f) => (
-                                                            <StatusBadge intent="success" key={f} className="text-xs">{f}</StatusBadge>
+                                                            <StatusBadge intent="success" key={f} className="text-meta">{f}</StatusBadge>
                                                         ))
-                                                        : <span className="text-sm text-muted-foreground">未设置</span>
+                                                        : <span className="text-label text-muted-foreground">未设置</span>
                                                     }
                                                 </div>
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="text-center py-8 text-sm text-muted-foreground">暂未配置字段映射</div>
+                                        <div className="text-center py-8 text-label text-muted-foreground">暂未配置字段映射</div>
                                     )}
                                 </div>
                             )}
@@ -313,14 +313,14 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                 <div className="space-y-3 py-4 animate-in fade-in duration-300">
                                     {detail?.attachments && detail.attachments.length > 0 ? (
                                         detail.attachments.map((a) => (
-                                            <div key={a.id} className="flex items-center justify-between p-3 bg-background border border-border rounded-lg hover:border-input transition-colors">
+                                            <div key={a.id} className="flex items-center justify-between p-3 bg-background border border-border rounded-surface hover:border-input transition-colors">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
+                                                    <div className="w-9 h-9 rounded-surface bg-primary-muted text-primary flex items-center justify-center border border-primary-border">
                                                         <FileText className="w-4 h-4" />
                                                     </div>
                                                     <div>
-                                                        <div className="text-sm text-foreground">{a.fileName}</div>
-                                                        <div className="text-xs text-muted-foreground">
+                                                        <div className="text-label text-foreground">{a.fileName}</div>
+                                                        <div className="text-meta text-muted-foreground">
                                                             {a.fileSize > 0 ? `${(a.fileSize / 1024).toFixed(1)} KB` : ""}
                                                             {a.createdAt ? ` · ${new Date(a.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}` : ""}
                                                         </div>
@@ -330,7 +330,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                                     href={`/api/teacher/topics/${topic.id}/attachments/${a.id}/download?mode=preview`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="text-xs text-primary hover:text-primary flex items-center gap-1"
+                                                    className="text-meta text-primary hover:text-primary flex items-center gap-1"
                                                 >
                                                     <ExternalLink className="w-3 h-3" />
                                                     查看
@@ -338,7 +338,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                             </div>
                                         ))
                                     ) : (
-                                        <div className="text-center py-8 text-sm text-muted-foreground">暂无辅助资料</div>
+                                        <div className="text-center py-8 text-label text-muted-foreground">暂无辅助资料</div>
                                     )}
                                 </div>
                             )}
@@ -348,21 +348,21 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                 <div className="space-y-3 py-4 animate-in fade-in duration-300">
                                     {detail?.recommendQuestions && detail.recommendQuestions.length > 0 ? (
                                         detail.recommendQuestions.map((q, idx) => (
-                                            <div key={q.id} className="bg-background border border-border rounded-lg p-4 space-y-2">
+                                            <div key={q.id} className="bg-background border border-border rounded-surface p-4 space-y-2">
                                                 <div className="flex items-center gap-3">
-                                                    <span className="text-xs text-muted-foreground font-mono w-6 shrink-0">{idx + 1}.</span>
-                                                    <Badge variant="secondary" className="bg-muted text-muted-foreground border-input text-xs">
+                                                    <span className="text-meta text-muted-foreground font-mono w-6 shrink-0">{idx + 1}.</span>
+                                                    <Badge variant="secondary" className="bg-muted text-muted-foreground border-input text-meta">
                                                         {questionTypeLabels[q.type as QuestionType] ?? "未知"}
                                                     </Badge>
                                                 </div>
-                                                <div className="text-sm text-foreground pl-9">{q.content || "（无内容）"}</div>
+                                                <div className="text-label text-foreground pl-9">{q.content || "（无内容）"}</div>
                                                 {(q.type === "single" || q.type === "multiple") && q.options && q.options.length > 0 && (
-                                                    <div className="pl-9 text-xs text-muted-foreground">
+                                                    <div className="pl-9 text-meta text-muted-foreground">
                                                         选项：{q.options.join("；")}
                                                     </div>
                                                 )}
                                                 {q.type === "scale" && (
-                                                    <div className="pl-9 text-xs text-muted-foreground">
+                                                    <div className="pl-9 text-meta text-muted-foreground">
                                                         量表 {q.scaleMin ?? 1}–{q.scaleMax ?? 10}
                                                         {(q.scaleMinLabel || q.scaleMaxLabel) && `（${q.scaleMinLabel ?? ""} — ${q.scaleMaxLabel ?? ""}）`}
                                                     </div>
@@ -370,7 +370,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                             </div>
                                         ))
                                     ) : (
-                                        <div className="text-center py-8 text-sm text-muted-foreground">暂无推荐题目</div>
+                                        <div className="text-center py-8 text-label text-muted-foreground">暂无推荐题目</div>
                                     )}
                                 </div>
                             )}
@@ -379,35 +379,35 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                             {activeTab === "weights" && (
                                 <div className="space-y-6 py-4 animate-in fade-in duration-300">
                                     <div className="grid grid-cols-3 gap-4">
-                                        <div className="bg-background border border-border rounded-lg p-6 text-center space-y-2">
-                                            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">问卷设计</div>
-                                            <div className="text-3xl font-bold text-primary">{weightConfig.questionnaire}%</div>
+                                        <div className="bg-background border border-border rounded-surface p-6 text-center space-y-2">
+                                            <div className="text-meta font-medium text-muted-foreground uppercase tracking-wider">问卷设计</div>
+                                            <div className="text-display font-bold text-primary">{weightConfig.questionnaire}%</div>
                                         </div>
-                                        <div className="bg-background border border-border rounded-lg p-6 text-center space-y-2">
-                                            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">实验过程</div>
-                                            <div className="text-3xl font-bold text-info">{weightConfig.process}%</div>
+                                        <div className="bg-background border border-border rounded-surface p-6 text-center space-y-2">
+                                            <div className="text-meta font-medium text-muted-foreground uppercase tracking-wider">实验过程</div>
+                                            <div className="text-display font-bold text-info">{weightConfig.process}%</div>
                                         </div>
-                                        <div className="bg-background border border-border rounded-lg p-6 text-center space-y-2">
-                                            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">实验报告</div>
-                                            <div className="text-3xl font-bold text-warning">{weightConfig.report}%</div>
+                                        <div className="bg-background border border-border rounded-surface p-6 text-center space-y-2">
+                                            <div className="text-meta font-medium text-muted-foreground uppercase tracking-wider">实验报告</div>
+                                            <div className="text-display font-bold text-warning">{weightConfig.report}%</div>
                                         </div>
                                     </div>
                                     <div className="flex items-center justify-center gap-2">
-                                        <span className="text-sm text-muted-foreground">总权重：</span>
-                                        <span className={`text-lg font-bold ${(weightConfig.questionnaire + weightConfig.process + weightConfig.report) === 100 ? "text-success" : "text-destructive"}`}>
+                                        <span className="text-label text-muted-foreground">总权重：</span>
+                                        <span className={`text-subheading font-bold ${(weightConfig.questionnaire + weightConfig.process + weightConfig.report) === 100 ? "text-success" : "text-destructive"}`}>
                                             {weightConfig.questionnaire + weightConfig.process + weightConfig.report}%
                                         </span>
                                     </div>
                                     {/* Weight bar visualization */}
-                                    <div className="h-3 rounded-full overflow-hidden flex bg-muted">
-                                        <div className="bg-primary transition-all" style={{ width: `${weightConfig.questionnaire}%` }} title={`问卷设计 ${weightConfig.questionnaire}%`} />
-                                        <div className="bg-info transition-all" style={{ width: `${weightConfig.process}%` }} title={`实验过程 ${weightConfig.process}%`} />
-                                        <div className="bg-warning transition-all" style={{ width: `${weightConfig.report}%` }} title={`实验报告 ${weightConfig.report}%`} />
+                                    <div className="h-3 rounded-control overflow-hidden flex bg-muted">
+                                        <div className="bg-primary transition-[width]" style={{ width: `${weightConfig.questionnaire}%` }} title={`问卷设计 ${weightConfig.questionnaire}%`} />
+                                        <div className="bg-info transition-[width]" style={{ width: `${weightConfig.process}%` }} title={`实验过程 ${weightConfig.process}%`} />
+                                        <div className="bg-warning transition-[width]" style={{ width: `${weightConfig.report}%` }} title={`实验报告 ${weightConfig.report}%`} />
                                     </div>
-                                    <div className="flex justify-center gap-6 text-xs text-muted-foreground">
-                                        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-primary" />问卷设计</span>
-                                        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-info" />实验过程</span>
-                                        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-warning" />实验报告</span>
+                                    <div className="flex justify-center gap-6 text-meta text-muted-foreground">
+                                        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-circle bg-primary" />问卷设计</span>
+                                        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-circle bg-info" />实验过程</span>
+                                        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-circle bg-warning" />实验报告</span>
                                     </div>
                                 </div>
                             )}
@@ -416,7 +416,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                 </div>
 
                 <DialogFooter className="border-t border-border pt-4 flex-shrink-0">
-                    <Button onClick={() => onOpenChange(false)} className="bg-muted hover:bg-muted-foreground/20 text-foreground">关闭</Button>
+                    <Button onClick={() => onOpenChange(false)} className="bg-muted hover:bg-input text-foreground">关闭</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

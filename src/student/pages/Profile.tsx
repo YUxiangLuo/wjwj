@@ -89,21 +89,21 @@ export function Profile() {
         <div className="space-y-6 max-w-5xl mx-auto">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-muted-foreground">
+                    <h1 className="text-page-title font-semibold text-foreground">
                         个人信息
                     </h1>
-                    <p className="text-muted-foreground text-sm mt-1">查看你的账号资料与安全设置</p>
+                    <p className="text-muted-foreground text-label mt-1">查看你的账号资料与安全设置</p>
                 </div>
-                <Button variant="outline" onClick={() => navigate("/")} className="border-input hover:bg-muted text-foreground/90">
+                <Button variant="outline" onClick={() => navigate("/")} className="border-input hover:bg-muted text-foreground">
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     返回首页
                 </Button>
             </div>
 
             <div className="grid grid-cols-3 gap-6">
-                <Card className="col-span-2 border-primary/20 bg-card/40 backdrop-blur-xl shadow-2xl overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-info opacity-20" />
-                    <CardHeader className="border-b border-input/30 pb-4">
+                <Card className="col-span-2 overflow-hidden border-primary-border bg-card">
+                    <div className="absolute top-0 left-0 h-1 w-full bg-primary" />
+                    <CardHeader className="border-b border-input pb-4">
                         <CardTitle className="flex items-center gap-2 text-foreground">
                             <User className="w-5 h-5 text-primary" />
                             基础资料
@@ -114,35 +114,35 @@ export function Profile() {
                         <div className="grid grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <Label className="text-muted-foreground">姓名</Label>
-                                <div className="px-3 py-2 rounded-md bg-muted/50 border border-input/50 text-foreground" data-testid="student-profile-name">
+                                <div className="px-3 py-2 rounded-control bg-muted border border-input text-foreground" data-testid="student-profile-name">
                                     {currentUser?.name ?? "-"}
                                 </div>
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-muted-foreground">学号</Label>
-                                <div className="px-3 py-2 rounded-md bg-muted/50 border border-input/50 text-foreground font-mono" data-testid="student-profile-id">
+                                <div className="px-3 py-2 rounded-control bg-muted border border-input text-foreground font-mono" data-testid="student-profile-id">
                                     {currentUser?.studentId ?? "-"}
                                 </div>
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-muted-foreground">班级</Label>
-                                <div className="px-3 py-2 rounded-md bg-muted/50 border border-input/50 text-foreground" data-testid="student-profile-class">
+                                <div className="px-3 py-2 rounded-control bg-muted border border-input text-foreground" data-testid="student-profile-class">
                                     {currentUser?.className ?? "-"}
                                 </div>
                             </div>
                         </div>
 
-                        <div className="bg-warning/10 border border-warning/20 rounded-lg p-4 flex items-start gap-3">
+                        <div className="bg-warning-muted border border-warning-border rounded-surface p-4 flex items-start gap-3">
                             <Shield className="w-5 h-5 text-warning mt-0.5" />
-                            <div className="text-sm text-warning leading-relaxed">
+                            <div className="text-label text-warning leading-relaxed">
                                 如需修改基础信息，请联系管理员或任课教师。
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="border-primary/20 bg-card/40 backdrop-blur-xl shadow-2xl">
-                    <CardHeader className="border-b border-input/30 pb-4">
+                <Card className="border-primary-border bg-card">
+                    <CardHeader className="border-b border-input pb-4">
                         <CardTitle className="flex items-center gap-2 text-foreground">
                             <Key className="w-5 h-5 text-primary" />
                             修改密码
@@ -151,7 +151,7 @@ export function Profile() {
                     </CardHeader>
                     <CardContent className="space-y-4 pt-6">
                         <div className="space-y-2">
-                            <Label htmlFor="currentPassword" className="text-foreground/90">当前密码</Label>
+                            <Label htmlFor="currentPassword" className="text-foreground">当前密码</Label>
                             <Input
                                 id="currentPassword"
                                 type="password"
@@ -161,11 +161,11 @@ export function Profile() {
                                 aria-describedby={error ? "student-profile-password-error" : undefined}
                                 autoComplete="current-password"
                                 data-testid="student-profile-password-current"
-                                className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring/20"
+                                className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="newPassword" className="text-foreground/90">新密码</Label>
+                            <Label htmlFor="newPassword" className="text-foreground">新密码</Label>
                             <Input
                                 id="newPassword"
                                 type="password"
@@ -175,11 +175,11 @@ export function Profile() {
                                 aria-describedby={error ? "student-profile-password-error" : undefined}
                                 autoComplete="new-password"
                                 data-testid="student-profile-password-new"
-                                className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring/20"
+                                className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="confirmPassword" className="text-foreground/90">确认新密码</Label>
+                            <Label htmlFor="confirmPassword" className="text-foreground">确认新密码</Label>
                             <Input
                                 id="confirmPassword"
                                 type="password"
@@ -189,10 +189,10 @@ export function Profile() {
                                 aria-describedby={error ? "student-profile-password-error" : undefined}
                                 autoComplete="new-password"
                                 data-testid="student-profile-password-confirm"
-                                className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring/20"
+                                className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring"
                             />
                         </div>
-                        <div className="rounded-lg border border-input bg-background/60 p-3 text-xs space-y-1.5">
+                        <div className="rounded-surface border border-input bg-background p-3 text-meta space-y-1.5">
                             <div className="flex items-center justify-between text-muted-foreground">
                                 <span>密码强度</span>
                                 <span className={strengthScore <= 2 ? "text-destructive" : strengthScore <= 4 ? "text-warning" : "text-success"}>
@@ -206,15 +206,15 @@ export function Profile() {
                             <div className={passwordRules.noStudentId ? "text-success" : "text-muted-foreground"}>{passwordRules.noStudentId ? "✓" : "✗"} 不包含学号</div>
                             <div className={passwordRules.matched ? "text-success" : "text-muted-foreground"}>{passwordRules.matched ? "✓" : "✗"} 两次密码一致</div>
                         </div>
-                        {error && <div id="student-profile-password-error" role="alert" aria-atomic="true" className="text-sm text-destructive bg-destructive/10 p-2 rounded border border-destructive/20">{error}</div>}
+                        {error && <div id="student-profile-password-error" role="alert" aria-atomic="true" className="text-label text-destructive bg-destructive-muted p-2 rounded-control border border-destructive-border">{error}</div>}
                         {success && (
-                            <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-success bg-success/10 p-2 rounded border border-success/20">
+                            <div role="status" aria-live="polite" className="flex items-center gap-2 text-label text-success bg-success-muted p-2 rounded-control border border-success-border">
                                 <CheckCircle2 aria-hidden="true" className="w-4 h-4" />
                                 密码已更新
                             </div>
                         )}
                         <Button
-                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 mt-2"
+                            className="mt-2 w-full bg-primary text-primary-foreground hover:bg-primary-hover"
                             onClick={handleChangePassword}
                             disabled={saving}
                             aria-busy={saving}

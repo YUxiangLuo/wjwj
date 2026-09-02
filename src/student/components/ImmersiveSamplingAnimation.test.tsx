@@ -5,6 +5,7 @@ import { installDomGlobals } from "@/test-utils/dom";
 let restoreDom: (() => void) | null = null;
 let ImmersiveSamplingAnimation: typeof import("./ImmersiveSamplingAnimation").ImmersiveSamplingAnimation;
 let getSamplingAnimationDurationUpperBound: typeof import("./ImmersiveSamplingAnimation").getSamplingAnimationDurationUpperBound;
+let getSystematicPopulationDotClass: typeof import("./ImmersiveSamplingAnimation").getSystematicPopulationDotClass;
 
 beforeAll(async () => {
     const dom = installDomGlobals("http://localhost/student/task/1/experiment");
@@ -12,6 +13,7 @@ beforeAll(async () => {
     ({
         ImmersiveSamplingAnimation,
         getSamplingAnimationDurationUpperBound,
+        getSystematicPopulationDotClass,
     } = await import("./ImmersiveSamplingAnimation"));
 });
 
@@ -98,4 +100,14 @@ test("all animation methods have a deterministic upper bound below six seconds",
     for (const method of ["simple", "systematic", "pps", "stratified"] as const) {
         expect(getSamplingAnimationDurationUpperBound(method)).toBeLessThan(6_000);
     }
+});
+
+test("systematic sampling distinguishes scan progress and animates marker coordinates", async () => {
+    expect(getSystematicPopulationDotClass(12, 11)).toBe("bg-muted");
+    expect(getSystematicPopulationDotClass(11, 11)).toBe("bg-info-muted");
+
+    const source = await Bun.file("src/student/components/ImmersiveSamplingAnimation.tsx").text();
+    expect(source).toContain("transition-[top] duration-[80ms]");
+    expect(source).toContain("transition-[left,top] duration-[80ms]");
+    expect(source).not.toContain("bg-info-muted transition-[transform]");
 });

@@ -34,10 +34,10 @@ test("status badge variants use semantic intent tokens", () => {
         </div>
     );
 
-    expect(view.getByText("成功").className).toContain("bg-success/10");
+    expect(view.getByText("成功").className).toContain("bg-success-muted");
     expect(view.getByText("警告").className).toContain("text-warning");
-    expect(view.getByText("危险").className).toContain("border-destructive/20");
-    expect(view.getByText("信息").className).toContain("bg-info/10");
+    expect(view.getByText("危险").className).toContain("border-destructive-border");
+    expect(view.getByText("信息").className).toContain("bg-info-muted");
 });
 
 test("icon tile keeps repeated stat icon styling tokenized", () => {
@@ -48,7 +48,7 @@ test("icon tile keeps repeated stat icon styling tokenized", () => {
         </div>
     );
 
-    expect(view.getByTestId("primary-tile").className).toContain("bg-primary/10");
+    expect(view.getByTestId("primary-tile").className).toContain("bg-primary-muted");
     expect(view.getByTestId("neutral-tile").className).toContain("h-10");
 });
 
@@ -61,8 +61,10 @@ test("card variants expose semantic surface and elevation roles", () => {
         </div>,
     );
 
-    expect(view.getByTestId("default-card").className).toContain("shadow-surface");
-    expect(view.getByTestId("subtle-card").className).toContain("bg-card/50");
+    expect(view.getByTestId("default-card").className).toContain("bg-card");
+    expect(view.getByTestId("default-card").className).not.toContain("shadow-");
+    expect(view.getByTestId("subtle-card").className).toContain("bg-secondary");
+    expect(view.getByTestId("elevated-card").className).toContain("bg-card");
     expect(view.getByTestId("elevated-card").className).toContain("shadow-floating");
 });
 
@@ -83,5 +85,5 @@ test("shared pattern components render expected accessible content", () => {
     expect(view.getByText("作业批改")).toBeTruthy();
     expect(view.getByText("查看待批改列表")).toBeTruthy();
     expect(view.getByText("已完成")).toBeTruthy();
-    expect(view.getByTestId("icon-tile").className).toContain("bg-info/10");
+    expect(view.getByTestId("icon-tile").className).toContain("bg-info-muted");
 });

@@ -30,7 +30,7 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                        <Label htmlFor="studentId" className="text-foreground/90">学号（必填）</Label>
+                        <Label htmlFor="studentId" className="text-foreground">学号（必填）</Label>
                         <Input
                             id="studentId"
                             data-testid="teacher-student-add-id"
@@ -39,11 +39,11 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                             required
                             value={form.id}
                             onChange={(e) => onFormChange({ ...form, id: e.target.value })}
-                            className="bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring"
+                            className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="studentName" className="text-foreground/90">姓名（必填）</Label>
+                        <Label htmlFor="studentName" className="text-foreground">姓名（必填）</Label>
                         <Input
                             id="studentName"
                             data-testid="teacher-student-add-name"
@@ -52,11 +52,11 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                             required
                             value={form.name}
                             onChange={(e) => onFormChange({ ...form, name: e.target.value })}
-                            className="bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring"
+                            className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="studentEmail" className="text-foreground/90">邮箱（可选）</Label>
+                        <Label htmlFor="studentEmail" className="text-foreground">邮箱（可选）</Label>
                         <Input
                             id="studentEmail"
                             data-testid="teacher-student-add-email"
@@ -67,10 +67,10 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                             onChange={(e) => onFormChange({ ...form, email: e.target.value })}
                             aria-invalid={emailInvalid}
                             aria-describedby={emailInvalid ? "studentEmail-error" : undefined}
-                            className="bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring"
+                            className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
                         />
                         {emailInvalid && (
-                            <p id="studentEmail-error" role="alert" className="text-xs text-destructive">
+                            <p id="studentEmail-error" role="alert" className="text-meta text-destructive">
                                 请输入有效的邮箱地址
                             </p>
                         )}
@@ -82,7 +82,7 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                         data-testid="teacher-student-add-submit"
                         onClick={onSubmit}
                         disabled={submitting || !isStudentAddFormComplete(form)}
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                        className="bg-primary hover:bg-primary-hover text-primary-foreground"
                     >
                         {submitting ? <><Loader2 aria-hidden="true" className="w-4 h-4 mr-2 animate-spin" />添加中...</> : "确认添加"}
                     </Button>

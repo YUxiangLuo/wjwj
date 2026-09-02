@@ -48,9 +48,9 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                        <Label className="text-foreground/90">选择课题</Label>
+                        <Label className="text-foreground">选择课题</Label>
                         <Select onValueChange={onSelectedTopicIdChange} value={selectedTopicId}>
-                            <SelectTrigger aria-label="选择发布课题" data-testid="teacher-task-topic-select" className="bg-background border-border text-foreground">
+                            <SelectTrigger aria-label="选择发布课题" data-testid="teacher-task-topic-select" className="bg-card border-input text-foreground">
                                 <SelectValue placeholder="请选择课题" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
@@ -63,25 +63,25 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
                         </Select>
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-foreground/90">选择班级</Label>
-                        <div className="space-y-2 border border-border bg-background rounded-md p-3 max-h-40 overflow-y-auto">
-                            {availableClasses.length === 0 ? <div className="text-sm text-muted-foreground">无班级</div> : availableClasses.map((cls) => {
+                        <Label className="text-foreground">选择班级</Label>
+                        <div className="space-y-2 border border-border bg-background rounded-control p-3 max-h-40 overflow-y-auto">
+                            {availableClasses.length === 0 ? <div className="text-label text-muted-foreground">无班级</div> : availableClasses.map((cls) => {
                                 const disabled = disabledClassIds.has(cls.id);
                                 return (
                                     <label
                                         key={cls.id}
                                         title={disabled ? "该课题已向此班级发布过任务" : undefined}
-                                        className={`flex items-center gap-2 text-sm p-1.5 rounded ${
+                                        className={`flex items-center gap-2 text-label p-1.5 rounded-control ${
                                             disabled
                                                 ? "text-muted-foreground cursor-not-allowed opacity-80"
-                                                : "text-foreground/90 cursor-pointer hover:bg-card"
+                                                : "text-foreground cursor-pointer hover:bg-card"
                                         }`}
                                     >
                                         <input
                                             data-testid={`teacher-task-class-check-${cls.id}`}
                                             type="checkbox"
                                             disabled={disabled}
-                                            className="rounded border-input bg-card text-primary focus:ring-ring/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="rounded-control border-input bg-card text-primary focus:ring-ring disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed"
                                             checked={!disabled && selectedClassIds.includes(cls.id)}
                                             onChange={() => {
                                                 if (!disabled) onToggleClass(cls.id);
@@ -89,7 +89,7 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
                                         />
                                         <span className="flex-1">{cls.name}</span>
                                         {disabled ? (
-                                            <span className="text-xs text-muted-foreground shrink-0">已发布</span>
+                                            <span className="text-meta text-muted-foreground shrink-0">已发布</span>
                                         ) : null}
                                     </label>
                                 );
@@ -97,7 +97,7 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="deadline" className="text-foreground/90">截止时间（可选，中国标准时间）</Label>
+                        <Label htmlFor="deadline" className="text-foreground">截止时间（可选，中国标准时间）</Label>
                         <DatetimePicker24
                             id="deadline"
                             data-testid="teacher-task-deadline"
@@ -105,12 +105,12 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
                             onChange={onDeadlineChange}
                             placeholder="选择日期与时间（24 小时制）"
                         />
-                        <p className="text-xs text-muted-foreground">所有教师和学生均按中国标准时间（UTC+8）查看该截止时刻。</p>
+                        <p className="text-meta text-muted-foreground">所有教师和学生均按中国标准时间（UTC+8）查看该截止时刻。</p>
                     </div>
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground hover:bg-muted">取消</Button>
-                    <Button data-testid="teacher-task-publish-submit" onClick={onPublish} className="bg-primary hover:bg-primary/90 text-primary-foreground">确认发布</Button>
+                    <Button data-testid="teacher-task-publish-submit" onClick={onPublish} className="bg-primary hover:bg-primary-hover text-primary-foreground">确认发布</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

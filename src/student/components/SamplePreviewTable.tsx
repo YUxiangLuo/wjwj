@@ -83,7 +83,7 @@ export function SamplePreviewTable({ data, total }: { data: unknown[]; total: nu
     }, [syncHorizontalScroll]);
 
     if (samples.length === 0) {
-        return <div className="h-full flex items-center justify-center text-sm text-muted-foreground italic">暂无抽样数据</div>;
+        return <div className="h-full flex items-center justify-center text-label text-muted-foreground italic">暂无抽样数据</div>;
     }
 
     const keys = Object.keys(samples[0] ?? {});
@@ -101,14 +101,14 @@ export function SamplePreviewTable({ data, total }: { data: unknown[]; total: nu
                 role="region"
                 tabIndex={0}
                 aria-label={`抽样结果数据表，第 ${currentPage} 页，共 ${totalPages} 页`}
-                className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-xl border border-border [scrollbar-gutter:stable]"
+                className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-surface border border-border [scrollbar-gutter:stable]"
             >
                 <div className="min-w-max pr-3 [&_[data-slot=table-container]]:w-max [&_[data-slot=table-container]]:overflow-visible">
                     <Table className="min-w-max">
-                        <TableHeader className="sticky top-0 bg-background/50">
+                        <TableHeader className="sticky top-0 bg-background">
                             <TableRow className="border-border hover:bg-transparent">
                                 {keys.map((key) => (
-                                    <TableHead key={key} className="h-8 whitespace-nowrap text-xs text-muted-foreground">
+                                    <TableHead key={key} className="h-8 whitespace-nowrap text-meta text-muted-foreground">
                                         {FIELD_LABELS[key] || key}
                                     </TableHead>
                                 ))}
@@ -116,9 +116,9 @@ export function SamplePreviewTable({ data, total }: { data: unknown[]; total: nu
                         </TableHeader>
                         <TableBody>
                             {rows.map((row, rowIndex) => (
-                                <TableRow key={`${start + rowIndex}`} className="border-border hover:bg-muted/50">
+                                <TableRow key={`${start + rowIndex}`} className="border-border hover:bg-muted">
                                     {keys.map((key) => (
-                                        <TableCell key={`${start + rowIndex}-${key}`} className="py-2 text-xs text-foreground/90 whitespace-nowrap">
+                                        <TableCell key={`${start + rowIndex}-${key}`} className="py-2 text-meta text-foreground whitespace-nowrap">
                                             {String(row[key] ?? "")}
                                         </TableCell>
                                     ))}
@@ -141,7 +141,7 @@ export function SamplePreviewTable({ data, total }: { data: unknown[]; total: nu
                 </div>
             )}
             <div className="mt-3 flex items-center justify-between gap-2">
-                <p className="text-xs text-muted-foreground">
+                <p className="text-meta text-muted-foreground">
                     {total > samples.length
                         ? `当前预览第 ${start + 1}-${end} 条（预览前 ${samples.length} 条，共 ${total} 条；完整数据请导出）`
                         : `显示第 ${start + 1}-${end} 条，共 ${Math.max(total, samples.length)} 条`}
@@ -150,17 +150,17 @@ export function SamplePreviewTable({ data, total }: { data: unknown[]; total: nu
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 px-2 text-xs border-input bg-card text-foreground/90 hover:bg-muted"
+                        className="h-7 px-2 text-meta border-input bg-card text-foreground hover:bg-muted"
                         onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                         disabled={currentPage <= 1}
                     >
                         上一页
                     </Button>
-                    <span className="text-xs text-muted-foreground">{currentPage}/{totalPages}</span>
+                    <span className="text-meta text-muted-foreground">{currentPage}/{totalPages}</span>
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 px-2 text-xs border-input bg-card text-foreground/90 hover:bg-muted"
+                        className="h-7 px-2 text-meta border-input bg-card text-foreground hover:bg-muted"
                         onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
                         disabled={currentPage >= totalPages}
                     >

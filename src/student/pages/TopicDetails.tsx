@@ -194,7 +194,7 @@ export function TopicDetails() {
     return (
         <div className="space-y-4 pb-12" data-testid="student-task-detail">
             <div>
-                <Button asChild variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground hover:bg-muted -ml-4 h-8 text-sm">
+                <Button asChild variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground hover:bg-muted -ml-4 h-8 text-label">
                     <Link to="/">
                         <ArrowLeft className="w-3.5 h-3.5" />
                         返回任务列表
@@ -203,35 +203,35 @@ export function TopicDetails() {
 
                 <div className="flex flex-row items-center justify-between gap-3 mt-1">
                     <div>
-                        <h1 className="text-2xl font-bold text-foreground">{task.name}</h1>
-                        <div className="flex flex-wrap items-center gap-4 mt-1 text-sm text-muted-foreground">
+                        <h1 className="text-page-title font-bold text-foreground">{task.name}</h1>
+                        <div className="flex flex-wrap items-center gap-4 mt-1 text-label text-muted-foreground">
                             <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {notOpenYet ? "开放于" : "发布于"} {formatDateTime(task.publishedAt)}（UTC+8）</span>
                             {task.deadline && <span>截止于 {formatDateTime(task.deadline)}（UTC+8）</span>}
                         </div>
                     </div>
-                    <StatusBadge intent={effectiveStatus.intent} className="h-7 px-3 py-1 text-sm">{effectiveStatus.label}</StatusBadge>
+                    <StatusBadge intent={effectiveStatus.intent} className="h-7 px-3 py-1 text-label">{effectiveStatus.label}</StatusBadge>
                 </div>
             </div>
 
-            <Card className="rounded-2xl border-border bg-card/80 shadow-sm">
+            <Card className="rounded-surface border-border bg-card ">
                 <CardContent className="px-5 py-4">
                     <div className="flex gap-4 flex-row items-center justify-between">
                         <div className="space-y-1 max-w-2xl">
-                            <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary border border-primary/20">
+                            <div className="inline-flex items-center gap-1.5 rounded-control bg-primary-muted px-2.5 py-0.5 text-meta font-medium text-primary border border-primary-border">
                                 <BookOpen className="w-3 h-3" />
                                 实验目标
                             </div>
-                            <p className="text-base font-medium text-foreground leading-relaxed">完成抽样实验，形成完整报告。</p>
-                            <p className="text-sm text-muted-foreground">按步骤推进，及时提交，体验完整的数据分析流程。</p>
+                            <p className="text-body font-medium text-foreground leading-relaxed">完成抽样实验，形成完整报告。</p>
+                            <p className="text-label text-muted-foreground">按步骤推进，及时提交，体验完整的数据分析流程。</p>
                         </div>
-                        <div className="rounded-xl bg-card/80 border border-border px-5 py-3 shadow-sm backdrop-blur-sm min-w-[180px]">
-                            <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                        <div className="rounded-surface bg-card border border-border px-5 py-3 min-w-[180px]">
+                            <div className="text-meta text-muted-foreground font-medium uppercase tracking-wider">
                                 {notOpenYet ? "开放状态" : "截止状态"}
                             </div>
-                            <div className="text-xl font-bold text-foreground mt-0.5">
+                            <div className="text-section-title font-bold text-foreground mt-0.5">
                                 {notOpenYet ? getOpeningLabel(task.publishedAt) : getDeadlineLabel(task.deadline)}
                             </div>
-                            <div className="text-xs text-muted-foreground mt-0.5 font-mono">
+                            <div className="text-meta text-muted-foreground mt-0.5 font-mono">
                                 {notOpenYet
                                     ? `开放于 ${formatDateTime(task.publishedAt)}`
                                     : task.deadline ? formatDateTime(task.deadline) : "未设置截止时间"}
@@ -243,9 +243,9 @@ export function TopicDetails() {
 
             <div className="grid grid-cols-3 gap-4">
                 <div className="col-span-2 space-y-4">
-                    <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
+                    <Card className="rounded-surface border-border bg-card ">
                         <CardHeader className="border-b border-border pb-3">
-                            <CardTitle className="text-sm text-foreground flex items-center gap-2">
+                            <CardTitle className="text-label text-foreground flex items-center gap-2">
                                 <FileText className="w-4 h-4 text-primary" />
                                 课题介绍
                             </CardTitle>
@@ -253,16 +253,16 @@ export function TopicDetails() {
                         <CardContent className="pt-4 pb-4">
                             <RichTextContent
                                 html={task.description ?? ""}
-                                className="prose prose-sm prose-invert max-w-none text-foreground/90 leading-relaxed"
+                                className="prose max-w-none text-body text-foreground"
                                 emptyFallback="暂无描述"
                             />
                         </CardContent>
                     </Card>
 
                     {task.attachments.length > 0 && (
-                        <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
+                        <Card className="rounded-surface border-border bg-card ">
                             <CardHeader className="border-b border-border pb-3">
-                                <CardTitle className="text-sm text-foreground flex items-center gap-2">
+                                <CardTitle className="text-label text-foreground flex items-center gap-2">
                                     <Download className="w-4 h-4 text-primary" />
                                     相关资料 ({task.attachments.length})
                                 </CardTitle>
@@ -270,14 +270,14 @@ export function TopicDetails() {
                             <CardContent className="pt-3 pb-3">
                                 <div className="grid grid-cols-2 gap-2">
                                     {task.attachments.map((file) => (
-                                        <div key={file.id} className="flex items-center justify-between rounded-lg border border-input bg-muted/50 px-3 py-2 hover:bg-muted transition-colors group gap-2">
+                                        <div key={file.id} className="flex items-center justify-between rounded-surface border border-input bg-muted px-3 py-2 hover:bg-muted transition-colors group gap-2">
                                             <div className="flex items-center gap-2.5 overflow-hidden">
-                                                <div className="p-1.5 rounded-md bg-card border border-input shrink-0">
+                                                <div className="p-1.5 rounded-control bg-card border border-input shrink-0">
                                                     {getFileIcon(file.type)}
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">{file.name}</p>
-                                                    <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                                                    <p className="text-label font-medium text-foreground truncate group-hover:text-primary transition-colors">{file.name}</p>
+                                                    <p className="text-meta text-muted-foreground">{formatFileSize(file.size)}</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-0.5 shrink-0">
@@ -312,13 +312,13 @@ export function TopicDetails() {
                     )}
 
                     {task.status === "rejected" && task.rejectReason && (
-                        <Card className="rounded-2xl border-destructive/20 bg-destructive/10">
+                        <Card className="rounded-surface border-destructive-border bg-destructive-muted">
                             <CardContent className="py-4">
                                 <div className="flex items-start gap-2">
                                     <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
                                     <div>
-                                        <div className="text-sm font-semibold text-destructive mb-1">驳回理由</div>
-                                        <p className="text-destructive text-sm leading-relaxed opacity-90">{task.rejectReason}</p>
+                                        <div className="text-label font-semibold text-destructive mb-1">驳回理由</div>
+                                        <p className="text-destructive text-label leading-relaxed opacity-90">{task.rejectReason}</p>
                                     </div>
                                 </div>
                             </CardContent>
@@ -328,58 +328,58 @@ export function TopicDetails() {
                 </div>
 
                 <div className="space-y-4">
-                    <Card className="rounded-2xl border-border bg-card/50 shadow-sm h-fit">
+                    <Card className="rounded-surface border-border bg-card h-fit">
                         <CardHeader className="border-b border-border pb-3">
-                            <CardTitle className="text-sm text-foreground">任务状态</CardTitle>
+                            <CardTitle className="text-label text-foreground">任务状态</CardTitle>
                         </CardHeader>
                         <CardContent className="pt-4 pb-4 space-y-3">
                             <div className="space-y-0.5">
-                                <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium">当前阶段</div>
-                                <div className="text-sm font-medium text-foreground">{task.currentStage > 0 && task.currentStage <= 4 ? stageNames[task.currentStage - 1] : "尚未开始"}</div>
+                                <div className="text-meta text-muted-foreground uppercase tracking-wider font-medium">当前阶段</div>
+                                <div className="text-label font-medium text-foreground">{task.currentStage > 0 && task.currentStage <= 4 ? stageNames[task.currentStage - 1] : "尚未开始"}</div>
                             </div>
                             <div className="w-full h-px bg-muted" />
                             <div className="space-y-0.5">
-                                <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium">任务状态</div>
+                                <div className="text-meta text-muted-foreground uppercase tracking-wider font-medium">任务状态</div>
                                 <div className="flex items-center gap-2">
-                                    <span className={`w-2 h-2 rounded-full ${effectiveStatusDotClass}`}></span>
-                                    <span className="text-sm font-medium text-foreground">{effectiveStatus.label}</span>
+                                    <span className={`w-2 h-2 rounded-circle ${effectiveStatusDotClass}`}></span>
+                                    <span className="text-label font-medium text-foreground">{effectiveStatus.label}</span>
                                 </div>
                             </div>
                             <div className="w-full h-px bg-muted" />
                             <div className="space-y-0.5">
-                                <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium">操作提示</div>
-                                <div className="text-sm text-muted-foreground leading-relaxed">每个阶段只在点击“完成”或“下一步”时保存；中途离开会丢失本阶段未完成的修改。</div>
+                                <div className="text-meta text-muted-foreground uppercase tracking-wider font-medium">操作提示</div>
+                                <div className="text-label text-muted-foreground leading-relaxed">每个阶段只在点击“完成”或“下一步”时保存；中途离开会丢失本阶段未完成的修改。</div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-2xl border-primary/20 bg-primary/5 shadow-sm">
+                    <Card className="rounded-surface border-primary-border bg-primary-muted ">
                         <CardContent className="pt-4 pb-4 space-y-3">
-                            <div className="text-sm font-medium text-primary">
+                            <div className="text-label font-medium text-primary">
                                 {task.status === "submitted" || task.status === "graded" ? "已提交实验内容" : "准备好开始了吗？"}
                             </div>
                             {task.status === "graded" && task.score !== undefined && (
-                                <div className="flex items-center gap-2 rounded-lg bg-success/10 border border-success/20 px-3 py-2">
+                                <div className="flex items-center gap-2 rounded-surface bg-success-muted border border-success-border px-3 py-2">
                                     <CheckCircle className="w-4 h-4 text-success shrink-0" />
-                                    <span className="text-sm font-medium text-success">实验成绩</span>
-                                    <span className="text-xl font-bold text-success tracking-tight ml-auto">{task.score}</span>
+                                    <span className="text-label font-medium text-success">实验成绩</span>
+                                    <span className="text-section-title font-bold text-success tracking-tight ml-auto">{task.score}</span>
                                 </div>
                             )}
                             {action.link && !action.disabled ? (
                                 <Button
                                     asChild
                                     size="lg"
-                                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 h-11 text-base font-medium"
+                                    className="h-11 w-full bg-primary text-body font-medium text-primary-foreground hover:bg-primary-hover"
                                 >
                                     <Link to={action.link}>
                                         {action.text} <ChevronRight className="w-4 h-4 ml-1" />
                                     </Link>
                                 </Button>
                             ) : (
-                                <Button size="lg" className="w-full bg-muted hover:bg-muted text-foreground/90" disabled>{action.text}</Button>
+                                <Button size="lg" className="w-full bg-muted hover:bg-muted text-foreground" disabled>{action.text}</Button>
                             )}
                             {shouldShowTaskAvailabilityHint(task.status, canStartExperiment) && (
-                                <div className="flex items-center justify-center gap-1.5 text-xs text-destructive bg-destructive/10 p-2 rounded-lg">
+                                <div className="flex items-center justify-center gap-1.5 text-meta text-destructive bg-destructive-muted p-2 rounded-surface">
                                     <AlertTriangle className="w-3 h-3" />
                                     {notOpenYet ? "任务尚未开放，暂不可操作" : "任务已截止，无法继续操作"}
                                 </div>
@@ -389,14 +389,14 @@ export function TopicDetails() {
                 </div>
             </div>
 
-            <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
+            <Card className="rounded-surface border-border bg-card ">
                 <CardHeader className="border-b border-border pb-3">
-                    <CardTitle className="text-sm text-foreground">实验进度概览</CardTitle>
+                    <CardTitle className="text-label text-foreground">实验进度概览</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6 pb-5">
                     <div className="flex items-center justify-between relative px-4">
                         {/* Connecting Line - Background */}
-                        <div className="absolute left-4 right-4 top-5 h-1 bg-muted rounded-full -z-0"></div>
+                        <div className="absolute left-4 right-4 top-5 h-1 bg-muted rounded-control -z-0"></div>
 
                         {stageNames.map((stage, index) => {
                             const stageNum = index + 1;
@@ -406,16 +406,16 @@ export function TopicDetails() {
                             return (
                                 <div key={stage} className="flex flex-col items-center relative z-10 flex-1">
                                     <div className={`
-                                        w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-4 transition-all duration-300
+                                        w-10 h-10 rounded-control flex items-center justify-center text-label font-bold border-4 transition-colors duration-300
                                         ${isCompleted
-                                            ? "bg-success border-background text-success-foreground shadow-lg shadow-success/30"
+                                            ? "bg-success border-background text-success-foreground "
                                             : isCurrent
-                                                ? "bg-primary border-background text-primary-foreground ring-4 ring-primary/20 scale-110 shadow-lg shadow-primary/40"
+                                                ? "bg-primary border-background text-primary-foreground ring-4 ring-ring scale-110 "
                                                 : "bg-muted border-background text-muted-foreground"}
                                     `}>
                                         {isCompleted ? <CheckCircle className="w-5 h-5" /> : stageNum}
                                     </div>
-                                    <span className={`text-xs mt-2 font-medium transition-colors duration-300 ${isCurrent ? "text-primary" : isCompleted ? "text-success" : "text-muted-foreground"}`}>
+                                    <span className={`text-meta mt-2 font-medium transition-colors duration-300 ${isCurrent ? "text-primary" : isCompleted ? "text-success" : "text-muted-foreground"}`}>
                                         {stage}
                                     </span>
                                 </div>
@@ -436,15 +436,15 @@ export function TopicDetails() {
                             {previewFile?.name}
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="mt-4 rounded-xl border border-border bg-background/60 p-2">
+                    <div className="mt-4 rounded-surface border border-border bg-background p-2">
                         {previewType === "image" && (
-                            <img src={previewUrl} alt={previewFile?.name ?? "附件图片"} className="max-h-[70vh] w-full object-contain rounded-lg" />
+                            <img src={previewUrl} alt={previewFile?.name ?? "附件图片"} className="max-h-[70vh] w-full object-contain rounded-surface" />
                         )}
                         {previewType === "pdf" && (
-                            <iframe title={previewFile?.name ?? "PDF预览"} src={previewUrl} className="w-full h-[70vh] rounded-lg" />
+                            <iframe title={previewFile?.name ?? "PDF预览"} src={previewUrl} className="w-full h-[70vh] rounded-surface" />
                         )}
                         {previewType === "video" && (
-                            <video src={previewUrl} controls className="max-h-[70vh] w-full rounded-lg bg-overlay" />
+                            <video src={previewUrl} controls className="max-h-[70vh] w-full rounded-surface bg-overlay" />
                         )}
                     </div>
                 </DialogContent>

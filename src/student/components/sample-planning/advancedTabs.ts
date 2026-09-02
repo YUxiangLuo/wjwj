@@ -14,7 +14,7 @@ export type AdvancedNonStandardSampleSource = Extract<
 >;
 
 export const ADVANCED_TAB_ACTIVE_CLASS =
-    "bg-primary/10 border-primary/20 text-primary";
+    "bg-primary-muted border-primary-border text-primary";
 
 export const ADVANCED_TAB_CONFIG: Array<{
     key: AdvancedTab;

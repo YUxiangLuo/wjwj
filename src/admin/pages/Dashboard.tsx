@@ -28,23 +28,23 @@ export function Dashboard() {
         <div className="space-y-6">
             <div className="grid gap-4 grid-cols-5">
                 {cards.map(({ label, value, icon: Icon }) => (
-                    <Card key={label}><CardContent className="flex items-center justify-between gap-3 p-5"><div className="min-w-0"><p className="text-sm text-muted-foreground">{label}</p><p className={`mt-2 font-bold ${label === "当前学期" ? "whitespace-nowrap text-xl" : "text-2xl"}`}>{value}</p></div><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Icon className="h-5 w-5" /></span></CardContent></Card>
+                    <Card key={label}><CardContent className="flex items-center justify-between gap-3 p-5"><div className="min-w-0"><p className="text-label text-muted-foreground">{label}</p><p className={`mt-2 font-bold ${label === "当前学期" ? "whitespace-nowrap text-section-title" : "text-page-title"}`}>{value}</p></div><span className="grid h-11 w-11 shrink-0 place-items-center rounded-surface bg-primary-muted text-primary"><Icon className="h-5 w-5" /></span></CardContent></Card>
                 ))}
             </div>
             <Card>
                 <CardHeader className="flex-row items-center justify-between">
                     <CardTitle>
-                        <h2 className="flex items-center gap-2 text-lg">
+                        <h2 className="flex items-center gap-2 text-subheading">
                             <Megaphone className="h-5 w-5 text-primary" />
                             最近公告
                         </h2>
                     </CardTitle>
-                    <Link className="text-sm text-primary hover:underline" to="/announcement">管理公告</Link>
+                    <Link className="text-label text-primary hover:underline" to="/announcement">管理公告</Link>
                 </CardHeader>
                 <CardContent className="space-y-3">
                     {announcements.length ? announcements.map((item) => (
-                        <div key={item.id} className="rounded-xl border border-border p-4"><div className="flex items-center justify-between gap-4"><h3 className="font-medium">{item.title}</h3><span className="text-xs text-muted-foreground">{formatDateDisplay(item.createdAt, "-")}</span></div><RichTextContent html={item.content} className="mt-2 line-clamp-2 text-sm text-muted-foreground" /></div>
-                    )) : <p className="py-8 text-center text-sm text-muted-foreground">暂无已发布公告</p>}
+                        <div key={item.id} className="rounded-surface border border-border p-4"><div className="flex items-center justify-between gap-4"><h3 className="font-medium">{item.title}</h3><span className="text-meta text-muted-foreground">{formatDateDisplay(item.createdAt, "-")}</span></div><RichTextContent html={item.content} className="mt-2 line-clamp-2 text-label text-muted-foreground" /></div>
+                    )) : <p className="py-8 text-center text-label text-muted-foreground">暂无已发布公告</p>}
                 </CardContent>
             </Card>
         </div>

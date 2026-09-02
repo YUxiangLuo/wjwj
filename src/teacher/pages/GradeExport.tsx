@@ -137,16 +137,16 @@ export function GradeExport() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div>
-                <h2 className="text-lg font-semibold text-foreground">成绩导出</h2>
-                <p className="text-sm text-muted-foreground mt-1">按任务导出成绩，支持单项与批量导出。</p>
+                <h2 className="text-subheading font-semibold text-foreground">成绩导出</h2>
+                <p className="text-label text-muted-foreground mt-1">按任务导出成绩，支持单项与批量导出。</p>
             </div>
 
             <div className="grid grid-cols-4 gap-4">
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">任务数量</p>
-                            <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.totalTasks}</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">任务数量</p>
+                            <p className="text-page-title font-semibold text-foreground mt-1">{loading ? "-" : summary.totalTasks}</p>
                         </div>
                         <IconTile intent="info">
                             <Layers className="w-5 h-5" />
@@ -156,8 +156,8 @@ export function GradeExport() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已完成任务</p>
-                            <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.completedTasks}</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已完成任务</p>
+                            <p className="text-page-title font-semibold text-foreground mt-1">{loading ? "-" : summary.completedTasks}</p>
                         </div>
                         <IconTile intent="success">
                             <CheckCircle2 className="w-5 h-5" />
@@ -167,9 +167,9 @@ export function GradeExport() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">应交人次</p>
-                            <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.expectedCount}</p>
-                            <p className="mt-1 text-[11px] text-muted-foreground">按任务覆盖班级学生数累计，非实际提交数</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">应交人次</p>
+                            <p className="text-page-title font-semibold text-foreground mt-1">{loading ? "-" : summary.expectedCount}</p>
+                            <p className="mt-1 text-meta text-muted-foreground">按任务覆盖班级学生数累计，非实际提交数</p>
                         </div>
                         <IconTile intent="warning">
                             <Users className="w-5 h-5" />
@@ -179,8 +179,8 @@ export function GradeExport() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已批改</p>
-                            <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.totalGraded}</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已批改</p>
+                            <p className="text-page-title font-semibold text-foreground mt-1">{loading ? "-" : summary.totalGraded}</p>
                         </div>
                         <IconTile intent="auxiliary">
                             <FileSpreadsheet className="w-5 h-5" />
@@ -192,12 +192,12 @@ export function GradeExport() {
             <Card>
                 <PageHeader as={CardHeader}>
                     <div>
-                        <CardTitle className="text-base text-foreground">导出列表</CardTitle>
-                        <p className="text-xs text-muted-foreground mt-1">共 {preview.length} 条数据</p>
+                        <CardTitle className="text-body text-foreground">导出列表</CardTitle>
+                        <p className="text-meta text-muted-foreground mt-1">共 {preview.length} 条数据</p>
                     </div>
                     <div className="flex gap-3 flex-row w-auto flex-wrap">
                         <Select value={semesterFilter} onValueChange={(v) => { setSemesterFilter(v); setClassFilter("all"); }}>
-                            <SelectTrigger aria-label="按学期筛选导出任务" data-testid="teacher-export-semester-filter" className="bg-background border-border text-foreground w-40">
+                            <SelectTrigger aria-label="按学期筛选导出任务" data-testid="teacher-export-semester-filter" className="bg-card border-input text-foreground w-40">
                                 <SelectValue placeholder="全部学期" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
@@ -208,7 +208,7 @@ export function GradeExport() {
                             </SelectContent>
                         </Select>
                         <Select value={classFilter} onValueChange={setClassFilter}>
-                            <SelectTrigger aria-label="按班级筛选导出任务" data-testid="teacher-export-class-filter" className="bg-background border-border text-foreground w-40">
+                            <SelectTrigger aria-label="按班级筛选导出任务" data-testid="teacher-export-class-filter" className="bg-card border-input text-foreground w-40">
                                 <SelectValue placeholder="全部班级" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
@@ -219,7 +219,7 @@ export function GradeExport() {
                             </SelectContent>
                         </Select>
                         <Select value={topicFilter} onValueChange={setTopicFilter}>
-                            <SelectTrigger aria-label="按课题筛选导出任务" data-testid="teacher-export-topic-filter" className="bg-background border-border text-foreground w-40">
+                            <SelectTrigger aria-label="按课题筛选导出任务" data-testid="teacher-export-topic-filter" className="bg-card border-input text-foreground w-40">
                                 <SelectValue placeholder="全部课题" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
@@ -234,7 +234,7 @@ export function GradeExport() {
                             variant="outline"
                             disabled={selectedCount === 0 || exporting}
                             onClick={() => exportExcel()}
-                            className="border-primary bg-primary/10 text-primary hover:bg-primary/90 hover:text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="border-primary bg-primary-muted text-primary hover:bg-primary-hover hover:text-primary-foreground disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed"
                         >
                             <FileSpreadsheet className="w-4 h-4 mr-2" />
                             批量导出 ({selectedCount})
@@ -244,14 +244,14 @@ export function GradeExport() {
                 <CardContent className="pt-0">
                     <Table>
                         <TableHeader>
-                            <TableRow className="border-border hover:bg-card/50">
+                            <TableRow className="border-border hover:bg-card">
                                 <TableHead className="w-12 text-center text-muted-foreground">
                                     <span className="sr-only">选择任务</span>
                                     <input
                                         aria-label="选择全部导出任务"
                                         data-testid="teacher-export-check-all"
                                         type="checkbox"
-                                        className="rounded border-input bg-card text-primary focus:ring-ring/20 w-4 h-4 cursor-pointer"
+                                        className="rounded-control border-input bg-card text-primary focus:ring-ring w-4 h-4 cursor-pointer"
                                         checked={selectedTaskIds.length > 0 && selectedTaskIds.length === preview.length}
                                         onChange={(e) => {
                                             if (e.target.checked) {
@@ -278,7 +278,7 @@ export function GradeExport() {
                                 <TableRow>
                                     <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                                         <div className="flex flex-col items-center gap-2">
-                                            <div className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center">
+                                            <div className="w-12 h-12 rounded-control bg-card border border-border flex items-center justify-center">
                                                 <Search className="w-6 h-6 text-muted-foreground" />
                                             </div>
                                             <p>暂无符合条件的数据</p>
@@ -286,25 +286,25 @@ export function GradeExport() {
                                     </TableCell>
                                 </TableRow>
                             ) : preview.map((task) => (
-                                <TableRow data-testid={`teacher-export-row-${task.taskId}`} key={task.taskId} className="border-border hover:bg-muted/50 transition-colors">
+                                <TableRow data-testid={`teacher-export-row-${task.taskId}`} key={task.taskId} className="border-border hover:bg-muted transition-colors">
                                     <TableCell className="text-center">
                                         <input
                                             aria-label={`选择导出任务：${task.topic}，${task.className}`}
                                             data-testid={`teacher-export-check-${task.taskId}`}
                                             type="checkbox"
-                                            className="rounded border-input bg-card text-primary focus:ring-ring/20 w-4 h-4 cursor-pointer"
+                                            className="rounded-control border-input bg-card text-primary focus:ring-ring w-4 h-4 cursor-pointer"
                                             checked={selectedTaskIds.includes(task.taskId)}
                                             onChange={() => toggleTask(task.taskId)}
                                         />
                                     </TableCell>
                                     <TableCell className="font-medium text-foreground">{task.topic}</TableCell>
-                                    <TableCell className="text-foreground/90">{task.className}</TableCell>
+                                    <TableCell className="text-foreground">{task.className}</TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
                                             <Progress aria-label={`${task.topic}批改进度`} value={task.total > 0 ? (task.graded / task.total) * 100 : 0} className="w-20 h-1.5 bg-muted [&>div]:bg-success" />
-                                            <span className="text-xs text-muted-foreground">{task.graded}/{task.total}</span>
+                                            <span className="text-meta text-muted-foreground">{task.graded}/{task.total}</span>
                                             {task.graded === task.total && task.total > 0 && (
-                                                <StatusBadge intent="success" className="text-[10px] h-5">已完成</StatusBadge>
+                                                <StatusBadge intent="success" className="text-meta h-5">已完成</StatusBadge>
                                             )}
                                         </div>
                                     </TableCell>
@@ -315,7 +315,7 @@ export function GradeExport() {
                                             variant="ghost"
                                             size="sm"
                                             disabled={exporting}
-                                            className="h-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                            className="h-8 text-muted-foreground hover:text-primary hover:bg-primary-muted"
                                             onClick={() => exportExcel(task.taskId)}
                                         >
                                             <Download className="w-3.5 h-3.5 mr-1" />

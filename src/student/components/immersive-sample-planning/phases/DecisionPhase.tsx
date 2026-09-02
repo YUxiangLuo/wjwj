@@ -268,18 +268,18 @@ export function DecisionPhase({
     return (
         <div className="space-y-6">
             <div className="text-center space-y-2">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-xs font-medium text-primary">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-control bg-primary-muted text-meta font-medium text-primary">
                     决策面板
                 </span>
-                <h2 className="text-2xl font-bold text-foreground">确认会用于抽样执行的最终样本量</h2>
-                <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
+                <h2 className="text-page-title font-bold text-foreground">确认会用于抽样执行的最终样本量</h2>
+                <p className="text-label text-muted-foreground max-w-2xl mx-auto">
                     这里确认的 n 会保存到实验，并直接带入下一阶段的抽样执行与后续分析报告。
                 </p>
             </div>
 
             {hasAdvancedSource && (
-                <div className="rounded-xl border border-warning/20 bg-warning/10 px-4 py-3 flex flex-row items-center justify-between gap-3">
-                    <div className="flex items-start gap-2 text-sm text-warning">
+                <div className="rounded-surface border border-warning-border bg-warning-muted px-4 py-3 flex flex-row items-center justify-between gap-3">
+                    <div className="flex items-start gap-2 text-label text-warning">
                         <Info className="w-4 h-4 shrink-0 mt-0.5 text-warning" />
                         <span>
                             当前最终样本量正在使用高级工具「<span className="font-semibold">{sourceLabel}</span>」的结果；左侧继续显示常规公式建议值。若继续修改参数或最终样本量，将自动切回常规规划；解释当前 n 时请以该工具内推演为准。
@@ -290,7 +290,7 @@ export function DecisionPhase({
                         variant="outline"
                         size="sm"
                         onClick={onClearAdvancedSource}
-                        className="shrink-0 border-warning bg-background text-warning hover:bg-warning/10"
+                        className="shrink-0 border-warning bg-background text-warning hover:bg-warning-muted"
                     >
                         按常规继续
                     </Button>
@@ -299,16 +299,16 @@ export function DecisionPhase({
 
             <div className="grid grid-cols-2 gap-4">
                 {/* Left: Parameter controls */}
-                <div className="rounded-2xl border border-border bg-background p-5 space-y-5 shadow-sm transition-colors">
-                    <h3 className="text-sm font-semibold text-foreground/90">常规公式参数</h3>
+                <div className="rounded-surface border border-border bg-background p-5 space-y-5 transition-colors">
+                    <h3 className="text-label font-semibold text-foreground">常规公式参数</h3>
 
                     <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">置信水平</Label>
+                        <Label className="text-meta text-muted-foreground">置信水平</Label>
                         <Select
                             value={params.confidenceLevel}
                             onValueChange={onConfidenceLevelChange}
                         >
-                            <SelectTrigger aria-label="常规公式置信水平" className="h-9 text-sm bg-card border-border">
+                            <SelectTrigger aria-label="常规公式置信水平" className="h-9 text-label bg-card border-input">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -321,8 +321,8 @@ export function DecisionPhase({
 
                     <div className="space-y-1.5">
                         <div className="flex justify-between">
-                            <Label className="text-xs text-muted-foreground">{currentMarginLabel}</Label>
-                            <span className="text-xs font-bold text-info tabular-nums">
+                            <Label className="text-meta text-muted-foreground">{currentMarginLabel}</Label>
+                            <span className="text-meta font-bold text-info tabular-nums">
                                 {currentMarginValue}
                             </span>
                         </div>
@@ -335,9 +335,9 @@ export function DecisionPhase({
                                     onChange={(e) => onMarginOfErrorChange(Number.parseFloat(e.target.value) || 0)}
                                     min={0.01}
                                     step={0.1}
-                                    className="h-9 bg-card border-border"
+                                    className="h-9 bg-card border-input"
                                 />
-                                <p className="text-[11px] text-muted-foreground">
+                                <p className="text-meta text-muted-foreground">
                                     均值估计使用与指标同单位的绝对误差，不使用百分比滑块。
                                 </p>
                             </div>
@@ -354,8 +354,8 @@ export function DecisionPhase({
 
                     <div className="space-y-1.5">
                         <div className="flex justify-between">
-                            <Label className="text-xs text-muted-foreground">设计效应</Label>
-                            <span className="text-xs font-bold text-warning tabular-nums">{params.designEffect.toFixed(1)}</span>
+                            <Label className="text-meta text-muted-foreground">设计效应</Label>
+                            <span className="text-meta font-bold text-warning tabular-nums">{params.designEffect.toFixed(1)}</span>
                         </div>
                         <Slider
                             aria-label="设计效应"
@@ -368,8 +368,8 @@ export function DecisionPhase({
 
                     <div className="space-y-1.5">
                         <div className="flex justify-between">
-                            <Label className="text-xs text-muted-foreground">无回答率</Label>
-                            <span className="text-xs font-bold text-destructive tabular-nums">{Math.round(params.nonResponseRate * 100)}%</span>
+                            <Label className="text-meta text-muted-foreground">无回答率</Label>
+                            <span className="text-meta font-bold text-destructive tabular-nums">{Math.round(params.nonResponseRate * 100)}%</span>
                         </div>
                         <Slider
                             aria-label="预期无回答率"
@@ -382,13 +382,13 @@ export function DecisionPhase({
                 </div>
 
                 {/* Right: Metrics gauge */}
-                <div className="rounded-2xl border border-border bg-background p-5 shadow-sm flex flex-col items-center justify-center space-y-4 transition-colors">
-                    <h3 className="text-sm font-semibold text-foreground/90">常规公式建议值</h3>
-                    <div className="text-5xl font-black tabular-nums text-primary">
+                <div className="rounded-surface border border-border bg-background p-5 flex flex-col items-center justify-center space-y-4 transition-colors">
+                    <h3 className="text-label font-semibold text-foreground">常规公式建议值</h3>
+                    <div className="text-display font-black tabular-nums text-primary">
                         {recommendedSize.toLocaleString()}
                     </div>
                     {recommendedSize >= N && N > 0 && (
-                        <p className="text-xs text-warning text-center">
+                        <p className="text-meta text-warning text-center">
                             已达全体发放上限（邀请 n = N = {N.toLocaleString()}）。
                             {params.nonResponseRate > 0
                                 ? `最多邀请 ${N.toLocaleString()} 人，预期完成约 ${Math.ceil(metrics?.expectedCompleted ?? 0).toLocaleString()} 人；不等于完整普查。`
@@ -396,7 +396,7 @@ export function DecisionPhase({
                         </p>
                     )}
                     {metrics?.precisionUnreachable && (
-                        <p className="text-xs text-destructive text-center">
+                        <p className="text-meta text-destructive text-center">
                             目标精度不可达。当前预期误差限约 {isMeanEstimation
                                 ? formattedMeanMetricMargin
                                 : `±${(metrics.marginOfError * 100).toFixed(2)}%`}
@@ -409,7 +409,7 @@ export function DecisionPhase({
                         ))}
                     </div>
                     {hasAdvancedSource && (
-                        <p className="text-center text-[11px] text-warning">
+                        <p className="text-center text-meta text-warning">
                             当前最终样本量来自「{sourceLabel}」，这里仍展示常规公式建议值。
                         </p>
                     )}
@@ -418,9 +418,9 @@ export function DecisionPhase({
 
             {/* Sensitivity heatmap */}
             {sensitivity && (
-                <div className="rounded-2xl border border-border bg-background p-5 shadow-sm space-y-3 transition-opacity">
-                    <h3 className="text-sm font-semibold text-foreground/90">常规公式权衡探索</h3>
-                    <p className="text-xs text-muted-foreground">看看不同置信水平与允许误差组合下，样本量会如何变化。</p>
+                <div className="rounded-surface border border-border bg-background p-5 space-y-3 transition-opacity">
+                    <h3 className="text-label font-semibold text-foreground">常规公式权衡探索</h3>
+                    <p className="text-meta text-muted-foreground">看看不同置信水平与允许误差组合下，样本量会如何变化。</p>
                     <SensitivityGrid
                         data={sensitivity}
                         currentCL={params.confidenceLevel}
@@ -430,8 +430,8 @@ export function DecisionPhase({
             )}
 
             {/* Advanced tools */}
-            <details className="rounded-2xl border border-border bg-background p-5 shadow-sm">
-                <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold text-foreground/90">
+            <details className="rounded-surface border border-border bg-background p-5 ">
+                <summary className="flex cursor-pointer list-none items-center gap-2 text-label font-semibold text-foreground">
                     <Wrench className="w-4 h-4 text-muted-foreground" />
                     高级工具（可选）
                 </summary>
@@ -456,11 +456,11 @@ export function DecisionPhase({
                                     setActiveAdvancedTab(key);
                                 }}
                                 className={cn(
-                                    "rounded-lg border px-2.5 py-2 text-xs font-medium transition-colors",
+                                    "rounded-surface border px-2.5 py-2 text-meta font-medium transition-colors",
                                     isDisabled && "opacity-45 cursor-not-allowed",
                                     isActiveSource
-                                        ? "ring-2 ring-primary border-primary bg-primary text-primary-foreground shadow-sm"
-                                        : "border-border bg-card text-muted-foreground hover:bg-primary/10 hover:border-primary hover:text-primary",
+                                        ? "ring-2 ring-primary border-primary bg-primary text-primary-foreground "
+                                        : "border-border bg-card text-muted-foreground hover:bg-primary-muted hover:border-primary hover:text-primary",
                                 )}
                             >
                                 {label}
@@ -484,23 +484,23 @@ export function DecisionPhase({
                         const config = ADVANCED_TAB_CONFIG.find(c => c.key === activeAdvancedTab);
                         return (
                             <DialogHeader className="border-b border-border pb-4 mb-1 space-y-2">
-                                <DialogTitle className="text-xl font-semibold tracking-tight text-foreground pr-8">
+                                <DialogTitle className="text-section-title font-semibold tracking-tight text-foreground pr-8">
                                     {config?.title}
                                 </DialogTitle>
-                                <DialogDescription className="text-muted-foreground text-sm leading-relaxed">
+                                <DialogDescription className="text-muted-foreground text-label leading-relaxed">
                                     {config?.description}
                                 </DialogDescription>
                                 {config && (
-                                    <div className="grid grid-cols-3 gap-2 pt-2 text-xs leading-relaxed" data-testid="student-advanced-tool-scope">
-                                        <div className="rounded-lg border border-border bg-card p-2">
+                                    <div className="grid grid-cols-3 gap-2 pt-2 text-meta leading-relaxed" data-testid="student-advanced-tool-scope">
+                                        <div className="rounded-surface border border-border bg-card p-2">
                                             <p className="font-semibold text-foreground">目标估计量</p>
                                             <p className="mt-1 text-muted-foreground">{config.targetEstimand}</p>
                                         </div>
-                                        <div className="rounded-lg border border-border bg-card p-2">
+                                        <div className="rounded-surface border border-border bg-card p-2">
                                             <p className="font-semibold text-foreground">假设与数据来源</p>
                                             <p className="mt-1 text-muted-foreground">{config.assumptionsAndSource}</p>
                                         </div>
-                                        <div className="rounded-lg border border-border bg-card p-2">
+                                        <div className="rounded-surface border border-border bg-card p-2">
                                             <p className="font-semibold text-foreground">适用范围与限制</p>
                                             <p className="mt-1 text-muted-foreground">{config.scopeAndLimitations}</p>
                                         </div>
@@ -539,7 +539,7 @@ export function DecisionPhase({
                                         toast.success("已应用子总体设置");
                                         closeAdvancedDialog();
                                     }}
-                                    className="bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50"
+                                    className="bg-primary hover:bg-primary-hover text-primary-foreground disabled:bg-muted disabled:text-muted-foreground disabled:border-border"
                                 >
                                     应用到样本量规划
                                 </Button>
@@ -589,7 +589,7 @@ export function DecisionPhase({
                                         toast.success(`已应用设计效应 deff = ${deffDraft.toFixed(1)}`);
                                         closeAdvancedDialog();
                                     }}
-                                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                                    className="bg-primary hover:bg-primary-hover text-primary-foreground"
                                 >
                                     应用到样本量规划
                                 </Button>
@@ -697,7 +697,7 @@ export function DecisionPhase({
                                 <Button
                                     type="button"
                                     onClick={closeAdvancedDialog}
-                                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                                    className="bg-primary hover:bg-primary-hover text-primary-foreground"
                                 >
                                     完成
                                 </Button>
@@ -706,7 +706,7 @@ export function DecisionPhase({
                     )}
                     {activeAdvancedTab === "metrics" && !metrics && (
                         <>
-                            <p className="text-sm text-muted-foreground py-4">
+                            <p className="text-label text-muted-foreground py-4">
                                 当前参数下无法计算指标（例如总体规模无效）。请先在决策面板中设定有效的置信水平与允许误差。
                             </p>
                             <div className="flex justify-end pt-4 border-t border-border">
@@ -727,16 +727,16 @@ export function DecisionPhase({
             {/* Final sample size */}
             <div
                 className={cn(
-                    "rounded-2xl border p-5 shadow-sm space-y-3 transition-colors",
+                    "rounded-surface border p-5 space-y-3 transition-colors",
                     isValidSize
                         ? "border-border bg-background"
-                        : "border-destructive bg-destructive/10",
+                        : "border-destructive bg-destructive-muted",
                 )}
             >
-                <h3 className="text-sm font-semibold text-foreground/90">最终样本量（将带入抽样执行）</h3>
+                <h3 className="text-label font-semibold text-foreground">最终样本量（将带入抽样执行）</h3>
                 <div className="flex gap-3 items-end">
                     <div className="flex-1 space-y-1">
-                        <div className="flex justify-between text-xs">
+                        <div className="flex justify-between text-meta">
                             <span className="text-muted-foreground">这里实际准备调查多少人</span>
                             <span className="text-success font-medium">
                                 建议值 {recommendedSize.toLocaleString()}
@@ -755,11 +755,11 @@ export function DecisionPhase({
                                 max={maxSize}
                                 data-testid="immersive-sp-final-size"
                                 className={cn(
-                                    "pr-12 text-lg font-bold bg-background border-border",
+                                    "pr-12 text-subheading font-bold bg-card border-input",
                                     isValidSize ? "text-primary" : "text-destructive",
                                 )}
                             />
-                            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">人</span>
+                            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground text-label">人</span>
                         </div>
                     </div>
                     <Button
@@ -775,16 +775,16 @@ export function DecisionPhase({
                         重置
                     </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-meta text-muted-foreground">
                     这里确认的 n 会作为下一阶段抽样执行的目标样本量。
                 </p>
                 {hasAdvancedSource && (
-                    <p className="text-xs text-warning">
+                    <p className="text-meta text-warning">
                         当前最终样本量保留了「{sourceLabel}」的结果。手动修改或重置后，将自动切回常规规划。
                     </p>
                 )}
                 {!isValidSize && (
-                    <div className="flex items-center gap-2 text-sm text-destructive">
+                    <div className="flex items-center gap-2 text-label text-destructive">
                         <Info className="w-4 h-4 shrink-0" />
                         样本量需在 {minSize} – {maxSize.toLocaleString()} 之间
                     </div>
@@ -797,7 +797,7 @@ export function DecisionPhase({
                     onClick={onNext}
                     disabled={!isValidSize}
                     data-testid="immersive-sp-decision-next"
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-5 rounded-xl shadow-lg shadow-primary/20 disabled:opacity-40"
+                    className="rounded-surface bg-primary px-8 py-5 text-primary-foreground hover:bg-primary-hover disabled:border-border disabled:bg-muted disabled:text-muted-foreground"
                 >
                     继续：完成理解自检
                     <ChevronRight className="w-5 h-5 ml-2" />
@@ -811,9 +811,9 @@ export function DecisionPhase({
 
 function MetricBadge({ label, value }: { label: string; value: string }) {
     return (
-        <div className="rounded-lg bg-card px-2 py-2">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-            <p className="text-xs font-bold tabular-nums text-foreground/90 mt-0.5">{value}</p>
+        <div className="rounded-surface bg-card px-2 py-2">
+            <p className="text-meta font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+            <p className="text-meta font-bold tabular-nums text-foreground mt-0.5">{value}</p>
         </div>
     );
 }
@@ -836,7 +836,7 @@ function SensitivityGrid({
 
     return (
         <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table className="w-full text-meta">
                 <thead>
                     <tr>
                         <th className="text-left text-muted-foreground font-normal pb-2 pr-2">置信↓ / 误差→</th>
@@ -869,7 +869,7 @@ function SensitivityGrid({
                                     return (
                                         <td key={me} className="px-1 py-1">
                                             <div
-                                                className={`rounded px-1.5 py-1 text-center tabular-nums transition-colors ${
+                                                className={`rounded-control px-1.5 py-1 text-center tabular-nums transition-colors ${
                                                     isCurrent
                                                         ? "bg-primary text-primary-foreground font-bold ring-2 ring-primary ring-offset-1"
                                                         : `text-muted-foreground`

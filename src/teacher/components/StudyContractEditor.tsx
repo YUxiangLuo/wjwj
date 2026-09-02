@@ -21,9 +21,9 @@ export interface FieldMappingState {
 }
 
 /**
- * 对照变量变化时同步研究问题：仅当教师没有手写（为空或仍是上一份默认值）时才重新生成，
- * 避免覆盖教师的自定义表述。
- */
+  * 对照变量变化时同步研究问题：仅当教师没有手写（为空或仍是上一份默认值）时才重新生成，
+  * 避免覆盖教师的自定义表述。
+  */
 export function resolveResearchQuestionForTargetChange(params: {
     topicName: string;
     previousTarget?: AnalysisTarget;
@@ -71,10 +71,10 @@ export function isStudyContractComplete(contract: StudyContract | null | undefin
 }
 
 /**
- * 研究合同编辑器：在对照变量之外补齐研究问题、目标总体和分析单位。
- * 同时维护 fieldMapping.studyContract 与旧版 analysisTarget（两者 target 保持一致），
- * 保证学生端与历史数据读取始终兼容。
- */
+  * 研究合同编辑器：在对照变量之外补齐研究问题、目标总体和分析单位。
+  * 同时维护 fieldMapping.studyContract 与旧版 analysisTarget（两者 target 保持一致），
+  * 保证学生端与历史数据读取始终兼容。
+  */
 export function StudyContractEditor({
     value,
     onChange,
@@ -137,16 +137,16 @@ export function StudyContractEditor({
     };
 
     return (
-        <div className="space-y-3 rounded-lg border border-border bg-background p-4" data-testid="teacher-study-contract-editor">
+        <div className="space-y-3 rounded-surface border border-border bg-background p-4" data-testid="teacher-study-contract-editor">
             <div>
-                <Label className="text-foreground/90">研究合同（必选）</Label>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <Label className="text-foreground">研究合同（必选）</Label>
+                <p className="mt-1 text-meta text-muted-foreground">
                     学生的规划与分析都钉在这份研究目标上。问卷是预试，答案不进入估计。PPS 规模变量不能与对照变量相同。
                 </p>
             </div>
 
             <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">研究问题</Label>
+                <Label className="text-meta text-muted-foreground">研究问题</Label>
                 <Textarea
                     value={contract?.researchQuestion ?? (target ? buildDefaultResearchQuestion(topicName, target) : "")}
                     disabled={disabled || !target}
@@ -156,13 +156,13 @@ export function StudyContractEditor({
                     aria-label="研究问题"
                     data-testid="teacher-contract-question"
                     onChange={(e) => updateText("researchQuestion", e.target.value)}
-                    className="bg-background border-border text-foreground"
+                    className="bg-card border-input text-foreground"
                 />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">目标总体</Label>
+                    <Label className="text-meta text-muted-foreground">目标总体</Label>
                     <Input
                         value={contract?.targetPopulation ?? "上传总体数据中的全部单位"}
                         disabled={disabled || !target}
@@ -171,11 +171,11 @@ export function StudyContractEditor({
                         aria-label="目标总体"
                         data-testid="teacher-contract-population"
                         onChange={(e) => updateText("targetPopulation", e.target.value)}
-                        className="bg-background border-border text-foreground"
+                        className="bg-card border-input text-foreground"
                     />
                 </div>
                 <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">分析单位</Label>
+                    <Label className="text-meta text-muted-foreground">分析单位</Label>
                     <Input
                         value={contract?.unitOfAnalysis ?? "总体数据中的一行记录"}
                         disabled={disabled || !target}
@@ -184,14 +184,14 @@ export function StudyContractEditor({
                         aria-label="分析单位"
                         data-testid="teacher-contract-unit"
                         onChange={(e) => updateText("unitOfAnalysis", e.target.value)}
-                        className="bg-background border-border text-foreground"
+                        className="bg-card border-input text-foreground"
                     />
                 </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">估计类型</Label>
+                    <Label className="text-meta text-muted-foreground">估计类型</Label>
                     <Select
                         value={target?.kind ?? ""}
                         disabled={disabled}
@@ -209,7 +209,7 @@ export function StudyContractEditor({
                             updateTarget(field ? { kind: "proportion", field, value: "" } : undefined);
                         }}
                     >
-                        <SelectTrigger aria-label="选择对照估计类型" data-testid="teacher-topic-analysis-kind" className="bg-background border-border">
+                        <SelectTrigger aria-label="选择对照估计类型" data-testid="teacher-topic-analysis-kind" className="bg-card border-input">
                             <SelectValue placeholder="选择均值或比例" />
                         </SelectTrigger>
                         <SelectContent>
@@ -219,7 +219,7 @@ export function StudyContractEditor({
                     </Select>
                 </div>
                 <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">字段</Label>
+                    <Label className="text-meta text-muted-foreground">字段</Label>
                     <Select
                         value={target?.field ?? ""}
                         disabled={disabled || !target?.kind}
@@ -231,7 +231,7 @@ export function StudyContractEditor({
                             }
                         }}
                     >
-                        <SelectTrigger aria-label="选择对照字段" data-testid="teacher-topic-analysis-field" className="bg-background border-border">
+                        <SelectTrigger aria-label="选择对照字段" data-testid="teacher-topic-analysis-field" className="bg-card border-input">
                             <SelectValue placeholder="选择对照字段" />
                         </SelectTrigger>
                         <SelectContent>
@@ -244,7 +244,7 @@ export function StudyContractEditor({
             </div>
             {target?.kind === "proportion" && (
                 <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">成功类别</Label>
+                    <Label className="text-meta text-muted-foreground">成功类别</Label>
                     <Select
                         value={target.value}
                         disabled={disabled || analysisCategoryValues.length === 0}
@@ -254,7 +254,7 @@ export function StudyContractEditor({
                             }
                         }}
                     >
-                        <SelectTrigger aria-label="选择比例对照类别" data-testid="teacher-topic-analysis-value" className="bg-background border-border">
+                        <SelectTrigger aria-label="选择比例对照类别" data-testid="teacher-topic-analysis-value" className="bg-card border-input">
                             <SelectValue placeholder="选择要估计的类别" />
                         </SelectTrigger>
                         <SelectContent>

@@ -82,16 +82,16 @@ export function ImmersiveExperimentLaunch({
     }, [handleClose]);
 
     const params = [
-        { icon: Target, label: "总体规模", value: populationSize.toLocaleString(), color: "text-primary", bg: "bg-primary/10", border: "border-primary/20" },
-        { icon: Hash, label: "样本量", value: sampleSize.toLocaleString(), color: "text-info", bg: "bg-info/10", border: "border-info/20" },
-        { icon: Shield, label: "置信水平", value: CONFIDENCE_LABELS[confidenceLevel] ?? `${confidenceLevel}%`, color: "text-warning", bg: "bg-warning/10", border: "border-warning/20" },
+        { icon: Target, label: "总体规模", value: populationSize.toLocaleString(), color: "text-primary", bg: "bg-primary-muted", border: "border-primary-border" },
+        { icon: Hash, label: "样本量", value: sampleSize.toLocaleString(), color: "text-info", bg: "bg-info-muted", border: "border-info-border" },
+        { icon: Shield, label: "置信水平", value: CONFIDENCE_LABELS[confidenceLevel] ?? `${confidenceLevel}%`, color: "text-warning", bg: "bg-warning-muted", border: "border-warning-border" },
         {
             icon: Target,
             label: getMarginOfErrorLabel(estimationType),
             value: formatMarginOfError(marginOfError, estimationType),
             color: "text-destructive",
-            bg: "bg-destructive/10",
-            border: "border-destructive/20",
+            bg: "bg-destructive-muted",
+            border: "border-destructive-border",
         },
     ];
 
@@ -100,37 +100,17 @@ export function ImmersiveExperimentLaunch({
             className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
             style={{ opacity, transition: "opacity 300ms ease" }}
         >
-            {/* background */}
-            <div className="absolute inset-0 bg-background">
-                {/* subtle grid pattern */}
-                <div
-                    className="absolute inset-0 opacity-[0.03]"
-                    style={{
-                        backgroundImage: `linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)`,
-                        backgroundSize: "40px 40px",
-                    }}
-                />
-                {/* radial glow */}
-                <div
-                    className="absolute inset-0 transition-opacity duration-1000"
-                    style={{
-                        background: phase.type === "launch"
-                            ? "radial-gradient(circle at 50% 50%, rgba(99,102,241,0.3) 0%, transparent 60%)"
-                            : "radial-gradient(circle at 50% 50%, rgba(99,102,241,0.08) 0%, transparent 60%)",
-                        opacity: phase.type === "launch" ? 1 : 0.6,
-                    }}
-                />
-            </div>
+            <div className="absolute inset-0 bg-background" />
 
             {/* content */}
             <div className="relative z-10 flex flex-col items-center text-center px-6 max-w-2xl">
                 {/* intro phase */}
                 {phase.type === "intro" && (
-                    <div className="animate-in fade-in zoom-in-95 duration-700">
-                        <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-6">
+                    <div className="animate-in fade-in duration-500">
+                        <div className="w-20 h-20 rounded-surface bg-primary-muted border border-primary-border flex items-center justify-center mx-auto mb-6">
                             <Rocket className="w-10 h-10 text-primary" />
                         </div>
-                        <h1 className="text-3xl font-bold text-foreground mb-3">实验准备就绪</h1>
+                        <h1 className="text-display font-bold text-foreground mb-3">实验准备就绪</h1>
                         <p className="text-muted-foreground">正在检查实验参数...</p>
                     </div>
                 )}
@@ -138,7 +118,7 @@ export function ImmersiveExperimentLaunch({
                 {/* params phase */}
                 {phase.type === "params" && (
                     <div className="w-full">
-                        <h2 className="text-xl font-semibold text-foreground mb-6 animate-in fade-in duration-500">
+                        <h2 className="text-section-title font-semibold text-foreground mb-6 animate-in fade-in duration-500">
                             实验参数确认
                         </h2>
                         <div className="grid grid-cols-2 gap-4 mb-6">
@@ -147,21 +127,21 @@ export function ImmersiveExperimentLaunch({
                                 return (
                                     <div
                                         key={p.label}
-                                        className={`rounded-xl ${p.bg} border ${p.border} p-4 text-left animate-in fade-in slide-in-from-bottom-4 duration-500`}
+                                        className={`rounded-surface ${p.bg} border ${p.border} p-4 text-left animate-in fade-in slide-in-from-bottom-4 duration-500`}
                                         style={{ animationDelay: `${i * 120}ms`, animationFillMode: "both" }}
                                     >
                                         <div className="flex items-center gap-2 mb-2">
                                             <Icon className={`w-4 h-4 ${p.color}`} />
-                                            <span className="text-xs text-muted-foreground">{p.label}</span>
+                                            <span className="text-meta text-muted-foreground">{p.label}</span>
                                         </div>
-                                        <div className={`text-2xl font-bold font-mono ${p.color}`}>
+                                        <div className={`text-page-title font-bold font-mono ${p.color}`}>
                                             {p.value}
                                         </div>
                                     </div>
                                 );
                             })}
                         </div>
-                        <p className="text-sm text-muted-foreground animate-in fade-in duration-500" style={{ animationDelay: "600ms", animationFillMode: "both" }}>
+                        <p className="text-label text-muted-foreground animate-in fade-in duration-500" style={{ animationDelay: "600ms", animationFillMode: "both" }}>
                             即将进入抽样执行阶段...
                         </p>
                     </div>
@@ -169,30 +149,30 @@ export function ImmersiveExperimentLaunch({
 
                 {/* launch phase */}
                 {phase.type === "launch" && (
-                    <div className="animate-in fade-in zoom-in-50 duration-500">
+                    <div className="animate-in fade-in duration-500">
                         <div className="mb-4">
                             <Rocket className="w-16 h-16 text-primary mx-auto animate-bounce" />
                         </div>
-                        <h1 className="text-4xl font-black bg-gradient-to-r from-primary via-info to-primary bg-clip-text text-transparent mb-2">
+                        <h1 className="mb-2 text-display font-bold text-primary">
                             启动实验!
                         </h1>
-                        <p className="text-muted-foreground text-lg">正在初始化抽样环境...</p>
+                        <p className="text-muted-foreground text-subheading">正在初始化抽样环境...</p>
                     </div>
                 )}
 
                 {/* ready phase */}
                 {phase.type === "ready" && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="w-16 h-16 rounded-full bg-success/10 border border-success/20 flex items-center justify-center mx-auto mb-6">
+                        <div className="w-16 h-16 rounded-control bg-success-muted border border-success-border flex items-center justify-center mx-auto mb-6">
                             <Rocket className="w-8 h-8 text-success" />
                         </div>
-                        <h2 className="text-2xl font-bold text-foreground mb-2">准备就绪</h2>
+                        <h2 className="text-page-title font-bold text-foreground mb-2">准备就绪</h2>
                         <p className="text-muted-foreground mb-8">
                             总体 {populationSize.toLocaleString()} 人，计划抽取 {sampleSize.toLocaleString()} 个样本
                         </p>
                         <button
                             onClick={handleProceed}
-                            className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold transition-colors shadow-lg shadow-primary/30"
+                            className="inline-flex items-center gap-2 px-8 py-3 rounded-surface bg-primary hover:bg-primary-hover text-primary-foreground font-semibold transition-colors "
                         >
                             进入抽样执行
                             <ChevronRight className="w-5 h-5" />

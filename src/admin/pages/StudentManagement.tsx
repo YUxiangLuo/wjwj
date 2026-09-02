@@ -152,7 +152,7 @@ export function StudentManagement() {
         <Card>
             <CardHeader>
                 <CardTitle>学生管理</CardTitle>
-                <p className="text-sm text-muted-foreground">查看学生状态与实验进度，支持停用账号和重置密码。</p>
+                <p className="text-label text-muted-foreground">查看学生状态与实验进度，支持停用账号和重置密码。</p>
             </CardHeader>
             <CardContent>
                 <div className="mb-4 flex flex-wrap items-end gap-2">
@@ -206,8 +206,8 @@ export function StudentManagement() {
                         <Loader2 aria-hidden="true" className="h-6 w-6 animate-spin" />
                     </div>
                 ) : filtered.length === 0 ? (
-                    <div className="grid place-items-center gap-3 rounded-xl border border-dashed border-border px-4 py-12 text-center">
-                        <span className="rounded-full bg-muted p-3 text-muted-foreground">
+                    <div className="grid place-items-center gap-3 rounded-surface border border-dashed border-border px-4 py-12 text-center">
+                        <span className="rounded-control bg-muted p-3 text-muted-foreground">
                             <Users className="h-6 w-6" />
                         </span>
                         <div>
@@ -218,7 +218,7 @@ export function StudentManagement() {
                                         ? "没有符合当前条件的学生"
                                         : "暂无学生"}
                             </p>
-                            <p className="mt-1 text-sm text-muted-foreground">
+                            <p className="mt-1 text-label text-muted-foreground">
                                 {hasFilters
                                     ? "可调整搜索、班级或状态条件后重试。"
                                     : "学生加入班级后会显示在这里。"}
@@ -252,7 +252,7 @@ export function StudentManagement() {
                                                 value={item.progress}
                                                 className="h-1.5 w-24"
                                             />
-                                            <span className="text-xs text-muted-foreground">{item.progress}%</span>
+                                            <span className="text-meta text-muted-foreground">{item.progress}%</span>
                                         </div>
                                     </TableCell>
                                     <TableCell>
@@ -295,7 +295,7 @@ export function StudentManagement() {
                 )}
                 {!loading && total > 0 && (
                     <div className="flex items-center justify-between pt-2" data-testid="student-list-pagination">
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-label text-muted-foreground">
                             共 {total} 人，第 {page} / {Math.max(1, Math.ceil(total / PAGE_SIZE))} 页
                         </p>
                         <div className="flex gap-2">

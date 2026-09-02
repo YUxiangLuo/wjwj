@@ -58,10 +58,10 @@ function ToolbarButton({
                 onClick();
             }}
             className={cn(
-                "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
+                "flex h-9 w-9 items-center justify-center rounded-control transition-colors",
                 "text-muted-foreground hover:text-foreground hover:bg-muted",
                 active && "bg-muted text-foreground",
-                disabled && "opacity-40 cursor-not-allowed",
+                disabled && "cursor-not-allowed bg-muted text-muted-foreground",
             )}
         >
             {children}
@@ -70,7 +70,7 @@ function ToolbarButton({
 }
 
 function ToolbarDivider() {
-    return <div className="mx-0.5 h-5 w-px bg-muted-foreground/20" />;
+    return <div className="mx-0.5 h-5 w-px bg-input" />;
 }
 
 // ---------------------------------------------------------------------------
@@ -105,8 +105,8 @@ export function RichTextEditor({
                 "data-testid": editorTestId ?? "",
                 ...(id ? { id } : {}),
                 class: cn(
-                    "min-h-[180px] p-4 text-sm text-foreground leading-relaxed outline-none rich-text-content",
-                    "[&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1",
+                    "min-h-[180px] p-4 text-label text-foreground leading-relaxed outline-none rich-text-content",
+                    "[&_h2]:text-subheading [&_h2]:font-semibold [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:text-body [&_h3]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1",
                     "[&_p]:mb-2 [&_p:last-child]:mb-0",
                     "[&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5 [&_li]:mb-1",
                     "[&_blockquote]:border-l-3 [&_blockquote]:border-input [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_blockquote]:my-2",
@@ -143,7 +143,7 @@ export function RichTextEditor({
     return (
         <div
             className={cn(
-                "rounded-xl border border-border bg-background/40 overflow-hidden",
+                "rounded-surface border border-border bg-background overflow-hidden",
                 className,
             )}
             data-testid={dataTestId}
@@ -243,7 +243,7 @@ export function RichTextEditor({
                     <Redo2 className="h-4 w-4" />
                 </ToolbarButton>
 
-                <div className="ml-auto text-xs text-muted-foreground tabular-nums">
+                <div className="ml-auto text-meta text-muted-foreground tabular-nums">
                     {plainLength} 字
                 </div>
             </div>

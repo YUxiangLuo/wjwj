@@ -45,5 +45,10 @@ test("shared auth screen preserves portal-specific ids, error associations, and 
     expect(view.getByTestId("student-login-username").getAttribute("aria-describedby")).toBe(alert.id);
     expect(view.getByTestId("student-login-password").getAttribute("aria-describedby")).toBe(alert.id);
     expect(view.getByRole("link", { name: "教师登录" }).getAttribute("href")).toBe("/teacher/login");
-    expect(view.getByTestId("student-login-submit").className).toContain("shadow-emphasis");
+    const submitClassName = view.getByTestId("student-login-submit").className;
+    expect(submitClassName).toContain("h-11");
+    expect(submitClassName).toContain("text-body");
+    expect(submitClassName).toContain("bg-primary");
+    expect(submitClassName).toContain("hover:bg-primary-hover");
+    expect(submitClassName).not.toContain("hover:scale");
 });

@@ -52,7 +52,10 @@ const MAX_DARK_CLASSES = 0;
 const MAX_SAME_INTENT_FILLED_CLASSES = 0;
 const MAX_SAME_INTENT_SOLID_HOVER_CLASSES = 0;
 const MAX_SEMANTIC_ALPHA_TEXT_CLASSES = 0;
+const MAX_SEMANTIC_ALPHA_CLASSES = 0;
 const MAX_RESPONSIVE_VIEWPORT_CLASSES = 0;
+const MAX_DECORATIVE_EFFECT_CLASSES = 0;
+const MAX_LEGACY_TYPOGRAPHY_CLASSES = 0;
 
 const palettePattern = PALETTE_COLORS.join("|");
 const prefixPattern = COLOR_UTILITY_PREFIXES
@@ -75,15 +78,40 @@ const sameIntentSolidHoverClassPattern = new RegExp(
     "g"
 );
 const semanticAlphaTextClassPattern = new RegExp(`text-(?:${semanticIntentPattern})/[0-9]+`, "g");
+const semanticColorRolePattern = [
+    "background",
+    "foreground",
+    "card(?:-foreground)?",
+    "popover(?:-foreground)?",
+    "primary(?:-(?:hover|active|foreground|muted|border))?",
+    "secondary(?:-foreground)?",
+    "muted(?:-foreground)?",
+    "accent(?:-foreground)?",
+    "destructive(?:-(?:hover|foreground|muted|border))?",
+    "success(?:-(?:hover|foreground|muted|border))?",
+    "warning(?:-(?:hover|foreground|muted|border))?",
+    "info(?:-(?:hover|foreground|muted|border))?",
+    "auxiliary(?:-(?:hover|foreground|strong|muted|border))?",
+    "navigation(?:-(?:foreground|muted|active|active-foreground|border))?",
+    "heatmap-(?:low|moderate|high|maximum)",
+    "border",
+    "input",
+    "ring",
+    "overlay",
+].join("|");
+const semanticAlphaClassPattern = new RegExp(
+    `(?<![\\w-])(?:${prefixPattern})-(?:${semanticColorRolePattern})/[0-9]+(?![\\w-])`,
+    "g",
+);
 const responsiveViewportClassPattern = /(?<![\w-])(?:sm|md|lg|xl|2xl|(?:min|max)-(?:sm|md|lg|xl|2xl)|(?:min|max)-\[[^\]]+\]|@(?:sm|md|lg|xl|2xl)(?:\/[\w-]+)?|@\[[^\]]+\]|portrait|landscape|(?:any-)?pointer-(?:fine|coarse)):(?=\S)/g;
-const nonSemanticRadiusClassPattern = /(?<![\w-])rounded-(?:xs|sm|md|lg|xl|2xl|3xl)(?![\w-])/g;
-const nonSemanticShadowClassPattern = /(?<![\w-])shadow-(?:2xs|xs|sm|md|lg|xl|2xl)(?![\w-])/g;
-const legacyRadiusClassPattern = /(?<![\w-])rounded-(?:xs|sm|md|lg|xl|2xl|3xl)(?![\w-])/g;
-const legacyShadowClassPattern = /(?<![\w-])shadow-(?:2xs|xs|sm|md|lg|xl|2xl)(?![\w-])/g;
+const rawRadiusClassPattern = /(?<![\w-])(?:rounded|rounded-(?:xs|sm|md|lg|xl|2xl|3xl|full|\[[^\]]+\])|rounded-(?:t|r|b|l|s|e|tl|tr|br|bl|ss|se|es|ee)(?:-(?:xs|sm|md|lg|xl|2xl|3xl|full|\[[^\]]+\]))?)(?![\w-])/g;
+const rawShadowClassPattern = /(?<![\w-])(?:shadow(?=[\s"'`])|shadow-(?:2xs|xs|sm|md|lg|xl|2xl|inner|\[[^\]]+\]))(?![\w-])/g;
+const legacyTypographyClassPattern = /(?<![\w-])text-(?:2xs|xs|sm|base|lg|xl|[2-9]xl|\[(?:[0-9.]+(?:px|rem|em))\])(?![\w-])/g;
+const decorativeEffectClassPattern = /(?<![\w-])(?:bg-(?:gradient|linear|radial|conic)(?:-[^\s"'`]+)?|bg-\[(?:radial|linear|conic)-gradient[^\]]*\]|(?:backdrop-)?blur(?:-[^\s"'`]+)?|(?:hover|group-hover|active):(?:scale|translate)-[^\s"'`]+|(?:disabled|data-\[disabled\]|peer-disabled|group-data-\[disabled=true\]):opacity-[^\s"'`]+|transition-all)(?![\w-])/g;
 const legacyColoredShadowClassPattern = /(?<![\w-])shadow-(?:primary|success|warning|info|destructive|auxiliary)(?:\/[0-9]+)?(?![\w-])/g;
-const MAX_LEGACY_RADIUS_CLASSES = 431;
-const MAX_LEGACY_SHADOW_CLASSES = 154;
-const MAX_LEGACY_COLORED_SHADOW_CLASSES = 43;
+const MAX_LEGACY_RADIUS_CLASSES = 0;
+const MAX_LEGACY_SHADOW_CLASSES = 0;
+const MAX_LEGACY_COLORED_SHADOW_CLASSES = 0;
 const DESIGN_SYSTEM_FILES = new Set([
     "src/components/AuthLoginScreen.tsx",
     "src/components/IconTile.tsx",
@@ -101,12 +129,15 @@ type FileStats = {
     sameIntentFilledClasses: number;
     sameIntentSolidHoverClasses: number;
     semanticAlphaTextClasses: number;
+    semanticAlphaClasses: number;
     responsiveViewportClasses: number;
+    decorativeEffectClasses: number;
     nonSemanticRadiusClasses: number;
     nonSemanticShadowClasses: number;
     legacyRadiusClasses: number;
     legacyShadowClasses: number;
     legacyColoredShadowClasses: number;
+    legacyTypographyClasses: number;
 };
 
 async function listSourceFiles() {
@@ -129,19 +160,49 @@ export function countResponsiveViewportClasses(text: string) {
 }
 
 export function countNonSemanticRadiusClasses(text: string) {
-    return countMatches(text, nonSemanticRadiusClassPattern);
+    return countMatches(text, rawRadiusClassPattern);
 }
 
 export function countNonSemanticShadowClasses(text: string) {
-    return countMatches(text, nonSemanticShadowClassPattern);
+    return countMatches(text, rawShadowClassPattern);
 }
 
 export function countLegacyRadiusClasses(text: string) {
-    return countMatches(text, legacyRadiusClassPattern);
+    return countMatches(text, rawRadiusClassPattern);
 }
 
 export function countLegacyShadowClasses(text: string) {
-    return countMatches(text, legacyShadowClassPattern);
+    return countMatches(text, rawShadowClassPattern);
+}
+
+export function countLegacyTypographyClasses(text: string) {
+    return countMatches(text, legacyTypographyClassPattern);
+}
+
+export function countSemanticAlphaClasses(text: string) {
+    return countMatches(text, semanticAlphaClassPattern);
+}
+
+export function countDecorativeEffectClasses(text: string) {
+    return countMatches(text, decorativeEffectClassPattern);
+}
+
+function relativeLuminance(hex: string) {
+    const channels = hex.slice(1).match(/.{2}/g)?.map((value) => Number.parseInt(value, 16) / 255) ?? [];
+    const [red = 0, green = 0, blue = 0] = channels.map((value) =>
+        value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+    );
+    return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+}
+
+export function contrastRatio(foreground: string, background: string) {
+    const lighter = Math.max(relativeLuminance(foreground), relativeLuminance(background));
+    const darker = Math.min(relativeLuminance(foreground), relativeLuminance(background));
+    return (lighter + 0.05) / (darker + 0.05);
+}
+
+export function readThemeHex(themeCss: string, token: string) {
+    return themeCss.match(new RegExp(`--${token}:\\s*(#[0-9a-f]{6});`, "i"))?.[1] ?? null;
 }
 
 export function countLegacyColoredShadowClasses(text: string) {
@@ -412,7 +473,13 @@ async function collectStats() {
             sameIntentFilledClasses: Math.max(inlineSameIntentPairs, jsxSameIntentPairs),
             sameIntentSolidHoverClasses: countMatches(text, sameIntentSolidHoverClassPattern),
             semanticAlphaTextClasses: countMatches(text, semanticAlphaTextClassPattern),
+            semanticAlphaClasses: isRuntimeSourceFile(path)
+                ? countSemanticAlphaClasses(text)
+                : 0,
             responsiveViewportClasses: countMatches(text, responsiveViewportClassPattern),
+            decorativeEffectClasses: isRuntimeSourceFile(path)
+                ? countDecorativeEffectClasses(text)
+                : 0,
             nonSemanticRadiusClasses: isMaintainedDesignSystemFile(path)
                 ? countNonSemanticRadiusClasses(text)
                 : 0,
@@ -427,6 +494,9 @@ async function collectStats() {
                 : 0,
             legacyColoredShadowClasses: isRuntimeSourceFile(path) && !isMaintainedDesignSystemFile(path)
                 ? countLegacyColoredShadowClasses(text)
+                : 0,
+            legacyTypographyClasses: isRuntimeSourceFile(path)
+                ? countLegacyTypographyClasses(text)
                 : 0,
         });
     }
@@ -450,18 +520,59 @@ async function main() {
     const sameIntentFilledClasses = stats.reduce((sum, item) => sum + item.sameIntentFilledClasses, 0);
     const sameIntentSolidHoverClasses = stats.reduce((sum, item) => sum + item.sameIntentSolidHoverClasses, 0);
     const semanticAlphaTextClasses = stats.reduce((sum, item) => sum + item.semanticAlphaTextClasses, 0);
+    const semanticAlphaClasses = stats.reduce((sum, item) => sum + item.semanticAlphaClasses, 0);
     const responsiveViewportClasses = stats.reduce((sum, item) => sum + item.responsiveViewportClasses, 0);
+    const decorativeEffectClasses = stats.reduce((sum, item) => sum + item.decorativeEffectClasses, 0);
     const nonSemanticRadiusClasses = stats.reduce((sum, item) => sum + item.nonSemanticRadiusClasses, 0);
     const nonSemanticShadowClasses = stats.reduce((sum, item) => sum + item.nonSemanticShadowClasses, 0);
     const legacyRadiusClasses = stats.reduce((sum, item) => sum + item.legacyRadiusClasses, 0);
     const legacyShadowClasses = stats.reduce((sum, item) => sum + item.legacyShadowClasses, 0);
     const legacyColoredShadowClasses = stats.reduce((sum, item) => sum + item.legacyColoredShadowClasses, 0);
+    const legacyTypographyClasses = stats.reduce((sum, item) => sum + item.legacyTypographyClasses, 0);
     const uiHardcodedColorClasses = stats
         .filter((item) => item.path.startsWith("src/components/ui/"))
         .reduce((sum, item) => sum + item.hardcodedColorClasses, 0);
 
     const themeCss = await Bun.file("styles/theme.css").text();
     const failures: string[] = [];
+
+    const contrastContracts: Array<[string, string, string, number]> = [
+        ["foreground on background", "foreground", "background", 4.5],
+        ["foreground on card", "foreground", "card", 4.5],
+        ["muted foreground on background", "muted-foreground", "background", 7],
+        ["muted foreground on card", "muted-foreground", "card", 7],
+        ["primary foreground on primary", "primary-foreground", "primary", 4.5],
+        ["primary on primary muted", "primary", "primary-muted", 4.5],
+        ["navigation foreground on navigation", "navigation-foreground", "navigation", 4.5],
+        ["navigation muted on navigation", "navigation-muted", "navigation", 7],
+        ["success foreground on success", "success-foreground", "success", 4.5],
+        ["success on success muted", "success", "success-muted", 4.5],
+        ["warning foreground on warning", "warning-foreground", "warning", 4.5],
+        ["warning on warning muted", "warning", "warning-muted", 4.5],
+        ["info foreground on info", "info-foreground", "info", 4.5],
+        ["info on info muted", "info", "info-muted", 4.5],
+        ["destructive foreground on destructive", "destructive-foreground", "destructive", 4.5],
+        ["destructive on destructive muted", "destructive", "destructive-muted", 4.5],
+        ["auxiliary foreground on auxiliary", "auxiliary-foreground", "auxiliary", 4.5],
+        ["auxiliary on auxiliary muted", "auxiliary", "auxiliary-muted", 4.5],
+        ["foreground on heatmap low", "foreground", "heatmap-low", 4.5],
+        ["foreground on heatmap moderate", "foreground", "heatmap-moderate", 4.5],
+        ["foreground on heatmap high", "foreground", "heatmap-high", 4.5],
+        ["foreground on heatmap maximum", "foreground", "heatmap-maximum", 4.5],
+        ["input boundary on card", "input", "card", 3],
+    ];
+    for (const [label, foregroundToken, backgroundToken, minimum] of contrastContracts) {
+        const foreground = readThemeHex(themeCss, foregroundToken);
+        const background = readThemeHex(themeCss, backgroundToken);
+        if (!foreground || !background) {
+            failures.push(`Missing hex theme token for ${label}.`);
+            continue;
+        }
+        const ratio = contrastRatio(foreground, background);
+        if (ratio < minimum) {
+            failures.push(`${label} contrast is ${ratio.toFixed(2)}:1; minimum is ${minimum}:1.`);
+        }
+    }
 
     if (
         themeCss.includes("source(none)")
@@ -506,9 +617,19 @@ async function main() {
             `Alpha semantic text classes increased to ${semanticAlphaTextClasses}; maximum is ${MAX_SEMANTIC_ALPHA_TEXT_CLASSES}. Use the full semantic text token, or move opacity to a safe background/border.`,
         );
     }
+    if (semanticAlphaClasses > MAX_SEMANTIC_ALPHA_CLASSES) {
+        failures.push(
+            `Alpha-modified semantic color classes increased to ${semanticAlphaClasses}; maximum is ${MAX_SEMANTIC_ALPHA_CLASSES}. Use an explicit *-muted, *-border, or hover token.`,
+        );
+    }
     if (responsiveViewportClasses > MAX_RESPONSIVE_VIEWPORT_CLASSES) {
         failures.push(
             `Viewport-responsive classes increased to ${responsiveViewportClasses}; maximum is ${MAX_RESPONSIVE_VIEWPORT_CLASSES}. The frontend is desktop-only.`,
+        );
+    }
+    if (decorativeEffectClasses > MAX_DECORATIVE_EFFECT_CLASSES) {
+        failures.push(
+            `Decorative gradients, blur, scale/translate hover, whole-control disabled opacity, or transition-all classes increased to ${decorativeEffectClasses}; maximum is ${MAX_DECORATIVE_EFFECT_CLASSES}.`,
         );
     }
     if (nonSemanticRadiusClasses > 0) {
@@ -525,6 +646,9 @@ async function main() {
     }
     if (legacyColoredShadowClasses > MAX_LEGACY_COLORED_SHADOW_CLASSES) {
         failures.push(`Legacy colored shadows increased to ${legacyColoredShadowClasses}; ratchet maximum is ${MAX_LEGACY_COLORED_SHADOW_CLASSES}.`);
+    }
+    if (legacyTypographyClasses > MAX_LEGACY_TYPOGRAPHY_CLASSES) {
+        failures.push(`Raw or undersized typography classes increased to ${legacyTypographyClasses}; maximum is ${MAX_LEGACY_TYPOGRAPHY_CLASSES}. Use semantic type roles.`);
     }
 
     const appHtmlFiles = ["src/admin/admin.html", "src/teacher/teacher.html", "src/student/student.html"];
@@ -550,13 +674,16 @@ async function main() {
     console.log(`  same-intent filled pairs:  ${sameIntentFilledClasses}/${MAX_SAME_INTENT_FILLED_CLASSES}`);
     console.log(`  solid same-intent hovers:  ${sameIntentSolidHoverClasses}/${MAX_SAME_INTENT_SOLID_HOVER_CLASSES}`);
     console.log(`  semantic alpha text:       ${semanticAlphaTextClasses}/${MAX_SEMANTIC_ALPHA_TEXT_CLASSES}`);
+    console.log(`  semantic alpha colors:     ${semanticAlphaClasses}/${MAX_SEMANTIC_ALPHA_CLASSES}`);
     console.log(`  responsive viewport:       ${responsiveViewportClasses}/${MAX_RESPONSIVE_VIEWPORT_CLASSES}`);
+    console.log(`  decorative effects:        ${decorativeEffectClasses}/${MAX_DECORATIVE_EFFECT_CLASSES}`);
     console.log(`  ui palette classes:        ${uiHardcodedColorClasses}`);
     console.log(`  design-system raw radius:  ${nonSemanticRadiusClasses}/0`);
     console.log(`  design-system raw shadow:  ${nonSemanticShadowClasses}/0`);
     console.log(`  legacy radius classes:     ${legacyRadiusClasses}/${MAX_LEGACY_RADIUS_CLASSES}`);
     console.log(`  legacy shadow classes:     ${legacyShadowClasses}/${MAX_LEGACY_SHADOW_CLASSES}`);
     console.log(`  legacy colored shadows:    ${legacyColoredShadowClasses}/${MAX_LEGACY_COLORED_SHADOW_CLASSES}`);
+    console.log(`  raw typography classes:    ${legacyTypographyClasses}/${MAX_LEGACY_TYPOGRAPHY_CLASSES}`);
 
     if (failures.length === 0) return;
 
@@ -575,13 +702,16 @@ async function main() {
         ["Top same-intent filled semantic color files:", topFiles(stats, "sameIntentFilledClasses")],
         ["Top solid same-intent hover files:", topFiles(stats, "sameIntentSolidHoverClasses")],
         ["Top alpha semantic text files:", topFiles(stats, "semanticAlphaTextClasses")],
+        ["Top alpha semantic color files:", topFiles(stats, "semanticAlphaClasses")],
         ["Top dark: variant files:", topFiles(stats, "darkClasses")],
         ["Top responsive viewport files:", topFiles(stats, "responsiveViewportClasses")],
+        ["Top decorative effect files:", topFiles(stats, "decorativeEffectClasses")],
         ["Design-system raw radius files:", topFiles(stats, "nonSemanticRadiusClasses")],
         ["Design-system raw shadow files:", topFiles(stats, "nonSemanticShadowClasses")],
         ["Legacy radius files:", topFiles(stats, "legacyRadiusClasses")],
         ["Legacy shadow files:", topFiles(stats, "legacyShadowClasses")],
         ["Legacy colored-shadow files:", topFiles(stats, "legacyColoredShadowClasses")],
+        ["Raw typography files:", topFiles(stats, "legacyTypographyClasses")],
     ];
 
     for (const [heading, report] of reports) {

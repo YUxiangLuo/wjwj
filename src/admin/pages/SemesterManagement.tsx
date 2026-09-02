@@ -194,10 +194,10 @@ export function SemesterManagement() {
         <div className="space-y-6 animate-in fade-in duration-500">
             <PageHeader border={false}>
                 <div>
-                    <h2 className="text-lg font-semibold text-foreground">学期管理</h2>
-                    <p className="text-sm text-muted-foreground mt-1">维护学期信息并标记当前学期。</p>
+                    <h2 className="text-subheading font-semibold text-foreground">学期管理</h2>
+                    <p className="text-label text-muted-foreground mt-1">维护学期信息并标记当前学期。</p>
                 </div>
-                <Button data-testid="semester-create-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
+                <Button data-testid="semester-create-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary-hover text-primary-foreground ">
                     <Plus className="w-4 h-4 mr-1" />
                     创建学期
                 </Button>
@@ -207,8 +207,8 @@ export function SemesterManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">学期总数</p>
-                            <p className="text-2xl font-bold text-foreground mt-1">{loading ? "-" : summary.total}</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">学期总数</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{loading ? "-" : summary.total}</p>
                         </div>
                         <IconTile intent="info">
                             <CalendarDays className="w-5 h-5" />
@@ -218,8 +218,8 @@ export function SemesterManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">当前学期</p>
-                            <p className="text-sm font-bold text-foreground mt-2">{loading ? "-" : summary.currentName}</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">当前学期</p>
+                            <p className="text-label font-bold text-foreground mt-2">{loading ? "-" : summary.currentName}</p>
                         </div>
                         <IconTile intent="success">
                             <Star className="w-5 h-5" />
@@ -229,10 +229,10 @@ export function SemesterManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">历史学期</p>
-                            <p className="text-2xl font-bold text-foreground mt-1">{loading ? "-" : summary.history}</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">历史学期</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{loading ? "-" : summary.history}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-muted text-muted-foreground flex items-center justify-center border border-input">
+                        <div className="w-10 h-10 rounded-surface bg-muted text-muted-foreground flex items-center justify-center border border-input">
                             <CheckCircle className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -240,8 +240,8 @@ export function SemesterManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已建班学期</p>
-                            <p className="text-2xl font-bold text-foreground mt-1">{loading ? "-" : summary.withClasses}</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已建班学期</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{loading ? "-" : summary.withClasses}</p>
                         </div>
                         <IconTile intent="auxiliary">
                             <School className="w-5 h-5" />
@@ -253,18 +253,18 @@ export function SemesterManagement() {
             <Card>
                 <PageHeader as={CardHeader}>
                     <div>
-                        <CardTitle className="text-base text-foreground">学期列表</CardTitle>
-                        <p className="text-xs text-muted-foreground mt-1">共 {filteredSemesters.length} 条数据</p>
+                        <CardTitle className="text-body text-foreground">学期列表</CardTitle>
+                        <p className="text-meta text-muted-foreground mt-1">共 {filteredSemesters.length} 条数据</p>
                     </div>
                     <div className="flex gap-3 flex-row w-auto">
                         <Input
                             placeholder="搜索学期名称..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="bg-background border-border text-foreground placeholder:text-muted-foreground w-64 focus:border-ring focus:ring-ring/20"
+                            className="bg-card border-input text-foreground placeholder:text-muted-foreground w-64 focus:border-ring focus:ring-ring"
                         />
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "current" | "history")}>
-                            <SelectTrigger aria-label="按学期状态筛选" className="bg-background border-border text-foreground w-36 focus:ring-ring/20">
+                            <SelectTrigger aria-label="按学期状态筛选" className="bg-card border-input text-foreground w-36 focus:ring-ring">
                                 <SelectValue placeholder="状态筛选" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
@@ -281,7 +281,7 @@ export function SemesterManagement() {
                     ) : (
                         <Table>
                             <TableHeader>
-                                <TableRow className="border-border hover:bg-card/50">
+                                <TableRow className="border-border hover:bg-card">
                                     <TableHead className="text-muted-foreground">学期名称</TableHead>
                                     <TableHead className="text-muted-foreground">状态</TableHead>
                                     <TableHead className="text-muted-foreground">班级数量</TableHead>
@@ -291,7 +291,7 @@ export function SemesterManagement() {
                             </TableHeader>
                             <TableBody>
                                 {filteredSemesters.map((semester) => (
-                                    <TableRow key={semester.id} className="border-border hover:bg-muted/50 transition-colors">
+                                    <TableRow key={semester.id} className="border-border hover:bg-muted transition-colors">
                                         <TableCell className="font-medium text-foreground">{semester.name}</TableCell>
                                         <TableCell>
                                             {semester.isCurrent ? (
@@ -300,7 +300,7 @@ export function SemesterManagement() {
                                                 <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted">历史学期</Badge>
                                             )}
                                         </TableCell>
-                                        <TableCell className="text-foreground/90">
+                                        <TableCell className="text-foreground">
                                             <div className="flex items-center gap-2">
                                                 <School className="w-3.5 h-3.5 text-muted-foreground" />
                                                 {semester.classCount}
@@ -310,12 +310,12 @@ export function SemesterManagement() {
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 {!semester.isCurrent && (
-                                                    <Button data-testid={`semester-set-current-${semester.id}`} variant="ghost" size="sm" onClick={() => handleSetCurrent(semester.id)} className="text-muted-foreground hover:text-success hover:bg-success/10 h-8">
+                                                    <Button data-testid={`semester-set-current-${semester.id}`} variant="ghost" size="sm" onClick={() => handleSetCurrent(semester.id)} className="text-muted-foreground hover:text-success hover:bg-success-muted h-8">
                                                         <Star className="w-3.5 h-3.5 mr-1.5" />
                                                         设为当前
                                                     </Button>
                                                 )}
-                                                <Button data-testid={`semester-edit-open-${semester.id}`} variant="ghost" size="sm" onClick={() => openEdit(semester)} className="text-muted-foreground hover:text-primary hover:bg-primary/10 h-8">
+                                                <Button data-testid={`semester-edit-open-${semester.id}`} variant="ghost" size="sm" onClick={() => openEdit(semester)} className="text-muted-foreground hover:text-primary hover:bg-primary-muted h-8">
                                                     <Pencil className="w-3.5 h-3.5 mr-1.5" />
                                                     编辑
                                                 </Button>
@@ -324,7 +324,7 @@ export function SemesterManagement() {
                                                     size="sm"
                                                     data-testid={`semester-delete-${semester.id}`}
                                                     onClick={() => handleDelete(semester)}
-                                                    className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8"
+                                                    className="text-muted-foreground hover:text-destructive hover:bg-destructive-muted h-8"
                                                     disabled={semester.classCount > 0}
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5 mr-1.5" />
@@ -338,7 +338,7 @@ export function SemesterManagement() {
                                     <TableRow>
                                         <TableCell colSpan={5} className="text-center py-16 text-muted-foreground">
                                             <div className="flex flex-col items-center gap-2">
-                                                <div className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center">
+                                                <div className="w-12 h-12 rounded-control bg-card border border-border flex items-center justify-center">
                                                     <Search className="w-5 h-5 text-muted-foreground" />
                                                 </div>
                                                 <p>暂无符合条件的数据</p>
@@ -360,21 +360,21 @@ export function SemesterManagement() {
                     </DialogHeader>
                     <div className="space-y-5 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="semesterName" className="text-foreground/90">学期名称</Label>
+                            <Label htmlFor="semesterName" className="text-foreground">学期名称</Label>
                             <Input
                                 id="semesterName"
                                 data-testid="semester-create-name"
                                 placeholder="例如：2024-Fall"
                                 value={newSemesterName}
                                 onChange={(e) => setNewSemesterName(e.target.value)}
-                                className="bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring"
+                                className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
                             />
-                            <p className="text-xs text-muted-foreground">建议格式：YYYY-YYYY-1 或 YYYY-YYYY-2（例如 2026-2027-1）</p>
+                            <p className="text-meta text-muted-foreground">建议格式：YYYY-YYYY-1 或 YYYY-YYYY-2（例如 2026-2027-1）</p>
                         </div>
-                        <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-background/50">
+                        <div className="flex items-center justify-between p-3 rounded-surface border border-border bg-background">
                             <div className="space-y-0.5">
-                                <Label htmlFor="setAsCurrent" className="text-base text-foreground cursor-pointer">设为当前学期</Label>
-                                <p className="text-xs text-muted-foreground">创建后立即生效为默认学期</p>
+                                <Label htmlFor="setAsCurrent" className="text-body text-foreground cursor-pointer">设为当前学期</Label>
+                                <p className="text-meta text-muted-foreground">创建后立即生效为默认学期</p>
                             </div>
                             <Switch
                                 id="setAsCurrent"
@@ -388,7 +388,7 @@ export function SemesterManagement() {
                         <Button variant="ghost" onClick={() => setShowAddModal(false)} disabled={submitting} className="text-muted-foreground hover:text-foreground hover:bg-muted">
                             取消
                         </Button>
-                        <Button data-testid="semester-create-submit" onClick={handleAddSemester} disabled={submitting || !newSemesterName.trim()} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                        <Button data-testid="semester-create-submit" onClick={handleAddSemester} disabled={submitting || !newSemesterName.trim()} className="bg-primary hover:bg-primary-hover text-primary-foreground">
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             确认创建
                         </Button>
@@ -404,14 +404,14 @@ export function SemesterManagement() {
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="editSemesterName" className="text-foreground/90">学期名称</Label>
+                            <Label htmlFor="editSemesterName" className="text-foreground">学期名称</Label>
                             <Input
                                 id="editSemesterName"
                                 data-testid="semester-edit-name"
                                 placeholder="例如：2024-Fall"
                                 value={editName}
                                 onChange={(e) => setEditName(e.target.value)}
-                                className="bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring"
+                                className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
                             />
                         </div>
                     </div>
@@ -419,7 +419,7 @@ export function SemesterManagement() {
                         <Button variant="ghost" onClick={() => setShowEditModal(false)} disabled={submitting} className="text-muted-foreground hover:text-foreground hover:bg-muted">
                             取消
                         </Button>
-                        <Button data-testid="semester-edit-submit" onClick={handleEditSemester} disabled={submitting || !editName.trim()} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                        <Button data-testid="semester-edit-submit" onClick={handleEditSemester} disabled={submitting || !editName.trim()} className="bg-primary hover:bg-primary-hover text-primary-foreground">
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             保存
                         </Button>

@@ -73,23 +73,23 @@ function StudentAppContent() {
     };
 
     return (
-        <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/30">
+        <div className="min-h-screen bg-background font-sans text-foreground selection:bg-primary-muted">
             <SkipLink />
-            <header className="sticky top-0 z-50 border-b border-border bg-card/80 backdrop-blur">
+            <header className="sticky top-0 z-50 border-b border-navigation-border bg-navigation text-navigation-foreground">
                 <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-8">
                     <div className="flex items-center gap-3">
                         {!isTaskHall && (
-                            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="返回">
+                            <Button className="text-navigation-foreground hover:bg-navigation-active hover:text-navigation-active-foreground focus-visible:ring-navigation-foreground focus-visible:ring-offset-navigation" variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="返回">
                                 <ArrowLeft className="h-5 w-5" />
                             </Button>
                         )}
-                        <Link to="/" className="flex items-center gap-3">
-                            <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                        <Link to="/" className="flex items-center gap-3 rounded-control outline-none focus-visible:ring-2 focus-visible:ring-navigation-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-navigation">
+                            <span className="grid h-9 w-9 place-items-center rounded-control border border-navigation-border bg-navigation-active text-navigation-active-foreground">
                                 <BarChart3 className="h-5 w-5" />
                             </span>
                             <span>
-                                <span className="block text-base font-bold">统计学虚拟仿真实验室</span>
-                                <span className="block text-[10px] uppercase tracking-wider text-muted-foreground">Learning Lab</span>
+                                <span className="block text-body font-semibold text-navigation-foreground">统计学虚拟仿真实验室</span>
+                                <span className="block text-meta tracking-wide text-navigation-muted">Learning Lab</span>
                             </span>
                         </Link>
                     </div>
@@ -97,30 +97,30 @@ function StudentAppContent() {
                     <div className="relative">
                         <Button
                             variant="ghost"
-                            className="h-10 rounded-full px-1"
+                            className="h-10 rounded-control px-1 text-navigation-foreground hover:bg-navigation-active hover:text-navigation-active-foreground focus-visible:ring-navigation-foreground focus-visible:ring-offset-navigation"
                             aria-label="打开账户菜单"
                             aria-expanded={showAccountMenu}
                             onClick={() => setShowAccountMenu((value) => !value)}
                         >
                             <Avatar className="h-9 w-9">
-                                <AvatarFallback className="bg-primary text-primary-foreground" data-testid="student-avatar">
+                                <AvatarFallback className="bg-navigation-active text-navigation-active-foreground" data-testid="student-avatar">
                                     {currentUser.name.charAt(0)}
                                 </AvatarFallback>
                             </Avatar>
                         </Button>
                         {showAccountMenu && (
-                            <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border border-border bg-card py-1 shadow-xl">
+                            <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-overlay border border-border bg-card py-1 text-foreground shadow-floating">
                                 <div className="border-b border-border px-3 py-2.5">
-                                    <p className="text-sm font-medium">{currentUser.name}</p>
-                                    <p className="mt-1 text-xs text-muted-foreground">{currentUser.studentId}</p>
+                                    <p className="text-label font-medium">{currentUser.name}</p>
+                                    <p className="mt-1 text-meta text-muted-foreground">{currentUser.studentId}</p>
                                 </div>
-                                <button className="flex w-full items-center px-3 py-2.5 text-sm hover:bg-muted" onClick={() => { setShowAccountMenu(false); navigate("/profile"); }}>
+                                <button className="flex w-full items-center px-3 py-2.5 text-label hover:bg-muted" onClick={() => { setShowAccountMenu(false); navigate("/profile"); }}>
                                     <User className="mr-2 h-4 w-4" />个人信息
                                 </button>
-                                <button className="flex w-full items-center px-3 py-2.5 text-sm hover:bg-muted" onClick={() => { setShowAccountMenu(false); passwordChange.reset(); setShowPassword(true); }}>
+                                <button className="flex w-full items-center px-3 py-2.5 text-label hover:bg-muted" onClick={() => { setShowAccountMenu(false); passwordChange.reset(); setShowPassword(true); }}>
                                     <KeyRound className="mr-2 h-4 w-4" />修改密码
                                 </button>
-                                <button className="flex w-full items-center px-3 py-2.5 text-sm text-destructive hover:bg-destructive/10" onClick={() => { setShowAccountMenu(false); setShowLogout(true); }}>
+                                <button className="flex w-full items-center px-3 py-2.5 text-label text-destructive hover:bg-destructive-muted" onClick={() => { setShowAccountMenu(false); setShowLogout(true); }}>
                                     <LogOut className="mr-2 h-4 w-4" />退出登录
                                 </button>
                             </div>
@@ -131,7 +131,7 @@ function StudentAppContent() {
 
             <main id="main-content" tabIndex={-1} className="mx-auto max-w-7xl py-8 px-8">
                 {mustChangePassword ? (
-                    <div className="grid min-h-[60vh] place-items-center text-sm text-muted-foreground">请先修改初始密码后再开始实验。</div>
+                    <div className="grid min-h-[60vh] place-items-center text-label text-muted-foreground">请先修改初始密码后再开始实验。</div>
                 ) : <Suspense fallback={<LoadingScreen />}><Routes>
                         <Route index element={<TaskHall />} />
                         <Route path="task/:taskId" element={<TopicDetails />} />
@@ -165,7 +165,7 @@ function StudentAppContent() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>取消</AlertDialogCancel>
-                        <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => void logout()}>退出</AlertDialogAction>
+                        <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive-hover" onClick={() => void logout()}>退出</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

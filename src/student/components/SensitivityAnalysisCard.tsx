@@ -13,10 +13,10 @@ interface SensitivityAnalysisCardProps {
     currentMarginOfError: number;
 }
 
-export function SensitivityAnalysisCard({ 
-    matrix, 
-    currentConfidenceLevel, 
-    currentMarginOfError 
+export function SensitivityAnalysisCard({
+    matrix,
+    currentConfidenceLevel,
+    currentMarginOfError
 }: SensitivityAnalysisCardProps) {
     if (!matrix || matrix.length === 0) return null;
 
@@ -43,7 +43,7 @@ export function SensitivityAnalysisCard({
 
     // 获取颜色强度
     const getIntensity = (sampleSize: number) => {
-        const ratio = maxSampleSize > minSampleSize 
+        const ratio = maxSampleSize > minSampleSize
             ? (sampleSize - minSampleSize) / (maxSampleSize - minSampleSize)
             : 0;
         // 返回 20-100 的范围
@@ -57,37 +57,27 @@ export function SensitivityAnalysisCard({
         "99": "bg-auxiliary",
     };
 
-    const cellHeatClasses = (intensity: number, isCurrent: boolean) => {
-        if (isCurrent) {
-            return "bg-background ring-2 ring-primary shadow-sm";
-        }
-        if (intensity < 40) return "bg-primary/10";
-        if (intensity < 55) return "bg-primary/20";
-        if (intensity < 72) return "bg-primary/30";
-        return "bg-primary/40";
-    };
-
     return (
-        <Card className="rounded-2xl border border-primary/20 bg-primary/10 shadow-sm">
+        <Card className="rounded-surface border border-primary-border bg-primary-muted ">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Activity className="w-5 h-5 text-primary" />
-                        <CardTitle className="text-base text-foreground">
+                        <CardTitle className="text-body text-foreground">
                             样本量敏感性分析
                         </CardTitle>
                     </div>
                 </div>
-                <CardDescription className="text-foreground/90">
+                <CardDescription className="text-foreground">
                     样本量随置信水平和允许误差的变化
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 {/* 热力图表格 */}
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-label">
                         <thead>
-                            <tr className="border-b border-border bg-muted/90">
+                            <tr className="border-b border-border bg-muted">
                                 <th className="text-left py-2 px-2 text-foreground font-medium">置信水平 \ 允许误差</th>
                                 <th className="text-center py-2 px-2 text-foreground font-medium">±1%</th>
                                 <th className="text-center py-2 px-2 text-foreground font-medium">±2%</th>
@@ -100,22 +90,22 @@ export function SensitivityAnalysisCard({
                         <tbody>
                             {Object.entries(groupedByConfidence).map(([confidenceLevel, items]) => {
                                 const isCurrentConfidence = confidenceLevel === currentConfidenceLevel;
-                                
+
                                 return (
-                                    <tr 
+                                    <tr
                                         key={confidenceLevel}
-                                        className={`border-b border-border/80 ${
-                                            isCurrentConfidence ? "bg-background/60" : ""
+                                        className={`border-b border-border ${
+                                            isCurrentConfidence ? "bg-background" : ""
                                         }`}
                                     >
                                         <td className="py-2 px-2">
                                             <div className="flex items-center gap-2">
-                                                <div className={`w-2 h-2 rounded-full ${confidenceColors[confidenceLevel] || "bg-muted-foreground/50"}`} />
-                                                <span className={`font-medium ${isCurrentConfidence ? "text-foreground" : "text-foreground/90"}`}>
+                                                <div className={`w-2 h-2 rounded-circle ${confidenceColors[confidenceLevel] || "bg-input"}`} />
+                                                <span className={`font-medium ${isCurrentConfidence ? "text-foreground" : "text-foreground"}`}>
                                                     {confidenceLevel}%
                                                 </span>
                                                 {isCurrentConfidence && (
-                                                    <Badge variant="outline" className="text-xs border-primary/20 text-primary bg-primary/10">
+                                                    <Badge variant="outline" className="text-meta border-primary-border text-primary bg-primary-muted">
                                                         当前
                                                     </Badge>
                                                 )}
@@ -124,13 +114,13 @@ export function SensitivityAnalysisCard({
                                         {items.map((item, idx) => {
                                             const isCurrentCell = isCurrentConfidence && item.marginOfError === currentMarginOfError;
                                             const intensity = getIntensity(item.sampleSize);
-                                            
+
                                             return (
                                                 <td key={idx} className="py-1 px-1">
                                                     <div
                                                         className={`
-                                                            rounded-lg py-2 px-2 text-center font-mono text-xs
-                                                            ${cellHeatClasses(intensity, isCurrentCell)}
+                                                            rounded-surface py-2 px-2 text-center font-mono text-meta
+                                                            ${getSensitivityHeatClass(intensity, isCurrentCell)}
                                                             ${isCurrentCell ? "font-bold" : ""}
                                                         `}
                                                     >
@@ -149,7 +139,7 @@ export function SensitivityAnalysisCard({
                 </div>
 
                 {/* 说明 */}
-                <div className="flex items-start gap-2 text-xs text-foreground/90 rounded-xl border border-border bg-background/80 p-3">
+                <div className="flex items-start gap-2 text-meta text-foreground rounded-surface border border-border bg-background p-3">
                     <Info className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
                     <div className="space-y-1">
                         <p>
@@ -165,21 +155,29 @@ export function SensitivityAnalysisCard({
                 </div>
 
                 {/* 图例 */}
-                <div className="flex flex-wrap items-center gap-4 text-xs text-foreground">
+                <div className="flex flex-wrap items-center gap-4 text-meta text-foreground">
                     <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded bg-success" />
+                        <div className="w-3 h-3 rounded-circle bg-success" />
                         <span>90% 置信度</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded bg-info" />
+                        <div className="w-3 h-3 rounded-circle bg-info" />
                         <span>95% 置信度</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded bg-auxiliary" />
+                        <div className="w-3 h-3 rounded-circle bg-auxiliary" />
                         <span>99% 置信度</span>
                     </div>
                 </div>
             </CardContent>
         </Card>
     );
+}
+
+export function getSensitivityHeatClass(intensity: number, isCurrent: boolean) {
+    if (isCurrent) return "bg-card ring-2 ring-primary";
+    if (intensity < 40) return "bg-heatmap-low";
+    if (intensity < 55) return "bg-heatmap-moderate";
+    if (intensity < 72) return "bg-heatmap-high";
+    return "bg-heatmap-maximum";
 }

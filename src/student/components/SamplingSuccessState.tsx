@@ -12,13 +12,13 @@ interface SamplingSuccessStateProps {
 export function SamplingSuccessState({ summary, onRerun, disabled, rerunTestId, rerunLabel }: SamplingSuccessStateProps) {
     return (
         <div className="space-y-4">
-            <div className="flex items-center gap-4 rounded-2xl border border-success/20 bg-success/10 p-5">
-                <div className="rounded-full bg-success/20 p-3">
+            <div className="flex items-center gap-4 rounded-surface border border-success-border bg-success-muted p-5">
+                <div className="rounded-control bg-success-muted p-3">
                     <CheckCircle2 className="w-6 h-6 text-success" />
                 </div>
                 <div>
-                    <p className="text-lg font-medium text-success">抽样完成</p>
-                    <p className="mt-1 text-sm text-success">{summary}</p>
+                    <p className="text-subheading font-medium text-success">抽样完成</p>
+                    <p className="mt-1 text-label text-success">{summary}</p>
                 </div>
                 <Button
                     variant="ghost"
@@ -28,7 +28,7 @@ export function SamplingSuccessState({ summary, onRerun, disabled, rerunTestId, 
                     aria-label={rerunLabel}
                     title={rerunLabel}
                     data-testid={rerunTestId}
-                    className="ml-auto rounded-full text-success hover:bg-success/10 hover:text-success"
+                    className="ml-auto rounded-control text-success hover:bg-success-muted hover:text-success"
                 >
                     <RefreshCw className="w-4 h-4" />
                 </Button>

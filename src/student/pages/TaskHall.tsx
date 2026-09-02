@@ -66,18 +66,18 @@ function DeadlineDisplay({ deadline, status, notOpenYet }: { deadline: string | 
     if (!deadline) return null;
     if (status === "graded") return null;
     if (notOpenYet) {
-        return <span className="text-sm text-info">尚未开放</span>;
+        return <span className="text-label text-info">尚未开放</span>;
     }
 
     const remaining = getRemainingDeadlineSummary(deadline);
     if (!remaining) return null;
     if (remaining.passed) {
-        return <span className="text-sm text-muted-foreground">已截止</span>;
+        return <span className="text-label text-muted-foreground">已截止</span>;
     }
 
     if (remaining.remainingMs <= DAY_MS) {
         return (
-            <span className="text-sm text-destructive font-medium flex items-center gap-1">
+            <span className="text-label text-destructive font-medium flex items-center gap-1">
                 <AlertCircle className="w-3.5 h-3.5" />
                 还剩 {remaining.wholeHours} 小时 {remaining.leftoverMinutes} 分钟
             </span>
@@ -86,14 +86,14 @@ function DeadlineDisplay({ deadline, status, notOpenYet }: { deadline: string | 
 
     if (remaining.remainingMs <= 7 * DAY_MS) {
         return (
-            <span className="text-sm text-warning font-medium flex items-center gap-1">
+            <span className="text-label text-warning font-medium flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
                 还剩 {remaining.wholeDays} 天 {remaining.leftoverHours} 小时
             </span>
         );
     }
 
-    return <span className="text-sm text-muted-foreground">还剩 {remaining.calendarDays} 天</span>;
+    return <span className="text-label text-muted-foreground">还剩 {remaining.calendarDays} 天</span>;
 }
 
 interface TaskCardProps {
@@ -143,10 +143,10 @@ function TaskCard({ task }: TaskCardProps) {
 
     return (
         <>
-            <Card className="rounded-2xl border-border bg-card/60 backdrop-blur-sm shadow-lg hover:shadow-primary/10 transition-all hover:-translate-y-1" data-testid={`student-task-card-${task.id}`}>
+            <Card className="rounded-surface border-border bg-card transition-colors hover:border-input" data-testid={`student-task-card-${task.id}`}>
                 <CardHeader className="pb-3 text-foreground">
                 <div className="flex justify-between items-start gap-2">
-                    <CardTitle className="text-lg line-clamp-1 text-foreground">{task.name}</CardTitle>
+                    <CardTitle className="text-subheading line-clamp-1 text-foreground">{task.name}</CardTitle>
                     <StatusBadge intent={status.intent} className="whitespace-nowrap">{status.label}</StatusBadge>
                 </div>
                 <CardDescription className="line-clamp-2 text-muted-foreground">
@@ -158,14 +158,14 @@ function TaskCard({ task }: TaskCardProps) {
                     {/* Progress */}
                     {task.status !== "graded" && task.status !== "rejected" && (
                         <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
+                            <div className="flex justify-between text-label">
                                 <span className="text-muted-foreground">实验进度</span>
-                                <span className="text-foreground/90 font-medium">{task.progress}%</span>
+                                <span className="text-foreground font-medium">{task.progress}%</span>
                             </div>
                             <Progress aria-label={`${task.name}实验进度`} value={task.progress} className="h-2 bg-muted [&>div]:bg-primary" />
                             {task.currentStage > 0 && task.currentStage < 4 && (
-                                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                                <p className="text-meta text-muted-foreground flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-circle bg-primary"></span>
                                     当前阶段：{stageNames[task.currentStage - 1]}
                                 </p>
                             )}
@@ -174,30 +174,30 @@ function TaskCard({ task }: TaskCardProps) {
 
                     {/* Score display */}
                     {task.status === "graded" && task.score !== undefined && (
-                        <div className="flex items-center gap-3 py-3 px-4 bg-success/10 rounded-lg border border-success/10">
-                            <div className="p-2 bg-success/20 rounded-full">
+                        <div className="flex items-center gap-3 py-3 px-4 bg-success-muted rounded-surface border border-success-border">
+                            <div className="p-2 bg-success-muted rounded-control">
                                 <Trophy className="w-5 h-5 text-success" />
                             </div>
                             <div>
-                                <div className="text-xs text-success uppercase font-bold tracking-wider">最终得分</div>
-                                <span className="font-bold text-2xl text-success">{task.score}</span>
+                                <div className="text-meta text-success uppercase font-bold tracking-wider">最终得分</div>
+                                <span className="font-bold text-page-title text-success">{task.score}</span>
                             </div>
                         </div>
                     )}
 
                     {/* Reject reason */}
                     {task.status === "rejected" && task.rejectReason && (
-                        <div className="p-3 bg-destructive/10 rounded-lg border border-destructive/20 text-sm text-destructive">
+                        <div className="p-3 bg-destructive-muted rounded-surface border border-destructive-border text-label text-destructive">
                             <div className="font-semibold mb-1 flex items-center gap-2">
                                 <AlertCircle className="w-3 h-3" /> 驳回理由
                             </div>
-                            <div className="opacity-90 leading-relaxed text-xs">{task.rejectReason}</div>
+                            <div className="opacity-90 leading-relaxed text-meta">{task.rejectReason}</div>
                         </div>
                     )}
 
                     {/* Footer */}
                     <div className="flex justify-between items-center pt-3 border-t border-border">
-                        <div className="text-xs text-muted-foreground space-y-0.5">
+                        <div className="text-meta text-muted-foreground space-y-0.5">
                             <div>{notOpenYet ? "开放" : "发布"}：{formatDateTime(task.publishedAt)}</div>
                             <div>截止：{formatDateTime(task.deadline)}</div>
                         </div>
@@ -207,7 +207,7 @@ function TaskCard({ task }: TaskCardProps) {
                     {/* Action button */}
                     <div className="flex gap-2">
                         <Button
-                            className={`flex-1 w-full ${action.variant === 'default' ? 'bg-primary hover:bg-primary/90 text-primary-foreground hover:text-primary-foreground shadow-lg shadow-primary/20' : ''} ${action.variant === 'destructive' ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground hover:text-destructive-foreground' : ''} ${action.variant === 'outline' ? 'border-input text-foreground/90 hover:bg-muted hover:text-foreground' : ''}`}
+                            className={`flex-1 w-full ${action.variant === 'default' ? 'bg-primary hover:bg-primary-hover text-primary-foreground hover:text-primary-foreground ' : ''} ${action.variant === 'destructive' ? 'bg-destructive hover:bg-destructive-hover text-destructive-foreground hover:text-destructive-foreground' : ''} ${action.variant === 'outline' ? 'border-input text-foreground hover:bg-muted hover:text-foreground' : ''}`}
                             variant="ghost"
                             disabled={disabled}
                             onClick={() => { void handlePrimaryAction(); }}
@@ -225,7 +225,7 @@ function TaskCard({ task }: TaskCardProps) {
                         )}
                     </div>
                     {disabled && (
-                        <div className="px-4 py-2 text-xs text-muted-foreground text-center bg-muted/50 rounded-md">
+                        <div className="px-4 py-2 text-meta text-muted-foreground text-center bg-muted rounded-control">
                             {notOpenYet ? "任务尚未开放，暂不可操作" : "已截止，无法继续操作"}
                         </div>
                     )}
@@ -314,21 +314,21 @@ export function TaskHall() {
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="text-2xl font-bold text-foreground">任务大厅</h1>
-                <p className="mt-1 text-sm text-muted-foreground">查看实验任务、截止时间与学习进度（中国标准时间 UTC+8）。</p>
+                <h1 className="text-page-title font-bold text-foreground">任务大厅</h1>
+                <p className="mt-1 text-label text-muted-foreground">查看实验任务、截止时间与学习进度（中国标准时间 UTC+8）。</p>
             </div>
             {latestAnnouncement && (
-                <div className="rounded-xl border border-warning/20 bg-warning/10 p-4 flex items-center justify-between gap-4">
+                <div className="rounded-surface border border-warning-border bg-warning-muted p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <div className="p-2 rounded-full bg-warning/20 text-warning shrink-0">
+                        <div className="p-2 rounded-control bg-warning-muted text-warning shrink-0">
                             <AlertCircle className="w-5 h-5" />
                         </div>
                         <div>
-                            <div className="text-sm text-warning font-medium font-mono tracking-wider uppercase text-[10px] mb-0.5">最新公告</div>
-                            <div className="text-sm text-warning font-medium line-clamp-1">{latestAnnouncement.title}</div>
+                            <div className="text-label text-warning font-medium font-mono tracking-wider uppercase text-meta mb-0.5">最新公告</div>
+                            <div className="text-label text-warning font-medium line-clamp-1">{latestAnnouncement.title}</div>
                         </div>
                     </div>
-                    <Button variant="ghost" size="sm" className="rounded-full text-warning hover:text-warning hover:bg-warning/10 shrink-0" onClick={() => setShowAnnouncements(true)}>
+                    <Button variant="ghost" size="sm" className="rounded-control text-warning hover:text-warning hover:bg-warning-muted shrink-0" onClick={() => setShowAnnouncements(true)}>
                         查看详情
                     </Button>
                 </div>
@@ -343,16 +343,16 @@ export function TaskHall() {
                     aria-pressed={filter === "in_progress"}
                     aria-label="按进行中筛选任务"
                     data-testid="student-stat-in-progress"
-                    className={`text-left rounded-2xl transition-all ${filter === "in_progress" ? "ring-2 ring-primary" : ""}`}
+                    className={`text-left rounded-surface transition-colors ${filter === "in_progress" ? "ring-2 ring-primary" : ""}`}
                 >
-                    <Card className="rounded-2xl border-border bg-card/50 shadow-sm hover:border-input transition-colors group cursor-pointer">
+                    <Card className="rounded-surface border-border bg-card hover:border-input transition-colors group cursor-pointer">
                         <CardContent className="p-6 flex items-center gap-5">
-                            <div className="p-4 bg-primary/10 rounded-2xl text-primary group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-300">
+                            <div className="p-4 bg-primary-muted rounded-surface text-primary group-hover:bg-primary-muted transition-colors duration-300">
                                 <FlaskConical className="w-6 h-6" />
                             </div>
                             <div>
-                                <p className="text-3xl font-bold text-foreground group-hover:text-primary transition-colors">{inProgressCount}</p>
-                                <p className="text-sm text-muted-foreground">进行中的实验</p>
+                                <p className="text-display font-bold text-foreground group-hover:text-primary transition-colors">{inProgressCount}</p>
+                                <p className="text-label text-muted-foreground">进行中的实验</p>
                             </div>
                         </CardContent>
                     </Card>
@@ -363,28 +363,28 @@ export function TaskHall() {
                     aria-pressed={filter === "graded"}
                     aria-label="按已批改筛选任务"
                     data-testid="student-stat-graded"
-                    className={`text-left rounded-2xl transition-all ${filter === "graded" ? "ring-2 ring-success" : ""}`}
+                    className={`text-left rounded-surface transition-colors ${filter === "graded" ? "ring-2 ring-success" : ""}`}
                 >
-                    <Card className="rounded-2xl border-border bg-card/50 shadow-sm hover:border-input transition-colors group cursor-pointer">
+                    <Card className="rounded-surface border-border bg-card hover:border-input transition-colors group cursor-pointer">
                         <CardContent className="p-6 flex items-center gap-5">
-                            <div className="p-4 bg-success/10 rounded-2xl text-success group-hover:bg-success/20 group-hover:scale-110 transition-all duration-300">
+                            <div className="p-4 bg-success-muted rounded-surface text-success group-hover:bg-success-muted transition-colors duration-300">
                                 <CheckCircle className="w-6 h-6" />
                             </div>
                             <div>
-                                <p className="text-3xl font-bold text-foreground group-hover:text-success transition-colors">{gradedCount}</p>
-                                <p className="text-sm text-muted-foreground">已批改实验</p>
+                                <p className="text-display font-bold text-foreground group-hover:text-success transition-colors">{gradedCount}</p>
+                                <p className="text-label text-muted-foreground">已批改实验</p>
                             </div>
                         </CardContent>
                     </Card>
                 </button>
-                <Card className="rounded-2xl border-border bg-card/50 shadow-sm hover:border-input transition-colors group" data-testid="student-stat-average">
+                <Card className="rounded-surface border-border bg-card hover:border-input transition-colors group" data-testid="student-stat-average">
                     <CardContent className="p-6 flex items-center gap-5">
-                        <div className="p-4 bg-auxiliary/10 rounded-2xl text-auxiliary group-hover:bg-auxiliary/20 group-hover:scale-110 transition-all duration-300">
+                        <div className="p-4 bg-auxiliary-muted rounded-surface text-auxiliary group-hover:bg-auxiliary-muted transition-colors duration-300">
                             <Trophy className="w-6 h-6" />
                         </div>
                         <div>
-                            <p className="text-3xl font-bold text-foreground group-hover:text-auxiliary transition-colors">{averageScore.toFixed(0) || "-"}</p>
-                            <p className="text-sm text-muted-foreground">平均得分</p>
+                            <p className="text-display font-bold text-foreground group-hover:text-auxiliary transition-colors">{averageScore.toFixed(0) || "-"}</p>
+                            <p className="text-label text-muted-foreground">平均得分</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -392,36 +392,36 @@ export function TaskHall() {
 
             {/* Filter Header */}
             <div className="flex flex-row items-center justify-between gap-4 border-b border-border pb-4">
-                <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                <h2 className="text-section-title font-semibold text-foreground flex items-center gap-2">
                     <LayoutDashboard className="w-5 h-5 text-primary" />
                     我的任务
                 </h2>
-                <div className="flex p-1 bg-card border border-border rounded-lg self-auto">
+                <div className="flex p-1 bg-card border border-border rounded-surface self-auto">
                     <button
                         onClick={() => setFilter("all")}
                         data-testid="student-filter-all"
-                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "all" ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground/90"}`}
+                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-colors ${filter === "all" ? "bg-muted text-foreground " : "text-muted-foreground hover:text-foreground"}`}
                     >
                         全部
                     </button>
                     <button
                         onClick={() => setFilter("in_progress")}
                         data-testid="student-filter-in-progress"
-                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "in_progress" ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground/90"}`}
+                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-colors ${filter === "in_progress" ? "bg-muted text-foreground " : "text-muted-foreground hover:text-foreground"}`}
                     >
                         进行中
                     </button>
                     <button
                         onClick={() => setFilter("submitted")}
                         data-testid="student-filter-submitted"
-                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "submitted" ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground/90"}`}
+                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-colors ${filter === "submitted" ? "bg-muted text-foreground " : "text-muted-foreground hover:text-foreground"}`}
                     >
                         已提交
                     </button>
                     <button
                         onClick={() => setFilter("graded")}
                         data-testid="student-filter-graded"
-                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "graded" ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground/90"}`}
+                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-colors ${filter === "graded" ? "bg-muted text-foreground " : "text-muted-foreground hover:text-foreground"}`}
                     >
                         已批改
                     </button>
@@ -431,12 +431,12 @@ export function TaskHall() {
             {/* Task Grid */}
             <div className="grid grid-cols-3 gap-6 min-h-[300px]" data-testid="student-task-grid">
                 {taskError ? (
-                    <div className="col-span-full flex flex-col items-center justify-center rounded-3xl border border-dashed border-destructive/40 bg-destructive/10 py-20">
-                        <div className="w-16 h-16 bg-destructive rounded-full flex items-center justify-center mb-4 border border-destructive">
+                    <div className="col-span-full flex flex-col items-center justify-center rounded-surface border border-dashed border-destructive-border bg-destructive-muted py-20">
+                        <div className="w-16 h-16 bg-destructive rounded-control flex items-center justify-center mb-4 border border-destructive">
                             <AlertCircle className="w-8 h-8 text-destructive-foreground" />
                         </div>
-                        <p className="text-lg text-muted-foreground font-medium">任务加载失败</p>
-                        <p className="text-sm text-muted-foreground mt-1">请检查网络连接后重试</p>
+                        <p className="text-subheading text-muted-foreground font-medium">任务加载失败</p>
+                        <p className="text-label text-muted-foreground mt-1">请检查网络连接后重试</p>
                         <Button variant="outline" size="sm" className="mt-4" onClick={() => loadTasks()}>
                             重试
                         </Button>
@@ -446,12 +446,12 @@ export function TaskHall() {
                         <TaskCard key={task.id} task={task} />
                     ))
                 ) : (
-                    <div className="col-span-full flex flex-col items-center justify-center py-20 bg-card/30 rounded-3xl border border-dashed border-border">
-                        <div className="w-16 h-16 bg-card rounded-full flex items-center justify-center mb-4 border border-border">
+                    <div className="col-span-full flex flex-col items-center justify-center py-20 bg-card rounded-surface border border-dashed border-border">
+                        <div className="w-16 h-16 bg-card rounded-control flex items-center justify-center mb-4 border border-border">
                             <BookOpen className="w-8 h-8 text-muted-foreground" />
                         </div>
-                        <p className="text-lg text-muted-foreground font-medium">暂无相关任务</p>
-                        <p className="text-sm text-muted-foreground mt-1">当有新任务发布或状态变更时将出现在这里</p>
+                        <p className="text-subheading text-muted-foreground font-medium">暂无相关任务</p>
+                        <p className="text-label text-muted-foreground mt-1">当有新任务发布或状态变更时将出现在这里</p>
                     </div>
                 )}
             </div>
@@ -459,7 +459,7 @@ export function TaskHall() {
             <Dialog open={showAnnouncements} onOpenChange={setShowAnnouncements}>
                 <DialogContent className="max-w-2xl bg-card border-border text-foreground">
                     <DialogHeader>
-                        <DialogTitle className="text-foreground text-xl font-bold flex items-center gap-2">
+                        <DialogTitle className="text-foreground text-section-title font-bold flex items-center gap-2">
                             <AlertCircle className="w-5 h-5 text-primary" />
                             系统公告
                         </DialogTitle>
@@ -474,20 +474,20 @@ export function TaskHall() {
                             className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar border-r border-border pr-4"
                         >
                             {announcements.length === 0 && (
-                                <div className="text-sm text-muted-foreground text-center py-12 italic">暂无公告</div>
+                                <div className="text-label text-muted-foreground text-center py-12 italic">暂无公告</div>
                             )}
                             {announcements.map((announcement) => (
                                 <button
                                     key={announcement.id}
-                                    className={`w-full text-left p-4 rounded-xl border transition-all duration-200 group ${selectedAnnouncement?.id === announcement.id ? "bg-primary/20 border-primary/30 ring-1 ring-primary/20" : "bg-background/50 border-border hover:bg-muted hover:border-input"}`}
+                                    className={`w-full text-left p-4 rounded-surface border transition-colors duration-200 group ${selectedAnnouncement?.id === announcement.id ? "bg-primary-muted border-primary-border ring-1 ring-ring" : "bg-background border-border hover:bg-muted hover:border-input"}`}
                                     onClick={() => handleOpenAnnouncement(announcement)}
                                 >
                                     <div className="flex justify-between items-start gap-2">
-                                        <div className="text-sm font-medium line-clamp-1 text-foreground group-hover:text-primary transition-colors">
+                                        <div className="text-label font-medium line-clamp-1 text-foreground group-hover:text-primary transition-colors">
                                             {announcement.title}
                                         </div>
                                     </div>
-                                    <div className="text-xs text-muted-foreground mt-2 font-mono opacity-70">
+                                    <div className="text-meta text-muted-foreground mt-2 font-mono opacity-70">
                                         {new Date(announcement.createdAt).toLocaleString("zh-CN", {
                                             timeZone: "Asia/Shanghai",
                                             month: "2-digit",
@@ -509,8 +509,8 @@ export function TaskHall() {
                             {selectedAnnouncement ? (
                                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                     <div>
-                                        <h3 className="text-lg font-bold text-foreground leading-tight">{selectedAnnouncement.title}</h3>
-                                        <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground font-mono bg-background/50 inline-flex px-2 py-1 rounded">
+                                        <h3 className="text-subheading font-bold text-foreground leading-tight">{selectedAnnouncement.title}</h3>
+                                        <div className="flex items-center gap-2 mt-2 text-meta text-muted-foreground font-mono bg-background inline-flex px-2 py-1 rounded-control">
                                             <Clock className="w-3 h-3" />
                                             {new Date(selectedAnnouncement.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}
                                         </div>
@@ -518,13 +518,13 @@ export function TaskHall() {
                                     <div className="w-full h-px bg-muted" />
                                     <RichTextContent
                                         html={selectedAnnouncement.content}
-                                        className="text-sm text-foreground/90 leading-relaxed"
+                                        className="text-label text-foreground leading-relaxed"
                                     />
                                 </div>
                             ) : (
                                 <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-3 opacity-50">
                                     <FileText className="w-12 h-12 stroke-1" />
-                                    <p className="text-sm">请选择左侧公告查看详情</p>
+                                    <p className="text-label">请选择左侧公告查看详情</p>
                                 </div>
                             )}
                         </div>

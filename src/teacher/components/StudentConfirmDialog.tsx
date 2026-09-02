@@ -40,10 +40,10 @@ export function StudentConfirmDialog(props: StudentConfirmDialogProps) {
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel onClick={onCancel} className="bg-background border-border text-foreground/90 hover:bg-muted hover:text-foreground">
+                    <AlertDialogCancel onClick={onCancel} className="bg-background border-border text-foreground hover:bg-muted hover:text-foreground">
                         取消
                     </AlertDialogCancel>
-                    <AlertDialogAction data-testid="teacher-student-confirm-submit" onClick={onConfirm} className={state.type === "delete" ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground" : "bg-primary hover:bg-primary/90 text-primary-foreground"}>
+                    <AlertDialogAction data-testid="teacher-student-confirm-submit" onClick={onConfirm} className={state.type === "delete" ? "bg-destructive hover:bg-destructive-hover text-destructive-foreground" : "bg-primary hover:bg-primary-hover text-primary-foreground"}>
                         确认
                     </AlertDialogAction>
                 </AlertDialogFooter>

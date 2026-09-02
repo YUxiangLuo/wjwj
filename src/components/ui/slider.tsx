@@ -39,7 +39,7 @@ function Slider({
       min={min}
       max={max}
       className={cn(
-        "relative flex w-full touch-none items-center select-none data-[disabled]:opacity-50 data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-44 data-[orientation=vertical]:w-auto data-[orientation=vertical]:flex-col",
+        "relative flex w-full touch-none items-center select-none data-[disabled]:cursor-not-allowed data-[disabled]:text-muted-foreground data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-44 data-[orientation=vertical]:w-auto data-[orientation=vertical]:flex-col",
         className
       )}
       {...props}
@@ -47,7 +47,7 @@ function Slider({
       <SliderPrimitive.Track
         data-slot="slider-track"
         className={cn(
-          "bg-muted relative grow overflow-hidden rounded-full data-[orientation=horizontal]:h-1.5 data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-1.5"
+          "relative grow overflow-hidden rounded-control bg-muted data-[orientation=horizontal]:h-2 data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-2"
         )}
       >
         <SliderPrimitive.Range
@@ -66,7 +66,7 @@ function Slider({
               ? `${accessibleLabel}${index === 0 ? "下限" : index === _values.length - 1 ? "上限" : `第 ${index + 1} 个值`}`
               : accessibleLabel
           }
-          className="border-primary ring-ring/50 block size-4 shrink-0 rounded-full border bg-background shadow-control transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
+          className="block size-5 shrink-0 rounded-circle border-2 border-primary bg-card transition-[border-color,box-shadow] hover:ring-2 hover:ring-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden disabled:pointer-events-none disabled:border-input disabled:bg-muted"
         />
       ))}
     </SliderPrimitive.Root>

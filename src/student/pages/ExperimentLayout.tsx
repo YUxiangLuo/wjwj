@@ -170,24 +170,24 @@ export function ExperimentLayout() {
     return (
         <ExperimentContext.Provider value={{ experiment, populationSize: experiment.populationSize, isSaving, completeStage }}>
             <div className="pb-12" data-testid="student-experiment-layout">
-                <div className="sticky top-16 z-40 -mt-2 border-b border-border/50 bg-background/90 backdrop-blur">
+                <div className="sticky top-16 z-40 -mt-2 border-b border-border bg-background">
                     <div className="flex items-center justify-between py-2">
-                        <div className="flex items-center gap-2"><Button asChild variant="ghost" size="icon"><Link to="/" aria-label="返回任务大厅"><Home className="h-4 w-4" /></Link></Button><Button asChild variant="ghost" className="gap-2 flex"><Link to={`/task/${numericTaskId}`}><ArrowLeft className="h-4 w-4" />退出实验</Link></Button><h1 className="ml-2 line-clamp-1 border-l border-border pl-4 text-sm font-semibold">{taskName}</h1></div>
-                        {deadlineInfo && <span className={`items-center gap-1 text-xs flex ${deadlineInfo.urgent ? "text-destructive" : "text-muted-foreground"}`}>{deadlineInfo.urgent ? <AlertCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}{deadlineInfo.text}</span>}
+                        <div className="flex items-center gap-2"><Button asChild variant="ghost" size="icon"><Link to="/" aria-label="返回任务大厅"><Home className="h-4 w-4" /></Link></Button><Button asChild variant="ghost" className="gap-2 flex"><Link to={`/task/${numericTaskId}`}><ArrowLeft className="h-4 w-4" />退出实验</Link></Button><h1 className="ml-2 line-clamp-1 border-l border-border pl-4 text-label font-semibold">{taskName}</h1></div>
+                        {deadlineInfo && <span className={`items-center gap-1 text-meta flex ${deadlineInfo.urgent ? "text-destructive" : "text-muted-foreground"}`}>{deadlineInfo.urgent ? <AlertCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}{deadlineInfo.text}</span>}
                     </div>
-                    {saveError && <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"><span>{saveError}</span>{versionConflict && <Button type="button" size="sm" variant="outline" disabled={isSaving} data-testid="student-load-latest-version" onClick={() => void loadLatestVersion()} className="border-destructive/30 bg-background text-destructive hover:bg-destructive/10 hover:text-destructive"><RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isSaving ? "animate-spin" : ""}`} />加载最新版本</Button>}</div>}
+                    {saveError && <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-surface border border-destructive-border bg-destructive-muted px-3 py-2 text-label text-destructive"><span>{saveError}</span>{versionConflict && <Button type="button" size="sm" variant="outline" disabled={isSaving} data-testid="student-load-latest-version" onClick={() => void loadLatestVersion()} className="border-destructive-border bg-background text-destructive hover:bg-destructive-muted hover:text-destructive"><RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isSaving ? "animate-spin" : ""}`} />加载最新版本</Button>}</div>}
                     <div className="flex items-center gap-2 overflow-x-auto pb-2.5" data-testid="student-experiment-stages">
                         {stages.map((stage, index) => {
                             const number = index + 1;
                             const isCurrent = number === currentStage;
                             const isCompleted = completed[index] !== null;
                             const Icon = stage.icon;
-                            return <div key={stage.name} className="flex items-center gap-2">{index > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}<button aria-label={`${isCurrent ? "当前阶段" : "重新编辑阶段"} ${number}：${stage.name}`} disabled={number >= currentStage || !isCompleted} onClick={() => setReopenStage(number)} className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1 text-xs font-medium ${isCurrent ? "border border-primary/30 bg-primary/15 text-primary" : isCompleted ? "text-success hover:bg-success/10" : "text-muted-foreground"}`}>{isCompleted && !isCurrent ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}<span>{stage.name}</span></button></div>;
+                            return <div key={stage.name} className="flex items-center gap-2">{index > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}<button aria-label={`${isCurrent ? "当前阶段" : "重新编辑阶段"} ${number}：${stage.name}`} disabled={number >= currentStage || !isCompleted} onClick={() => setReopenStage(number)} className={`flex items-center gap-1.5 whitespace-nowrap rounded-surface px-2.5 py-1 text-meta font-medium ${isCurrent ? "border border-primary-border bg-primary-muted text-primary" : isCompleted ? "text-success hover:bg-success-muted" : "text-muted-foreground"}`}>{isCompleted && !isCurrent ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}<span>{stage.name}</span></button></div>;
                         })}
                     </div>
                 </div>
-                <div className="my-6 flex items-center gap-3 rounded-xl border border-border bg-card/50 px-4 py-3"><span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/15 text-primary">{(() => { const Icon = stages[currentStage - 1]!.icon; return <Icon className="h-4 w-4" />; })()}</span><div><p className="text-sm font-semibold">阶段 {currentStage}：{stages[currentStage - 1]!.name}</p><p className="text-xs text-muted-foreground">{stages[currentStage - 1]!.description}。编辑草稿自动保存在当前浏览器；抽样结果每次执行即保存，点击阶段完成后正式写入服务器。</p></div></div>
-                <p className="mb-6 rounded-xl border border-info/20 bg-info/10 px-4 py-3 text-sm text-info" data-testid="student-analysis-target-summary">
+                <div className="my-6 flex items-center gap-3 rounded-surface border border-border bg-card px-4 py-3"><span className="grid h-8 w-8 place-items-center rounded-surface bg-primary-muted text-primary">{(() => { const Icon = stages[currentStage - 1]!.icon; return <Icon className="h-4 w-4" />; })()}</span><div><p className="text-label font-semibold">阶段 {currentStage}：{stages[currentStage - 1]!.name}</p><p className="text-meta text-muted-foreground">{stages[currentStage - 1]!.description}。编辑草稿自动保存在当前浏览器；抽样结果每次执行即保存，点击阶段完成后正式写入服务器。</p></div></div>
+                <p className="mb-6 rounded-surface border border-info-border bg-info-muted px-4 py-3 text-label text-info" data-testid="student-analysis-target-summary">
                     {formatStudyContractSummary(experiment.studyContract ?? null, experiment.samplePlan
                         ? { marginLabel: formatMarginOfError(experiment.samplePlan.marginOfError, experiment.studyContract?.contract.target.kind ?? experiment.samplePlan.estimationType) }
                         : undefined)}
@@ -195,19 +195,19 @@ export function ExperimentLayout() {
                 {experiment.status === "rejected" && experiment.rejectReason?.trim() && (
                     <div
                         role="alert"
-                        className="mb-6 flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-destructive"
+                        className="mb-6 flex items-start gap-3 rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3 text-destructive"
                         data-testid="student-experiment-rejection-notice"
                     >
                         <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                         <div className="min-w-0">
-                            <p className="text-sm font-semibold">本次提交已被驳回，请按教师意见修改后重新提交</p>
-                            <p className="mt-1 whitespace-pre-line text-sm leading-relaxed">{experiment.rejectReason}</p>
+                            <p className="text-label font-semibold">本次提交已被驳回，请按教师意见修改后重新提交</p>
+                            <p className="mt-1 whitespace-pre-line text-label leading-relaxed">{experiment.rejectReason}</p>
                         </div>
                     </div>
                 )}
                 <div key={editorRevision} className="min-h-[500px]">{renderStage()}</div>
             </div>
-            <AlertDialog open={reopenStage !== null} onOpenChange={(open) => !open && setReopenStage(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>重新编辑“{reopenStage ? stages[reopenStage - 1]!.name : ""}”</AlertDialogTitle><AlertDialogDescription>当前阶段内容会保留，该阶段之后的内容将被清空。确认后才能重新编辑。</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>取消</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => void applyReopen()}>确认重新编辑</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+            <AlertDialog open={reopenStage !== null} onOpenChange={(open) => !open && setReopenStage(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>重新编辑“{reopenStage ? stages[reopenStage - 1]!.name : ""}”</AlertDialogTitle><AlertDialogDescription>当前阶段内容会保留，该阶段之后的内容将被清空。确认后才能重新编辑。</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>取消</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive-hover" onClick={() => void applyReopen()}>确认重新编辑</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
         </ExperimentContext.Provider>
     );
 }

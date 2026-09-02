@@ -50,8 +50,8 @@ export function FormulaPhase({
                 <StepHeader current={1} total={3} />
 
                 <div className="text-center space-y-3">
-                    <h2 className="text-2xl font-bold text-foreground">现在进入样本量公式阶段</h2>
-                    <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
+                    <h2 className="text-page-title font-bold text-foreground">现在进入样本量公式阶段</h2>
+                    <p className="text-label text-muted-foreground max-w-2xl mx-auto">
                         {estimationLocked
                             ? "估计类型由课题对照变量锁定。下面设置置信水平；公式、误差定义和示例都按该类型计算。"
                             : "先选这次要规划的估计目标，再设置置信水平。后面的公式、误差定义和示例都会跟着这里的选择变化。"}
@@ -59,20 +59,20 @@ export function FormulaPhase({
                 </div>
 
                 <div className="space-y-4">
-                    <p className="text-center text-sm font-medium text-muted-foreground">
+                    <p className="text-center text-label font-medium text-muted-foreground">
                         {estimationLocked ? "本次规划的估计类型" : "先选择你要估计什么"}
                     </p>
 
                     <div className="flex justify-center">
-                        <div className="inline-flex rounded-xl border border-border bg-card p-1">
+                        <div className="inline-flex rounded-surface border border-border bg-card p-1">
                             <button
                                 type="button"
                                 onClick={() => !estimationLocked && onEstimationTypeChange("proportion")}
                                 disabled={estimationLocked && !isProportion}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                className={`px-4 py-2 rounded-surface text-label font-medium transition-colors ${
                                     isProportion
-                                        ? "bg-background text-primary shadow-sm"
-                                        : "text-muted-foreground hover:text-foreground/90"
+                                        ? "bg-background text-primary "
+                                        : "text-muted-foreground hover:text-foreground"
                                 }`}
                             >
                                 比例估计
@@ -81,10 +81,10 @@ export function FormulaPhase({
                                 type="button"
                                 onClick={() => !estimationLocked && onEstimationTypeChange("mean")}
                                 disabled={estimationLocked && isProportion}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                className={`px-4 py-2 rounded-surface text-label font-medium transition-colors ${
                                     !isProportion
-                                        ? "bg-background text-primary shadow-sm"
-                                        : "text-muted-foreground hover:text-foreground/90"
+                                        ? "bg-background text-primary "
+                                        : "text-muted-foreground hover:text-foreground"
                                 }`}
                             >
                                 均值估计
@@ -124,7 +124,7 @@ export function FormulaPhase({
                             ]}
                         />
                     )}
-                    <p className="text-muted-foreground mt-4 text-lg">
+                    <p className="text-muted-foreground mt-4 text-subheading">
                         这一步是在决定：<br />
                         如果重复抽样很多次，你希望有多大把握让区间覆盖总体真值？
                     </p>
@@ -132,7 +132,7 @@ export function FormulaPhase({
 
                 <div className="max-w-sm mx-auto space-y-3">
                     <Select value={params.confidenceLevel} onValueChange={onConfidenceLevelChange}>
-                        <SelectTrigger aria-label="公式推导置信水平" className="h-14 text-lg bg-background border-border">
+                        <SelectTrigger aria-label="公式推导置信水平" className="h-14 text-subheading bg-card border-input">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -148,16 +148,16 @@ export function FormulaPhase({
                         </SelectContent>
                     </Select>
 
-                    <div className="rounded-xl border border-primary/20 bg-primary/10 p-4 text-center">
-                        <p className="text-sm text-primary mb-1">
+                    <div className="rounded-surface border border-primary-border bg-primary-muted p-4 text-center">
+                        <p className="text-label text-primary mb-1">
                             Z = {z}　→　当前 n₀ =
                         </p>
-                        <p className="text-3xl font-bold tabular-nums text-primary">
+                        <p className="text-display font-bold tabular-nums text-primary">
                             {Number.isFinite(n0) ? Math.ceil(n0).toLocaleString() : "—"}
                         </p>
                     </div>
 
-                    <p className="text-sm text-muted-foreground text-center">
+                    <p className="text-label text-muted-foreground text-center">
                         置信水平越高，Z 值越大，初始样本量 n₀ 也越大
                     </p>
                 </div>
@@ -173,8 +173,8 @@ export function FormulaPhase({
                 <StepHeader current={2} total={3} />
 
                 <div className="text-center space-y-2">
-                    <h2 className="text-2xl font-bold text-foreground">继续补齐公式里的关键参数</h2>
-                    <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
+                    <h2 className="text-page-title font-bold text-foreground">继续补齐公式里的关键参数</h2>
+                    <p className="text-label text-muted-foreground max-w-2xl mx-auto">
                         上一步确定了“要多可靠”，这一步再确定“要多精确”。误差要求越严格，样本量就会越大。
                     </p>
                 </div>
@@ -188,10 +188,10 @@ export function FormulaPhase({
                                     { text: "E²", highlight: "teal" },
                                 ]}
                             />
-                            <p className="text-muted-foreground mt-4 text-lg">
+                            <p className="text-muted-foreground mt-4 text-subheading">
                                 再确定你能容忍多大的误差
                             </p>
-                            <p className="text-muted-foreground text-sm">
+                            <p className="text-muted-foreground text-label">
                                 这里的 E 是比例估计的误差限。E 越小，区间越窄，需要的样本越多。
                             </p>
                         </>
@@ -205,10 +205,10 @@ export function FormulaPhase({
                                     { text: "e²", highlight: "teal" },
                                 ]}
                             />
-                            <p className="text-muted-foreground mt-4 text-lg">
+                            <p className="text-muted-foreground mt-4 text-subheading">
                                 再设置总体方差和误差限
                             </p>
-                            <p className="text-muted-foreground text-sm">
+                            <p className="text-muted-foreground text-label">
                                 先给出 σ²，再决定均值估计允许偏离总体真值多少。
                             </p>
                         </>
@@ -218,7 +218,7 @@ export function FormulaPhase({
                 <div className="max-w-sm mx-auto space-y-4">
                     {!isProportion && (
                         <div className="space-y-2">
-                            <label htmlFor="formula-population-variance" className="text-sm font-medium text-muted-foreground">总体方差 σ²</label>
+                            <label htmlFor="formula-population-variance" className="text-label font-medium text-muted-foreground">总体方差 σ²</label>
                             <Input
                                 id="formula-population-variance"
                                 type="number"
@@ -230,9 +230,9 @@ export function FormulaPhase({
                                     if (Number.isFinite(v) && v > 0) onPopulationVarianceChange(v);
                                 }}
                                 placeholder="例如 100"
-                                className="h-12 text-lg bg-background border-border"
+                                className="h-12 text-subheading bg-card border-input"
                             />
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-meta text-muted-foreground">
                                 可从历史调查或预调查估算。本工具按 σ²=(1/N)Σ(yᵢ−Ȳ)² 定义，并用 z 与可靠先验方差作正态近似规划；若方差仅来自小型预调查，应考虑 t 分布迭代规划。若已有分母 N−1 的有限总体方差 S²，可换算为 σ²=(N−1)S²/N（大总体时差异很小）。
                             </p>
                         </div>
@@ -240,9 +240,9 @@ export function FormulaPhase({
 
                     {isProportion ? (
                         <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
+                            <div className="flex justify-between text-label">
                                 <span className="text-muted-foreground">1% (精确)</span>
-                                <span className="font-bold text-info text-lg tabular-nums">
+                                <span className="font-bold text-info text-subheading tabular-nums">
                                     ±{params.marginOfError}%
                                 </span>
                                 <span className="text-muted-foreground">10% (粗略)</span>
@@ -259,7 +259,7 @@ export function FormulaPhase({
                         </div>
                     ) : (
                         <div className="space-y-2">
-                            <label htmlFor="formula-margin-of-error" className="text-sm font-medium text-muted-foreground">绝对误差限 e</label>
+                            <label htmlFor="formula-margin-of-error" className="text-label font-medium text-muted-foreground">绝对误差限 e</label>
                             <Input
                                 id="formula-margin-of-error"
                                 type="number"
@@ -271,27 +271,27 @@ export function FormulaPhase({
                                     if (Number.isFinite(v) && v > 0) onMarginOfErrorChange(v);
                                 }}
                                 placeholder="例如 2"
-                                className="h-12 text-lg bg-background border-border"
+                                className="h-12 text-subheading bg-card border-input"
                             />
-                            <p className="text-xs text-muted-foreground">与均值同单位的绝对误差</p>
+                            <p className="text-meta text-muted-foreground">与均值同单位的绝对误差</p>
                         </div>
                     )}
 
                     {isProportion && <ErrorRangeVisual margin={params.marginOfError} />}
 
-                    <div className="rounded-xl border border-info/20 bg-info/10 p-4 text-center">
-                        <p className="text-sm text-info mb-1">
+                    <div className="rounded-surface border border-info-border bg-info-muted p-4 text-center">
+                        <p className="text-label text-info mb-1">
                             {isProportion
                                 ? `E = ${params.marginOfError}%　→　当前 n₀ =`
                                 : `σ²=${populationVariance}, e=${params.marginOfError}　→　n₀ =`
                             }
                         </p>
-                        <p className="text-3xl font-bold tabular-nums text-info">
+                        <p className="text-display font-bold tabular-nums text-info">
                             {Number.isFinite(n0) && n0 > 0 ? Math.ceil(n0).toLocaleString() : "—"}
                         </p>
                     </div>
 
-                    <p className="text-sm text-muted-foreground text-center">
+                    <p className="text-label text-muted-foreground text-center">
                         {isProportion ? "误差越小，需要的样本越多" : "方差越大或误差限越小，需要的样本越多"}
                     </p>
                 </div>
@@ -323,13 +323,13 @@ export function FormulaPhase({
             <StepHeader current={3} total={3} />
 
             <div className="text-center space-y-2">
-                <h2 className="text-xl font-bold text-foreground">公式阶段小结</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="text-section-title font-bold text-foreground">公式阶段小结</h2>
+                <p className="text-label text-muted-foreground">
                     你已经得到 {isProportion ? "比例估计" : "均值估计"} 在无限总体与有限总体下的基础样本量
                 </p>
             </div>
 
-            <div className="mx-auto max-w-md space-y-2 rounded-2xl border border-border bg-background p-6 shadow-sm">
+            <div className="mx-auto max-w-md space-y-2 rounded-surface border border-border bg-background p-6 ">
                 {isProportion ? (
                     <FormulaLine
                         label="无限总体"
@@ -355,30 +355,30 @@ export function FormulaPhase({
             </div>
 
             {/* Dual-formula comparison card */}
-            <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-5 space-y-3">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">两种估计公式对比</p>
+            <div className="mx-auto max-w-md rounded-surface border border-border bg-card p-5 space-y-3">
+                <p className="text-meta font-medium uppercase tracking-wider text-muted-foreground">两种估计公式对比</p>
                 <div className="grid grid-cols-2 gap-3">
-                    <div className={`rounded-xl p-3 text-center ${isProportion ? "bg-primary/10 ring-2 ring-primary" : "bg-background"}`}>
-                        <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1">比例估计</p>
-                        <p className="font-mono text-xs text-muted-foreground">n₀ = Z²p(1−p)/E²</p>
+                    <div className={`rounded-surface p-3 text-center ${isProportion ? "bg-primary-muted ring-2 ring-primary" : "bg-background"}`}>
+                        <p className="text-meta font-medium uppercase tracking-wider text-muted-foreground mb-1">比例估计</p>
+                        <p className="font-mono text-meta text-muted-foreground">n₀ = Z²p(1−p)/E²</p>
                     </div>
-                    <div className={`rounded-xl p-3 text-center ${!isProportion ? "bg-primary/10 ring-2 ring-primary" : "bg-background"}`}>
-                        <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1">均值估计</p>
-                        <p className="font-mono text-xs text-muted-foreground">n₀ = Z²σ²/e²</p>
+                    <div className={`rounded-surface p-3 text-center ${!isProportion ? "bg-primary-muted ring-2 ring-primary" : "bg-background"}`}>
+                        <p className="text-meta font-medium uppercase tracking-wider text-muted-foreground mb-1">均值估计</p>
+                        <p className="font-mono text-meta text-muted-foreground">n₀ = Z²σ²/e²</p>
                     </div>
                 </div>
-                <p className="text-xs text-muted-foreground text-center">
+                <p className="text-meta text-muted-foreground text-center">
                     核心区别：比例估计的变异度用 p(1−p)，均值估计用总体方差 σ²
                 </p>
             </div>
 
             <div className="text-center space-y-2 animate-in fade-in duration-500" style={{ animationDelay: "800ms", animationFillMode: "both" }}>
-                <p className="text-muted-foreground text-lg">
+                <p className="text-muted-foreground text-subheading">
                     在无限大总体下先算得 <strong className="text-primary tabular-nums">{n0RawDisplay}</strong>，
                     规划时向上取整为 <strong className="text-primary tabular-nums">{n0Rounded.toLocaleString()}</strong> 人；
                     再考虑总体只有 <strong className="tabular-nums">{params.populationSize.toLocaleString()}</strong> 人后，约为 <strong className="text-success tabular-nums">{nFpcRawDisplay}</strong>，规划时取 <strong className="text-success tabular-nums">{nFpcRounded.toLocaleString()}</strong> 人。此步尚未计入设计效应与无回答率。
                 </p>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-muted-foreground text-label">
                     接下来单独看看“有限总体校正”为何会起作用。
                 </p>
             </div>
@@ -393,7 +393,7 @@ export function FormulaPhase({
 function StepHeader({ current, total }: { current: number; total: number }) {
     return (
         <div className="flex justify-center">
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-muted text-xs font-medium text-muted-foreground">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-control bg-muted text-meta font-medium text-muted-foreground">
                 第 {current} 步 / 共 {total} 步
             </span>
         </div>
@@ -402,7 +402,7 @@ function StepHeader({ current, total }: { current: number; total: number }) {
 
 function FormulaDisplay({ parts }: { parts: Array<{ text: string; dim?: boolean; highlight?: string }> }) {
     return (
-        <div className="text-3xl font-mono font-bold tracking-tight text-center">
+        <div className="text-display font-mono font-bold tracking-tight text-center">
             {parts.map((p, i) => (
                 <span
                     key={i}
@@ -411,7 +411,7 @@ function FormulaDisplay({ parts }: { parts: Array<{ text: string; dim?: boolean;
                             : p.highlight === "teal" ? "text-info"
                                 : p.highlight === "violet" ? "text-auxiliary"
                                     : p.dim ? "text-muted-foreground"
-                                        : "text-foreground/90"
+                                        : "text-foreground"
                     }
                 >
                     {p.text}
@@ -427,9 +427,9 @@ function FormulaLine({ label, formula, result, delay }: { label: string; formula
             className="space-y-1 animate-in fade-in slide-in-from-bottom-2 duration-500"
             style={{ animationDelay: `${delay}ms`, animationFillMode: "both" }}
         >
-            <p className="text-xs font-medium text-muted-foreground">{label}</p>
-            <p className="font-mono text-sm text-muted-foreground break-all">{formula}</p>
-            <p className="text-right text-xl font-bold tabular-nums text-primary">
+            <p className="text-meta font-medium text-muted-foreground">{label}</p>
+            <p className="font-mono text-label text-muted-foreground break-all">{formula}</p>
+            <p className="text-right text-section-title font-bold tabular-nums text-primary">
                 = {typeof result === "number" ? result.toLocaleString() : result}
             </p>
         </div>
@@ -439,14 +439,14 @@ function FormulaLine({ label, formula, result, delay }: { label: string; formula
 function EstimationMethodCard({ active, title, description }: { active: boolean; title: string; description: string }) {
     return (
         <div
-            className={`rounded-2xl border p-4 text-left transition-colors ${
+            className={`rounded-surface border p-4 text-left transition-colors ${
                 active
-                    ? "border-primary/20 bg-primary/10"
+                    ? "border-primary-border bg-primary-muted"
                     : "border-border bg-background"
             }`}
         >
-            <p className={`text-sm font-semibold ${active ? "text-primary" : "text-foreground/90"}`}>{title}</p>
-            <p className="text-xs text-muted-foreground mt-1">{description}</p>
+            <p className={`text-label font-semibold ${active ? "text-primary" : "text-foreground"}`}>{title}</p>
+            <p className="text-meta text-muted-foreground mt-1">{description}</p>
         </div>
     );
 }
@@ -458,11 +458,11 @@ function ErrorRangeVisual({ margin }: { margin: number }) {
     const loP = lo;
     const hiP = hi;
     return (
-        <div className="rounded-xl border border-border bg-card p-3 space-y-2">
-            <p className="text-xs text-muted-foreground text-center">误差范围可视化</p>
-            <div className="relative h-6 rounded-full bg-muted-foreground/50 overflow-hidden">
+        <div className="rounded-surface border border-border bg-card p-3 space-y-2">
+            <p className="text-meta text-muted-foreground text-center">误差范围可视化</p>
+            <div className="relative h-6 rounded-control bg-input overflow-hidden">
                 <div
-                    className="absolute top-0 bottom-0 bg-info/40 transition-all duration-300"
+                    className="absolute top-0 bottom-0 bg-info-muted transition-[left,width] duration-300"
                     style={{ left: `${loP}%`, width: `${hiP - loP}%` }}
                 />
                 <div
@@ -470,7 +470,7 @@ function ErrorRangeVisual({ margin }: { margin: number }) {
                     style={{ left: "50%" }}
                 />
             </div>
-            <div className="flex justify-between text-xs text-muted-foreground tabular-nums">
+            <div className="flex justify-between text-meta text-muted-foreground tabular-nums">
                 <span>{lo}%</span>
                 <span className="font-medium text-muted-foreground">真实值 {center}%</span>
                 <span>{hi}%</span>

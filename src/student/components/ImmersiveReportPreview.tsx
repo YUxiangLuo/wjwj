@@ -39,7 +39,7 @@ export function ImmersiveReportPreview({ open, experiment, taskName, onClose }: 
                 role="dialog"
                 aria-modal="true"
                 aria-label={`${taskName}实验报告全屏预览`}
-                className="inset-0 left-0 top-0 block h-screen w-screen translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-none border-0 bg-background/98 p-0 backdrop-blur-sm max-w-none"
+                className="inset-0 left-0 top-0 block h-screen w-screen translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-none border-0 bg-background p-0 max-w-none"
             >
                 <DialogTitle className="sr-only">{taskName}实验报告全屏预览</DialogTitle>
                 <DialogDescription className="sr-only">查看实验概览、问卷设计、抽样结果和分析报告。</DialogDescription>
@@ -59,17 +59,17 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
     return (
         <>
             {/* top bar */}
-            <div className="flex items-center justify-between px-6 py-3 border-b border-border/60 bg-background/80 backdrop-blur">
+            <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-background">
                 <div className="flex items-center gap-3">
                     <FileText className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-medium text-foreground/90">{taskName}</span>
-                    <span className="text-xs text-muted-foreground">实验报告预览</span>
+                    <span className="text-label font-medium text-foreground">{taskName}</span>
+                    <span className="text-meta text-muted-foreground">实验报告预览</span>
                 </div>
                 <button
                     type="button"
                     aria-label="关闭全屏预览"
                     onClick={onClose}
-                    className="p-2 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                    className="p-2 rounded-control hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                 >
                     <X className="w-5 h-5" />
                 </button>
@@ -77,7 +77,7 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
 
             <div className="flex h-[calc(100vh-49px)]">
                 {/* sidebar nav */}
-                <nav className="w-48 border-r border-border/60 p-3 space-y-1">
+                <nav className="w-48 border-r border-border p-3 space-y-1">
                     {SECTIONS.map((s) => {
                         const Icon = s.icon;
                         const isActive = activeSection === s.key;
@@ -85,10 +85,10 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
                             <button
                                 key={s.key}
                                 onClick={() => setActiveSection(s.key)}
-                                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+                                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-surface text-label transition-colors ${
                                     isActive
-                                        ? "bg-primary/10 text-primary border border-primary/20"
-                                        : "text-muted-foreground hover:text-foreground/90 hover:bg-muted/50 border border-transparent"
+                                        ? "bg-primary-muted text-primary border border-primary-border"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent"
                                 }`}
                             >
                                 <Icon className="w-4 h-4" />
@@ -186,30 +186,30 @@ function OverviewSection({
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="text-3xl font-bold text-foreground mb-2">{taskName}</h1>
+                <h1 className="text-display font-bold text-foreground mb-2">{taskName}</h1>
                 <p className="text-muted-foreground">实验报告预览</p>
             </div>
 
             <div className="grid grid-cols-4 gap-4">
                 {stats.map((s) => (
-                    <div key={s.label} className="rounded-xl border border-border bg-card/60 p-4">
-                        <div className="text-[11px] text-muted-foreground mb-1">{s.label}</div>
-                        <div className="text-xl font-bold text-foreground font-mono">
+                    <div key={s.label} className="rounded-surface border border-border bg-card p-4">
+                        <div className="text-meta text-muted-foreground mb-1">{s.label}</div>
+                        <div className="text-section-title font-bold text-foreground font-mono">
                             {s.value}
-                            {s.sub && <span className="text-xs font-normal text-muted-foreground ml-1">{s.sub}</span>}
+                            {s.sub && <span className="text-meta font-normal text-muted-foreground ml-1">{s.sub}</span>}
                         </div>
                     </div>
                 ))}
             </div>
 
-            <div className="rounded-xl border border-border bg-card/60 p-5">
-                <h3 className="text-sm font-semibold text-foreground/90 mb-4">样本量规划摘要</h3>
+            <div className="rounded-surface border border-border bg-card p-5">
+                <h3 className="text-label font-semibold text-foreground mb-4">样本量规划摘要</h3>
                 {!samplePlan ? (
-                    <div className="text-sm text-muted-foreground">暂无样本量规划数据</div>
+                    <div className="text-label text-muted-foreground">暂无样本量规划数据</div>
                 ) : (
                     <div className="space-y-2.5">
                         {samplePlanRows.map((row) => (
-                            <div key={row.label} className="flex items-center justify-between gap-3 text-sm">
+                            <div key={row.label} className="flex items-center justify-between gap-3 text-label">
                                 <span className="text-muted-foreground">{row.label}</span>
                                 <span className="text-right text-foreground">{row.value}</span>
                             </div>
@@ -218,13 +218,13 @@ function OverviewSection({
                 )}
             </div>
 
-            <div className="rounded-xl border border-border bg-card/60 p-5">
-                <h3 className="text-sm font-semibold text-foreground/90 mb-4">抽样方法完成情况</h3>
+            <div className="rounded-surface border border-border bg-card p-5">
+                <h3 className="text-label font-semibold text-foreground mb-4">抽样方法完成情况</h3>
                 <div className="space-y-3">
                     {methods.map((m) => (
                         <div key={m.label} className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">{m.label}</span>
-                            <span className={`text-sm font-medium ${m.done ? "text-success" : "text-muted-foreground"}`}>
+                            <span className="text-label text-muted-foreground">{m.label}</span>
+                            <span className={`text-label font-medium ${m.done ? "text-success" : "text-muted-foreground"}`}>
                                 {m.done ? `已完成 (${m.count} 样本)` : "未完成"}
                             </span>
                         </div>
@@ -233,7 +233,7 @@ function OverviewSection({
             </div>
 
             {advancedSourceLabel && (
-                <div className="rounded-xl border border-warning/20 bg-warning/10 p-4 text-sm text-warning">
+                <div className="rounded-surface border border-warning-border bg-warning-muted p-4 text-label text-warning">
                     最终样本量来源：{advancedSourceLabel}。报告解读当前 n 时，应以该高级工具的推演结论为准；上方“推荐样本量 n”仅表示常规公式的基线建议。
                 </div>
             )}
@@ -242,7 +242,7 @@ function OverviewSection({
                 onClick={() => {
                     // scroll hint—user can click "分析报告" in sidebar
                 }}
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-muted-foreground transition-colors mx-auto"
+                className="flex items-center gap-2 text-label text-muted-foreground hover:text-muted-foreground transition-colors mx-auto"
             >
                 <ChevronDown className="w-4 h-4 animate-bounce" />
                 使用左侧导航查看各部分详情
@@ -260,41 +260,41 @@ function QuestionnaireSection({ questionnaire }: { questionnaire: ExperimentData
     return (
         <div className="space-y-6">
             <div>
-                <h2 className="text-2xl font-bold text-foreground mb-1">{questionnaire.title || "未命名问卷"}</h2>
-                <p className="text-sm text-muted-foreground">{questionnaire.questions?.length ?? 0} 道题目</p>
+                <h2 className="text-page-title font-bold text-foreground mb-1">{questionnaire.title || "未命名问卷"}</h2>
+                <p className="text-label text-muted-foreground">{questionnaire.questions?.length ?? 0} 道题目</p>
             </div>
 
             {questionnaire.welcomeText && (
-                <div className="rounded-xl border border-border bg-card/40 p-4">
-                    <div className="text-xs text-muted-foreground mb-2">欢迎语</div>
-                    <RichTextContent html={questionnaire.welcomeText} className="text-sm text-foreground/90" />
+                <div className="rounded-surface border border-border bg-card p-4">
+                    <div className="text-meta text-muted-foreground mb-2">欢迎语</div>
+                    <RichTextContent html={questionnaire.welcomeText} className="text-label text-foreground" />
                 </div>
             )}
 
             <div className="space-y-3">
                 {(questionnaire.questions ?? []).map((q, i) => (
-                    <div key={q.id} className="rounded-xl border border-border bg-card/40 p-4">
+                    <div key={q.id} className="rounded-surface border border-border bg-card p-4">
                         <div className="flex items-start gap-3">
-                            <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/15 text-primary flex items-center justify-center text-sm font-bold">
+                            <span className="flex-shrink-0 w-7 h-7 rounded-control bg-primary-muted text-primary flex items-center justify-center text-label font-bold">
                                 {i + 1}
                             </span>
                             <div className="flex-1 space-y-2">
-                                <p className="text-sm font-medium text-foreground">{q.content}</p>
+                                <p className="text-label font-medium text-foreground">{q.content}</p>
                                 {q.type === "boolean" && (
-                                    <span className="text-xs text-muted-foreground bg-muted/60 px-2 py-1 rounded">是 / 否</span>
+                                    <span className="text-meta text-muted-foreground bg-muted px-2 py-1 rounded-control">是 / 否</span>
                                 )}
                                 {(q.type === "single" || q.type === "multiple") && (
                                     <ul className="space-y-1">
                                         {(q.options ?? []).map((opt, j) => (
-                                            <li key={j} className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
+                                            <li key={j} className="flex items-center gap-2 text-label text-muted-foreground">
+                                                <div className="w-1.5 h-1.5 rounded-circle bg-input" />
                                                 {opt}
                                             </li>
                                         ))}
                                     </ul>
                                 )}
                                 {q.type === "scale" && (
-                                    <span className="text-xs text-muted-foreground bg-muted/60 px-2 py-1 rounded">
+                                    <span className="text-meta text-muted-foreground bg-muted px-2 py-1 rounded-control">
                                         量表 {q.scaleMin ?? 1}-{q.scaleMax ?? 10}
                                         {q.scaleMinLabel && ` (${q.scaleMinLabel} ~ ${q.scaleMaxLabel})`}
                                     </span>
@@ -306,9 +306,9 @@ function QuestionnaireSection({ questionnaire }: { questionnaire: ExperimentData
             </div>
 
             {questionnaire.endingText && (
-                <div className="rounded-xl border border-border bg-card/40 p-4">
-                    <div className="text-xs text-muted-foreground mb-2">结束语</div>
-                    <RichTextContent html={questionnaire.endingText} className="text-sm text-foreground/90" />
+                <div className="rounded-surface border border-border bg-card p-4">
+                    <div className="text-meta text-muted-foreground mb-2">结束语</div>
+                    <RichTextContent html={questionnaire.endingText} className="text-label text-foreground" />
                 </div>
             )}
         </div>
@@ -359,12 +359,12 @@ function SamplingSection({
     return (
         <div className="space-y-6">
             <div>
-                <h2 className="text-2xl font-bold text-foreground mb-1">抽样执行结果</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="text-page-title font-bold text-foreground mb-1">抽样执行结果</h2>
+                <p className="text-label text-muted-foreground">
                     规划样本量: {samplePlan?.finalSampleSize?.toLocaleString() ?? "—"}
                 </p>
                 {advancedSourceLabel && (
-                    <p className="text-xs text-warning mt-1">
+                    <p className="text-meta text-warning mt-1">
                         当前最终样本量来自「{advancedSourceLabel}」。
                     </p>
                 )}
@@ -375,15 +375,15 @@ function SamplingSection({
                     const d = m.data;
                     const completed = d?.completed ?? false;
                     return (
-                        <div key={m.key} className="rounded-xl border border-border bg-card/40 p-5">
+                        <div key={m.key} className="rounded-surface border border-border bg-card p-5">
                             <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-base font-semibold text-foreground">{m.label}</h3>
-                                <span className={`text-xs px-2 py-1 rounded-full ${completed ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
+                                <h3 className="text-body font-semibold text-foreground">{m.label}</h3>
+                                <span className={`text-meta px-2 py-1 rounded-control ${completed ? "bg-success-muted text-success" : "bg-muted text-muted-foreground"}`}>
                                     {completed ? "已完成" : "未完成"}
                                 </span>
                             </div>
                             {completed && d && (
-                                <div className="grid grid-cols-3 gap-3 text-sm">
+                                <div className="grid grid-cols-3 gap-3 text-label">
                                     <div>
                                         <span className="text-muted-foreground">样本量</span>
                                         <div className="text-foreground font-mono">{getSamplingResultCount(m.key, d)}</div>
@@ -410,10 +410,10 @@ function SamplingSection({
                             )}
                             {completed && d?.layers && (
                                 <div className="mt-3 pt-3 border-t border-border">
-                                    <div className="text-xs text-muted-foreground mb-2">各层分配</div>
+                                    <div className="text-meta text-muted-foreground mb-2">各层分配</div>
                                     <div className="flex flex-wrap gap-2">
                                         {d.layers.map((l) => (
-                                            <span key={l.name} className="text-xs bg-muted text-foreground/90 px-2 py-1 rounded">
+                                            <span key={l.name} className="text-meta bg-muted text-foreground px-2 py-1 rounded-control">
                                                 {l.name}: {l.sampleCount}
                                             </span>
                                         ))}
@@ -436,11 +436,11 @@ function ReportSection({ content }: { content: string }) {
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-foreground">分析报告</h2>
-            <div className="rounded-xl border border-border bg-card/40 p-8">
+            <h2 className="text-page-title font-bold text-foreground">分析报告</h2>
+            <div className="rounded-surface border border-border bg-card p-8">
                 <RichTextContent
                     html={content}
-                    className="text-sm text-foreground/90 leading-relaxed prose prose-invert prose-sm max-w-none"
+                    className="prose max-w-none text-body text-foreground"
                 />
             </div>
         </div>
@@ -449,7 +449,7 @@ function ReportSection({ content }: { content: string }) {
 
 function EmptyState({ text }: { text: string }) {
     return (
-        <div className="flex items-center justify-center py-20 text-muted-foreground text-sm">
+        <div className="flex items-center justify-center py-20 text-muted-foreground text-label">
             {text}
         </div>
     );

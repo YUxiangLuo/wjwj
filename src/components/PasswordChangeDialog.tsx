@@ -71,7 +71,7 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                 </DialogHeader>
                 <div className="space-y-4 py-2">
                     <div className="space-y-2">
-                        <Label htmlFor={currentPasswordId} className="text-foreground/90">当前密码</Label>
+                        <Label htmlFor={currentPasswordId} className="text-foreground">当前密码</Label>
                         <Input
                             id={currentPasswordId}
                             type="password"
@@ -81,11 +81,11 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                             aria-describedby={error ? errorId : undefined}
                             autoComplete="current-password"
                             data-testid={fieldTestIds?.currentPassword}
-                            className="bg-background border-border text-foreground focus:border-ring"
+                            className="bg-card border-input text-foreground focus:border-ring"
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor={newPasswordId} className="text-foreground/90">新密码</Label>
+                        <Label htmlFor={newPasswordId} className="text-foreground">新密码</Label>
                         <Input
                             id={newPasswordId}
                             type="password"
@@ -95,11 +95,11 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                             aria-describedby={error ? errorId : undefined}
                             autoComplete="new-password"
                             data-testid={fieldTestIds?.newPassword}
-                            className="bg-background border-border text-foreground focus:border-ring"
+                            className="bg-card border-input text-foreground focus:border-ring"
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor={confirmPasswordId} className="text-foreground/90">确认新密码</Label>
+                        <Label htmlFor={confirmPasswordId} className="text-foreground">确认新密码</Label>
                         <Input
                             id={confirmPasswordId}
                             type="password"
@@ -109,11 +109,11 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                             aria-describedby={error ? errorId : undefined}
                             autoComplete="new-password"
                             data-testid={fieldTestIds?.confirmPassword}
-                            className="bg-background border-border text-foreground focus:border-ring"
+                            className="bg-card border-input text-foreground focus:border-ring"
                         />
                     </div>
                     {showPolicyHints && rules ? (
-                        <div className="rounded-lg border border-border bg-background/60 p-3 text-xs space-y-1.5">
+                        <div className="rounded-surface border border-border bg-background p-3 text-meta space-y-1.5">
                             <div className="flex items-center justify-between text-muted-foreground">
                                 <span>密码强度</span>
                                 <span className={getStrengthToneClassName(rules.score)}>{rules.strengthLabel}</span>
@@ -126,7 +126,7 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                             <div className={rules.matched ? "text-success" : "text-muted-foreground"}>{rules.matched ? "✓" : "✗"} 两次密码一致</div>
                         </div>
                     ) : null}
-                    {error ? <div id={errorId} role="alert" aria-atomic="true" className="text-sm text-destructive bg-destructive/20 p-2 rounded">{error}</div> : null}
+                    {error ? <div id={errorId} role="alert" aria-atomic="true" className="text-label text-destructive bg-destructive-muted p-2 rounded-control">{error}</div> : null}
                 </div>
                 <DialogFooter>
                     {allowClose ? (
@@ -134,7 +134,7 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                             取消
                         </Button>
                     ) : null}
-                    <Button onClick={onSubmit} disabled={saving} aria-busy={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground" data-testid={submitTestId}>
+                    <Button onClick={onSubmit} disabled={saving} aria-busy={saving} className="bg-primary hover:bg-primary-hover text-primary-foreground" data-testid={submitTestId}>
                         {saving ? <Loader2 aria-hidden="true" className="w-4 h-4 mr-2 animate-spin" /> : null}
                         {submitLabel}
                     </Button>

@@ -54,9 +54,9 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
 
                 <div className="max-w-md mx-auto space-y-4">
                     <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
+                        <div className="flex justify-between text-label">
                             <span className="text-muted-foreground">1.0 (简单随机)</span>
-                            <span className="font-bold text-warning text-lg tabular-nums">
+                            <span className="font-bold text-warning text-subheading tabular-nums">
                                 deff = {params.designEffect.toFixed(1)}
                             </span>
                             <span className="text-muted-foreground">5.0</span>
@@ -83,7 +83,7 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
                     />
 
                     {params.designEffect > 1 && (
-                        <p className="text-sm text-warning text-center animate-in fade-in duration-300">
+                        <p className="text-label text-warning text-center animate-in fade-in duration-300">
                             需要多抽 <strong className="tabular-nums">{(withDeff - baseN).toLocaleString()}</strong> 人，才能达到与简单随机抽样相近的精度
                         </p>
                     )}
@@ -112,9 +112,9 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
 
                 <div className="max-w-md mx-auto space-y-4">
                     <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
+                        <div className="flex justify-between text-label">
                             <span className="text-muted-foreground">0%</span>
-                            <span className="font-bold text-destructive text-lg tabular-nums">
+                            <span className="font-bold text-destructive text-subheading tabular-nums">
                                 无回答率 = {nrrPct}%
                             </span>
                             <span className="text-muted-foreground">50%</span>
@@ -130,35 +130,35 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
                         />
                     </div>
 
-                    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                    <div className="rounded-surface border border-border bg-card p-4 space-y-3">
                         <div className="space-y-1">
-                            <div className="flex justify-between text-xs text-muted-foreground">
+                            <div className="flex justify-between text-meta text-muted-foreground">
                                 <span>发出</span>
-                                <span className="tabular-nums font-medium text-foreground/90">{withBoth.toLocaleString()} 份</span>
+                                <span className="tabular-nums font-medium text-foreground">{withBoth.toLocaleString()} 份</span>
                             </div>
-                            <div className="h-5 rounded-full bg-muted-foreground/50 overflow-hidden">
-                                <div className="h-full rounded-full bg-muted-foreground/50 w-full" />
+                            <div className="h-5 rounded-control bg-input overflow-hidden">
+                                <div className="h-full rounded-control bg-input w-full" />
                             </div>
                         </div>
                         <div className="space-y-1">
-                            <div className="flex justify-between text-xs text-muted-foreground">
+                            <div className="flex justify-between text-meta text-muted-foreground">
                                 <span>收回有效</span>
                                 <span className="tabular-nums font-medium text-success">{withDeff.toLocaleString()} 份</span>
                             </div>
-                            <div className="h-5 rounded-full bg-muted-foreground/50 overflow-hidden">
+                            <div className="h-5 rounded-control bg-input overflow-hidden">
                                 <div
-                                    className="h-full rounded-full bg-success transition-all duration-300"
+                                    className="h-full rounded-control bg-success transition-[width] duration-300"
                                     style={{ width: `${withBoth > 0 ? (withDeff / withBoth) * 100 : 100}%` }}
                                 />
                             </div>
                         </div>
                         {lost > 0 && (
-                            <p className="text-xs text-destructive text-center tabular-nums">
+                            <p className="text-meta text-destructive text-center tabular-nums">
                                 预计丢失 {lost.toLocaleString()} 份
                             </p>
                         )}
                     </div>
-                    <p className="rounded-xl border border-warning/20 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
+                    <p className="rounded-surface border border-warning-border bg-warning-muted p-3 text-meta leading-relaxed text-warning">
                         n₂/(1−NRR) 只是在回答率假设下补足预期完成数量。若回答概率与研究变量相关，扩大初始发放量不能消除无回答偏差，还需跟访、权重调整或专门的无回答分析。
                     </p>
                 </div>
@@ -222,17 +222,17 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
     return (
         <div className="space-y-8">
             <div className="text-center space-y-3">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-success/10 text-xs font-medium text-success">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-control bg-success-muted text-meta font-medium text-success">
                     四步法汇总
                 </span>
-                <h2 className="text-2xl font-bold text-foreground">样本量确定四步法</h2>
-                <p className="text-muted-foreground text-sm">
+                <h2 className="text-page-title font-bold text-foreground">样本量确定四步法</h2>
+                <p className="text-muted-foreground text-label">
                     现在把前面的判断全部串起来，得到真正用于调查规划的最终样本量（{isProportion ? "比例估计" : "均值估计"}）
                 </p>
             </div>
 
             {/* Four-step pipeline */}
-            <div className="mx-auto max-w-md rounded-2xl border border-border bg-background p-5 shadow-sm space-y-3">
+            <div className="mx-auto max-w-md rounded-surface border border-border bg-background p-5 space-y-3">
                 <StepRow step={1} label="初始样本量 n₀" formula={step1Formula} value={n0} color="text-primary" />
                 <StepArrow />
                 <StepRow step={2} label="设计效应调整 n₁" formula={`n₀×deff (${params.designEffect.toFixed(1)})`} value={n1} color="text-warning" />
@@ -241,7 +241,7 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
                 <StepArrow />
                 <StepRow step={4} label="计划邀请数 n" formula={`n₂/(1-NRR) (${(params.nonResponseRate * 100).toFixed(0)}%)`} value={n3} color="text-success" highlight />
                 {n3 >= params.populationSize && params.populationSize > 0 && (
-                    <p className="text-xs text-warning text-center">
+                    <p className="text-meta text-warning text-center">
                         膨胀后的发放量已封顶为总体 N = {params.populationSize.toLocaleString()}。
                         {params.nonResponseRate > 0
                             ? "这是向全体尝试发放；预期仍有无回答，不等于完整普查，也不能消除无回答偏差。"
@@ -251,31 +251,31 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
             </div>
 
             {/* Plan comparison (mutually exclusive strata) */}
-            <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-5 space-y-3">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <div className="mx-auto max-w-md rounded-surface border border-border bg-card p-5 space-y-3">
+                <p className="text-meta font-medium uppercase tracking-wider text-muted-foreground">
                     {isProportion
                         ? "方案对比（课件例 7.2，互斥分层，N=10,000）"
                         : `方案对比（互斥分层，σ²=${populationVariance}，e=${params.marginOfError}，N=10,000）`}
                 </p>
                 <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-xl bg-info/10 p-3 text-center">
-                        <p className="text-[10px] font-medium uppercase tracking-wider text-info">方案1: 整体估计</p>
-                        <p className="text-2xl font-black tabular-nums text-info">{plan1n.toLocaleString()}</p>
+                    <div className="rounded-surface bg-info-muted p-3 text-center">
+                        <p className="text-meta font-medium uppercase tracking-wider text-info">方案1: 整体估计</p>
+                        <p className="text-page-title font-black tabular-nums text-info">{plan1n.toLocaleString()}</p>
                     </div>
-                    <div className="rounded-xl bg-destructive/10 p-3 text-center">
-                        <p className="text-[10px] font-medium uppercase tracking-wider text-destructive">方案2: 各层分别估计</p>
-                        <p className="text-2xl font-black tabular-nums text-destructive">{plan2n.toLocaleString()}</p>
+                    <div className="rounded-surface bg-destructive-muted p-3 text-center">
+                        <p className="text-meta font-medium uppercase tracking-wider text-destructive">方案2: 各层分别估计</p>
+                        <p className="text-page-title font-black tabular-nums text-destructive">{plan2n.toLocaleString()}</p>
                     </div>
                 </div>
                 <div className="space-y-1 pl-2">
                     {plan2DomainSamples.map((d) => (
-                        <div key={d.name} className="flex items-center justify-between text-xs text-muted-foreground">
+                        <div key={d.name} className="flex items-center justify-between text-meta text-muted-foreground">
                             <span>{d.name} (N={d.n.toLocaleString()})</span>
                             <span className="tabular-nums">{d.sample.toLocaleString()}</span>
                         </div>
                     ))}
                 </div>
-                <p className="text-xs text-warning text-center">
+                <p className="text-meta text-warning text-center">
                     当三个层互不重叠且都要单独达标时，总样本量约增加 {plan1n > 0 ? (plan2n / plan1n).toFixed(1) : "—"} 倍
                 </p>
             </div>
@@ -290,7 +290,7 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
                 <Button
                     type="button"
                     onClick={onNext}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-5 rounded-xl shadow-lg shadow-primary/20"
+                    className="bg-primary hover:bg-primary-hover text-primary-foreground px-8 py-5 rounded-surface "
                 >
                     继续：进入决策面板
                     <ChevronRight className="w-5 h-5 ml-2" />
@@ -308,10 +308,10 @@ function ScenarioHeader({ icon: Icon, tag, title, description }: { icon: LucideI
             <div className="flex justify-center">
                 <Icon className="w-8 h-8 text-warning" aria-hidden="true" />
             </div>
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-warning/10 text-xs font-medium text-warning">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-control bg-warning-muted text-meta font-medium text-warning">
                 {tag}
             </span>
-            <h2 className="text-2xl font-bold text-foreground">{title}</h2>
+            <h2 className="text-page-title font-bold text-foreground">{title}</h2>
             <p className="text-muted-foreground max-w-md mx-auto">{description}</p>
         </div>
     );
@@ -321,15 +321,15 @@ function StepRow({ step, label, formula, value, color, highlight }: {
     step: number; label: string; formula: string; value: number; color: string; highlight?: boolean;
 }) {
     return (
-        <div className={`flex items-center justify-between gap-3 ${highlight ? "rounded-xl bg-success/10 p-3 -mx-1" : ""}`}>
+        <div className={`flex items-center justify-between gap-3 ${highlight ? "rounded-surface bg-success-muted p-3 -mx-1" : ""}`}>
             <div className="flex items-center gap-2 min-w-0">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground">{step}</span>
+                <span className="flex-shrink-0 w-6 h-6 rounded-control bg-muted flex items-center justify-center text-meta font-bold text-muted-foreground">{step}</span>
                 <div className="min-w-0">
-                    <p className="text-xs font-medium text-muted-foreground truncate">{label}</p>
-                    <p className="text-[10px] font-mono text-muted-foreground truncate">{formula}</p>
+                    <p className="text-meta font-medium text-muted-foreground truncate">{label}</p>
+                    <p className="text-meta font-mono text-muted-foreground truncate">{formula}</p>
                 </div>
             </div>
-            <span className={`text-lg font-bold tabular-nums flex-shrink-0 ${color}`}>{value.toLocaleString()}</span>
+            <span className={`text-subheading font-bold tabular-nums flex-shrink-0 ${color}`}>{value.toLocaleString()}</span>
         </div>
     );
 }
@@ -337,7 +337,7 @@ function StepRow({ step, label, formula, value, color, highlight }: {
 function StepArrow() {
     return (
         <div className="flex justify-center">
-            <div className="w-px h-3 bg-muted-foreground/50" />
+            <div className="w-px h-3 bg-input" />
         </div>
     );
 }
@@ -349,7 +349,7 @@ function BeforeAfterBars({
     max: number; beforeColor: string; afterColor: string;
 }) {
     return (
-        <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+        <div className="space-y-3 rounded-surface border border-border bg-card p-4">
             <BarRow label={beforeLabel} value={beforeValue} max={max} color={beforeColor} />
             <BarRow label={afterLabel} value={afterValue} max={max} color={afterColor} />
         </div>
@@ -360,12 +360,12 @@ function BarRow({ label, value, max, color }: { label: string; value: number; ma
     const pct = max > 0 ? Math.max(3, (value / max) * 100) : 3;
     return (
         <div className="space-y-1">
-            <div className="flex justify-between text-xs text-muted-foreground">
+            <div className="flex justify-between text-meta text-muted-foreground">
                 <span>{label}</span>
-                <span className="font-bold tabular-nums text-foreground/90">{value.toLocaleString()}</span>
+                <span className="font-bold tabular-nums text-foreground">{value.toLocaleString()}</span>
             </div>
-            <div className="h-4 rounded-full bg-muted-foreground/50 overflow-hidden">
-                <div className={`h-full rounded-full ${color} transition-all duration-500`} style={{ width: `${pct}%` }} />
+            <div className="h-4 rounded-control bg-input overflow-hidden">
+                <div className={`h-full rounded-control ${color} transition-[width] duration-500`} style={{ width: `${pct}%` }} />
             </div>
         </div>
     );

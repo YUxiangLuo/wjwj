@@ -200,21 +200,21 @@ export function StudentManagement() {
                     </Link>
                 </Button>
                 <span className="text-muted-foreground">/</span>
-                <span className="text-sm text-muted-foreground">班级</span>
-                <span className="text-sm font-medium text-foreground">{classInfo?.name}</span>
+                <span className="text-label text-muted-foreground">班级</span>
+                <span className="text-label font-medium text-foreground">{classInfo?.name}</span>
             </div>
 
             <div>
-                <h2 className="text-lg font-semibold text-foreground">学生管理</h2>
-                <p className="text-sm text-muted-foreground mt-1">维护班级学生名单与账号状态。</p>
+                <h2 className="text-subheading font-semibold text-foreground">学生管理</h2>
+                <p className="text-label text-muted-foreground mt-1">维护班级学生名单与账号状态。</p>
             </div>
 
             <div className="grid grid-cols-4 gap-4">
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">学生总数</p>
-                            <p className="text-2xl font-bold text-foreground mt-1">{summary.total}</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">学生总数</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{summary.total}</p>
                         </div>
                         <IconTile intent="info">
                             <Users className="w-5 h-5" />
@@ -224,8 +224,8 @@ export function StudentManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">正常账号</p>
-                            <p className="text-2xl font-bold text-foreground mt-1">{summary.active}</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">正常账号</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{summary.active}</p>
                         </div>
                         <IconTile intent="success">
                             <CheckCircle2 className="w-5 h-5" />
@@ -235,8 +235,8 @@ export function StudentManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已锁定</p>
-                            <p className="text-2xl font-bold text-foreground mt-1">{summary.locked}</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已锁定</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{summary.locked}</p>
                         </div>
                         <IconTile intent="warning">
                             <LockKeyhole className="w-5 h-5" />
@@ -246,8 +246,8 @@ export function StudentManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已禁用</p>
-                            <p className="text-2xl font-bold text-foreground mt-1">{summary.disabled}</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已禁用</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{summary.disabled}</p>
                         </div>
                         <IconTile intent="neutral">
                             <PauseCircle className="w-5 h-5" />
@@ -259,8 +259,8 @@ export function StudentManagement() {
             <Card>
                 <PageHeader as={CardHeader}>
                     <div>
-                        <CardTitle className="text-base text-foreground">学生列表</CardTitle>
-                        <p className="text-xs text-muted-foreground mt-1">共 {filteredStudents.length} 人</p>
+                        <CardTitle className="text-body text-foreground">学生列表</CardTitle>
+                        <p className="text-meta text-muted-foreground mt-1">共 {filteredStudents.length} 人</p>
                     </div>
                     <div className="flex gap-3 flex-row w-auto">
                         <div className="relative w-52">
@@ -270,14 +270,14 @@ export function StudentManagement() {
                                 placeholder="搜索学生"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring"
+                                className="pl-9 bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
                             />
                         </div>
-                        <Button data-testid="teacher-student-import-open" variant="outline" onClick={() => setShowImportModal(true)} className="border-input bg-muted/30 text-foreground/90 hover:bg-muted hover:text-foreground">
+                        <Button data-testid="teacher-student-import-open" variant="outline" onClick={() => setShowImportModal(true)} className="border-input bg-muted text-foreground hover:bg-muted hover:text-foreground">
                             <Upload className="w-4 h-4 mr-2" />
                             批量导入
                         </Button>
-                        <Button data-testid="teacher-student-add-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                        <Button data-testid="teacher-student-add-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary-hover text-primary-foreground">
                             <UserPlus className="w-4 h-4 mr-2" />
                             添加学生
                         </Button>
@@ -286,7 +286,7 @@ export function StudentManagement() {
                 <CardContent className="pt-0">
                     <Table>
                         <TableHeader>
-                            <TableRow className="border-border hover:bg-card/50">
+                            <TableRow className="border-border hover:bg-card">
                                 <TableHead className="text-muted-foreground">学号</TableHead>
                                 <TableHead className="text-muted-foreground">姓名</TableHead>
                                 <TableHead className="text-muted-foreground">邮箱</TableHead>
@@ -299,7 +299,7 @@ export function StudentManagement() {
                                 <TableRow>
                                     <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
                                         <div className="flex flex-col items-center gap-2">
-                                            <div className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center">
+                                            <div className="w-12 h-12 rounded-control bg-card border border-border flex items-center justify-center">
                                                 <Search className="w-5 h-5 text-muted-foreground" />
                                             </div>
                                             <p>暂无符合条件的数据</p>
@@ -307,20 +307,20 @@ export function StudentManagement() {
                                     </TableCell>
                                 </TableRow>
                             ) : filteredStudents.map((student) => (
-                                <TableRow data-testid={`teacher-student-row-${student.id}`} key={student.id} className="border-border hover:bg-muted/50 transition-colors">
+                                <TableRow data-testid={`teacher-student-row-${student.id}`} key={student.id} className="border-border hover:bg-muted transition-colors">
                                     <TableCell className="font-mono text-primary">{student.studentId}</TableCell>
                                     <TableCell className="font-medium text-foreground">{student.name}</TableCell>
                                     <TableCell className="text-muted-foreground">{student.email || "-"}</TableCell>
                                     <TableCell>{renderAccountStatus(student)}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
-                                            <Button data-testid={`teacher-student-reset-${student.id}`} variant="ghost" size="sm" aria-label={`重置${student.name}的密码`} title="重置密码" onClick={() => handleResetPassword(student)} className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10">
+                                            <Button data-testid={`teacher-student-reset-${student.id}`} variant="ghost" size="sm" aria-label={`重置${student.name}的密码`} title="重置密码" onClick={() => handleResetPassword(student)} className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary-muted">
                                                 <RotateCcw className="w-4 h-4" />
                                             </Button>
-                                            <Button data-testid={`teacher-student-toggle-${student.id}`} variant="ghost" size="sm" aria-label={`${student.status === 1 ? "禁用" : "启用"}学生${student.name}`} title={student.status === 1 ? "禁用" : "启用"} onClick={() => handleToggleStatus(student)} className={`h-8 w-8 p-0 ${student.status === 1 ? "text-success hover:text-success hover:bg-success/10" : "text-muted-foreground hover:text-foreground"}`}>
+                                            <Button data-testid={`teacher-student-toggle-${student.id}`} variant="ghost" size="sm" aria-label={`${student.status === 1 ? "禁用" : "启用"}学生${student.name}`} title={student.status === 1 ? "禁用" : "启用"} onClick={() => handleToggleStatus(student)} className={`h-8 w-8 p-0 ${student.status === 1 ? "text-success hover:text-success hover:bg-success-muted" : "text-muted-foreground hover:text-foreground"}`}>
                                                 <UserX className={`w-4 h-4 ${student.status === 0 ? "text-muted-foreground" : ""}`} />
                                             </Button>
-                                            <Button data-testid={`teacher-student-delete-${student.id}`} variant="ghost" size="sm" aria-label={`删除学生${student.name}`} className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10" title="删除" onClick={() => handleDelete(student)}>
+                                            <Button data-testid={`teacher-student-delete-${student.id}`} variant="ghost" size="sm" aria-label={`删除学生${student.name}`} className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive-muted" title="删除" onClick={() => handleDelete(student)}>
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>
                                         </div>

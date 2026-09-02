@@ -4,8 +4,9 @@ import { extendTailwindMerge } from "tailwind-merge";
 const mergeClasses = extendTailwindMerge({
   extend: {
     theme: {
-      radius: ["control", "surface", "overlay", "feature"],
-      shadow: ["control", "surface", "floating", "emphasis"],
+      radius: ["control", "surface", "overlay", "circle", "toggle"],
+      shadow: ["floating"],
+      text: ["display", "page-title", "section-title", "subheading", "body", "label", "meta"],
     },
   },
 });

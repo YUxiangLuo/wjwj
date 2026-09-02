@@ -349,16 +349,16 @@ export function TopicManagement() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div>
-                <h2 className="text-lg font-semibold text-foreground">课题管理</h2>
-                <p className="text-sm text-muted-foreground mt-1">配置课题信息、数据与评分权重。</p>
+                <h2 className="text-subheading font-semibold text-foreground">课题管理</h2>
+                <p className="text-label text-muted-foreground mt-1">配置课题信息、数据与评分权重。</p>
             </div>
 
             <div className="grid grid-cols-4 gap-4">
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">课题总数</p>
-                            <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.total}</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">课题总数</p>
+                            <p className="text-page-title font-semibold text-foreground mt-1">{loading ? "-" : summary.total}</p>
                         </div>
                         <IconTile intent="info">
                             <BookOpen className="w-5 h-5" />
@@ -368,8 +368,8 @@ export function TopicManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已发布</p>
-                            <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.published}</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已发布</p>
+                            <p className="text-page-title font-semibold text-foreground mt-1">{loading ? "-" : summary.published}</p>
                         </div>
                         <IconTile intent="success">
                             <Layers className="w-5 h-5" />
@@ -379,8 +379,8 @@ export function TopicManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">草稿</p>
-                            <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.draft}</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">草稿</p>
+                            <p className="text-page-title font-semibold text-foreground mt-1">{loading ? "-" : summary.draft}</p>
                         </div>
                         <IconTile intent="warning">
                             <FileText className="w-5 h-5" />
@@ -390,8 +390,8 @@ export function TopicManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">数据行数</p>
-                            <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.totalRows.toLocaleString()}</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">数据行数</p>
+                            <p className="text-page-title font-semibold text-foreground mt-1">{loading ? "-" : summary.totalRows.toLocaleString()}</p>
                         </div>
                         <IconTile intent="auxiliary">
                             <Layers className="w-5 h-5" />
@@ -403,8 +403,8 @@ export function TopicManagement() {
             <Card>
                 <PageHeader as={CardHeader}>
                     <div>
-                        <CardTitle className="text-base text-foreground">课题列表</CardTitle>
-                        <p className="text-xs text-muted-foreground mt-1">共 {filteredTopics.length} 条数据</p>
+                        <CardTitle className="text-body text-foreground">课题列表</CardTitle>
+                        <p className="text-meta text-muted-foreground mt-1">共 {filteredTopics.length} 条数据</p>
                     </div>
                     <div className="flex gap-3 flex-row w-auto">
                         <div className="relative w-56">
@@ -414,11 +414,11 @@ export function TopicManagement() {
                                 placeholder="搜索课题名称"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring"
+                                className="pl-9 bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "draft" | "published")}>
-                            <SelectTrigger aria-label="按课题状态筛选" data-testid="teacher-topic-status-filter" className="bg-background border-border text-foreground w-28">
+                            <SelectTrigger aria-label="按课题状态筛选" data-testid="teacher-topic-status-filter" className="bg-card border-input text-foreground w-28">
                                 <SelectValue placeholder="全部状态" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
@@ -427,22 +427,22 @@ export function TopicManagement() {
                                 <SelectItem value="published">已发布</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Button data-testid="teacher-topic-create-open" onClick={openCreateModal} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                        <Button data-testid="teacher-topic-create-open" onClick={openCreateModal} className="bg-primary hover:bg-primary-hover text-primary-foreground">
                             + 创建课题
                         </Button>
                     </div>
                 </PageHeader>
                 <CardContent className="space-y-4 pt-4">
                     {loading ? <div role="status" aria-live="polite" className="text-center py-12 text-muted-foreground">加载中...</div> : filteredTopics.map((topic) => (
-                        <div data-testid={`teacher-topic-row-${topic.id}`} key={topic.id} className="border border-border rounded-lg p-5 bg-background hover:bg-card hover:border-input transition-all">
+                        <div data-testid={`teacher-topic-row-${topic.id}`} key={topic.id} className="border border-border rounded-surface p-5 bg-background hover:bg-card hover:border-input transition-colors">
                             <div className="flex gap-3 flex-row items-start justify-between mb-4">
                                 <div className="flex items-start gap-4">
-                                    <div className="w-12 h-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
+                                    <div className="w-12 h-12 rounded-surface bg-primary-muted text-primary flex items-center justify-center border border-primary-border">
                                         <BookOpen className="w-6 h-6" />
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <h3 className="font-semibold text-foreground text-lg">{topic.name}</h3>
+                                            <h3 className="font-semibold text-foreground text-subheading">{topic.name}</h3>
                                             {topic.status === 1 ? (
                                                 <StatusBadge intent="success">已发布</StatusBadge>
                                             ) : (
@@ -450,28 +450,28 @@ export function TopicManagement() {
                                             )}
                                             {topic.hasTasks && <StatusBadge intent="info">任务已分配 · 内容只读</StatusBadge>}
                                         </div>
-                                        <div className="text-xs text-muted-foreground mt-1">创建于 {new Date(topic.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}</div>
-                                        <div className="text-sm text-muted-foreground mt-2 line-clamp-2 max-w-2xl">{getRichTextPlainText(topic.description) || "暂无描述"}</div>
+                                        <div className="text-meta text-muted-foreground mt-1">创建于 {new Date(topic.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}</div>
+                                        <div className="text-label text-muted-foreground mt-2 line-clamp-2 max-w-2xl">{getRichTextPlainText(topic.description) || "暂无描述"}</div>
                                     </div>
                                 </div>
                             </div>
                             <div className="flex items-center justify-between border-t border-border pt-4 mt-2">
-                                <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                                <div className="flex items-center gap-6 text-label text-muted-foreground">
                                     <span className="flex items-center gap-2">
                                         <Layers className="w-4 h-4" />
-                                        数据行数：<span className="text-foreground/90">{topic.dataRows > 0 ? topic.dataRows.toLocaleString() : "未上传"}</span>
+                                        数据行数：<span className="text-foreground">{topic.dataRows > 0 ? topic.dataRows.toLocaleString() : "未上传"}</span>
                                     </span>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     {topic.hasTasks ? (
                                         <>
-                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-info hover:bg-info/10" onClick={() => openViewModal(topic)}>查看</Button>
+                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-info hover:bg-info-muted" onClick={() => openViewModal(topic)}>查看</Button>
                                             <Button
                                                 data-testid={`teacher-topic-copy-${topic.id}`}
                                                 variant="ghost"
                                                 size="sm"
                                                 disabled={copyingTopicId !== null}
-                                                className="text-muted-foreground hover:text-info hover:bg-info/10"
+                                                className="text-muted-foreground hover:text-info hover:bg-info-muted"
                                                 onClick={async () => {
                                                     setCopyingTopicId(topic.id);
                                                     try {
@@ -491,21 +491,21 @@ export function TopicManagement() {
                                         </>
                                     ) : topic.status === 0 ? (
                                         <>
-                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-info hover:bg-info/10" onClick={() => openViewModal(topic)}>查看</Button>
-                                            <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => openEditModal(topic)}>编辑</Button>
-                                            <Button data-testid={`teacher-topic-publish-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-success hover:bg-success/10" onClick={() => setConfirmDialog({ open: true, type: "publish", topic })}>发布</Button>
-                                            <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
+                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-info hover:bg-info-muted" onClick={() => openViewModal(topic)}>查看</Button>
+                                            <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary-muted" onClick={() => openEditModal(topic)}>编辑</Button>
+                                            <Button data-testid={`teacher-topic-publish-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-success hover:bg-success-muted" onClick={() => setConfirmDialog({ open: true, type: "publish", topic })}>发布</Button>
+                                            <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive hover:bg-destructive-muted" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
                                         </>
                                     ) : (
                                         <>
-                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-info hover:bg-info/10" onClick={() => openViewModal(topic)}>查看</Button>
-                                            <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => openEditModal(topic)}>编辑</Button>
+                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-info hover:bg-info-muted" onClick={() => openViewModal(topic)}>查看</Button>
+                                            <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary-muted" onClick={() => openEditModal(topic)}>编辑</Button>
                                             <Button
                                                 data-testid={`teacher-topic-copy-${topic.id}`}
                                                 variant="ghost"
                                                 size="sm"
                                                 disabled={copyingTopicId !== null}
-                                                className="text-muted-foreground hover:text-info hover:bg-info/10"
+                                                className="text-muted-foreground hover:text-info hover:bg-info-muted"
                                                 onClick={async () => {
                                                     setCopyingTopicId(topic.id);
                                                     try {
@@ -522,7 +522,7 @@ export function TopicManagement() {
                                             >
                                                 复制
                                             </Button>
-                                            <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
+                                            <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive hover:bg-destructive-muted" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
                                         </>
                                     )}
                                 </div>
@@ -598,10 +598,10 @@ export function TopicManagement() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setConfirmDialog({ open: false, type: null, topic: null })} className="bg-background border-border text-foreground/90 hover:bg-muted hover:text-foreground">
+                        <AlertDialogCancel onClick={() => setConfirmDialog({ open: false, type: null, topic: null })} className="bg-background border-border text-foreground hover:bg-muted hover:text-foreground">
                             取消
                         </AlertDialogCancel>
-                        <AlertDialogAction onClick={executeConfirmAction} className={confirmDialog.type === "delete" ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground" : "bg-primary hover:bg-primary/90 text-primary-foreground"}>
+                        <AlertDialogAction onClick={executeConfirmAction} className={confirmDialog.type === "delete" ? "bg-destructive hover:bg-destructive-hover text-destructive-foreground" : "bg-primary hover:bg-primary-hover text-primary-foreground"}>
                             确认
                         </AlertDialogAction>
                     </AlertDialogFooter>

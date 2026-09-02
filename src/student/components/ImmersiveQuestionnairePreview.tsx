@@ -278,7 +278,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
     };
 
     const cardClass =
-        "text-left mx-auto max-w-md rounded-2xl border p-5 shadow-sm bg-background border-input";
+        "text-left mx-auto max-w-md rounded-surface border p-5 bg-background border-input";
 
     const renderQuestionBody = (question: Question, qIndex: number) => {
         const answer = answersByIndex[qIndex];
@@ -294,18 +294,18 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     key={`bool-${i}`}
                                     type="button"
                                     onClick={() => setSingleAnswer(qIndex, option)}
-                                    className={`w-full flex items-center gap-4 p-5 rounded-xl border-2 transition-all text-left ${
+                                    className={`w-full flex items-center gap-4 p-5 rounded-surface border-2 transition-colors text-left ${
                                         selected
-                                            ? "border-primary bg-primary shadow-sm"
+                                            ? "border-primary bg-primary "
                                             : "border-border bg-background hover:border-input hover:bg-card hover:bg-muted"
                                     }`}
                                 >
-                                    <span className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 ${
+                                    <span className={`w-9 h-9 rounded-surface flex items-center justify-center text-label font-bold shrink-0 ${
                                         selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                                     }`}>
                                         {OPTION_LETTERS[i]}
                                     </span>
-                                    <span className={`text-base ${selected ? "text-primary-foreground font-medium" : "text-foreground/90"}`}>
+                                    <span className={`text-body ${selected ? "text-primary-foreground font-medium" : "text-foreground"}`}>
                                         {option}
                                     </span>
                                     {selected && <Check className="w-5 h-5 text-primary-foreground ml-auto" />}
@@ -319,8 +319,8 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                 const opts = question.options ?? [];
                 if (opts.length === 0) {
                     return (
-                        <div className="space-y-4 rounded-xl border border-warning/20 bg-warning/10 p-4">
-                            <p className="text-sm text-warning">本题暂无选项，无法作答。</p>
+                        <div className="space-y-4 rounded-surface border border-warning-border bg-warning-muted p-4">
+                            <p className="text-label text-warning">本题暂无选项，无法作答。</p>
                             <Button type="button" variant="outline" onClick={goNext} className="w-full">
                                 跳过本题
                             </Button>
@@ -336,18 +336,18 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     key={`${question.id}-opt-${i}`}
                                     type="button"
                                     onClick={() => setSingleAnswer(qIndex, option)}
-                                    className={`w-full flex items-center gap-4 p-5 rounded-xl border-2 transition-all text-left ${
+                                    className={`w-full flex items-center gap-4 p-5 rounded-surface border-2 transition-colors text-left ${
                                         selected
-                                            ? "border-primary bg-primary shadow-sm"
+                                            ? "border-primary bg-primary "
                                             : "border-border bg-background hover:border-input hover:bg-card hover:bg-muted"
                                     }`}
                                 >
-                                    <span className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 ${
+                                    <span className={`w-9 h-9 rounded-surface flex items-center justify-center text-label font-bold shrink-0 ${
                                         selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                                     }`}>
                                         {OPTION_LETTERS[i]}
                                     </span>
-                                    <span className={`text-base ${selected ? "text-primary-foreground font-medium" : "text-foreground/90"}`}>
+                                    <span className={`text-body ${selected ? "text-primary-foreground font-medium" : "text-foreground"}`}>
                                         {option}
                                     </span>
                                     {selected && <Check className="w-5 h-5 text-primary-foreground ml-auto" />}
@@ -364,8 +364,8 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                 const opts = question.options ?? [];
                 if (opts.length === 0) {
                     return (
-                        <div className="space-y-4 rounded-xl border border-warning/20 bg-warning/10 p-4">
-                            <p className="text-sm text-warning">本题暂无选项，无法作答。</p>
+                        <div className="space-y-4 rounded-surface border border-warning-border bg-warning-muted p-4">
+                            <p className="text-label text-warning">本题暂无选项，无法作答。</p>
                             <Button type="button" variant="outline" onClick={goNext} className="w-full">
                                 跳过本题
                             </Button>
@@ -374,7 +374,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                 }
                 return (
                     <div className="space-y-3">
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-label text-muted-foreground">
                             请选择 {question.minSelect ?? 1} ~ {maxSelect} 项
                         </p>
                         {opts.map((option, i) => {
@@ -386,20 +386,20 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     type="button"
                                     onClick={() => !disabled && toggleMultipleAnswer(qIndex, question, option)}
                                     disabled={disabled}
-                                    className={`w-full flex items-center gap-4 p-5 rounded-xl border-2 transition-all text-left ${
+                                    className={`w-full flex items-center gap-4 p-5 rounded-surface border-2 transition-colors text-left ${
                                         selected
-                                            ? "border-primary bg-primary shadow-sm"
+                                            ? "border-primary bg-primary "
                                             : disabled
                                                 ? "border-input bg-card opacity-50 cursor-not-allowed"
                                                 : "border-border bg-background hover:border-input hover:bg-card hover:bg-muted"
                                     }`}
                                 >
-                                    <span className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 ${
+                                    <span className={`w-9 h-9 rounded-surface flex items-center justify-center text-label font-bold shrink-0 ${
                                         selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                                     }`}>
                                         {selected ? <Check className="w-4 h-4" /> : OPTION_LETTERS[i]}
                                     </span>
-                                    <span className={`text-base ${selected ? "text-primary-foreground font-medium" : "text-foreground/90"}`}>
+                                    <span className={`text-body ${selected ? "text-primary-foreground font-medium" : "text-foreground"}`}>
                                         {option}
                                     </span>
                                 </button>
@@ -414,8 +414,8 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                 const max = question.scaleMax ?? 10;
                 if (min >= max || min < 1 || max > 10) {
                     return (
-                        <div className="space-y-4 rounded-xl border border-destructive/20 bg-destructive/10 p-4">
-                            <p className="text-sm text-destructive">本题量表范围无效，无法作答。</p>
+                        <div className="space-y-4 rounded-surface border border-destructive-border bg-destructive-muted p-4">
+                            <p className="text-label text-destructive">本题量表范围无效，无法作答。</p>
                             <Button type="button" variant="outline" onClick={goNext} className="w-full">
                                 跳过本题
                             </Button>
@@ -425,7 +425,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                 const values = Array.from({ length: max - min + 1 }, (_, i) => min + i);
                 return (
                     <div className="space-y-4">
-                        <div className="flex justify-between text-sm text-muted-foreground">
+                        <div className="flex justify-between text-label text-muted-foreground">
                             <span>{question.scaleMinLabel || "最低"}</span>
                             <span>{question.scaleMaxLabel || "最高"}</span>
                         </div>
@@ -437,10 +437,10 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                         key={val}
                                         type="button"
                                         onClick={() => setScaleAnswer(qIndex, val)}
-                                        className={`min-w-0 flex-1 basis-0 rounded-xl text-base font-bold transition-all h-12 ${
+                                        className={`min-w-0 flex-1 basis-0 rounded-surface text-body font-bold transition-colors h-12 ${
                                             selected
-                                                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 ring-2 ring-primary ring-offset-2 z-10"
-                                                : "bg-background border-2 border-border text-muted-foreground hover:border-primary hover:bg-primary/40"
+                                                ? "bg-primary text-primary-foreground  ring-2 ring-primary ring-offset-2 z-10"
+                                                : "bg-background border-2 border-border text-muted-foreground hover:border-primary hover:bg-primary-muted"
                                         }`}
                                     >
                                         {val}
@@ -454,8 +454,8 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
 
             default:
                 return (
-                    <div className="space-y-4 rounded-xl border border-destructive/20 bg-destructive/10 p-4">
-                        <p className="text-sm text-destructive">
+                    <div className="space-y-4 rounded-surface border border-destructive-border bg-destructive-muted p-4">
+                        <p className="text-label text-destructive">
                             不支持题型「{String((question as Question).type)}」，请返回修改问卷。
                         </p>
                         <Button type="button" variant="outline" onClick={goNext} className="w-full">
@@ -478,13 +478,13 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                 aria-modal="true"
                 aria-labelledby={titleId}
                 data-testid="immersive-questionnaire-preview"
-                className="fixed inset-0 z-50 bg-gradient-to-br from-card via-background to-primary/40 outline-none"
+                className="fixed inset-0 z-50 bg-background outline-none"
                 onKeyDown={focusTrap}
                 tabIndex={-1}
             >
                 {duplicateIds && (
                     <div className="absolute top-12 left-0 right-0 z-20 px-6">
-                        <div className="mx-auto max-w-lg rounded-lg border border-warning/20 bg-warning/10 px-3 py-2 text-xs text-warning">
+                        <div className="mx-auto max-w-lg rounded-surface border border-warning-border bg-warning-muted px-3 py-2 text-meta text-warning">
                             检测到题目 ID 重复，预览按题序区分答案；提交至服务器时仍依赖唯一 ID，请在设计器中修正。
                         </div>
                     </div>
@@ -493,21 +493,21 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                 {/* Progress bar */}
                 <div className="absolute top-0 left-0 right-0 h-1 bg-muted z-10">
                     <div
-                        className="h-full bg-primary transition-all duration-500 ease-out"
+                        className="h-full bg-primary transition-[width] duration-500 ease-out"
                         style={{ width: `${progress}%` }}
                     />
                 </div>
 
                 {/* Header */}
                 <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-6 pt-4 z-10">
-                    <div className="text-sm font-medium text-muted-foreground">
+                    <div className="text-label font-medium text-muted-foreground">
                         {page.type === "question" && totalQuestions > 0 && `${page.index + 1} / ${totalQuestions}`}
                     </div>
                     {page.type !== "complete" && (
                         <button
                             type="button"
                             onClick={requestClose}
-                            className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground hover:text-muted-foreground hover:bg-muted transition-colors"
+                            className="w-10 h-10 rounded-control flex items-center justify-center text-muted-foreground hover:text-muted-foreground hover:bg-muted transition-colors"
                             aria-label="关闭预览"
                             data-testid="immersive-preview-close"
                         >
@@ -522,27 +522,27 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                         {/* Welcome Page */}
                         {page.type === "welcome" && (
                             <div className="text-center space-y-8">
-                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium">
+                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-control bg-primary-muted text-primary text-label font-medium">
                                     <ClipboardList className="w-4 h-4" />
                                     模拟填写体验
                                 </div>
-                                <h1 id={titleId} className="text-3xl font-bold text-foreground leading-tight">
+                                <h1 id={titleId} className="text-display font-bold text-foreground leading-tight">
                                     {title || "未命名问卷"}
                                 </h1>
                                 <div className={`${cardClass}`}>
                                     <RichTextContent
                                         html={welcomeText}
-                                        className="text-muted-foreground leading-relaxed text-sm [&_h2]:!text-foreground [&_h3]:!text-foreground [&_h4]:!text-foreground"
+                                        className="text-muted-foreground leading-relaxed text-label [&_h2]:!text-foreground [&_h3]:!text-foreground [&_h4]:!text-foreground"
                                         emptyFallback="欢迎语将在这里展示"
                                     />
                                 </div>
-                                <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
+                                <div className="flex items-center justify-center gap-4 text-label text-muted-foreground">
                                     <span>共 {totalQuestions} 题</span>
-                                    <span className="w-1 h-1 rounded-full bg-muted-foreground/50" />
+                                    <span className="w-1 h-1 rounded-circle bg-input" />
                                     <span>约 {estimatedMinutes} 分钟</span>
                                 </div>
                                 {totalQuestions === 0 ? (
-                                    <p className="text-sm text-warning">
+                                    <p className="text-label text-warning">
                                         当前没有题目，将直接进入结束语页；也可关闭预览返回编辑。
                                     </p>
                                 ) : null}
@@ -551,7 +551,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     onClick={goNext}
                                     size="lg"
                                     data-testid="immersive-preview-start"
-                                    className="bg-primary hover:bg-primary/90 text-primary-foreground text-base px-10 py-6 rounded-xl shadow-lg shadow-primary/20"
+                                    className="bg-primary hover:bg-primary-hover text-primary-foreground text-body px-10 py-6 rounded-surface "
                                 >
                                     {totalQuestions === 0 ? "继续" : "开始填写"}
                                     <ChevronRight className="w-5 h-5 ml-2" />
@@ -563,17 +563,17 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                         {page.type === "question" && currentQuestion && (
                             <div className="space-y-8">
                                 <div>
-                                    <p className="text-sm text-muted-foreground font-medium mb-3">
+                                    <p className="text-label text-muted-foreground font-medium mb-3">
                                         {questionTypeHint[currentQuestion.type] ?? "题目"}
                                     </p>
-                                    <h2 id={titleId} className="text-2xl font-semibold text-foreground leading-snug">
+                                    <h2 id={titleId} className="text-page-title font-semibold text-foreground leading-snug">
                                         {currentQuestion.content}
                                     </h2>
                                 </div>
                                 {renderQuestionBody(currentQuestion, page.index)}
                                 {currentQuestion.type === "multiple" && (
                                     <div className="space-y-3 pt-2">
-                                        <p className="text-sm text-center text-muted-foreground leading-relaxed">
+                                        <p className="text-label text-center text-muted-foreground leading-relaxed">
                                             {isCurrentAnswered
                                                 ? "选择已完成，请点击下方按钮进入下一题"
                                                 : `请至少选择 ${currentQuestion.minSelect ?? 1} 项，完成后点击「下一题」继续`}
@@ -585,7 +585,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                                 disabled={!isCurrentAnswered}
                                                 size="lg"
                                                 data-testid="immersive-preview-multiple-next"
-                                                className="bg-primary hover:bg-primary/90 text-primary-foreground text-base px-8 rounded-xl shadow-lg shadow-primary/20 disabled:opacity-40 disabled:shadow-none"
+                                                className="rounded-surface bg-primary px-8 text-body text-primary-foreground hover:bg-primary-hover disabled:border-border disabled:bg-muted disabled:text-muted-foreground"
                                             >
                                                 下一题
                                                 <ChevronRight className="w-5 h-5 ml-2" />
@@ -597,7 +597,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                         )}
 
                         {page.type === "question" && !currentQuestion && totalQuestions > 0 && (
-                            <div className="text-center space-y-4 text-destructive text-sm">
+                            <div className="text-center space-y-4 text-destructive text-label">
                                 <p>题目加载异常，请关闭预览后重试。</p>
                                 <Button type="button" variant="outline" onClick={requestClose}>
                                     关闭
@@ -608,17 +608,17 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                         {/* Ending Page */}
                         {page.type === "ending" && (
                             <div className="text-center space-y-8">
-                                <div className="w-16 h-16 mx-auto rounded-2xl bg-primary flex items-center justify-center">
+                                <div className="w-16 h-16 mx-auto rounded-surface bg-primary flex items-center justify-center">
                                     <ClipboardList className="w-8 h-8 text-primary-foreground" />
                                 </div>
                                 <div className={`${cardClass}`}>
                                     <RichTextContent
                                         html={endingText}
-                                        className="text-muted-foreground leading-relaxed text-sm [&_h2]:!text-foreground [&_h3]:!text-foreground [&_h4]:!text-foreground"
+                                        className="text-muted-foreground leading-relaxed text-label [&_h2]:!text-foreground [&_h3]:!text-foreground [&_h4]:!text-foreground"
                                         emptyFallback="结束语将在这里展示"
                                     />
                                 </div>
-                                <div className="text-sm text-muted-foreground">
+                                <div className="text-label text-muted-foreground">
                                     {totalQuestions === 0
                                         ? "暂无题目"
                                         : `已回答 ${answeredCount} / ${totalQuestions} 道题目`}
@@ -628,7 +628,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     onClick={goNext}
                                     size="lg"
                                     data-testid="immersive-preview-submit"
-                                    className="bg-primary hover:bg-primary/90 text-primary-foreground text-base px-10 py-6 rounded-xl shadow-lg shadow-primary/20"
+                                    className="bg-primary hover:bg-primary-hover text-primary-foreground text-body px-10 py-6 rounded-surface "
                                 >
                                     提交问卷
                                 </Button>
@@ -638,21 +638,21 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                         {/* Complete Page */}
                         {page.type === "complete" && (
                             <div className="text-center space-y-8">
-                                <div className="w-20 h-20 mx-auto rounded-full bg-success flex items-center justify-center animate-in zoom-in duration-500">
+                                <div className="w-20 h-20 mx-auto rounded-control bg-success flex items-center justify-center animate-in zoom-in duration-500">
                                     <Check className="w-10 h-10 text-success-foreground" />
                                 </div>
                                 <div className="space-y-2">
-                                    <h2 id={titleId} className="text-2xl font-bold text-foreground">模拟填写完成！</h2>
+                                    <h2 id={titleId} className="text-page-title font-bold text-foreground">模拟填写完成！</h2>
                                     <p className="text-muted-foreground">您已成功模拟了受访者的问卷填写体验</p>
                                 </div>
                                 <div className="flex justify-center gap-4">
-                                    <div className="px-6 py-4 bg-card rounded-2xl">
-                                        <div className="text-2xl font-bold text-primary">{totalQuestions}</div>
-                                        <div className="text-xs text-muted-foreground mt-1">题目总数</div>
+                                    <div className="px-6 py-4 bg-card rounded-surface">
+                                        <div className="text-page-title font-bold text-primary">{totalQuestions}</div>
+                                        <div className="text-meta text-muted-foreground mt-1">题目总数</div>
                                     </div>
-                                    <div className="px-6 py-4 bg-card rounded-2xl">
-                                        <div className="text-2xl font-bold text-success">{answeredCount}</div>
-                                        <div className="text-xs text-muted-foreground mt-1">已回答</div>
+                                    <div className="px-6 py-4 bg-card rounded-surface">
+                                        <div className="text-page-title font-bold text-success">{answeredCount}</div>
+                                        <div className="text-meta text-muted-foreground mt-1">已回答</div>
                                     </div>
                                 </div>
                                 <Button
@@ -660,7 +660,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     onClick={onClose}
                                     size="lg"
                                     data-testid="immersive-preview-return"
-                                    className="bg-primary hover:bg-primary/90 text-primary-foreground text-base px-10 py-6 rounded-xl shadow-lg shadow-primary/20"
+                                    className="bg-primary hover:bg-primary-hover text-primary-foreground text-body px-10 py-6 rounded-surface "
                                 >
                                     返回问卷预试
                                 </Button>
@@ -675,7 +675,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                         <button
                             type="button"
                             onClick={goPrev}
-                            className="fixed top-1/2 -translate-y-1/2 left-[calc(50%-21rem)] z-10 w-12 h-12 rounded-full border border-border bg-background/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted hover:border-input transition-colors"
+                            className="fixed top-1/2 -translate-y-1/2 left-[calc(50%-21rem)] z-10 w-12 h-12 rounded-control border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted hover:border-input transition-colors"
                             aria-label="上一题"
                         >
                             <ChevronLeft className="w-5 h-5" />
@@ -683,7 +683,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                         <div className="fixed bottom-4 left-0 right-0 flex justify-center z-10">
                             {totalQuestions <= 15 ? (
                                 <div
-                                    className="flex gap-1 bg-background/80 backdrop-blur-sm rounded-full px-3 py-2 shadow-sm border border-input"
+                                    className="flex gap-1 bg-background rounded-control px-3 py-2 border border-input"
                                     role="tablist"
                                     aria-label="题目进度，可点击跳转"
                                 >
@@ -693,18 +693,18 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                             type="button"
                                             onClick={() => jumpToQuestion(i)}
                                             title={`第 ${i + 1} 题`}
-                                            className={`h-1.5 rounded-full transition-all min-w-[6px] ${
+                                            className={`h-1.5 rounded-control transition-colors min-w-[6px] ${
                                                 i === page.index
                                                     ? "bg-primary w-4"
                                                     : isQuestionAnswered(q, answersByIndex[i])
                                                         ? "bg-primary w-1.5"
-                                                        : "bg-muted-foreground/30 w-1.5"
+                                                        : "bg-input w-1.5"
                                             }`}
                                         />
                                     ))}
                                 </div>
                             ) : (
-                                <span className="text-sm text-muted-foreground font-mono tabular-nums bg-background/80 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-sm border border-input">
+                                <span className="text-label text-muted-foreground font-mono tabular-nums bg-background rounded-control px-3 py-1.5 border border-input">
                                     {page.index + 1} / {totalQuestions}
                                 </span>
                             )}
@@ -716,7 +716,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                     <button
                         type="button"
                         onClick={goPrev}
-                        className="fixed top-1/2 -translate-y-1/2 left-[calc(50%-21rem)] z-10 w-12 h-12 rounded-full border border-border bg-background/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted hover:border-input transition-colors"
+                        className="fixed top-1/2 -translate-y-1/2 left-[calc(50%-21rem)] z-10 w-12 h-12 rounded-control border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted hover:border-input transition-colors"
                         aria-label="返回上一题"
                     >
                         <ChevronLeft className="w-5 h-5" />
@@ -734,7 +734,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel type="button">取消</AlertDialogCancel>
-                        <AlertDialogAction type="button" onClick={confirmExit} className="bg-destructive hover:bg-destructive/90">
+                        <AlertDialogAction type="button" onClick={confirmExit} className="bg-destructive hover:bg-destructive-hover">
                             确定退出
                         </AlertDialogAction>
                     </AlertDialogFooter>

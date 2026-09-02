@@ -6,8 +6,8 @@ function formatMaybe(value: number | null, format: (value: number) => string) {
 }
 
 /**
- * 研究目标结果面板：以研究合同的目标估计量为中心，对照虚拟总体真值，\n * 逐方法展示目标估计、设计标准误、教学误差半宽与可靠性提示。
- */
+  * 研究目标结果面板：以研究合同的目标估计量为中心，对照虚拟总体真值，\n * 逐方法展示目标估计、设计标准误、教学误差半宽与可靠性提示。
+  */
 export function TargetMetricsPanel({ target }: { target: TargetAnalysisMetrics }) {
     const kind = target.contract.contract.target.kind;
     const formatEstimate = (value: number | null) => value === null
@@ -19,29 +19,29 @@ export function TargetMetricsPanel({ target }: { target: TargetAnalysisMetrics }
     const { contract } = target.contract;
 
     return (
-        <section className="mb-5 rounded-xl border border-primary/20 bg-primary/5 p-4" data-testid="student-target-metrics">
+        <section className="mb-5 rounded-surface border border-primary-border bg-primary-muted p-4" data-testid="student-target-metrics">
             <div className="flex items-start justify-between gap-4">
                 <div>
-                    <h3 className="text-sm font-semibold text-foreground">研究目标结果</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <h3 className="text-label font-semibold text-foreground">研究目标结果</h3>
+                    <p className="mt-1 text-meta text-muted-foreground">
                         {contract.researchQuestion}
                         {target.contract.inferred ? "（由对照变量推断的兼容目标）" : ""}
                     </p>
                     {target.plannedMarginOfError !== null && (
-                        <p className="mt-1 text-xs text-muted-foreground">
+                        <p className="mt-1 text-meta text-muted-foreground">
                             规划误差限 {formatMargin(target.plannedMarginOfError)}；教学误差半宽为 {target.confidenceLevel}% 置信水平下 z × 设计标准误。
                         </p>
                     )}
                 </div>
-                <div className="text-right text-xs text-muted-foreground">
+                <div className="text-right text-meta text-muted-foreground">
                     <p>虚拟总体真值</p>
-                    <p className="mt-0.5 text-lg font-bold text-primary" data-testid="student-target-population-value">
+                    <p className="mt-0.5 text-subheading font-bold text-primary" data-testid="student-target-population-value">
                         {formatEstimate(target.populationValue)}
                     </p>
                 </div>
             </div>
             <div role="region" aria-label="研究目标结果表，可横向滚动" tabIndex={0} className="mt-4 overflow-x-auto">
-                <table className="w-full min-w-[44rem] text-left text-xs">
+                <table className="w-full min-w-[44rem] text-left text-meta">
                     <thead className="text-muted-foreground">
                         <tr>
                             <th className="pb-2">方法</th>

@@ -112,8 +112,10 @@ For more information, read the Bun API docs in `node_modules/bun-types/docs/**.m
 - Use semantic tokens instead: `background`, `foreground`, `card`, `muted`, `primary`, `success`, `warning`, `info`, `destructive`, and `auxiliary`.
 - `X-foreground` always means "text on a filled `bg-X`" (e.g. `bg-auxiliary text-auxiliary-foreground`). For standalone emphasized auxiliary text on normal backgrounds, use `text-auxiliary-strong`.
 - Status badges should use `StatusBadge`; repeated icon stat tiles should use `IconTile`; repeated page section headers should use `PageHeader`.
-- Maintained primitives and shared shells use semantic shape/elevation utilities: `rounded-control`, `rounded-surface`, `rounded-overlay`, `rounded-feature`, and `shadow-control`, `shadow-surface`, `shadow-floating`, `shadow-emphasis`.
-- Existing page-level raw radius and shadow utilities are migration debt guarded by `check:styles`; do not increase their ratchet counts.
+- Use semantic typography utilities: `text-display`, `text-page-title`, `text-section-title`, `text-subheading`, `text-body`, `text-label`, and `text-meta`. Normal HTML text must not be smaller than 14px.
+- Use `rounded-control`, `rounded-surface`, and `rounded-overlay`; reserve `rounded-circle` for real circles and `rounded-toggle` for switch tracks. Only floating UI may use `shadow-floating`.
+- Do not compose semantic colors with opacity suffixes. Use explicit `*-muted`, `*-border`, and `*-hover` tokens.
+- Raw type/radius/shadow utilities, gradients, blur effects, hover scale/translation, and `transition-all` are rejected by `check:styles`.
 - `src/components/ui/**` is a local shadcn fork with behavior and accessibility changes. Inspect updates with `bunx shadcn@latest add <component> --diff -y`; never overwrite these files from the registry.
 - The project is light-only: there is no dark theme, no theme toggle, and `dark:` variants must never be used.
 - Run `bun run check:styles` after style changes.

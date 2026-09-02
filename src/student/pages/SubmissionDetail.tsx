@@ -40,7 +40,7 @@ export function SubmissionDetailPage() {
     }, [taskId]);
 
     if (loading) return <LoadingStatus className="py-24" iconClassName="h-8 w-8" label="正在加载实验结果" />;
-    if (!detail) return <div className="mx-auto max-w-xl rounded-xl border border-border bg-card p-8 text-center text-muted-foreground">{error ?? "未找到提交记录"}</div>;
+    if (!detail) return <div className="mx-auto max-w-xl rounded-surface border border-border bg-card p-8 text-center text-muted-foreground">{error ?? "未找到提交记录"}</div>;
 
     const status = statusConfig[detail.status];
     const scores = [
@@ -64,9 +64,9 @@ export function SubmissionDetailPage() {
             <Card>
                 <CardHeader className="border-b border-border">
                     <CardTitle>
-                        <h1 className="text-2xl">{detail.topicName}</h1>
+                        <h1 className="text-page-title">{detail.topicName}</h1>
                     </CardTitle>
-                    <div className="flex flex-wrap gap-4 pt-2 text-sm text-muted-foreground">
+                    <div className="flex flex-wrap gap-4 pt-2 text-label text-muted-foreground">
                         <span className="flex items-center gap-1.5"><Calendar className="h-4 w-4" />提交：{formatDateTimeDisplay(detail.submittedAt, "-")}</span>
                         {detail.gradedAt && <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-success" />批改：{formatDateTimeDisplay(detail.gradedAt, "-")}</span>}
                         {detail.graderName && <span className="flex items-center gap-1.5"><User className="h-4 w-4" />教师：{detail.graderName}</span>}
@@ -75,22 +75,22 @@ export function SubmissionDetailPage() {
                 <CardContent className="space-y-6 pt-6">
                     <div className="grid gap-4 grid-cols-4">
                         {scores.map(([label, value, weight]) => (
-                            <div key={label} className="rounded-xl border border-border bg-muted/40 p-4 text-center">
-                                <p className="text-xs text-muted-foreground">{label}</p>
-                                <p className="mt-1 text-2xl font-bold">{value ?? "-"}</p>
-                                <p className="mt-1 text-xs text-muted-foreground">权重 {weight}%</p>
+                            <div key={label} className="rounded-surface border border-border bg-muted p-4 text-center">
+                                <p className="text-meta text-muted-foreground">{label}</p>
+                                <p className="mt-1 text-page-title font-bold">{value ?? "-"}</p>
+                                <p className="mt-1 text-meta text-muted-foreground">权重 {weight}%</p>
                             </div>
                         ))}
-                        <div className="rounded-xl border border-primary/20 bg-primary/10 p-4 text-center">
-                            <p className="text-xs font-medium text-primary">总分</p>
-                            <p className={cn("mt-1 text-3xl font-bold", detail.totalScore !== null && detail.totalScore >= 60 ? "text-success" : "text-foreground")}>{detail.totalScore ?? "-"}</p>
+                        <div className="rounded-surface border border-primary-border bg-primary-muted p-4 text-center">
+                            <p className="text-meta font-medium text-primary">总分</p>
+                            <p className={cn("mt-1 text-display font-bold", detail.totalScore !== null && detail.totalScore >= 60 ? "text-success" : "text-foreground")}>{detail.totalScore ?? "-"}</p>
                         </div>
                     </div>
 
-                    <section data-testid="student-submission-content" className="rounded-xl border border-border bg-card">
+                    <section data-testid="student-submission-content" className="rounded-surface border border-border bg-card">
                         <div className="border-b border-border px-5 py-4">
                             <h2 className="flex items-center gap-2 font-semibold"><FileText className="h-4 w-4 text-primary" />提交内容快照</h2>
-                            <p className="mt-1 text-xs text-muted-foreground">以下内容固定为本次提交时的版本，不受后续课题修改影响。</p>
+                            <p className="mt-1 text-meta text-muted-foreground">以下内容固定为本次提交时的版本，不受后续课题修改影响。</p>
                         </div>
                         <div className="p-5">
                             <Tabs defaultValue="report">
@@ -100,8 +100,8 @@ export function SubmissionDetailPage() {
                                     <TabsTrigger value="plan">抽样方案</TabsTrigger>
                                     <TabsTrigger value="sampling">抽样结果</TabsTrigger>
                                 </TabsList>
-                                <TabsContent value="report" className="mt-4 rounded-xl bg-muted/30 p-5">
-                                    <RichTextContent html={detail.snapshot.reportContent} className="text-sm leading-relaxed" emptyFallback="暂无报告内容" />
+                                <TabsContent value="report" className="mt-4 rounded-surface bg-muted p-5">
+                                    <RichTextContent html={detail.snapshot.reportContent} className="text-label leading-relaxed" emptyFallback="暂无报告内容" />
                                 </TabsContent>
                                 <TabsContent value="questionnaire" className="mt-4"><QuestionnaireSnapshot questionnaire={detail.snapshot.questionnaire} /></TabsContent>
                                 <TabsContent value="plan" className="mt-4"><SamplePlanSnapshot value={detail.snapshot.samplePlan} populationSize={detail.snapshot.populationSize} /></TabsContent>
@@ -111,22 +111,22 @@ export function SubmissionDetailPage() {
                     </section>
 
                     {detail.teacherComment && (
-                        <section className="rounded-xl border border-border bg-muted/30 p-5">
-                            <h2 className="mb-2 flex items-center gap-2 text-sm font-medium"><FileText className="h-4 w-4 text-primary" />教师评语</h2>
-                            <p className="whitespace-pre-line text-sm leading-relaxed text-foreground/90">{detail.teacherComment}</p>
+                        <section className="rounded-surface border border-border bg-muted p-5">
+                            <h2 className="mb-2 flex items-center gap-2 text-label font-medium"><FileText className="h-4 w-4 text-primary" />教师评语</h2>
+                            <p className="whitespace-pre-line text-label leading-relaxed text-foreground">{detail.teacherComment}</p>
                         </section>
                     )}
 
                     {detail.rejectReason && (
-                        <section className="rounded-xl border border-destructive/20 bg-destructive/10 p-5">
-                            <h2 className="mb-2 flex items-center gap-2 text-sm font-medium text-destructive"><AlertCircle className="h-4 w-4" />驳回理由</h2>
-                            <p className="whitespace-pre-line text-sm leading-relaxed text-destructive">{detail.rejectReason}</p>
+                        <section className="rounded-surface border border-destructive-border bg-destructive-muted p-5">
+                            <h2 className="mb-2 flex items-center gap-2 text-label font-medium text-destructive"><AlertCircle className="h-4 w-4" />驳回理由</h2>
+                            <p className="whitespace-pre-line text-label leading-relaxed text-destructive">{detail.rejectReason}</p>
                             <Button asChild className="mt-4"><Link to={`/task/${detail.taskId}/experiment`}>继续修改</Link></Button>
                         </section>
                     )}
 
                     {!detail.teacherComment && !detail.rejectReason && detail.status === "submitted" && (
-                        <p className="rounded-xl border border-warning/20 bg-warning/10 p-4 text-sm text-warning">实验已经提交，等待教师批改。</p>
+                        <p className="rounded-surface border border-warning-border bg-warning-muted p-4 text-label text-warning">实验已经提交，等待教师批改。</p>
                     )}
                 </CardContent>
             </Card>

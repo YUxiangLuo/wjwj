@@ -216,10 +216,10 @@ export function ClassManagement() {
         <div className="space-y-6 animate-in fade-in duration-500">
             <PageHeader border={false}>
                 <div>
-                    <h2 className="text-lg font-semibold text-foreground">班级管理</h2>
-                    <p className="text-sm text-muted-foreground mt-1">管理班级、授课教师与学生规模。</p>
+                    <h2 className="text-subheading font-semibold text-foreground">班级管理</h2>
+                    <p className="text-label text-muted-foreground mt-1">管理班级、授课教师与学生规模。</p>
                 </div>
-                <Button data-testid="class-create-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
+                <Button data-testid="class-create-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary-hover text-primary-foreground ">
                     <Plus className="w-4 h-4 mr-1" />
                     创建班级
                 </Button>
@@ -229,8 +229,8 @@ export function ClassManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">班级总数</p>
-                            <p className="text-2xl font-bold text-foreground mt-1">{loading ? "-" : summary.total}</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">班级总数</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{loading ? "-" : summary.total}</p>
                         </div>
                         <IconTile intent="info">
                             <School className="w-5 h-5" />
@@ -240,8 +240,8 @@ export function ClassManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">学生总数</p>
-                            <p className="text-2xl font-bold text-foreground mt-1">{loading ? "-" : summary.studentTotal}</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">学生总数</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{loading ? "-" : summary.studentTotal}</p>
                         </div>
                         <IconTile intent="success">
                             <Users className="w-5 h-5" />
@@ -251,8 +251,8 @@ export function ClassManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">当前学期</p>
-                            <p className="text-sm font-bold text-foreground mt-2">{loading ? "-" : summary.currentSemesterName}</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">当前学期</p>
+                            <p className="text-label font-bold text-foreground mt-2">{loading ? "-" : summary.currentSemesterName}</p>
                         </div>
                         <IconTile intent="warning">
                             <CalendarDays className="w-5 h-5" />
@@ -262,8 +262,8 @@ export function ClassManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">授课教师</p>
-                            <p className="text-2xl font-bold text-foreground mt-1">{loading ? "-" : summary.teacherCount}</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">授课教师</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{loading ? "-" : summary.teacherCount}</p>
                         </div>
                         <IconTile intent="auxiliary">
                             <UserCircle2 className="w-5 h-5" />
@@ -275,8 +275,8 @@ export function ClassManagement() {
             <Card>
                 <PageHeader as={CardHeader}>
                     <div>
-                        <CardTitle className="text-base text-foreground">班级列表</CardTitle>
-                        <p className="text-xs text-muted-foreground mt-1">共 {filteredClasses.length} 条数据</p>
+                        <CardTitle className="text-body text-foreground">班级列表</CardTitle>
+                        <p className="text-meta text-muted-foreground mt-1">共 {filteredClasses.length} 条数据</p>
                     </div>
                     <div className="flex gap-3 flex-row w-auto">
                         <Input
@@ -284,10 +284,10 @@ export function ClassManagement() {
                             data-testid="class-search-input"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="bg-background border-border text-foreground placeholder:text-muted-foreground w-64 focus:border-ring"
+                            className="bg-card border-input text-foreground placeholder:text-muted-foreground w-64 focus:border-ring"
                         />
                         <Select value={filterSemester} onValueChange={setFilterSemester}>
-                            <SelectTrigger aria-label="按学期筛选班级" data-testid="class-filter-semester" className="bg-background border-border text-foreground w-36">
+                            <SelectTrigger aria-label="按学期筛选班级" data-testid="class-filter-semester" className="bg-card border-input text-foreground w-36">
                                 <SelectValue placeholder="全部学期" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
@@ -298,7 +298,7 @@ export function ClassManagement() {
                             </SelectContent>
                         </Select>
                         <Select value={filterTeacher} onValueChange={setFilterTeacher}>
-                            <SelectTrigger aria-label="按教师筛选班级" data-testid="class-filter-teacher" className="bg-background border-border text-foreground w-36">
+                            <SelectTrigger aria-label="按教师筛选班级" data-testid="class-filter-teacher" className="bg-card border-input text-foreground w-36">
                                 <SelectValue placeholder="全部教师" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
@@ -316,7 +316,7 @@ export function ClassManagement() {
                     ) : (
                         <Table>
                             <TableHeader>
-                                <TableRow className="border-border hover:bg-card/50">
+                                <TableRow className="border-border hover:bg-card">
                                     <TableHead className="text-muted-foreground">班级名称</TableHead>
                                     <TableHead className="text-muted-foreground">学期</TableHead>
                                     <TableHead className="text-muted-foreground">授课教师</TableHead>
@@ -327,32 +327,32 @@ export function ClassManagement() {
                             </TableHeader>
                             <TableBody>
                                 {filteredClasses.map((cls) => (
-                                    <TableRow key={cls.id} data-testid={`class-row-${cls.id}`} className="border-border hover:bg-muted/50 transition-colors">
+                                    <TableRow key={cls.id} data-testid={`class-row-${cls.id}`} className="border-border hover:bg-muted transition-colors">
                                         <TableCell className="font-medium text-foreground">{cls.name}</TableCell>
                                         <TableCell>
                                             <StatusBadge intent="info">
                                                 {cls.semesterName}
                                             </StatusBadge>
                                         </TableCell>
-                                        <TableCell className="text-foreground/90">{cls.teacherName}</TableCell>
+                                        <TableCell className="text-foreground">{cls.teacherName}</TableCell>
                                         <TableCell>
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-foreground/90">
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded-control text-meta font-medium bg-muted text-foreground">
                                                 {cls.studentCount}
                                             </span>
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground text-xs">{formatDate(cls.createdAt)}</TableCell>
+                                        <TableCell className="text-muted-foreground text-meta">{formatDate(cls.createdAt)}</TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => navigate(`/student?classId=${cls.id}`)}
-                                                    className="h-8 text-muted-foreground hover:text-success hover:bg-success/10"
+                                                    className="h-8 text-muted-foreground hover:text-success hover:bg-success-muted"
                                                 >
                                                     <Users className="w-3.5 h-3.5 mr-1" />
                                                     学生
                                                 </Button>
-                                                <Button data-testid={`class-edit-open-${cls.id}`} variant="ghost" size="sm" onClick={() => openEditModal(cls)} className="h-8 text-muted-foreground hover:text-primary hover:bg-primary/10">
+                                                <Button data-testid={`class-edit-open-${cls.id}`} variant="ghost" size="sm" onClick={() => openEditModal(cls)} className="h-8 text-muted-foreground hover:text-primary hover:bg-primary-muted">
                                                     <Pencil className="w-3.5 h-3.5 mr-1" />
                                                     编辑
                                                 </Button>
@@ -361,7 +361,7 @@ export function ClassManagement() {
                                                     size="sm"
                                                     data-testid={`class-delete-${cls.id}`}
                                                     onClick={() => handleDelete(cls)}
-                                                    className="h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                                    className="h-8 text-muted-foreground hover:text-destructive hover:bg-destructive-muted"
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5 mr-1" />
                                                     删除
@@ -374,7 +374,7 @@ export function ClassManagement() {
                                     <TableRow>
                                         <TableCell colSpan={6} className="text-center py-16 text-muted-foreground">
                                             <div className="flex flex-col items-center gap-2">
-                                                <div className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center">
+                                                <div className="w-12 h-12 rounded-control bg-card border border-border flex items-center justify-center">
                                                     <Search className="w-5 h-5 text-muted-foreground" />
                                                 </div>
                                                 <p>暂无符合条件的数据</p>
@@ -397,7 +397,7 @@ export function ClassManagement() {
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="className" className="text-foreground/90">班级名称</Label>
+                            <Label htmlFor="className" className="text-foreground">班级名称</Label>
                             <Input
                                 id="className"
                                 data-testid="class-create-name"
@@ -405,13 +405,13 @@ export function ClassManagement() {
                                 value={newClass.name}
                                 maxLength={100}
                                 onChange={(e) => setNewClass({ ...newClass, name: e.target.value })}
-                                className="bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring"
+                                className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-foreground/90">所属学期</Label>
+                            <Label className="text-foreground">所属学期</Label>
                             <Select value={newClass.semesterId} onValueChange={(v) => setNewClass({ ...newClass, semesterId: v })}>
-                                <SelectTrigger aria-label="新建班级所属学期" data-testid="class-create-semester" className="bg-background border-border text-foreground">
+                                <SelectTrigger aria-label="新建班级所属学期" data-testid="class-create-semester" className="bg-card border-input text-foreground">
                                     <SelectValue placeholder="选择学期" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border text-foreground">
@@ -422,9 +422,9 @@ export function ClassManagement() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-foreground/90">授课教师</Label>
+                            <Label className="text-foreground">授课教师</Label>
                             <Select value={newClass.teacherId} onValueChange={(v) => setNewClass({ ...newClass, teacherId: v })}>
-                                <SelectTrigger aria-label="新建班级授课教师" data-testid="class-create-teacher" className="bg-background border-border text-foreground">
+                                <SelectTrigger aria-label="新建班级授课教师" data-testid="class-create-teacher" className="bg-card border-input text-foreground">
                                     <SelectValue placeholder="选择教师" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border text-foreground">
@@ -443,7 +443,7 @@ export function ClassManagement() {
                             data-testid="class-create-submit"
                             onClick={handleAddClass}
                             disabled={submitting || !newClass.name.trim() || !newClass.semesterId || !newClass.teacherId}
-                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                            className="bg-primary hover:bg-primary-hover text-primary-foreground"
                         >
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             确认创建
@@ -461,7 +461,7 @@ export function ClassManagement() {
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="editClassName" className="text-foreground/90">班级名称</Label>
+                            <Label htmlFor="editClassName" className="text-foreground">班级名称</Label>
                             <Input
                                 id="editClassName"
                                 data-testid="class-edit-name"
@@ -469,18 +469,18 @@ export function ClassManagement() {
                                 value={editForm.name}
                                 maxLength={100}
                                 onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                                className="bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring"
+                                className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-foreground/90">所属学期</Label>
-                            <Input value={editingClass?.semesterName ?? ""} disabled className="bg-card border-border text-muted-foreground" />
-                            <p className="text-xs text-muted-foreground">学期不可更改</p>
+                            <Label className="text-foreground">所属学期</Label>
+                            <Input value={editingClass?.semesterName ?? ""} disabled className="bg-card border-input text-muted-foreground" />
+                            <p className="text-meta text-muted-foreground">学期不可更改</p>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-foreground/90">授课教师</Label>
+                            <Label className="text-foreground">授课教师</Label>
                             <Select value={editForm.teacherId} onValueChange={(v) => setEditForm({ ...editForm, teacherId: v })}>
-                                <SelectTrigger aria-label="编辑班级授课教师" data-testid="class-edit-teacher" className="bg-background border-border text-foreground">
+                                <SelectTrigger aria-label="编辑班级授课教师" data-testid="class-edit-teacher" className="bg-card border-input text-foreground">
                                     <SelectValue placeholder="选择教师" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border text-foreground">
@@ -499,7 +499,7 @@ export function ClassManagement() {
                             data-testid="class-edit-submit"
                             onClick={handleEditClass}
                             disabled={submitting || !editForm.name.trim()}
-                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                            className="bg-primary hover:bg-primary-hover text-primary-foreground"
                         >
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             保存

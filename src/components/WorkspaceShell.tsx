@@ -35,10 +35,10 @@ export function WorkspaceShell({
                 footer={sidebarFooter}
             />
             <main className="min-w-0 flex-1">
-                <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/80 px-6 backdrop-blur">
+                <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card px-6">
                     <div>
-                        <h1 className="font-semibold">{pageTitle}</h1>
-                        <p className="text-xs text-muted-foreground">{pageSubtitle}</p>
+                        <h1 className="text-section-title font-semibold">{pageTitle}</h1>
+                        <p className="text-meta text-muted-foreground">{pageSubtitle}</p>
                     </div>
                     {headerActions}
                 </header>

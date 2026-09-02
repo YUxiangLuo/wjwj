@@ -93,7 +93,7 @@ export function AnnouncementManagement() {
             <CardHeader className="flex-row items-center justify-between">
                 <div>
                     <CardTitle>公告管理</CardTitle>
-                    <p className="mt-1 text-sm text-muted-foreground">公告按管理员选择的对象直接展示，不记录已读状态。</p>
+                    <p className="mt-1 text-label text-muted-foreground">公告按管理员选择的对象直接展示，不记录已读状态。</p>
                 </div>
                 <Button onClick={() => {
                     setEditing(null);
@@ -111,7 +111,7 @@ export function AnnouncementManagement() {
                 ) : (
                     <div className="space-y-3">
                         {rows.map((item) => (
-                            <div key={item.id} className="flex gap-3 rounded-xl border border-border p-4 flex-row items-center">
+                            <div key={item.id} className="flex gap-3 rounded-surface border border-border p-4 flex-row items-center">
                                 <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2">
                                         <h2 className="truncate font-medium">{item.title}</h2>
@@ -119,7 +119,7 @@ export function AnnouncementManagement() {
                                             {item.status === 1 ? "已发布" : "草稿"}
                                         </StatusBadge>
                                     </div>
-                                    <p className="mt-1 text-xs text-muted-foreground">
+                                    <p className="mt-1 text-meta text-muted-foreground">
                                         对象：{{ all: "全部", teacher: "教师", student: "学生" }[item.targetScope]}
                                         {" · "}
                                         {formatDateTimeDisplay(item.createdAt, "-")}
@@ -172,7 +172,7 @@ export function AnnouncementManagement() {
                             </div>
                         ))}
                         {!rows.length && (
-                            <p className="py-10 text-center text-sm text-muted-foreground">暂无公告</p>
+                            <p className="py-10 text-center text-label text-muted-foreground">暂无公告</p>
                         )}
                     </div>
                 )}

@@ -7,13 +7,13 @@ export function AppToaster() {
             position="top-right"
             toastOptions={{
                 classNames: {
-                    toast: "!border-border !bg-card !text-foreground",
-                    title: "!text-current",
-                    description: "!text-current !opacity-90",
-                    success: "!border-success !bg-success !text-success-foreground",
-                    error: "!border-destructive !bg-destructive !text-destructive-foreground",
-                    warning: "!border-warning !bg-warning !text-warning-foreground",
-                    info: "!border-info !bg-info !text-info-foreground",
+                    toast: "!rounded-overlay !border-border !bg-card !text-foreground",
+                    title: "!text-label !font-medium !text-current",
+                    description: "!text-meta !text-current",
+                    success: "!border-success-border !bg-success-muted !text-success",
+                    error: "!border-destructive-border !bg-destructive-muted !text-destructive",
+                    warning: "!border-warning-border !bg-warning-muted !text-warning",
+                    info: "!border-info-border !bg-info-muted !text-info",
                     actionButton: "!bg-primary !text-primary-foreground",
                     cancelButton: "!bg-secondary !text-secondary-foreground",
                 },

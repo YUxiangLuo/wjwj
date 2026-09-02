@@ -47,10 +47,10 @@ export function PrecisionPhase({ params, onNext }: Props) {
     return (
         <div className="space-y-8">
             <div className="text-center space-y-3">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-warning/10 text-xs font-medium text-warning">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-control bg-warning-muted text-meta font-medium text-warning">
                     精度指标
                 </span>
-                <h2 className="text-2xl font-bold text-foreground">
+                <h2 className="text-page-title font-bold text-foreground">
                     怎么衡量估计的精度？
                 </h2>
                 <p className="text-muted-foreground">
@@ -61,33 +61,33 @@ export function PrecisionPhase({ params, onNext }: Props) {
             </div>
 
             <div className={`grid gap-4 ${isMeanEstimation ? "grid-cols-2" : "grid-cols-3"}`}>
-                <div className="rounded-2xl border border-border bg-background p-4 shadow-sm space-y-2">
-                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">标准误差 SE</p>
-                    <p className="font-mono text-sm text-foreground/90">
+                <div className="rounded-surface border border-border bg-background p-4 space-y-2">
+                    <p className="text-meta font-medium uppercase tracking-wider text-muted-foreground">标准误差 SE</p>
+                    <p className="font-mono text-label text-foreground">
                         {isMeanEstimation ? "SE(ȳ) = √[σ²/n × (N−n)/(N−1)]" : "SE = √[p(1−p)/n × (N−n)/(N−1)]"}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-meta text-muted-foreground">
                         估计值的标准差。这里把有限总体方差定义为分母 N，因此校正因子是 (N−n)/(N−1)；N 很大时它接近 1。SE 越小，估计越精确。
                     </p>
                 </div>
-                <div className="rounded-2xl border border-border bg-background p-4 shadow-sm space-y-2">
-                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">误差限 ME</p>
-                    <p className="font-mono text-sm text-foreground/90">
+                <div className="rounded-surface border border-border bg-background p-4 space-y-2">
+                    <p className="text-meta font-medium uppercase tracking-wider text-muted-foreground">误差限 ME</p>
+                    <p className="font-mono text-label text-foreground">
                         ME = Z × SE
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-meta text-muted-foreground">
                         {isMeanEstimation
                             ? "置信区间的半宽。如 ME=2，表示正式区间会写成 ȳ ± 2。"
                             : "置信区间的半宽。如 ME=3%，意为正式区间可写成 p̂ ± 3%。"}
                     </p>
                 </div>
                 {!isMeanEstimation && (
-                    <div className="rounded-2xl border border-border bg-background p-4 shadow-sm space-y-2">
-                        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">变异系数 CV</p>
-                        <p className="font-mono text-sm text-foreground/90">
+                    <div className="rounded-surface border border-border bg-background p-4 space-y-2">
+                        <p className="text-meta font-medium uppercase tracking-wider text-muted-foreground">变异系数 CV</p>
+                        <p className="font-mono text-label text-foreground">
                             CV = SE / p
                         </p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-meta text-muted-foreground">
                             规划阶段用非零的假设总体比例 p，不是样本比例 p̂。它表示比例估计的相对标准误；p 接近 0 时会很不稳定，不存在通用合格阈值。
                         </p>
                     </div>
@@ -95,11 +95,11 @@ export function PrecisionPhase({ params, onNext }: Props) {
             </div>
 
             {/* Interactive demo */}
-            <div className="mx-auto max-w-lg rounded-2xl border border-border bg-background shadow-sm overflow-hidden">
+            <div className="mx-auto max-w-lg rounded-surface border border-border bg-background overflow-hidden">
                 <div className="bg-card px-4 py-2.5 border-b border-border">
-                    <p className="text-sm text-center text-muted-foreground">
+                    <p className="text-label text-center text-muted-foreground">
                         {isMeanEstimation ? "先直观看一眼：样本量变化时，SE 与 ME 怎么变" : "先直观看一眼：样本量变化时，三个精度指标怎么变"}
-                        <span className="text-xs text-muted-foreground ml-2">
+                        <span className="text-meta text-muted-foreground ml-2">
                             {isMeanEstimation
                                 ? `(σ²=${sigma2}, N=${N.toLocaleString()}, ${params.confidenceLevel}% CI)`
                                 : `(p=0.5, N=${N.toLocaleString()}, ${params.confidenceLevel}% CI)`}
@@ -115,10 +115,10 @@ export function PrecisionPhase({ params, onNext }: Props) {
                                 type="button"
                                 onClick={() => setDemoN(n)}
                                 aria-pressed={demoN === n}
-                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                className={`px-3 py-1.5 rounded-surface text-label font-medium transition-colors ${
                                     demoN === n
-                                        ? "bg-primary text-primary-foreground shadow-sm"
-                                        : "bg-muted text-muted-foreground hover:bg-muted-foreground/50"
+                                        ? "bg-primary text-primary-foreground "
+                                        : "bg-muted text-muted-foreground hover:bg-input"
                                 }`}
                             >
                                 n={n}
@@ -127,23 +127,23 @@ export function PrecisionPhase({ params, onNext }: Props) {
                     </div>
 
                     <div className={`grid gap-3 text-center ${isMeanEstimation ? "grid-cols-2" : "grid-cols-3"}`}>
-                        <div className="rounded-xl bg-info/10 p-3">
-                            <p className="text-[10px] font-medium uppercase tracking-wider text-info">SE</p>
-                            <p className="text-lg font-bold tabular-nums text-info">{fmt(se)}</p>
+                        <div className="rounded-surface bg-info-muted p-3">
+                            <p className="text-meta font-medium uppercase tracking-wider text-info">SE</p>
+                            <p className="text-subheading font-bold tabular-nums text-info">{fmt(se)}</p>
                         </div>
-                        <div className="rounded-xl bg-auxiliary-muted/30 p-3">
-                            <p className="text-[10px] font-medium uppercase tracking-wider text-auxiliary">ME</p>
-                            <p className="text-lg font-bold tabular-nums text-auxiliary">{fmt(me)}</p>
+                        <div className="rounded-surface bg-auxiliary-muted p-3">
+                            <p className="text-meta font-medium uppercase tracking-wider text-auxiliary">ME</p>
+                            <p className="text-subheading font-bold tabular-nums text-auxiliary">{fmt(me)}</p>
                         </div>
                         {!isMeanEstimation && cv != null && (
-                            <div className="rounded-xl bg-success/10 p-3">
-                                <p className="text-[10px] font-medium uppercase tracking-wider text-success">CV</p>
-                                <p className="text-lg font-bold tabular-nums text-success">{(cv * 100).toFixed(1)}%</p>
+                            <div className="rounded-surface bg-success-muted p-3">
+                                <p className="text-meta font-medium uppercase tracking-wider text-success">CV</p>
+                                <p className="text-subheading font-bold tabular-nums text-success">{(cv * 100).toFixed(1)}%</p>
                             </div>
                         )}
                     </div>
                     {isMeanEstimation && (
-                        <p className="text-center text-xs text-muted-foreground">
+                        <p className="text-center text-meta text-muted-foreground">
                             若要比较不同量纲下的均值精度，可再结合实际均值计算 RSE = SE / |ȳ|。
                         </p>
                     )}
@@ -151,9 +151,9 @@ export function PrecisionPhase({ params, onNext }: Props) {
             </div>
 
             {/* Confidence interval explanation */}
-            <div className="mx-auto max-w-lg rounded-2xl border border-warning/20 bg-warning/10 p-5 space-y-2">
-                <p className="text-sm font-semibold text-warning">置信区间的含义</p>
-                <p className="text-sm text-warning">
+            <div className="mx-auto max-w-lg rounded-surface border border-warning-border bg-warning-muted p-5 space-y-2">
+                <p className="text-label font-semibold text-warning">置信区间的含义</p>
+                <p className="text-label text-warning">
                     「{params.confidenceLevel}% 置信区间」的含义是：<strong>如果用相同方法重复抽样 100 次，大约有 {params.confidenceLevel} 次的区间会包含总体真值。</strong>
                     它不是说真值有 {params.confidenceLevel}% 的概率落在某一次的区间里——真值是固定的，是区间在变。
                 </p>
@@ -163,7 +163,7 @@ export function PrecisionPhase({ params, onNext }: Props) {
                 <Button
                     type="button"
                     onClick={onNext}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-5 rounded-xl shadow-lg shadow-primary/20"
+                    className="bg-primary hover:bg-primary-hover text-primary-foreground px-8 py-5 rounded-surface "
                 >
                     继续：判断哪些条件会影响样本量
                     <ChevronRight className="w-5 h-5 ml-2" />

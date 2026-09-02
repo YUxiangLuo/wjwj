@@ -497,22 +497,22 @@ export function ImmersiveSamplePlanning({
                 return (
                     <div className="space-y-8">
                         <div className="text-center space-y-3">
-                            <div className="mx-auto w-16 h-16 rounded-2xl bg-success/10 border border-success/20 flex items-center justify-center">
+                            <div className="mx-auto w-16 h-16 rounded-surface bg-success-muted border border-success-border flex items-center justify-center">
                                 <CheckCircle2 className="w-8 h-8 text-success" />
                             </div>
-                            <h2 className="text-2xl font-bold text-foreground">确认样本量规划</h2>
+                            <h2 className="text-page-title font-bold text-foreground">确认样本量规划</h2>
                             <p className="text-muted-foreground">
                                 请确认以下核心参数。这里仅完成规划；返回阶段页并点击“确认并进入下一阶段”后才会保存。
                             </p>
                         </div>
 
-                        <div className="rounded-2xl border border-border bg-background p-6 shadow-sm space-y-5">
+                        <div className="rounded-surface border border-border bg-background p-6 space-y-5">
                             <div className="text-center">
-                                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">最终样本量</p>
-                                <div className="text-5xl font-black tabular-nums text-primary">
+                                <p className="text-meta font-medium uppercase tracking-wider text-muted-foreground mb-1">最终样本量</p>
+                                <div className="text-display font-black tabular-nums text-primary">
                                     {finalSampleSize.toLocaleString()}
                                 </div>
-                                <p className="text-sm text-muted-foreground mt-1">建议值 {recommendedSize.toLocaleString()}</p>
+                                <p className="text-label text-muted-foreground mt-1">建议值 {recommendedSize.toLocaleString()}</p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
@@ -544,7 +544,7 @@ export function ImmersiveSamplePlanning({
                                 type="button"
                                 onClick={handleConfirm}
                                 data-testid="immersive-sp-confirm"
-                                className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-5 rounded-xl shadow-lg shadow-primary/20"
+                                className="bg-primary hover:bg-primary-hover text-primary-foreground px-8 py-5 rounded-surface "
                             >
                                 确认规划结果
                                 <ChevronRight className="w-5 h-5 ml-2" />
@@ -584,14 +584,14 @@ export function ImmersiveSamplePlanning({
                 aria-modal="true"
                 aria-labelledby={titleId}
                 data-testid="immersive-sample-planning"
-                className="fixed inset-0 z-50 bg-gradient-to-br from-card via-background to-primary/40 outline-none"
+                className="fixed inset-0 z-50 bg-background outline-none"
                 onKeyDown={focusTrap}
                 tabIndex={-1}
             >
                 {/* Progress bar */}
                 <div className="absolute top-0 left-0 right-0 h-1 bg-muted z-10">
                     <div
-                        className="h-full bg-primary transition-all duration-500 ease-out"
+                        className="h-full bg-primary transition-[width] duration-500 ease-out"
                         style={{ width: `${progress}%` }}
                     />
                 </div>
@@ -599,7 +599,7 @@ export function ImmersiveSamplePlanning({
                 {/* Header */}
                 <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-6 pt-4 z-10">
                     <div className="flex items-center gap-3">
-                        <span className="text-sm font-medium text-muted-foreground">
+                        <span className="text-label font-medium text-muted-foreground">
                             {PHASE_LABELS[phase.type] ?? ""}
                         </span>
                         {/* Phase dots */}
@@ -607,12 +607,12 @@ export function ImmersiveSamplePlanning({
                             {NAVIGABLE_PHASES.map((t) => (
                                 <div
                                     key={t}
-                                    className={`h-1.5 rounded-full transition-all ${
+                                    className={`h-1.5 rounded-control transition-colors ${
                                         t === phase.type
                                             ? "bg-primary w-5"
                                             : PHASE_ORDER.indexOf(t) < PHASE_ORDER.indexOf(phase.type)
                                                 ? "bg-primary w-1.5"
-                                                : "bg-muted-foreground/30 w-1.5"
+                                                : "bg-input w-1.5"
                                     }`}
                                 />
                             ))}
@@ -621,7 +621,7 @@ export function ImmersiveSamplePlanning({
                     <button
                         type="button"
                         onClick={requestClose}
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground hover:text-muted-foreground hover:bg-muted transition-colors"
+                        className="w-10 h-10 rounded-control flex items-center justify-center text-muted-foreground hover:text-muted-foreground hover:bg-muted transition-colors"
                         aria-label="关闭"
                         data-testid="immersive-sp-close"
                     >
@@ -639,12 +639,12 @@ export function ImmersiveSamplePlanning({
 
                 {/* Bottom bar */}
                 {canGoPrev && (
-                    <div className="pointer-events-none fixed bottom-0 left-0 right-0 z-10 flex items-center justify-start px-6 pb-4 pt-2 bg-gradient-to-t from-background via-background/80 to-transparent">
+                    <div className="pointer-events-none fixed bottom-0 left-0 right-0 z-10 flex items-center justify-start border-t border-border bg-card px-6 pb-4 pt-2">
                         <Button
                             type="button"
                             variant="ghost"
                             onClick={goPrev}
-                            className="pointer-events-auto text-muted-foreground hover:text-foreground/90"
+                            className="pointer-events-auto text-muted-foreground hover:text-foreground"
                         >
                             <ChevronLeft className="w-4 h-4 mr-1" />
                             上一步
@@ -657,7 +657,7 @@ export function ImmersiveSamplePlanning({
                     <button
                         type="button"
                         onClick={goPrev}
-                        className="flex fixed top-1/2 -translate-y-1/2 left-4 z-10 w-11 h-11 rounded-full border border-border bg-background/90 backdrop-blur-sm shadow-sm items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        className="flex fixed top-1/2 -translate-y-1/2 left-4 z-10 w-11 h-11 rounded-control border border-border bg-background items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                         aria-label="上一步"
                     >
                         <ChevronLeft className="w-5 h-5" />
@@ -668,7 +668,7 @@ export function ImmersiveSamplePlanning({
                         type="button"
                         onClick={goNext}
                         data-testid="immersive-sp-next"
-                        className="flex fixed top-1/2 -translate-y-1/2 right-4 z-10 w-11 h-11 rounded-full bg-primary shadow-lg shadow-primary/20 items-center justify-center text-primary-foreground hover:bg-primary/90 transition-colors"
+                        className="fixed top-1/2 right-4 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-control bg-primary text-primary-foreground transition-colors hover:bg-primary-hover"
                         aria-label="下一步"
                     >
                         <ChevronRight className="w-5 h-5" />
@@ -686,7 +686,7 @@ export function ImmersiveSamplePlanning({
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel type="button">取消</AlertDialogCancel>
-                        <AlertDialogAction type="button" onClick={confirmExit} className="bg-destructive hover:bg-destructive/90">
+                        <AlertDialogAction type="button" onClick={confirmExit} className="bg-destructive hover:bg-destructive-hover">
                             确定退出
                         </AlertDialogAction>
                     </AlertDialogFooter>
@@ -700,9 +700,9 @@ export function ImmersiveSamplePlanning({
 
 function ParamSummaryItem({ label, value }: { label: string; value: string }) {
     return (
-        <div className="rounded-lg bg-card px-3 py-2.5">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-            <p className="text-sm font-bold tabular-nums text-foreground/90 mt-0.5">{value}</p>
+        <div className="rounded-surface bg-card px-3 py-2.5">
+            <p className="text-meta font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+            <p className="text-label font-bold tabular-nums text-foreground mt-0.5">{value}</p>
         </div>
     );
 }

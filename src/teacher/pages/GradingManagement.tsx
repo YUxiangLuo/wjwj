@@ -61,12 +61,12 @@ export function GradingManagement() {
     return (
         <div className="space-y-6">
             <div>
-                <h2 className="text-lg font-semibold">作业批改</h2>
-                <p className="mt-1 text-sm text-muted-foreground">评分直接写入学生当前实验；驳回后学生可修改并覆盖重交。</p>
+                <h2 className="text-subheading font-semibold">作业批改</h2>
+                <p className="mt-1 text-label text-muted-foreground">评分直接写入学生当前实验；驳回后学生可修改并覆盖重交。</p>
             </div>
             <Card>
                 <CardHeader className="flex gap-4 flex-row items-center justify-between">
-                    <CardTitle className="text-base">批改列表（{total}）</CardTitle>
+                    <CardTitle className="text-body">批改列表（{total}）</CardTitle>
                     <div className="flex gap-2 w-auto flex-row">
                         <div className="relative w-auto">
                             <Label htmlFor="grading-search" className="sr-only">搜索学生或课题</Label>
@@ -91,7 +91,7 @@ export function GradingManagement() {
                                 <SelectItem value="rejected">已驳回</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+                        <Label className="flex cursor-pointer items-center gap-2 text-label text-muted-foreground">
                             <Switch
                                 checked={includeArchived}
                                 onCheckedChange={setIncludeArchived}
@@ -104,11 +104,11 @@ export function GradingManagement() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                     {loading ? (
-                        <p className="py-12 text-center text-sm text-muted-foreground" role="status">加载中...</p>
+                        <p className="py-12 text-center text-label text-muted-foreground" role="status">加载中...</p>
                     ) : items.map((item) => (
                         <button
                             key={item.id}
-                            className="flex w-full gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:bg-muted/50 flex-row items-center"
+                            className="flex w-full gap-3 rounded-surface border border-border p-4 text-left transition-colors hover:bg-muted flex-row items-center"
                             onClick={() => navigate(`/grading/${item.id}`)}
                         >
                             <Avatar>
@@ -119,16 +119,16 @@ export function GradingManagement() {
                             <div className="min-w-0 flex-1">
                                 <div className="font-medium">
                                     {item.studentName}{" "}
-                                    <span className="font-mono text-xs text-muted-foreground">{item.studentId}</span>
+                                    <span className="font-mono text-meta text-muted-foreground">{item.studentId}</span>
                                 </div>
-                                <p className="mt-1 text-sm text-muted-foreground">{item.className} · {item.topic}</p>
+                                <p className="mt-1 text-label text-muted-foreground">{item.className} · {item.topic}</p>
                             </div>
                             <div className="text-right">
                                 {badge(item)}
                                 {item.archived && (
                                     <StatusBadge intent="auxiliary" data-testid="grading-archived-badge">已归档</StatusBadge>
                                 )}
-                                <p className="mt-2 text-xs text-muted-foreground">
+                                <p className="mt-2 text-meta text-muted-foreground">
                                     {formatDateTimeDisplay(item.submittedAt, "-")}
                                 </p>
                             </div>
@@ -137,7 +137,7 @@ export function GradingManagement() {
                     {!loading && !items.length && (
                         <div className="grid place-items-center gap-2 py-12 text-muted-foreground">
                             <ClipboardList className="h-8 w-8" />
-                            <p className="text-sm">暂无记录</p>
+                            <p className="text-label">暂无记录</p>
                         </div>
                     )}
                     {pages > 1 && (
@@ -150,7 +150,7 @@ export function GradingManagement() {
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </IconButton>
-                            <span className="text-sm text-muted-foreground">{page} / {pages}</span>
+                            <span className="text-label text-muted-foreground">{page} / {pages}</span>
                             <IconButton
                                 aria-label="下一页"
                                 variant="outline"

@@ -102,7 +102,7 @@ export function GradingDetail() {
                 </div>
             </div>
             {data.archived && (
-                <div role="note" className="rounded-xl border border-auxiliary/20 bg-auxiliary/10 px-4 py-3 text-sm text-auxiliary-strong" data-testid="grading-archived-notice">
+                <div role="note" className="rounded-surface border border-auxiliary-border bg-auxiliary-muted px-4 py-3 text-label text-auxiliary-strong" data-testid="grading-archived-notice">
                     该提交已归档（学生、任务或课题已被删除），内容仅供查阅，不能评分或驳回。
                 </div>
             )}
@@ -111,7 +111,7 @@ export function GradingDetail() {
                     <CardTitle>
                         <h2>{data.studentName} · {data.topic}</h2>
                     </CardTitle>
-                    <p className="text-sm text-muted-foreground">{data.className} · {data.studentId}</p>
+                    <p className="text-label text-muted-foreground">{data.className} · {data.studentId}</p>
                 </CardHeader>
                 <CardContent>
                     <Tabs defaultValue="questionnaire">
@@ -125,9 +125,9 @@ export function GradingDetail() {
                         <TabsContent value="plan" className="mt-4"><SamplePlanSnapshot value={data.samplePlan} populationSize={data.populationSize} /></TabsContent>
                         <TabsContent value="sampling" className="mt-4 space-y-4">
                             {data.samplingResults && (
-                                <div className="flex items-center justify-between gap-3 rounded-xl border border-info/20 bg-info/10 p-4">
-                                    <p className="text-sm text-info">页面最多预览每种抽样方法的前 50 行；CSV 包含本次提交的完整样本。</p>
-                                    <Button asChild variant="outline" className="shrink-0 border-info/30 text-info hover:bg-info/10">
+                                <div className="flex items-center justify-between gap-3 rounded-surface border border-info-border bg-info-muted p-4">
+                                    <p className="text-label text-info">页面最多预览每种抽样方法的前 50 行；CSV 包含本次提交的完整样本。</p>
+                                    <Button asChild variant="outline" className="shrink-0 border-info-border text-info hover:bg-info-muted">
                                         <a
                                             href={`/api/teacher/grading/${id}/sampling-export?type=all`}
                                             download
@@ -140,9 +140,9 @@ export function GradingDetail() {
                                 </div>
                             )}
                             <SamplingResultsSnapshot value={data.samplingResults} />
-                            <div className="rounded-xl border border-border bg-card p-4">
+                            <div className="rounded-surface border border-border bg-card p-4">
                                 <h3 className="flex items-center gap-2 font-medium"><History className="h-4 w-4 text-primary" />抽样执行记录</h3>
-                                <p className="mt-1 text-xs text-muted-foreground">记录每次服务端抽样，便于识别重复尝试；每个实验保留并展示最近 100 次。</p>
+                                <p className="mt-1 text-meta text-muted-foreground">记录每次服务端抽样，便于识别重复尝试；每个实验保留并展示最近 100 次。</p>
                                 {data.samplingAttempts?.length ? (
                                     <div className="mt-3 max-h-64 space-y-2 overflow-y-auto custom-scrollbar">
                                         {data.samplingAttempts.map((attempt) => {
@@ -153,24 +153,24 @@ export function GradingDetail() {
                                                 stratified: "分层抽样",
                                             }[attempt.method];
                                             return (
-                                                <div key={attempt.id} className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-sm">
+                                                <div key={attempt.id} className="flex items-center justify-between rounded-surface bg-muted px-3 py-2 text-label">
                                                     <span className="font-medium">{methodLabel} · {attempt.sampleCount.toLocaleString()} 个</span>
-                                                    <span className="text-xs text-muted-foreground">seed {attempt.seed} · {formatDateTimeDisplay(attempt.createdAt)}</span>
+                                                    <span className="text-meta text-muted-foreground">seed {attempt.seed} · {formatDateTimeDisplay(attempt.createdAt)}</span>
                                                 </div>
                                             );
                                         })}
                                     </div>
-                                ) : <p className="mt-3 text-sm text-muted-foreground">暂无执行记录（旧提交不会补记历史尝试）。</p>}
+                                ) : <p className="mt-3 text-label text-muted-foreground">暂无执行记录（旧提交不会补记历史尝试）。</p>}
                             </div>
                         </TabsContent>
-                        <TabsContent value="report" className="mt-4 rounded-xl border border-border p-5"><RichTextContent html={data.reportContent} /></TabsContent>
+                        <TabsContent value="report" className="mt-4 rounded-surface border border-border p-5"><RichTextContent html={data.reportContent} /></TabsContent>
                     </Tabs>
                 </CardContent>
             </Card>
             {data.status === "rejected" ? (
-                <Card className="border-destructive/30">
+                <Card className="border-destructive-border">
                     <CardHeader><CardTitle className="flex items-center gap-2 text-destructive"><XCircle className="h-5 w-5" />驳回理由</CardTitle></CardHeader>
-                    <CardContent><p className="whitespace-pre-wrap text-sm">{data.rejectReason}</p></CardContent>
+                    <CardContent><p className="whitespace-pre-wrap text-label">{data.rejectReason}</p></CardContent>
                 </Card>
             ) : (
                 <Card>
@@ -199,8 +199,8 @@ export function GradingDetail() {
                             <Label htmlFor="grading-comment">教师评语</Label>
                             <Textarea id="grading-comment" rows={4} value={comment} disabled={!canGrade} onChange={(event) => setComment(event.target.value)} />
                         </div>
-                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-muted p-4">
-                            <p>加权总分：<span className="text-2xl font-bold text-primary">{total.toFixed(2)}</span></p>
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-surface bg-muted p-4">
+                            <p>加权总分：<span className="text-page-title font-bold text-primary">{total.toFixed(2)}</span></p>
                             <div className="flex gap-2">
                                 {data.status === "submitted" && !data.archived && <Button variant="destructive" onClick={() => setRejectOpen(true)}>驳回修改</Button>}
                                 <Button disabled={!canGrade || saving} onClick={() => void grade()}>{saving ? "保存中..." : data.status === "graded" ? "更新评分" : "提交评分"}</Button>

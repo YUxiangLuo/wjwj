@@ -69,7 +69,7 @@ export function SamplingResultsSnapshot({
         .filter((entry): entry is { method: SamplingMethod; result: SamplingMethodValue } => Boolean(entry.result));
 
     if (methods.length === 0) {
-        return <p className="text-sm text-muted-foreground">{emptyText}</p>;
+        return <p className="text-label text-muted-foreground">{emptyText}</p>;
     }
 
     return (
@@ -78,7 +78,7 @@ export function SamplingResultsSnapshot({
                 {methods.map(({ method, result }) => (
                     <TabsTrigger key={method} value={method} className="flex-wrap py-2">
                         <span>{METHOD_LABELS[method]}</span>
-                        <span className="text-xs text-muted-foreground">{getSamplingResultCount(method, result)} 条</span>
+                        <span className="text-meta text-muted-foreground">{getSamplingResultCount(method, result)} 条</span>
                     </TabsTrigger>
                 ))}
             </TabsList>
@@ -89,26 +89,26 @@ export function SamplingResultsSnapshot({
                 const count = getSamplingResultCount(method, result);
                 return (
                     <TabsContent key={method} value={method} className="mt-4 space-y-4">
-                        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/30 p-4">
+                        <div className="flex flex-wrap items-center gap-2 rounded-surface border border-border bg-muted p-4">
                             <StatusBadge intent={result.unavailable ? "warning" : result.completed ? "success" : "neutral"}>
                                 {result.unavailable ? "不可用" : result.completed ? "已完成" : "未完成"}
                             </StatusBadge>
                             <div className="grid flex-1 gap-3 grid-cols-4">
                                 <div>
-                                    <p className="text-xs text-muted-foreground">样本数</p>
-                                    <p className="mt-1 text-sm font-medium">{count}</p>
+                                    <p className="text-meta text-muted-foreground">样本数</p>
+                                    <p className="mt-1 text-label font-medium">{count}</p>
                                 </div>
                                 {details.map((detail) => (
                                     <div key={detail.label}>
-                                        <p className="text-xs text-muted-foreground">{detail.label}</p>
-                                        <p className="mt-1 break-words text-sm font-medium">{detail.value}</p>
+                                        <p className="text-meta text-muted-foreground">{detail.label}</p>
+                                        <p className="mt-1 break-words text-label font-medium">{detail.value}</p>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
                         {result.unavailable ? (
-                            <p className="rounded-xl border border-warning/20 bg-warning/10 p-4 text-sm text-warning">
+                            <p className="rounded-surface border border-warning-border bg-warning-muted p-4 text-label text-warning">
                                 {result.unavailableReason || "该总体数据无法执行 PPS 抽样。"}
                             </p>
                         ) : (
@@ -118,11 +118,11 @@ export function SamplingResultsSnapshot({
                         )}
 
                         {method === "stratified" && result.layers?.length ? (
-                            <div className="rounded-xl border border-border p-4">
-                                <h3 className="text-sm font-medium">分层分配</h3>
+                            <div className="rounded-surface border border-border p-4">
+                                <h3 className="text-label font-medium">分层分配</h3>
                                 <div className="mt-3 grid gap-2 grid-cols-3">
                                     {result.layers.map((layer) => (
-                                        <div key={layer.name} className="rounded-lg bg-muted/40 px-3 py-2 text-sm">
+                                        <div key={layer.name} className="rounded-surface bg-muted px-3 py-2 text-label">
                                             <span className="font-medium">{layer.name}</span>
                                             <span className="ml-2 text-muted-foreground">{layer.sampleCount} / {layer.count}</span>
                                         </div>
