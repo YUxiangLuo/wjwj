@@ -13,7 +13,7 @@ import { questionTypeLabels, questionTypeBadgeColors } from "@/lib/questionnaire
 import type { QuestionType } from "@/lib/questionnaire-types";
 
 import { categoricalFieldsFromMapping, parseStudyContract } from "@/lib/analysis-target";
-import { buildDefaultStudyContract, isStudyContractComplete, StudyContractEditor, type FieldMappingState } from "./StudyContractEditor";
+import { isStudyContractComplete, StudyContractEditor, type FieldMappingState } from "./StudyContractEditor";
 import {
     SAMPLING_METHODS,
     validateSamplingPolicy,
@@ -21,6 +21,11 @@ import {
     type SamplingMethodRequirement,
     type SamplingPolicyV1,
 } from "@/lib/sampling-policy";
+import {
+    buildRecommendedFieldMapping,
+    isLikelyHighCardinalityColumn,
+    isLikelyIdentifierColumn,
+} from "../topic/mapping-recommendation";
 
 interface TopicWizardDialogProps {
     open: boolean;
@@ -136,147 +141,12 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
         });
     };
 
-    const normalizeColumnName = (value: string) => value.toLowerCase().replace(/[\s_-]/g, "");
-    const tokenizeColumnName = (value: string) => value.toLowerCase().split(/[\s_-]+/).filter(Boolean);
-    const idExactKeywords = new Set(["id", "uid", "userid", "studentid", "respondentid", "recordid", "sampleid"]);
-    const idPrefixKeywords = ["user", "student", "respondent", "record", "sample", "member", "customer", "subject", "case"];
-    const idLabelKeywords = ["编号", "编码", "序号", "样本号", "学号", "工号"];
-    const numericKeywords = ["age", "income", "score", "amount", "count", "frequency", "rate", "price", "spending", "nps", "满意", "次数", "分数", "金额", "收入"];
-    const stratifiedKeywords = ["gender", "sex", "education", "province", "city", "grade", "major", "class", "platform", "status", "marital", "职业", "学历", "年级", "专业", "地区", "省", "性别"];
-
-    function isNumericValue(value: unknown) {
-        if (typeof value === "number") return Number.isFinite(value);
-        if (typeof value !== "string") return false;
-        const trimmed = value.trim();
-        if (!trimmed) return false;
-        return /^-?\d+(\.\d+)?$/.test(trimmed.replace(/,/g, ""));
-    }
-
-    function sampleValuesOf(column: string) {
-        const preview = excelInfo?.preview ?? [];
-        return preview
-            .map((row) => row?.[column])
-            .filter((value) => value !== null && value !== undefined && `${value}`.trim() !== "")
-            .slice(0, 30);
-    }
-
-    function columnProfile(column: string) {
-        const values = sampleValuesOf(column)
-            .map((value) => String(value).trim())
-            .filter(Boolean);
-        const sampleSize = values.length;
-        if (sampleSize === 0) {
-            return { sampleSize: 0, uniqueCount: 0, uniqueRatio: 0, numericRatio: 0 };
-        }
-        const uniqueCount = new Set(values).size;
-        const numericCount = values.filter((value) => isNumericValue(value)).length;
-        return {
-            sampleSize,
-            uniqueCount,
-            uniqueRatio: uniqueCount / sampleSize,
-            numericRatio: numericCount / sampleSize,
-        };
-    }
-
-    function numericRatioOf(column: string) {
-        return columnProfile(column).numericRatio;
-    }
-
-    function isLikelyHighCardinality(column: string) {
-        const { sampleSize, uniqueCount, uniqueRatio } = columnProfile(column);
-        if (sampleSize < 10) return false;
-        return uniqueCount > 8 && uniqueRatio >= 0.8;
-    }
-
-    function isLikelyIdentifier(column: string) {
-        const tokens = tokenizeColumnName(column);
-        const normalized = normalizeColumnName(column);
-        const byExact = idExactKeywords.has(normalized);
-        const byToken = tokens.some((token) => token === "id" || token === "uid");
-        const byPrefixSuffix = normalized.endsWith("id") && idPrefixKeywords.some((prefix) => normalized.startsWith(prefix));
-        const byLabel = idLabelKeywords.some((keyword) => column.includes(keyword));
-        return byExact || byToken || byPrefixSuffix || byLabel;
-    }
-
-    function isLikelyNumeric(column: string) {
-        const normalized = normalizeColumnName(column);
-        const byName = numericKeywords.some((keyword) => normalized.includes(keyword));
-        const byData = columnProfile(column).numericRatio >= 0.8;
-        return !isLikelyIdentifier(column) && (byName || byData);
-    }
-
-    function isLikelyStratified(column: string) {
-        if (isLikelyIdentifier(column) || isLikelyHighCardinality(column)) return false;
-        const normalized = normalizeColumnName(column);
-        const byName = stratifiedKeywords.some((keyword) => normalized.includes(keyword));
-        const profile = columnProfile(column);
-        const byData =
-            profile.sampleSize > 0 &&
-            profile.numericRatio < 0.5 &&
-            profile.uniqueCount >= 2 &&
-            profile.uniqueCount <= 20 &&
-            (profile.sampleSize < 10 || profile.uniqueRatio <= 0.7);
-        return byName || byData;
-    }
-
-    function unique<T>(arr: T[]) {
-        return Array.from(new Set(arr));
-    }
-
-    function buildRecommendedMapping() {
-        if (columns.length === 0) {
-            return { identifier: undefined, stratified: [], numeric: [], others: [] as string[] };
-        }
-
-        const identifier =
-            columns.find((column) => normalizeColumnName(column) === "id") ??
-            columns.find((column) => isLikelyIdentifier(column)) ??
-            columns[0];
-        const candidates = columns.filter((column) => column !== identifier);
-        const analysableCandidates = candidates.filter((column) => !isLikelyIdentifier(column));
-
-        let numeric = unique(analysableCandidates.filter((column) => isLikelyNumeric(column))).slice(0, 4);
-        if (numeric.length === 0) {
-            const fallback = [...analysableCandidates].sort((a, b) => numericRatioOf(b) - numericRatioOf(a))[0];
-            if (fallback) numeric = [fallback];
-        }
-
-        const stratifiedPool = analysableCandidates.filter(
-            (column) => !numeric.includes(column) && !isLikelyHighCardinality(column)
-        );
-
-        let stratified = unique(
-            stratifiedPool.filter((column) => isLikelyStratified(column))
-        ).slice(0, 4);
-
-        if (stratified.length === 0) {
-            const fallback = [...stratifiedPool].sort((a, b) => {
-                const aByName = stratifiedKeywords.some((keyword) => normalizeColumnName(a).includes(keyword)) ? 1 : 0;
-                const bByName = stratifiedKeywords.some((keyword) => normalizeColumnName(b).includes(keyword)) ? 1 : 0;
-                if (aByName !== bByName) return bByName - aByName;
-                return columnProfile(a).uniqueCount - columnProfile(b).uniqueCount;
-            })[0];
-            if (fallback) stratified = [fallback];
-        }
-
-        if (numeric.length === 0) {
-            const fallback = analysableCandidates.find((column) => !stratified.includes(column));
-            if (fallback) numeric = [fallback];
-        }
-
-        const analysisTarget = numeric[0] ? { kind: "mean" as const, field: numeric[0] } : undefined;
-        return {
-            identifier,
-            stratified,
-            numeric,
-            others: [] as string[],
-            analysisTarget,
-            studyContract: analysisTarget ? buildDefaultStudyContract(newTopicName, analysisTarget) : undefined,
-        };
-    }
-
     function applyRecommendedMapping() {
-        setFieldMapping(buildRecommendedMapping());
+        setFieldMapping(buildRecommendedFieldMapping({
+            columns,
+            preview: excelInfo?.preview ?? [],
+            topicName: newTopicName,
+        }));
     }
 
     const uniqueFieldCount = new Set(
@@ -305,8 +175,11 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
         }
         return [...values];
     })();
+    const isLikelyHighCardinality = (column: string) => (
+        isLikelyHighCardinalityColumn(excelInfo?.preview ?? [], column)
+    );
     const riskyStratifiedFields = fieldMapping.stratified.filter(
-        (column) => isLikelyIdentifier(column) || isLikelyHighCardinality(column)
+        (column) => isLikelyIdentifierColumn(column) || isLikelyHighCardinality(column)
     );
     const canProceedMapping = mappingRules.every((item) => item.ok);
     const targetField = fieldMapping.studyContract?.target.field ?? fieldMapping.analysisTarget?.field;
@@ -592,7 +465,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         <div className="bg-background border border-border rounded-surface p-3 max-h-60 overflow-y-auto space-y-2">
                                             {columns.map((c) => {
                                                 const checked = fieldMapping.stratified.includes(c);
-                                                const blockedAsIdentifier = isLikelyIdentifier(c) && !checked;
+                                                const blockedAsIdentifier = isLikelyIdentifierColumn(c) && !checked;
                                                 const disabled = isPublishedTopic || fieldMapping.identifier === c || blockedAsIdentifier;
                                                 const reason = fieldMapping.identifier === c
                                                     ? "该字段已作为标识符"
@@ -634,7 +507,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         <div className="bg-background border border-border rounded-surface p-3 max-h-60 overflow-y-auto space-y-2">
                                             {columns.map((c) => {
                                                 const checked = fieldMapping.numeric.includes(c);
-                                                const blockedAsIdentifier = isLikelyIdentifier(c) && !checked;
+                                                const blockedAsIdentifier = isLikelyIdentifierColumn(c) && !checked;
                                                 const disabled = isPublishedTopic || fieldMapping.identifier === c || blockedAsIdentifier;
                                                 const reason = fieldMapping.identifier === c
                                                     ? "该字段已作为标识符"
