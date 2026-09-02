@@ -6,7 +6,7 @@ The application uses an institutional-blue, light-only design system built with 
 
 1. **Theme tokens** — color, shape, elevation, type, motion, and desktop-only rules in `styles/theme.css`.
 2. **UI primitives** — locally maintained Radix/shadcn forks in `src/components/ui`.
-3. **Shared patterns** — `StatusBadge`, `IconTile`, `PageHeader`, `AuthLoginScreen`, and the workspace shell/sidebar.
+3. **Shared patterns** — `StatusBadge`, `IconTile`, `PageHeader`, `AuthLoginScreen`, `DatetimePicker24`, and the workspace shell/sidebar.
 4. **Pages and features** — compose primitives and patterns; they do not define new theme copies.
 
 ## Color and typography
@@ -48,13 +48,13 @@ Default controls are 40px high, compact controls are 36px, and prominent control
 
 ## Local shadcn fork policy
 
-The primitives are not disposable generated files. Dialog and AlertDialog restore focus for controlled use; Button exports `IconButton`; Select mirrors Radix's hidden background state to native `inert` and enforces accessible names; Slider and Progress enforce accessible names; DatetimePicker contains application timezone behavior.
+The primitives are not disposable generated files. Dialog and AlertDialog restore focus for controlled use; Button exports `IconButton`; Select mirrors Radix's hidden background state to native `inert` and enforces accessible names; Slider and Progress enforce accessible names. `DatetimePicker24` is a shared composite outside the registry directory and owns application timezone behavior.
 
-- Inspect upstream changes with `bunx shadcn@latest add <component> --diff -y`.
+- Inspect all upstream changes with `bun run audit:shadcn`, or a focused subset with `bun run audit:shadcn button select`. The audit pins CLI behavior while still exposing upstream registry changes; update the pin deliberately in `scripts/audit-shadcn.ts`.
 - Never run shadcn with `--overwrite` against this repository.
 - Port useful upstream changes manually while preserving the light-only, desktop-only, semantic-token, and accessibility contracts.
 - Do not migrate to the `radix-ui` aggregate package as part of a style-only change.
 
 ## Validation
 
-Run `bun run check:styles` after style changes. The guard rejects palette utilities, dark or responsive variants, opacity-composed semantic colors, unsafe semantic color combinations, raw type/radius/shadow utilities, and decorative effects. It also validates the theme's WCAG text/status contrast and non-text input-boundary contrast. Finish with `bun run verify` and agent-browser screenshots of the three portals.
+Run `bun run check:styles` after style changes. The guard rejects palette utilities, dark or responsive variants, opacity-composed semantic colors, unsafe semantic color combinations, raw type/radius/shadow utilities, and decorative effects. It also validates the theme's WCAG text/status contrast and non-text input-boundary contrast. Finish with `bun run verify` and agent-browser screenshots of the three portals. `audit:shadcn` is a network-backed maintenance command and intentionally remains outside `verify`.

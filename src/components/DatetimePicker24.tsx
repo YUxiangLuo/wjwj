@@ -19,6 +19,7 @@ import "react-day-picker/style.css";
 
 export { parseLocalDateTime } from "@/lib/datetime";
 
+/** Composite China Standard Time picker used by task scheduling workflows. */
 export interface DatetimePicker24Props {
     value: string;
     onChange: (value: string) => void;

@@ -598,10 +598,10 @@ export function TopicManagement() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setConfirmDialog({ open: false, type: null, topic: null })} className="bg-background border-border text-foreground hover:bg-muted hover:text-foreground">
+                        <AlertDialogCancel onClick={() => setConfirmDialog({ open: false, type: null, topic: null })}>
                             取消
                         </AlertDialogCancel>
-                        <AlertDialogAction onClick={executeConfirmAction} className={confirmDialog.type === "delete" ? "bg-destructive hover:bg-destructive-hover text-destructive-foreground" : "bg-primary hover:bg-primary-hover text-primary-foreground"}>
+                        <AlertDialogAction onClick={executeConfirmAction} variant={confirmDialog.type === "delete" ? "destructive" : "default"}>
                             确认
                         </AlertDialogAction>
                     </AlertDialogFooter>

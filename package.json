@@ -20,6 +20,7 @@
     "verify": "bun run typecheck && bun run check:docs && bun run test:unit && bun run build && bun run db:check && bun run audit:applicable",
     "check:styles": "bun run scripts/check-styles.ts",
     "check:docs": "bun run scripts/check-docs.ts",
+    "audit:shadcn": "bun run scripts/audit-shadcn.ts",
     "audit:applicable": "bun run scripts/audit-dependencies.ts",
     "db:generate": "bunx drizzle-kit generate",
     "db:migrate": "bun run src/db/migrate.ts",
@@ -35,6 +36,7 @@
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-avatar": "^1.1.11",
+    "@radix-ui/react-compose-refs": "^1.1.2",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-popover": "^1.1.15",

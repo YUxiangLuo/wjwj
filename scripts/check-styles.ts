@@ -114,6 +114,7 @@ const MAX_LEGACY_SHADOW_CLASSES = 0;
 const MAX_LEGACY_COLORED_SHADOW_CLASSES = 0;
 const DESIGN_SYSTEM_FILES = new Set([
     "src/components/AuthLoginScreen.tsx",
+    "src/components/DatetimePicker24.tsx",
     "src/components/IconTile.tsx",
     "src/components/PageHeader.tsx",
     "src/components/SkipLink.tsx",

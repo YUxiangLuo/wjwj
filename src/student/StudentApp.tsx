@@ -165,7 +165,7 @@ function StudentAppContent() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>取消</AlertDialogCancel>
-                        <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive-hover" onClick={() => void logout()}>退出</AlertDialogAction>
+                        <AlertDialogAction variant="destructive" onClick={() => void logout()}>退出</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

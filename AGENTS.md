@@ -116,7 +116,7 @@ For more information, read the Bun API docs in `node_modules/bun-types/docs/**.m
 - Use `rounded-control`, `rounded-surface`, and `rounded-overlay`; reserve `rounded-circle` for real circles and `rounded-toggle` for switch tracks. Only floating UI may use `shadow-floating`.
 - Do not compose semantic colors with opacity suffixes. Use explicit `*-muted`, `*-border`, and `*-hover` tokens.
 - Raw type/radius/shadow utilities, gradients, blur effects, hover scale/translation, and `transition-all` are rejected by `check:styles`.
-- `src/components/ui/**` is a local shadcn fork with behavior and accessibility changes. Inspect updates with `bunx shadcn@latest add <component> --diff -y`; never overwrite these files from the registry.
+- `src/components/ui/**` is a local shadcn fork with behavior and accessibility changes. Inspect updates with the pinned `bun run audit:shadcn [component ...]` command; never overwrite these files from the registry.
 - The project is light-only: there is no dark theme, no theme toggle, and `dark:` variants must never be used.
 - Run `bun run check:styles` after style changes.
 

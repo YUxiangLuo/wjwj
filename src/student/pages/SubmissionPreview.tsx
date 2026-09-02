@@ -367,9 +367,8 @@ export function SubmissionPreview() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-background border-border text-foreground hover:bg-muted hover:text-foreground">取消</AlertDialogCancel>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
                         <AlertDialogAction
-                            className="bg-primary hover:bg-primary-hover text-primary-foreground"
                             onClick={handleSubmit}
                             disabled={submitting}
                             data-testid="student-preview-submit-confirm"

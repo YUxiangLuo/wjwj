@@ -1,16 +1,13 @@
-"use client"
-
 import * as React from "react"
 import * as SliderPrimitive from "@radix-ui/react-slider"
 
+import type { AccessibleLabelProps } from "@/components/ui/accessible-name"
 import { cn } from "@/lib/utils"
 
 type SliderProps = Omit<
   React.ComponentProps<typeof SliderPrimitive.Root>,
   "aria-label" | "aria-labelledby"
-> & {
-  "aria-label": string
-}
+> & AccessibleLabelProps
 
 function Slider({
   className,

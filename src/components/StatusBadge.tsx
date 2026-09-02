@@ -7,13 +7,13 @@ import { cn } from "@/lib/utils";
 const statusBadgeVariants = cva("gap-1 border transition-colors", {
     variants: {
         intent: {
-            success: "border-success-border bg-success-muted text-success [a&]:hover:bg-success-muted",
-            warning: "border-warning-border bg-warning-muted text-warning [a&]:hover:bg-warning-muted",
-            destructive: "border-destructive-border bg-destructive-muted text-destructive [a&]:hover:bg-destructive-muted",
-            info: "border-info-border bg-info-muted text-info [a&]:hover:bg-info-muted",
-            primary: "border-primary-border bg-primary-muted text-primary [a&]:hover:bg-primary-muted",
-            auxiliary: "border-auxiliary-border bg-auxiliary-muted text-auxiliary [a&]:hover:bg-auxiliary-muted",
-            neutral: "border-border bg-muted text-muted-foreground [a&]:hover:bg-muted",
+            success: "border-success-border bg-success-muted text-success [a&]:hover:border-success",
+            warning: "border-warning-border bg-warning-muted text-warning [a&]:hover:border-warning",
+            destructive: "border-destructive-border bg-destructive-muted text-destructive [a&]:hover:border-destructive",
+            info: "border-info-border bg-info-muted text-info [a&]:hover:border-info",
+            primary: "border-primary-border bg-primary-muted text-primary [a&]:hover:border-primary",
+            auxiliary: "border-auxiliary-border bg-auxiliary-muted text-auxiliary [a&]:hover:border-auxiliary",
+            neutral: "border-border bg-muted text-muted-foreground [a&]:hover:border-input [a&]:hover:text-foreground",
         },
     },
     defaultVariants: {

@@ -1,38 +1,15 @@
-"use client"
-
 import * as React from "react"
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
 import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
+import { useControlledOverlayFocusRestore } from "@/components/ui/controlled-overlay-focus"
 
 function AlertDialog({
   open,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
-  const wasOpenRef = React.useRef(Boolean(open))
-  const restoreFocusRef = React.useRef<HTMLElement | null>(null)
-
-  // Most application alerts are controlled without a Radix AlertDialogTrigger.
-  // Preserve the external opener before Radix moves focus into the alert.
-  if (open && !wasOpenRef.current && typeof document !== "undefined") {
-    restoreFocusRef.current = document.activeElement instanceof HTMLElement
-      ? document.activeElement
-      : null
-  }
-
-  React.useLayoutEffect(() => {
-    const wasOpen = wasOpenRef.current
-    wasOpenRef.current = Boolean(open)
-    if (open || !wasOpen) return
-
-    const opener = restoreFocusRef.current
-    const frame = requestAnimationFrame(() => {
-      if (opener?.isConnected) opener.focus()
-      restoreFocusRef.current = null
-    })
-    return () => cancelAnimationFrame(frame)
-  }, [open])
+  useControlledOverlayFocusRestore(open)
 
   return <AlertDialogPrimitive.Root data-slot="alert-dialog" open={open} {...props} />
 }
@@ -145,25 +122,35 @@ function AlertDialogDescription({
 
 function AlertDialogAction({
   className,
+  variant = "default",
+  size = "default",
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Action>) {
+}: React.ComponentProps<typeof AlertDialogPrimitive.Action> &
+  Pick<React.ComponentProps<typeof Button>, "variant" | "size">) {
   return (
-    <AlertDialogPrimitive.Action
-      className={cn(buttonVariants(), className)}
-      {...props}
-    />
+    <Button className={className} variant={variant} size={size} asChild>
+      <AlertDialogPrimitive.Action
+        data-slot="alert-dialog-action"
+        {...props}
+      />
+    </Button>
   )
 }
 
 function AlertDialogCancel({
   className,
+  variant = "outline",
+  size = "default",
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Cancel>) {
+}: React.ComponentProps<typeof AlertDialogPrimitive.Cancel> &
+  Pick<React.ComponentProps<typeof Button>, "variant" | "size">) {
   return (
-    <AlertDialogPrimitive.Cancel
-      className={cn(buttonVariants({ variant: "outline" }), className)}
-      {...props}
-    />
+    <Button className={className} variant={variant} size={size} asChild>
+      <AlertDialogPrimitive.Cancel
+        data-slot="alert-dialog-cancel"
+        {...props}
+      />
+    </Button>
   )
 }
 

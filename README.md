@@ -128,6 +128,7 @@ bun test                 # 单元测试
 bun run typecheck        # tsc + 样式门禁
 bun run check:docs       # README/DATABASE 的 fixture 描述与 seed 对账
 bun run check:styles     # 禁止调色板类、dark:、响应式断点
+bun run audit:shadcn     # 用固定 CLI 版本比较本地 UI primitives 与上游
 bun run db:generate      # 根据 schema 生成迁移
 bun run db:migrate
 bun run db:check

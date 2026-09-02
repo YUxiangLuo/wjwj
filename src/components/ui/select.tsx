@@ -1,55 +1,11 @@
-"use client";
-
 import * as SelectPrimitive from "@radix-ui/react-select";
+import { useComposedRefs } from "@radix-ui/react-compose-refs";
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import * as React from "react";
 
+import type { AccessibleNameProps } from "@/components/ui/accessible-name";
 import { cn } from "@/lib/utils";
-
-function setForwardedRef<T>(ref: React.Ref<T> | undefined, value: T | null) {
-  if (typeof ref === "function") ref(value);
-  else if (ref) ref.current = value;
-}
-
-function useInertAriaHiddenBackground(content: HTMLElement | null) {
-  React.useEffect(() => {
-    if (!content || typeof document === "undefined") return;
-
-    const inerted = new Set<HTMLElement>();
-    const applyInert = () => {
-      const hiddenElements = document.querySelectorAll<HTMLElement>(
-        '[data-aria-hidden="true"][aria-hidden="true"]',
-      );
-      for (const element of hiddenElements) {
-        if (
-          element.hasAttribute("data-radix-focus-guard")
-          || element.contains(content)
-          || element.inert
-          || inerted.has(element)
-        ) continue;
-        element.inert = true;
-        inerted.add(element);
-      }
-    };
-
-    applyInert();
-    const frame = requestAnimationFrame(applyInert);
-    const observer = new MutationObserver(applyInert);
-    observer.observe(document.body, {
-      attributes: true,
-      subtree: true,
-      attributeFilter: ["aria-hidden", "data-aria-hidden"],
-    });
-
-    return () => {
-      cancelAnimationFrame(frame);
-      observer.disconnect();
-      for (const element of inerted) {
-        if (element.isConnected) element.inert = false;
-      }
-    };
-  }, [content]);
-}
+import { useInertAriaHiddenBackground } from "@/components/ui/radix-inert";
 
 function Select({ ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) {
   return <SelectPrimitive.Root data-slot="select" {...props} />;
@@ -65,10 +21,7 @@ function SelectValue({ ...props }: React.ComponentProps<typeof SelectPrimitive.V
 
 type SelectTriggerProps = React.ComponentProps<typeof SelectPrimitive.Trigger> & {
   size?: "sm" | "default";
-} & (
-  | { "aria-label": string; "aria-labelledby"?: never }
-  | { "aria-label"?: never; "aria-labelledby": string }
-);
+} & AccessibleNameProps;
 
 function SelectTrigger({
   className,
@@ -103,10 +56,7 @@ function SelectContent({
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
   const [content, setContent] = React.useState<HTMLDivElement | null>(null);
-  const composedRef = React.useCallback((element: HTMLDivElement | null) => {
-    setContent(element);
-    setForwardedRef(forwardedRef, element);
-  }, [forwardedRef]);
+  const composedRef = useComposedRefs(forwardedRef, setContent);
   useInertAriaHiddenBackground(content);
 
   return (

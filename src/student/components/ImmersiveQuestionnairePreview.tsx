@@ -734,7 +734,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel type="button">取消</AlertDialogCancel>
-                        <AlertDialogAction type="button" onClick={confirmExit} className="bg-destructive hover:bg-destructive-hover">
+                        <AlertDialogAction type="button" onClick={confirmExit} variant="destructive">
                             确定退出
                         </AlertDialogAction>
                     </AlertDialogFooter>

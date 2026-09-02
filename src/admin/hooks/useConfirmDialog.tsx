@@ -20,11 +20,6 @@ interface ConfirmDialogOptions {
     tone?: ConfirmTone;
 }
 
-const toneClasses: Record<ConfirmTone, string> = {
-    primary: "bg-primary hover:bg-primary-hover text-primary-foreground border-none",
-    destructive: "bg-destructive hover:bg-destructive-hover text-destructive-foreground border-none",
-};
-
 export function useConfirmDialog() {
     const [options, setOptions] = useState<ConfirmDialogOptions | null>(null);
     const resolverRef = useRef<((confirmed: boolean) => void) | null>(null);
@@ -59,14 +54,13 @@ export function useConfirmDialog() {
                     <AlertDialogCancel
                         data-testid="confirm-dialog-cancel"
                         onClick={() => close(false)}
-                        className="bg-muted border-input text-foreground hover:bg-muted hover:text-foreground"
                     >
                         {options?.cancelLabel ?? "取消"}
                     </AlertDialogCancel>
                     <AlertDialogAction
                         data-testid="confirm-dialog-action"
                         onClick={() => close(true)}
-                        className={toneClasses[options?.tone ?? "primary"]}
+                        variant={options?.tone === "destructive" ? "destructive" : "default"}
                     >
                         {options?.confirmLabel ?? "确认"}
                     </AlertDialogAction>

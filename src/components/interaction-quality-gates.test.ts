@@ -22,9 +22,13 @@ test("links and buttons are never nested as competing interactive controls", asy
 
 test("controlled alerts and immersive sampling preserve keyboard focus", async () => {
     const alertDialog = await Bun.file("src/components/ui/alert-dialog.tsx").text();
+    const dialog = await Bun.file("src/components/ui/dialog.tsx").text();
+    const overlayFocus = await Bun.file("src/components/ui/controlled-overlay-focus.ts").text();
     const samplingAnimation = await Bun.file("src/student/components/ImmersiveSamplingAnimation.tsx").text();
-    expect(alertDialog).toContain("restoreFocusRef");
-    expect(alertDialog).toContain("opener?.isConnected");
+    expect(alertDialog).toContain("useControlledOverlayFocusRestore(open)");
+    expect(dialog).toContain("useControlledOverlayFocusRestore(open)");
+    expect(overlayFocus).toContain("restoreFocusRef");
+    expect(overlayFocus).toContain("opener?.isConnected");
     expect(samplingAnimation).toContain('role="dialog"');
     expect(samplingAnimation).toContain('aria-modal="true"');
     expect(samplingAnimation).toContain("closeButtonRef.current?.focus()");
@@ -40,7 +44,7 @@ test("immersive planning bottom chrome does not cover content actions", async ()
 
 test("minimum desktop styling protects long values and third-party control text", async () => {
     const adminDashboard = await Bun.file("src/admin/pages/Dashboard.tsx").text();
-    const datePicker = await Bun.file("src/components/ui/datetime-picker.tsx").text();
+    const datePicker = await Bun.file("src/components/DatetimePicker24.tsx").text();
     expect(adminDashboard).toContain("grid-cols-[1.35fr_repeat(4,minmax(0,1fr))]");
     expect(datePicker).toContain('weekday: "rdp-weekday !text-meta font-medium text-muted-foreground !opacity-100"');
 });
@@ -52,10 +56,11 @@ test("embedded PDF previews do not take initial dialog focus", async () => {
 
 test("selects make Radix aria-hidden background containers inert", async () => {
     const select = await Bun.file("src/components/ui/select.tsx").text();
+    const inert = await Bun.file("src/components/ui/radix-inert.ts").text();
     expect(select).toContain("useInertAriaHiddenBackground(content)");
-    expect(select).toContain('element.hasAttribute("data-radix-focus-guard")');
-    expect(select).toContain("element.inert = true");
-    expect(select).toContain("element.inert = false");
+    expect(inert).toContain('element.hasAttribute("data-radix-focus-guard")');
+    expect(inert).toContain("element.inert = true");
+    expect(inert).toContain("element.inert = false");
 });
 
 test("the shared theme disables decorative motion for reduced-motion users", async () => {

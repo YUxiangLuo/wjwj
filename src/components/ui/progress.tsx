@@ -1,13 +1,11 @@
 import * as React from "react"
 import * as ProgressPrimitive from "@radix-ui/react-progress"
 
+import type { AccessibleNameProps } from "@/components/ui/accessible-name"
 import { cn } from "@/lib/utils"
 
 type ProgressProps = React.ComponentProps<typeof ProgressPrimitive.Root> &
-  (
-    | { "aria-label": string; "aria-labelledby"?: never }
-    | { "aria-label"?: never; "aria-labelledby": string }
-  )
+  AccessibleNameProps
 
 function Progress({
   className,

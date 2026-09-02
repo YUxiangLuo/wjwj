@@ -2,6 +2,7 @@ import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 
+import type { AccessibleLabelProps } from "@/components/ui/accessible-name"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
@@ -12,6 +13,8 @@ const buttonVariants = cva(
         default: "bg-primary text-primary-foreground hover:bg-primary-hover",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive-hover",
+        success:
+          "bg-success text-success-foreground hover:bg-success-hover",
         outline:
           "border border-input bg-card hover:border-primary hover:bg-primary-muted hover:text-primary",
         secondary:
@@ -61,10 +64,10 @@ function Button({
 
 type IconButtonProps = Omit<
   React.ComponentProps<"button">,
-  "aria-label" | "children"
+  "aria-label" | "aria-labelledby" | "children"
 > &
+  AccessibleLabelProps &
   Omit<VariantProps<typeof buttonVariants>, "size"> & {
-    "aria-label": string
     children: React.ReactNode
     size?: "icon" | "icon-sm" | "icon-lg"
   }

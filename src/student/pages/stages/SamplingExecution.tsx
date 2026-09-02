@@ -833,8 +833,8 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-background border-border text-foreground hover:bg-muted hover:text-foreground">取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmNext} data-testid="student-sampling-confirm" className="bg-primary hover:bg-primary-hover text-primary-foreground">确认</AlertDialogAction>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmNext} data-testid="student-sampling-confirm">确认</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

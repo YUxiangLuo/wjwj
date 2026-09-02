@@ -391,7 +391,7 @@ export function TaskManagement() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-muted border-input text-foreground">
+                        <AlertDialogCancel>
                             取消
                         </AlertDialogCancel>
                         <Button

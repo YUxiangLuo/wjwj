@@ -5,6 +5,7 @@ import { CheckCircle2 } from "lucide-react";
 import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { installDomGlobals } from "@/test-utils/dom";
 
@@ -35,6 +36,7 @@ test("status badge variants use semantic intent tokens", () => {
     );
 
     expect(view.getByText("成功").className).toContain("bg-success-muted");
+    expect(view.getByText("成功").className).toContain("[a&]:hover:border-success");
     expect(view.getByText("警告").className).toContain("text-warning");
     expect(view.getByText("危险").className).toContain("border-destructive-border");
     expect(view.getByText("信息").className).toContain("bg-info-muted");
@@ -52,20 +54,25 @@ test("icon tile keeps repeated stat icon styling tokenized", () => {
     expect(view.getByTestId("neutral-tile").className).toContain("h-10");
 });
 
-test("card variants expose semantic surface and elevation roles", () => {
+test("badge exposes its variant and gives linked secondary badges visible hover feedback", () => {
     const view = render(
-        <div>
-            <Card data-testid="default-card" />
-            <Card variant="subtle" data-testid="subtle-card" />
-            <Card variant="elevated" data-testid="elevated-card" />
-        </div>,
+        <Badge asChild variant="secondary">
+            <a href="/details">查看详情</a>
+        </Badge>,
+    );
+    const badge = view.getByRole("link", { name: "查看详情" });
+    expect(badge.getAttribute("data-variant")).toBe("secondary");
+    expect(badge.className).toContain("[a&]:hover:bg-accent");
+});
+
+test("card exposes one border-led semantic surface", () => {
+    const view = render(
+        <Card data-testid="default-card" />,
     );
 
     expect(view.getByTestId("default-card").className).toContain("bg-card");
+    expect(view.getByTestId("default-card").className).toContain("border-border");
     expect(view.getByTestId("default-card").className).not.toContain("shadow-");
-    expect(view.getByTestId("subtle-card").className).toContain("bg-secondary");
-    expect(view.getByTestId("elevated-card").className).toContain("bg-card");
-    expect(view.getByTestId("elevated-card").className).toContain("shadow-floating");
 });
 
 test("shared pattern components render expected accessible content", () => {
