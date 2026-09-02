@@ -78,6 +78,30 @@ test("analysis metrics use the true population mean as the numeric comparison ba
     expect(numericX.methods.stratified.estimate).toBe(25);
 });
 
+test("analysis metrics keep unexecuted methods absent instead of fabricating values", () => {
+    const population = [
+        { group: "A", x: 10 },
+        { group: "B", x: 20 },
+    ];
+    const metrics = buildAnalysisMetrics({
+        population,
+        fieldMapping: { numeric: ["x"], stratified: [], others: ["group"] },
+        samplingResults: {
+            simple: { completed: true, sampleCount: 1, data: [population[0]!] },
+            systematic: { completed: true, sampleCount: 1, interval: 2, data: [population[1]!] },
+        },
+    });
+
+    expect(metrics.numeric.x?.methods.pps).toEqual({ estimate: null, standardError: null });
+    expect(metrics.numeric.x?.methods.stratified).toEqual({ estimate: null, standardError: null });
+    expect(metrics.categorical.group?.methods.pps).toEqual({});
+    expect(metrics.categorical.group?.methods.stratified).toEqual({});
+    expect(metrics.categorical.group?.representativeness.pps).toBeNull();
+    expect(metrics.categorical.group?.representativeness.stratified).toBeNull();
+    expect(metrics.target?.methods.pps.estimate).toBeNull();
+    expect(metrics.target?.methods.stratified.estimate).toBeNull();
+});
+
 test("analysis metrics fail closed for historical numeric columns with missing values", () => {
     const metrics = buildAnalysisMetrics({
         population: [{ x: 10 }, { x: "" }, { x: 30 }],
@@ -157,6 +181,27 @@ test("analysis metrics use stratified weights instead of pooled sample shares fo
     expect(categoricalChoice.methods.stratified["是"]).toBe(20);
     expect(categoricalChoice.methods.stratified["否"]).toBe(80);
     expect(categoricalChoice.representativeness.stratified).toBe(0);
+});
+
+test("proportion target analysis fails closed when any population target value is blank", () => {
+    const metrics = buildAnalysisMetrics({
+        population: [{ id: 1, choice: "是" }, { id: 2, choice: "" }],
+        fieldMapping: {
+            stratified: [],
+            numeric: [],
+            others: ["choice"],
+            studyContract: {
+                version: 1,
+                researchQuestion: "总体中选择是的单位占比是多少？",
+                targetPopulation: "全部单位",
+                unitOfAnalysis: "一行记录",
+                target: { kind: "proportion", field: "choice", value: "是" },
+            },
+        },
+        samplingResults: { simple: { completed: true, sampleCount: 2, data: [{ choice: "是" }, { choice: "" }] } },
+    });
+    expect(metrics.target).toBeNull();
+    expect(metrics.categorical.choice?.population["（缺失值）"]).toBe(50);
 });
 
 test("analysis metrics match padded stratum names after trimming", () => {
@@ -461,4 +506,15 @@ test("categorical analysis truncates beyond 20 categories without hiding a real 
     expect(Object.values(analysis.population).reduce((sum, value) => sum + value, 0)).toBeCloseTo(100, 6);
     // 方法分布共用同一头部映射
     expect(Object.keys(analysis.methods.simple).every((key) => key in analysis.population)).toBe(true);
+});
+
+test("categorical aggregation label stays unique when both default labels are real data", () => {
+    const categories = ["其他", "其余类别", "其余类别2", ...Array.from({ length: 20 }, (_, index) => `C${index}`)];
+    const population = categories.map((c) => ({ c }));
+    const metrics = buildAnalysisMetrics({
+        population,
+        fieldMapping: { stratified: [], numeric: [], others: ["c"] },
+        samplingResults: { simple: { completed: true, sampleCount: population.length, data: population } },
+    });
+    expect(metrics.categorical.c?.aggregatedCategoryLabel).toBe("其余类别3");
 });

@@ -19,10 +19,13 @@ function decodeHtmlEntities(input: string) {
 export function getRichTextPlainText(value: unknown): string {
     if (typeof value !== "string") return "";
 
-    const withoutScripts = value
-        .replace(/<script[\s\S]*?<\/script>/gi, "")
-        .replace(/<style[\s\S]*?<\/style>/gi, "")
-        .replace(/<noscript[\s\S]*?<\/noscript>/gi, "");
+    // Match through the closing tag or end-of-input. Browsers treat an
+    // unclosed raw-text element as consuming the remaining document, so the
+    // server-side length check must not count content the renderer will drop.
+    const withoutScripts = value.replace(
+        /<(script|style|noscript)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi,
+        "",
+    );
 
     const withLineBreaks = withoutScripts
         .replace(/<br\s*\/?>/gi, "\n")
@@ -43,4 +46,3 @@ export function getRichTextPlainText(value: unknown): string {
 export function getRichTextPlainLength(value: unknown): number {
     return getRichTextPlainText(value).length;
 }
-

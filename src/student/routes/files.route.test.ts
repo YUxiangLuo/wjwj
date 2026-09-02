@@ -138,7 +138,7 @@ test("export route reads serialized sampling results and returns csv", async () 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toContain("text/csv");
     expect(response.headers.get("Content-Disposition")).toContain("all_sampling.csv");
-    expect(body).toContain("__method");
+    expect(body).toContain("__wj_method");
     expect(body).toContain("simple");
     expect(body).toContain("systematic");
     expect(body).toContain("stratified");

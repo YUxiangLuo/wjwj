@@ -1,12 +1,12 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { semester } from "../../db/schema";
-import { error, getRouteParam, json, parseBody, stringValue } from "../../server/http";
+import { error, getPositiveRouteId, json, parseBody, stringValue } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 
 const semesterUpdateRoutes: RouteDefinition = {
     async PUT(req: Request) {
-        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
+        const id = getPositiveRouteId(req);
 
         if (!id) {
             return error("无效的学期ID", "INVALID_ID");

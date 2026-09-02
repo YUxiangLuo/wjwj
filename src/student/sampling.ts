@@ -1,3 +1,5 @@
+import { createSafeRecord } from "../lib/safe-record";
+
 export function createSeededRandom(seed?: number | string) {
     if (seed === undefined || seed === null || seed === "") {
         return Math.random;
@@ -85,7 +87,7 @@ export function performSystematicSampling<T>(
 
 export function stratumKey(value: unknown): string {
     if (value === undefined || value === null) return "";
-    return String(value).trim();
+    return String(value).trim().normalize("NFKC");
 }
 
 export function performStratifiedSamplingWithIndices<T extends Record<string, unknown>>(
@@ -96,7 +98,7 @@ export function performStratifiedSamplingWithIndices<T extends Record<string, un
 ) {
     const result: T[] = [];
     const selectedIndices: number[] = [];
-    const groups: Record<string, Array<{ row: T; index: number }>> = {};
+    const groups = createSafeRecord<Array<{ row: T; index: number }>>();
     for (let index = 0; index < data.length; index += 1) {
         const row = data[index]!;
         const value = stratumKey(row[stratifyBy]);
@@ -130,6 +132,15 @@ export interface PPSSamplingResult<T> {
     indices: number[];
     inclusionProbabilities: number[];
     randomStart: number;
+    probabilitySummary?: PpsProbabilitySummary;
+}
+
+export interface PpsProbabilitySummary {
+    populationCount: number;
+    probabilitySum: number;
+    minInclusionProbability: number;
+    maxInclusionProbability: number;
+    certaintyUnitCount: number;
 }
 
 export interface PreparedPPSSampling<T> {
@@ -302,12 +313,31 @@ export function drawPreparedPPSSample(
             inclusionProbability: systematicSelection.selectedProbabilities[position]!,
         })),
     ].sort((left, right) => left.index - right.index);
+    const frameProbabilities = [
+        ...prepared.designFrame.certaintyProbabilities,
+        ...prepared.designFrame.systematicProbabilities,
+    ];
+    let probabilitySum = 0;
+    let minInclusionProbability = Number.POSITIVE_INFINITY;
+    let maxInclusionProbability = 0;
+    for (const probability of frameProbabilities) {
+        probabilitySum += probability;
+        minInclusionProbability = Math.min(minInclusionProbability, probability);
+        maxInclusionProbability = Math.max(maxInclusionProbability, probability);
+    }
 
     return {
         data: combined.map((entry) => prepared.data[entry.index]),
         indices: combined.map((entry) => entry.index),
         inclusionProbabilities: combined.map((entry) => entry.inclusionProbability),
         randomStart,
+        probabilitySummary: {
+            populationCount: prepared.data.length,
+            probabilitySum,
+            minInclusionProbability,
+            maxInclusionProbability,
+            certaintyUnitCount: prepared.designFrame.certaintyIndices.length,
+        },
     };
 }
 

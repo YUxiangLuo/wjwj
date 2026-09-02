@@ -10,6 +10,14 @@ const storageRoot = resolve(process.cwd(), "storage");
 const args = new Set(process.argv.slice(2));
 const shouldDelete = args.has("--delete");
 
+export function storageDeletionToken(entries: Array<{ path: string; size: number }>) {
+    const canonical = entries
+        .map((entry) => `${entry.path}\t${entry.size}`)
+        .sort()
+        .join("\n");
+    return new Bun.CryptoHasher("sha256").update(canonical).digest("hex").slice(0, 16);
+}
+
 async function listFiles(directory: string): Promise<string[]> {
     const entries = await readdir(directory, { withFileTypes: true }).catch((error: unknown) => {
         if (error instanceof Error && "code" in error && error.code === "ENOENT") return [];
@@ -95,10 +103,6 @@ export async function loadReferences(
 
 export async function runStorageAudit() {
     try {
-        if (shouldDelete && !args.has("--force")) {
-            throw new Error("删除孤儿文件必须同时提供 --delete 和 --force");
-        }
-
         await db.transaction(async (tx) => {
             await acquireStorageMutationLock(tx);
             const [files, references] = await Promise.all([listFiles(storageRoot), loadReferences(tx)]);
@@ -110,11 +114,22 @@ export async function runStorageAudit() {
             console.log(`未引用文件：${orphans.length}（${(totalBytes / 1024 / 1024).toFixed(2)} MiB）`);
             for (const path of orphans) console.log(`  ${relative(process.cwd(), path)}`);
 
+            const token = storageDeletionToken(orphans.map((path) => ({
+                path: relative(process.cwd(), path),
+                size: Bun.file(path).size,
+            })));
+
             if (shouldDelete) {
+                const confirmation = [...args]
+                    .find((arg) => arg.startsWith("--confirm="))
+                    ?.slice("--confirm=".length);
+                if (!confirmation || confirmation !== token) {
+                    throw new Error(`删除确认不匹配；请先运行 storage:audit，再执行 bun run storage:clean -- --confirm=${token}`);
+                }
                 for (const path of orphans) await unlink(path);
                 console.log(`已删除 ${orphans.length} 个未引用文件。`);
             } else if (orphans.length > 0) {
-                console.log("当前仅审计，未删除文件。确认列表后可运行 bun run storage:clean。");
+                console.log(`当前仅审计，未删除文件。确认列表后运行 bun run storage:clean -- --confirm=${token}`);
             }
         });
     } catch (error) {

@@ -2,15 +2,16 @@ import { and, count, desc, eq, gt, ilike, inArray, isNull, lte, or } from "drizz
 import { db } from "../../db";
 import { announcement, class_, experiment, semester, student, task, teacher, topic } from "../../db/schema";
 import { experimentProgress } from "../../lib/experiment-progress";
-import { error, getRouteParam, getSearchParams, json, parseBody, stringValue } from "../../server/http";
+import { generateTemporaryPassword } from "../../lib/temporary-password";
+import { error, getPositiveRouteId, getSearchParams, json, parseBody, parsePositiveInteger, stringValue } from "../../server/http";
+import { hashPassword } from "../../server/password-work";
 import type { RouteDefinition } from "../../server/route-types";
 import { clearUserSessionsForUser } from "../../server/user-session";
 import { STUDENT_USER_TYPE } from "../../student/routes/auth";
 import { TEACHER_USER_TYPE } from "../../teacher/routes/auth";
 
 function parseId(req: Request, name = "id") {
-    const value = Number.parseInt(getRouteParam(req, name) ?? "", 10);
-    return Number.isInteger(value) && value > 0 ? value : null;
+    return getPositiveRouteId(req, name);
 }
 
 function escapeLike(value: string) {
@@ -131,11 +132,12 @@ const teacherRoutes: RouteDefinition = {
         if ((await db.select({ id: teacher.id }).from(teacher).where(eq(teacher.employeeId, employeeId))).length > 0) {
             return error("教师工号已存在", "DUPLICATE_ID", 409);
         }
+        const temporaryPassword = generateTemporaryPassword();
         const [created] = await db
             .insert(teacher)
-            .values({ employeeId, name, password: await Bun.password.hash(employeeId), isFirstLogin: 1 })
+            .values({ employeeId, name, password: await hashPassword(temporaryPassword), isFirstLogin: 1 })
             .returning({ id: teacher.id });
-        return json({ id: created!.id }, 201);
+        return json({ id: created!.id, temporaryPassword }, 201);
     },
 };
 
@@ -177,12 +179,13 @@ const teacherResetPasswordRoutes: RouteDefinition = {
         if (!id) return error("无效的教师ID", "INVALID_ID");
         const [row] = await db.select().from(teacher).where(eq(teacher.id, id));
         if (!row) return error("教师不存在", "NOT_FOUND", 404);
+        const temporaryPassword = generateTemporaryPassword();
         await db
             .update(teacher)
-            .set({ password: await Bun.password.hash(row.employeeId), isFirstLogin: 1, loginFailCount: 0, lockedUntil: null, updatedAt: new Date() })
+            .set({ password: await hashPassword(temporaryPassword), isFirstLogin: 1, loginFailCount: 0, lockedUntil: null, updatedAt: new Date() })
             .where(eq(teacher.id, id));
         await clearUserSessionsForUser(TEACHER_USER_TYPE, id);
-        return json({ success: true });
+        return json({ success: true, temporaryPassword });
     },
 };
 
@@ -286,7 +289,9 @@ const classUpdateRoutes: RouteDefinition = {
 const studentRoutes: RouteDefinition = {
     async GET(req) {
         const params = getSearchParams(req);
-        const classId = Number.parseInt(params.get("class_id") ?? "", 10);
+        const rawClassId = params.get("class_id");
+        const classId = rawClassId ? parsePositiveInteger(rawClassId) : null;
+        if (rawClassId && !classId) return error("班级筛选无效", "INVALID_PARAM", 400);
         const search = (params.get("search") ?? "").trim().slice(0, 100);
         const accountStatus = params.get("status") ?? "all";
         if (!(["all", "normal", "locked", "disabled"] as const).includes(accountStatus as "all" | "normal" | "locked" | "disabled")) {
@@ -297,7 +302,7 @@ const studentRoutes: RouteDefinition = {
         const page = Math.max(1, Number.parseInt(params.get("page") ?? "1", 10) || 1);
         const pageSize = Math.min(100, Math.max(1, Number.parseInt(params.get("pageSize") ?? "20", 10) || 20));
         const conditions = [isNull(student.deletedAt)];
-        if (classId > 0) conditions.push(eq(student.classId, classId));
+        if (classId) conditions.push(eq(student.classId, classId));
         if (search) {
             conditions.push(
                 or(
@@ -418,12 +423,13 @@ const studentResetPasswordRoutes: RouteDefinition = {
         if (!id) return error("无效的学生ID", "INVALID_ID");
         const [row] = await db.select().from(student).where(and(eq(student.id, id), isNull(student.deletedAt)));
         if (!row) return error("学生不存在", "NOT_FOUND", 404);
+        const temporaryPassword = generateTemporaryPassword();
         await db
             .update(student)
-            .set({ password: await Bun.password.hash(row.studentId), isFirstLogin: 1, loginFailCount: 0, lockedUntil: null, updatedAt: new Date() })
+            .set({ password: await hashPassword(temporaryPassword), isFirstLogin: 1, loginFailCount: 0, lockedUntil: null, updatedAt: new Date() })
             .where(eq(student.id, id));
         await clearUserSessionsForUser(STUDENT_USER_TYPE, id);
-        return json({ success: true });
+        return json({ success: true, temporaryPassword });
     },
 };
 

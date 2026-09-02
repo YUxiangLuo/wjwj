@@ -1,6 +1,7 @@
-import type { Question, QuestionType } from "./questionnaire-types";
+import type { Question, QuestionSection, QuestionType } from "./questionnaire-types";
 
 const QUESTION_TYPES = new Set<QuestionType>(["boolean", "single", "multiple", "scale"]);
+const QUESTION_SECTIONS = new Set<QuestionSection>(["screening", "main", "background"]);
 
 const logNormalizeSkips = process.env.NODE_ENV !== "production";
 
@@ -56,6 +57,9 @@ export function normalizeRecommendQuestionsFromDb(value: unknown): Question[] {
 
         const id = typeof o.id === "string" && o.id.trim() ? o.id : generateId();
         const q: Question = { id, type: type as QuestionType, content: content.trim() };
+        if (typeof o.section === "string" && QUESTION_SECTIONS.has(o.section as QuestionSection)) {
+            q.section = o.section as QuestionSection;
+        }
 
         if (type === "single" || type === "multiple") {
             if (!Array.isArray(o.options)) {

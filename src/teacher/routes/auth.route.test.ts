@@ -2,7 +2,7 @@ import { expect, mock, test } from "bun:test";
 import { SQL } from "drizzle-orm";
 import { createMockDb } from "../../test-utils/mock-db";
 
-test("teacher password change revokes every other session", async () => {
+test("teacher password change revokes all old sessions and rotates the cookie", async () => {
     const currentPassword = "Teaching123!";
     const { db, operations } = createMockDb({ select: [
         [{ id: 5, sessionToken: "teacher-current", userType: 2, userId: 9, createdAt: new Date(), expiresAt: new Date(Date.now() + 60_000) }],
@@ -21,7 +21,9 @@ test("teacher password change revokes every other session", async () => {
     expect(response.status).toBe(200);
     const update = operations.find((item) => item.kind === "update");
     expect(update?.set).toMatchObject({ password: expect.any(String), isFirstLogin: 0, loginFailCount: 0, lockedUntil: null, updatedAt: expect.any(Date) });
-    expect(operations.filter((item) => item.kind === "delete")).toHaveLength(1);
+    expect(operations.filter((item) => item.kind === "delete")).toHaveLength(2);
+    expect(operations.filter((item) => item.kind === "insert")).toHaveLength(1);
+    expect(response.headers.get("set-cookie")).toContain("teacher_session=");
 });
 
 test("fifth failed teacher login locks the account", async () => {
@@ -53,7 +55,7 @@ test("fifth failed teacher login locks the account", async () => {
     });
 });
 
-test("locked teacher login verifies credentials but preserves the lock and rejects", async () => {
+test("locked teacher login rejects without another expensive password verification", async () => {
     const password = "Teaching123!";
     const { db, operations } = createMockDb({ select: [[{
         id: 9,

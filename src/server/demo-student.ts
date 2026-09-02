@@ -9,6 +9,7 @@ import {
 } from "@/db/seeds/demo-accounts";
 import { error, json } from "@/server/http";
 import type { RouteDefinition } from "@/server/route-types";
+import { verifyPassword } from "@/server/password-work";
 
 interface DemoStudentRow {
     studentId: string;
@@ -67,7 +68,7 @@ async function loadDemoStudentCandidates(): Promise<DemoStudentRow[]> {
 const defaultDependencies: DemoStudentRouteDependencies = {
     loadCandidates: loadDemoStudentCandidates,
     random: Math.random,
-    verifyPassword: Bun.password.verify,
+    verifyPassword,
 };
 
 export function createDemoStudentRoutes(

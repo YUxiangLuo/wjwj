@@ -135,6 +135,15 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
             })
             .returning({ id: schema.topic.id });
         topicId = createdTopic!.id;
+        const docxMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        const [createdAttachment] = await database.insert(schema.topicAttachment).values({
+            topicId,
+            fileName: "questionnaire-template.docx",
+            filePath: `/storage/integration-${suffix}.docx`,
+            fileType: docxMime,
+            fileSize: 10,
+        }).returning({ fileType: schema.topicAttachment.fileType });
+        expect(createdAttachment?.fileType).toBe(docxMime);
         const [createdUnassignedTopic] = await database
             .insert(schema.topic)
             .values({ teacherId, name: "PostgreSQL unassigned topic", status: 0 })
@@ -210,6 +219,7 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
         const [jsonTypes] = await sqlClient`
             SELECT
                 jsonb_typeof(t.field_mapping) AS field_mapping_type,
+                jsonb_typeof(t.sampling_policy) AS sampling_policy_type,
                 jsonb_typeof(t.weight_config) AS weight_config_type,
                 jsonb_typeof(t.recommend_questions) AS recommend_questions_type,
                 jsonb_typeof(e.questionnaire) AS questionnaire_type,
@@ -223,6 +233,7 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
         `;
         expect(jsonTypes).toEqual({
             field_mapping_type: "object",
+            sampling_policy_type: "object",
             weight_config_type: "object",
             recommend_questions_type: "array",
             questionnaire_type: "object",
@@ -234,6 +245,7 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
         const [nativeJsonRead] = await database
             .select({
                 fieldMapping: schema.topic.fieldMapping,
+                samplingPolicy: schema.topic.samplingPolicy,
                 recommendQuestions: schema.topic.recommendQuestions,
             })
             .from(schema.topic)
@@ -241,6 +253,10 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
         expect(nativeJsonRead?.fieldMapping).toEqual({
             identifier: "student_id",
             numeric: ["score"],
+        });
+        expect(nativeJsonRead?.samplingPolicy).toEqual({
+            version: 1,
+            methods: { simple: "required", systematic: "optional", pps: "optional", stratified: "optional" },
         });
         expect(nativeJsonRead?.recommendQuestions).toEqual([
             { id: "q1", type: "boolean", content: "测试题" },

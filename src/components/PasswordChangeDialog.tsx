@@ -65,11 +65,12 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
             onOpenChange(nextOpen);
         }}>
             <DialogContent className="bg-card border-border text-foreground" showCloseButton={allowClose}>
-                <DialogHeader>
-                    <DialogTitle className="text-foreground">{title}</DialogTitle>
-                    <DialogDescription className="text-muted-foreground">{description}</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-2">
+                <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void onSubmit(); }}>
+                    <DialogHeader>
+                        <DialogTitle className="text-foreground">{title}</DialogTitle>
+                        <DialogDescription className="text-muted-foreground">{description}</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
                     <div className="space-y-2">
                         <Label htmlFor={currentPasswordId} className="text-foreground">当前密码</Label>
                         <Input
@@ -127,18 +128,19 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                         </div>
                     ) : null}
                     {error ? <div id={errorId} role="alert" aria-atomic="true" className="text-label text-destructive bg-destructive-muted p-2 rounded-control">{error}</div> : null}
-                </div>
-                <DialogFooter>
-                    {allowClose ? (
-                        <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving} className="text-muted-foreground hover:text-foreground hover:bg-muted">
-                            取消
+                    </div>
+                    <DialogFooter>
+                        {allowClose ? (
+                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving} className="text-muted-foreground hover:text-foreground hover:bg-muted">
+                                取消
+                            </Button>
+                        ) : null}
+                        <Button type="submit" disabled={saving} aria-busy={saving} className="bg-primary hover:bg-primary-hover text-primary-foreground" data-testid={submitTestId}>
+                            {saving ? <Loader2 aria-hidden="true" className="w-4 h-4 mr-2 animate-spin" /> : null}
+                            {submitLabel}
                         </Button>
-                    ) : null}
-                    <Button onClick={onSubmit} disabled={saving} aria-busy={saving} className="bg-primary hover:bg-primary-hover text-primary-foreground" data-testid={submitTestId}>
-                        {saving ? <Loader2 aria-hidden="true" className="w-4 h-4 mr-2 animate-spin" /> : null}
-                        {submitLabel}
-                    </Button>
-                </DialogFooter>
+                    </DialogFooter>
+                </form>
             </DialogContent>
         </Dialog>
     );

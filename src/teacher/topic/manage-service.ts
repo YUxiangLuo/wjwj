@@ -2,17 +2,18 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../../db";
 import { task, topic, topicAttachment } from "../../db/schema";
 import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
-import { retitleGeneratedStudyContract, validateAnalysisTarget } from "../../lib/analysis-target";
+import { resolveAnalysisTarget, retitleGeneratedStudyContract } from "../../lib/analysis-target";
+import { buildDefaultSamplingPolicy, parseSamplingPolicy, validateSamplingPolicy } from "../../lib/sampling-policy";
 import { validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
 import { createStorageUploadPath, deleteStorageFileIfExists, resolveStoragePath, writeStorageFile } from "../../server/storage-files";
 import { parseExcelFile, sanitizeUploadFileName } from "./file-utils";
 import { deleteTopicStorageFileIfUnreferenced } from "./storage-cleanup";
+import { getPpsEligibleNumericFields, parseTopicFieldMapping } from "../../student/experiment/population-data";
+import { canonicalizeRichTextHtmlForStorage } from "../../server/rich-text";
 import {
+    validateMappedPopulationData,
     validateParsedExcelUpload,
-    validateNumericFieldValues,
     validateTopicPublishReadiness,
-    validateStratifiedValueCardinality,
-    validateTopicFieldMappingColumns,
     validateTopicFieldMappingConfig,
     validateTopicName,
     validateWeightConfig,
@@ -38,13 +39,13 @@ export async function createTeacherTopic(params: {
     const nameError = validateTopicName(params.name);
     if (nameError) return fail(nameError);
     if (params.description !== undefined && typeof params.description !== "string") {
-        return fail("课题描述格式无效");
+        return fail("实验模板描述格式无效");
     }
     if (params.status !== undefined && params.status !== 0 && params.status !== 1) {
-        return fail("课题状态无效");
+        return fail("实验模板状态无效");
     }
     if (params.status === 1) {
-        return fail("课题需先上传总体数据后才能发布");
+        return fail("实验模板需先上传总体数据后才能发布");
     }
 
     const [created] = await db
@@ -52,7 +53,7 @@ export async function createTeacherTopic(params: {
         .values({
             teacherId: params.teacherId,
             name: params.name.trim(),
-            description: params.description ?? "",
+            description: canonicalizeRichTextHtmlForStorage(params.description),
             status: params.status ?? 0,
         })
         .returning({ id: topic.id });
@@ -66,10 +67,10 @@ export async function updateTeacherTopicBasics(params: {
     body: { name?: string; description?: string; status?: number };
 }) {
     if (params.body.status !== undefined && params.body.status !== 0 && params.body.status !== 1) {
-        return fail("课题状态无效");
+        return fail("实验模板状态无效");
     }
     if (params.body.description !== undefined && typeof params.body.description !== "string") {
-        return fail("课题描述格式无效");
+        return fail("实验模板描述格式无效");
     }
     const updateData: Record<string, unknown> = {};
     if (params.body.name !== undefined) {
@@ -77,7 +78,9 @@ export async function updateTeacherTopicBasics(params: {
         if (nameError) return fail(nameError);
         updateData.name = params.body.name.trim();
     }
-    if (params.body.description !== undefined) updateData.description = params.body.description;
+    if (params.body.description !== undefined) {
+        updateData.description = canonicalizeRichTextHtmlForStorage(params.body.description);
+    }
     if (params.body.status !== undefined) updateData.status = params.body.status;
 
     if (Object.keys(updateData).length === 0) {
@@ -93,11 +96,12 @@ export async function updateTeacherTopicBasics(params: {
                 name: topic.name,
                 excelFilePath: topic.excelFilePath,
                 fieldMapping: topic.fieldMapping,
+                samplingPolicy: topic.samplingPolicy,
                 weightConfig: topic.weightConfig,
             })
             .from(topic)
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
-        if (!topicInfo) return fail("课题不存在", "NOT_FOUND", 404);
+        if (!topicInfo) return fail("实验模板不存在", "NOT_FOUND", 404);
         const [taskReference] = await tx
             .select({ id: task.id })
             .from(task)
@@ -105,7 +109,7 @@ export async function updateTeacherTopicBasics(params: {
             .limit(1);
         if (taskReference) {
             return fail(
-                "课题已分配任务，内容不能再修改；如需调整请复制为新课题",
+                "实验模板已分配任务，内容不能再修改；如需调整请复制为新模板",
                 "TOPIC_ASSIGNED",
                 409,
             );
@@ -121,12 +125,23 @@ export async function updateTeacherTopicBasics(params: {
         }
 
         if (params.body.status === 1) {
+            const effectiveMapping = updateData.fieldMapping ?? topicInfo.fieldMapping;
             const publishReadinessError = validateTopicPublishReadiness({
                 excelFilePath: topicInfo.excelFilePath,
-                fieldMapping: (updateData.fieldMapping ?? topicInfo.fieldMapping) as Record<string, unknown> | string | null | undefined,
+                fieldMapping: effectiveMapping as Record<string, unknown> | string | null | undefined,
+                samplingPolicy: topicInfo.samplingPolicy,
                 weightConfig: topicInfo.weightConfig as Record<string, unknown> | string | null | undefined,
             });
             if (publishReadinessError) return fail(publishReadinessError);
+            const mapping = parseTopicFieldMapping(effectiveMapping);
+            if (!mapping || !topicInfo.excelFilePath) return fail("实验模板字段映射无效");
+            const buffer = await Bun.file(resolveStoragePath(topicInfo.excelFilePath)).arrayBuffer();
+            const parsed = await parseExcelFile(buffer, topicInfo.excelFilePath, {
+                includeColumnValues: false,
+                numericFields: mapping.numeric ?? [],
+            });
+            const populationError = validateMappedPopulationData(parsed, mapping);
+            if (populationError) return fail(populationError);
         }
 
         const [updated] = await tx
@@ -134,7 +149,7 @@ export async function updateTeacherTopicBasics(params: {
             .set(updateData)
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)))
             .returning({ id: topic.id });
-        return updated ? { ok: true as const } : fail("课题不存在", "NOT_FOUND", 404);
+        return updated ? { ok: true as const } : fail("实验模板不存在", "NOT_FOUND", 404);
     });
 }
 
@@ -181,13 +196,13 @@ export async function softDeleteTeacherTopic(params: { teacherId: number; topicI
         });
     } catch (error) {
         if (error === assignedTopicDeletion) {
-            return fail("已分配任务的课题不能删除", "TOPIC_ASSIGNED", 403);
+            return fail("已分配实验任务的模板不能删除", "TOPIC_ASSIGNED", 403);
         }
         throw error;
     }
 
     if (!deletion) {
-        return fail("课题不存在", "NOT_FOUND", 404);
+        return fail("实验模板不存在", "NOT_FOUND", 404);
     }
 
     await Promise.all(deletion.cleanupPaths.map(async (filePath) => {
@@ -222,10 +237,10 @@ export async function replaceTopicExcelData(params: {
                 .select({ excelFilePath: topic.excelFilePath, status: topic.status })
                 .from(topic)
                 .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
-            if (!currentTopic) return fail("课题不存在", "NOT_FOUND", 404);
+            if (!currentTopic) return fail("实验模板不存在", "NOT_FOUND", 404);
             const [taskReference] = await tx.select({ id: task.id }).from(task).where(eq(task.topicId, params.topicId)).limit(1);
             if (currentTopic.status === 1 || taskReference) {
-                return fail("已发布或已分配任务的课题不能修改总体数据", "FORBIDDEN", 403);
+                return fail("已发布或已分配任务的实验模板不能修改总体数据", "FORBIDDEN", 403);
             }
 
             await writeStorageFile(filePath, buffer);
@@ -263,6 +278,7 @@ export async function replaceTopicExcelData(params: {
         columns: parsed.columns,
         preview: parsed.preview,
         columnValues: parsed.columnValues,
+        columnValuesTruncated: parsed.columnValuesTruncated,
     };
 }
 
@@ -286,30 +302,88 @@ export async function updateTopicFieldMapping(params: {
             .select({ excelFilePath: topic.excelFilePath, status: topic.status })
             .from(topic)
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
-        if (!topicInfo) return fail("课题不存在", "NOT_FOUND", 404);
+        if (!topicInfo) return fail("实验模板不存在", "NOT_FOUND", 404);
         const [taskReference] = await tx.select({ id: task.id }).from(task).where(eq(task.topicId, params.topicId)).limit(1);
         if (topicInfo.status === 1 || taskReference) {
-            return fail("已发布或已分配任务的课题不能修改字段映射", "FORBIDDEN", 403);
+            return fail("已发布或已分配任务的实验模板不能修改研究目标与字段", "FORBIDDEN", 403);
         }
         if (!topicInfo.excelFilePath) return fail("请先上传总体数据");
 
         const buffer = await Bun.file(resolveStoragePath(topicInfo.excelFilePath)).arrayBuffer();
-        const parsed = await parseExcelFile(buffer, topicInfo.excelFilePath);
-        const columnsError = validateTopicFieldMappingColumns(params.fieldMapping, parsed.columns);
-        if (columnsError) return fail(columnsError);
-        const cardinalityError = validateStratifiedValueCardinality(parsed.rows, params.fieldMapping.stratified ?? []);
-        if (cardinalityError) return fail(cardinalityError);
-        const numericValueError = validateNumericFieldValues(parsed.rows, params.fieldMapping.numeric ?? []);
-        if (numericValueError) return fail(numericValueError);
-        const analysisError = validateAnalysisTarget(params.fieldMapping, parsed.rows);
-        if (analysisError) return fail(analysisError);
+        const parsed = await parseExcelFile(buffer, topicInfo.excelFilePath, {
+            includeColumnValues: false,
+            numericFields: params.fieldMapping.numeric ?? [],
+        });
+        const populationError = validateMappedPopulationData(parsed, params.fieldMapping);
+        if (populationError) return fail(populationError);
+
+        const resolvedTarget = resolveAnalysisTarget(params.fieldMapping);
+        const targetField = resolvedTarget?.inferred ? undefined : resolvedTarget?.target.field;
+        const ppsEnabled = getPpsEligibleNumericFields(
+            parsed.rows,
+            params.fieldMapping.numeric ?? [],
+        ).some((field) => field !== targetField);
 
         const [updated] = await tx
             .update(topic)
-            .set({ fieldMapping: params.fieldMapping, updatedAt: new Date() })
+            .set({
+                fieldMapping: params.fieldMapping,
+                samplingPolicy: buildDefaultSamplingPolicy({ ppsEnabled }),
+                updatedAt: new Date(),
+            })
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)))
             .returning({ id: topic.id });
-        return updated ? { ok: true as const } : fail("课题不存在", "NOT_FOUND", 404);
+        return updated ? { ok: true as const } : fail("实验模板不存在", "NOT_FOUND", 404);
+    });
+}
+
+export async function updateTopicSamplingPolicy(params: {
+    teacherId: number;
+    topicId: number;
+    samplingPolicy: unknown;
+}) {
+    const policyError = validateSamplingPolicy(params.samplingPolicy);
+    if (policyError) return fail(policyError);
+    const samplingPolicy = parseSamplingPolicy(params.samplingPolicy)!;
+
+    return db.transaction(async (tx) => {
+        await acquireStorageMutationLock(tx);
+        const [topicInfo] = await tx
+            .select({
+                status: topic.status,
+                excelFilePath: topic.excelFilePath,
+                fieldMapping: topic.fieldMapping,
+            })
+            .from(topic)
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
+        if (!topicInfo) return fail("实验模板不存在", "NOT_FOUND", 404);
+        const [taskReference] = await tx.select({ id: task.id }).from(task).where(eq(task.topicId, params.topicId)).limit(1);
+        if (topicInfo.status === 1 || taskReference) {
+            return fail("已发布或已分配实验任务的模板不能修改抽样策略", "FORBIDDEN", 403);
+        }
+        if (!topicInfo.excelFilePath || !topicInfo.fieldMapping) {
+            return fail("请先上传总体数据并完成研究目标与字段配置");
+        }
+
+        if (samplingPolicy.methods.pps !== "disabled") {
+            const buffer = await Bun.file(resolveStoragePath(topicInfo.excelFilePath)).arrayBuffer();
+            const parsed = await parseExcelFile(buffer, topicInfo.excelFilePath);
+            const mapping = parseTopicFieldMapping(topicInfo.fieldMapping);
+            const resolvedTarget = resolveAnalysisTarget(topicInfo.fieldMapping);
+            const targetField = resolvedTarget?.inferred ? undefined : resolvedTarget?.target.field;
+            const eligible = getPpsEligibleNumericFields(parsed.rows, mapping?.numeric ?? [])
+                .filter((field) => field !== targetField);
+            if (eligible.length === 0) {
+                return fail("当前总体没有合格的 PPS 规模变量，请将 PPS 设为不适用");
+            }
+        }
+
+        const [updated] = await tx
+            .update(topic)
+            .set({ samplingPolicy, updatedAt: new Date() })
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)))
+            .returning({ id: topic.id });
+        return updated ? { ok: true as const } : fail("实验模板不存在", "NOT_FOUND", 404);
     });
 }
 
@@ -327,16 +401,16 @@ export async function updateTopicWeightConfig(params: {
             .select({ status: topic.status })
             .from(topic)
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
-        if (!topicInfo) return fail("课题不存在", "NOT_FOUND", 404);
+        if (!topicInfo) return fail("实验模板不存在", "NOT_FOUND", 404);
         const [taskReference] = await tx.select({ id: task.id }).from(task).where(eq(task.topicId, params.topicId)).limit(1);
         if (topicInfo.status === 1 || taskReference) {
-            return fail("已发布或已分配任务的课题不能修改评分权重", "FORBIDDEN", 403);
+            return fail("已发布或已分配任务的实验模板不能修改评分规则", "FORBIDDEN", 403);
         }
         const [updated] = await tx
             .update(topic)
             .set({ weightConfig: params.weightConfig, updatedAt: new Date() })
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)))
             .returning({ id: topic.id });
-        return updated ? { ok: true as const } : fail("课题不存在", "NOT_FOUND", 404);
+        return updated ? { ok: true as const } : fail("实验模板不存在", "NOT_FOUND", 404);
     });
 }

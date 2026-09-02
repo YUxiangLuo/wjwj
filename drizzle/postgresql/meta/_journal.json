@@ -50,6 +50,27 @@
       "when": 1787683609348,
       "tag": "0006_cultured_martin_li",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788345147572,
+      "tag": "0007_talented_gwen_stacy",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788347224304,
+      "tag": "0008_rapid_sunfire",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788366394172,
+      "tag": "0009_sloppy_micromacro",
+      "breakpoints": true
     }
   ]
 }

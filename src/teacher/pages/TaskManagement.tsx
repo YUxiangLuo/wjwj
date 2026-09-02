@@ -91,7 +91,7 @@ export function TaskManagement() {
 
     async function handlePublish() {
         if (!selectedTopicId || selectedClassIds.length === 0) {
-            toast.error("请选择课题和班级");
+            toast.error("请选择实验模板和班级");
             return;
         }
 
@@ -174,15 +174,15 @@ export function TaskManagement() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div>
-                <h2 className="text-subheading font-semibold text-foreground">任务管理</h2>
-                <p className="text-label text-muted-foreground mt-1">管理发布任务与批改进度。</p>
+                <h2 className="text-subheading font-semibold text-foreground">实验任务管理</h2>
+                <p className="text-label text-muted-foreground mt-1">将实验模板分配到班级，并跟踪提交与批改进度。</p>
             </div>
 
             <div className="grid grid-cols-4 gap-4">
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">任务总数</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">实验任务总数</p>
                             <p className="text-page-title font-bold text-foreground mt-1">{loading ? "-" : summary.total}</p>
                         </div>
                         <IconTile intent="info">
@@ -229,17 +229,17 @@ export function TaskManagement() {
             <Card>
                 <PageHeader as={CardHeader}>
                     <div>
-                        <CardTitle className="text-body text-foreground">任务列表</CardTitle>
+                        <CardTitle className="text-body text-foreground">实验任务列表</CardTitle>
                         <p className="text-meta text-muted-foreground mt-1">共 {filteredTasks.length} 条数据</p>
                     </div>
                     <div className="flex gap-3 flex-row w-auto">
                         <div className="relative w-56">
-                            <Label htmlFor="teacher-task-search" className="sr-only">搜索课题</Label>
+                            <Label htmlFor="teacher-task-search" className="sr-only">搜索实验模板</Label>
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 id="teacher-task-search"
                                 data-testid="teacher-task-search"
-                                placeholder="搜索课题"
+                                placeholder="搜索实验模板"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-9 bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
@@ -257,7 +257,7 @@ export function TaskManagement() {
                             </SelectContent>
                         </Select>
                         <Button data-testid="teacher-task-publish-open" onClick={() => setShowPublishModal(true)} className="bg-primary hover:bg-primary-hover text-primary-foreground ">
-                            <Plus className="w-4 h-4 mr-1" /> 发布任务
+                            <Plus className="w-4 h-4 mr-1" /> 发布实验任务
                         </Button>
                     </div>
                 </PageHeader>
@@ -266,7 +266,7 @@ export function TaskManagement() {
                         <Table>
                             <TableHeader>
                                 <TableRow className="border-border hover:bg-card">
-                                    <TableHead className="text-muted-foreground">课题</TableHead>
+                                    <TableHead className="text-muted-foreground">实验模板</TableHead>
                                     <TableHead className="text-muted-foreground">班级</TableHead>
                                     <TableHead className="text-muted-foreground">发布时间</TableHead>
                                     <TableHead className="text-muted-foreground">截止时间</TableHead>
@@ -386,7 +386,7 @@ export function TaskManagement() {
                         <AlertDialogTitle className="text-foreground">删除任务？</AlertDialogTitle>
                         <AlertDialogDescription className="text-muted-foreground">
                             {taskToDelete
-                                ? `将取消「${taskToDelete.topic}」在「${taskToDelete.className}」的任务发布：学生端与批改中均不再显示。需要再次布置同一课题时，可在「发布任务」中重新向该班级发布。`
+                                ? `将取消「${taskToDelete.topic}」在「${taskToDelete.className}」的实验任务：学生端与批改中均不再显示。需要再次布置同一模板时，可在「发布实验任务」中重新向该班级发布。`
                                 : null}
                         </AlertDialogDescription>
                     </AlertDialogHeader>

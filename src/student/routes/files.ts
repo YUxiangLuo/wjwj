@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment, task, topic, topicAttachment } from "../../db/schema";
-import { error, getRouteParam, getSearchParams } from "../../server/http";
+import { error, getPositiveRouteId, getSearchParams } from "../../server/http";
 import { buildAttachmentDownloadResponse } from "../../server/attachment-download";
 import type { RouteDefinition } from "../../server/route-types";
 import { resolveStoragePath } from "../../server/storage-files";
@@ -30,7 +30,7 @@ const attachmentDownloadRoutes: RouteDefinition = {
         if (auth.error) return auth.error;
         const currentStudent = auth.student!;
 
-        const attachmentId = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
+        const attachmentId = getPositiveRouteId(req);
         if (!attachmentId) {
             return error("无效的附件ID", "INVALID_ID");
         }
@@ -67,7 +67,7 @@ const exportRoutes: RouteDefinition = {
         if (auth.error) return auth.error;
         const currentStudent = auth.student!;
 
-        const taskId = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
+        const taskId = getPositiveRouteId(req);
         if (!taskId) return error("无效的任务ID", "INVALID_ID");
 
         const taskAccessError = await getStudentTaskAccessError(taskId, currentStudent.classId);
@@ -82,6 +82,7 @@ const exportRoutes: RouteDefinition = {
             .select({
                 samplingResults: experiment.samplingResults,
                 excelFilePath: topic.excelFilePath,
+                fieldMapping: topic.fieldMapping,
             })
             .from(experiment)
             .innerJoin(task, eq(experiment.taskId, task.id))
@@ -98,7 +99,7 @@ const exportRoutes: RouteDefinition = {
         let results = storedResults;
         if (inspection.needsPopulation) {
             if (!exp.excelFilePath) return error("总体数据为空或读取失败", "READ_FAILED", 500);
-            const population = await readPopulationData(exp.excelFilePath);
+            const population = await readPopulationData(exp.excelFilePath, exp.fieldMapping);
             if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
             const hydrated = hydrateSamplingResults(storedResults, population);
             if (!hydrated.ok) return error(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);

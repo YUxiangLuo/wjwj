@@ -24,11 +24,13 @@ import {
     DOGFOOD_COUNTS,
     DOGFOOD_NAMES,
     GUIDE_ATTACHMENT_PATH,
+    QUESTIONNAIRE_TEMPLATE_ATTACHMENT_PATH,
     MEAN_POPULATION_PATH,
     PPS_POPULATION_PATH,
     PROPORTION_POPULATION_PATH,
 } from "./dogfood-fixtures";
 import { DEMO_STUDENT_ACCOUNTS } from "./demo-accounts";
+import { parseSamplingPolicy } from "../../lib/sampling-policy";
 
 function check(condition: unknown, message: string): asserts condition {
     if (!condition) throw new Error(message);
@@ -120,48 +122,57 @@ async function verify() {
         .where(eq(experiment.currentStage, 4));
     check(authoritative.length === 13, `Expected 13 stage4/terminal authoritative fixtures, got ${authoritative.length}`);
 
-    function checkAuthoritativeMethods(label: string, value: unknown, allowUnavailablePps: boolean) {
+    function checkAuthoritativeMethods(label: string, value: unknown, ppsDisabled: boolean, allowChoicePair = false) {
         const results = value as Record<string, Record<string, unknown> | undefined> | null;
-        for (const method of ["simple", "systematic", "pps", "stratified"] as const) {
+        const expectedMethods = allowChoicePair
+            ? (["simple", "systematic"] as const)
+            : ppsDisabled
+                ? (["simple", "systematic", "stratified"] as const)
+                : (["simple", "systematic", "pps", "stratified"] as const);
+        for (const method of expectedMethods) {
             check(results?.[method]?.serverGenerated === true, `${label}/${method} is not server generated`);
         }
-        for (const method of ["simple", "systematic", "stratified"] as const) {
+        if (allowChoicePair) {
+            check(!results?.pps && !results?.stratified, `${label} must contain only the selected method pair`);
+        }
+        for (const method of expectedMethods.filter((method) => method !== "pps")) {
             const section = results?.[method];
             check(!Array.isArray(section?.data), `${label}/${method} unexpectedly embeds sampled rows`);
             check(Array.isArray(section?.indices) && section.indices.length === section.sampleCount, `${label}/${method} has invalid replay indices`);
         }
-        const pps = results?.pps;
-        if (allowUnavailablePps) {
-            check(pps?.unavailable === true && !Array.isArray(pps.data) && !Array.isArray(pps.indices), `${label}/pps must be the compact unavailable marker`);
-        } else {
-            check(pps?.completed === true && pps.unavailable !== true, `${label}/pps is not a completed result`);
-            check(!Array.isArray(pps.data), `${label}/pps unexpectedly embeds sampled rows`);
-            check(Array.isArray(pps.indices) && pps.indices.length === pps.sampleCount, `${label}/pps has invalid replay indices`);
-            check(Array.isArray(pps.inclusionProbabilities) && pps.inclusionProbabilities.length === pps.sampleCount, `${label}/pps probabilities differ from its sample count`);
+        if (allowChoicePair || ppsDisabled) {
+            check(!results?.pps, `${label} must not contain a disabled PPS result`);
+            return results;
         }
+        const pps = results?.pps;
+        check(pps?.completed === true && pps.unavailable !== true, `${label}/pps is not a completed result`);
+        check(!Array.isArray(pps.data), `${label}/pps unexpectedly embeds sampled rows`);
+        check(Array.isArray(pps.indices) && pps.indices.length === pps.sampleCount, `${label}/pps has invalid replay indices`);
+        check(Array.isArray(pps.inclusionProbabilities) && pps.inclusionProbabilities.length === pps.sampleCount, `${label}/pps probabilities differ from its sample count`);
         return results;
     }
 
     for (const row of authoritative) {
         const label = `${row.studentId}/${row.topicName}`;
-        const hasUnavailablePps = row.topicName === DOGFOOD_NAMES.topicB;
-        const liveResults = checkAuthoritativeMethods(label, row.results, hasUnavailablePps);
+        const hasDisabledPps = row.topicName === DOGFOOD_NAMES.topicB;
+        const hasChoicePair = row.studentId === "S014" && row.topicName === DOGFOOD_NAMES.topicA;
+        const liveResults = checkAuthoritativeMethods(label, row.results, hasDisabledPps, hasChoicePair);
         if (row.status !== "in_progress") {
             const storedSnapshot = row.snapshot as Record<string, unknown> | null;
             check(storedSnapshot, `${label} has no submission snapshot`);
-            const snapshotResults = checkAuthoritativeMethods(`${label}/snapshot`, storedSnapshot.samplingResults, hasUnavailablePps);
+            const snapshotResults = checkAuthoritativeMethods(`${label}/snapshot`, storedSnapshot.samplingResults, hasDisabledPps, hasChoicePair);
             check(JSON.stringify(snapshotResults) === JSON.stringify(liveResults), `${label} snapshot sampling results differ from the live record`);
             check(storedSnapshot.reportContent === row.reportContent, `${label} snapshot report differs from the live record`);
             check(validateReportForSubmit(row.reportContent) === null, `${label} live report is invalid`);
             check(validateReportForSubmit(storedSnapshot.reportContent) === null, `${label} snapshot report is invalid`);
         }
-        if (hasUnavailablePps) {
-            check(row.reportContent?.includes("PPS") && row.reportContent.includes("跳过"), "Mean live report does not explain skipped PPS");
+        if (hasDisabledPps) {
+            check(row.reportContent?.includes("PPS") && row.reportContent.includes("不适用"), "Mean live report does not explain disabled PPS");
             const snapshotReport = (row.snapshot as Record<string, unknown> | null)?.reportContent;
-            check(typeof snapshotReport === "string" && snapshotReport.includes("PPS") && snapshotReport.includes("跳过"), "Mean snapshot report does not explain skipped PPS");
+            check(typeof snapshotReport === "string" && snapshotReport.includes("PPS") && snapshotReport.includes("不适用"), "Mean snapshot report does not explain disabled PPS");
         }
     }
-    check(authoritative.filter((row) => row.studentId === "S015" && row.topicName === DOGFOOD_NAMES.topicB).length === 1, "Expected exactly one mean PPS-unavailable fixture");
+    check(authoritative.filter((row) => row.studentId === "S015" && row.topicName === DOGFOOD_NAMES.topicB).length === 1, "Expected exactly one mean PPS-disabled fixture");
 
     const auditRows = await db
         .select({ method: samplingAttempt.method, seed: samplingAttempt.seed, sampleCount: samplingAttempt.sampleCount })
@@ -235,7 +246,7 @@ async function verify() {
     check(!deletedTask?.topicDeletedAt && deletedTask?.taskDeletedAt && deletedTask.historicalCount === 1, "Deleted-task historical invariant is missing");
 
     const storedTopics = await db
-        .select({ name: topic.name, path: topic.excelFilePath, rowCount: topic.excelRowCount, fieldMapping: topic.fieldMapping })
+        .select({ name: topic.name, path: topic.excelFilePath, rowCount: topic.excelRowCount, fieldMapping: topic.fieldMapping, samplingPolicy: topic.samplingPolicy })
         .from(topic)
         .where(and(inArray(topic.name, [DOGFOOD_NAMES.topicA, DOGFOOD_NAMES.topicB, DOGFOOD_NAMES.topicH, DOGFOOD_NAMES.topicI]), isNull(topic.deletedAt)));
     check(storedTopics.length === 4, `Expected stored population metadata for four research scenarios, got ${storedTopics.length}`);
@@ -248,6 +259,7 @@ async function verify() {
             ppsFields: ["每周学习时长", "月生活费", "学习满意度"],
             targetKind: "mean",
             targetValue: undefined,
+            policy: { pps: "optional", stratified: "optional" },
         },
         [DOGFOOD_NAMES.topicB]: {
             path: MEAN_POPULATION_PATH,
@@ -256,6 +268,7 @@ async function verify() {
             ppsFields: [],
             targetKind: "mean",
             targetValue: undefined,
+            policy: { pps: "disabled", stratified: "optional" },
         },
         [DOGFOOD_NAMES.topicH]: {
             path: PROPORTION_POPULATION_PATH,
@@ -264,6 +277,7 @@ async function verify() {
             ppsFields: ["每周职业准备时长", "求职准备度"],
             targetKind: "proportion",
             targetValue: "直接就业",
+            policy: { pps: "optional", stratified: "required" },
         },
         [DOGFOOD_NAMES.topicI]: {
             path: DINING_POPULATION_PATH,
@@ -272,6 +286,7 @@ async function verify() {
             ppsFields: ["等待分钟", "客流量", "开放窗口数"],
             targetKind: "mean",
             targetValue: undefined,
+            policy: { pps: "required", stratified: "optional" },
         },
     } as const;
     const parsedRowCounts: Record<string, number> = {};
@@ -290,6 +305,11 @@ async function verify() {
         check(mapping?.studyContract?.version === 1, `${storedTopic.name} study contract missing`);
         check(Boolean(mapping?.studyContract?.researchQuestion?.trim()), `${storedTopic.name} study contract research question missing`);
         check(mapping?.studyContract?.target?.field === mapping?.analysisTarget?.field, `${storedTopic.name} study contract target differs from analysis target`);
+        const samplingPolicy = parseSamplingPolicy(storedTopic.samplingPolicy);
+        check(samplingPolicy, `${storedTopic.name} sampling policy is invalid`);
+        check(samplingPolicy.methods.simple === "required", `${storedTopic.name} must require simple sampling`);
+        check(samplingPolicy.methods.pps === expected.policy.pps, `${storedTopic.name} PPS policy differs`);
+        check(samplingPolicy.methods.stratified === expected.policy.stratified, `${storedTopic.name} stratified policy differs`);
 
         const file = Bun.file(resolveStoragePath(storedTopic.path));
         check(await file.exists(), `${storedTopic.name} population file is missing: ${storedTopic.path}`);
@@ -307,12 +327,14 @@ async function verify() {
         .from(topicAttachment)
         .innerJoin(topic, eq(topicAttachment.topicId, topic.id))
         .where(and(eq(topic.name, DOGFOOD_NAMES.topicA), isNull(topic.deletedAt)));
-    check(attachments.length === 1, `Expected one A attachment, got ${attachments.length}`);
-    const storedAttachment = attachments[0]!;
-    check(storedAttachment.path === GUIDE_ATTACHMENT_PATH, `A attachment stored path differs: ${storedAttachment.path}`);
-    const attachmentFile = Bun.file(resolveStoragePath(storedAttachment.path));
-    check(await attachmentFile.exists(), `A attachment is missing: ${storedAttachment.path}`);
-    check(attachmentFile.size > 0 && attachmentFile.size === storedAttachment.storedSize, `A attachment size differs: db=${storedAttachment.storedSize} file=${attachmentFile.size}`);
+    check(attachments.length === 2, `Expected two A attachments, got ${attachments.length}`);
+    for (const expectedPath of [GUIDE_ATTACHMENT_PATH, QUESTIONNAIRE_TEMPLATE_ATTACHMENT_PATH]) {
+        const storedAttachment = attachments.find((item) => item.path === expectedPath);
+        check(storedAttachment, `A attachment stored path is missing: ${expectedPath}`);
+        const attachmentFile = Bun.file(resolveStoragePath(storedAttachment.path));
+        check(await attachmentFile.exists(), `A attachment is missing: ${storedAttachment.path}`);
+        check(attachmentFile.size > 0 && attachmentFile.size === storedAttachment.storedSize, `A attachment size differs: db=${storedAttachment.storedSize} file=${attachmentFile.size}`);
+    }
 
     console.log("Dogfood seed check passed.");
     console.log(`Counts: ${Object.entries(actualCounts).map(([key, value]) => `${key}=${value}`).join(" ")}`);

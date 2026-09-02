@@ -11,10 +11,11 @@ import {
     INVALID_SAMPLING_STORAGE_MESSAGE,
 } from "../experiment/sampling-storage";
 import { parseStoredJson } from "../experiment/serialization";
-import { error, getRouteParam, json } from "../../server/http";
+import { error, getPositiveRouteId, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { getStudentTaskAccessError } from "../experiment/task-access";
 import { requireAuth } from "./auth";
+import { resolveSamplingPolicy } from "../../lib/sampling-policy";
 
 function score(value: string | null) {
     return value == null ? null : Number(value);
@@ -24,7 +25,7 @@ const submissionByTaskRoutes: RouteDefinition = {
     async GET(req) {
         const auth = await requireAuth(req);
         if (auth.error || !auth.student) return auth.error!;
-        const taskId = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
+        const taskId = getPositiveRouteId(req);
         if (!taskId) return error("无效的任务ID", "INVALID_ID");
         const accessError = await getStudentTaskAccessError(taskId, auth.student.classId);
         if (accessError) return accessError;
@@ -38,17 +39,16 @@ const submissionByTaskRoutes: RouteDefinition = {
                 topicName: topic.name,
                 status: experiment.status,
                 submittedAt: experiment.submittedAt,
-                scoreQuestionnaire: experiment.scoreQuestionnaire,
-                scoreProcess: experiment.scoreProcess,
-                scoreReport: experiment.scoreReport,
                 totalScore: experiment.totalScore,
                 teacherComment: experiment.teacherComment,
                 rejectReason: experiment.rejectReason,
                 gradedAt: experiment.gradedAt,
                 graderName: teacher.name,
                 weightConfig: topic.weightConfig,
+                samplingPolicy: topic.samplingPolicy,
                 populationSize: topic.excelRowCount,
                 excelFilePath: topic.excelFilePath,
+                fieldMapping: topic.fieldMapping,
                 submissionSnapshot: experiment.submissionSnapshot,
                 questionnaire: experiment.questionnaire,
                 samplePlan: experiment.samplePlan,
@@ -71,6 +71,7 @@ const submissionByTaskRoutes: RouteDefinition = {
             samplingResults?: unknown;
             reportContent?: string;
             weightConfig?: unknown;
+            samplingPolicy?: unknown;
         }>(row.submissionSnapshot);
         const storedSamplingResults = snapshot?.samplingResults ?? parseStoredJson(row.samplingResults);
         const inspection = inspectSamplingResultsStorage(storedSamplingResults);
@@ -78,7 +79,7 @@ const submissionByTaskRoutes: RouteDefinition = {
         let samplingResults = storedSamplingResults;
         if (inspection.needsPopulation) {
             if (!row.excelFilePath) return error("总体数据为空或读取失败", "READ_FAILED", 500);
-            const population = await readPopulationData(row.excelFilePath);
+            const population = await readPopulationData(row.excelFilePath, row.fieldMapping);
             if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
             const hydrated = hydrateSamplingResults(storedSamplingResults, population);
             if (!hydrated.ok) return error(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
@@ -91,6 +92,7 @@ const submissionByTaskRoutes: RouteDefinition = {
             questionnaire: snapshot?.questionnaire ?? parseStoredJson(row.questionnaire),
             samplePlan: snapshot?.samplePlan ?? parseStoredJson(row.samplePlan),
             samplingResults: previewSamplingResults(samplingResults),
+            samplingPolicy: resolveSamplingPolicy(snapshot?.samplingPolicy ?? row.samplingPolicy),
             reportContent: snapshot?.reportContent ?? row.reportContent ?? "",
         };
         return json({
@@ -101,9 +103,6 @@ const submissionByTaskRoutes: RouteDefinition = {
             topicName: snapshotContent.topicName,
             submittedAt: row.submittedAt?.toISOString() ?? null,
             status: row.status,
-            scoreQuestionnaire: score(row.scoreQuestionnaire),
-            scoreProcess: score(row.scoreProcess),
-            scoreReport: score(row.scoreReport),
             totalScore: score(row.totalScore),
             teacherComment: row.teacherComment,
             rejectReason: row.rejectReason,

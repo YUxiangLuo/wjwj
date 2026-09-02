@@ -33,7 +33,7 @@ export const DOGFOOD_COUNTS = {
     experiment: 18,
     samplingAttempt: 12,
     announcement: 5,
-    topicAttachment: 1,
+    topicAttachment: 2,
 } as const;
 
 export const PPS_POPULATION_PATH = "/storage/topics/seed-population-pps.xlsx";
@@ -41,6 +41,7 @@ export const MEAN_POPULATION_PATH = "/storage/topics/seed-population-mean.csv";
 export const PROPORTION_POPULATION_PATH = "/storage/topics/seed-population-graduate-intentions.csv";
 export const DINING_POPULATION_PATH = "/storage/topics/seed-population-dining-service.csv";
 export const GUIDE_ATTACHMENT_PATH = "/storage/uploads/seed-topic-guide.pdf";
+export const QUESTIONNAIRE_TEMPLATE_ATTACHMENT_PATH = "/storage/uploads/seed-questionnaire-template.docx";
 
 export function resolveSeedAnchor(raw: string | undefined) {
     if (!raw?.trim()) return new Date();

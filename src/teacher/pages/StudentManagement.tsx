@@ -35,7 +35,7 @@ export function StudentManagement() {
     const [searchQuery, setSearchQuery] = useState("");
     const [importFile, setImportFile] = useState<File | null>(null);
     const [importing, setImporting] = useState(false);
-    const [importResult, setImportResult] = useState<{ successCount: number; failureCount: number; errors: Array<{ row: number; reason: string }> } | null>(null);
+    const [importResult, setImportResult] = useState<{ successCount: number; failureCount: number; errors: Array<{ row: number; reason: string }>; credentials: Array<{ studentId: string; temporaryPassword: string }> } | null>(null);
 
     // Add Form State
     const [newStudent, setNewStudent] = useState({ id: "", name: "", email: "" });
@@ -99,6 +99,9 @@ export function StudentManagement() {
         if (res.success) {
             setShowAddModal(false);
             setNewStudent({ id: "", name: "", email: "" });
+            if (res.data?.temporaryPassword) {
+                toast.success(`学生已创建，临时密码：${res.data.temporaryPassword}（仅显示一次）`, { duration: 30_000 });
+            }
             void loadData(false);
         } else {
             toast.error("添加失败: " + res.error?.message);
@@ -165,7 +168,9 @@ export function StudentManagement() {
         }
 
         if (res?.success) {
-            if (type === "reset") toast.success("密码已重置为学号，下次登录必须修改");
+            if (type === "reset" && res.data && "temporaryPassword" in res.data && res.data.temporaryPassword) {
+                toast.success(`临时密码：${res.data.temporaryPassword}（仅显示一次）`, { duration: 30_000 });
+            }
             void loadData(false);
         } else {
             toast.error("操作失败: " + res?.error?.message);

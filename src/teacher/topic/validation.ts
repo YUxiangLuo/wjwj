@@ -1,4 +1,5 @@
 import { parseStudyContract, validateAnalysisTarget, validateStudyContract } from "../../lib/analysis-target";
+import { buildDefaultSamplingPolicy, validateSamplingPolicy } from "../../lib/sampling-policy";
 import { isRowEmpty } from "./file-utils";
 
 interface ParsedExcelFile {
@@ -8,6 +9,8 @@ interface ParsedExcelFile {
     colCount: number;
     duplicateColumns?: string[];
     blankColumnIndexes?: number[];
+    malformed?: boolean;
+    malformedRow?: number;
 }
 
 interface TopicFieldMappingInput {
@@ -16,7 +19,7 @@ interface TopicFieldMappingInput {
     numeric?: string[];
     others?: string[];
     analysisTarget?: { kind?: string; field?: string; value?: string };
-    studyContract?: Record<string, unknown>;
+    studyContract?: unknown;
 }
 
 interface TopicWeightConfigInput {
@@ -28,13 +31,18 @@ interface TopicWeightConfigInput {
 interface TopicPublishReadyInput {
     excelFilePath?: string | null;
     fieldMapping?: TopicFieldMappingInput | Record<string, unknown> | string | null;
+    samplingPolicy?: unknown;
     weightConfig?: TopicWeightConfigInput | Record<string, unknown> | string | null;
 }
 
 interface TopicAttachmentInput {
     currentCount: number;
     fileSize: number;
+    fileName?: string;
+    currentTotalBytes?: number;
 }
+
+const MAX_TOPIC_ATTACHMENT_TOTAL_BYTES = 500 * 1024 * 1024;
 
 function parseObjectLike<T extends object>(value: unknown): T | null {
     if (!value) return null;
@@ -54,6 +62,7 @@ export function validateParsedExcelUpload(parsed: ParsedExcelFile) {
     if (!parsed.columns.length) return "Excel表头为空";
     if (parsed.rowCount < 1 || parsed.rowCount > 100000) return "数据行数需在1-100000之间";
     if (parsed.colCount < 2 || parsed.colCount > 50) return "数据列数需在2-50之间";
+    if (parsed.malformed) return `表格第${parsed.malformedRow ?? "未知"}行的列数与表头不一致或引号未闭合`;
 
     if ((parsed.blankColumnIndexes?.length ?? 0) > 0 || parsed.columns.some((column) => !column.trim())) {
         return `表头存在空白列名${parsed.blankColumnIndexes?.length ? `（第${parsed.blankColumnIndexes.join("、")}列）` : ""}`;
@@ -62,6 +71,9 @@ export function validateParsedExcelUpload(parsed: ParsedExcelFile) {
     const columnSet = new Set(parsed.columns);
     if ((parsed.duplicateColumns?.length ?? 0) > 0 || columnSet.size !== parsed.columns.length) {
         return "表头存在重复列名";
+    }
+    if (parsed.columns.some((column) => column.trim().toLowerCase().startsWith("__wj_"))) {
+        return "表头不能使用系统保留前缀 __wj_";
     }
     if (parsed.rows.some((row) => isRowEmpty(row))) return "存在完全空白的行";
 
@@ -86,11 +98,28 @@ export function validateTopicFieldMappingConfig(fieldMapping: unknown) {
     const numeric = (input.numeric ?? []) as string[];
     const others = (input.others ?? []) as string[];
 
-    const uniqueFields = new Set([identifier, ...stratified, ...numeric, ...others].filter(Boolean));
-    if (!identifier) return "必须选择1个标识符字段";
+    if (!identifier?.trim()) return "必须选择1个标识符字段";
     if (stratified.length < 1) return "至少选择1个分层变量";
     if (numeric.length < 1) return "至少选择1个数值变量";
-    if (uniqueFields.size < 3) return "至少选择3个字段";
+    const roleEntries = [
+        ["标识符", [identifier]],
+        ["分层变量", stratified],
+        ["数值变量", numeric],
+        ["其他分类变量", others],
+    ] as const;
+    const fieldRoles = new Map<string, string>();
+    for (const [role, fields] of roleEntries) {
+        const local = new Set<string>();
+        for (const field of fields) {
+            const normalized = field.trim().normalize("NFKC");
+            if (!normalized) return "字段映射不能包含空字段";
+            if (local.has(normalized)) return `${role}中不能重复选择字段 ${field}`;
+            local.add(normalized);
+            const previousRole = fieldRoles.get(normalized);
+            if (previousRole) return `字段 ${field} 不能同时作为${previousRole}和${role}`;
+            fieldRoles.set(normalized, role);
+        }
+    }
     if (input.studyContract !== undefined) {
         const contractError = validateStudyContract(input);
         if (contractError) return contractError;
@@ -123,22 +152,27 @@ export function validateTopicFieldMappingColumns(
 }
 
 export function validateTopicPublishReadiness(topicInfo: TopicPublishReadyInput | null | undefined) {
-    if (!topicInfo?.excelFilePath) return "课题需先上传总体数据后才能发布";
+    if (!topicInfo?.excelFilePath) return "实验模板需先上传总体数据后才能发布";
 
     const fieldMapping = parseObjectLike<TopicFieldMappingInput>(topicInfo.fieldMapping);
-    if (!fieldMapping) return "课题需先完成字段映射后才能发布";
+    if (!fieldMapping) return "实验模板需先完成研究目标与字段配置后才能发布";
     // 透出具体校验原因（含研究合同错误），便于教师定位。
     const configError = validateTopicFieldMappingConfig(fieldMapping);
     if (configError) return configError;
     // 有研究合同的课题到此处已完整；仅有旧版对照变量或缺失目标的历史课题继续走原校验。
     if (parseStudyContract(fieldMapping) === null && fieldMapping.studyContract === undefined) {
         const analysisError = validateAnalysisTarget(fieldMapping);
-        if (analysisError) return "课题需先指定对照变量后才能发布";
+        if (analysisError) return "实验模板需先指定研究目标变量后才能发布";
     }
+
+    const samplingPolicyError = validateSamplingPolicy(
+        topicInfo.samplingPolicy ?? buildDefaultSamplingPolicy(),
+    );
+    if (samplingPolicyError) return `实验模板需先完成抽样策略配置：${samplingPolicyError}`;
 
     const weightConfig = parseObjectLike<TopicWeightConfigInput>(topicInfo.weightConfig);
     if (!weightConfig || validateWeightConfig(weightConfig)) {
-        return "课题需先完成评分权重配置后才能发布";
+        return "实验模板需先完成评分规则配置后才能发布";
     }
 
     return null;
@@ -152,7 +186,12 @@ export function validateNumericFieldValues(
         for (let index = 0; index < rows.length; index += 1) {
             const raw = rows[index]?.[field];
             const isBlank = raw === undefined || raw === null || (typeof raw === "string" && raw.trim() === "");
-            if (isBlank || !Number.isFinite(Number(raw))) {
+            const numeric = typeof raw === "number"
+                ? raw
+                : typeof raw === "string" && /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw.trim())
+                    ? Number(raw)
+                    : Number.NaN;
+            if (isBlank || !Number.isFinite(numeric)) {
                 return `数值变量 ${field} 在数据第${index + 1}行存在空值或非数值`;
             }
         }
@@ -166,10 +205,12 @@ export function validateStratifiedValueCardinality(
 ) {
     for (const field of stratifiedFields) {
         const values = new Set<string>();
-        for (const row of rows) {
-            const value = String(row[field] ?? "").trim();
-            if (value) values.add(value);
+        for (let index = 0; index < rows.length; index += 1) {
+            const value = String(rows[index]?.[field] ?? "").trim().normalize("NFKC");
+            if (!value) return `分层变量 ${field} 在数据第${index + 1}行存在空值`;
+            values.add(value);
         }
+        if (values.size < 2) return `分层变量 ${field} 至少需要2个唯一值`;
         if (values.size > 20) {
             return `分层变量 ${field} 的唯一值数量超过20`;
         }
@@ -178,8 +219,45 @@ export function validateStratifiedValueCardinality(
     return null;
 }
 
+export function validateIdentifierFieldValues(
+    rows: Array<Record<string, any>>,
+    identifierField: string,
+) {
+    const seen = new Map<string, number>();
+    for (let index = 0; index < rows.length; index += 1) {
+        const value = String(rows[index]?.[identifierField] ?? "").trim().normalize("NFKC");
+        if (!value) return `标识符字段 ${identifierField} 在数据第${index + 1}行存在空值`;
+        const previousIndex = seen.get(value);
+        if (previousIndex !== undefined) {
+            return `标识符字段 ${identifierField} 在数据第${index + 1}行与第${previousIndex + 1}行重复`;
+        }
+        seen.set(value, index);
+    }
+    return null;
+}
+
+export function validateMappedPopulationData(
+    parsed: ParsedExcelFile,
+    fieldMapping: TopicFieldMappingInput,
+) {
+    return validateParsedExcelUpload(parsed)
+        ?? validateTopicFieldMappingColumns(fieldMapping, parsed.columns)
+        ?? validateIdentifierFieldValues(parsed.rows, fieldMapping.identifier ?? "")
+        ?? validateStratifiedValueCardinality(parsed.rows, fieldMapping.stratified ?? [])
+        ?? validateNumericFieldValues(parsed.rows, fieldMapping.numeric ?? [])
+        ?? (fieldMapping.studyContract !== undefined
+            ? validateStudyContract(fieldMapping, parsed.rows)
+            : validateAnalysisTarget(fieldMapping, parsed.rows));
+}
+
 export function validateTopicAttachmentUpload(input: TopicAttachmentInput, attachmentType: string) {
     if (input.currentCount >= 20) return "附件数量已达上限";
+    if (input.fileName !== undefined && (input.fileName.trim().length === 0 || input.fileName.length > 255)) {
+        return "附件名称不能为空且不能超过255个字符";
+    }
+    if ((input.currentTotalBytes ?? 0) + input.fileSize > MAX_TOPIC_ATTACHMENT_TOTAL_BYTES) {
+        return "单个实验模板的附件总大小不能超过500 MiB";
+    }
 
     const sizeLimit =
         attachmentType === "image"
@@ -209,9 +287,9 @@ export function validateWeightConfig(weightConfig: TopicWeightConfigInput | null
 }
 
 export function validateTopicName(name: unknown) {
-    if (typeof name !== "string") return "课题名称格式无效";
+    if (typeof name !== "string") return "实验模板名称格式无效";
     const trimmed = name.trim();
-    if (!trimmed) return "课题名称不能为空";
-    if (trimmed.length > 200) return "课题名称不能超过200字";
+    if (!trimmed) return "实验模板名称不能为空";
+    if (trimmed.length > 200) return "实验模板名称不能超过200字";
     return null;
 }

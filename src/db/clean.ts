@@ -6,8 +6,10 @@
 
 import { closeDatabase, db } from "./index";
 import { sql } from "drizzle-orm";
+import { validateDatabaseConfirmation } from "./destructive-confirmation";
 
 const PROJECT_TABLES = [
+    "audit_event",
     "announcement_read",
     "assistant_class",
     "student_transfer",
@@ -33,18 +35,11 @@ const PROJECT_TABLES = [
 ] as const;
 
 async function reset() {
-    const args = process.argv.slice(2);
-    const force = args.includes("--force") || args.includes("-f");
+    const databaseUrl = process.env.DATABASE_URL?.trim() ?? "";
+    const confirmationError = validateDatabaseConfirmation(databaseUrl, process.env.CONFIRM_DATABASE_NAME);
+    if (confirmationError) throw new Error(confirmationError);
 
-    if (!force) {
-        console.log("⚠️  WARNING: This will drop all sampling-vlab tables!");
-        console.log("Run with --force or -f to confirm.\n");
-        console.log("Usage: bun run db:clean");
-        console.log("Or:    bun run db:reset");
-        process.exit(1);
-    }
-
-    console.log("🗑️  Dropping sampling-vlab tables...\n");
+    console.log("🗑️  已确认目标数据库名，开始删除 sampling-vlab 表...");
 
     for (const tableName of PROJECT_TABLES) {
         console.log(`  Dropping table: ${tableName}`);

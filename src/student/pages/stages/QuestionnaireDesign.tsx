@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, GripVertical, Trash2, Edit2, CheckCircle, AlertCircle, Copy, ArrowUp, ArrowDown, HelpCircle, MessageSquare, List, Play, RotateCcw } from "lucide-react";
+import { Plus, GripVertical, Trash2, Edit2, CheckCircle, AlertCircle, Copy, ArrowUp, ArrowDown, BookOpen, HelpCircle, MessageSquare, List, Play, RotateCcw } from "lucide-react";
 import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
 import { QuestionEditor } from "../../components/QuestionEditor";
@@ -28,6 +28,7 @@ import {
     readExperimentDraft,
     useExperimentDraft,
 } from "../../experiment/experiment-draft";
+import { QUESTIONNAIRE_TEMPLATES, QUESTION_SECTION_LABELS, type QuestionnaireTemplate } from "@/lib/questionnaire-templates";
 
 const questionTypeLabels: Record<QuestionType, string> = {
     boolean: "是/否题",
@@ -107,6 +108,7 @@ export function QuestionnaireDesign() {
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [questionToDelete, setQuestionToDelete] = useState<string | null>(null);
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
+    const [pendingTemplate, setPendingTemplate] = useState<QuestionnaireTemplate | null>(null);
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [dragOverId, setDragOverId] = useState<string | null>(null);
     const [recommendQuestions, setRecommendQuestions] = useState<Question[]>([]);
@@ -143,7 +145,7 @@ export function QuestionnaireDesign() {
     // Content fingerprint for detecting changes after preview completion
     const contentFingerprint = useMemo(
         () => `${title}|${welcomeText}|${endingText}|${questions.map(q =>
-            q.id + q.type + q.content
+            q.id + q.type + (q.section ?? "main") + q.content
             + (q.options ?? []).join(";")
             + (q.minSelect ?? "") + (q.maxSelect ?? "")
             + (q.scaleMin ?? "") + (q.scaleMax ?? "")
@@ -295,6 +297,23 @@ export function QuestionnaireDesign() {
         if (duplicate) {
             toast.error("该推荐题目已在问卷中，请勿重复添加");
         }
+    };
+
+    const applyTemplate = (template: QuestionnaireTemplate) => {
+        setTitle(template.questionnaire.title);
+        setWelcomeText(template.questionnaire.welcomeText);
+        setEndingText(template.questionnaire.endingText);
+        setQuestions(template.questionnaire.questions.map((question) => ({ ...question, id: generateId() })));
+        setPreviewCompleted(false);
+        setPreviewContentHash("");
+        setPendingTemplate(null);
+        toast.success(`已套用“${template.name}”问卷骨架，可继续修改`);
+    };
+
+    const requestTemplate = (template: QuestionnaireTemplate) => {
+        const hasExistingContent = Boolean(title.trim() || welcomeTextLength > 0 || endingTextLength > 0 || questions.length > 0);
+        if (hasExistingContent) setPendingTemplate(template);
+        else applyTemplate(template);
     };
 
     const invalidOptionQuestions = useMemo(() => getInvalidOptionQuestionIndexes(questions), [questions]);
@@ -468,6 +487,9 @@ export function QuestionnaireDesign() {
                                                     <span className="text-label font-bold text-muted-foreground w-8">Q{index + 1}</span>
                                                     <Badge variant="outline" className={`${questionTypeColors[q.type]} px-2 py-0.5 text-meta whitespace-nowrap`}>
                                                         {questionTypeLabels[q.type]}
+                                                    </Badge>
+                                                    <Badge variant="outline" className="whitespace-nowrap border-border bg-card px-2 py-0.5 text-meta text-muted-foreground">
+                                                        {QUESTION_SECTION_LABELS[q.section ?? "main"]}
                                                     </Badge>
                                                     <span className="flex-1 text-label text-foreground truncate font-medium">{q.content}</span>
                                                     <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
@@ -900,6 +922,24 @@ export function QuestionnaireDesign() {
                 })}
             </div>
 
+            {step === 1 && (
+                <Card className="rounded-surface border-info-border bg-info-muted" data-testid="student-questionnaire-templates">
+                    <CardHeader className="flex flex-row items-start justify-between gap-4 border-b border-info-border pb-4">
+                        <div><CardTitle><h2 className="flex items-center gap-2 text-body text-info"><BookOpen className="h-4 w-4" />从标准问卷骨架开始</h2></CardTitle><CardDescription className="mt-1 text-info">模板包含封面信、甄别题、主体题、背景资料和结束语，套用后仍可逐项修改。</CardDescription></div>
+                        <div className="flex gap-2"><Button asChild variant="outline" size="sm"><a href="/templates/调查问卷设计规范与模板.pdf" target="_blank" rel="noreferrer">预览规范</a></Button><Button asChild variant="outline" size="sm"><a href="/templates/调查问卷设计规范与模板.docx" download>下载 DOCX</a></Button></div>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-3 gap-3 pt-4">
+                        {QUESTIONNAIRE_TEMPLATES.map((template) => (
+                            <div key={template.id} className="rounded-surface border border-info-border bg-card p-4">
+                                <h3 className="text-label font-semibold text-foreground">{template.name}</h3>
+                                <p className="mt-1 min-h-10 text-meta text-muted-foreground">{template.description}</p>
+                                <Button type="button" variant="outline" size="sm" className="mt-3 w-full" onClick={() => requestTemplate(template)}>套用此骨架</Button>
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+            )}
+
             {renderStep()}
 
             <div className="flex justify-between items-center pt-4 border-t border-border">
@@ -955,6 +995,16 @@ export function QuestionnaireDesign() {
                         <AlertDialogCancel>取消</AlertDialogCancel>
                         <AlertDialogAction onClick={confirmDelete} data-testid="student-questionnaire-delete-confirm" variant="destructive">删除</AlertDialogAction>
                     </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={pendingTemplate !== null} onOpenChange={(open) => !open && setPendingTemplate(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>替换当前问卷内容？</AlertDialogTitle>
+                        <AlertDialogDescription>套用“{pendingTemplate?.name ?? ""}”会替换当前标题、欢迎语、全部题目和结束语。此操作不能自动合并现有内容。</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel>取消</AlertDialogCancel><AlertDialogAction variant="destructive" onClick={() => pendingTemplate && applyTemplate(pendingTemplate)}>确认替换</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 

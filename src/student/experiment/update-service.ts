@@ -3,6 +3,7 @@ import { attachCalculatedSampleSize } from "./sample-plan";
 import { parseStoredJson } from "./serialization";
 import { ExperimentStatus } from "./status";
 import { resolveAnalysisTarget } from "../../lib/analysis-target";
+import { canonicalizeRichTextHtmlForStorage } from "../../server/rich-text";
 import {
     getTargetSampleSizeFromSamplePlan,
     validateQuestionnaireForSubmit,
@@ -43,6 +44,7 @@ export function buildStageCompletionUpdates(params: {
     populationSize: number | null;
     deadlinePassed: boolean;
     fieldMapping?: unknown;
+    samplingPolicy?: unknown;
 }) {
     const { experimentRecord: record, stage, payload } = params;
     if (!Number.isInteger(stage) || stage < 1 || stage > 4) return fail("阶段必须是1-4的整数");
@@ -60,7 +62,14 @@ export function buildStageCompletionUpdates(params: {
     };
 
     if (stage === 1) {
-        const questionnaire = payload.questionnaire;
+        const rawQuestionnaire = payload.questionnaire;
+        const questionnaire = rawQuestionnaire && typeof rawQuestionnaire === "object" && !Array.isArray(rawQuestionnaire)
+            ? {
+                ...rawQuestionnaire,
+                welcomeText: canonicalizeRichTextHtmlForStorage((rawQuestionnaire as Record<string, unknown>).welcomeText),
+                endingText: canonicalizeRichTextHtmlForStorage((rawQuestionnaire as Record<string, unknown>).endingText),
+            }
+            : rawQuestionnaire;
         const validationError = validateQuestionnaireForSubmit(questionnaire);
         if (validationError) return fail(validationError);
         updates.questionnaire = questionnaire;
@@ -88,6 +97,7 @@ export function buildStageCompletionUpdates(params: {
             parseStoredJson(record.samplingResults),
             getTargetSampleSizeFromSamplePlan(samplePlan),
             params.populationSize,
+            params.samplingPolicy,
         );
         if (validationError) return fail(validationError);
         updates.stage3CompletedAt = now;
@@ -95,7 +105,7 @@ export function buildStageCompletionUpdates(params: {
     }
 
     if (stage === 4) {
-        const reportContent = typeof payload.reportContent === "string" ? payload.reportContent : "";
+        const reportContent = canonicalizeRichTextHtmlForStorage(payload.reportContent);
         const validationError = validateReportForSubmit(reportContent);
         if (validationError) return fail(validationError);
         updates.reportContent = reportContent;

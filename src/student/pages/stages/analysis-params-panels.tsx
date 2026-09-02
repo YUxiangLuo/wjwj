@@ -17,6 +17,7 @@ import {
 } from "../../experiment/systematic-sampling";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { METHOD_META, type MethodKey } from "./analysis-utils";
+import { resolveSamplingPolicy, type SamplingPolicyV1 } from "@/lib/sampling-policy";
 
 const FIELD_LABELS: Record<string, string> = {
     gender: "性别",
@@ -103,7 +104,7 @@ function samplingMethodPanelForKey(
             const r = samplingResults.pps;
             if (r?.unavailable) {
                 return {
-                    completed: true,
+                    completed: false,
                     content: (
                         <div className="space-y-0">
                             <ParamRow label="执行状态" value={PPS_UNAVAILABLE_STATUS_MESSAGE} />
@@ -277,10 +278,12 @@ export function SamplingMethodParamsPanel({
     samplingResults,
     targetSampleSize,
     populationSize,
+    samplingPolicy,
 }: {
     samplingResults: SamplingResultsData | null;
     targetSampleSize: number | null;
     populationSize: number;
+    samplingPolicy?: SamplingPolicyV1;
 }) {
     if (!samplingResults) {
         return (
@@ -290,7 +293,10 @@ export function SamplingMethodParamsPanel({
         );
     }
 
-    const methods = (Object.keys(METHOD_META) as MethodKey[]).map((key) => ({ key, meta: METHOD_META[key] }));
+    const policy = resolveSamplingPolicy(samplingPolicy);
+    const methods = (Object.keys(METHOD_META) as MethodKey[])
+        .filter((key) => policy.methods[key] !== "disabled")
+        .map((key) => ({ key, meta: METHOD_META[key] }));
 
     return (
         <div className="space-y-5">
@@ -318,15 +324,20 @@ export function SamplingMethodParamsPanel({
                     >
                         <div className="mb-3 flex items-center justify-between gap-2">
                             <h4 className="text-label font-semibold text-foreground">{meta.label}</h4>
-                            <span
-                                className={`rounded-control px-2 py-0.5 text-meta font-medium ${
-                                    completed
-                                        ? "bg-success-muted text-success"
-                                        : "bg-muted text-muted-foreground"
-                                }`}
-                            >
-                                {completed ? "已完成" : "未完成"}
-                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className={`rounded-control border px-2 py-0.5 text-meta font-medium ${policy.methods[key] === "required" ? "border-primary-border bg-primary-muted text-primary" : "border-border bg-card text-muted-foreground"}`}>
+                                    {policy.methods[key] === "required" ? "必做" : "选做"}
+                                </span>
+                                <span
+                                    className={`rounded-control px-2 py-0.5 text-meta font-medium ${completed ? "bg-success-muted text-success" : "bg-muted text-muted-foreground"}`}
+                                >
+                                    {key === "pps" && samplingResults.pps?.unavailable
+                                        ? "不适用"
+                                        : completed
+                                            ? "已完成"
+                                            : policy.methods[key] === "optional" ? "未选择" : "未完成"}
+                                </span>
+                            </div>
                         </div>
                         {content}
                     </div>

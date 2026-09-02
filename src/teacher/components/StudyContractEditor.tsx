@@ -152,7 +152,7 @@ export function StudyContractEditor({
                     disabled={disabled || !target}
                     rows={2}
                     maxLength={300}
-                    placeholder="本课题要回答的研究问题（5-300 字）"
+                    placeholder="本实验模板要回答的研究问题（5-300 字）"
                     aria-label="研究问题"
                     data-testid="teacher-contract-question"
                     onChange={(e) => updateText("researchQuestion", e.target.value)}

@@ -338,3 +338,27 @@ test("SamplingExecution waits for the API result before showing the explanation 
     });
     expect(mockExperimentApi.executeSampling).toHaveBeenCalledTimes(1);
 });
+
+test("SamplingExecution honors disabled methods and allows the required two-method choice", async () => {
+    mockExperimentContext.experiment = {
+        id: 88,
+        taskId: 2,
+        currentStage: 3,
+        samplePlan: { finalSampleSize: 13, confidenceLevel: "95", marginOfError: 5 },
+        samplingPolicy: {
+            version: 1,
+            methods: { simple: "required", systematic: "optional", pps: "disabled", stratified: "disabled" },
+        },
+        samplingResults: {
+            simple: { completed: true, sampleCount: 13 },
+            systematic: { completed: true, sampleCount: 13, interval: 100 / 13 },
+        },
+    };
+    const view = render(<SamplingExecution onPrev={() => undefined} />);
+    await waitFor(() => expect(mockExperimentApi.getStats).toHaveBeenCalledTimes(1));
+    expect(view.queryByTestId("student-sampling-tab-pps")).toBeNull();
+    expect(view.queryByTestId("student-sampling-tab-stratified")).toBeNull();
+    const complete = view.getByTestId("student-sampling-next") as HTMLButtonElement;
+    expect(complete.disabled).toBeFalse();
+    expect(complete.textContent).toContain("完成本阶段");
+});

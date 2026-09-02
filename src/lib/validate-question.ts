@@ -1,4 +1,4 @@
-import type { Question, QuestionType } from "./questionnaire-types";
+import type { Question, QuestionSection, QuestionType } from "./questionnaire-types";
 
 function toTrimmedString(value: unknown) {
     return typeof value === "string" ? value.trim() : "";
@@ -9,6 +9,7 @@ function generateQuestionId(): string {
 }
 
 const QUESTION_TYPES = new Set<string>(["boolean", "single", "multiple", "scale"]);
+const QUESTION_SECTIONS = new Set<QuestionSection>(["screening", "main", "background"]);
 
 /**
  * Parse one payload object into {@link Question}, or return an error message (same rules as questionnaire submit).
@@ -33,6 +34,12 @@ export function parseRecommendQuestionFromPayload(rawQuestion: unknown, index: n
     const type = typeRaw as QuestionType;
     const id = typeof question.id === "string" && question.id.trim() ? question.id.trim() : generateQuestionId();
     const base: Question = { id, type, content };
+    if (question.section !== undefined) {
+        if (typeof question.section !== "string" || !QUESTION_SECTIONS.has(question.section as QuestionSection)) {
+            return `第${index}题所属部分无效`;
+        }
+        base.section = question.section as QuestionSection;
+    }
     if (typeof question.recommendSourceId === "string") {
         const sid = question.recommendSourceId.trim();
         if (sid.length > 0 && sid.length <= 120) {

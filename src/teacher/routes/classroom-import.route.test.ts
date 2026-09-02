@@ -57,12 +57,16 @@ test("student import preserves Chinese text for utf-8 csv files", async () => {
     const payload = await response.json() as any;
 
     expect(response.status).toBe(200);
-    expect(payload).toEqual({
+    expect(payload).toMatchObject({
         success: true,
         data: {
             successCount: 2,
             failureCount: 0,
             errors: [],
+            credentials: [
+                { studentId: "2099201", temporaryPassword: expect.any(String) },
+                { studentId: "2099202", temporaryPassword: expect.any(String) },
+            ],
         },
     });
 

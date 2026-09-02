@@ -230,7 +230,7 @@ test("topic excel upload preserves Chinese text for utf-8 csv files", async () =
         expect(payload.data.preview[0]).toEqual({
             行业名称: "电子行业",
             公司名称: "测试科技",
-            销售数量: 1200,
+            销售数量: "1200",
         });
     } finally {
         await unlink(absolutePath).catch(() => undefined);

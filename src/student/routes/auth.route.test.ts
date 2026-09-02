@@ -63,7 +63,7 @@ test("fifth wrong student password locks the account", async () => {
     });
 });
 
-test("already-locked student login verifies the real hash and preserves the generic lock failure", async () => {
+test("already-locked student login rejects before spending another password verification", async () => {
     const password = "Teaching123!";
     const passwordHash = await Bun.password.hash(password);
     const { module, operations } = await load([[{
@@ -81,7 +81,7 @@ test("already-locked student login verifies the real hash and preserves the gene
         expect(await response.json()).toMatchObject({
             error: { code: "INVALID_CREDENTIALS", message: "账号或密码错误" },
         });
-        expect(verifySpy).toHaveBeenCalledWith(password, passwordHash);
+        expect(verifySpy).toHaveBeenCalledTimes(0);
         expect(operations.some((item) => item.kind === "update")).toBe(false);
     } finally {
         Bun.password.verify = originalVerify;
@@ -110,7 +110,7 @@ test("student logout removes only the current session and clears the cookie", as
     expect(operations.some((item) => item.kind === "delete")).toBe(true);
 });
 
-test("student password change revokes other sessions while keeping the current token", async () => {
+test("student password change revokes all old sessions and rotates the cookie", async () => {
     const currentPassword = "Teaching123!";
     const { module, operations } = await load([
         [{ id: 5, sessionToken: "current-token", userType: 3, userId: 11, createdAt: new Date(), expiresAt: new Date(Date.now() + 60_000) }],
@@ -128,10 +128,12 @@ test("student password change revokes other sessions while keeping the current t
     const update = operations.find((item) => item.kind === "update");
     expect(update?.set).toMatchObject({ password: expect.any(String), isFirstLogin: 0, updatedAt: expect.any(Date) });
     const deletions = operations.filter((item) => item.kind === "delete");
-    expect(deletions).toHaveLength(1);
+    expect(deletions).toHaveLength(2);
+    expect(operations.filter((item) => item.kind === "insert")).toHaveLength(1);
+    expect(response.headers.get("set-cookie")).toContain("student_session=");
     const revokeQuery = new PgDialect().sqlToQuery(deletions[0]!.where as SQL);
-    expect(revokeQuery.sql).toContain("session_token\" <> $3");
-    expect(revokeQuery.params).toEqual([3, 11, "current-token"]);
+    expect(revokeQuery.sql).not.toContain("session_token\" <>");
+    expect(revokeQuery.params).toEqual([3, 11]);
 });
 
 test("student protected routes stay locked until the first-login flag is cleared", async () => {

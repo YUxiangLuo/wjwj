@@ -80,7 +80,7 @@ test("stage 2 rejects a proportion plan on a mean-locked topic", () => {
             analysisTarget: { kind: "mean", field: "每周学习时长" },
         },
     });
-    expect(result).toMatchObject({ ok: false, message: "估计类型需与课题对照变量一致" });
+    expect(result).toMatchObject({ ok: false, message: "估计类型需与研究目标变量一致" });
 });
 
 test("a stage cannot be saved out of order", () => {

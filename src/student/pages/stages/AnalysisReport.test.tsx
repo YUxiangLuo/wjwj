@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, mock, test } from "bun:test";
-import { act, cleanup, render, waitFor } from "@testing-library/react";
+import { act, cleanup, render, waitFor, within } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
 import { installDomGlobals } from "@/test-utils/dom";
 import { getAccessibilityViolations } from "@/test-utils/accessibility";
@@ -331,4 +331,91 @@ test("AnalysisReport makes populated charts keyboard-scrollable and names the va
     for (const region of chartRegions) expect(region.tabIndex).toBe(0);
     const violations = await getAccessibilityViolations(view.container);
     expect(violations.find((violation) => violation.id === "scrollable-region-focusable")).toBeUndefined();
+});
+
+test("AnalysisReport omits disabled and unselected methods from export and parameter panels", async () => {
+    mockExperimentContext.experiment = {
+        ...mockExperimentContext.experiment,
+        samplingPolicy: {
+            version: 1,
+            methods: { simple: "required", systematic: "optional", pps: "disabled", stratified: "optional" },
+        },
+        samplingResults: {
+            simple: { completed: true, sampleCount: 400, data: [] },
+            systematic: { completed: true, sampleCount: 400, data: [] },
+        },
+    };
+    const view = render(<AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />);
+    await waitFor(() => expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(1));
+    expect(view.container.querySelector('[data-value="pps"]')).toBeNull();
+    expect(view.queryByTestId("student-analysis-sampling-params-pps")).toBeNull();
+    expect(view.getByTestId("student-analysis-sampling-params-systematic")).toBeTruthy();
+});
+
+test("AnalysisReport excludes unselected methods from every analysis chart", async () => {
+    mockExperimentContext.experiment = {
+        ...mockExperimentContext.experiment,
+        samplingPolicy: {
+            version: 1,
+            methods: { simple: "required", systematic: "optional", pps: "optional", stratified: "optional" },
+        },
+        samplingResults: {
+            simple: { completed: true, sampleCount: 400, data: [] },
+            systematic: { completed: true, sampleCount: 400, data: [] },
+        },
+    };
+    mockExperimentApi.getAnalysisMetrics.mockResolvedValueOnce({
+        success: true,
+        data: {
+            numericFields: ["数值"],
+            categoricalFields: ["类别"],
+            numeric: {
+                数值: {
+                    populationMean: 10,
+                    populationVariance: 4,
+                    methods: {
+                        simple: { estimate: 10, standardError: 1 },
+                        systematic: { estimate: 11, standardError: 1.1 },
+                        pps: { estimate: 99, standardError: 9.9 },
+                        stratified: { estimate: 88, standardError: 8.8 },
+                    },
+                },
+            },
+            categorical: {
+                类别: {
+                    population: { A: 50, B: 50 },
+                    methods: {
+                        simple: { A: 50, B: 50 },
+                        systematic: { A: 50, B: 50 },
+                        pps: { 伪类别: 100 },
+                        stratified: {},
+                    },
+                    representativeness: {
+                        simple: 0,
+                        systematic: 0,
+                        pps: 50,
+                        stratified: 50,
+                    },
+                },
+            },
+        },
+    });
+
+    const view = render(<AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />);
+    await waitFor(() => expect(view.getByText("类别（分布偏差）")).toBeTruthy());
+    await waitFor(() => expect(within(view.getByTestId("student-analysis-mean-chart")).getByText("简单随机")).toBeTruthy());
+
+    for (const testId of [
+        "student-analysis-mean-chart",
+        "student-analysis-distribution-chart",
+        "student-analysis-error-chart",
+        "student-analysis-representativeness-chart",
+    ]) {
+        const chart = within(view.getByTestId(testId));
+        expect(chart.getAllByText("简单随机").length).toBeGreaterThan(0);
+        expect(chart.getAllByText("系统抽样").length).toBeGreaterThan(0);
+        expect(chart.queryByText("PPS抽样")).toBeNull();
+        expect(chart.queryByText("分层抽样")).toBeNull();
+    }
+    expect(within(view.getByTestId("student-analysis-distribution-chart")).queryByText("伪类别")).toBeNull();
 });

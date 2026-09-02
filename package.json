@@ -8,6 +8,9 @@
   "engines": {
     "bun": "1.4.0"
   },
+  "overrides": {
+    "prosemirror-model": "1.25.11"
+  },
   "scripts": {
     "dev": "bun --hot src/index.ts",
     "start": "bun run build && NODE_ENV=production bun src/index.ts",
@@ -16,8 +19,9 @@
     "start:demo": "bun run build:demo && DEMO_MODE=1 NODE_ENV=production bun src/index.ts",
     "test": "bun run test:unit",
     "typecheck": "bunx tsc --noEmit && bun run check:styles",
-    "test:unit": "bun test src scripts",
-    "verify": "bun run typecheck && bun run check:docs && bun run test:unit && bun run build && bun run db:check && bun run audit:applicable",
+    "test:unit": "bun test --isolate src scripts",
+    "test:unit:random": "bun test --isolate --randomize --seed=20260903 src scripts",
+    "verify": "bun run typecheck && bun run check:docs && bun run test:unit && bun run test:unit:random && bun run build && bun run db:check && bun run audit:applicable",
     "check:styles": "bun run scripts/check-styles.ts",
     "check:docs": "bun run scripts/check-docs.ts",
     "audit:shadcn": "bun run scripts/audit-shadcn.ts",
@@ -25,14 +29,15 @@
     "db:generate": "bunx drizzle-kit generate",
     "db:migrate": "bun run src/db/migrate.ts",
     "db:check": "bunx drizzle-kit check",
-    "db:clean": "bun run src/db/clean.ts --force",
+    "db:clean": "bun run src/db/clean.ts",
+    "db:bootstrap-admin": "bun run src/db/bootstrap-admin.ts",
     "db:seed": "bun run src/db/seeds/default.ts",
     "db:seed:demo": "DEMO_MODE=1 SEED_ADMIN_PASSWORD=admin123 bun run src/db/seeds/default.ts",
     "db:seed:check": "bun run src/db/seeds/check-default.ts",
-    "db:reset": "bun run db:clean && bun run db:migrate && bun run db:seed",
+    "db:reset": "bun run db:clean && bun run db:migrate && bun run db:bootstrap-admin",
     "db:reset:demo": "bun run db:clean && bun run db:migrate && bun run db:seed:demo",
     "storage:audit": "bun run scripts/audit-storage.ts",
-    "storage:clean": "bun run scripts/audit-storage.ts --delete --force",
+    "storage:clean": "bun run scripts/audit-storage.ts --delete",
     "test:db": "REQUIRE_TEST_DATABASE=1 bun test src/db/postgresql.integration.test.ts"
   },
   "dependencies": {
@@ -49,10 +54,10 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tabs": "^1.1.13",
-    "@tiptap/extension-placeholder": "^3.20.4",
-    "@tiptap/pm": "^3.20.4",
-    "@tiptap/react": "^3.20.4",
-    "@tiptap/starter-kit": "^3.20.4",
+    "@tiptap/extension-placeholder": "^3.30.4",
+    "@tiptap/pm": "^3.30.4",
+    "@tiptap/react": "^3.30.4",
+    "@tiptap/starter-kit": "^3.30.4",
     "bun-plugin-tailwind": "^0.1.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -63,6 +68,7 @@
     "react-day-picker": "^9.14.0",
     "react-dom": "^19",
     "react-router-dom": "^7.18.2",
+    "sanitize-html": "^2.17.7",
     "sonner": "^1.7.4",
     "tailwind-merge": "^3.3.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
@@ -72,6 +78,7 @@
     "@types/bun": "1.4.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/sanitize-html": "^2.16.1",
     "axe-core": "^4.12.1",
     "bun": "1.4.0",
     "drizzle-kit": "^0.31.8",

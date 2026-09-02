@@ -25,8 +25,10 @@ test("controlled alerts and immersive sampling preserve keyboard focus", async (
     const dialog = await Bun.file("src/components/ui/dialog.tsx").text();
     const overlayFocus = await Bun.file("src/components/ui/controlled-overlay-focus.ts").text();
     const samplingAnimation = await Bun.file("src/student/components/ImmersiveSamplingAnimation.tsx").text();
-    expect(alertDialog).toContain("useControlledOverlayFocusRestore(open)");
-    expect(dialog).toContain("useControlledOverlayFocusRestore(open)");
+    expect(alertDialog).toContain("useControlledOverlayFocusRestore(actualOpen)");
+    expect(dialog).toContain("useControlledOverlayFocusRestore(actualOpen)");
+    expect(alertDialog).toContain("useModalBackgroundInert(actualOpen)");
+    expect(dialog).toContain("useModalBackgroundInert(actualOpen)");
     expect(overlayFocus).toContain("restoreFocusRef");
     expect(overlayFocus).toContain("opener?.isConnected");
     expect(samplingAnimation).toContain('role="dialog"');

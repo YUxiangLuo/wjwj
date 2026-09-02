@@ -36,6 +36,58 @@ export function withSecurityHeaders(response: Response): Response {
     });
 }
 
+export function withPrivateApiHeaders(response: Response): Response {
+    const headers = buildResponseHeaders(response.headers);
+    headers.set("Cache-Control", "no-store, private");
+    return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+    });
+}
+
+export function validateApiRequest(req: Request): Response | null {
+    if (!(["POST", "PUT", "PATCH", "DELETE"] as const).includes(req.method as "POST")) return null;
+    const fetchSite = req.headers.get("sec-fetch-site");
+    if (fetchSite === "cross-site") return error("不允许跨站请求", "CROSS_SITE_REQUEST", 403);
+    const origin = req.headers.get("origin");
+    if (origin && origin !== getEffectiveRequestOrigin(req)) return error("请求来源无效", "INVALID_ORIGIN", 403);
+    const referer = req.headers.get("referer");
+    if (!origin && referer) {
+        try {
+            if (new URL(referer).origin !== getEffectiveRequestOrigin(req)) {
+                return error("请求来源无效", "INVALID_ORIGIN", 403);
+            }
+        } catch {
+            return error("请求来源无效", "INVALID_ORIGIN", 403);
+        }
+    }
+
+    if (req.body) {
+        const contentType = req.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
+        if (contentType !== "application/json" && contentType !== "multipart/form-data") {
+            return error("请求媒体类型无效", "UNSUPPORTED_MEDIA_TYPE", 415);
+        }
+    }
+    return null;
+}
+
+export function getEffectiveRequestOrigin(req: Request) {
+    if (process.env.TRUST_PROXY === "1") {
+        const protocol = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+        const host = req.headers.get("x-forwarded-host")?.split(",")[0]?.trim()
+            || req.headers.get("host")?.trim();
+        if ((protocol === "http" || protocol === "https") && host) {
+            try {
+                return new URL(`${protocol}://${host}`).origin;
+            } catch {
+                return "";
+            }
+        }
+    }
+    return new URL(req.url).origin;
+}
+
 export function json<T>(data: T, status = 200, headers?: HeadersInit): Response {
     return Response.json({ success: true, data }, { status, headers: buildResponseHeaders(headers) });
 }
@@ -110,6 +162,9 @@ export async function parseBody<T extends Record<string, unknown>>(req: Request)
 }
 
 export function handleServerError(cause: unknown): Response {
+    if (cause instanceof Error && cause.name === "PasswordWorkQueueFullError") {
+        return error("密码服务繁忙，请稍后重试", "AUTH_BUSY", 429);
+    }
     if (cause instanceof RequestBodyTooLargeError) {
         return error(cause.message, "PAYLOAD_TOO_LARGE", 413);
     }
@@ -117,7 +172,14 @@ export function handleServerError(cause: unknown): Response {
         return error(cause.message, "INVALID_JSON", 400);
     }
 
-    console.error(cause);
+    if (process.env.NODE_ENV === "production") {
+        const issue = cause instanceof Error
+            ? { name: cause.name, message: cause.message.slice(0, 500) }
+            : { name: "NonError", message: "Unexpected non-Error exception" };
+        console.error("server_request_failed", issue);
+    } else {
+        console.error(cause);
+    }
     return error("服务器内部错误", "INTERNAL_ERROR", 500);
 }
 
@@ -130,6 +192,16 @@ export function getRouteParam(req: Request, name: string): string | null {
     return routedReq.params?.[name] ?? null;
 }
 
+export function parsePositiveInteger(value: string | null | undefined): number | null {
+    if (!value || !/^[1-9]\d*$/.test(value)) return null;
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
+export function getPositiveRouteId(req: Request, name = "id") {
+    return parsePositiveInteger(getRouteParam(req, name));
+}
+
 export function getCookieValue(req: Request, name: string): string | null {
     const cookie = req.headers.get("cookie") ?? "";
     const match = cookie.match(new RegExp(`(?:^|; )${name}=([^;]+)`));
@@ -137,14 +209,22 @@ export function getCookieValue(req: Request, name: string): string | null {
 }
 
 export function getClientIp(req: Request): string {
-    const forwarded = req.headers.get("x-forwarded-for");
-    if (forwarded) return forwarded.split(",")[0]?.trim() ?? "";
-    return req.headers.get("x-real-ip") ?? "";
+    if (process.env.TRUST_PROXY === "1") {
+        const forwarded = req.headers.get("x-forwarded-for");
+        if (forwarded) return forwarded.split(",")[0]?.trim() ?? "";
+        const realIp = req.headers.get("x-real-ip")?.trim();
+        if (realIp) return realIp;
+    }
+    return (req as Request & { __clientIp?: string }).__clientIp ?? "";
+}
+
+export function attachClientIp(req: Request, clientIp: string | null | undefined) {
+    if (clientIp) (req as Request & { __clientIp?: string }).__clientIp = clientIp;
 }
 
 export function isSecureRequest(req: Request) {
     const forwardedProto = req.headers.get("x-forwarded-proto");
-    if (forwardedProto) {
+    if (process.env.TRUST_PROXY === "1" && forwardedProto) {
         return forwardedProto.split(",")[0]?.trim() === "https";
     }
     return new URL(req.url).protocol === "https:";

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowDown, ArrowUp, CheckCircle2, ChevronRight, Download, FileText, HelpCircle, Loader2, Pencil, Sparkles, Trash2, Upload, X } from "lucide-react";
+import { ArrowDown, ArrowUp, CheckCircle2, ChevronRight, Download, FileText, HelpCircle, Loader2, Pencil, Play, School, Sparkles, Trash2, Upload, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,13 @@ import type { QuestionType } from "@/lib/questionnaire-types";
 
 import { categoricalFieldsFromMapping, parseStudyContract } from "@/lib/analysis-target";
 import { buildDefaultStudyContract, isStudyContractComplete, StudyContractEditor, type FieldMappingState } from "./StudyContractEditor";
+import {
+    SAMPLING_METHODS,
+    validateSamplingPolicy,
+    type SamplingMethod,
+    type SamplingMethodRequirement,
+    type SamplingPolicyV1,
+} from "@/lib/sampling-policy";
 
 interface TopicWizardDialogProps {
     open: boolean;
@@ -28,7 +35,7 @@ interface TopicWizardDialogProps {
     newTopicDesc: string;
     setNewTopicDesc: (value: string) => void;
     loadingDetail: boolean;
-    excelInfo: { rowCount: number; colCount: number; columns: string[]; preview: any[]; columnValues?: Record<string, string[]> } | null;
+    excelInfo: { rowCount: number; colCount: number; columns: string[]; preview: any[]; columnValues?: Record<string, string[]>; columnValuesTruncated?: string[] } | null;
     uploadingExcel: boolean;
     onExcelUpload: (file: File) => void;
     columns: string[];
@@ -42,8 +49,11 @@ interface TopicWizardDialogProps {
     setRecommendQuestions: (value: Question[] | ((prev: Question[]) => Question[])) => void;
     weightConfig: { questionnaire: number; process: number; report: number };
     setWeightConfig: (value: { questionnaire: number; process: number; report: number } | ((prev: { questionnaire: number; process: number; report: number }) => { questionnaire: number; process: number; report: number })) => void;
+    samplingPolicy: SamplingPolicyV1;
+    setSamplingPolicy: (value: SamplingPolicyV1 | ((prev: SamplingPolicyV1) => SamplingPolicyV1)) => void;
     onSubmitTopic: () => void;
     onSaveFieldMapping: () => void;
+    onSaveSamplingPolicy: () => void;
     onSaveRecommendQuestions: () => void;
     onSaveWeights: () => void;
 }
@@ -75,8 +85,11 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
         setRecommendQuestions,
         weightConfig,
         setWeightConfig,
+        samplingPolicy,
+        setSamplingPolicy,
         onSubmitTopic,
         onSaveFieldMapping,
+        onSaveSamplingPolicy,
         onSaveRecommendQuestions,
         onSaveWeights,
     } = props;
@@ -296,6 +309,23 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
         (column) => isLikelyIdentifier(column) || isLikelyHighCardinality(column)
     );
     const canProceedMapping = mappingRules.every((item) => item.ok);
+    const targetField = fieldMapping.studyContract?.target.field ?? fieldMapping.analysisTarget?.field;
+    const ppsEligibleFields = fieldMapping.numeric.filter((field) => {
+        if (field === targetField) return false;
+        const values = excelInfo?.columnValues?.[field]
+            ?? (excelInfo?.preview ?? []).map((row) => String(row?.[field] ?? "")).filter(Boolean);
+        return values.length > 0 && values.every((value) => Number.isFinite(Number(value)) && Number(value) > 0);
+    });
+    const samplingPolicyError = validateSamplingPolicy(samplingPolicy)
+        ?? (ppsEligibleFields.length === 0 && samplingPolicy.methods.pps !== "disabled"
+            ? "当前总体没有合格的 PPS 规模变量，请将 PPS 设为不适用"
+            : null);
+    const methodLabels: Record<SamplingMethod, string> = {
+        simple: "简单随机抽样",
+        systematic: "系统抽样",
+        pps: "PPS抽样",
+        stratified: "分层抽样",
+    };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -304,14 +334,14 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                 onInteractOutside={(e) => e.preventDefault()}
             >
                 <DialogHeader>
-                    <DialogTitle className="text-foreground">{editingTopicId ? "编辑课题" : "创建新课题"}</DialogTitle>
+                    <DialogTitle className="text-foreground">{editingTopicId ? "编辑实验模板" : "创建实验模板"}</DialogTitle>
                     <DialogDescription className="sr-only">
-                        通过六个步骤配置课题基础信息、总体数据、字段映射、辅助资料、推荐题目和评分权重。
+                        通过七个步骤配置实验模板的基础信息、总体数据、研究目标、抽样策略、教学资料、推荐题目和评分规则。
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6 py-4 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
                     <div className="flex items-center gap-2 mb-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-border">
-                        {["基本信息", "上传数据", "字段映射", "辅助资料", "推荐题目", "评分权重"].map((step, idx) => {
+                        {["基本信息", "总体数据", "研究目标与字段", "抽样策略", "教学资料", "推荐题目", "评分规则"].map((step, idx) => {
                             const isCompleted = idx + 1 < currentStep;
                             const isCurrent = idx + 1 === currentStep;
                             return (
@@ -328,7 +358,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5" /> : idx + 1}
                                     </div>
                                     <span className={`text-meta ml-2 ${isCurrent ? "text-primary font-medium" : isCompleted ? "text-success" : "text-muted-foreground"}`}>{step}</span>
-                                    {idx < 5 && <ChevronRight className="w-3 h-3 mx-2 text-muted-foreground" />}
+                                    {idx < 6 && <ChevronRight className="w-3 h-3 mx-2 text-muted-foreground" />}
                                 </div>
                             );
                         })}
@@ -343,12 +373,22 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         )}
                         {currentStep === 1 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                                <div className="rounded-surface border border-info-border bg-info-muted p-4 text-info">
+                                    <h3 className="text-label font-semibold">实验模板如何生成学生实验</h3>
+                                    <div className="mt-3 grid grid-cols-4 gap-3 text-meta">
+                                        <div className="rounded-surface border border-info-border bg-card p-3 text-foreground"><FileText className="mb-2 h-4 w-4 text-info" /><strong className="block">1. 配置模板</strong><span className="mt-1 block text-muted-foreground">总体数据、研究目标、抽样方法、资料与评分规则</span></div>
+                                        <div className="rounded-surface border border-info-border bg-card p-3 text-foreground"><Play className="mb-2 h-4 w-4 text-info" /><strong className="block">2. 发布模板</strong><span className="mt-1 block text-muted-foreground">配置完整后发布，内容进入只读状态</span></div>
+                                        <div className="rounded-surface border border-info-border bg-card p-3 text-foreground"><School className="mb-2 h-4 w-4 text-info" /><strong className="block">3. 分配任务</strong><span className="mt-1 block text-muted-foreground">选择班级与截止时间，生成实验任务</span></div>
+                                        <div className="rounded-surface border border-info-border bg-card p-3 text-foreground"><Users className="mb-2 h-4 w-4 text-info" /><strong className="block">4. 学生完成</strong><span className="mt-1 block text-muted-foreground">问卷预试、样本量规划、抽样与分析报告</span></div>
+                                    </div>
+                                    <p className="mt-3 text-meta leading-relaxed">仅上传总体数据不会立即生成学生实验；必须完成七步配置，再发布模板并分配到班级。</p>
+                                </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="topicName" className="text-foreground">课题名称</Label>
+                                    <Label htmlFor="topicName" className="text-foreground">实验模板名称</Label>
                                     <Input
                                         id="topicName"
                                         data-testid="teacher-topic-name"
-                                        placeholder="请输入课题名称"
+                                        placeholder="请输入实验模板名称"
                                         value={newTopicName}
                                         onChange={e => setNewTopicName(e.target.value)}
                                         className="bg-card border-input text-foreground placeholder:text-muted-foreground"
@@ -360,7 +400,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         dataTestId="teacher-topic-desc"
                                         value={newTopicDesc}
                                         onChange={setNewTopicDesc}
-                                        placeholder="请输入课题背景描述"
+                                        placeholder="请输入实验背景、目标人群和教学目的"
                                         className="bg-background border-border"
                                     />
                                 </div>
@@ -371,7 +411,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 {isPublishedTopic && (
                                     <div className="rounded-surface border border-warning-border bg-warning-muted px-4 py-3 text-label text-warning">
-                                        该课题已发布，总体数据文件不可更换，仅可查看当前数据。
+                                        该实验模板已发布，总体数据文件不可更换，仅可查看当前数据。
                                     </div>
                                 )}
                                 <div className="flex items-center justify-between">
@@ -435,6 +475,11 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 {isPublishedTopic ? "当前总体数据" : "上传成功"}
                                             </div>
                                             <div>已解析：{excelInfo.rowCount} 行 / {excelInfo.colCount} 列</div>
+                                            {(excelInfo.columnValuesTruncated?.length ?? 0) > 0 && (
+                                                <div className="mt-2 text-meta text-warning">
+                                                    高基数字段的类别选择仅展示前 200 项：{excelInfo.columnValuesTruncated!.join("、")}
+                                                </div>
+                                            )}
                                         </div>
                                         {excelInfo.preview && excelInfo.preview.length > 0 && (
                                             <div className="space-y-2">
@@ -472,7 +517,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                                 {isPublishedTopic && (
                                     <div className="rounded-surface border border-warning-border bg-warning-muted px-4 py-3 text-label text-warning">
-                                        该课题已发布，字段映射不可修改，仅可查看当前配置。
+                                        该实验模板已发布，研究目标与字段不可修改，仅可查看当前配置。
                                     </div>
                                 )}
                                 <div className={`rounded-surface border border-border bg-background p-4 ${isPublishedTopic ? "opacity-70" : ""}`}>
@@ -639,8 +684,66 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         )}
 
                         {!loadingDetail && currentStep === 4 && (
+                            <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+                                <div className="rounded-surface border border-info-border bg-info-muted px-4 py-3 text-label text-info">
+                                    简单随机抽样作为比较基准固定必做。学生还需完成至少一种启用的方法；设为“必做”的方法必须全部完成。
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {SAMPLING_METHODS.map((method) => {
+                                        const isSimple = method === "simple";
+                                        const ppsUnavailable = method === "pps" && ppsEligibleFields.length === 0;
+                                        const requirement = samplingPolicy.methods[method];
+                                        return (
+                                            <div key={method} className="rounded-surface border border-border bg-background p-4">
+                                                <div className="flex items-start justify-between gap-4">
+                                                    <div>
+                                                        <h3 className="text-label font-semibold text-foreground">{methodLabels[method]}</h3>
+                                                        <p className="mt-1 text-meta text-muted-foreground">
+                                                            {isSimple
+                                                                ? "所有实验的等概率比较基准。"
+                                                                : method === "systematic"
+                                                                    ? "适合有稳定抽样框顺序且无明显周期结构的场景。"
+                                                                    : method === "pps"
+                                                                        ? ppsUnavailable
+                                                                            ? "当前总体没有与研究目标不同、且对每个单位均为正数的规模变量。"
+                                                                            : `可用规模变量：${ppsEligibleFields.join("、")}`
+                                                                        : "适合存在明确分层变量并需要控制各层样本构成的场景。"}
+                                                        </p>
+                                                    </div>
+                                                    {isSimple ? (
+                                                        <span className="rounded-control border border-primary-border bg-primary-muted px-2 py-1 text-meta text-primary">固定必做</span>
+                                                    ) : (
+                                                        <Select
+                                                            value={requirement}
+                                                            disabled={isPublishedTopic}
+                                                            onValueChange={(value) => setSamplingPolicy((current) => ({
+                                                                ...current,
+                                                                methods: { ...current.methods, [method]: value as SamplingMethodRequirement },
+                                                            }))}
+                                                        >
+                                                            <SelectTrigger aria-label={`${methodLabels[method]}要求`} className="w-28 bg-card"><SelectValue /></SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="required" disabled={ppsUnavailable}>必做</SelectItem>
+                                                                <SelectItem value="optional" disabled={ppsUnavailable}>选做</SelectItem>
+                                                                <SelectItem value="disabled">不适用</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                {samplingPolicyError && <p className="rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3 text-label text-destructive">{samplingPolicyError}</p>}
+                            </div>
+                        )}
+
+                        {!loadingDetail && currentStep === 5 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <Label htmlFor="teacher-topic-attachment-file" className="text-foreground">附件上传</Label>
+                                <div className="flex items-center justify-between gap-4">
+                                    <Label htmlFor="teacher-topic-attachment-file" className="text-foreground">教学资料上传</Label>
+                                    <a className="text-meta text-primary hover:underline" href="/templates/调查问卷设计规范与模板.docx" download>下载标准问卷模板</a>
+                                </div>
                                 <Input
                                     id="teacher-topic-attachment-file"
                                     data-testid="teacher-topic-attachment-file"
@@ -676,7 +779,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             </div>
                         )}
 
-                        {!loadingDetail && currentStep === 5 && (
+                        {!loadingDetail && currentStep === 6 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="flex justify-between items-center">
                                     <Label className="text-foreground">推荐题目</Label>
@@ -789,7 +892,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             </div>
                         )}
 
-                        {!loadingDetail && currentStep === 6 && (
+                        {!loadingDetail && currentStep === 7 && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="grid grid-cols-3 gap-6">
                                     <div className="bg-background border border-border rounded-surface p-6 space-y-4">
@@ -856,7 +959,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                 </div>
                 <DialogFooter className="border-t border-border pt-4 flex-shrink-0">
                     <div className="flex items-center justify-between w-full">
-                        <div className="text-meta text-muted-foreground">步骤 {currentStep} / 6</div>
+                        <div className="text-meta text-muted-foreground">步骤 {currentStep} / 7</div>
                         <div className="flex gap-2">
                             <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground hover:bg-muted">关闭</Button>
                             {currentStep > 1 && (
@@ -886,12 +989,15 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 </Button>
                             )}
                             {!loadingDetail && currentStep === 4 && (
-                                <Button data-testid="teacher-topic-next" onClick={() => setCurrentStep(5)} className="bg-primary hover:bg-primary-hover text-primary-foreground">下一步</Button>
+                                <Button data-testid="teacher-topic-next" onClick={onSaveSamplingPolicy} disabled={!isPublishedTopic && Boolean(samplingPolicyError)} className="bg-primary hover:bg-primary-hover text-primary-foreground">{isPublishedTopic ? "下一步" : "保存并继续"}</Button>
                             )}
                             {!loadingDetail && currentStep === 5 && (
-                                <Button data-testid="teacher-topic-next" onClick={onSaveRecommendQuestions} className="bg-primary hover:bg-primary-hover text-primary-foreground">保存并继续</Button>
+                                <Button data-testid="teacher-topic-next" onClick={() => setCurrentStep(6)} className="bg-primary hover:bg-primary-hover text-primary-foreground">下一步</Button>
                             )}
                             {!loadingDetail && currentStep === 6 && (
+                                <Button data-testid="teacher-topic-next" onClick={onSaveRecommendQuestions} className="bg-primary hover:bg-primary-hover text-primary-foreground">保存并继续</Button>
+                            )}
+                            {!loadingDetail && currentStep === 7 && (
                                 <Button data-testid="teacher-topic-finish" onClick={onSaveWeights} className="bg-primary hover:bg-primary-hover text-primary-foreground">{isPublishedTopic ? "关闭" : "完成"}</Button>
                             )}
                         </div>

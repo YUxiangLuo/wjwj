@@ -33,10 +33,10 @@ function RouteLoading() {
 const menu = [
     { path: "/", label: "教学概览", icon: LayoutDashboard },
     { path: "/class", label: "班级管理", icon: School },
-    { path: "/topic", label: "课题管理", icon: BookOpen },
-    { path: "/task", label: "任务管理", icon: ClipboardList },
+    { path: "/topic", label: "实验模板", icon: BookOpen },
+    { path: "/task", label: "实验任务", icon: ClipboardList },
     { path: "/grading", label: "作业批改", icon: PenLine },
-    { path: "/export", label: "成绩导出", icon: Download },
+    { path: "/export", label: "成绩分析与导出", icon: Download },
 ];
 
 function TeacherWorkspace({

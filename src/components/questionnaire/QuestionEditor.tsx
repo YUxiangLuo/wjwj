@@ -12,8 +12,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, GripVertical } from "lucide-react";
-import type { Question, QuestionType } from "@/lib/questionnaire-types";
+import type { Question, QuestionSection, QuestionType } from "@/lib/questionnaire-types";
+import { QUESTION_SECTION_LABELS } from "@/lib/questionnaire-templates";
 
 interface QuestionEditorProps {
     open: boolean;
@@ -62,6 +64,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
 
     const [type, setType] = useState<QuestionType>(question?.type ?? "single");
     const [content, setContent] = useState(question?.content ?? "");
+    const [section, setSection] = useState<QuestionSection>(question?.section ?? "main");
     const [options, setOptions] = useState<string[]>(question?.options ?? ["", ""]);
     const [minSelect, setMinSelect] = useState(question?.minSelect ?? 1);
     const [maxSelect, setMaxSelect] = useState(question?.maxSelect ?? 3);
@@ -74,6 +77,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
         if (question) {
             setType(question.type);
             setContent(question.content);
+            setSection(question.section ?? "main");
             setOptions(question.options ?? ["", ""]);
             setMinSelect(question.minSelect ?? 1);
             setMaxSelect(question.maxSelect ?? 3);
@@ -84,6 +88,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
         } else {
             setType("single");
             setContent("");
+            setSection("main");
             setOptions(["", ""]);
             setMinSelect(1);
             setMaxSelect(3);
@@ -135,6 +140,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
             id: question?.id ?? generateId(),
             type,
             content: content.trim(),
+            section,
         };
         if (question?.recommendSourceId) {
             savedQuestion.recommendSourceId = question.recommendSourceId;
@@ -177,6 +183,17 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                 </DialogHeader>
 
                 <div className="space-y-6 py-4">
+                    <div className="space-y-2">
+                        <Label className="text-foreground">问卷部分</Label>
+                        <Select value={section} onValueChange={(value) => setSection(value as QuestionSection)}>
+                            <SelectTrigger aria-label="选择题目所属问卷部分" className="w-full bg-card"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                {(Object.keys(QUESTION_SECTION_LABELS) as QuestionSection[]).map((key) => (
+                                    <SelectItem key={key} value={key}>{QUESTION_SECTION_LABELS[key]}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                     {!isEditing && (
                         <div className="space-y-2">
                             <Label className="text-muted-foreground">题目类型</Label>
@@ -364,6 +381,11 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                             <p className="text-label text-muted-foreground">
                                 评分范围：{scaleMin} - {scaleMax} 分
                             </p>
+                            {(scaleMax - scaleMin + 1) % 2 === 0 && (
+                                <p className="rounded-surface border border-warning-border bg-warning-muted px-3 py-2 text-meta text-warning">
+                                    当前为偶数个评分点。典型 Likert 型题项通常使用 5 点或 7 点以保留中立选项；10 点一般评分可以使用，但应明确它不是典型 Likert 型题项。
+                                </p>
+                            )}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="scaleMinLabel" className="text-muted-foreground">左端标签 ({scaleMin}分)</Label>

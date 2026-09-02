@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test } from "bun:test";
 import { act, renderHook } from "@testing-library/react";
 import { installDomGlobals } from "@/test-utils/dom";
 import {
+    clearAllExperimentDrafts,
     clearExperimentDraft,
     readExperimentDraft,
     writeExperimentDraft,
@@ -48,6 +49,27 @@ test("clearing a draft only removes the selected stage", () => {
 
     expect(readExperimentDraft(first)).toBeNull();
     expect(readExperimentDraft<{ reportContent: string }>(fourth)).toEqual({ reportContent: "报告" });
+});
+
+test("account logout cleanup removes all experiment drafts but preserves unrelated storage", () => {
+    writeExperimentDraft({ experimentId: 18, experimentVersion: 7, stage: 1 }, { title: "问卷" });
+    writeExperimentDraft({ experimentId: 19, experimentVersion: 2, stage: 4 }, { report: "报告" });
+    localStorage.setItem("unrelated", "keep");
+    clearAllExperimentDrafts();
+    expect(localStorage.length).toBe(1);
+    expect(localStorage.getItem("unrelated")).toBe("keep");
+});
+
+test("expired drafts are removed instead of being restored", () => {
+    const identity = { experimentId: 88, experimentVersion: 1, stage: 4 };
+    const key = "wj:experiment-draft:88:stage:4:version:1";
+    localStorage.setItem(key, JSON.stringify({
+        experimentVersion: 1,
+        updatedAt: "2020-01-01T00:00:00.000Z",
+        data: { report: "expired" },
+    }));
+    expect(readExperimentDraft(identity)).toBeNull();
+    expect(localStorage.getItem(key)).toBeNull();
 });
 
 test("different experiment versions cannot overwrite each other's stage draft", () => {

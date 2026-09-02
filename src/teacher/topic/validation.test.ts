@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
     validateParsedExcelUpload,
+    validateIdentifierFieldValues,
     validateNumericFieldValues,
     validateTopicPublishReadiness,
     validateStratifiedValueCardinality,
@@ -51,6 +52,8 @@ describe("topic validation helpers", () => {
         expect(validateNumericFieldValues(rows, ["age"])).toBeNull();
         expect(validateNumericFieldValues(rows, ["score"])).toBe("数值变量 score 在数据第2行存在空值或非数值");
         expect(validateNumericFieldValues([{ score: "abc" }], ["score"])).toBe("数值变量 score 在数据第1行存在空值或非数值");
+        expect(validateNumericFieldValues([{ score: "0x10" }], ["score"])).toBe("数值变量 score 在数据第1行存在空值或非数值");
+        expect(validateNumericFieldValues([{ score: true }], ["score"])).toBe("数值变量 score 在数据第1行存在空值或非数值");
     });
 
     test("validateTopicFieldMappingConfig enforces required categories", () => {
@@ -62,6 +65,12 @@ describe("topic validation helpers", () => {
         expect(validateTopicFieldMappingConfig({ stratified: ["gender"], numeric: ["score"] })).toBe("必须选择1个标识符字段");
         expect(validateTopicFieldMappingConfig({ identifier: "id", stratified: [], numeric: ["score"] })).toBe("至少选择1个分层变量");
         expect(validateTopicFieldMappingConfig({ identifier: "id", stratified: ["id"], numeric: [] })).toBe("至少选择1个数值变量");
+        expect(validateTopicFieldMappingConfig({ identifier: "id", stratified: ["group"], numeric: ["score"], others: [" "] }))
+            .toBe("字段映射不能包含空字段");
+        expect(validateTopicFieldMappingConfig({ identifier: "id", stratified: ["group", "group"], numeric: ["score"] }))
+            .toBe("分层变量中不能重复选择字段 group");
+        expect(validateTopicFieldMappingConfig({ identifier: "id", stratified: ["group"], numeric: ["group"] }))
+            .toBe("字段 group 不能同时作为分层变量和数值变量");
     });
 
     test("validateTopicFieldMappingColumns rejects mappings left over from a replaced workbook", () => {
@@ -81,17 +90,29 @@ describe("topic validation helpers", () => {
     test("validateStratifiedValueCardinality rejects fields with too many unique values", () => {
         const rows = Array.from({ length: 21 }, (_, index) => ({ group: `g${index}` }));
         expect(validateStratifiedValueCardinality(rows, ["group"])).toBe("分层变量 group 的唯一值数量超过20");
+        expect(validateStratifiedValueCardinality([{ group: "A" }, { group: "" }], ["group"]))
+            .toBe("分层变量 group 在数据第2行存在空值");
+        expect(validateStratifiedValueCardinality([{ group: "A" }, { group: "Ａ" }], ["group"]))
+            .toBe("分层变量 group 至少需要2个唯一值");
+    });
+
+    test("validateIdentifierFieldValues rejects blank and normalized duplicate identifiers", () => {
+        expect(validateIdentifierFieldValues([{ id: "001" }, { id: "" }], "id"))
+            .toBe("标识符字段 id 在数据第2行存在空值");
+        expect(validateIdentifierFieldValues([{ id: "A1" }, { id: "Ａ1" }], "id"))
+            .toBe("标识符字段 id 在数据第2行与第1行重复");
+        expect(validateIdentifierFieldValues([{ id: "001" }, { id: "002" }], "id")).toBeNull();
     });
 
     test("validateTopicPublishReadiness requires data, mapping, and weights", () => {
-        expect(validateTopicPublishReadiness(null)).toBe("课题需先上传总体数据后才能发布");
+        expect(validateTopicPublishReadiness(null)).toBe("实验模板需先上传总体数据后才能发布");
         expect(
             validateTopicPublishReadiness({
                 excelFilePath: "/storage/uploads/topic.xlsx",
                 fieldMapping: null,
                 weightConfig: null,
             })
-        ).toBe("课题需先完成字段映射后才能发布");
+        ).toBe("实验模板需先完成研究目标与字段配置后才能发布");
 
         expect(
             validateTopicPublishReadiness({
@@ -111,7 +132,21 @@ describe("topic validation helpers", () => {
                 fieldMapping: JSON.stringify({ identifier: "id", stratified: ["gender"], numeric: ["score"] }),
                 weightConfig: JSON.stringify({ questionnaire: 30, process: 30, report: 40 }),
             })
-        ).toBe("课题需先指定对照变量后才能发布");
+        ).toBe("实验模板需先指定研究目标变量后才能发布");
+
+        expect(
+            validateTopicPublishReadiness({
+                excelFilePath: "/storage/uploads/topic.xlsx",
+                fieldMapping: JSON.stringify({
+                    identifier: "id",
+                    stratified: ["gender"],
+                    numeric: ["score"],
+                    analysisTarget: { kind: "mean", field: "score" },
+                }),
+                samplingPolicy: { version: 1, methods: {} },
+                weightConfig: JSON.stringify({ questionnaire: 30, process: 30, report: 40 }),
+            })
+        ).toBe("实验模板需先完成抽样策略配置：抽样策略格式无效");
     });
 
     test("validateTopicPublishReadiness accepts study contracts and keeps legacy targets working", () => {
@@ -214,6 +249,14 @@ describe("topic validation helpers", () => {
                 "video"
             )
         ).toBe("文件大小超过限制");
+        expect(validateTopicAttachmentUpload(
+            { currentCount: 0, fileSize: 1, fileName: `${"a".repeat(252)}.pdf` },
+            "document",
+        )).toBe("附件名称不能为空且不能超过255个字符");
+        expect(validateTopicAttachmentUpload(
+            { currentCount: 4, currentTotalBytes: 500 * 1024 * 1024, fileSize: 1, fileName: "guide.pdf" },
+            "document",
+        )).toBe("单个实验模板的附件总大小不能超过500 MiB");
     });
 
     test("validateRecommendQuestionsPayload validates question list", () => {
@@ -234,9 +277,9 @@ describe("topic validation helpers", () => {
     });
 
     test("validateTopicName trims and validates names", () => {
-        expect(validateTopicName(1)).toBe("课题名称格式无效");
-        expect(validateTopicName("   ")).toBe("课题名称不能为空");
-        expect(validateTopicName("x".repeat(201))).toBe("课题名称不能超过200字");
+        expect(validateTopicName(1)).toBe("实验模板名称格式无效");
+        expect(validateTopicName("   ")).toBe("实验模板名称不能为空");
+        expect(validateTopicName("x".repeat(201))).toBe("实验模板名称不能超过200字");
         expect(validateTopicName("课题A")).toBeNull();
     });
 });

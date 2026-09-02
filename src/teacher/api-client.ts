@@ -1,4 +1,5 @@
 import type { Question } from "@/lib/questionnaire-types";
+import type { SamplingPolicyV1 } from "@/lib/sampling-policy";
 import { notifyAuthExpired } from "@/lib/auth-expired";
 import type { QuestionnaireData, SamplePlanData, SamplingResultsData } from "../student/api-client";
 
@@ -6,8 +7,7 @@ export interface ApiResponse<T> { success: boolean; data?: T; error?: { code: st
 export interface TeacherUser { id: number; employeeId: string; name: string; type: "teacher"; isFirstLogin: number }
 export interface TeacherStats {
     stats: Array<{ label: string; value: number }>;
-    recentSubmissions: Array<{ student: string; class: string; topic: string; time: string }>;
-    recentGradings: Array<{ student: string; class: string; topic: string; score: string | null; rejected: boolean; time: string }>;
+    activeTasks: Array<{ id: number; templateName: string; className: string; deadline: string | null; total: number; completed: number; pending: number; rejected: number }>;
 }
 export interface TeacherClass { id: number; name: string; semester: string | null; studentCount: number; createdAt: string }
 export interface Topic { id: number; name: string; description: string | null; status: number; dataRows: number; hasTasks?: boolean; createdAt: string }
@@ -18,6 +18,7 @@ export interface TopicExcelInfo {
     columns: string[];
     preview: any[];
     columnValues?: Record<string, string[]>;
+    columnValuesTruncated?: string[];
 }
 export interface TopicDetail { topic: any; hasExcelFile: boolean; attachments: TopicAttachment[]; recommendQuestions: Question[]; excelInfo?: TopicExcelInfo | null }
 export type { Question };
@@ -46,6 +47,7 @@ export interface SubmissionDetail extends GradingItem {
     samplePlan: SamplePlanData | null;
     questionnaire: QuestionnaireData | null;
     samplingResults?: SamplingResultsData | null;
+    samplingPolicy?: SamplingPolicyV1;
     samplingAttempts?: Array<{
         id: number;
         method: "simple" | "systematic" | "pps" | "stratified";
@@ -66,6 +68,16 @@ export interface SubmissionDetail extends GradingItem {
 export interface Student { id: number; studentId: string; name: string; email: string | null; status: number; lockedUntil: string | null }
 export interface TeacherAnnouncement { id: number; title: string; content: string; createdAt: string }
 export interface GradeExportPreviewItem { taskId: number; topicId: number; topic: string; classId: number; className: string; graded: number; total: number; avgScore: number }
+export interface GradeAnalytics {
+    funnel: { total: number; notStarted: number; inProgress: number; pendingGrading: number; graded: number; rejected: number };
+    scores: {
+        count: number;
+        average: number | null;
+        median: number | null;
+        componentAverages: { questionnaire: number | null; process: number | null; report: number | null };
+        bands: Array<{ label: string; count: number }>;
+    };
+}
 export interface GradeExportRow {
     studentId: string; name: string; className: string; topicName: string; submittedAt: string;
     scoreQuestionnaire: string | number; scoreProcess: string | number; scoreReport: string | number;
@@ -118,6 +130,7 @@ export const teacherApi = {
     deleteTopic: (id: number) => request<{ success: boolean }>(`/api/teacher/topics/${id}`, { method: "DELETE" }),
     uploadTopicExcel: (id: number, file: File) => upload<TopicExcelInfo>(`/api/teacher/topics/${id}/excel`, file),
     updateFieldMapping: (id: number, fieldMapping: any) => request<{ success: boolean }>(`/api/teacher/topics/${id}/mapping`, { method: "PUT", body: JSON.stringify({ fieldMapping }) }),
+    updateSamplingPolicy: (id: number, samplingPolicy: SamplingPolicyV1) => request<{ success: boolean }>(`/api/teacher/topics/${id}/sampling-policy`, { method: "PUT", body: JSON.stringify({ samplingPolicy }) }),
     uploadAttachment: (id: number, file: File) => upload<{ id: number }>(`/api/teacher/topics/${id}/attachments`, file),
     deleteAttachment: (topicId: number, attachmentId: number) => request<{ success: boolean }>(`/api/teacher/topics/${topicId}/attachments/${attachmentId}`, { method: "DELETE" }),
     updateRecommendQuestions: (id: number, items: Question[]) => request<{ success: boolean }>(`/api/teacher/topics/${id}/recommend-questions`, { method: "PUT", body: JSON.stringify({ items }) }),
@@ -140,16 +153,21 @@ export const teacherApi = {
     rejectSubmission: (id: number, observedVersion: number, reason: string) => request<{ success: boolean }>(`/api/teacher/grading/${id}/reject`, { method: "POST", body: JSON.stringify({ reason, observedVersion }) }),
 
     getStudents: (classId: number) => request<Student[]>(`/api/teacher/classes/${classId}/students`),
-    addStudent: (classId: number, data: { studentId: string; name: string; email?: string }) => request<{ success: boolean }>(`/api/teacher/classes/${classId}/students`, { method: "POST", body: JSON.stringify(data) }),
-    updateStudent: (id: number, data: { action: "reset_password" | "toggle_status" }) => request<{ success: boolean }>(`/api/teacher/students/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    addStudent: (classId: number, data: { studentId: string; name: string; email?: string }) => request<{ success: boolean; temporaryPassword: string }>(`/api/teacher/classes/${classId}/students`, { method: "POST", body: JSON.stringify(data) }),
+    updateStudent: (id: number, data: { action: "reset_password" | "toggle_status" }) => request<{ success: boolean; temporaryPassword?: string }>(`/api/teacher/students/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     deleteStudent: (id: number) => request<{ success: boolean }>(`/api/teacher/students/${id}`, { method: "DELETE" }),
-    importStudents: (classId: number, file: File) => upload<{ successCount: number; failureCount: number; errors: Array<{ row: number; reason: string }> }>(`/api/teacher/classes/${classId}/students/import`, file),
+    importStudents: (classId: number, file: File) => upload<{ successCount: number; failureCount: number; errors: Array<{ row: number; reason: string }>; credentials: Array<{ studentId: string; temporaryPassword: string }> }>(`/api/teacher/classes/${classId}/students/import`, file),
 
     getAnnouncements: () => request<TeacherAnnouncement[]>("/api/teacher/announcements"),
     getGradeExportPreview: (params: { semester?: string; classId?: number | string; topicId?: number | string }) => {
         const search = new URLSearchParams();
         for (const [key, value] of Object.entries(params)) if (value !== undefined) search.set(key, String(value));
         return request<GradeExportPreviewItem[]>(`/api/teacher/grade-export/preview?${search}`);
+    },
+    getGradeAnalytics: (params: { semester?: string; classId?: number | string; topicId?: number | string }) => {
+        const search = new URLSearchParams();
+        for (const [key, value] of Object.entries(params)) if (value !== undefined) search.set(key, String(value));
+        return request<GradeAnalytics>(`/api/teacher/grade-export/analytics?${search}`);
     },
     getGradeExportData: (params: { semester?: string; classId?: number | string; topicId?: number | string; taskId?: number | string }) => {
         const search = new URLSearchParams();

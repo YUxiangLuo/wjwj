@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { AlertCircle, ArrowLeft, BarChart3, CheckCircle2, ChevronRight, Clock, FileText, Home, Play, RefreshCw, Ruler } from "lucide-react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -23,11 +24,14 @@ import { AnalysisReport } from "./stages/AnalysisReport";
 import { QuestionnaireDesign } from "./stages/QuestionnaireDesign";
 import { SamplePlanning } from "./stages/SamplePlanning";
 import { SamplingExecution } from "./stages/SamplingExecution";
+import { QuestionnaireSnapshot } from "@/components/QuestionnaireSnapshot";
+import { SamplePlanSnapshot } from "@/components/SamplePlanSnapshot";
+import { SamplingResultsSnapshot } from "@/components/SamplingResultsSnapshot";
 
 const stages = [
     { name: "问卷预试", description: "设计问卷原型并完成认知预试", icon: FileText },
-    { name: "样本量规划", description: "按课题对照变量计算邀请人数", icon: Ruler },
-    { name: "抽样执行", description: "完成简单随机、系统、PPS 和分层抽样", icon: Play },
+    { name: "样本量规划", description: "按研究目标变量计算邀请人数", icon: Ruler },
+    { name: "抽样执行", description: "按实验模板要求完成必做与选做抽样方法", icon: Play },
     { name: "分析与报告", description: "比较抽样框字段上的设计并撰写报告", icon: BarChart3 },
 ] as const;
 
@@ -62,6 +66,7 @@ export function ExperimentLayout() {
     const [versionConflict, setVersionConflict] = useState(false);
     const [editorRevision, setEditorRevision] = useState(0);
     const [reopenStage, setReopenStage] = useState<number | null>(null);
+    const [inspectStage, setInspectStage] = useState<number | null>(null);
 
     useEffect(() => {
         if (!Number.isInteger(numericTaskId) || numericTaskId <= 0) { setNotFound(true); setLoading(false); return; }
@@ -162,10 +167,17 @@ export function ExperimentLayout() {
     const completed = [experiment.stage1CompletedAt, experiment.stage2CompletedAt, experiment.stage3CompletedAt, experiment.stage4CompletedAt];
     const renderStage = () => {
         if (currentStage === 1) return <QuestionnaireDesign />;
-        if (currentStage === 2) return <SamplePlanning onPrev={() => setReopenStage(1)} />;
-        if (currentStage === 3) return <SamplingExecution onPrev={() => setReopenStage(2)} />;
-        return <AnalysisReport onPrev={() => setReopenStage(3)} onSubmit={() => navigate(`/task/${numericTaskId}/preview`)} />;
+        if (currentStage === 2) return <SamplePlanning onPrev={() => setInspectStage(1)} />;
+        if (currentStage === 3) return <SamplingExecution onPrev={() => setInspectStage(2)} />;
+        return <AnalysisReport onPrev={() => setInspectStage(3)} onSubmit={() => navigate(`/task/${numericTaskId}/preview`)} />;
     };
+    const reopenImpact = reopenStage === 1
+        ? "问卷内容会保留；样本量规划、抽样结果和分析报告将被清空。"
+        : reopenStage === 2
+            ? "样本量规划会保留；抽样结果和分析报告将被清空。"
+            : reopenStage === 3
+                ? "抽样结果会保留；分析报告将被清空。"
+                : "分析报告内容会保留，但需要重新确认本阶段。";
 
     return (
         <ExperimentContext.Provider value={{ experiment, populationSize: experiment.populationSize, isSaving, completeStage }}>
@@ -182,7 +194,7 @@ export function ExperimentLayout() {
                             const isCurrent = number === currentStage;
                             const isCompleted = completed[index] !== null;
                             const Icon = stage.icon;
-                            return <div key={stage.name} className="flex items-center gap-2">{index > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}<button aria-label={`${isCurrent ? "当前阶段" : "重新编辑阶段"} ${number}：${stage.name}`} disabled={number >= currentStage || !isCompleted} onClick={() => setReopenStage(number)} className={`flex items-center gap-1.5 whitespace-nowrap rounded-surface px-2.5 py-1 text-meta font-medium ${isCurrent ? "border border-primary-border bg-primary-muted text-primary" : isCompleted ? "text-success hover:bg-success-muted" : "text-muted-foreground"}`}>{isCompleted && !isCurrent ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}<span>{stage.name}</span></button></div>;
+                            return <div key={stage.name} className="flex items-center gap-2">{index > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}<button aria-label={`${isCurrent ? "当前阶段" : "查看已完成阶段"} ${number}：${stage.name}`} disabled={number >= currentStage || !isCompleted} onClick={() => setInspectStage(number)} className={`flex items-center gap-1.5 whitespace-nowrap rounded-surface px-2.5 py-1 text-meta font-medium ${isCurrent ? "border border-primary-border bg-primary-muted text-primary" : isCompleted ? "text-success hover:bg-success-muted" : "text-muted-foreground"}`}>{isCompleted && !isCurrent ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}<span>{stage.name}</span></button></div>;
                         })}
                     </div>
                 </div>
@@ -207,7 +219,34 @@ export function ExperimentLayout() {
                 )}
                 <div key={editorRevision} className="min-h-[500px]">{renderStage()}</div>
             </div>
-            <AlertDialog open={reopenStage !== null} onOpenChange={(open) => !open && setReopenStage(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>重新编辑“{reopenStage ? stages[reopenStage - 1]!.name : ""}”</AlertDialogTitle><AlertDialogDescription>当前阶段内容会保留，该阶段之后的内容将被清空。确认后才能重新编辑。</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>取消</AlertDialogCancel><AlertDialogAction variant="destructive" onClick={() => void applyReopen()}>确认重新编辑</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+            <Dialog open={inspectStage !== null} onOpenChange={(open) => !open && setInspectStage(null)}>
+                <DialogContent className="max-h-[85vh] max-w-5xl overflow-y-auto" data-testid="student-stage-inspect-dialog">
+                    <DialogHeader>
+                        <DialogTitle>查看“{inspectStage ? stages[inspectStage - 1]!.name : ""}”</DialogTitle>
+                        <DialogDescription>这是已保存内容的只读快照。关闭查看后会返回当前阶段，不会清空或修改任何数据。</DialogDescription>
+                    </DialogHeader>
+                    <div className="py-2">
+                        {inspectStage === 1 && <QuestionnaireSnapshot questionnaire={experiment.questionnaire} />}
+                        {inspectStage === 2 && <SamplePlanSnapshot value={experiment.samplePlan} populationSize={experiment.populationSize} />}
+                        {inspectStage === 3 && <SamplingResultsSnapshot value={experiment.samplingResults} samplingPolicy={experiment.samplingPolicy} />}
+                    </div>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setInspectStage(null)}>返回当前阶段</Button>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={() => {
+                                const stage = inspectStage;
+                                setInspectStage(null);
+                                setReopenStage(stage);
+                            }}
+                        >
+                            重新编辑此阶段
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+            <AlertDialog open={reopenStage !== null} onOpenChange={(open) => !open && setReopenStage(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>重新编辑“{reopenStage ? stages[reopenStage - 1]!.name : ""}”</AlertDialogTitle><AlertDialogDescription>{reopenImpact} 此操作不可撤销，确认后才能重新编辑。</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>取消</AlertDialogCancel><AlertDialogAction variant="destructive" onClick={() => void applyReopen()}>确认重新编辑</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
         </ExperimentContext.Provider>
     );
 }

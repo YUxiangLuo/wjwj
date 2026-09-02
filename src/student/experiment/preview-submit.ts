@@ -11,7 +11,7 @@ export function isSubmissionCompleteResponse(response: { success: boolean; error
     return response.success || response.error?.code === "ALREADY_SUBMITTED";
 }
 
-export function getPreviewSubmitBlocker(experiment: Pick<ExperimentData, "questionnaire" | "samplePlan" | "samplingResults" | "reportContent" | "populationSize" | "analysisTarget">) {
+export function getPreviewSubmitBlocker(experiment: Pick<ExperimentData, "questionnaire" | "samplePlan" | "samplingResults" | "reportContent" | "populationSize" | "analysisTarget"> & Pick<ExperimentData, "samplingPolicy">) {
     const questionnaireError = validateQuestionnaireForSubmit(experiment.questionnaire);
     if (questionnaireError) return questionnaireError;
 
@@ -24,7 +24,12 @@ export function getPreviewSubmitBlocker(experiment: Pick<ExperimentData, "questi
     if (samplePlanError) return samplePlanError;
 
     const targetSampleSize = getTargetSampleSizeFromSamplePlan(experiment.samplePlan);
-    const samplingResultsError = validateSamplingResultsForSubmit(experiment.samplingResults, targetSampleSize, experiment.populationSize);
+    const samplingResultsError = validateSamplingResultsForSubmit(
+        experiment.samplingResults,
+        targetSampleSize,
+        experiment.populationSize,
+        experiment.samplingPolicy,
+    );
     if (samplingResultsError) return samplingResultsError;
 
     const reportError = validateReportForSubmit(experiment.reportContent);

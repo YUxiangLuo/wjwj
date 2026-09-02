@@ -1,5 +1,6 @@
 import { RichTextContent } from "@/components/RichTextContent";
 import type { QuestionnaireData, QuestionType } from "@/lib/questionnaire-types";
+import { QUESTION_SECTION_LABELS } from "@/lib/questionnaire-templates";
 
 const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
     boolean: "是/否题",
@@ -43,7 +44,7 @@ export function QuestionnaireSnapshot({
                             <div className="flex flex-wrap items-start justify-between gap-2">
                                 <p className="text-label font-medium">{index + 1}. {question.content}</p>
                                 <span className="rounded-control bg-muted px-2 py-0.5 text-meta text-muted-foreground">
-                                    {QUESTION_TYPE_LABELS[question.type] ?? question.type}
+                                    {QUESTION_SECTION_LABELS[question.section ?? "main"]} · {QUESTION_TYPE_LABELS[question.type] ?? question.type}
                                 </span>
                             </div>
 

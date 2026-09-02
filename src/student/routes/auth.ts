@@ -3,15 +3,17 @@ import { db } from "../../db";
 import { class_, student } from "../../db/schema";
 import { STUDENT_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
 import { DEV_AUTH_MODE } from "../../lib/dev-mode";
-import { buildSessionCookie, clearSessionCookie, error, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
+import { buildSessionCookie, clearSessionCookie, error, getClientIp, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
+import { loginAttemptThrottle } from "../../server/login-throttle";
 import { buildAtomicFailedLoginUpdate, failedLoginMessage, isLoginLocked, nextFailedLoginState } from "../../server/login-lockout";
+import { hashPassword, verifyPassword } from "../../server/password-work";
 import type { RouteDefinition } from "../../server/route-types";
 import {
-    clearOtherUserSessionsForUser,
     createUserSession,
     deleteUserSessionByToken,
     loadActiveUserSession,
     readSessionToken,
+    rotateUserSession,
 } from "../../server/user-session";
 
 export const STUDENT_USER_TYPE = 3;
@@ -88,12 +90,19 @@ const loginRoutes: RouteDefinition = {
         const studentId = stringValue(body.studentId).trim();
         const password = stringValue(body.password);
         if (!studentId || !password) return error("请输入学号和密码", "VALIDATION_ERROR", 400);
+        const clientIp = getClientIp(req);
+        if (!loginAttemptThrottle.consume(clientIp, "student", studentId)) {
+            return error("登录请求过于频繁，请稍后重试", "RATE_LIMITED", 429);
+        }
 
         const [row] = await db.select().from(student).where(eq(student.studentId, studentId));
+        if (row && (row.status !== 1 || row.deletedAt || isLoginLocked(row))) {
+            return error("账号或密码错误", "INVALID_CREDENTIALS", 401);
+        }
         const valid = row
-            ? await Bun.password.verify(password, row.password)
-            : await Bun.password.verify(password, DUMMY_PASSWORD_HASH).then(() => false).catch(() => false);
-        if (!row || row.status !== 1 || row.deletedAt || isLoginLocked(row)) {
+            ? await verifyPassword(password, row.password)
+            : await verifyPassword(password, DUMMY_PASSWORD_HASH).then(() => false).catch(() => false);
+        if (!row) {
             return error("账号或密码错误", "INVALID_CREDENTIALS", 401);
         }
         if (!valid) {
@@ -106,6 +115,7 @@ const loginRoutes: RouteDefinition = {
         }
 
         await db.update(student).set({ loginFailCount: 0, lockedUntil: null }).where(eq(student.id, row.id));
+        loginAttemptThrottle.clear(clientIp, "student", studentId);
 
         const { token, expiresAt } = await createUserSession(STUDENT_USER_TYPE, row.id);
         return json(
@@ -149,7 +159,7 @@ const passwordRoutes: RouteDefinition = {
 
         const [row] = await db.select().from(student).where(eq(student.id, auth.student.id));
         if (!row) return error("账户不存在", "ACCOUNT_NOT_FOUND", 404);
-        if (!(await Bun.password.verify(currentPassword, row.password))) {
+        if (!(await verifyPassword(currentPassword, row.password))) {
             return error("当前密码不正确", "INVALID_CREDENTIALS", 401);
         }
 
@@ -160,14 +170,15 @@ const passwordRoutes: RouteDefinition = {
         });
         if (!policy.isPolicyValid) return error(STUDENT_PASSWORD_POLICY.errorMessage, "PASSWORD_WEAK", 400);
 
-        const currentToken = readSessionToken(req, STUDENT_SESSION_COOKIE);
-        if (!currentToken) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        if (!readSessionToken(req, STUDENT_SESSION_COOKIE)) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
         await db
             .update(student)
-            .set({ password: await Bun.password.hash(newPassword), isFirstLogin: 0, loginFailCount: 0, lockedUntil: null, updatedAt: new Date() })
+            .set({ password: await hashPassword(newPassword), isFirstLogin: 0, loginFailCount: 0, lockedUntil: null, updatedAt: new Date() })
             .where(eq(student.id, row.id));
-        await clearOtherUserSessionsForUser(STUDENT_USER_TYPE, row.id, currentToken);
-        return json({ success: true });
+        const { token, expiresAt } = await rotateUserSession(STUDENT_USER_TYPE, row.id);
+        return json({ success: true }, 200, {
+            "Set-Cookie": buildSessionCookie(STUDENT_SESSION_COOKIE, token, expiresAt, isSecureRequest(req)),
+        });
     },
 };
 

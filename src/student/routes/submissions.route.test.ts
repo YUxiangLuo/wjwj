@@ -72,6 +72,9 @@ test("submission endpoint returns the task's current experiment result", async (
         },
     });
     expect(payload.data.weights).toEqual({ questionnaire: 40, process: 35, report: 25 });
+    expect(payload.data).not.toHaveProperty("scoreQuestionnaire");
+    expect(payload.data).not.toHaveProperty("scoreProcess");
+    expect(payload.data).not.toHaveProperty("scoreReport");
     expect(payload.data).not.toHaveProperty("pdfStatus");
 });
 
@@ -113,7 +116,7 @@ test("submission endpoint hydrates compact immutable snapshot samples", async ()
         const module = await import(`./submissions.ts?compact=${crypto.randomUUID()}`);
         const response = await module.submissionByTaskRoutes.GET!(withId(new Request("https://example.com"), "40"));
         const payload = await response.json() as any;
-        expect(payload.data.snapshot.samplingResults.simple.data).toEqual([{ id: 2, city: "上海" }]);
+        expect(payload.data.snapshot.samplingResults.simple.data).toEqual([{ id: "2", city: "上海" }]);
         expect(payload.data.snapshot.samplingResults.simple).not.toHaveProperty("indices");
     } finally {
         await unlink(absolutePath).catch(() => undefined);

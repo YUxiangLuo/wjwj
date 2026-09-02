@@ -3,7 +3,7 @@ import { db } from "../../db";
 import { topic, topicAttachment } from "../../db/schema";
 import { spreadsheetRequestExceedsLimit } from "../../lib/spreadsheet";
 import { buildAttachmentDownloadResponse } from "../../server/attachment-download";
-import { error, getRouteParam, json, parseBody } from "../../server/http";
+import { error, getPositiveRouteId, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { requireTopicOwner } from "../topic/access";
 import {
@@ -18,6 +18,7 @@ import {
     softDeleteTeacherTopic,
     updateTeacherTopicBasics,
     updateTopicFieldMapping,
+    updateTopicSamplingPolicy,
     updateTopicWeightConfig,
 } from "../topic/manage-service";
 import {
@@ -31,17 +32,14 @@ import { getPrimaryTeacherIdOrThrow } from "./auth";
 
 function assignedTopicContentError() {
     return error(
-        "课题已分配任务，内容不能再修改；如需调整请复制为新课题",
+        "实验模板已分配任务，内容不能再修改；如需调整请复制为新模板",
         "TOPIC_ASSIGNED",
         409,
     );
 }
 
 function parsePositiveRouteId(req: Request, name = "id") {
-    const raw = getRouteParam(req, name);
-    if (!raw || !/^\d+$/.test(raw)) return null;
-    const value = Number(raw);
-    return Number.isSafeInteger(value) && value > 0 ? value : null;
+    return getPositiveRouteId(req, name);
 }
 
 const topicRoutes: RouteDefinition = {
@@ -72,7 +70,7 @@ const topicItemRoutes: RouteDefinition = {
         if (!id) return error("Invalid ID", "INVALID_ID");
 
         const topicRow = await requireTopicOwner(id, currentTeacherId);
-        if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
+        if (!topicRow) return error("实验模板不存在", "NOT_FOUND", 404);
         if (topicRow.hasTasks) return assignedTopicContentError();
 
         const body = await parseBody<{ name?: string; description?: string; status?: number }>(req);
@@ -92,7 +90,7 @@ const topicItemRoutes: RouteDefinition = {
         if (!id) return error("Invalid ID", "INVALID_ID");
 
         const topicRow = await requireTopicOwner(id, currentTeacherId);
-        if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
+        if (!topicRow) return error("实验模板不存在", "NOT_FOUND", 404);
 
         const deleteResult = await softDeleteTeacherTopic({ teacherId: currentTeacherId, topicId: id });
         if (!deleteResult.ok) return error(deleteResult.message, deleteResult.code, deleteResult.status);
@@ -107,7 +105,7 @@ const topicDetailRoutes: RouteDefinition = {
         if (!id) return error("Invalid ID", "INVALID_ID");
 
         const topicRow = await requireTopicOwner(id, currentTeacherId);
-        if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
+        if (!topicRow) return error("实验模板不存在", "NOT_FOUND", 404);
 
         return json(await getTeacherTopicDetail(id));
     }
@@ -120,9 +118,9 @@ const topicExcelUploadRoutes: RouteDefinition = {
         if (!id) return error("Invalid ID", "INVALID_ID");
 
         const topicRow = await requireTopicOwner(id, currentTeacherId);
-        if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
+        if (!topicRow) return error("实验模板不存在", "NOT_FOUND", 404);
         if (topicRow.status === 1 || topicRow.hasTasks) {
-            return error("已发布或已分配任务的课题不能修改总体数据", "FORBIDDEN", 403);
+            return error("已发布或已分配任务的实验模板不能修改总体数据", "FORBIDDEN", 403);
         }
         if (spreadsheetRequestExceedsLimit(req)) {
             return error("表格文件不能超过20 MiB", "FILE_TOO_LARGE", 413);
@@ -144,6 +142,7 @@ const topicExcelUploadRoutes: RouteDefinition = {
             columns: replaceResult.columns,
             preview: replaceResult.preview,
             columnValues: replaceResult.columnValues,
+            columnValuesTruncated: replaceResult.columnValuesTruncated,
         });
     }
 };
@@ -155,9 +154,9 @@ const topicFieldMappingRoutes: RouteDefinition = {
         if (!id) return error("Invalid ID", "INVALID_ID");
 
         const topicRow = await requireTopicOwner(id, currentTeacherId);
-        if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
+        if (!topicRow) return error("实验模板不存在", "NOT_FOUND", 404);
         if (topicRow.status === 1 || topicRow.hasTasks) {
-            return error("已发布或已分配任务的课题不能修改字段映射", "FORBIDDEN", 403);
+            return error("已发布或已分配任务的实验模板不能修改研究目标与字段", "FORBIDDEN", 403);
         }
 
         const body = await parseBody<{ fieldMapping: any }>(req);
@@ -172,6 +171,29 @@ const topicFieldMappingRoutes: RouteDefinition = {
     }
 };
 
+const topicSamplingPolicyRoutes: RouteDefinition = {
+    async PUT(req) {
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
+        const id = parsePositiveRouteId(req);
+        if (!id) return error("Invalid ID", "INVALID_ID");
+
+        const topicRow = await requireTopicOwner(id, currentTeacherId);
+        if (!topicRow) return error("实验模板不存在", "NOT_FOUND", 404);
+        if (topicRow.status === 1 || topicRow.hasTasks) {
+            return error("已发布或已分配实验任务的模板不能修改抽样策略", "FORBIDDEN", 403);
+        }
+
+        const body = await parseBody<{ samplingPolicy?: unknown }>(req);
+        const result = await updateTopicSamplingPolicy({
+            teacherId: currentTeacherId,
+            topicId: id,
+            samplingPolicy: body.samplingPolicy,
+        });
+        if (!result.ok) return error(result.message, result.code, result.status);
+        return json({ success: true });
+    },
+};
+
 const topicAttachmentRoutes: RouteDefinition = {
     async POST(req) {
         const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
@@ -179,7 +201,7 @@ const topicAttachmentRoutes: RouteDefinition = {
         if (!id) return error("Invalid ID", "INVALID_ID");
 
         const topicRow = await requireTopicOwner(id, currentTeacherId);
-        if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
+        if (!topicRow) return error("实验模板不存在", "NOT_FOUND", 404);
         if (topicRow.hasTasks) return assignedTopicContentError();
 
         const formData = await req.formData();
@@ -229,7 +251,7 @@ const topicAttachmentDeleteRoutes: RouteDefinition = {
         if (!topicId || !attachmentId) return error("Invalid ID", "INVALID_ID");
 
         const topicRow = await requireTopicOwner(topicId, currentTeacherId);
-        if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
+        if (!topicRow) return error("实验模板不存在", "NOT_FOUND", 404);
         if (topicRow.hasTasks) return assignedTopicContentError();
 
         const deleteResult = await deleteTopicAttachment({ teacherId: currentTeacherId, topicId, attachmentId });
@@ -245,7 +267,7 @@ const topicRecommendQuestionRoutes: RouteDefinition = {
         if (!id) return error("Invalid ID", "INVALID_ID");
 
         const topicRow = await requireTopicOwner(id, currentTeacherId);
-        if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
+        if (!topicRow) return error("实验模板不存在", "NOT_FOUND", 404);
         if (topicRow.hasTasks) return assignedTopicContentError();
 
         const body = await parseBody<{ items?: unknown }>(req);
@@ -263,9 +285,9 @@ const topicWeightRoutes: RouteDefinition = {
         if (!id) return error("Invalid ID", "INVALID_ID");
 
         const topicRow = await requireTopicOwner(id, currentTeacherId);
-        if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
+        if (!topicRow) return error("实验模板不存在", "NOT_FOUND", 404);
         if (topicRow.status === 1 || topicRow.hasTasks) {
-            return error("已发布或已分配任务的课题不能修改评分权重", "FORBIDDEN", 403);
+            return error("已发布或已分配任务的实验模板不能修改评分规则", "FORBIDDEN", 403);
         }
 
         const body = await parseBody<{ weightConfig: { questionnaire: number; process: number; report: number } }>(req);
@@ -287,7 +309,7 @@ const topicCopyRoutes: RouteDefinition = {
         if (!id) return error("Invalid ID", "INVALID_ID");
 
         const topicRow = await requireTopicOwner(id, currentTeacherId);
-        if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
+        if (!topicRow) return error("实验模板不存在", "NOT_FOUND", 404);
         const copyResult = await copyTopicWithResources({ teacherId: currentTeacherId, topicId: id });
         if (!copyResult.ok) return error(copyResult.message, copyResult.code, copyResult.status);
 
@@ -379,6 +401,7 @@ export {
     topicFieldMappingRoutes,
     topicItemRoutes,
     topicRecommendQuestionRoutes,
+    topicSamplingPolicyRoutes,
     topicRoutes,
     topicWeightRoutes,
 };

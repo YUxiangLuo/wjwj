@@ -15,11 +15,11 @@ export function TopicDeletedState({
     backText = "返回任务列表",
     variant = "topic_deleted",
 }: TopicDeletedStateProps) {
-    const title = variant === "task_revoked" ? "任务已撤销" : "课题已删除";
+    const title = variant === "task_revoked" ? "实验任务已撤销" : "实验模板已删除";
     const description =
         variant === "task_revoked"
             ? "教师已撤销该班级对应的发布任务，当前页面不可继续操作。"
-            : "该课题已被教师删除，相关任务已归档，当前页面不可继续操作。";
+            : "该实验模板已被教师删除，相关任务已归档，当前页面不可继续操作。";
 
     return (
         <div className="max-w-2xl mx-auto py-12">

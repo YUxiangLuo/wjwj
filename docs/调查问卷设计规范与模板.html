@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>调查问卷设计规范与模板</title>
+  <style>
+    body { font-family: "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; font-size: 11pt; line-height: 1.7; color: #172033; margin: 2.2cm; }
+    h1 { color: #123d73; text-align: center; font-size: 22pt; margin-bottom: 0.4cm; }
+    h2 { color: #184f8f; font-size: 16pt; border-bottom: 1px solid #9db6d3; padding-bottom: 0.12cm; margin-top: 0.7cm; }
+    h3 { color: #244f7c; font-size: 13pt; margin-top: 0.5cm; }
+    .note { background: #eef5fc; border: 1px solid #9db6d3; padding: 0.35cm; }
+    .placeholder { color: #4f657d; }
+    table { width: 100%; border-collapse: collapse; margin: 0.3cm 0; }
+    th, td { border: 1px solid #9db6d3; padding: 0.18cm; vertical-align: top; }
+    th { background: #e4eef9; color: #123d73; }
+    ul, ol { margin-top: 0.15cm; }
+  </style>
+</head>
+<body>
+  <h1>调查问卷设计规范与模板</h1>
+  <p class="note">本模板用于统计学虚拟仿真实验的问卷认知预试。请根据研究问题、目标总体和分析单位改写占位内容；预试答案用于检查题意和作答体验，不直接进入后续总体抽样估计。</p>
+
+  <h2>一、封面信与填写说明</h2>
+  <p><strong>问卷标题：</strong><span class="placeholder">关于【研究主题】的调查问卷</span></p>
+  <p>您好！我们正在开展<span class="placeholder">【调查目的】</span>。本问卷面向<span class="placeholder">【目标人群】</span>，预计用时<span class="placeholder">【3–5】</span>分钟。参与完全自愿，您可以跳过不愿回答的问题或随时退出。数据仅用于<span class="placeholder">【教学/研究用途】</span>，结果将以汇总形式呈现，不收集与研究无关的身份信息。</p>
+  <p><strong>填写方法：</strong>除特别说明外，请选择最符合实际情况的答案。涉及频率或经历的题目必须注明统一时间范围。</p>
+
+  <h2>二、甄别题</h2>
+  <p>甄别题用于判断答题者是否属于目标总体，不应被用来诱导答案。</p>
+  <ol>
+    <li>您是否属于<span class="placeholder">【目标人群定义】</span>？　□ 是　□ 否</li>
+    <li>在过去<span class="placeholder">【明确时间范围】</span>内，您是否有过<span class="placeholder">【目标行为/经历】</span>？　□ 是　□ 否</li>
+  </ol>
+  <p class="placeholder">如回答“否”不符合研究范围，应在正式问卷中设置结束逻辑；本实验预试可继续查看题目以检查表达。</p>
+
+  <h2>三、主体问题</h2>
+  <table>
+    <thead><tr><th>测量目的</th><th>示例题目</th><th>推荐题型</th></tr></thead>
+    <tbody>
+      <tr><td>行为或频率</td><td>过去 30 天内，您平均每周进行【目标行为】的次数是？</td><td>单选题，选项互斥且覆盖常见范围</td></tr>
+      <tr><td>态度或认同</td><td>请评价您对“【中性陈述】”的认同程度。</td><td>5 点或 7 点 Likert 型评分题</td></tr>
+      <tr><td>满意度</td><td>您对【服务/体验】的总体满意程度如何？</td><td>5 点或 7 点评分题</td></tr>
+      <tr><td>原因或需求</td><td>哪些因素会影响您【行为/选择】？</td><td>多选题，并明确最少/最多选择数</td></tr>
+      <tr><td>事实判断</td><td>您是否使用过【功能/服务】？</td><td>是/否题</td></tr>
+    </tbody>
+  </table>
+
+  <h3>量表建议</h3>
+  <ul>
+    <li>典型 Likert 型题项优先使用 5 点或 7 点奇数选项，并为两端提供含义清楚、方向一致的标签。</li>
+    <li>10 点一般评分可以用于满意度或推荐意愿，但不应直接称为 Likert 型题项。</li>
+    <li>量表选项不超过 10 个；同一组题目保持方向和刻度一致，避免正反方向无提示切换。</li>
+  </ul>
+
+  <h2>四、背景资料</h2>
+  <p>只收集分析确实需要的背景变量，选项应互斥、穷尽，并提供“其他/不便回答”等合理出口。</p>
+  <ol>
+    <li>您的<span class="placeholder">【与研究相关的分组变量，如年级/地区/岗位类型】</span>是？</li>
+    <li>您的<span class="placeholder">【第二个必要背景变量】</span>是？</li>
+  </ol>
+  <p class="note">不要在课堂共享的问卷或总体数据中收集真实姓名、手机号、证件号、精确住址等非必要敏感信息。</p>
+
+  <h2>五、结束语</h2>
+  <p>感谢您的参与！您的反馈将帮助我们改进<span class="placeholder">【研究或教学目标】</span>。如对调查有疑问，请联系<span class="placeholder">【课程教师或项目联系人】</span>。</p>
+
+  <h2>六、发布前检查表</h2>
+  <ul>
+    <li>研究目的、目标总体和分析单位是否一致？</li>
+    <li>每道题是否只测量一个概念，并给出必要的时间范围？</li>
+    <li>题干是否中性，是否避免暗示“正确答案”和双重否定？</li>
+    <li>单选项是否互斥且穷尽，多选题是否说明选择数量？</li>
+    <li>量表端点、方向和选项数量是否合理？</li>
+    <li>是否删除了与研究无关的身份信息和敏感问题？</li>
+    <li>是否由目标人群代表完成一次认知预试，并记录难懂、犹豫或误解的位置？</li>
+  </ul>
+</body>
+</html>

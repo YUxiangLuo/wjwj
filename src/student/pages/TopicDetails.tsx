@@ -12,6 +12,7 @@ import { TopicDeletedState } from "../components/TopicDeletedState";
 import { getTaskPrimaryAction, shouldShowTaskAvailabilityHint } from "./topic-detail-action";
 import { parseDeadline, formatDateTimeDisplay, getRemainingDeadlineSummary } from "@/utils/format";
 import { notifyAuthExpiredFromResponse } from "@/lib/auth-expired";
+import { resolveSamplingPolicy, SAMPLING_METHODS } from "@/lib/sampling-policy";
 
 const stageNames = ["问卷预试", "样本量规划", "抽样执行", "分析与报告"];
 
@@ -131,7 +132,7 @@ export function TopicDetails() {
     }, [taskId]);
 
     if (loading) {
-        return <LoadingStatus className="py-24" iconClassName="h-10 w-10" label="正在加载课题详情" />;
+        return <LoadingStatus className="py-24" iconClassName="h-10 w-10" label="正在加载实验任务" />;
     }
 
     if (accessDeniedVariant) {
@@ -166,6 +167,9 @@ export function TopicDetails() {
                         : "bg-success";
 
     const action = getTaskPrimaryAction(task.id, task.status, canStartExperiment);
+    const samplingPolicy = resolveSamplingPolicy(task.samplingPolicy);
+    const samplingMethodLabels = { simple: "简单随机", systematic: "系统抽样", pps: "PPS抽样", stratified: "分层抽样" } as const;
+    const hasQuestionnaireTemplateAttachment = task.attachments.some((file) => file.name.includes("调查问卷设计规范与模板"));
 
     const handleDownload = async (file: TopicAttachment) => {
         try {
@@ -247,7 +251,7 @@ export function TopicDetails() {
                         <CardHeader className="border-b border-border pb-3">
                             <CardTitle className="text-label text-foreground flex items-center gap-2">
                                 <FileText className="w-4 h-4 text-primary" />
-                                课题介绍
+                                实验说明
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="pt-4 pb-4">
@@ -258,6 +262,38 @@ export function TopicDetails() {
                             />
                         </CardContent>
                     </Card>
+
+                    <Card className="rounded-surface border-border bg-card" data-testid="student-task-sampling-policy">
+                        <CardHeader className="border-b border-border pb-3">
+                            <CardTitle className="flex items-center gap-2 text-label text-foreground"><Play className="h-4 w-4 text-primary" />抽样方法要求</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3 pb-4 pt-4">
+                            <p className="text-label text-muted-foreground">完成全部必做方法，并至少实际完成两种启用的方法。</p>
+                            <div className="grid grid-cols-4 gap-2">
+                                {SAMPLING_METHODS.map((method) => {
+                                    const requirement = samplingPolicy.methods[method];
+                                    return (
+                                        <div key={method} className="rounded-surface border border-border bg-muted p-3 text-center">
+                                            <p className="text-label font-medium text-foreground">{samplingMethodLabels[method]}</p>
+                                            <StatusBadge className="mt-2" intent={requirement === "required" ? "primary" : requirement === "optional" ? "info" : "neutral"}>
+                                                {requirement === "required" ? "必做" : requirement === "optional" ? "选做" : "不适用"}
+                                            </StatusBadge>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {!hasQuestionnaireTemplateAttachment && <Card className="rounded-surface border-border bg-card" data-testid="student-task-built-in-questionnaire-resource">
+                        <CardHeader className="border-b border-border pb-3">
+                            <CardTitle className="flex items-center gap-2 text-label text-foreground"><Download className="h-4 w-4 text-primary" />标准问卷设计资料</CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex items-center justify-between gap-4 pb-4 pt-4">
+                            <div><p className="text-label font-medium text-foreground">调查问卷设计规范与模板</p><p className="mt-1 text-meta text-muted-foreground">包含封面信、甄别、主体、背景资料和结束语。</p></div>
+                            <div className="flex gap-2"><Button asChild variant="outline" size="sm"><a href="/templates/调查问卷设计规范与模板.pdf" target="_blank" rel="noreferrer">预览 PDF</a></Button><Button asChild size="sm"><a href="/templates/调查问卷设计规范与模板.docx" download>下载 DOCX</a></Button></div>
+                        </CardContent>
+                    </Card>}
 
                     {task.attachments.length > 0 && (
                         <Card className="rounded-surface border-border bg-card ">
@@ -348,7 +384,7 @@ export function TopicDetails() {
                             <div className="w-full h-px bg-muted" />
                             <div className="space-y-0.5">
                                 <div className="text-meta text-muted-foreground uppercase tracking-wider font-medium">操作提示</div>
-                                <div className="text-label text-muted-foreground leading-relaxed">每个阶段只在点击“完成”或“下一步”时保存；中途离开会丢失本阶段未完成的修改。</div>
+                                <div className="text-label text-muted-foreground leading-relaxed">问卷、样本规划和报告草稿会保存在当前浏览器；抽样结果每次执行即保存，完成阶段后正式推进流程。</div>
                             </div>
                         </CardContent>
                     </Card>

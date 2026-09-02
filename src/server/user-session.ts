@@ -73,3 +73,9 @@ export async function clearOtherUserSessionsForUser(userType: number, userId: nu
         ne(userSession.sessionToken, currentToken),
     ));
 }
+
+/** Invalidate every copied token and issue a fresh token after a password change. */
+export async function rotateUserSession(userType: number, userId: number) {
+    await clearUserSessionsForUser(userType, userId);
+    return createUserSession(userType, userId);
+}

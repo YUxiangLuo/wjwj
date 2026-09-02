@@ -41,20 +41,20 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="bg-card border-border text-foreground max-w-md">
                 <DialogHeader>
-                    <DialogTitle className="text-foreground">发布任务</DialogTitle>
+                    <DialogTitle className="text-foreground">发布实验任务</DialogTitle>
                     <DialogDescription className="sr-only">
-                        选择已发布课题、目标班级和任务截止时间。
+                        选择已发布实验模板、目标班级和任务截止时间。
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                        <Label className="text-foreground">选择课题</Label>
+                        <Label className="text-foreground">选择实验模板</Label>
                         <Select onValueChange={onSelectedTopicIdChange} value={selectedTopicId}>
-                            <SelectTrigger aria-label="选择发布课题" data-testid="teacher-task-topic-select" className="bg-card border-input text-foreground">
-                                <SelectValue placeholder="请选择课题" />
+                            <SelectTrigger aria-label="选择发布实验模板" data-testid="teacher-task-topic-select" className="bg-card border-input text-foreground">
+                                <SelectValue placeholder="请选择实验模板" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
-                                {availableTopics.length === 0 ? <SelectItem value="none" disabled>暂无已发布课题</SelectItem> :
+                                {availableTopics.length === 0 ? <SelectItem value="none" disabled>暂无已发布实验模板</SelectItem> :
                                     availableTopics.map((t) => (
                                         <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
                                     ))
@@ -70,7 +70,7 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
                                 return (
                                     <label
                                         key={cls.id}
-                                        title={disabled ? "该课题已向此班级发布过任务" : undefined}
+                                        title={disabled ? "该实验模板已向此班级发布过任务" : undefined}
                                         className={`flex items-center gap-2 text-label p-1.5 rounded-control ${
                                             disabled
                                                 ? "text-muted-foreground cursor-not-allowed opacity-80"

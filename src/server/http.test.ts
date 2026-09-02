@@ -5,8 +5,12 @@ import {
     json,
     MAX_JSON_BODY_BYTES,
     parseBody,
+    parsePositiveInteger,
     RequestBodyTooLargeError,
     stringValue,
+    validateApiRequest,
+    withPrivateApiHeaders,
+    getEffectiveRequestOrigin,
 } from "./http";
 
 test("parseBody parses valid JSON", async () => {
@@ -85,6 +89,13 @@ test("stringValue accepts only runtime strings", () => {
     for (const value of [null, undefined, 1, true, [], {}]) expect(stringValue(value)).toBe("");
 });
 
+test("positive integer parser rejects non-canonical and unsafe identifiers", () => {
+    expect(parsePositiveInteger("10")).toBe(10);
+    for (const value of ["10abc", "1.5", "1e2", "01", "-1", "0", "9007199254740992"]) {
+        expect(parsePositiveInteger(value)).toBeNull();
+    }
+});
+
 test("JSON responses include baseline browser security headers without dropping caller headers", () => {
     const response = json({ ok: true }, 200, { "Set-Cookie": "session=test; HttpOnly" });
 
@@ -107,4 +118,59 @@ test("handleServerError returns the standard 400 payload for invalid JSON", asyn
             message: "请求体不是有效的 JSON",
         },
     });
+});
+
+test("API request guard rejects cross-site and non-JSON mutation bodies", async () => {
+    const crossSite = validateApiRequest(new Request("https://app.example/api/student/stage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Origin: "https://evil.example", "Sec-Fetch-Site": "cross-site" },
+        body: "{}",
+    }));
+    expect(crossSite?.status).toBe(403);
+
+    const text = validateApiRequest(new Request("https://app.example/api/student/stage", {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: "{}",
+    }));
+    expect(text?.status).toBe(415);
+
+    const badReferer = validateApiRequest(new Request("https://app.example/api/student/stage", {
+        method: "DELETE",
+        headers: { Referer: "https://evil.example/page" },
+    }));
+    expect(badReferer?.status).toBe(403);
+
+    expect(validateApiRequest(new Request("https://app.example/api/student/stage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Origin: "https://app.example" },
+        body: "{}",
+    }))).toBeNull();
+});
+
+test("authenticated API wrapper always emits a private no-store policy", () => {
+    const response = withPrivateApiHeaders(json({ studentId: "S001" }));
+    expect(response.headers.get("Cache-Control")).toBe("no-store, private");
+});
+
+test("trusted proxy origin validation reconstructs the public HTTPS origin", () => {
+    const previous = process.env.TRUST_PROXY;
+    process.env.TRUST_PROXY = "1";
+    try {
+        const request = new Request("http://127.0.0.1:3000/api/student/login", {
+            method: "POST",
+            headers: {
+                Host: "app.example.edu",
+                Origin: "https://app.example.edu",
+                "X-Forwarded-Proto": "https",
+                "Content-Type": "application/json",
+            },
+            body: "{}",
+        });
+        expect(getEffectiveRequestOrigin(request)).toBe("https://app.example.edu");
+        expect(validateApiRequest(request)).toBeNull();
+    } finally {
+        if (previous === undefined) delete process.env.TRUST_PROXY;
+        else process.env.TRUST_PROXY = previous;
+    }
 });

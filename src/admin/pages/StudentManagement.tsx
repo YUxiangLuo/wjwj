@@ -265,8 +265,8 @@ export function StudentManagement() {
                                                 size="sm"
                                                 onClick={async () => {
                                                     const response = await studentApi.resetPassword(item.id);
-                                                    if (response.success) {
-                                                        toast.success("密码已重置为学号，下次登录必须修改");
+                                                    if (response.success && response.data) {
+                                                        toast.success(`临时密码：${response.data.temporaryPassword}（仅显示一次）`, { duration: 30_000 });
                                                         await load();
                                                     } else {
                                                         toast.error(response.error?.message);

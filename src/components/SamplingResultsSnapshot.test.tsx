@@ -39,3 +39,36 @@ test("renders sampling metadata and a paginated preview instead of raw JSON", as
     expect(view.getByText("显示第 1-20 条，共 25 条")).toBeTruthy();
     expect(view.container.textContent).not.toContain('"sampleCount"');
 });
+
+test("renders the bounded PPS probability explanation", async () => {
+    const view = render(<SamplingResultsSnapshot value={{
+        pps: {
+            completed: true,
+            sizeField: "规模",
+            sampleCount: 1,
+            data: [{ id: 1, 规模: 20 }],
+            probabilitySummary: { populationCount: 10, probabilitySum: 2, minInclusionProbability: 0.1, maxInclusionProbability: 1, certaintyUnitCount: 1 },
+            probabilityPreview: [{ samplePosition: 1, sizeValue: 20, inclusionProbability: 0.5, designWeight: 2 }],
+        },
+    }} />);
+    expect(await waitFor(() => view.getByTestId("pps-probability-explanation"))).toBeTruthy();
+    expect(view.getByText("规模值如何转成抽中概率")).toBeTruthy();
+    expect(view.getByText("0.5")).toBeTruthy();
+});
+
+test("omits result sections disabled by the immutable sampling policy", () => {
+    const view = render(<SamplingResultsSnapshot
+        value={{
+            simple: { completed: true, sampleCount: 1, data: [{ id: 1 }] },
+            pps: { unavailable: true, unavailableReason: "没有合格规模变量" },
+        }}
+        samplingPolicy={{
+            version: 1,
+            methods: { simple: "required", systematic: "optional", pps: "disabled", stratified: "optional" },
+        }}
+    />);
+
+    expect(view.getByText("简单随机")).toBeTruthy();
+    expect(view.queryByText("PPS 抽样")).toBeNull();
+    expect(view.container.textContent).not.toContain("没有合格规模变量");
+});

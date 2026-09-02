@@ -7,7 +7,7 @@ import {
 } from "./routes/auth";
 import { classRoutes, classStudentsImportRoutes, classStudentsRoutes, studentRoutes } from "./routes/classroom";
 import { dashboardRoutes } from "./routes/dashboard";
-import { gradeExportDataRoutes, gradeExportExcelRoutes, gradeExportPreviewRoutes } from "./routes/export";
+import { gradeAnalyticsRoutes, gradeExportDataRoutes, gradeExportExcelRoutes, gradeExportPreviewRoutes } from "./routes/export";
 import {
     gradingDetailRoutes,
     gradingRejectRoutes,
@@ -29,6 +29,7 @@ import {
     topicFieldMappingRoutes,
     topicItemRoutes,
     topicRecommendQuestionRoutes,
+    topicSamplingPolicyRoutes,
     topicRoutes,
     topicWeightRoutes,
 } from "./routes/topic-task";
@@ -53,6 +54,7 @@ export const teacherApiRoutes = {
     "/api/teacher/topics/:id/attachments/:attachmentId": withTeacherAuth(topicAttachmentDeleteRoutes),
     "/api/teacher/topics/:id/attachments/:attachmentId/download": withTeacherAuth(topicAttachmentDownloadRoutes),
     "/api/teacher/topics/:id/recommend-questions": withTeacherAuth(topicRecommendQuestionRoutes),
+    "/api/teacher/topics/:id/sampling-policy": withTeacherAuth(topicSamplingPolicyRoutes),
     "/api/teacher/topics/:id/weights": withTeacherAuth(topicWeightRoutes),
     "/api/teacher/topics/:id/copy": withTeacherAuth(topicCopyRoutes),
     "/api/teacher/tasks": withTeacherAuth(taskRoutes),
@@ -66,6 +68,7 @@ export const teacherApiRoutes = {
     "/api/teacher/grading/:id/reject": withTeacherAuth(gradingRejectRoutes),
     "/api/teacher/announcements": withTeacherAuth(teacherAnnouncementsRoutes),
     "/api/teacher/grade-export/preview": withTeacherAuth(gradeExportPreviewRoutes),
+    "/api/teacher/grade-export/analytics": withTeacherAuth(gradeAnalyticsRoutes),
     "/api/teacher/grade-export/data": withTeacherAuth(gradeExportDataRoutes),
     "/api/teacher/grade-export/excel": withTeacherAuth(gradeExportExcelRoutes),
 };

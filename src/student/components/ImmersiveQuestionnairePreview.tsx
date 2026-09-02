@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { RichTextContent } from "@/components/RichTextContent";
 import type { Question, QuestionnaireData } from "../api-client";
+import { QUESTION_SECTION_LABELS } from "@/lib/questionnaire-templates";
 
 const OPTION_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -564,7 +565,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                             <div className="space-y-8">
                                 <div>
                                     <p className="text-label text-muted-foreground font-medium mb-3">
-                                        {questionTypeHint[currentQuestion.type] ?? "题目"}
+                                        {QUESTION_SECTION_LABELS[currentQuestion.section ?? "main"]} · {questionTypeHint[currentQuestion.type] ?? "题目"}
                                     </p>
                                     <h2 id={titleId} className="text-page-title font-semibold text-foreground leading-snug">
                                         {currentQuestion.content}

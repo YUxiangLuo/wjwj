@@ -6,10 +6,12 @@ overview and seed accounts are in [README.md](README.md).
 
 Active tables: `admin`, `teacher`, `student`, `semester`, `class`,
 `topic`, `topic_attachment`, `task`, `experiment`, `sampling_attempt`,
-`announcement`, `user_session`. Migrations live in `drizzle/postgresql`
-(`0000`–`0006`). Migration `0005` adds database-level status/range checks
+`announcement`, `audit_event`, `user_session`. Migrations live in `drizzle/postgresql`
+(`0000`–`0009`). Migration `0005` adds database-level status/range checks
 and guarantees that at most one semester is current; `0006` adds the compact
-sampling-attempt audit log.
+sampling-attempt audit log; `0007` adds experiment-template sampling policies;
+`0008` expands attachment MIME storage for standards-compliant DOCX types;
+`0009` adds immutable business audit events for grading and rejection history.
 
 ## Create the database
 
@@ -18,7 +20,7 @@ Create an empty PostgreSQL database and export its connection URL:
 ```sh
 export DATABASE_URL='postgresql://user:password@127.0.0.1:5432/wenjuan'
 bun run db:migrate
-bun run db:seed
+bun run db:bootstrap-admin
 ```
 
 The first migration enables `citext` and creates the application tables,
@@ -34,10 +36,12 @@ installation from before the simplification, first take a database and
 `bun run db:reset`; otherwise keep the old database for export and deploy this
 version against a new empty database.
 
-`db:seed` writes the deterministic dogfood fixture in
+`db:seed` is a guarded alias for the deterministic dogfood fixture and refuses
+to run unless `DEMO_MODE=1`; normal production bootstrap must use
+`db:bootstrap-admin`. `db:seed:demo` writes the fixture in
 `src/db/seeds/default.ts`: 1 admin, 4 teachers, 3 semesters, 4 classes,
 17 students, 9 topics, 8 tasks, 18 experiments, 12 bounded sampling-attempt
-audit rows, 5 announcements, 1 attachment, and four generated population
+audit rows, 5 announcements, 2 attachments, and four generated population
 files. The stage-4 and terminal fixtures use production-style compact replay
 indices. The main mean/PPS task covers all eight teacher progress buckets. The
 four research scenarios cover mean and proportion targets, person and service-
@@ -48,7 +52,7 @@ also marks the administrator demo-ready and supplies the fixed demo password.
 See the exact credentials/personas in [README.md](README.md). Seed is not
 applied by `db:migrate`.
 
-`db:seed` is non-idempotent and only supports an empty migrated database. It
+`db:seed:demo` is non-idempotent and only supports an empty migrated database. It
 preflights the required guide source before inserting rows, but later failures
 can still leave partial rows or generated files. Fix the reported cause, then
 run `bun run db:reset` to clean and rebuild the database instead of retrying
@@ -81,9 +85,9 @@ bun run build
 
 `bun run db:clean` removes only this project's current and legacy tables plus
 its `drizzle` metadata schema. It does not enumerate or delete unrelated
-tables in `public`. The package script supplies the cleaner's required
-`--force` flag, and `db:reset` invokes it before reapplying migrations and seed
-data.
+tables in `public`. The operator must supply the cleaner's required exact
+database name through `CONFIRM_DATABASE_NAME`; `db:reset` invokes it before
+reapplying migrations and creating only the bootstrap administrator.
 
 Database reset does not delete files under `storage/`. Replacing a topic's
 Excel file removes the previous file after the database update succeeds. For
@@ -93,7 +97,8 @@ older orphaned files, first run the read-only audit:
 bun run storage:audit
 ```
 
-After reviewing the exact list, `bun run storage:clean` deletes only files not
+After reviewing the exact list and rerunning with the printed
+`--confirm=<snapshot-token>`, `bun run storage:clean` deletes only files not
 referenced by current topic data, attachments, or recognized legacy
 submission paths. Soft-deleted topics and their attachments are intentionally
 excluded from current references because the product does not provide a restore

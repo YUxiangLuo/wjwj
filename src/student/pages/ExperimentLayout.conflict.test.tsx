@@ -20,6 +20,15 @@ mock.module("@/components/ui/select", () => ({
     SelectValue: ({ placeholder }: { placeholder?: string }) => <span>{placeholder ?? ""}</span>,
 }));
 
+mock.module("@/components/ui/dialog", () => ({
+    Dialog: ({ children, open }: { children: ReactNode; open?: boolean }) => open ? <div>{children}</div> : null,
+    DialogContent: ({ children, ...props }: ComponentProps<"div">) => <div {...props}>{children}</div>,
+    DialogDescription: ({ children, ...props }: ComponentProps<"div">) => <div {...props}>{children}</div>,
+    DialogFooter: ({ children, ...props }: ComponentProps<"div">) => <div {...props}>{children}</div>,
+    DialogHeader: ({ children, ...props }: ComponentProps<"div">) => <div {...props}>{children}</div>,
+    DialogTitle: ({ children, ...props }: ComponentProps<"div">) => <div {...props}>{children}</div>,
+}));
+
 const { ExperimentLayout } = await import("./ExperimentLayout");
 
 let restoreDom: (() => void) | null = null;
@@ -114,6 +123,42 @@ test("rejected experiment keeps the teacher reason visible while the student edi
     expect(notice.getAttribute("role")).toBe("alert");
     expect(notice.textContent).toContain(rejectReason);
     expect(view.getByTestId("student-analysis-report-editor")).toBeTruthy();
+});
+
+test("completed stages open read-only without reopening or clearing the current draft", async () => {
+    let reopenCount = 0;
+    globalThis.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith("/api/student/tasks/2/experiment") && (init?.method ?? "GET") === "GET") {
+            return Response.json({ success: true, data: experiment(5, `<p>${"当前报告草稿".repeat(30)}</p>`) });
+        }
+        if (url.endsWith("/api/student/tasks/2")) {
+            return Response.json({ success: true, data: { id: 2, topicId: 3, name: "查看实验", publishedAt: "2026-03-01T00:00:00.000Z", deadline: "2099-03-01T00:00:00.000Z", status: "in_progress", currentStage: 4, populationSize: 1000, attachments: [], recommendQuestions: [] } });
+        }
+        if (url.endsWith("/api/student/tasks/2/analysis-metrics")) {
+            return Response.json({ success: true, data: { numericFields: [], categoricalFields: [], numeric: {}, categorical: {} } });
+        }
+        if (url.includes("/reopen")) {
+            reopenCount += 1;
+            throw new Error("read-only inspection must not reopen a stage");
+        }
+        throw new Error(`Unhandled fetch: ${url}`);
+    }) as unknown as typeof fetch;
+
+    let view!: ReturnType<typeof render>;
+    await act(async () => {
+        view = render(<MemoryRouter initialEntries={["/task/2/experiment"]}><Routes><Route path="/task/:taskId/experiment" element={<ExperimentLayout />} /></Routes></MemoryRouter>);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    await act(async () => {
+        fireEvent.click(await waitFor(() => view.getByRole("button", { name: /查看已完成阶段 2/ })));
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(await waitFor(() => view.getByTestId("student-stage-inspect-dialog"))).toBeTruthy();
+    expect(view.getByText(/只读快照/)).toBeTruthy();
+    fireEvent.click(view.getByRole("button", { name: "返回当前阶段" }));
+    expect(reopenCount).toBe(0);
+    expect(view.getByTestId("student-analysis-report-editor").textContent).toContain("当前报告草稿");
 });
 
 test("version conflict blocks retry until the student explicitly loads the latest version", async () => {

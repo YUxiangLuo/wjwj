@@ -3,7 +3,7 @@ import { db } from "../../db";
 import { class_, experiment, samplingAttempt, student, task, teacher, topic } from "../../db/schema";
 import { validateObservedVersion } from "../../lib/observed-version";
 import { scoringWeightsFrom } from "../../lib/scoring-weights";
-import { error, getRouteParam, getSearchParams, json, parseBody, stringValue } from "../../server/http";
+import { error, getPositiveRouteId, getSearchParams, json, parseBody, stringValue } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { normalizeSamplePlanData } from "../../student/experiment/sample-plan-display";
 import { readPopulationData } from "../../student/experiment/population-data";
@@ -20,6 +20,8 @@ import {
 } from "../../student/experiment/sampling-storage";
 import { parseStoredJson } from "../../student/experiment/serialization";
 import { getTeacherUser } from "./auth";
+import { resolveSamplingPolicy } from "../../lib/sampling-policy";
+import { writeAuditEvent } from "../../server/audit-event";
 
 function escapeLike(value: string) {
     return value.replace(/[%_\\]/g, (character) => `\\${character}`);
@@ -148,6 +150,8 @@ async function findOwnedExperiment(experimentId: number, teacherId: number, incl
         populationSize: topic.excelRowCount,
         excelFilePath: topic.excelFilePath,
         weightConfig: topic.weightConfig,
+        samplingPolicy: topic.samplingPolicy,
+        fieldMapping: topic.fieldMapping,
         status: experiment.status,
         submittedAt: experiment.submittedAt,
         submissionSnapshot: experiment.submissionSnapshot,
@@ -184,8 +188,8 @@ function archivedFlag(row: { studentDeletedAt: Date | null; taskDeletedAt: Date 
 const gradingDetailRoutes: RouteDefinition = {
     async GET(req) {
         const current = getTeacherUser(req);
-        const experimentId = Number(getRouteParam(req, "id"));
-        if (!Number.isInteger(experimentId) || experimentId <= 0) return error("无效的实验ID", "INVALID_ID");
+        const experimentId = getPositiveRouteId(req);
+        if (!experimentId) return error("无效的实验ID", "INVALID_ID");
         const includeArchived = getSearchParams(req).get("includeArchived") === "1";
         const row = await findOwnedExperiment(experimentId, current.id, includeArchived);
         if (!row) return error("提交记录不存在", "NOT_FOUND", 404);
@@ -199,6 +203,7 @@ const gradingDetailRoutes: RouteDefinition = {
             samplingResults?: unknown;
             reportContent?: string;
             weightConfig?: unknown;
+            samplingPolicy?: unknown;
         }>(row.submissionSnapshot);
         const populationSize = snapshot?.populationSize ?? row.populationSize;
         const weights = scoringWeightsFrom(snapshot?.weightConfig ?? row.weightConfig);
@@ -221,7 +226,7 @@ const gradingDetailRoutes: RouteDefinition = {
         let samplingResults: unknown = storedSamplingResults;
         if (inspection.needsPopulation) {
             if (!row.excelFilePath) return error("总体数据为空或读取失败", "READ_FAILED", 500);
-            const population = await readPopulationData(row.excelFilePath);
+            const population = await readPopulationData(row.excelFilePath, row.fieldMapping);
             if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
             const hydrated = hydrateSamplingResults(storedSamplingResults, population);
             if (!hydrated.ok) return error(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
@@ -231,6 +236,7 @@ const gradingDetailRoutes: RouteDefinition = {
             excelFilePath: _excelFilePath,
             submissionSnapshot: _submissionSnapshot,
             weightConfig: _weightConfig,
+            samplingPolicy: _samplingPolicy,
             studentDeletedAt: _studentDeletedAt,
             taskDeletedAt: _taskDeletedAt,
             topicDeletedAt: _topicDeletedAt,
@@ -249,6 +255,7 @@ const gradingDetailRoutes: RouteDefinition = {
                 populationSize,
             ),
             samplingResults: previewSamplingResults(samplingResults),
+            samplingPolicy: resolveSamplingPolicy(snapshot?.samplingPolicy ?? row.samplingPolicy),
             reportContent: snapshot?.reportContent ?? row.reportContent ?? "",
             scoreQuestionnaire: numeric(row.scoreQuestionnaire),
             scoreProcess: numeric(row.scoreProcess),
@@ -261,8 +268,8 @@ const gradingDetailRoutes: RouteDefinition = {
 
     async POST(req) {
         const current = getTeacherUser(req);
-        const experimentId = Number(getRouteParam(req, "id"));
-        if (!Number.isInteger(experimentId) || experimentId <= 0) return error("无效的实验ID", "INVALID_ID");
+        const experimentId = getPositiveRouteId(req);
+        if (!experimentId) return error("无效的实验ID", "INVALID_ID");
         const row = await findOwnedExperiment(experimentId, current.id, true);
         if (!row) return error("提交记录不存在", "NOT_FOUND", 404);
         if (archivedFlag(row)) return error("该提交已归档，仅供查阅，不能评分", "ARCHIVED_READ_ONLY", 409);
@@ -295,23 +302,41 @@ const gradingDetailRoutes: RouteDefinition = {
             + body.scoreReport! * weights.report
         ) / 100;
         const now = new Date();
-        const updated = await db.update(experiment).set({
-            status: "graded",
-            version: versionResult.value + 1,
-            scoreQuestionnaire: String(body.scoreQuestionnaire),
-            scoreProcess: String(body.scoreProcess),
-            scoreReport: String(body.scoreReport),
-            totalScore: total.toFixed(2),
-            teacherComment: comment || null,
-            rejectReason: null,
-            gradedByTeacherId: current.id,
-            gradedAt: now,
-            updatedAt: now,
-        }).where(and(
-            eq(experiment.id, experimentId),
-            eq(experiment.version, versionResult.value),
-            eq(experiment.status, row.status),
-        )).returning({ id: experiment.id });
+        const updated = await db.transaction(async (tx) => {
+            const rows = await tx.update(experiment).set({
+                status: "graded",
+                version: versionResult.value + 1,
+                scoreQuestionnaire: String(body.scoreQuestionnaire),
+                scoreProcess: String(body.scoreProcess),
+                scoreReport: String(body.scoreReport),
+                totalScore: total.toFixed(2),
+                teacherComment: comment || null,
+                rejectReason: null,
+                gradedByTeacherId: current.id,
+                gradedAt: now,
+                updatedAt: now,
+            }).where(and(
+                eq(experiment.id, experimentId),
+                eq(experiment.version, versionResult.value),
+                eq(experiment.status, row.status),
+            )).returning({ id: experiment.id });
+            if (rows.length) await writeAuditEvent(tx, {
+                actorType: "teacher",
+                actorId: current.id,
+                action: row.status === "graded" ? "grade.updated" : "grade.created",
+                entityType: "experiment",
+                entityId: experimentId,
+                details: {
+                    previousStatus: row.status,
+                    version: versionResult.value + 1,
+                    scoreQuestionnaire: body.scoreQuestionnaire,
+                    scoreProcess: body.scoreProcess,
+                    scoreReport: body.scoreReport,
+                    totalScore: Number(total.toFixed(2)),
+                },
+            });
+            return rows;
+        });
         if (!updated.length) return error("提交记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         return json({ success: true, totalScore: Number(total.toFixed(2)) });
     },
@@ -320,8 +345,8 @@ const gradingDetailRoutes: RouteDefinition = {
 const gradingSamplingExportRoutes: RouteDefinition = {
     async GET(req) {
         const current = getTeacherUser(req);
-        const experimentId = Number(getRouteParam(req, "id"));
-        if (!Number.isInteger(experimentId) || experimentId <= 0) {
+        const experimentId = getPositiveRouteId(req);
+        if (!experimentId) {
             return error("无效的实验ID", "INVALID_ID");
         }
         const type = parseSamplingExportType(getSearchParams(req).get("type"));
@@ -341,7 +366,7 @@ const gradingSamplingExportRoutes: RouteDefinition = {
         let samplingResults: unknown = storedSamplingResults;
         if (inspection.needsPopulation) {
             if (!row.excelFilePath) return error("总体数据为空或读取失败", "READ_FAILED", 500);
-            const population = await readPopulationData(row.excelFilePath);
+            const population = await readPopulationData(row.excelFilePath, row.fieldMapping);
             if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
             const hydrated = hydrateSamplingResults(storedSamplingResults, population);
             if (!hydrated.ok) {
@@ -364,8 +389,8 @@ const gradingSamplingExportRoutes: RouteDefinition = {
 const gradingRejectRoutes: RouteDefinition = {
     async POST(req) {
         const current = getTeacherUser(req);
-        const experimentId = Number(getRouteParam(req, "id"));
-        if (!Number.isInteger(experimentId) || experimentId <= 0) return error("无效的实验ID", "INVALID_ID");
+        const experimentId = getPositiveRouteId(req);
+        if (!experimentId) return error("无效的实验ID", "INVALID_ID");
         const row = await findOwnedExperiment(experimentId, current.id, true);
         if (!row) return error("提交记录不存在", "NOT_FOUND", 404);
         if (archivedFlag(row)) return error("该提交已归档，仅供查阅，不能驳回", "ARCHIVED_READ_ONLY", 409);
@@ -378,23 +403,34 @@ const gradingRejectRoutes: RouteDefinition = {
             return error("驳回理由长度需在5-1000字之间", "VALIDATION_ERROR", 400);
         }
         const now = new Date();
-        const updated = await db.update(experiment).set({
-            status: "rejected",
-            version: versionResult.value + 1,
-            rejectReason: reason,
-            scoreQuestionnaire: null,
-            scoreProcess: null,
-            scoreReport: null,
-            totalScore: null,
-            teacherComment: null,
-            gradedByTeacherId: current.id,
-            gradedAt: now,
-            updatedAt: now,
-        }).where(and(
-            eq(experiment.id, experimentId),
-            eq(experiment.version, versionResult.value),
-            eq(experiment.status, row.status),
-        )).returning({ id: experiment.id });
+        const updated = await db.transaction(async (tx) => {
+            const rows = await tx.update(experiment).set({
+                status: "rejected",
+                version: versionResult.value + 1,
+                rejectReason: reason,
+                scoreQuestionnaire: null,
+                scoreProcess: null,
+                scoreReport: null,
+                totalScore: null,
+                teacherComment: null,
+                gradedByTeacherId: current.id,
+                gradedAt: now,
+                updatedAt: now,
+            }).where(and(
+                eq(experiment.id, experimentId),
+                eq(experiment.version, versionResult.value),
+                eq(experiment.status, row.status),
+            )).returning({ id: experiment.id });
+            if (rows.length) await writeAuditEvent(tx, {
+                actorType: "teacher",
+                actorId: current.id,
+                action: "submission.rejected",
+                entityType: "experiment",
+                entityId: experimentId,
+                details: { version: versionResult.value + 1, reason },
+            });
+            return rows;
+        });
         if (!updated.length) return error("提交记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         return json({ success: true });
     },

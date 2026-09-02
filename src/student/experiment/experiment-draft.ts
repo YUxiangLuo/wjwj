@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 
 const DRAFT_PREFIX = "wj:experiment-draft";
 const DEFAULT_SAVE_DELAY_MS = 600;
+const DRAFT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 interface ExperimentDraftEnvelope<T> {
     experimentVersion: number;
@@ -69,7 +70,13 @@ export function readExperimentDraft<T>(identity: ExperimentDraftIdentity): T | n
         const raw = storage.getItem(key);
         if (!raw) return null;
         const envelope = JSON.parse(raw) as Partial<ExperimentDraftEnvelope<T>>;
-        if (envelope.experimentVersion !== identity.experimentVersion || !("data" in envelope)) {
+        const updatedAt = typeof envelope.updatedAt === "string" ? Date.parse(envelope.updatedAt) : Number.NaN;
+        if (
+            envelope.experimentVersion !== identity.experimentVersion
+            || !("data" in envelope)
+            || !Number.isFinite(updatedAt)
+            || Date.now() - updatedAt > DRAFT_MAX_AGE_MS
+        ) {
             storage.removeItem(key);
             return null;
         }
@@ -77,6 +84,21 @@ export function readExperimentDraft<T>(identity: ExperimentDraftIdentity): T | n
     } catch {
         storage.removeItem(key);
         return null;
+    }
+}
+
+export function clearAllExperimentDrafts() {
+    const storage = getStorage();
+    if (!storage) return;
+    const keys: string[] = [];
+    try {
+        for (let index = 0; index < storage.length; index += 1) {
+            const key = storage.key(index);
+            if (key?.startsWith(`${DRAFT_PREFIX}:`)) keys.push(key);
+        }
+        keys.forEach((key) => storage.removeItem(key));
+    } catch {
+        // Storage can be unavailable in privacy modes; logout must still work.
     }
 }
 

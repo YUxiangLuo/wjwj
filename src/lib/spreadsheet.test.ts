@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import * as XLSX from "xlsx";
 import {
     MAX_SPREADSHEET_MULTIPART_BYTES,
     MAX_SPREADSHEET_UPLOAD_BYTES,
@@ -26,6 +27,14 @@ test("spreadsheet parser preserves raw duplicate header evidence before SheetJS 
     expect(parsed.columns).toEqual(["编号", "年级", " 年级 ", "规模"]);
     expect(parsed.duplicateColumns).toEqual(["年级"]);
     expect(parsed.blankColumnIndexes).toEqual([]);
+});
+
+test("spreadsheet parser detects headers that collide after Unicode normalization", async () => {
+    const parsed = await parseSpreadsheetFile(
+        new TextEncoder().encode("Ａ,A,value\nleft,right,1\n").buffer,
+        "population.csv",
+    );
+    expect(parsed.duplicateColumns).toEqual(["A"]);
 });
 
 test("spreadsheet parser preserves blank header evidence before SheetJS creates __EMPTY keys", async () => {
@@ -58,6 +67,55 @@ test("spreadsheet parser can skip high-cardinality column value collection", asy
 
     expect(parsed.rows).toHaveLength(2);
     expect(parsed.columnValues).toEqual({});
+    expect(parsed.columnValuesTruncated).toEqual([]);
+});
+
+test("spreadsheet parser caps high-cardinality selector options and reports truncation", async () => {
+    const csv = ["id,category", ...Array.from({ length: 205 }, (_, index) => `${index},C${index}`)].join("\n");
+    const parsed = await parseSpreadsheetFile(new TextEncoder().encode(csv).buffer, "population.csv");
+    expect(parsed.columnValues.category).toHaveLength(200);
+    expect(parsed.columnValuesTruncated).toEqual(["id", "category"]);
+});
+
+test("CSV parser preserves identifiers, long integers, and date-like labels as text", async () => {
+    const csv = "编号,类别,长整数\n001,1-2,123456789012345678\n";
+    const parsed = await parseSpreadsheetFile(new TextEncoder().encode(csv).buffer, "population.csv");
+
+    expect(parsed.rows[0]).toEqual({
+        编号: "001",
+        类别: "1-2",
+        长整数: "123456789012345678",
+    });
+});
+
+test("CSV parser supports quoted commas, escaped quotes, embedded newlines, and detects shape errors", async () => {
+    const valid = await parseSpreadsheetFile(
+        new TextEncoder().encode('id,note\n001,"line 1, ""quoted""\nline 2"\n').buffer,
+        "population.csv",
+    );
+    expect(valid.rows[0]).toEqual({ id: "001", note: 'line 1, "quoted"\nline 2' });
+    expect(valid.malformed).toBe(false);
+
+    const malformed = await parseSpreadsheetFile(
+        new TextEncoder().encode("id,note\n001,ok,extra\n").buffer,
+        "population.csv",
+    );
+    expect(malformed.malformed).toBe(true);
+    expect(malformed.malformedRow).toBe(2);
+});
+
+test("XLSX parser uses display text for identifiers and raw values only for mapped numeric fields", async () => {
+    const sheet = XLSX.utils.aoa_to_sheet([["id", "score"], [1, 1234.5]]);
+    sheet.A2!.z = "000";
+    sheet.B2!.z = "#,##0.00";
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, "Population");
+    const bytes = XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+
+    const displayed = await parseSpreadsheetFile(bytes, "population.xlsx");
+    expect(displayed.rows[0]).toEqual({ id: "001", score: "1,234.50" });
+    const mapped = await parseSpreadsheetFile(bytes, "population.xlsx", { numericFields: ["score"] });
+    expect(mapped.rows[0]).toEqual({ id: "001", score: 1234.5 });
 });
 
 test("spreadsheet multipart preflight rejects declared oversized bodies", () => {
@@ -71,4 +129,13 @@ test("spreadsheet multipart preflight rejects declared oversized bodies", () => 
         headers: { "content-length": "999999999999999999999999999999999999999999" },
     }))).toBe(true);
     expect(spreadsheetRequestExceedsLimit(new Request("https://example.com"))).toBe(false);
+});
+
+test("CSV parser retains only the sentinel row needed to reject an oversized population", async () => {
+    const csv = `id,value\n${Array.from({ length: 100_001 }, (_, index) => `${index},x`).join("\n")}`;
+    const parsed = await parseSpreadsheetFile(new TextEncoder().encode(csv).buffer, "population.csv", {
+        includeColumnValues: false,
+    });
+    expect(parsed.rowCount).toBe(100_001);
+    expect(parsed.rows).toHaveLength(100_001);
 });

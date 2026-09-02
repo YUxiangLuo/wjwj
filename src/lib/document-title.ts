@@ -20,10 +20,10 @@ export function getTeacherDocumentTitle(pathname: string) {
     if (/^\/task\/[^/]+\/progress\/?$/.test(pathname)) return title("任务进度", "教师端");
     if (/^\/grading\/[^/]+\/?$/.test(pathname)) return title("批改详情", "教师端");
     if (pathname.startsWith("/class")) return title("班级管理", "教师端");
-    if (pathname.startsWith("/topic")) return title("课题管理", "教师端");
-    if (pathname.startsWith("/task")) return title("任务管理", "教师端");
+    if (pathname.startsWith("/topic")) return title("实验模板", "教师端");
+    if (pathname.startsWith("/task")) return title("实验任务", "教师端");
     if (pathname.startsWith("/grading")) return title("作业批改", "教师端");
-    if (pathname.startsWith("/export")) return title("成绩导出", "教师端");
+    if (pathname.startsWith("/export")) return title("成绩分析与导出", "教师端");
     return title("教学概览", "教师端");
 }
 

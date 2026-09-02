@@ -14,6 +14,7 @@ import {
     formatSystematicInterval,
     getStoredSystematicInterval,
 } from "../experiment/systematic-sampling";
+import { getSamplingMethodState, resolveSamplingPolicy } from "@/lib/sampling-policy";
 
 interface Props {
     open: boolean;
@@ -55,6 +56,7 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
     const samplePlan = experiment.samplePlan;
     const samplingResults = experiment.samplingResults;
     const reportContent = experiment.reportContent ?? "";
+    const samplingPolicy = resolveSamplingPolicy(experiment.samplingPolicy);
 
     return (
         <>
@@ -107,6 +109,7 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
                                 populationSize={experiment.populationSize}
                                 samplePlan={samplePlan}
                                 samplingResults={samplingResults}
+                                samplingPolicy={samplingPolicy}
                                 questionCount={questionnaire?.questions?.length ?? 0}
                             />
                         )}
@@ -117,6 +120,7 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
                             <SamplingSection
                                 samplingResults={samplingResults}
                                 samplePlan={samplePlan}
+                                samplingPolicy={samplingPolicy}
                             />
                         )}
                         {activeSection === "report" && (
@@ -136,12 +140,14 @@ function OverviewSection({
     samplePlan,
     samplingResults,
     questionCount,
+    samplingPolicy,
 }: {
     taskName: string;
     populationSize: number;
     samplePlan: ExperimentData["samplePlan"];
     samplingResults: ExperimentData["samplingResults"];
     questionCount: number;
+    samplingPolicy: ReturnType<typeof resolveSamplingPolicy>;
 }) {
     const advancedSourceLabel = getAdvancedPlanSourceLabel(samplePlan?.advancedPlanSource);
     const stats = [
@@ -177,11 +183,15 @@ function OverviewSection({
     ] : [];
 
     const methods = [
-        { label: "简单随机", done: samplingResults?.simple?.completed, count: getSamplingResultCount("simple", samplingResults?.simple) },
-        { label: "系统抽样", done: samplingResults?.systematic?.completed, count: getSamplingResultCount("systematic", samplingResults?.systematic) },
-        { label: "PPS抽样", done: samplingResults?.pps?.completed, count: getSamplingResultCount("pps", samplingResults?.pps) },
-        { label: "分层抽样", done: samplingResults?.stratified?.completed, count: getSamplingResultCount("stratified", samplingResults?.stratified) },
-    ];
+        { key: "simple" as const, label: "简单随机", result: samplingResults?.simple },
+        { key: "systematic" as const, label: "系统抽样", result: samplingResults?.systematic },
+        { key: "pps" as const, label: "PPS抽样", result: samplingResults?.pps },
+        { key: "stratified" as const, label: "分层抽样", result: samplingResults?.stratified },
+    ].map((method) => ({
+        ...method,
+        state: getSamplingMethodState(samplingPolicy, method.key, method.result),
+        count: getSamplingResultCount(method.key, method.result),
+    })).filter(({ state }) => state !== "disabled");
 
     return (
         <div className="space-y-8">
@@ -224,8 +234,14 @@ function OverviewSection({
                     {methods.map((m) => (
                         <div key={m.label} className="flex items-center justify-between">
                             <span className="text-label text-muted-foreground">{m.label}</span>
-                            <span className={`text-label font-medium ${m.done ? "text-success" : "text-muted-foreground"}`}>
-                                {m.done ? `已完成 (${m.count} 样本)` : "未完成"}
+                            <span className={`text-label font-medium ${m.state === "completed" ? "text-success" : "text-muted-foreground"}`}>
+                                {m.state === "completed"
+                                    ? `已完成 (${m.count} 样本)`
+                                    : m.state === "unavailable"
+                                        ? "不适用"
+                                        : m.state === "unselected"
+                                            ? "未选择"
+                                            : "未完成"}
                             </span>
                         </div>
                     ))}
@@ -319,9 +335,11 @@ function QuestionnaireSection({ questionnaire }: { questionnaire: ExperimentData
 function SamplingSection({
     samplingResults,
     samplePlan,
+    samplingPolicy,
 }: {
     samplingResults: ExperimentData["samplingResults"];
     samplePlan: ExperimentData["samplePlan"];
+    samplingPolicy: ReturnType<typeof resolveSamplingPolicy>;
 }) {
     if (!samplingResults) {
         return <EmptyState text="暂无抽样数据" />;
@@ -329,32 +347,32 @@ function SamplingSection({
 
     const advancedSourceLabel = getAdvancedPlanSourceLabel(samplePlan?.advancedPlanSource);
 
-    const methodCards: { key: MethodKey; label: string; color: string; data: { completed?: boolean; sampleCount?: number; seed?: number; interval?: number; kValue?: number; randomStart?: number; stratifyBy?: string; sizeField?: string; layers?: Array<{ name: string; sampleCount: number }> } | undefined }[] = [
+    const methodCards: { key: MethodKey; label: string; color: string; data: { completed?: boolean; unavailable?: boolean; sampleCount?: number; seed?: number; interval?: number; kValue?: number; randomStart?: number; stratifyBy?: string; sizeField?: string; layers?: Array<{ name: string; sampleCount: number }> } | undefined }[] = [
         {
-            key: "simple",
+            key: "simple" as const,
             label: "简单随机抽样",
             color: "indigo",
             data: samplingResults.simple,
         },
         {
-            key: "systematic",
+            key: "systematic" as const,
             label: "系统抽样",
             color: "teal",
             data: samplingResults.systematic,
         },
         {
-            key: "pps",
+            key: "pps" as const,
             label: "PPS抽样",
             color: "purple",
             data: samplingResults.pps,
         },
         {
-            key: "stratified",
+            key: "stratified" as const,
             label: "分层抽样",
             color: "amber",
             data: samplingResults.stratified,
         },
-    ];
+    ].filter((method) => samplingPolicy.methods[method.key] !== "disabled");
 
     return (
         <div className="space-y-6">
@@ -379,7 +397,7 @@ function SamplingSection({
                             <div className="flex items-center justify-between mb-3">
                                 <h3 className="text-body font-semibold text-foreground">{m.label}</h3>
                                 <span className={`text-meta px-2 py-1 rounded-control ${completed ? "bg-success-muted text-success" : "bg-muted text-muted-foreground"}`}>
-                                    {completed ? "已完成" : "未完成"}
+                                    {d?.unavailable ? "不适用" : completed ? "已完成" : samplingPolicy.methods[m.key] === "optional" ? "未选择" : "未完成"}
                                 </span>
                             </div>
                             {completed && d && (

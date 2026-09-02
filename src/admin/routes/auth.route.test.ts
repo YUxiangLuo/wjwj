@@ -2,7 +2,7 @@ import { expect, mock, test } from "bun:test";
 import { SQL } from "drizzle-orm";
 import { createMockDb } from "../../test-utils/mock-db";
 
-test("admin password change revokes every other session", async () => {
+test("admin password change revokes all old sessions and rotates the cookie", async () => {
     const currentPassword = "Teaching123!";
     const { db, operations } = createMockDb({ select: [
         [{ id: 5, sessionToken: "admin-current", userType: 1, userId: 3, createdAt: new Date(), expiresAt: new Date(Date.now() + 60_000) }],
@@ -25,7 +25,9 @@ test("admin password change revokes every other session", async () => {
         loginFailCount: 0,
         lockedUntil: null,
     });
-    expect(operations.filter((item) => item.kind === "delete")).toHaveLength(1);
+    expect(operations.filter((item) => item.kind === "delete")).toHaveLength(2);
+    expect(operations.filter((item) => item.kind === "insert")).toHaveLength(1);
+    expect(response.headers.get("set-cookie")).toContain("admin_session=");
 });
 
 test("admin protected routes require the initial password to be changed", async () => {
@@ -62,7 +64,7 @@ test("admin protected routes require the initial password to be changed", async 
     expect(handler).toHaveBeenCalledTimes(1);
 });
 
-test("locked admin login verifies credentials but preserves the lock and rejects", async () => {
+test("locked admin login rejects without another expensive password verification", async () => {
     const password = "Teaching123!";
     const { db, operations } = createMockDb({ select: [[{
         id: 3,

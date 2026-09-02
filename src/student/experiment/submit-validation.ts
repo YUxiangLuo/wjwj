@@ -5,6 +5,12 @@ import { getFinalSampleSizeBounds } from "./final-sample-bounds";
 import { getSamplingAcceptedRange } from "./sampling-tolerance";
 import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize } from "./sample-plan";
 import { parseAdvancedPlans, validateAdvancedPlanConsistency } from "./advanced-plan";
+import {
+    evaluateSamplingPolicy,
+    isCompletedSamplingResult,
+    resolveSamplingPolicy,
+    type SamplingMethod,
+} from "../../lib/sampling-policy";
 
 function toTrimmedString(value: unknown) {
     return typeof value === "string" ? value.trim() : "";
@@ -14,10 +20,6 @@ function toInteger(value: unknown): number | null {
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) return null;
     return Math.floor(parsed);
-}
-
-function isSamplingStepCompleted(value: unknown) {
-    return value === true || value === 1;
 }
 
 export function getTargetSampleSizeFromSamplePlan(samplePlan: unknown) {
@@ -82,7 +84,7 @@ export function validateSamplePlanForSubmit(
         (analysisTargetKind === "mean" || analysisTargetKind === "proportion")
         && estimationType !== analysisTargetKind
     ) {
-        return "估计类型需与课题对照变量一致";
+        return "估计类型需与研究目标变量一致";
     }
     const confidenceLevel = toTrimmedString(data.confidenceLevel);
     const marginOfError = Number(data.marginOfError);
@@ -204,6 +206,7 @@ export function validateSamplingResultsForSubmit(
     samplingResults: unknown,
     targetSampleSize: number | null,
     populationSize?: number | null,
+    samplingPolicy?: unknown,
 ): string | null {
     if (!samplingResults || typeof samplingResults !== "object") {
         return "请先完成抽样执行";
@@ -214,36 +217,44 @@ export function validateSamplingResultsForSubmit(
     const systematic = data.systematic as Record<string, unknown> | undefined;
     const pps = data.pps as Record<string, unknown> | undefined;
     const stratified = data.stratified as Record<string, unknown> | undefined;
-    const isPpsUnavailable = pps?.unavailable === true;
-
-    if (!simple || !isSamplingStepCompleted(simple.completed)) {
-        return "请先完成简单随机抽样";
+    const byMethod: Record<SamplingMethod, Record<string, unknown> | undefined> = {
+        simple,
+        systematic,
+        pps,
+        stratified,
+    };
+    const policy = resolveSamplingPolicy(samplingPolicy);
+    const completedMethods = (Object.keys(byMethod) as SamplingMethod[])
+        .filter((method) => policy.methods[method] !== "disabled" && isCompletedSamplingResult(byMethod[method]));
+    const progress = evaluateSamplingPolicy(policy, completedMethods);
+    if (progress.missingRequired.length > 0) {
+        const missing = progress.missingRequired[0]!;
+        if (missing === "pps" && pps?.unavailable === true) {
+            return "实验模板要求完成PPS抽样，但当前总体没有合格规模变量，请联系教师调整抽样策略";
+        }
+        const label = missing === "simple"
+            ? "简单随机抽样"
+            : missing === "systematic"
+                ? "系统抽样"
+                : missing === "pps"
+                    ? "PPS抽样"
+                    : "分层抽样";
+        return `请先完成${label}`;
     }
-
-    if (!systematic || !isSamplingStepCompleted(systematic.completed)) {
-        return "请先完成系统抽样";
-    }
-
-    if (!isPpsUnavailable && (!pps || !isSamplingStepCompleted(pps.completed))) {
-        return "请先完成PPS抽样";
-    }
-
-    if (!stratified || !isSamplingStepCompleted(stratified.completed)) {
-        return "请先完成分层抽样";
-    }
+    if (!progress.canComplete) return "请至少完成两种本实验启用的抽样方法";
 
     if (targetSampleSize !== null && Number.isFinite(targetSampleSize) && targetSampleSize > 0) {
-        const simpleCount = toInteger(simple.sampleCount);
-        if (simpleCount !== targetSampleSize) {
+        const simpleCount = toInteger(simple?.sampleCount);
+        if (completedMethods.includes("simple") && simpleCount !== targetSampleSize) {
             return `简单随机抽样样本量需等于目标样本量（${targetSampleSize}）`;
         }
 
-        const systematicCount = toInteger(systematic.sampleCount);
-        if (systematicCount !== targetSampleSize) {
+        const systematicCount = toInteger(systematic?.sampleCount);
+        if (completedMethods.includes("systematic") && systematicCount !== targetSampleSize) {
             return `系统抽样样本量需等于目标样本量（${targetSampleSize}）`;
         }
 
-        if (!isPpsUnavailable) {
+        if (completedMethods.includes("pps")) {
             const acceptedRange = getSamplingAcceptedRange(targetSampleSize, populationSize);
             const ppsCount = toInteger(pps?.sampleCount);
             if (ppsCount === null || ppsCount < 1) {
@@ -254,20 +265,22 @@ export function validateSamplingResultsForSubmit(
             }
         }
 
-        const stratifiedLayers = Array.isArray(stratified.layers) ? stratified.layers : [];
-        let stratifiedTotal = 0;
-        for (let i = 0; i < stratifiedLayers.length; i += 1) {
-            const layer = stratifiedLayers[i];
-            if (!layer || typeof layer !== "object") continue;
-            const sampleCount = toInteger((layer as Record<string, unknown>).sampleCount);
-            if (sampleCount === null || sampleCount < 1) {
-                return `分层抽样第${i + 1}层样本数需为正整数`;
+        if (completedMethods.includes("stratified")) {
+            const stratifiedLayers = Array.isArray(stratified?.layers) ? stratified.layers : [];
+            let stratifiedTotal = 0;
+            for (let i = 0; i < stratifiedLayers.length; i += 1) {
+                const layer = stratifiedLayers[i];
+                if (!layer || typeof layer !== "object") continue;
+                const sampleCount = toInteger((layer as Record<string, unknown>).sampleCount);
+                if (sampleCount === null || sampleCount < 1) {
+                    return `分层抽样第${i + 1}层样本数需为正整数`;
+                }
+                stratifiedTotal += sampleCount;
             }
-            stratifiedTotal += sampleCount;
-        }
 
-        if (stratifiedLayers.length === 0 || stratifiedTotal !== targetSampleSize) {
-            return `分层抽样样本量总和需等于目标样本量（${targetSampleSize}）`;
+            if (stratifiedLayers.length === 0 || stratifiedTotal !== targetSampleSize) {
+                return `分层抽样样本量总和需等于目标样本量（${targetSampleSize}）`;
+            }
         }
     }
 

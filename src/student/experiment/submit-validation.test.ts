@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test";
-import { getTargetSampleSizeFromSamplePlan, validateSamplePlanForSubmit, validateSamplingResultsForSubmit } from "./submit-validation";
+import { getTargetSampleSizeFromSamplePlan, validateReportForSubmit, validateSamplePlanForSubmit, validateSamplingResultsForSubmit } from "./submit-validation";
 import { calculateFinitePopulationSampleSize } from "./sample-plan";
 
 /** 与复算路径同源的 cost 推荐样本量（95%、5%、N=1000、deff=1、nrr=0.1）。 */
@@ -27,6 +27,11 @@ function plan(overrides: Record<string, unknown>) {
         ...overrides,
     };
 }
+
+test("report validation does not count content swallowed by an unclosed script element", () => {
+    expect(validateReportForSubmit(`<p>可见内容很短</p><script>${"不可见内容".repeat(40)}`))
+        .toBe("本实验要求报告内容不少于100字");
+});
 
 describe("validateSamplePlanForSubmit", () => {
     test("完整合法：有总体规模且在区间内", () => {
@@ -144,9 +149,9 @@ describe("validateSamplePlanForSubmit", () => {
             .toBe("高级样本量缺少可复核快照，请重新应用该高级规划");
     });
 
-    test("估计类型需与课题对照变量一致", () => {
+    test("估计类型需与研究目标变量一致", () => {
         expect(validateSamplePlanForSubmit(plan({}), 200, "proportion")).toBeNull();
-        expect(validateSamplePlanForSubmit(plan({}), 200, "mean")).toBe("估计类型需与课题对照变量一致");
+        expect(validateSamplePlanForSubmit(plan({}), 200, "mean")).toBe("估计类型需与研究目标变量一致");
         expect(
             validateSamplePlanForSubmit(
                 plan({ estimationType: "mean", marginOfError: 2, populationVariance: 100, recommendedSize: 66 }),
@@ -160,7 +165,7 @@ describe("validateSamplePlanForSubmit", () => {
                 200,
                 "proportion",
             ),
-        ).toBe("估计类型需与课题对照变量一致");
+        ).toBe("估计类型需与研究目标变量一致");
     });
 });
 
@@ -177,6 +182,28 @@ describe("validateSamplingResultsForSubmit", () => {
         expect(validateSamplingResultsForSubmit(completedResults(13), 12, 12)).toBe(
             "本实验要求PPS抽样样本量在目标样本量的80%-120%之间（10-12）",
         );
+    });
+
+    test("accepts simple sampling plus one selected method under the default policy", () => {
+        expect(validateSamplingResultsForSubmit({
+            simple: { completed: true, sampleCount: 12 },
+            systematic: { completed: true, sampleCount: 12 },
+        }, 12, 100)).toBeNull();
+        expect(validateSamplingResultsForSubmit({
+            simple: { completed: true, sampleCount: 12 },
+        }, 12, 100)).toBe("请至少完成两种本实验启用的抽样方法");
+    });
+
+    test("requires every method marked required and never counts unavailable PPS", () => {
+        const policy = {
+            version: 1,
+            methods: { simple: "required", systematic: "optional", pps: "required", stratified: "optional" },
+        } as const;
+        expect(validateSamplingResultsForSubmit({
+            simple: { completed: true, sampleCount: 12 },
+            systematic: { completed: true, sampleCount: 12 },
+            pps: { unavailable: true },
+        }, 12, 100, policy)).toContain("请联系教师调整抽样策略");
     });
 });
 

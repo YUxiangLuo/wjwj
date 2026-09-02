@@ -23,10 +23,12 @@ export function getTemplateContentType(fileName: string) {
     const lower = fileName.toLowerCase();
     if (lower.endsWith(".csv")) return "text/csv; charset=utf-8";
     if (lower.endsWith(".pdf")) return "application/pdf";
+    if (lower.endsWith(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     return "application/octet-stream";
 }
 
 export function getTemplateContentDisposition(fileName: string) {
-    const mode = fileName.toLowerCase().endsWith(".csv") ? "attachment" : "inline";
+    const lower = fileName.toLowerCase();
+    const mode = lower.endsWith(".csv") || lower.endsWith(".docx") ? "attachment" : "inline";
     return `${mode}; filename*=UTF-8''${encodeURIComponent(fileName)}`;
 }

@@ -6,15 +6,13 @@ import { createMockDb } from "../../test-utils/mock-db";
 import { student } from "../../db/schema";
 
 test("dashboard counts only visible activity and currently open tasks", async () => {
-    const submittedAt = new Date("2026-07-18T01:00:00Z");
-    const gradedAt = new Date("2026-07-18T02:00:00Z");
+    const deadline = new Date("2026-07-28T02:00:00Z");
     const { db, operations } = createMockDb({ select: [
         [{ count: 1 }],
         [{ count: 2 }],
         [{ count: 3 }],
         [{ count: 4 }],
-        [{ studentName: "已批改学生", className: "统计一班", topicName: "抽样调查", submittedAt }],
-        [{ studentName: "被驳回学生", className: "统计一班", topicName: "抽样调查", totalScore: null, status: "rejected", gradedAt }],
+        [{ id: 8, className: "统计一班", topicName: "抽样调查", deadline, total: 10, completed: 4, pending: 2, rejected: 1 }],
     ] });
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => createTeacherAuthModuleMock());
@@ -23,11 +21,8 @@ test("dashboard counts only visible activity and currently open tasks", async ()
     const response = await module.dashboardRoutes.GET!(new Request("https://example.com/api/teacher/dashboard"));
     const payload = await response.json() as any;
 
-    expect(payload.data.recentSubmissions).toEqual([
-        expect.objectContaining({ student: "已批改学生", topic: "抽样调查" }),
-    ]);
-    expect(payload.data.recentGradings).toEqual([
-        expect.objectContaining({ student: "被驳回学生", rejected: true, score: null }),
+    expect(payload.data.activeTasks).toEqual([
+        expect.objectContaining({ id: 8, templateName: "抽样调查", className: "统计一班", completed: 4, pending: 2, rejected: 1 }),
     ]);
 
     const selects = operations.filter((item) => item.kind === "select");
@@ -35,11 +30,9 @@ test("dashboard counts only visible activity and currently open tasks", async ()
     const dialect = new PgDialect();
     const pendingQuery = dialect.sqlToQuery(selects[2]!.where as SQL);
     const activeTaskQuery = dialect.sqlToQuery(selects[3]!.where as SQL);
-    const recentSubmissionQuery = dialect.sqlToQuery(selects[4]!.where as SQL);
-    const recentGradingQuery = dialect.sqlToQuery(selects[5]!.where as SQL);
-    for (const query of [pendingQuery, recentSubmissionQuery, recentGradingQuery]) {
-        expect(query.sql).toContain('"student"."deleted_at" is null');
-    }
+    const activeListQuery = dialect.sqlToQuery(selects[4]!.where as SQL);
+    expect(pendingQuery.sql).toContain('"student"."deleted_at" is null');
+    expect(selects[4]!.joins?.map((join) => join.table)).toContain(student);
     expect(pendingQuery.params).toEqual([9, "submitted"]);
     expect(activeTaskQuery.sql).toContain('"task"."open_time" is null or "task"."open_time" <=');
     expect(activeTaskQuery.sql).toContain('"task"."deadline" is null or "task"."deadline" >');
@@ -47,6 +40,6 @@ test("dashboard counts only visible activity and currently open tasks", async ()
     expect(typeof activeTaskQuery.params[2]).toBe("string");
     expect(Number.isNaN(Date.parse(activeTaskQuery.params[2] as string))).toBe(false);
     expect(activeTaskQuery.params[3]).toEqual(activeTaskQuery.params[2]);
-    expect(recentSubmissionQuery.params).toEqual([9, "submitted", "graded", "rejected"]);
-    expect(recentGradingQuery.params).toEqual([9, "graded", "rejected"]);
+    expect(activeListQuery.sql).toContain('"task"."open_time" is null or "task"."open_time" <=');
+    expect(activeListQuery.sql).toContain('"task"."deadline" is null or "task"."deadline" >');
 });

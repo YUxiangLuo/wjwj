@@ -4,14 +4,16 @@ import { admin } from "../../db/schema";
 import { ADMIN_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
 import { DEV_AUTH_MODE } from "../../lib/dev-mode";
 import { DEMO_MODE, shouldRequireAdminPasswordChange } from "../../lib/demo-mode";
-import { buildSessionCookie, clearSessionCookie, error, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
+import { buildSessionCookie, clearSessionCookie, error, getClientIp, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
+import { loginAttemptThrottle } from "../../server/login-throttle";
 import { buildAtomicFailedLoginUpdate, failedLoginMessage, isLoginLocked, nextFailedLoginState } from "../../server/login-lockout";
+import { hashPassword, verifyPassword } from "../../server/password-work";
 import {
-    clearOtherUserSessionsForUser,
     createUserSession,
     deleteUserSessionByToken,
     loadActiveUserSession,
     readSessionToken,
+    rotateUserSession,
 } from "../../server/user-session";
 import type { RouteDefinition, RouteHandler } from "../../server/route-types";
 
@@ -110,12 +112,17 @@ const adminLoginRoutes: RouteDefinition = {
         const username = stringValue(body.username).trim();
         const password = stringValue(body.password);
         if (!username || !password) return error("请输入用户名和密码", "VALIDATION_ERROR", 400);
+        const clientIp = getClientIp(req);
+        if (!loginAttemptThrottle.consume(clientIp, "admin", username)) {
+            return error("登录请求过于频繁，请稍后重试", "RATE_LIMITED", 429);
+        }
 
         const [row] = await db.select().from(admin).where(eq(admin.username, username));
+        if (row && isLoginLocked(row)) return error("用户名或密码错误", "INVALID_CREDENTIALS", 401);
         const valid = row
-            ? await Bun.password.verify(password, row.password)
-            : await Bun.password.verify(password, DUMMY_PASSWORD_HASH).then(() => false).catch(() => false);
-        if (!row || isLoginLocked(row)) return error("用户名或密码错误", "INVALID_CREDENTIALS", 401);
+            ? await verifyPassword(password, row.password)
+            : await verifyPassword(password, DUMMY_PASSWORD_HASH).then(() => false).catch(() => false);
+        if (!row) return error("用户名或密码错误", "INVALID_CREDENTIALS", 401);
         if (!valid) {
             const failure = nextFailedLoginState(row);
             await db
@@ -126,6 +133,7 @@ const adminLoginRoutes: RouteDefinition = {
         }
 
         await db.update(admin).set({ loginFailCount: 0, lockedUntil: null }).where(eq(admin.id, row.id));
+        loginAttemptThrottle.clear(clientIp, "admin", username);
 
         const { token, expiresAt } = await createUserSession(ADMIN_USER_TYPE, row.id);
         return json(
@@ -165,7 +173,7 @@ const adminPasswordRoutes: RouteDefinition = {
 
         const [row] = await db.select().from(admin).where(eq(admin.id, current.id));
         if (!row) return error("账户不存在", "ACCOUNT_NOT_FOUND", 404);
-        if (!(await Bun.password.verify(currentPassword, row.password))) {
+        if (!(await verifyPassword(currentPassword, row.password))) {
             return error("当前密码不正确", "INVALID_CREDENTIALS", 401);
         }
 
@@ -176,14 +184,15 @@ const adminPasswordRoutes: RouteDefinition = {
         });
         if (!policy.isPolicyValid) return error(ADMIN_PASSWORD_POLICY.errorMessage, "VALIDATION_ERROR", 400);
 
-        const currentToken = readSessionToken(req, ADMIN_SESSION_COOKIE);
-        if (!currentToken) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        if (!readSessionToken(req, ADMIN_SESSION_COOKIE)) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
         await db
             .update(admin)
-            .set({ password: await Bun.password.hash(newPassword), isFirstLogin: 0, loginFailCount: 0, lockedUntil: null, updatedAt: new Date() })
+            .set({ password: await hashPassword(newPassword), isFirstLogin: 0, loginFailCount: 0, lockedUntil: null, updatedAt: new Date() })
             .where(eq(admin.id, current.id));
-        await clearOtherUserSessionsForUser(ADMIN_USER_TYPE, current.id, currentToken);
-        return json({ success: true });
+        const { token, expiresAt } = await rotateUserSession(ADMIN_USER_TYPE, current.id);
+        return json({ success: true }, 200, {
+            "Set-Cookie": buildSessionCookie(ADMIN_SESSION_COOKIE, token, expiresAt, isSecureRequest(req)),
+        });
     },
 };
 

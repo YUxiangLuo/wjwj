@@ -103,7 +103,7 @@ export function GradingDetail() {
             </div>
             {data.archived && (
                 <div role="note" className="rounded-surface border border-auxiliary-border bg-auxiliary-muted px-4 py-3 text-label text-auxiliary-strong" data-testid="grading-archived-notice">
-                    该提交已归档（学生、任务或课题已被删除），内容仅供查阅，不能评分或驳回。
+                    该提交已归档（学生、实验任务或实验模板已被删除），内容仅供查阅，不能评分或驳回。
                 </div>
             )}
             <Card>
@@ -139,7 +139,7 @@ export function GradingDetail() {
                                     </Button>
                                 </div>
                             )}
-                            <SamplingResultsSnapshot value={data.samplingResults} />
+                            <SamplingResultsSnapshot value={data.samplingResults} samplingPolicy={data.samplingPolicy} />
                             <div className="rounded-surface border border-border bg-card p-4">
                                 <h3 className="flex items-center gap-2 font-medium"><History className="h-4 w-4 text-primary" />抽样执行记录</h3>
                                 <p className="mt-1 text-meta text-muted-foreground">记录每次服务端抽样，便于识别重复尝试；每个实验保留并展示最近 100 次。</p>

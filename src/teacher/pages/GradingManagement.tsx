@@ -69,7 +69,7 @@ export function GradingManagement() {
                     <CardTitle className="text-body">批改列表（{total}）</CardTitle>
                     <div className="flex gap-2 w-auto flex-row">
                         <div className="relative w-auto">
-                            <Label htmlFor="grading-search" className="sr-only">搜索学生或课题</Label>
+                            <Label htmlFor="grading-search" className="sr-only">搜索学生或实验模板</Label>
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 id="grading-search"
@@ -77,7 +77,7 @@ export function GradingManagement() {
                                 value={keyword}
                                 onChange={(event) => setKeyword(event.target.value)}
                                 onKeyDown={(event) => event.key === "Enter" && void load(1)}
-                                placeholder="搜索学生或课题"
+                                placeholder="搜索学生或实验模板"
                             />
                         </div>
                         <Select value={status} onValueChange={setStatus}>

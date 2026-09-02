@@ -53,7 +53,7 @@ export function FormulaPhase({
                     <h2 className="text-page-title font-bold text-foreground">现在进入样本量公式阶段</h2>
                     <p className="text-label text-muted-foreground max-w-2xl mx-auto">
                         {estimationLocked
-                            ? "估计类型由课题对照变量锁定。下面设置置信水平；公式、误差定义和示例都按该类型计算。"
+                            ? "估计类型由研究目标变量锁定。下面设置置信水平；公式、误差定义和示例都按该类型计算。"
                             : "先选这次要规划的估计目标，再设置置信水平。后面的公式、误差定义和示例都会跟着这里的选择变化。"}
                     </p>
                 </div>

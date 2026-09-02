@@ -38,7 +38,7 @@ export async function publishTopicTasks(params: {
         || params.classIds.some((classId) => !Number.isInteger(classId) || classId <= 0)
         || new Set(params.classIds).size !== params.classIds.length
     ) {
-        return fail("请选择有效的课题和班级", "VALIDATION_ERROR");
+        return fail("请选择有效的实验模板和班级", "VALIDATION_ERROR");
     }
     if (params.deadline !== undefined && typeof params.deadline !== "string") {
         return fail("截止时间无效", "VALIDATION_ERROR");
@@ -65,20 +65,22 @@ export async function publishTopicTasks(params: {
                 status: topic.status,
                 excelFilePath: topic.excelFilePath,
                 fieldMapping: topic.fieldMapping,
+                samplingPolicy: topic.samplingPolicy,
                 weightConfig: topic.weightConfig,
             })
             .from(topic)
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
         if (!topicRow) {
-            return fail("无权限使用该课题", "FORBIDDEN", 403);
+            return fail("无权限使用该实验模板", "FORBIDDEN", 403);
         }
         if (topicRow.status !== 1) {
-            return fail("只能发布已发布课题", "VALIDATION_ERROR");
+            return fail("只能使用已发布的实验模板", "VALIDATION_ERROR");
         }
 
         const publishReadinessError = validateTopicPublishReadiness({
             excelFilePath: topicRow.excelFilePath,
             fieldMapping: topicRow.fieldMapping as Record<string, unknown> | string | null | undefined,
+            samplingPolicy: topicRow.samplingPolicy,
             weightConfig: topicRow.weightConfig as Record<string, unknown> | string | null | undefined,
         });
         if (publishReadinessError) {

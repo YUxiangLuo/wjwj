@@ -140,6 +140,7 @@ export const topic = pgTable(
         excelFilePath: varchar("excel_file_path", { length: 500 }),
         excelRowCount: integer("excel_row_count").notNull().default(0),
         fieldMapping: nativeJsonb("field_mapping"),
+        samplingPolicy: nativeJsonb("sampling_policy").notNull().default(sql`'{"version":1,"methods":{"simple":"required","systematic":"optional","pps":"optional","stratified":"optional"}}'::jsonb`),
         weightConfig: nativeJsonb("weight_config"),
         recommendQuestions: nativeJsonb("recommend_questions"),
         status: smallint("status").notNull().default(0),
@@ -154,6 +155,10 @@ export const topic = pgTable(
         fieldMappingObject: check(
             "topic_ck_field_mapping_object",
             sql`${table.fieldMapping} is null or jsonb_typeof(${table.fieldMapping}) = 'object'`,
+        ),
+        samplingPolicyObject: check(
+            "topic_ck_sampling_policy_object",
+            sql`jsonb_typeof(${table.samplingPolicy}) = 'object'`,
         ),
         weightConfigObject: check(
             "topic_ck_weight_config_object",
@@ -175,7 +180,7 @@ export const topicAttachment = pgTable(
         topicId: bigint("topic_id", { mode: "number" }).notNull().references(() => topic.id, { onDelete: "cascade" }),
         fileName: varchar("file_name", { length: 255 }).notNull(),
         filePath: varchar("file_path", { length: 500 }).notNull(),
-        fileType: varchar("file_type", { length: 50 }).notNull(),
+        fileType: varchar("file_type", { length: 120 }).notNull(),
         fileSize: bigint("file_size", { mode: "number" }).notNull().default(0),
         createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     },
@@ -306,6 +311,26 @@ export const announcement = pgTable(
         statusIdx: index("announcement_idx_status").on(table.status),
         scopeCheck: check("announcement_ck_target_scope", sql`${table.targetScope} in ('all', 'teacher', 'student')`),
         statusCheck: check("announcement_ck_status_value", sql`${table.status} in (0, 1)`),
+    }),
+);
+
+export const auditEvent = pgTable(
+    "audit_event",
+    {
+        id: bigint("id", { mode: "number" }).generatedByDefaultAsIdentity().primaryKey(),
+        actorType: varchar("actor_type", { length: 20 }).notNull(),
+        actorId: bigint("actor_id", { mode: "number" }).notNull(),
+        action: varchar("action", { length: 80 }).notNull(),
+        entityType: varchar("entity_type", { length: 40 }).notNull(),
+        entityId: bigint("entity_id", { mode: "number" }).notNull(),
+        details: nativeJsonb("details").notNull().default(sql`'{}'::jsonb`),
+        createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+    },
+    (table) => ({
+        entityIdx: index("audit_event_idx_entity").on(table.entityType, table.entityId, table.createdAt),
+        actorIdx: index("audit_event_idx_actor").on(table.actorType, table.actorId, table.createdAt),
+        actorTypeCheck: check("audit_event_ck_actor_type", sql`${table.actorType} in ('admin', 'teacher', 'student', 'system')`),
+        detailsObject: check("audit_event_ck_details_object", sql`jsonb_typeof(${table.details}) = 'object'`),
     }),
 );
 

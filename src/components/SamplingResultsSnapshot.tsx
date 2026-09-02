@@ -7,8 +7,11 @@ import {
     formatSystematicInterval,
     getStoredSystematicInterval,
 } from "@/student/experiment/systematic-sampling";
+import { PpsProbabilityExplanation } from "@/components/PpsProbabilityExplanation";
+import { getSamplingMethodState, type SamplingPolicyV1 } from "@/lib/sampling-policy";
 
 type SamplingMethod = keyof SamplingResultsData;
+type PpsResult = NonNullable<SamplingResultsData["pps"]>;
 
 interface SamplingMethodValue {
     completed?: boolean;
@@ -24,6 +27,8 @@ interface SamplingMethodValue {
     stratifyBy?: string;
     layers?: Array<{ name: string; count: number; ratio: number; sampleCount: number }>;
     data?: unknown[];
+    probabilitySummary?: PpsResult["probabilitySummary"];
+    probabilityPreview?: PpsResult["probabilityPreview"];
 }
 
 const METHOD_LABELS: Record<SamplingMethod, string> = {
@@ -60,13 +65,18 @@ function getMethodDetails(method: SamplingMethod, result: SamplingMethodValue) {
 export function SamplingResultsSnapshot({
     value,
     emptyText = "暂无抽样结果",
+    samplingPolicy,
 }: {
     value: SamplingResultsData | null | undefined;
     emptyText?: string;
+    samplingPolicy?: SamplingPolicyV1;
 }) {
     const methods = (Object.keys(METHOD_LABELS) as SamplingMethod[])
         .map((method) => ({ method, result: value?.[method] as SamplingMethodValue | undefined }))
-        .filter((entry): entry is { method: SamplingMethod; result: SamplingMethodValue } => Boolean(entry.result));
+        .filter((entry): entry is { method: SamplingMethod; result: SamplingMethodValue } => (
+            Boolean(entry.result)
+            && getSamplingMethodState(samplingPolicy, entry.method, entry.result) !== "disabled"
+        ));
 
     if (methods.length === 0) {
         return <p className="text-label text-muted-foreground">{emptyText}</p>;
@@ -74,9 +84,9 @@ export function SamplingResultsSnapshot({
 
     return (
         <Tabs defaultValue={methods[0]!.method} data-testid="sampling-results-snapshot">
-            <TabsList className="grid h-auto w-full grid-cols-4">
+            <TabsList className="flex h-auto w-full">
                 {methods.map(({ method, result }) => (
-                    <TabsTrigger key={method} value={method} className="flex-wrap py-2">
+                    <TabsTrigger key={method} value={method} className="min-w-0 flex-1 flex-wrap py-2">
                         <span>{METHOD_LABELS[method]}</span>
                         <span className="text-meta text-muted-foreground">{getSamplingResultCount(method, result)} 条</span>
                     </TabsTrigger>
@@ -130,6 +140,8 @@ export function SamplingResultsSnapshot({
                                 </div>
                             </div>
                         ) : null}
+
+                        {method === "pps" ? <PpsProbabilityExplanation result={result as SamplingResultsData["pps"]} /> : null}
                     </TabsContent>
                 );
             })}

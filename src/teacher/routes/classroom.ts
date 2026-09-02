@@ -1,10 +1,11 @@
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
-import * as XLSX from "xlsx";
 import { db } from "../../db";
 import { class_, semester, student } from "../../db/schema";
 import { isValidOptionalEmail } from "../../lib/email";
-import { spreadsheetRequestExceedsLimit, validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
-import { error, getRouteParam, json, parseBody, stringValue } from "../../server/http";
+import { generateTemporaryPassword } from "../../lib/temporary-password";
+import { parseSpreadsheetFile, spreadsheetRequestExceedsLimit, validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
+import { hashPassword, mapWithConcurrency } from "../../server/password-work";
+import { error, getPositiveRouteId, json, parseBody, stringValue } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { clearUserSessionsForUser } from "../../server/user-session";
 import { STUDENT_USER_TYPE } from "../../student/routes/auth";
@@ -20,8 +21,7 @@ function normalizeStudentId(value: string) {
 }
 
 function parseRouteId(req: Request, name: string) {
-    const id = Number.parseInt(getRouteParam(req, name) ?? "", 10);
-    return Number.isInteger(id) && id > 0 ? id : null;
+    return getPositiveRouteId(req, name);
 }
 
 async function requireOwnedClass(classId: number, teacherId: number) {
@@ -97,15 +97,16 @@ const classStudentsRoutes: RouteDefinition = {
         if ((await db.select({ id: student.id }).from(student).where(eq(student.studentId, studentId))).length) {
             return error("学号已存在", "DUPLICATE_ERROR", 409);
         }
+        const temporaryPassword = generateTemporaryPassword();
         await db.insert(student).values({
             studentId,
             name,
             email: email || null,
             classId,
-            password: await Bun.password.hash(studentId),
+            password: await hashPassword(temporaryPassword),
             isFirstLogin: 1,
         });
-        return json({ success: true }, 201);
+        return json({ success: true, temporaryPassword }, 201);
     },
 };
 
@@ -129,12 +130,9 @@ const classStudentsImportRoutes: RouteDefinition = {
         let rows: Array<Record<string, unknown>>;
         try {
             const buffer = await file.arrayBuffer();
-            const workbook = file.name.toLowerCase().endsWith(".csv")
-                ? XLSX.read(new TextDecoder("utf-8").decode(buffer), { type: "string" })
-                : XLSX.read(buffer, { type: "array" });
-            const firstSheetName = workbook.SheetNames[0];
-            const firstSheet = firstSheetName ? workbook.Sheets[firstSheetName] : undefined;
-            rows = firstSheet ? XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet, { defval: "" }) : [];
+            const parsedFile = await parseSpreadsheetFile(buffer, file.name, { includeColumnValues: false });
+            if (parsedFile.malformed) return error("表格行列结构不一致或引号未闭合", "INVALID_FILE", 400);
+            rows = parsedFile.rows;
         } catch {
             return error("无法读取表格文件", "INVALID_FILE", 400);
         }
@@ -192,7 +190,11 @@ const classStudentsImportRoutes: RouteDefinition = {
             }
         }
         const inserts = candidates.filter((item) => !existingIds.has(item.normalizedStudentId));
-        const hashes = await Promise.all(inserts.map((item) => Bun.password.hash(item.studentId)));
+        const credentials = inserts.map((item) => ({
+            studentId: item.studentId,
+            temporaryPassword: generateTemporaryPassword(),
+        }));
+        const hashes = await mapWithConcurrency(credentials, 4, (item) => hashPassword(item.temporaryPassword));
 
         if (inserts.length) {
             await db.insert(student).values(
@@ -206,7 +208,7 @@ const classStudentsImportRoutes: RouteDefinition = {
                 })),
             );
         }
-        return json({ successCount: inserts.length, failureCount: errors.length, errors });
+        return json({ successCount: inserts.length, failureCount: errors.length, errors, credentials });
     },
 };
 
@@ -224,11 +226,13 @@ const studentRoutes: RouteDefinition = {
 
         const body = await parseBody<{ action?: "reset_password" | "toggle_status" }>(req);
         if (body.action === "reset_password") {
+            const temporaryPassword = generateTemporaryPassword();
             await db
                 .update(student)
-                .set({ password: await Bun.password.hash(owned.studentId), isFirstLogin: 1, loginFailCount: 0, lockedUntil: null, updatedAt: new Date() })
+                .set({ password: await hashPassword(temporaryPassword), isFirstLogin: 1, loginFailCount: 0, lockedUntil: null, updatedAt: new Date() })
                 .where(eq(student.id, id));
             await clearUserSessionsForUser(STUDENT_USER_TYPE, id);
+            return json({ success: true, temporaryPassword });
         } else if (body.action === "toggle_status") {
             const status = owned.status === 1 ? 0 : 1;
             await db.update(student).set({ status, updatedAt: new Date() }).where(eq(student.id, id));

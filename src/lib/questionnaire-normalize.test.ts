@@ -58,4 +58,10 @@ describe("normalizeRecommendQuestionsFromDb", () => {
             scaleMaxLabel: "高",
         });
     });
+
+    test("preserves recognized questionnaire sections", () => {
+        expect(normalizeRecommendQuestionsFromDb([{ id: "q1", type: "boolean", content: "测试", section: "background" }])).toEqual([
+            { id: "q1", type: "boolean", content: "测试", section: "background" },
+        ]);
+    });
 });

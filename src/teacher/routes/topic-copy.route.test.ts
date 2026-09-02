@@ -157,8 +157,24 @@ test("topic copy returns 404 when the teacher does not own the topic", async () 
         success: false,
         error: {
             code: "NOT_FOUND",
-            message: "课题不存在",
+            message: "实验模板不存在",
         },
     });
     expect(operations.filter((operation) => operation.kind === "insert")).toHaveLength(0);
+});
+
+test("topic copy truncates a maximum-length source name before adding the suffix", async () => {
+    const { module, operations } = await loadTopicRoutes({
+        select: [
+            [{ id: 12, status: 0 }],
+            [{ id: 12, teacherId: 9, name: "长".repeat(200), description: "", excelFilePath: null, excelRowCount: 0, fieldMapping: null, samplingPolicy: null, weightConfig: null, recommendQuestions: null, status: 0 }],
+            [],
+        ],
+        insert: [[{ id: 45 }]],
+    });
+    const response = await module.topicCopyRoutes.POST!(withRouteParam(new Request("https://example.com", { method: "POST" }), "12"));
+    expect(response.status).toBe(200);
+    const inserted = operations.find((operation) => operation.kind === "insert");
+    expect((inserted?.values as any).name).toHaveLength(200);
+    expect((inserted?.values as any).name).toEndWith(" (副本)");
 });

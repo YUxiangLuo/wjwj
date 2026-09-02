@@ -4,14 +4,23 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useControlledOverlayFocusRestore } from "@/components/ui/controlled-overlay-focus"
+import { useModalBackgroundInert } from "@/components/ui/overlay-inert"
 
 function AlertDialog({
   open,
+  defaultOpen,
+  onOpenChange,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
-  useControlledOverlayFocusRestore(open)
+  const [internalOpen, setInternalOpen] = React.useState(defaultOpen ?? false)
+  const actualOpen = open ?? internalOpen
+  useControlledOverlayFocusRestore(actualOpen)
+  useModalBackgroundInert(actualOpen)
 
-  return <AlertDialogPrimitive.Root data-slot="alert-dialog" open={open} {...props} />
+  return <AlertDialogPrimitive.Root data-slot="alert-dialog" open={open} defaultOpen={defaultOpen} onOpenChange={(nextOpen) => {
+    setInternalOpen(nextOpen)
+    onOpenChange?.(nextOpen)
+  }} {...props} />
 }
 
 function AlertDialogTrigger({

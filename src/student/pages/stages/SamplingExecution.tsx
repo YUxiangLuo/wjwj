@@ -36,6 +36,7 @@ import {
     PPS_UNAVAILABLE_STATUS_MESSAGE,
 } from "../../experiment/sampling-messages";
 import { pickDefaultPpsSizeField } from "../../experiment/pps-size-field";
+import { PpsProbabilityExplanation } from "@/components/PpsProbabilityExplanation";
 import {
     formatSystematicInterval,
     getStoredSystematicInterval,
@@ -43,6 +44,12 @@ import {
 } from "../../experiment/systematic-sampling";
 import { getSamplingAcceptedRange } from "../../experiment/sampling-tolerance";
 import { getSamplingResultCount } from "../../experiment/sampling-results";
+import {
+    evaluateSamplingPolicy,
+    resolveSamplingPolicy,
+    type SamplingMethod as PolicySamplingMethod,
+    type SamplingMethodRequirement,
+} from "@/lib/sampling-policy";
 
 interface SamplingExecutionProps {
     onPrev: () => void;
@@ -78,8 +85,26 @@ const FIELD_LABELS: Record<string, string> = {
     "spending": "消费支出",
 };
 
+const METHOD_LABELS: Record<PolicySamplingMethod, string> = {
+    simple: "简单随机抽样",
+    systematic: "系统抽样",
+    pps: "PPS抽样",
+    stratified: "分层抽样",
+};
+
+function RequirementLabel({ value }: { value: SamplingMethodRequirement }) {
+    return (
+        <span className={`rounded-control border px-1.5 py-0.5 text-meta ${value === "required" ? "border-primary-border bg-primary-muted text-primary" : "border-border bg-card text-muted-foreground"}`}>
+            {value === "required" ? "必做" : "选做"}
+        </span>
+    );
+}
+
 export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const { populationSize, experiment, completeStage } = useExperiment();
+    const samplingPolicy = resolveSamplingPolicy(experiment?.samplingPolicy);
+    const enabledMethods = (Object.keys(samplingPolicy.methods) as PolicySamplingMethod[])
+        .filter((method) => samplingPolicy.methods[method] !== "disabled");
 
     // Get sample size from sample plan
     const samplePlan = experiment?.samplePlan as SamplePlanData | null;
@@ -304,9 +329,6 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const ppsMaxSize = samplingAcceptedRange?.max ?? N;
     const isPpsSizeValid = ppsSampleSize >= ppsMinSize && ppsSampleSize <= ppsMaxSize && ppsSampleSize >= 1 && ppsSampleSize <= N;
     const hasPpsNumericField = ppsEligibleFields.length > 0;
-    const ppsCompletedOrUnavailable = Boolean(
-        ppsResult?.completed || ppsResult?.unavailable || (statsLoaded && !hasPpsNumericField),
-    );
     const ppsPreviewTotal = ppsResult?.sampleCount ?? ppsResult?.data?.length ?? 0;
     const ppsSummaryFieldLabel = ppsResult?.sizeField
         ? FIELD_LABELS[ppsResult.sizeField] || ppsResult.sizeField
@@ -315,13 +337,15 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
         systematicResult?.completed && systematicResult.sampleCount === n,
     );
     const resultSystematicInterval = getStoredSystematicInterval(systematicResult) ?? systematicInterval;
-    const allCompleted = Boolean(simpleResult?.completed && systematicCompletedForCurrentPlan && ppsCompletedOrUnavailable && stratifiedResult?.completed);
-    const completedMethodCount = [
-        Boolean(simpleResult?.completed),
-        systematicCompletedForCurrentPlan,
-        ppsCompletedOrUnavailable,
-        Boolean(stratifiedResult?.completed),
-    ].filter(Boolean).length;
+    const completedMethods = ([
+        ["simple", Boolean(simpleResult?.completed)],
+        ["systematic", systematicCompletedForCurrentPlan],
+        ["pps", Boolean(ppsResult?.completed)],
+        ["stratified", Boolean(stratifiedResult?.completed)],
+    ] as const).filter(([, completed]) => completed).map(([method]) => method);
+    const samplingProgress = evaluateSamplingPolicy(samplingPolicy, completedMethods);
+    const allCompleted = samplingProgress.canComplete;
+    const completedMethodCount = samplingProgress.completed.length;
 
     const handleConfirmNext = async () => {
         await completeStage(3, {});
@@ -388,7 +412,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                 <div className="text-label font-medium text-muted-foreground">完成进度</div>
                                 <div className="flex items-center gap-2">
                                     <span className="text-section-title font-bold text-foreground">
-                                        {completedMethodCount}/4
+                                        {completedMethodCount}/{enabledMethods.length}
                                     </span>
                                     <span className="text-label text-muted-foreground">种方法</span>
                                 </div>
@@ -428,33 +452,54 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 </Card>
             )}
 
+            <div className="rounded-surface border border-info-border bg-info-muted px-4 py-3 text-label text-info" data-testid="student-sampling-policy-summary">
+                <p className="font-semibold">本实验的抽样要求</p>
+                <p className="mt-1">
+                    必做：{samplingProgress.required.map((method) => METHOD_LABELS[method]).join("、")}；
+                    {enabledMethods.some((method) => samplingPolicy.methods[method] === "optional")
+                        ? `选做：${enabledMethods.filter((method) => samplingPolicy.methods[method] === "optional").map((method) => METHOD_LABELS[method]).join("、")}。`
+                        : "没有选做方法。"}
+                    至少实际完成两种方法后才能进入分析。
+                </p>
+            </div>
+
             {/* Sampling methods tabs */}
             <Tabs defaultValue="simple" className="space-y-6">
                 <TabsList className="bg-card border border-border p-1 rounded-surface w-full min-w-0 flex h-auto gap-1" data-testid="student-sampling-tabs">
-                    <TabsTrigger value="simple" data-testid="student-sampling-tab-simple" className="min-w-0 flex-1 rounded-surface py-2.5 px-3 text-label data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
+                    <TabsTrigger value="simple" data-testid="student-sampling-tab-simple" className="scroll-mt-20 min-w-0 flex-1 rounded-surface py-2.5 px-3 text-label data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
                         <div className="min-w-0 flex items-center justify-center gap-2">
                             <span>简单随机抽样</span>
+                            <RequirementLabel value={samplingPolicy.methods.simple} />
                             {simpleResult?.completed && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
                         </div>
                     </TabsTrigger>
-                    <TabsTrigger value="systematic" data-testid="student-sampling-tab-systematic" className="min-w-0 flex-1 rounded-surface py-2.5 px-3 text-label data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
+                    {samplingPolicy.methods.systematic !== "disabled" && (
+                    <TabsTrigger value="systematic" data-testid="student-sampling-tab-systematic" className="scroll-mt-20 min-w-0 flex-1 rounded-surface py-2.5 px-3 text-label data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
                         <div className="min-w-0 flex items-center justify-center gap-2">
                             <span>系统抽样</span>
+                            <RequirementLabel value={samplingPolicy.methods.systematic} />
                             {systematicCompletedForCurrentPlan && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
                         </div>
                     </TabsTrigger>
-                    <TabsTrigger value="pps" data-testid="student-sampling-tab-pps" className="min-w-0 flex-1 rounded-surface py-2.5 px-3 text-label data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
+                    )}
+                    {samplingPolicy.methods.pps !== "disabled" && (
+                    <TabsTrigger value="pps" data-testid="student-sampling-tab-pps" className="scroll-mt-20 min-w-0 flex-1 rounded-surface py-2.5 px-3 text-label data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
                         <div className="min-w-0 flex items-center justify-center gap-2">
                             <span>PPS抽样</span>
+                            <RequirementLabel value={samplingPolicy.methods.pps} />
                             {ppsResult?.completed && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
                         </div>
                     </TabsTrigger>
-                    <TabsTrigger value="stratified" data-testid="student-sampling-tab-stratified" className="min-w-0 flex-1 rounded-surface py-2.5 px-3 text-label data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
+                    )}
+                    {samplingPolicy.methods.stratified !== "disabled" && (
+                    <TabsTrigger value="stratified" data-testid="student-sampling-tab-stratified" className="scroll-mt-20 min-w-0 flex-1 rounded-surface py-2.5 px-3 text-label data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
                         <div className="min-w-0 flex items-center justify-center gap-2">
                             <span>分层抽样</span>
+                            <RequirementLabel value={samplingPolicy.methods.stratified} />
                             {stratifiedResult?.completed && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
                         </div>
                     </TabsTrigger>
+                    )}
                 </TabsList>
 
                 {/* Simple Random Sampling */}
@@ -533,6 +578,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 </TabsContent>
 
                 {/* Systematic Sampling */}
+                {samplingPolicy.methods.systematic !== "disabled" && (
                 <TabsContent value="systematic" className="mt-0 focus-visible:outline-none">
                     <div className="grid grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                         <div className="col-span-2 space-y-4">
@@ -635,8 +681,10 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                         </div>
                     </div>
                 </TabsContent>
+                )}
 
                 {/* PPS Sampling */}
+                {samplingPolicy.methods.pps !== "disabled" && (
                 <TabsContent value="pps" className="mt-0 focus-visible:outline-none">
                     <div className="grid grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                         <div className="col-span-2 space-y-4">
@@ -647,7 +695,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                         PPS抽样（概率与规模成比例抽样）
                                     </CardTitle>
                                     <CardDescription className="text-muted-foreground pt-1">
-                                        不放回 πps：一阶包含概率与规模成正比（πᵢ = n xᵢ / X，过大则必然入样）。分析阶段用 Hájek 加权均值，不是 Horvitz–Thompson 均值。规模变量应在抽样前对总体单位可获得；它与目标变量相关时 PPS 才更可能提高效率，相关性弱时未必优于等概率设计。抽取数量允许在规划目标的 80%–120% 调整，这是本实验的操作规则，不是 PPS 理论要求。
+                                        不放回 πps：普通单位的一阶包含概率与规模成正比；若初始 n·xᵢ/Σxᵢ 达到 1，该单位必然入样，剩余名额会在其他单位间重新按规模分配。分析阶段用 Hájek 加权均值，不是 Horvitz–Thompson 均值。规模变量应在抽样前对总体单位可获得；它与目标变量相关时 PPS 才更可能提高效率，相关性弱时未必优于等概率设计。抽取数量允许在规划目标的 80%–120% 调整，这是本实验的操作规则，不是 PPS 理论要求。
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-4">
@@ -740,6 +788,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                             rerunLabel="重新执行 PPS 抽样"
                                         />
                                     )}
+                                    <PpsProbabilityExplanation result={ppsResult} />
                                 </CardContent>
                             </Card>
                         </div>
@@ -765,8 +814,10 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                         </div>
                     </div>
                 </TabsContent>
+                )}
 
                 {/* Stratified Sampling */}
+                {samplingPolicy.methods.stratified !== "disabled" && (
                 <TabsContent value="stratified" className="mt-0 focus-visible:outline-none">
                     <StratifiedSamplingTab
                         n={n}
@@ -794,6 +845,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                         setExecutionTime={(ms) => setExecutionTimes(prev => ({ ...prev, stratified: ms }))}
                     />
                 </TabsContent>
+                )}
             </Tabs>
 
             {/* Navigation */}
@@ -802,7 +854,11 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                     上一阶段
                 </Button>
                 <Button onClick={() => setConfirmNextOpen(true)} disabled={!allCompleted} data-testid="student-sampling-next" className={`min-w-0 whitespace-normal w-auto ${allCompleted ? "bg-primary hover:bg-primary-hover text-primary-foreground " : "bg-muted text-muted-foreground"}`}>
-                    {allCompleted ? "完成本阶段" : `本实验要求完成四种抽样方法 (${completedMethodCount}/4)`}
+                    {allCompleted
+                        ? "完成本阶段"
+                        : samplingProgress.missingRequired.length > 0
+                            ? `还需完成必做方法：${samplingProgress.missingRequired.map((method) => METHOD_LABELS[method]).join("、")}`
+                            : `至少完成两种方法（已完成 ${completedMethodCount}/${enabledMethods.length}）`}
                     <ArrowRight className="w-4 h-4 ml-2 shrink-0" />
                 </Button>
             </div>
@@ -814,10 +870,13 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                         <AlertDialogTitle className="text-foreground">确认完成抽样执行</AlertDialogTitle>
                         <AlertDialogDescription asChild>
                             <div className="text-label text-muted-foreground">
-                                您已完成本实验要求的四种抽样方法：
+                                您已完成本实验模板要求的抽样方法：
                                 <div className="bg-background p-4 rounded-surface border border-border mt-3 mb-3 space-y-2">
                                     <div className="flex justify-between"><span>简单随机抽样:</span> <span className="text-foreground">{simpleResult?.sampleCount} 样本</span></div>
+                                    {systematicCompletedForCurrentPlan && (
                                     <div className="flex justify-between"><span>系统抽样:</span> <span className="text-foreground">{systematicResult?.sampleCount} 样本 (K={formatSystematicInterval(resultSystematicInterval)})</span></div>
+                                    )}
+                                    {samplingPolicy.methods.pps !== "disabled" && (ppsResult?.completed || ppsResult?.unavailable) && (
                                     <div className="flex justify-between">
                                         <span>PPS抽样:</span>
                                         <span className="text-foreground">
@@ -826,7 +885,10 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 : `${ppsResult?.sampleCount} 样本`}
                                         </span>
                                     </div>
+                                    )}
+                                    {stratifiedResult?.completed && (
                                     <div className="flex justify-between"><span>分层抽样:</span> <span className="text-foreground">{getSamplingResultCount("stratified", stratifiedResult)} 样本</span></div>
+                                    )}
                                 </div>
                                 <p>确认后将进入分析与报告阶段。</p>
                             </div>

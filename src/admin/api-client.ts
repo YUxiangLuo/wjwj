@@ -47,10 +47,10 @@ export const semesterApi = {
 };
 export const teacherApi = {
     list: (search?: string) => request<Teacher[]>(`/api/admin/teachers${search ? `?search=${encodeURIComponent(search)}` : ""}`),
-    create: (data: { employeeId: string; name: string }) => request<{ id: number }>("/api/admin/teachers", { method: "POST", body: JSON.stringify(data) }),
+    create: (data: { employeeId: string; name: string }) => request<{ id: number; temporaryPassword: string }>("/api/admin/teachers", { method: "POST", body: JSON.stringify(data) }),
     update: (id: number, data: { name: string }) => request<{ success: boolean }>(`/api/admin/teachers/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     updateStatus: (id: number, status: number) => request<{ success: boolean }>(`/api/admin/teachers/${id}/status`, { method: "PUT", body: JSON.stringify({ status }) }),
-    resetPassword: (id: number) => request<{ success: boolean }>(`/api/admin/teachers/${id}/reset-password`, { method: "POST" }),
+    resetPassword: (id: number) => request<{ success: boolean; temporaryPassword: string }>(`/api/admin/teachers/${id}/reset-password`, { method: "POST" }),
 };
 export const classApi = {
     list: (params?: { semesterId?: string; teacherId?: string }) => {
@@ -80,7 +80,7 @@ export const studentApi = {
         return request<StudentListPage>(`/api/admin/students?${search}`);
     },
     updateStatus: (id: number, status: number) => request<{ success: boolean }>(`/api/admin/students/${id}/status`, { method: "PUT", body: JSON.stringify({ status }) }),
-    resetPassword: (id: number) => request<{ success: boolean }>(`/api/admin/students/${id}/reset-password`, { method: "POST" }),
+    resetPassword: (id: number) => request<{ success: boolean; temporaryPassword: string }>(`/api/admin/students/${id}/reset-password`, { method: "POST" }),
     getExperiments: (id: number) => request<StudentExperiment[]>(`/api/admin/students/${id}/experiments`),
 };
 export const announcementApi = {

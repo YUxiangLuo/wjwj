@@ -166,6 +166,23 @@ test("stratified sampling with empty layers returns empty array", async () => {
     expect(result).toEqual([]);
 });
 
+test("stratified sampling supports Object prototype names as strata", () => {
+    const special = [
+        { id: 1, region: "__proto__" },
+        { id: 2, region: "__proto__" },
+        { id: 3, region: "constructor" },
+    ];
+    const result = performStratifiedSampling(
+        special,
+        "region",
+        [{ name: "__proto__", sampleCount: 2 }, { name: "constructor", sampleCount: 1 }],
+        createSeededRandom("prototype-strata"),
+    );
+    expect(result).toHaveLength(3);
+    expect(result.filter((row) => row.region === "__proto__")).toHaveLength(2);
+    expect(result.filter((row) => row.region === "constructor")).toHaveLength(1);
+});
+
 // PPS sampling tests
 
 const ppsPop = Array.from({ length: 50 }, (_, i) => ({
@@ -190,6 +207,10 @@ test("PPS sampling returns exactly the requested sample count", async () => {
     const result = await performPPSSampling(ppsPop, "size", 8, createSeededRandom("pps-check"));
     expect(result.data.length).toBe(8);
     expect(result.inclusionProbabilities.length).toBe(8);
+    expect(result.probabilitySummary?.populationCount).toBe(50);
+    expect(result.probabilitySummary?.probabilitySum).toBeCloseTo(8, 8);
+    expect(result.probabilitySummary?.minInclusionProbability).toBeGreaterThan(0);
+    expect(result.probabilitySummary?.maxInclusionProbability).toBeLessThanOrEqual(1);
     for (const item of result.data) {
         expect(ppsPop).toContainEqual(item);
     }
@@ -251,6 +272,7 @@ test("PPS sampling treats units with pi >= 1 as certainty selections", async () 
     expect(result.data.some((row) => row.id === 1)).toBe(true);
     const certaintyIndex = result.data.findIndex((row) => row.id === 1);
     expect(result.inclusionProbabilities[certaintyIndex]).toBe(1);
+    expect(result.probabilitySummary?.certaintyUnitCount).toBe(1);
 });
 
 test("prepared PPS sampling reproduces direct PPS sampling with the same seed", async () => {

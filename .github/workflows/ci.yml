@@ -37,3 +37,5 @@ jobs:
       - run: bun run test:db
         env:
           TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/sampling_vlab_test
+      - run: bun run db:seed:demo
+      - run: bun run db:seed:check

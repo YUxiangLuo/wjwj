@@ -20,10 +20,22 @@ test("resolveTemplatePath rejects empty or traversal names", () => {
 test("getTemplateContentType infers known template mime types", () => {
     expect(getTemplateContentType("数据模板.csv")).toBe("text/csv; charset=utf-8");
     expect(getTemplateContentType("数据上传规范.pdf")).toBe("application/pdf");
+    expect(getTemplateContentType("调查问卷设计规范与模板.docx")).toBe("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     expect(getTemplateContentType("file.bin")).toBe("application/octet-stream");
 });
 
-test("getTemplateContentDisposition uses attachment for csv and inline for others", () => {
+test("getTemplateContentDisposition downloads editable templates and previews PDFs inline", () => {
     expect(getTemplateContentDisposition("数据模板.csv").startsWith("attachment;")).toBeTrue();
+    expect(getTemplateContentDisposition("调查问卷设计规范与模板.docx").startsWith("attachment;")).toBeTrue();
     expect(getTemplateContentDisposition("数据上传规范.pdf").startsWith("inline;")).toBeTrue();
+});
+
+test("questionnaire template artifacts are present and nonempty", async () => {
+    for (const name of ["调查问卷设计规范与模板.docx", "调查问卷设计规范与模板.pdf"]) {
+        const path = resolveTemplatePath(name);
+        expect(path).not.toBeNull();
+        const file = Bun.file(path!);
+        expect(await file.exists()).toBeTrue();
+        expect(file.size).toBeGreaterThan(1_000);
+    }
 });

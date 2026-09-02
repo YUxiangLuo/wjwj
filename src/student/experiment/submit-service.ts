@@ -4,6 +4,8 @@ import { experiment } from "../../db/schema";
 import { validateObservedVersion } from "../../lib/observed-version";
 import { resolveAnalysisTarget } from "../../lib/analysis-target";
 import { scoringWeightsFrom, type ScoringWeights } from "../../lib/scoring-weights";
+import { resolveSamplingPolicy, type SamplingPolicyV1 } from "../../lib/sampling-policy";
+import { resolveStoragePath } from "../../server/storage-files";
 import { normalizeSamplePlanData } from "./sample-plan-display";
 import { parseStoredJson } from "./serialization";
 import { compactSamplingResults } from "./sampling-storage";
@@ -27,6 +29,12 @@ export interface SubmissionSnapshot {
     samplingResults: Record<string, unknown> | null;
     reportContent: string;
     weightConfig: ScoringWeights;
+    samplingPolicy: SamplingPolicyV1;
+    className?: string | null;
+    teacherName?: string | null;
+    populationFileSha256?: string | null;
+    parserVersion?: string;
+    samplingAlgorithmVersion?: string;
 }
 
 interface SubmitTaskInfo {
@@ -34,6 +42,20 @@ interface SubmitTaskInfo {
     populationSize: number | string | null;
     weightConfig?: unknown;
     fieldMapping?: unknown;
+    samplingPolicy?: unknown;
+    excelFilePath?: string | null;
+    className?: string | null;
+    teacherName?: string | null;
+}
+
+async function populationFileSha256(filePath: string | null | undefined) {
+    if (!filePath) return null;
+    try {
+        const bytes = await Bun.file(resolveStoragePath(filePath)).arrayBuffer();
+        return new Bun.CryptoHasher("sha256").update(bytes).digest("hex");
+    } catch {
+        return null;
+    }
 }
 
 interface SubmitStudentInfo {
@@ -73,7 +95,12 @@ export function validateExperimentSubmission(params: {
             resolveAnalysisTarget(params.taskInfo.fieldMapping)?.target.kind,
             { allowLegacyAdvancedSourceWithoutSnapshot: true },
         ) ??
-        validateSamplingResultsForSubmit(samplingResults, getTargetSampleSizeFromSamplePlan(samplePlan), populationSize) ??
+        validateSamplingResultsForSubmit(
+            samplingResults,
+            getTargetSampleSizeFromSamplePlan(samplePlan),
+            populationSize,
+            params.taskInfo.samplingPolicy,
+        ) ??
         validateReportForSubmit(record.reportContent);
     return validationError ? fail(validationError, "INCOMPLETE") : { ok: true as const };
 }
@@ -108,8 +135,9 @@ export async function submitStudentExperiment(params: {
     const samplingResults = compactSamplingResults(
         parseStoredJson<Record<string, unknown>>(params.experimentRecord.samplingResults),
     );
+    const populationFileHash = await populationFileSha256(params.taskInfo.excelFilePath);
     const snapshot: SubmissionSnapshot = {
-        topicName: params.taskInfo.topicName ?? "未命名课题",
+        topicName: params.taskInfo.topicName ?? "未命名实验模板",
         studentName: params.student.name || params.student.studentId,
         populationSize,
         questionnaire,
@@ -117,6 +145,12 @@ export async function submitStudentExperiment(params: {
         samplingResults,
         reportContent: params.experimentRecord.reportContent ?? "",
         weightConfig: scoringWeightsFrom(params.taskInfo.weightConfig),
+        samplingPolicy: resolveSamplingPolicy(params.taskInfo.samplingPolicy),
+        className: params.taskInfo.className ?? null,
+        teacherName: params.taskInfo.teacherName ?? null,
+        populationFileSha256: populationFileHash,
+        parserVersion: "spreadsheet-v2",
+        samplingAlgorithmVersion: "sampling-v2",
     };
     const submittedAt = new Date();
 

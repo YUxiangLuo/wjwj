@@ -19,7 +19,8 @@ test("sampling preview bounds rows and removes replay-only arrays", () => {
             sampleCount: rows.length,
             indices: rows.map((row) => row.id),
             inclusionProbabilities: rows.map(() => 0.5),
-            data: rows,
+            sizeField: "size",
+            data: rows.map((row) => ({ ...row, size: row.id + 1 })),
         },
     }) as Record<string, Record<string, unknown>>;
 
@@ -28,6 +29,13 @@ test("sampling preview bounds rows and removes replay-only arrays", () => {
     expect(result.pps).not.toHaveProperty("indices");
     expect(result.pps).not.toHaveProperty("inclusionProbabilities");
     expect(result.pps?.sampleCount).toBe(80);
+    expect(result.pps?.probabilityPreview).toHaveLength(10);
+    expect((result.pps?.probabilityPreview as any[])[0]).toEqual({
+        samplePosition: 1,
+        sizeValue: 1,
+        inclusionProbability: 0.5,
+        designWeight: 2,
+    });
 });
 
 test("single-method preview also sanitizes small results", () => {

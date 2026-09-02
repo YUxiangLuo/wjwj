@@ -39,6 +39,7 @@ async function load(
     update: unknown[] = [[{ id: 9 }]],
     fieldMapping: Record<string, unknown> = { numeric: ["weight"], stratified: ["gender"] },
     filePath = populationPath,
+    samplingPolicy?: unknown,
 ) {
     const { db, operations } = createMockDb({ select: [[experimentRecord]], update });
     mock.module("../../db", () => ({ db }));
@@ -54,6 +55,7 @@ async function load(
         findStudentTaskSamplingInfo: async () => ({
             excelFilePath: filePath,
             fieldMapping,
+            samplingPolicy,
         }),
         findStudentTaskSchedule: async () => ({ openTime: null, deadline: new Date(Date.now() + 60_000) }),
         findStudentTaskSubmitInfo: async () => null,
@@ -114,6 +116,24 @@ test("sampling action atomically persists its server-generated method result", a
     expect(operations.some((operation) => operation.kind === "transaction")).toBe(true);
 });
 
+test("sampling action rejects methods disabled by the experiment template", async () => {
+    const { module, operations } = await load(
+        record(),
+        [[{ id: 9 }]],
+        { numeric: ["weight"], stratified: ["gender"] },
+        populationPath,
+        { version: 1, methods: { simple: "required", systematic: "optional", pps: "disabled", stratified: "optional" } },
+    );
+    const response = await module.samplingActionRoutes.POST!(routeRequest(
+        "/api/student/tasks/3/sampling",
+        { method: "pps", params: { sampleSize: 2, sizeField: "weight" } },
+        { id: "3" },
+    ));
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: { code: "SAMPLING_METHOD_DISABLED" } });
+    expect(operations.some((operation) => operation.kind === "update")).toBeFalse();
+});
+
 test("experiment reads hydrate compact stored indices for the SPA", async () => {
     const compact = record({
         status: "rejected",
@@ -132,8 +152,8 @@ test("experiment reads hydrate compact stored indices for the SPA", async () => 
     expect(response.status).toBe(200);
     expect(payload.data.rejectReason).toBe("请补充四种抽样方法的比较");
     expect(payload.data.samplingResults.simple.data).toEqual([
-        { id: 2, gender: "A", weight: 2 },
-        { id: 4, gender: "B", weight: 4 },
+        { id: "2", gender: "A", weight: "2" },
+        { id: "4", gender: "B", weight: "4" },
     ]);
     expect(payload.data.samplingResults.simple).not.toHaveProperty("indices");
 });
@@ -181,7 +201,8 @@ test("stage completion atomically persists server-determined PPS unavailability"
             sampleCount: 2,
             indices: [1, 3],
             serverGenerated: true,
-            layers: [{ name: "A", sampleCount: 1 }, { name: "B", sampleCount: 1 }],
+            stratifyBy: "gender",
+            layers: [{ name: "A", count: 2, sampleCount: 1 }, { name: "B", count: 2, sampleCount: 1 }],
         },
     };
     const pps = {

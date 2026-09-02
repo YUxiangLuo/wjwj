@@ -36,8 +36,9 @@ test("topic attachment upload stores metadata and writes the file under storage"
         insert: [[{ id: 18 }]],
     });
 
+    const pdfBytes = await Bun.file(`${process.cwd()}/public/templates/调查问卷设计规范与模板.pdf`).arrayBuffer();
     const form = new FormData();
-    form.append("file", new File(["%PDF-1.7\nattachment body"], "guide.pdf", {
+    form.append("file", new File([pdfBytes], "guide.pdf", {
         type: "video/mp4",
     }));
 
@@ -68,7 +69,7 @@ test("topic attachment upload stores metadata and writes the file under storage"
         });
         expect(operations.some((operation) => operation.kind === "execute")).toBe(true);
 
-        expect(await Bun.file(absolutePath).text()).toBe("%PDF-1.7\nattachment body");
+        expect(Bun.file(absolutePath).size).toBe(pdfBytes.byteLength);
     } finally {
         await unlink(absolutePath).catch(() => undefined);
     }
@@ -135,7 +136,7 @@ test("topic attachment upload rejects an unknown extension spoofed as video", as
 test("teacher attachment download authorizes ownership and serves a server-derived preview MIME", async () => {
     const filePath = `/storage/uploads/teacher-download-${crypto.randomUUID()}.pdf`;
     const absolutePath = `${process.cwd()}${filePath}`;
-    await Bun.write(absolutePath, "%PDF-1.7\nprotected teacher attachment");
+    await Bun.write(absolutePath, "%PDF-1.7\nprotected teacher attachment\n%%EOF");
     const { module } = await loadTopicRoutes({
         select: [[{ fileName: "课堂说明.pdf", filePath }]],
     });
@@ -217,7 +218,7 @@ test("topic attachment delete returns 404 when the topic does not belong to the 
         success: false,
         error: {
             code: "NOT_FOUND",
-            message: "课题不存在",
+            message: "实验模板不存在",
         },
     });
     expect(operations.filter((operation) => operation.kind === "delete")).toHaveLength(0);
@@ -228,7 +229,7 @@ test("assigned topics reject attachment changes before reading or writing storag
         select: [[{ id: 12, status: 1, hasTasks: true }]],
     });
     const form = new FormData();
-    form.append("file", new File(["%PDF-1.7\nbody"], "guide.pdf", { type: "application/pdf" }));
+    form.append("file", new File(["%PDF-1.7\nbody\n%%EOF"], "guide.pdf", { type: "application/pdf" }));
 
     const response = await module.topicAttachmentRoutes.POST!(withRouteParams(new Request(
         "https://example.com/api/teacher/topics/12/attachments",
@@ -248,8 +249,9 @@ test("assignment committed after the route check still blocks attachment storage
             [{ id: 99 }],
         ],
     });
+    const pdfBytes = await Bun.file(`${process.cwd()}/public/templates/调查问卷设计规范与模板.pdf`).arrayBuffer();
     const form = new FormData();
-    form.append("file", new File(["%PDF-1.7\nbody"], "guide.pdf", { type: "application/pdf" }));
+    form.append("file", new File([pdfBytes], "guide.pdf", { type: "application/pdf" }));
 
     const response = await module.topicAttachmentRoutes.POST!(withRouteParams(new Request(
         "https://example.com/api/teacher/topics/12/attachments",

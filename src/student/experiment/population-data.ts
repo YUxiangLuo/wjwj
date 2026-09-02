@@ -1,5 +1,6 @@
 import type { AnalysisTarget, StudyContract } from "../../lib/analysis-target";
 import { parseSpreadsheetFile } from "../../lib/spreadsheet";
+import { createSafeRecord } from "../../lib/safe-record";
 import { resolveStoragePath } from "../../server/storage-files";
 import { stratumKey } from "../sampling";
 
@@ -13,14 +14,13 @@ export interface TopicFieldMapping {
 }
 
 const POPULATION_CACHE_MAX_ENTRIES = 4;
-// The upload limit is 100k rows. This budget keeps one maximum-size classroom
-// population hot alongside a few small topics without allowing unbounded growth.
-const POPULATION_CACHE_MAX_TOTAL_ROWS = 120_000;
+const POPULATION_CACHE_MAX_ESTIMATED_BYTES = 256 * 1024 * 1024;
 
 type PopulationCacheEntry = {
     key: string;
     fullPath: string;
     rows: Record<string, any>[];
+    estimatedBytes: number;
 };
 
 const populationCache: PopulationCacheEntry[] = [];
@@ -35,22 +35,22 @@ function getCachedPopulation(cacheKey: string) {
     return cached.rows;
 }
 
-function cachePopulation(fullPath: string, cacheKey: string, rows: Record<string, any>[]) {
-    if (rows.length > POPULATION_CACHE_MAX_TOTAL_ROWS) return;
+function cachePopulation(fullPath: string, cacheKey: string, rows: Record<string, any>[], estimatedBytes: number) {
+    if (estimatedBytes > POPULATION_CACHE_MAX_ESTIMATED_BYTES) return;
 
     // A changed file at the same path must not leave its old parsed copy resident.
     for (let index = populationCache.length - 1; index >= 0; index -= 1) {
         if (populationCache[index]?.fullPath === fullPath) populationCache.splice(index, 1);
     }
-    populationCache.unshift({ key: cacheKey, fullPath, rows });
+    populationCache.unshift({ key: cacheKey, fullPath, rows, estimatedBytes });
 
-    let totalRows = populationCache.reduce((sum, entry) => sum + entry.rows.length, 0);
+    let totalBytes = populationCache.reduce((sum, entry) => sum + entry.estimatedBytes, 0);
     while (
         populationCache.length > POPULATION_CACHE_MAX_ENTRIES
-        || totalRows > POPULATION_CACHE_MAX_TOTAL_ROWS
+        || totalBytes > POPULATION_CACHE_MAX_ESTIMATED_BYTES
     ) {
         const removed = populationCache.pop();
-        totalRows -= removed?.rows.length ?? 0;
+        totalBytes -= removed?.estimatedBytes ?? 0;
     }
 }
 
@@ -59,7 +59,7 @@ export function clearPopulationDataCacheForTests() {
     populationReadsInFlight.clear();
 }
 
-export async function readPopulationData(filePath: string): Promise<Record<string, any>[]> {
+export async function readPopulationData(filePath: string, fieldMapping?: unknown): Promise<Record<string, any>[]> {
     let fullPath: string;
     try {
         fullPath = resolveStoragePath(filePath);
@@ -70,7 +70,8 @@ export async function readPopulationData(filePath: string): Promise<Record<strin
 
     try {
         const file = Bun.file(fullPath);
-        const cacheKey = `${fullPath}:${file.size}:${file.lastModified}`;
+        const numericFields = parseTopicFieldMapping(fieldMapping)?.numeric ?? [];
+        const cacheKey = `${fullPath}:${file.size}:${file.lastModified}:${numericFields.join("\u001f")}`;
         const cached = getCachedPopulation(cacheKey);
         if (cached) return cached;
 
@@ -81,8 +82,13 @@ export async function readPopulationData(filePath: string): Promise<Record<strin
             const fileBuffer = await file.arrayBuffer();
             const parsed = await parseSpreadsheetFile(fileBuffer, filePath, {
                 includeColumnValues: false,
+                numericFields,
             });
-            cachePopulation(fullPath, cacheKey, parsed.rows);
+            const estimatedBytes = Math.max(
+                file.size * 4,
+                parsed.rowCount * Math.max(1, parsed.colCount) * 64,
+            );
+            cachePopulation(fullPath, cacheKey, parsed.rows, estimatedBytes);
             return parsed.rows;
         })();
         populationReadsInFlight.set(cacheKey, readPromise);
@@ -122,9 +128,9 @@ export function buildStratifiedStats(population: Array<Record<string, unknown>>,
         return {};
     }
 
-    const stats: Record<string, Record<string, number>> = {};
+    const stats = createSafeRecord<Record<string, number>>();
     for (const field of mapping.stratified) {
-        const counts: Record<string, number> = {};
+        const counts = createSafeRecord<number>();
         for (const row of population) {
             const value = stratumKey(row[field]);
             if (!value) continue;
@@ -167,13 +173,13 @@ export function buildStratifiedNumericStats(
     const mapping = parseTopicFieldMapping(fieldMapping);
     if (!mapping?.stratified?.length || !mapping?.numeric?.length) return {};
 
-    const result: Record<string, Record<string, Record<string, StratumNumericStat>>> = {};
+    const result = createSafeRecord<Record<string, Record<string, StratumNumericStat>>>();
 
     for (const stratField of mapping.stratified) {
-        const fieldResult: Record<string, Record<string, StratumNumericStat>> = {};
+        const fieldResult = createSafeRecord<Record<string, StratumNumericStat>>();
 
         // Group population rows by stratum value
-        const groups: Record<string, Record<string, unknown>[]> = {};
+        const groups = createSafeRecord<Record<string, unknown>[]>();
         for (const row of population) {
             const key = stratumKey(row[stratField]);
             if (!key) continue;
@@ -181,7 +187,7 @@ export function buildStratifiedNumericStats(
         }
 
         for (const [stratValue, rows] of Object.entries(groups)) {
-            const stratStats: Record<string, StratumNumericStat> = {};
+            const stratStats = createSafeRecord<StratumNumericStat>();
 
             for (const numField of mapping.numeric) {
                 const values = rows
@@ -210,7 +216,7 @@ export function buildPopulationNumericStats(
     population: Array<Record<string, unknown>>,
     numericFields: string[],
 ): Record<string, PopulationNumericStat> {
-    const stats: Record<string, PopulationNumericStat> = {};
+    const stats = createSafeRecord<PopulationNumericStat>();
 
     for (const field of numericFields) {
         const values = population
@@ -241,15 +247,15 @@ export function buildPopulationCategoricalStats(
     population: Array<Record<string, unknown>>,
     categoricalFields: string[],
 ): Record<string, Record<string, number>> {
-    const stats: Record<string, Record<string, number>> = {};
+    const stats = createSafeRecord<Record<string, number>>();
 
     for (const field of categoricalFields) {
-        const counts: Record<string, number> = {};
+        const counts = createSafeRecord<number>();
         for (const row of population) {
             const raw = row[field];
-            if (raw === undefined || raw === null) continue;
-            const value = String(raw).trim();
-            if (!value) continue;
+            const value = raw === undefined || raw === null || String(raw).trim() === ""
+                ? "（缺失值）"
+                : String(raw).trim().normalize("NFKC");
             counts[value] = (counts[value] || 0) + 1;
         }
 

@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FileSpreadsheet, Users, CheckCircle2, Layers, Search, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { teacherApi, type GradeExportPreviewItem, type TeacherClass, type Topic } from "../api-client";
+import { teacherApi, type GradeAnalytics, type GradeExportPreviewItem, type TeacherClass, type Topic } from "../api-client";
 import { toast } from "sonner";
 import { formatLocalDateStamp } from "@/utils/format";
 import { IconTile } from "@/components/IconTile";
@@ -13,23 +13,59 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { notifyAuthExpiredFromResponse } from "@/lib/auth-expired";
 
+function MetricBars({
+    title,
+    description,
+    items,
+    valueSuffix = "",
+}: {
+    title: string;
+    description: string;
+    items: Array<{ label: string; value: number | null; color: string }>;
+    valueSuffix?: string;
+}) {
+    const max = Math.max(1, ...items.map((item) => item.value ?? 0));
+    return (
+        <Card>
+            <CardHeader className="border-b border-border pb-4"><CardTitle className="text-body text-foreground">{title}</CardTitle><p className="mt-1 text-meta text-muted-foreground">{description}</p></CardHeader>
+            <CardContent className="space-y-3 pt-5" role="list">
+                {items.map((item) => (
+                    <div key={item.label} role="listitem" className="grid grid-cols-[7rem_1fr_5rem] items-center gap-3">
+                        <span className="text-label text-foreground">{item.label}</span>
+                        <div className="h-3 overflow-hidden rounded-control bg-muted"><div className="h-full rounded-control" style={{ width: `${(item.value ?? 0) / max * 100}%`, backgroundColor: item.color }} /></div>
+                        <span className="text-right text-label font-mono text-muted-foreground">{item.value === null ? "—" : `${item.value.toFixed(valueSuffix ? 1 : 0)}${valueSuffix}`}</span>
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
+    );
+}
+
 export function GradeExport() {
     const [classes, setClasses] = useState<TeacherClass[]>([]);
     const [topics, setTopics] = useState<Topic[]>([]);
     const [preview, setPreview] = useState<GradeExportPreviewItem[]>([]);
+    const [analytics, setAnalytics] = useState<GradeAnalytics | null>(null);
+    const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+    const [previewError, setPreviewError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [semesterFilter, setSemesterFilter] = useState<string>("all");
     const [classFilter, setClassFilter] = useState<string>("all");
     const [topicFilter, setTopicFilter] = useState<string>("all");
     const [selectedTaskIds, setSelectedTaskIds] = useState<number[]>([]);
     const [exporting, setExporting] = useState(false);
+    const previewRequestId = useRef(0);
 
     useEffect(() => {
         loadFilters();
     }, []);
 
     useEffect(() => {
-        loadPreview();
+        const requestId = ++previewRequestId.current;
+        void loadPreview(requestId);
+        return () => {
+            if (previewRequestId.current === requestId) previewRequestId.current += 1;
+        };
     }, [semesterFilter, classFilter, topicFilter]);
 
     const semesters = useMemo(() => {
@@ -44,14 +80,6 @@ export function GradeExport() {
 
     const selectedCount = selectedTaskIds.length;
 
-    const summary = useMemo(() => {
-        const totalTasks = preview.length;
-        const completedTasks = preview.filter((task) => task.total > 0 && task.graded === task.total).length;
-        const expectedCount = preview.reduce((sum, task) => sum + task.total, 0);
-        const totalGraded = preview.reduce((sum, task) => sum + task.graded, 0);
-        return { totalTasks, completedTasks, expectedCount, totalGraded };
-    }, [preview]);
-
     async function loadFilters() {
         const [classesRes, topicsRes] = await Promise.all([
             teacherApi.getClasses(),
@@ -63,17 +91,33 @@ export function GradeExport() {
         }
     }
 
-    async function loadPreview() {
+    async function loadPreview(requestId: number) {
         setLoading(true);
-        const res = await teacherApi.getGradeExportPreview({
-            semester: semesterFilter,
-            classId: classFilter,
-            topicId: topicFilter,
-        });
-        if (res.success && res.data) {
-            setPreview(res.data);
+        setAnalyticsError(null);
+        setPreviewError(null);
+        const params = { semester: semesterFilter, classId: classFilter, topicId: topicFilter };
+        const [previewRes, analyticsRes] = await Promise.all([
+            teacherApi.getGradeExportPreview(params),
+            teacherApi.getGradeAnalytics(params),
+        ]);
+        if (requestId !== previewRequestId.current) return;
+        if (previewRes.success && previewRes.data) {
+            setPreview(previewRes.data);
+            setPreviewError(null);
         } else {
             setPreview([]);
+            setPreviewError(previewRes.error?.code === "NETWORK_ERROR"
+                ? "导出任务加载失败，请检查网络后重试"
+                : previewRes.error?.message ?? "导出任务加载失败，请稍后重试");
+        }
+        if (analyticsRes.success && analyticsRes.data) {
+            setAnalytics(analyticsRes.data);
+            setAnalyticsError(null);
+        } else {
+            setAnalytics(null);
+            setAnalyticsError(analyticsRes.error?.code === "NETWORK_ERROR"
+                ? "成绩分析加载失败，请检查网络后重试"
+                : analyticsRes.error?.message ?? "成绩分析加载失败，请稍后重试");
         }
         setLoading(false);
         setSelectedTaskIds([]);
@@ -137,16 +181,17 @@ export function GradeExport() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div>
-                <h2 className="text-subheading font-semibold text-foreground">成绩导出</h2>
-                <p className="text-label text-muted-foreground mt-1">按任务导出成绩，支持单项与批量导出。</p>
+                <h2 className="text-subheading font-semibold text-foreground">成绩分析与导出</h2>
+                <p className="text-label text-muted-foreground mt-1">按学期、班级和实验模板分析学生任务人次，并支持单项与批量导出。</p>
             </div>
 
             <div className="grid grid-cols-4 gap-4">
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">任务数量</p>
-                            <p className="text-page-title font-semibold text-foreground mt-1">{loading ? "-" : summary.totalTasks}</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">应交人次</p>
+                            <p className="text-page-title font-semibold text-foreground mt-1">{loading || !analytics ? "-" : analytics.funnel.total}</p>
+                            <p className="mt-1 text-meta text-muted-foreground">按学生-任务人次统计</p>
                         </div>
                         <IconTile intent="info">
                             <Layers className="w-5 h-5" />
@@ -156,8 +201,8 @@ export function GradeExport() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已完成任务</p>
-                            <p className="text-page-title font-semibold text-foreground mt-1">{loading ? "-" : summary.completedTasks}</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已批改人次</p>
+                            <p className="text-page-title font-semibold text-foreground mt-1">{loading || !analytics ? "-" : analytics.funnel.graded}</p>
                         </div>
                         <IconTile intent="success">
                             <CheckCircle2 className="w-5 h-5" />
@@ -167,9 +212,9 @@ export function GradeExport() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">应交人次</p>
-                            <p className="text-page-title font-semibold text-foreground mt-1">{loading ? "-" : summary.expectedCount}</p>
-                            <p className="mt-1 text-meta text-muted-foreground">按任务覆盖班级学生数累计，非实际提交数</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">总分均值</p>
+                            <p className="text-page-title font-semibold text-foreground mt-1">{loading ? "-" : analytics?.scores.average?.toFixed(1) ?? "-"}</p>
+                            <p className="mt-1 text-meta text-muted-foreground">仅统计已批改成绩</p>
                         </div>
                         <IconTile intent="warning">
                             <Users className="w-5 h-5" />
@@ -179,8 +224,8 @@ export function GradeExport() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已批改</p>
-                            <p className="text-page-title font-semibold text-foreground mt-1">{loading ? "-" : summary.totalGraded}</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">总分中位数</p>
+                            <p className="text-page-title font-semibold text-foreground mt-1">{loading ? "-" : analytics?.scores.median?.toFixed(1) ?? "-"}</p>
                         </div>
                         <IconTile intent="auxiliary">
                             <FileSpreadsheet className="w-5 h-5" />
@@ -189,11 +234,49 @@ export function GradeExport() {
                 </Card>
             </div>
 
+            {analyticsError && <p role="alert" className="rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3 text-label text-destructive">{analyticsError}</p>}
+
+            {loading ? (
+                <Card><CardContent role="status" aria-live="polite" className="py-12 text-center text-label text-muted-foreground">正在加载成绩分析…</CardContent></Card>
+            ) : analytics ? (
+                <>
+                    <div className="grid grid-cols-2 gap-4" data-testid="teacher-grade-analytics">
+                        <MetricBars
+                            title="学生任务状态漏斗"
+                            description="同一学生参与多个实验任务时按多个人次计算。"
+                            items={[
+                                { label: "未开始", value: analytics.funnel.notStarted, color: "var(--chart-1)" },
+                                { label: "进行中", value: analytics.funnel.inProgress, color: "var(--chart-2)" },
+                                { label: "待批改", value: analytics.funnel.pendingGrading, color: "var(--chart-3)" },
+                                { label: "已批改", value: analytics.funnel.graded, color: "var(--chart-4)" },
+                                { label: "已驳回", value: analytics.funnel.rejected, color: "var(--chart-5)" },
+                            ]}
+                        />
+                        <MetricBars
+                            title="已批改总分分布"
+                            description={`共 ${analytics.scores.count} 个已批改成绩。`}
+                            items={analytics.scores.bands.map((item, index) => ({ label: item.label, value: item.count, color: `var(--chart-${index + 1})` }))}
+                        />
+                    </div>
+
+                    <MetricBars
+                        title="分项平均分"
+                        description="仅统计已批改记录中的问卷设计、实验过程和实验报告分项。"
+                        valueSuffix=" 分"
+                        items={[
+                            { label: "问卷设计", value: analytics.scores.componentAverages.questionnaire, color: "var(--chart-2)" },
+                            { label: "实验过程", value: analytics.scores.componentAverages.process, color: "var(--chart-3)" },
+                            { label: "实验报告", value: analytics.scores.componentAverages.report, color: "var(--chart-4)" },
+                        ]}
+                    />
+                </>
+            ) : null}
+
             <Card>
                 <PageHeader as={CardHeader}>
                     <div>
                         <CardTitle className="text-body text-foreground">导出列表</CardTitle>
-                        <p className="text-meta text-muted-foreground mt-1">共 {preview.length} 条数据</p>
+                        <p className="text-meta text-muted-foreground mt-1">{previewError ? "导出任务加载失败" : `共 ${preview.length} 条数据`}</p>
                     </div>
                     <div className="flex gap-3 flex-row w-auto flex-wrap">
                         <Select value={semesterFilter} onValueChange={(v) => { setSemesterFilter(v); setClassFilter("all"); }}>
@@ -219,11 +302,11 @@ export function GradeExport() {
                             </SelectContent>
                         </Select>
                         <Select value={topicFilter} onValueChange={setTopicFilter}>
-                            <SelectTrigger aria-label="按课题筛选导出任务" data-testid="teacher-export-topic-filter" className="bg-card border-input text-foreground w-40">
-                                <SelectValue placeholder="全部课题" />
+                            <SelectTrigger aria-label="按实验模板筛选导出任务" data-testid="teacher-export-topic-filter" className="bg-card border-input text-foreground w-40">
+                                <SelectValue placeholder="全部实验模板" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
-                                <SelectItem value="all">全部课题</SelectItem>
+                                <SelectItem value="all">全部实验模板</SelectItem>
                                 {topics.map((t) => (
                                     <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
                                 ))}
@@ -262,7 +345,7 @@ export function GradeExport() {
                                         }}
                                     />
                                 </TableHead>
-                                <TableHead className="text-muted-foreground">课题</TableHead>
+                                <TableHead className="text-muted-foreground">实验模板</TableHead>
                                 <TableHead className="text-muted-foreground">班级</TableHead>
                                 <TableHead className="text-muted-foreground">批改进度</TableHead>
                                 <TableHead className="text-muted-foreground">平均分</TableHead>
@@ -273,6 +356,10 @@ export function GradeExport() {
                             {loading ? (
                                 <TableRow>
                                     <TableCell colSpan={6} className="text-center py-12 text-muted-foreground"><span role="status" aria-live="polite">加载中...</span></TableCell>
+                                </TableRow>
+                            ) : previewError ? (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="text-center py-12 text-destructive" role="alert">{previewError}</TableCell>
                                 </TableRow>
                             ) : preview.length === 0 ? (
                                 <TableRow>
@@ -308,7 +395,7 @@ export function GradeExport() {
                                             )}
                                         </div>
                                     </TableCell>
-                                    <TableCell className="font-medium font-mono text-foreground">{task.avgScore ? task.avgScore.toFixed(1) : "-"}</TableCell>
+                                    <TableCell className="font-medium font-mono text-foreground">{task.graded > 0 ? task.avgScore.toFixed(1) : "-"}</TableCell>
                                     <TableCell className="text-right">
                                         <Button
                                             data-testid={`teacher-export-single-${task.taskId}`}

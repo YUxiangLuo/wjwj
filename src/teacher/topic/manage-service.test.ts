@@ -24,7 +24,7 @@ test("createTeacherTopic rejects direct publish before configuration", async () 
     expect(result).toEqual({
         ok: false,
         code: "VALIDATION_ERROR",
-        message: "课题需先上传总体数据后才能发布",
+        message: "实验模板需先上传总体数据后才能发布",
         status: 400,
     });
     expect(operations).toHaveLength(0);
@@ -64,31 +64,37 @@ test("updateTeacherTopicBasics rejects publishing an incomplete topic", async ()
     expect(result).toEqual({
         ok: false,
         code: "VALIDATION_ERROR",
-        message: "课题需先上传总体数据后才能发布",
+        message: "实验模板需先上传总体数据后才能发布",
         status: 400,
     });
     expect(operations.filter((operation) => operation.kind === "update")).toHaveLength(0);
 });
 
 test("updateTeacherTopicBasics allows publishing a fully configured topic", async () => {
+    const populationPath = `/storage/uploads/publish-ready-${crypto.randomUUID()}.csv`;
+    await Bun.write(`${process.cwd()}${populationPath}`, "id,gender,score\n1,A,10\n2,B,20\n");
     const { module, operations } = await loadManageService({
         select: [[{
-            excelFilePath: "/storage/uploads/topic.xlsx",
+            excelFilePath: populationPath,
             fieldMapping: { identifier: "id", stratified: ["gender"], numeric: ["score"], analysisTarget: { kind: "mean", field: "score" } },
             weightConfig: { questionnaire: 30, process: 30, report: 40 },
         }]],
     });
 
-    const result = await module.updateTeacherTopicBasics({
-        teacherId: 9,
-        topicId: 12,
-        body: { status: 1 },
-    });
+    try {
+        const result = await module.updateTeacherTopicBasics({
+            teacherId: 9,
+            topicId: 12,
+            body: { status: 1 },
+        });
 
-    expect(result).toEqual({ ok: true });
-    const updates = operations.filter((operation) => operation.kind === "update");
-    expect(updates).toHaveLength(1);
-    expect(updates[0]?.set).toMatchObject({ status: 1, updatedAt: expect.any(Date) });
+        expect(result).toEqual({ ok: true });
+        const updates = operations.filter((operation) => operation.kind === "update");
+        expect(updates).toHaveLength(1);
+        expect(updates[0]?.set).toMatchObject({ status: 1, updatedAt: expect.any(Date) });
+    } finally {
+        await Bun.file(`${process.cwd()}${populationPath}`).delete().catch(() => undefined);
+    }
 });
 
 test("renaming a topic retitles only its generated study-contract question", async () => {
@@ -187,7 +193,7 @@ test("assigned topics cannot be deleted and retain files needed by historical co
         expect(await module.softDeleteTeacherTopic({ teacherId: 9, topicId: 12 })).toEqual({
             ok: false,
             code: "TOPIC_ASSIGNED",
-            message: "已分配任务的课题不能删除",
+            message: "已分配实验任务的模板不能删除",
             status: 403,
         });
         expect(await Bun.file(`${process.cwd()}${populationPath}`).exists()).toBe(true);

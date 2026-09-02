@@ -1,0 +1,2 @@
+ALTER TABLE "topic" ADD COLUMN "sampling_policy" jsonb DEFAULT '{"version":1,"methods":{"simple":"required","systematic":"optional","pps":"optional","stratified":"optional"}}'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "topic" ADD CONSTRAINT "topic_ck_sampling_policy_object" CHECK (jsonb_typeof("topic"."sampling_policy") = 'object');

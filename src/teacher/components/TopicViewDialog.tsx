@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BookOpen, FileText, Layers, ListChecks, PieChart, Table2, ExternalLink, CheckCircle2, Eye } from "lucide-react";
+import { BookOpen, FileText, Layers, ListChecks, PieChart, Table2, ExternalLink, CheckCircle2, Eye, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,16 +10,18 @@ import { questionTypeLabels } from "@/lib/questionnaire-labels";
 import type { QuestionType } from "@/lib/questionnaire-types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { resolveStudyContract } from "@/lib/analysis-target";
+import { resolveSamplingPolicy, SAMPLING_METHODS } from "@/lib/sampling-policy";
 
-type TabKey = "basic" | "data" | "mapping" | "attachments" | "questions" | "weights";
+type TabKey = "basic" | "data" | "mapping" | "sampling" | "attachments" | "questions" | "weights";
 
 const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { key: "basic", label: "基本信息", icon: BookOpen },
     { key: "data", label: "数据概览", icon: Table2 },
     { key: "mapping", label: "字段映射", icon: Layers },
-    { key: "attachments", label: "辅助资料", icon: FileText },
+    { key: "sampling", label: "抽样策略", icon: ShieldCheck },
+    { key: "attachments", label: "教学资料", icon: FileText },
     { key: "questions", label: "推荐题目", icon: ListChecks },
-    { key: "weights", label: "评分权重", icon: PieChart },
+    { key: "weights", label: "评分规则", icon: PieChart },
 ];
 
 function safeParseJson(raw: unknown): Record<string, unknown> | null {
@@ -77,6 +79,8 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
         parsedFieldMapping,
         detail?.topic?.name ?? topic?.name ?? "",
     );
+    const samplingPolicy = resolveSamplingPolicy(detail?.topic?.samplingPolicy);
+    const samplingMethodLabels = { simple: "简单随机抽样", systematic: "系统抽样", pps: "PPS抽样", stratified: "分层抽样" } as const;
 
     const weightConfig = (() => {
         const parsed = safeParseJson(detail?.topic?.weightConfig);
@@ -103,7 +107,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                         <div>
                             <DialogTitle className="text-foreground">{topic.name}</DialogTitle>
                             <DialogDescription className="sr-only">
-                                查看课题的基本信息、数据配置、字段映射和评分权重。
+                                查看实验模板的基本信息、总体数据、研究目标、抽样策略和评分规则。
                             </DialogDescription>
                             <div className="flex items-center gap-2 mt-1">
                                 {topic.status === 1 ? (
@@ -138,7 +142,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                 {/* Tab content */}
                 <div
                     role="region"
-                    aria-label="课题详情内容，可滚动查看"
+                    aria-label="实验模板详情内容，可滚动查看"
                     tabIndex={0}
                     className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
                 >
@@ -150,7 +154,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                             {activeTab === "basic" && (
                                 <div className="space-y-4 py-4 animate-in fade-in duration-300">
                                     <div className="space-y-2">
-                                        <div className="text-meta font-medium text-muted-foreground uppercase tracking-wider">课题名称</div>
+                                        <div className="text-meta font-medium text-muted-foreground uppercase tracking-wider">实验模板名称</div>
                                         <div className="text-body text-foreground font-medium">{topic.name}</div>
                                     </div>
                                     <Separator className="bg-muted" />
@@ -309,6 +313,27 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                             )}
 
                             {/* Attachments Tab */}
+                            {activeTab === "sampling" && (
+                                <div className="space-y-4 py-4 animate-in fade-in duration-300">
+                                    <p className="rounded-surface border border-info-border bg-info-muted p-3 text-label text-info">
+                                        学生必须完成所有必做方法，并至少实际完成两种启用的方法。
+                                    </p>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {SAMPLING_METHODS.map((method) => {
+                                            const requirement = samplingPolicy.methods[method];
+                                            return (
+                                                <div key={method} className="flex items-center justify-between rounded-surface border border-border bg-background p-4">
+                                                    <span className="text-label font-medium text-foreground">{samplingMethodLabels[method]}</span>
+                                                    <StatusBadge intent={requirement === "required" ? "primary" : requirement === "optional" ? "info" : "neutral"}>
+                                                        {requirement === "required" ? "必做" : requirement === "optional" ? "选做" : "不适用"}
+                                                    </StatusBadge>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
                             {activeTab === "attachments" && (
                                 <div className="space-y-3 py-4 animate-in fade-in duration-300">
                                     {detail?.attachments && detail.attachments.length > 0 ? (
@@ -338,7 +363,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                             </div>
                                         ))
                                     ) : (
-                                        <div className="text-center py-8 text-label text-muted-foreground">暂无辅助资料</div>
+                                        <div className="text-center py-8 text-label text-muted-foreground">暂无教学资料</div>
                                     )}
                                 </div>
                             )}

@@ -31,12 +31,14 @@ test("admin-created and reset accounts must change their default password", asyn
         "21",
     ));
     expect(teacherReset.status).toBe(200);
+    const teacherResetPayload = await teacherReset.json() as any;
 
     const studentReset = await module.studentResetPasswordRoutes.POST!(withId(
         new Request("https://example.com/api/admin/students/31/reset-password", { method: "POST" }),
         "31",
     ));
     expect(studentReset.status).toBe(200);
+    const studentResetPayload = await studentReset.json() as any;
 
     const teacherInsert = operations.find((operation) => operation.kind === "insert" && operation.table === teacher);
     expect(teacherInsert?.values).toMatchObject({
@@ -58,5 +60,9 @@ test("admin-created and reset accounts must change their default password", asyn
         isFirstLogin: 1,
         updatedAt: expect.any(Date),
     });
+    expect(teacherResetPayload.data.temporaryPassword).toHaveLength(12);
+    expect(studentResetPayload.data.temporaryPassword).toHaveLength(12);
+    expect((teacherUpdate?.set as any).password).not.toBe("T021");
+    expect((studentUpdate?.set as any).password).not.toBe("S031");
     expect(operations.filter((operation) => operation.kind === "delete")).toHaveLength(2);
 });

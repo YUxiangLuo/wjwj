@@ -1,3 +1,5 @@
+import { stratumKey } from "../sampling";
+
 const SAMPLING_METHODS = ["simple", "systematic", "pps", "stratified"] as const;
 
 export type SamplingMethod = typeof SAMPLING_METHODS[number];
@@ -53,6 +55,11 @@ function validateSectionMetadata(
         }
     }
 
+    if (method === "stratified" && options.requireSampleCount && (
+        typeof section.stratifyBy !== "string" || !section.stratifyBy.trim() || !Array.isArray(section.layers)
+    )) {
+        return "completed stratified result has no design metadata";
+    }
     if (method === "stratified" && Array.isArray(section.layers) && hasOwn(section, "sampleCount")) {
         const layerTotal = section.layers.reduce((sum, layer) => {
             if (!isRecord(layer) || !Number.isSafeInteger(Number(layer.sampleCount)) || Number(layer.sampleCount) < 0) {
@@ -65,6 +72,48 @@ function validateSectionMetadata(
         }
     }
 
+    return null;
+}
+
+function validateStratifiedPopulationCoverage(
+    section: SamplingSection,
+    population: Array<Record<string, unknown>>,
+    sampledRows: Array<Record<string, unknown>>,
+) {
+    const field = typeof section.stratifyBy === "string" ? section.stratifyBy.trim() : "";
+    if (!field || !Array.isArray(section.layers)) return "stratified design metadata is missing";
+    const populationCounts = new Map<string, number>();
+    for (const row of population) {
+        const key = stratumKey(row[field]);
+        if (!key) return "stratified field does not cover the population";
+        populationCounts.set(key, (populationCounts.get(key) ?? 0) + 1);
+    }
+    const sampledCounts = new Map<string, number>();
+    for (const row of sampledRows) {
+        const key = stratumKey(row[field]);
+        if (!key) return "sampled row has no stratum";
+        sampledCounts.set(key, (sampledCounts.get(key) ?? 0) + 1);
+    }
+    const names = new Set<string>();
+    let covered = 0;
+    for (const rawLayer of section.layers) {
+        if (!isRecord(rawLayer)) return "stratified layer is invalid";
+        const name = stratumKey(rawLayer.name);
+        const count = Number(rawLayer.count);
+        const sampleCount = Number(rawLayer.sampleCount);
+        if (
+            !name || names.has(name)
+            || !Number.isSafeInteger(count) || count < 1
+            || !Number.isSafeInteger(sampleCount) || sampleCount < 1 || sampleCount > count
+            || populationCounts.get(name) !== count
+            || sampledCounts.get(name) !== sampleCount
+        ) return "stratified layer does not match population coverage";
+        names.add(name);
+        covered += count;
+    }
+    if (covered !== population.length || names.size !== populationCounts.size) {
+        return "stratified layers do not cover the population";
+    }
     return null;
 }
 
@@ -180,15 +229,26 @@ export function hydrateSamplingResults(
         const section = value[method];
         if (!isRecord(section)) continue;
         if (section.unavailable === true || !hasOwn(section, "indices")) {
+            if (method === "stratified" && section.completed === true && Array.isArray(section.data)) {
+                const rows = section.data.filter(isRecord);
+                if (rows.length !== section.data.length) return { ok: false, method, reason: "sampled rows are invalid" };
+                const coverageError = validateStratifiedPopulationCoverage(section, population, rows);
+                if (coverageError) return { ok: false, method, reason: coverageError };
+            }
             hydrated[method] = section;
             continue;
         }
 
         const validated = validateReplaySection(method, section, population.length);
         if (!validated.ok) return { ok: false, method, reason: validated.reason };
+        const sampledRows = validated.indices.map((index) => population[index]!);
+        if (method === "stratified") {
+            const coverageError = validateStratifiedPopulationCoverage(section, population, sampledRows);
+            if (coverageError) return { ok: false, method, reason: coverageError };
+        }
         hydrated[method] = {
             ...section,
-            data: validated.indices.map((index) => population[index]!),
+            data: sampledRows,
         };
     }
     return { ok: true, value: hydrated };

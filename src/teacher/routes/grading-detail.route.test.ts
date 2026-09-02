@@ -15,6 +15,7 @@ test("grading detail prefers the immutable submission snapshot", async () => {
         questionnaire: { title: "提交时问卷", questions: [] },
         samplePlan: { confidenceLevel: "90", marginOfError: 4, recommendedSize: 210, finalSampleSize: 240 },
         samplingResults: { simple: { completed: true, sampleCount: 240 } },
+        samplingPolicy: { version: 1, methods: { simple: "required", systematic: "optional", pps: "disabled", stratified: "optional" } },
         reportContent: "提交时报告",
         weightConfig: { questionnaire: 40, process: 35, report: 25 },
     };
@@ -36,6 +37,7 @@ test("grading detail prefers the immutable submission snapshot", async () => {
     expect(payload.data).toMatchObject({ version: 7, studentName: "提交时学生", topicName: "提交时课题", populationSize: 7200, reportContent: "提交时报告" });
     expect(payload.data.samplePlan).toMatchObject({ finalSampleSize: 240, designEffect: 1, nonResponseRate: 0 });
     expect(payload.data.weights).toEqual({ questionnaire: 40, process: 35, report: 25 });
+    expect(payload.data.samplingPolicy).toEqual(snapshot.samplingPolicy);
     expect(payload.data.samplingAttempts).toEqual([{
         id: 5,
         method: "simple",

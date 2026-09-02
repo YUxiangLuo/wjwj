@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { resolve } from "node:path";
 import { createMockDb } from "../src/test-utils/mock-db";
-import { loadReferences } from "./audit-storage";
+import { loadReferences, storageDeletionToken } from "./audit-storage";
 
 test("storage audit treats only active topics and their attachments as current references", async () => {
     const { db, operations } = createMockDb({
@@ -31,4 +31,11 @@ test("storage audit treats only active topics and their attachments as current r
     expect(selects[0]?.where).toBeTruthy();
     expect(selects[1]?.where).toBeTruthy();
     expect(selects[1]?.joins?.map((join) => join.type)).toEqual(["innerJoin"]);
+});
+
+test("storage deletion confirmation changes with the exact orphan manifest", () => {
+    const first = storageDeletionToken([{ path: "storage/a.txt", size: 10 }]);
+    expect(first).toHaveLength(16);
+    expect(storageDeletionToken([{ path: "storage/a.txt", size: 10 }])).toBe(first);
+    expect(storageDeletionToken([{ path: "storage/a.txt", size: 11 }])).not.toBe(first);
 });

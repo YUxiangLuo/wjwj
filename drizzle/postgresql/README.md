@@ -1,6 +1,6 @@
 # PostgreSQL migrations
 
-This directory is the active migration history (`0000`–`0004`).
+This directory is the active migration history (`0000`–`0009`).
 
 - `0000` is the empty-database baseline (`citext` plus application tables).
 - `bun run db:migrate` refuses to apply it over a pre-simplification schema

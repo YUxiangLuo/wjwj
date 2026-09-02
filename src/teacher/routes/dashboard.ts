@@ -1,9 +1,8 @@
-import { and, count, desc, eq, gt, inArray, isNull, lte, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, experiment, student, task, topic } from "../../db/schema";
 import { json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
-import { formatDateTimeCN } from "../../utils/format";
 import { getPrimaryTeacherIdOrThrow } from "./auth";
 
 const dashboardRoutes: RouteDefinition = {
@@ -34,58 +33,47 @@ const dashboardRoutes: RouteDefinition = {
                 )),
         ]);
 
-        const recentSubmissions = await db.select({
-            studentName: student.name,
+        const activeTaskRows = await db.select({
+            id: task.id,
             className: class_.name,
             topicName: topic.name,
-            submittedAt: experiment.submittedAt,
+            deadline: task.deadline,
+            total: count(student.id),
+            completed: sql<number>`count(${experiment.id}) filter (where ${experiment.status} in ('submitted', 'graded'))::integer`,
+            pending: sql<number>`count(${experiment.id}) filter (where ${experiment.status} = 'submitted')::integer`,
+            rejected: sql<number>`count(${experiment.id}) filter (where ${experiment.status} = 'rejected')::integer`,
         })
-            .from(experiment)
-            .innerJoin(student, eq(experiment.studentId, student.id))
-            .innerJoin(task, eq(experiment.taskId, task.id))
+            .from(task)
             .innerJoin(topic, eq(task.topicId, topic.id))
             .innerJoin(class_, eq(task.classId, class_.id))
-            .where(and(...teacherScope, isNull(student.deletedAt), inArray(experiment.status, ["submitted", "graded", "rejected"])))
-            .orderBy(desc(experiment.submittedAt))
-            .limit(5);
-
-        const recentGradings = await db.select({
-            studentName: student.name,
-            className: class_.name,
-            topicName: topic.name,
-            totalScore: experiment.totalScore,
-            status: experiment.status,
-            gradedAt: experiment.gradedAt,
-        })
-            .from(experiment)
-            .innerJoin(student, eq(experiment.studentId, student.id))
-            .innerJoin(task, eq(experiment.taskId, task.id))
-            .innerJoin(topic, eq(task.topicId, topic.id))
-            .innerJoin(class_, eq(task.classId, class_.id))
-            .where(and(...teacherScope, isNull(student.deletedAt), inArray(experiment.status, ["graded", "rejected"])))
-            .orderBy(desc(experiment.gradedAt))
-            .limit(5);
+            .leftJoin(student, and(eq(student.classId, class_.id), isNull(student.deletedAt)))
+            .leftJoin(experiment, and(eq(experiment.studentId, student.id), eq(experiment.taskId, task.id)))
+            .where(and(
+                ...teacherScope,
+                eq(topic.status, 1),
+                or(isNull(task.openTime), lte(task.openTime, now)),
+                or(isNull(task.deadline), gt(task.deadline, now)),
+            ))
+            .groupBy(task.id, topic.id, class_.id)
+            .orderBy(asc(task.deadline), desc(task.createdAt))
+            .limit(6);
 
         return json({
             stats: [
                 { label: "我的班级", value: Number(myClasses?.count ?? 0) },
-                { label: "我的课题", value: Number(myTopics?.count ?? 0) },
+                { label: "我的实验模板", value: Number(myTopics?.count ?? 0) },
                 { label: "待批改作业", value: Number(pendingGrading?.count ?? 0) },
-                { label: "进行中任务", value: Number(activeTasks?.count ?? 0) },
+                { label: "进行中实验任务", value: Number(activeTasks?.count ?? 0) },
             ],
-            recentSubmissions: recentSubmissions.map((row) => ({
-                student: row.studentName,
-                class: row.className,
-                topic: row.topicName,
-                time: row.submittedAt ? formatDateTimeCN(row.submittedAt) : "未知时间",
-            })),
-            recentGradings: recentGradings.map((row) => ({
-                student: row.studentName,
-                class: row.className,
-                topic: row.topicName,
-                score: row.totalScore,
-                rejected: row.status === "rejected",
-                time: row.gradedAt ? formatDateTimeCN(row.gradedAt) : "未知时间",
+            activeTasks: activeTaskRows.map((row) => ({
+                id: row.id,
+                className: row.className,
+                templateName: row.topicName,
+                deadline: row.deadline?.toISOString() ?? null,
+                total: Number(row.total ?? 0),
+                completed: Number(row.completed ?? 0),
+                pending: Number(row.pending ?? 0),
+                rejected: Number(row.rejected ?? 0),
             })),
         });
     },

@@ -67,4 +67,6 @@ test("student result renders the immutable submission snapshot", async () => {
         expect(view.getByText("snapshot-review-marker")).toBeTruthy();
     });
     expect(view.getByText("提交时课题")).toBeTruthy();
+    expect(view.getAllByText("待批改").length).toBeGreaterThan(0);
+    expect(view.getByText("40%")).toBeTruthy();
 });

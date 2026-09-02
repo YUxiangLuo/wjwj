@@ -66,6 +66,11 @@ describe("parseRecommendQuestionFromPayload", () => {
         if (typeof r === "string") return;
         expect(r.recommendSourceId).toBe("teacher_rq_42");
     });
+
+    test("preserves valid questionnaire sections and rejects unknown sections", () => {
+        expect(parseRecommendQuestionFromPayload({ id: "q", type: "boolean", content: "是否符合？", section: "screening" }, 1)).toMatchObject({ section: "screening" });
+        expect(validateQuestionAtIndex({ id: "q", type: "boolean", content: "是否符合？", section: "other" }, 1)).toBe("第1题所属部分无效");
+    });
 });
 
 describe("validateRecommendQuestionsPayload", () => {

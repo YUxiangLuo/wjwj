@@ -8,7 +8,13 @@ function formatMaybe(value: number | null, format: (value: number) => string) {
 /**
   * 研究目标结果面板：以研究合同的目标估计量为中心，对照虚拟总体真值，\n * 逐方法展示目标估计、设计标准误、教学误差半宽与可靠性提示。
   */
-export function TargetMetricsPanel({ target }: { target: TargetAnalysisMetrics }) {
+export function TargetMetricsPanel({
+    target,
+    methods = Object.keys(METHOD_META) as MethodKey[],
+}: {
+    target: TargetAnalysisMetrics;
+    methods?: MethodKey[];
+}) {
     const kind = target.contract.contract.target.kind;
     const formatEstimate = (value: number | null) => value === null
         ? "—"
@@ -22,7 +28,7 @@ export function TargetMetricsPanel({ target }: { target: TargetAnalysisMetrics }
         <section className="mb-5 rounded-surface border border-primary-border bg-primary-muted p-4" data-testid="student-target-metrics">
             <div className="flex items-start justify-between gap-4">
                 <div>
-                    <h3 className="text-label font-semibold text-foreground">研究目标结果</h3>
+                    <h2 className="text-label font-semibold text-foreground">研究目标结果</h2>
                     <p className="mt-1 text-meta text-muted-foreground">
                         {contract.researchQuestion}
                         {target.contract.inferred ? "（由对照变量推断的兼容目标）" : ""}
@@ -53,7 +59,7 @@ export function TargetMetricsPanel({ target }: { target: TargetAnalysisMetrics }
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                        {(Object.keys(METHOD_META) as MethodKey[]).map((method) => {
+                        {methods.map((method) => {
                             const metrics = target.methods[method];
                             return (
                                 <tr key={method} data-testid={`student-target-method-${method}`}>

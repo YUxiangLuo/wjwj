@@ -22,9 +22,14 @@ describe("rich-text plain text utils", () => {
         expect(plain).not.toContain("alert");
     });
 
+    test("unclosed browser raw-text elements consume the remainder", () => {
+        const html = `<p>可见</p><script>${"浏览器不会显示这些字符".repeat(20)}`;
+        expect(getRichTextPlainText(html)).toBe("可见");
+        expect(getRichTextPlainLength(html)).toBe(2);
+    });
+
     test("length is based on plain text", () => {
         const html = "<p><strong>abc</strong><em>123</em></p>";
         expect(getRichTextPlainLength(html)).toBe(6);
     });
 });
-

@@ -1,5 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import {
+    buildPopulationCategoricalStats,
     buildPopulationNumericStats,
     buildStratifiedStats,
     clearPopulationDataCacheForTests,
@@ -23,6 +24,29 @@ test("population numeric stats do not coerce blank cells to zero", () => {
     expect(stats.x?.mean).toBe(15);
 });
 
+test("population categories treat Object prototype names as ordinary values", () => {
+    const stats = buildPopulationCategoricalStats([
+        { group: "__proto__" },
+        { group: "constructor" },
+        { group: "toString" },
+        { group: "__proto__" },
+    ], ["group"]);
+
+    expect(stats.group?.["__proto__"]).toBe(2);
+    const constructorKey: string = "constructor";
+    const toStringKey: string = "toString";
+    expect(stats.group?.[constructorKey]).toBe(1);
+    expect(stats.group?.[toStringKey]).toBe(1);
+    expect(Object.keys(stats.group ?? {})).toHaveLength(3);
+});
+
+test("ordinary categorical statistics keep missing values in the denominator", () => {
+    const stats = buildPopulationCategoricalStats([
+        { choice: "是" }, { choice: "" }, { choice: null }, { choice: "否" },
+    ], ["choice"]);
+    expect(stats.choice).toMatchObject({ 是: 1, 否: 1, "（缺失值）": 2 });
+});
+
 test("readPopulationData preserves Chinese UTF-8 CSV fields without a BOM", async () => {
     const storagePath = `/storage/uploads/population-${crypto.randomUUID()}.csv`;
     await writeStorageFile(storagePath, UTF8_CSV);
@@ -34,9 +58,9 @@ test("readPopulationData preserves Chinese UTF-8 CSV fields without a BOM", asyn
         expect(rows[0]).toMatchObject({
             编号: "A001",
             城市等级: "一线",
-            年龄: 20,
-            月消费: 1800,
-            抽样权重: 1.2,
+            年龄: "20",
+            月消费: "1800",
+            抽样权重: "1.2",
             专业: "统计学",
         });
         expect(buildStratifiedStats(rows, { stratified: ["城市等级"] })).toEqual({

@@ -4,14 +4,23 @@ import { XIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { useControlledOverlayFocusRestore } from "@/components/ui/controlled-overlay-focus"
+import { useModalBackgroundInert } from "@/components/ui/overlay-inert"
 
 function Dialog({
   open,
+  defaultOpen,
+  onOpenChange,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  useControlledOverlayFocusRestore(open)
+  const [internalOpen, setInternalOpen] = React.useState(defaultOpen ?? false)
+  const actualOpen = open ?? internalOpen
+  useControlledOverlayFocusRestore(actualOpen)
+  useModalBackgroundInert(actualOpen)
 
-  return <DialogPrimitive.Root data-slot="dialog" open={open} {...props} />
+  return <DialogPrimitive.Root data-slot="dialog" open={open} defaultOpen={defaultOpen} onOpenChange={(nextOpen) => {
+    setInternalOpen(nextOpen)
+    onOpenChange?.(nextOpen)
+  }} {...props} />
 }
 
 function DialogTrigger({

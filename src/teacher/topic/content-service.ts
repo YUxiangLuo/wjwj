@@ -1,4 +1,4 @@
-import { and, count, eq, isNull } from "drizzle-orm";
+import { and, count, eq, isNull, sum } from "drizzle-orm";
 import { basename } from "node:path";
 import { db } from "../../db";
 import { task, topic, topicAttachment } from "../../db/schema";
@@ -44,7 +44,7 @@ export async function uploadTopicAttachment(params: {
 }) {
     const attachmentType = getAttachmentType(params.file.name);
     const validationError = validateTopicAttachmentUpload(
-        { currentCount: 0, fileSize: params.file.size },
+        { currentCount: 0, fileSize: params.file.size, fileName: params.file.name },
         attachmentType,
     );
     if (validationError) return fail(validationError);
@@ -63,7 +63,7 @@ export async function uploadTopicAttachment(params: {
                 .select({ id: topic.id })
                 .from(topic)
                 .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
-            if (!activeTopic) return fail("课题不存在", "NOT_FOUND", 404);
+            if (!activeTopic) return fail("实验模板不存在", "NOT_FOUND", 404);
             const [taskReference] = await tx
                 .select({ id: task.id })
                 .from(task)
@@ -71,18 +71,23 @@ export async function uploadTopicAttachment(params: {
                 .limit(1);
             if (taskReference) {
                 return fail(
-                    "课题已分配任务，附件不能再修改；如需调整请复制为新课题",
+                    "实验模板已分配任务，教学资料不能再修改；如需调整请复制为新模板",
                     "TOPIC_ASSIGNED",
                     409,
                 );
             }
 
             const [countRow] = await tx
-                .select({ count: count() })
+                .select({ count: count(), totalSize: sum(topicAttachment.fileSize) })
                 .from(topicAttachment)
                 .where(eq(topicAttachment.topicId, params.topicId));
             const countError = validateTopicAttachmentUpload(
-                { currentCount: countRow?.count ?? 0, fileSize: params.file.size },
+                {
+                    currentCount: countRow?.count ?? 0,
+                    currentTotalBytes: Number(countRow?.totalSize ?? 0),
+                    fileSize: params.file.size,
+                    fileName: params.file.name,
+                },
                 attachmentType,
             );
             if (countError) return fail(countError);
@@ -126,7 +131,7 @@ export async function replaceTopicRecommendQuestions(params: {
             .select({ id: topic.id })
             .from(topic)
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
-        if (!activeTopic) return fail("课题不存在", "NOT_FOUND", 404);
+        if (!activeTopic) return fail("实验模板不存在", "NOT_FOUND", 404);
         const [taskReference] = await tx
             .select({ id: task.id })
             .from(task)
@@ -134,7 +139,7 @@ export async function replaceTopicRecommendQuestions(params: {
             .limit(1);
         if (taskReference) {
             return fail(
-                "课题已分配任务，推荐题目不能再修改；如需调整请复制为新课题",
+                "实验模板已分配任务，推荐题目不能再修改；如需调整请复制为新模板",
                 "TOPIC_ASSIGNED",
                 409,
             );
@@ -144,7 +149,7 @@ export async function replaceTopicRecommendQuestions(params: {
             .set({ recommendQuestions: parsed.questions, updatedAt: new Date() })
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)))
             .returning({ id: topic.id });
-        return updated ? { ok: true as const } : fail("课题不存在", "NOT_FOUND", 404);
+        return updated ? { ok: true as const } : fail("实验模板不存在", "NOT_FOUND", 404);
     });
 }
 
@@ -159,7 +164,7 @@ export async function deleteTopicAttachment(params: {
             .select({ id: topic.id })
             .from(topic)
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
-        if (!activeTopic) return fail("课题不存在", "NOT_FOUND", 404);
+        if (!activeTopic) return fail("实验模板不存在", "NOT_FOUND", 404);
         const [taskReference] = await tx
             .select({ id: task.id })
             .from(task)
@@ -167,7 +172,7 @@ export async function deleteTopicAttachment(params: {
             .limit(1);
         if (taskReference) {
             return fail(
-                "课题已分配任务，附件不能再修改；如需调整请复制为新课题",
+                "实验模板已分配任务，教学资料不能再修改；如需调整请复制为新模板",
                 "TOPIC_ASSIGNED",
                 409,
             );
@@ -236,7 +241,8 @@ export async function copyTopicWithResources(params: {
                     | Question[]
                     | null;
 
-            const copiedName = `${sourceTopic.name} (副本)`;
+            const copySuffix = " (副本)";
+            const copiedName = `${Array.from(sourceTopic.name).slice(0, 200 - Array.from(copySuffix).length).join("")}${copySuffix}`;
             const sourceFieldMapping = normalizeJsonColumnValue(sourceTopic.fieldMapping);
             const [created] = await tx
                 .insert(topic)
@@ -247,6 +253,7 @@ export async function copyTopicWithResources(params: {
                     excelFilePath: copiedExcelFilePath,
                     excelRowCount: sourceTopic.excelRowCount,
                     fieldMapping: retitleGeneratedStudyContract(sourceFieldMapping, sourceTopic.name, copiedName),
+                    samplingPolicy: normalizeJsonColumnValue(sourceTopic.samplingPolicy),
                     weightConfig: normalizeJsonColumnValue(sourceTopic.weightConfig),
                     recommendQuestions: recommendQuestions ?? null,
                     status: 0,
@@ -267,7 +274,7 @@ export async function copyTopicWithResources(params: {
             return insertedTopicId;
         });
 
-        if (newTopicId === null) return fail("课题不存在", "NOT_FOUND", 404);
+        if (newTopicId === null) return fail("实验模板不存在", "NOT_FOUND", 404);
         return { ok: true as const, id: newTopicId };
     } catch (error) {
         await Promise.all(copiedStoragePaths.map((filePath) => deleteStorageFileIfExists(filePath).catch(() => undefined)));

@@ -43,11 +43,12 @@ export function SubmissionDetailPage() {
     if (!detail) return <div className="mx-auto max-w-xl rounded-surface border border-border bg-card p-8 text-center text-muted-foreground">{error ?? "未找到提交记录"}</div>;
 
     const status = statusConfig[detail.status];
-    const scores = [
-        ["问卷设计", detail.scoreQuestionnaire, detail.weights.questionnaire],
-        ["实验过程", detail.scoreProcess, detail.weights.process],
-        ["实验报告", detail.scoreReport, detail.weights.report],
+    const scoreWeights = [
+        ["问卷设计", detail.weights.questionnaire],
+        ["实验过程", detail.weights.process],
+        ["实验报告", detail.weights.report],
     ] as const;
+    const totalLabel = detail.status === "graded" ? detail.totalScore ?? "-" : detail.status === "rejected" ? "待修改" : "待批改";
 
     return (
         <div className="mx-auto max-w-4xl space-y-6" data-testid="student-submission-detail">
@@ -74,23 +75,23 @@ export function SubmissionDetailPage() {
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
                     <div className="grid gap-4 grid-cols-4">
-                        {scores.map(([label, value, weight]) => (
+                        {scoreWeights.map(([label, weight]) => (
                             <div key={label} className="rounded-surface border border-border bg-muted p-4 text-center">
                                 <p className="text-meta text-muted-foreground">{label}</p>
-                                <p className="mt-1 text-page-title font-bold">{value ?? "-"}</p>
-                                <p className="mt-1 text-meta text-muted-foreground">权重 {weight}%</p>
+                                <p className="mt-1 text-page-title font-bold">{weight}%</p>
+                                <p className="mt-1 text-meta text-muted-foreground">评分权重</p>
                             </div>
                         ))}
                         <div className="rounded-surface border border-primary-border bg-primary-muted p-4 text-center">
                             <p className="text-meta font-medium text-primary">总分</p>
-                            <p className={cn("mt-1 text-display font-bold", detail.totalScore !== null && detail.totalScore >= 60 ? "text-success" : "text-foreground")}>{detail.totalScore ?? "-"}</p>
+                            <p className={cn("mt-1 font-bold", detail.status === "graded" ? "text-display text-primary" : "text-section-title text-foreground")}>{totalLabel}</p>
                         </div>
                     </div>
 
                     <section data-testid="student-submission-content" className="rounded-surface border border-border bg-card">
                         <div className="border-b border-border px-5 py-4">
                             <h2 className="flex items-center gap-2 font-semibold"><FileText className="h-4 w-4 text-primary" />提交内容快照</h2>
-                            <p className="mt-1 text-meta text-muted-foreground">以下内容固定为本次提交时的版本，不受后续课题修改影响。</p>
+                            <p className="mt-1 text-meta text-muted-foreground">以下内容固定为本次提交时的版本，不受后续实验模板修改影响。</p>
                         </div>
                         <div className="p-5">
                             <Tabs defaultValue="report">
@@ -105,7 +106,7 @@ export function SubmissionDetailPage() {
                                 </TabsContent>
                                 <TabsContent value="questionnaire" className="mt-4"><QuestionnaireSnapshot questionnaire={detail.snapshot.questionnaire} /></TabsContent>
                                 <TabsContent value="plan" className="mt-4"><SamplePlanSnapshot value={detail.snapshot.samplePlan} populationSize={detail.snapshot.populationSize} /></TabsContent>
-                                <TabsContent value="sampling" className="mt-4"><SamplingResultsSnapshot value={detail.snapshot.samplingResults} /></TabsContent>
+                                <TabsContent value="sampling" className="mt-4"><SamplingResultsSnapshot value={detail.snapshot.samplingResults} samplingPolicy={detail.snapshot.samplingPolicy} /></TabsContent>
                             </Tabs>
                         </div>
                     </section>

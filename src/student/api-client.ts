@@ -1,8 +1,9 @@
 import type { ResolvedAnalysisTarget, ResolvedStudyContract } from "@/lib/analysis-target";
 import type { Question, QuestionnaireData, QuestionType } from "@/lib/questionnaire-types";
+import type { SamplingMethod, SamplingPolicyV1 } from "@/lib/sampling-policy";
 import { notifyAuthExpired } from "@/lib/auth-expired";
 
-export type MethodKey = "simple" | "systematic" | "pps" | "stratified";
+export type MethodKey = SamplingMethod;
 export type ExperimentStatus = "in_progress" | "submitted" | "graded" | "rejected";
 
 export interface ApiResponse<T> {
@@ -42,6 +43,7 @@ export interface TaskDetail extends Omit<StudentTask, "progress"> {
     populationSize: number;
     attachments: TopicAttachment[];
     recommendQuestions: Question[];
+    samplingPolicy?: SamplingPolicyV1;
 }
 
 export type { QuestionType, Question, QuestionnaireData };
@@ -84,6 +86,19 @@ export interface SamplingResultsData {
         seed?: number;
         randomStart?: number;
         inclusionProbabilities?: number[];
+        probabilitySummary?: {
+            populationCount: number;
+            probabilitySum: number;
+            minInclusionProbability: number;
+            maxInclusionProbability: number;
+            certaintyUnitCount: number;
+        };
+        probabilityPreview?: Array<{
+            samplePosition: number;
+            sizeValue: number;
+            inclusionProbability: number;
+            designWeight: number;
+        }>;
         indices?: number[];
         data?: unknown[];
     };
@@ -116,6 +131,7 @@ export interface ExperimentData {
     populationSize: number;
     analysisTarget?: ResolvedAnalysisTarget | null;
     studyContract?: ResolvedStudyContract | null;
+    samplingPolicy?: SamplingPolicyV1;
 }
 
 export interface AnalysisNumericFieldMetrics {
@@ -178,9 +194,6 @@ export interface SubmissionDetail {
     topicName: string;
     submittedAt: string | null;
     status: Exclude<ExperimentStatus, "in_progress">;
-    scoreQuestionnaire: number | null;
-    scoreProcess: number | null;
-    scoreReport: number | null;
     totalScore: number | null;
     teacherComment: string | null;
     rejectReason: string | null;
@@ -194,6 +207,7 @@ export interface SubmissionDetail {
         questionnaire: QuestionnaireData | null;
         samplePlan: SamplePlanData | null;
         samplingResults: SamplingResultsData | null;
+        samplingPolicy: SamplingPolicyV1;
         reportContent: string;
     };
 }

@@ -138,7 +138,7 @@ export async function executeSamplingAction(params: {
             }
             const resolvedTarget = resolveAnalysisTarget(params.fieldMapping);
             if (resolvedTarget && !resolvedTarget.inferred && analysisTargetConflictsWithSizeField(resolvedTarget.target, sizeField)) {
-                return { ok: false as const, errorMessage: "PPS 规模变量不能与课题对照变量相同，请改用抽样前已知的辅助变量" };
+                return { ok: false as const, errorMessage: "PPS 规模变量不能与研究目标变量相同，请改用抽样前已知的辅助变量" };
             }
 
             const hasField = params.population.some((row) => Object.prototype.hasOwnProperty.call(row, sizeField));
@@ -182,6 +182,7 @@ export async function executeSamplingAction(params: {
                     seed: effectiveSeed,
                     randomStart: selection.randomStart,
                     inclusionProbabilities: selection.inclusionProbabilities,
+                    probabilitySummary: selection.probabilitySummary,
                     indices: selection.indices,
                     data: selection.data,
                 },
@@ -213,6 +214,10 @@ export async function executeSamplingAction(params: {
                 const key = stratumKey(row[stratifyBy]);
                 if (!key) continue;
                 layerPopulationCount.set(key, (layerPopulationCount.get(key) ?? 0) + 1);
+            }
+            const coveredPopulation = [...layerPopulationCount.values()].reduce((sum, count) => sum + count, 0);
+            if (coveredPopulation !== params.population.length) {
+                return { ok: false as const, errorMessage: "分层变量在总体中存在空值，无法执行分层抽样" };
             }
 
             const layers: Array<{ name: string; count: number; ratio: number; sampleCount: number }> = [];

@@ -32,6 +32,7 @@ test("published topic view resolves and renders the full read-only study contrac
     expect(source).toContain("resolvedStudyContract.contract.researchQuestion");
     expect(source).toContain("resolvedStudyContract.contract.targetPopulation");
     expect(source).toContain("resolvedStudyContract.contract.unitOfAnalysis");
-    expect(source).toContain('aria-label="课题详情内容，可滚动查看"');
+    expect(source).toContain('aria-label="实验模板详情内容，可滚动查看"');
+    expect(source).toContain('key: "sampling"');
     expect(source).toContain("tabIndex={0}");
 });

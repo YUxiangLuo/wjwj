@@ -27,6 +27,20 @@ import {
 import { PPS_UNAVAILABLE_STATUS_MESSAGE } from "../experiment/sampling-messages";
 import { getPreviewSubmitBlocker, isSubmissionCompleteResponse } from "../experiment/preview-submit";
 import { ImmersiveReportPreview } from "../components/ImmersiveReportPreview";
+import {
+    getSamplingMethodState,
+    resolveSamplingPolicy,
+    SAMPLING_METHODS,
+    type SamplingMethod,
+} from "@/lib/sampling-policy";
+import { getSamplingResultCount } from "../experiment/sampling-results";
+
+const SAMPLING_METHOD_LABELS: Record<SamplingMethod, string> = {
+    simple: "简单随机抽样",
+    systematic: "系统抽样",
+    pps: "PPS抽样",
+    stratified: "分层抽样",
+};
 
 function QuestionPreview({ question, index }: { question: Question; index: number }) {
     return (
@@ -165,6 +179,20 @@ export function SubmissionPreview() {
     const samplePlan = experiment.samplePlan;
     const samplingResults = experiment.samplingResults;
     const reportContent = experiment.reportContent ?? "";
+    const samplingPolicy = resolveSamplingPolicy(experiment.samplingPolicy);
+    const samplingMethodRows = SAMPLING_METHODS.flatMap((method) => {
+        const result = samplingResults?.[method];
+        const state = getSamplingMethodState(samplingPolicy, method, result);
+        if (state === "disabled") return [];
+        const status = state === "completed"
+            ? `已完成（${getSamplingResultCount(method, result)} 样本）`
+            : state === "unavailable"
+                ? PPS_UNAVAILABLE_STATUS_MESSAGE
+                : state === "unselected"
+                    ? "未选择"
+                    : "未完成";
+        return [{ method, label: SAMPLING_METHOD_LABELS[method], status }];
+    });
     const submitBlocker = getPreviewSubmitBlocker({
         questionnaire,
         samplePlan,
@@ -172,6 +200,7 @@ export function SubmissionPreview() {
         reportContent,
         populationSize: experiment.populationSize,
         analysisTarget: experiment.analysisTarget,
+        samplingPolicy: experiment.samplingPolicy,
     });
     const canSubmit = submitBlocker === null;
     const advancedSourceLabel = getAdvancedPlanSourceLabel(samplePlan?.advancedPlanSource);
@@ -199,7 +228,7 @@ export function SubmissionPreview() {
                         </Button>
                     </div>
                     <CardDescription className="text-muted-foreground">
-                        课题：<span className="text-foreground font-medium">{task.name}</span>
+                        实验模板：<span className="text-foreground font-medium">{task.name}</span>
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-6">
@@ -263,10 +292,9 @@ export function SubmissionPreview() {
                                 <div className="rounded-surface border border-border bg-card p-4">
                                     <h3 className="text-body font-semibold text-foreground mb-3">阶段三：抽样执行</h3>
                                     <div className="text-label text-foreground space-y-1">
-                                        <p>简单随机抽样：{samplingResults?.simple?.completed ? `已完成（${samplingResults.simple.sampleCount} 样本）` : "未完成"}</p>
-                                        <p>系统抽样：{samplingResults?.systematic?.completed ? `已完成（${samplingResults.systematic.sampleCount} 样本）` : "未完成"}</p>
-                                        <p>PPS抽样：{samplingResults?.pps?.unavailable ? PPS_UNAVAILABLE_STATUS_MESSAGE : samplingResults?.pps?.completed ? `已完成（${samplingResults.pps.sampleCount} 样本）` : "未完成"}</p>
-                                        <p>分层抽样：{samplingResults?.stratified?.completed ? "已完成" : "未完成"}</p>
+                                        {samplingMethodRows.map((row) => (
+                                            <p key={row.method} data-testid={`student-preview-sampling-${row.method}`}>{row.label}：{row.status}</p>
+                                        ))}
                                     </div>
                                 </div>
 

@@ -19,7 +19,6 @@ import {
 } from "../schema";
 import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize } from "../../student/experiment/sample-plan";
 import { executeSamplingAction, type SamplingMethod } from "../../student/experiment/sampling-service";
-import { PPS_UNAVAILABLE_REASON } from "../../student/experiment/sampling-messages";
 import {
     validateQuestionnaireForSubmit,
     validateReportForSubmit,
@@ -39,6 +38,7 @@ import {
     DOGFOOD_COUNTS,
     DOGFOOD_NAMES,
     GUIDE_ATTACHMENT_PATH,
+    QUESTIONNAIRE_TEMPLATE_ATTACHMENT_PATH,
     MEAN_POPULATION_PATH,
     PPS_POPULATION_PATH,
     PROPORTION_POPULATION_PATH,
@@ -46,6 +46,7 @@ import {
     shiftDays,
 } from "./dogfood-fixtures";
 import { DEMO_STUDENT_ACCOUNTS } from "./demo-accounts";
+import { buildDefaultSamplingPolicy, type SamplingPolicyV1 } from "../../lib/sampling-policy";
 
 const questionnaire = {
     title: "校园学习体验调查（认知预试）",
@@ -91,6 +92,16 @@ const diningQuestionnaire = {
 };
 
 const weightConfig = { questionnaire: 30, process: 30, report: 40 };
+const defaultSamplingPolicy = buildDefaultSamplingPolicy();
+const noPpsSamplingPolicy = buildDefaultSamplingPolicy({ ppsEnabled: false });
+const stratifiedRequiredPolicy: SamplingPolicyV1 = {
+    version: 1,
+    methods: { ...defaultSamplingPolicy.methods, stratified: "required" },
+};
+const ppsRequiredPolicy: SamplingPolicyV1 = {
+    version: 1,
+    methods: { ...defaultSamplingPolicy.methods, pps: "required" },
+};
 const ppsPopulationForPlan = createPpsPopulation();
 const { recommendedSize: ppsMeanRecommendedSize, populationVariance: weeklyHoursVariance } = computePpsMeanPlan(ppsPopulationForPlan);
 const learningPlan = {
@@ -169,7 +180,7 @@ const diningPlan = {
 };
 
 const reportContent = `<h2>实验目的</h2><p>本实验对照虚拟总体中每周学习时长的均值，比较四种抽样设计。问卷阶段是认知预试，答案不进入估计。</p><h2>方法与结果</h2><p>在百分之九十五置信水平和绝对误差限 2 下确定样本量，分别使用简单随机、系统、PPS 和分层抽样。PPS 使用月生活费作为规模变量，避免与对照变量循环。对不同方法的样本构成、每周学习时长与总体分布进行了比较，并记录随机种子以保证结果可复现。</p><h2>结论</h2><p>分层抽样能够稳定保持各层比例，简单随机抽样实现方便。实际调查中应结合总体结构、抽样框质量和执行成本选择方法，同时完整说明误差限和无回答率假设。</p>`;
-const meanReportContent = `<h2>实验目的</h2><p>本实验以每周阅读时长的均值为估计目标，使用总体方差估计、绝对误差限和有限总体校正确定样本量，并比较可执行抽样方法的结果。</p><h2>方法与结果</h2><p>总体中每周阅读时长包含零值，且没有其他对每个单位都为正数的数值字段，因此不存在合格的 PPS 规模变量。系统按规则将 PPS 标记为不可用并跳过该方法，随后完成简单随机、系统和按学院分层抽样。</p><h2>结论</h2><p>均值估计流程使用样本量 15。三种可用方法均保留随机种子和完整样本行；PPS 的跳过是由总体数据条件决定的有效结果，而不是执行失败。分析时应明确记录这一限制，避免为完成形式而选用不满足正值条件的规模变量。</p>`;
+const meanReportContent = `<h2>实验目的</h2><p>本实验以每周阅读时长的均值为估计目标，使用总体方差估计、绝对误差限和有限总体校正确定样本量，并比较可执行抽样方法的结果。</p><h2>方法与结果</h2><p>总体中每周阅读时长包含零值，且没有其他对每个单位都为正数的数值字段，因此不存在合格的 PPS 规模变量。实验模板按规则将 PPS 设为不适用，随后完成简单随机、系统和按学院分层抽样。</p><h2>结论</h2><p>均值估计流程使用样本量 15。三种启用方法均保留随机种子和完整样本行；PPS 未启用是由总体数据条件决定的有效策略，而不是执行失败。分析时应明确记录这一限制，避免为完成形式而选用不满足正值条件的规模变量。</p>`;
 const graduateReportContent = `<h2>研究问题</h2><p>本研究估计某综合大学本届毕业生中计划直接就业的学生比例，分析单位为一名毕业生。</p><h2>抽样设计</h2><p>以学院进行分层，并使用求职准备度作为 PPS 规模变量。目标类别属于分类变量，因此样本量规划采用最保守比例方差，误差限按百分点解释。</p><h2>结果解释</h2><p>比较四种抽样方法的直接就业比例、设计标准误与总体已知比例。结果仅代表该虚拟总体和当前抽样设计，不应外推到其他学校或毕业年份。</p>`;
 const diningReportContent = `<h2>研究问题</h2><p>本研究估计校园餐厅工作日午间高峰服务时段的平均等待分钟数，分析单位是一个十五分钟服务时段，而不是一名学生。</p><h2>抽样设计</h2><p>按校区分层，并以客流量作为 PPS 规模变量，比较简单随机、系统、PPS 与分层抽样。</p><h2>结果解释</h2><p>等待时间会同时受到时段、客流量和开放窗口数影响。单次样本的均值差异不能直接解释为餐厅服务质量的因果差异。</p>`;
 
@@ -267,10 +278,15 @@ function guideSourceFile() {
     return Bun.file(resolve(process.cwd(), "public/templates/数据上传规范.pdf"));
 }
 
+function questionnaireTemplateSourceFile() {
+    return Bun.file(resolve(process.cwd(), "public/templates/调查问卷设计规范与模板.docx"));
+}
+
 async function preflightGuideSource() {
-    const sourceFile = guideSourceFile();
-    if (!(await sourceFile.exists()) || sourceFile.size <= 0) {
-        throw new Error(`Required seed attachment is missing or empty: ${sourceFile.name}`);
+    for (const sourceFile of [guideSourceFile(), questionnaireTemplateSourceFile()]) {
+        if (!(await sourceFile.exists()) || sourceFile.size <= 0) {
+            throw new Error(`Required seed attachment is missing or empty: ${sourceFile.name}`);
+        }
     }
 }
 
@@ -294,6 +310,22 @@ async function copyGuideAttachment(topicId: number) {
         filePath: GUIDE_ATTACHMENT_PATH,
         fileType: "application/pdf",
         fileSize: targetFile.size,
+    });
+
+    const questionnaireSource = questionnaireTemplateSourceFile();
+    const questionnaireTarget = resolve(process.cwd(), QUESTIONNAIRE_TEMPLATE_ATTACHMENT_PATH.slice(1));
+    await mkdir(dirname(questionnaireTarget), { recursive: true });
+    await Bun.write(questionnaireTarget, questionnaireSource);
+    const questionnaireFile = Bun.file(questionnaireTarget);
+    if (!(await questionnaireFile.exists()) || questionnaireFile.size <= 0) {
+        throw new Error(`Failed to write seed attachment: ${questionnaireTarget}`);
+    }
+    await db.insert(topicAttachment).values({
+        topicId,
+        fileName: "调查问卷设计规范与模板.docx",
+        filePath: QUESTIONNAIRE_TEMPLATE_ATTACHMENT_PATH,
+        fileType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        fileSize: questionnaireFile.size,
     });
 }
 
@@ -345,7 +377,6 @@ async function buildSamplingFixtures(
     const meanResults = {
         simple: await runSampling({ method: "simple", rawParams: { sampleSize: meanRecommendedSize, seed: 202611 }, targetSampleSize: meanRecommendedSize, population: meanPopulation, fieldMapping: meanFieldMapping }),
         systematic: await runSampling({ method: "systematic", rawParams: { seed: 202612 }, targetSampleSize: meanRecommendedSize, population: meanPopulation, fieldMapping: meanFieldMapping }),
-        pps: { unavailable: true, unavailableReason: PPS_UNAVAILABLE_REASON, serverGenerated: true },
         stratified: await runSampling({
             method: "stratified",
             rawParams: {
@@ -427,11 +458,12 @@ function assertCompleteSubmission(
     samplingResults: unknown,
     populationSize: number,
     submissionReport: string,
+    samplingPolicy: SamplingPolicyV1,
 ) {
     const errors = [
         validateQuestionnaireForSubmit(submissionQuestionnaire),
         validateSamplePlanForSubmit(samplePlan, populationSize),
-        validateSamplingResultsForSubmit(samplingResults, (samplePlan as { finalSampleSize: number }).finalSampleSize, populationSize),
+        validateSamplingResultsForSubmit(samplingResults, (samplePlan as { finalSampleSize: number }).finalSampleSize, populationSize, samplingPolicy),
         validateReportForSubmit(submissionReport),
     ].filter(Boolean);
     if (errors.length) throw new Error(`Invalid dogfood submission fixture: ${errors.join("; ")}`);
@@ -445,6 +477,7 @@ function snapshot(params: {
     samplePlan: Record<string, unknown>;
     samplingResults: Record<string, unknown>;
     reportContent: string;
+    samplingPolicy?: SamplingPolicyV1;
 }): SubmissionSnapshot {
     return {
         topicName: params.topicName,
@@ -455,6 +488,7 @@ function snapshot(params: {
         samplingResults: params.samplingResults,
         reportContent: params.reportContent,
         weightConfig,
+        samplingPolicy: params.samplingPolicy ?? defaultSamplingPolicy,
     };
 }
 
@@ -462,6 +496,9 @@ async function seed() {
     const anchor = resolveSeedAnchor(process.env.SEED_NOW);
     const day = (offset: number) => shiftDays(anchor, offset);
     const demoSeedMode = resolveDemoMode(process.env);
+    if (!demoSeedMode) {
+        throw new Error("完整 dogfood fixture 只能通过 DEMO_MODE=1 的 db:seed:demo 写入；生产环境请运行 db:bootstrap-admin");
+    }
     console.log(`Seed anchor: ${anchor.toISOString()}`);
     await preflightGuideSource();
 
@@ -478,15 +515,19 @@ async function seed() {
         graduatePopulation,
         diningPopulation,
     );
-    assertCompleteSubmission(questionnaire, learningPlan, learningResults, ppsPopulation.length, reportContent);
-    assertCompleteSubmission(questionnaire, meanPlan, meanResults, meanPopulation.length, meanReportContent);
-    assertCompleteSubmission(graduateQuestionnaire, graduatePlan, graduateResults, graduatePopulation.length, graduateReportContent);
-    assertCompleteSubmission(diningQuestionnaire, diningPlan, diningResults, diningPopulation.length, diningReportContent);
+    assertCompleteSubmission(questionnaire, learningPlan, learningResults, ppsPopulation.length, reportContent, defaultSamplingPolicy);
+    assertCompleteSubmission(questionnaire, meanPlan, meanResults, meanPopulation.length, meanReportContent, noPpsSamplingPolicy);
+    assertCompleteSubmission(graduateQuestionnaire, graduatePlan, graduateResults, graduatePopulation.length, graduateReportContent, stratifiedRequiredPolicy);
+    assertCompleteSubmission(diningQuestionnaire, diningPlan, diningResults, diningPopulation.length, diningReportContent, ppsRequiredPolicy);
     const compactLearningResults = compactSamplingResults(learningResults);
+    const compactLearningChoiceResults = compactSamplingResults({
+        simple: learningResults.simple,
+        systematic: learningResults.systematic,
+    });
     const compactMeanResults = compactSamplingResults(meanResults);
     const compactGraduateResults = compactSamplingResults(graduateResults);
     const compactDiningResults = compactSamplingResults(diningResults);
-    if (!compactLearningResults || !compactMeanResults || !compactGraduateResults || !compactDiningResults) {
+    if (!compactLearningResults || !compactLearningChoiceResults || !compactMeanResults || !compactGraduateResults || !compactDiningResults) {
         throw new Error("Dogfood sampling fixtures could not be compacted");
     }
 
@@ -577,13 +618,14 @@ async function seed() {
         fieldMapping: ppsFieldMapping,
         weightConfig,
         recommendQuestions: questionnaire.questions,
+        samplingPolicy: defaultSamplingPolicy,
         status: 1,
         createdAt: day(-20),
         updatedAt: day(-7),
     };
     const topicRows = await db.insert(topic).values([
         { ...validTopicValues, name: DOGFOOD_NAMES.topicA, description: "估计本科生每周学习时长均值，并用月生活费演示 PPS 规模变量选择。" },
-        { ...validTopicValues, name: DOGFOOD_NAMES.topicB, description: "估计学生每周阅读时长均值；总体包含零值且没有合格的正值 PPS 规模变量。", excelFilePath: MEAN_POPULATION_PATH, excelRowCount: 24, fieldMapping: meanFieldMapping },
+        { ...validTopicValues, name: DOGFOOD_NAMES.topicB, description: "估计学生每周阅读时长均值；总体包含零值且没有合格的正值 PPS 规模变量。", excelFilePath: MEAN_POPULATION_PATH, excelRowCount: 24, fieldMapping: meanFieldMapping, samplingPolicy: noPpsSamplingPolicy },
         { teacherId: teachersById.T001!.id, name: DOGFOOD_NAMES.topicC, description: "正在设计图书馆座位与空间使用调查，尚未上传总体数据。", status: 0, createdAt: day(-3), updatedAt: day(-3) },
         { ...validTopicValues, name: DOGFOOD_NAMES.topicD, description: "上一轮校内通勤调查，保留用于演示已截止任务。" },
         { ...validTopicValues, name: DOGFOOD_NAMES.topicE, description: "面向新生的数字素养调查，演示尚未开放任务。" },
@@ -598,6 +640,7 @@ async function seed() {
             fieldMapping: graduateFieldMapping,
             weightConfig,
             recommendQuestions: graduateQuestionnaire.questions,
+            samplingPolicy: stratifiedRequiredPolicy,
             status: 1,
             createdAt: day(-16),
             updatedAt: day(-5),
@@ -611,6 +654,7 @@ async function seed() {
             fieldMapping: diningFieldMapping,
             weightConfig,
             recommendQuestions: diningQuestionnaire.questions,
+            samplingPolicy: ppsRequiredPolicy,
             status: 1,
             createdAt: day(-12),
             updatedAt: day(-4),
@@ -674,6 +718,7 @@ async function seed() {
         samplePlan: graduatePlan,
         samplingResults: compactGraduateResults,
         reportContent: graduateReportContent,
+        samplingPolicy: stratifiedRequiredPolicy,
     });
     const diningCompletedBase = {
         currentStage: 4,
@@ -694,16 +739,17 @@ async function seed() {
         samplePlan: diningPlan,
         samplingResults: compactDiningResults,
         reportContent: diningReportContent,
+        samplingPolicy: ppsRequiredPolicy,
     });
 
     const experimentRows = await db.insert(experiment).values([
         { studentId: studentsById.S011!.id, taskId: aTask.id, currentStage: 1, status: "in_progress", questionnaire, createdAt: day(-2), updatedAt: day(-2) },
         { studentId: studentsById.S012!.id, taskId: aTask.id, currentStage: 2, status: "in_progress", questionnaire, stage1CompletedAt: day(-2), createdAt: day(-3), updatedAt: day(-2) },
         { studentId: studentsById.S013!.id, taskId: aTask.id, currentStage: 3, status: "in_progress", questionnaire, samplePlan: learningPlan, stage1CompletedAt: day(-3), stage2CompletedAt: day(-2), createdAt: day(-4), updatedAt: day(-2) },
-        { ...learningCompletedBase, studentId: studentsById.S014!.id, taskId: aTask.id, status: "in_progress", reportContent: "<p>四种抽样已完成，正在撰写实验报告。</p>", stage4CompletedAt: null, createdAt: day(-6), updatedAt: day(-1) },
+        { ...learningCompletedBase, samplingResults: compactLearningChoiceResults, studentId: studentsById.S014!.id, taskId: aTask.id, status: "in_progress", reportContent: "<p>已按模板要求完成简单随机与系统抽样，正在比较所选方法并撰写实验报告。</p>", stage4CompletedAt: null, createdAt: day(-6), updatedAt: day(-1) },
         { ...learningCompletedBase, studentId: studentsById.S015!.id, taskId: aTask.id, status: "submitted", submissionSnapshot: learningSnapshot("S015"), submittedAt: day(-1), createdAt: day(-7), updatedAt: day(-1) },
         { ...learningCompletedBase, studentId: studentsById.S016!.id, taskId: aTask.id, status: "graded", submissionSnapshot: learningSnapshot("S016"), submittedAt: day(-2), scoreQuestionnaire: "92", scoreProcess: "88", scoreReport: "90", totalScore: "90.00", teacherComment: "结构完整，抽样方法比较清楚。", gradedByTeacherId: teachersById.T001!.id, gradedAt: day(-1), createdAt: day(-7), updatedAt: day(-1) },
-        { ...learningCompletedBase, studentId: studentsById.S017!.id, taskId: aTask.id, version: 2, status: "rejected", submissionSnapshot: learningSnapshot("S017"), submittedAt: day(-2), rejectReason: "请补充四种抽样方法的比较，并说明分层分配依据。", gradedByTeacherId: teachersById.T001!.id, gradedAt: day(-1), createdAt: day(-7), updatedAt: day(-1) },
+        { ...learningCompletedBase, studentId: studentsById.S017!.id, taskId: aTask.id, version: 2, status: "rejected", submissionSnapshot: learningSnapshot("S017"), submittedAt: day(-2), rejectReason: "请补充已选抽样方法的比较，并说明方法选择依据。", gradedByTeacherId: teachersById.T001!.id, gradedAt: day(-1), createdAt: day(-7), updatedAt: day(-1) },
         { ...learningCompletedBase, studentId: studentsById.S020!.id, taskId: aTask.id, status: "submitted", submissionSnapshot: learningSnapshot("S020"), submittedAt: day(-3), createdAt: day(-8), updatedAt: day(-3) },
         {
             studentId: studentsById.S015!.id,
@@ -718,7 +764,7 @@ async function seed() {
             stage2CompletedAt: day(-4),
             stage3CompletedAt: day(-3),
             stage4CompletedAt: day(-2),
-            submissionSnapshot: snapshot({ topicName: DOGFOOD_NAMES.topicB, studentName: studentsById.S015!.name, populationSize: 24, questionnaire, samplePlan: meanPlan, samplingResults: compactMeanResults, reportContent: meanReportContent }),
+            submissionSnapshot: snapshot({ topicName: DOGFOOD_NAMES.topicB, studentName: studentsById.S015!.name, populationSize: 24, questionnaire, samplePlan: meanPlan, samplingResults: compactMeanResults, reportContent: meanReportContent, samplingPolicy: noPpsSamplingPolicy }),
             submittedAt: day(-1),
             createdAt: day(-6),
             updatedAt: day(-1),
@@ -768,7 +814,7 @@ async function seed() {
 
     console.log("Seed completed.");
     console.log(`Counts: ${Object.entries(DOGFOOD_COUNTS).map(([key, value]) => `${key}=${value}`).join(" ")}`);
-    console.log(`Admin: admin / ${adminInitialPassword} (${demoSeedMode ? "demo-ready" : "first-login"})`);
+    console.log("Admin: admin (demo-ready; password configured by the explicit demo seed command)");
     console.log("Teachers: T001 / Teacher!2026 (fixed demo); T002 / T002 (first-login); T003 / Research!003; T004 disabled");
     console.log(`Random demo students: ${DEMO_STUDENT_ACCOUNTS.map((account) => account.studentId).join(", ")} in ${DOGFOOD_NAMES.mainClass}`);
 }

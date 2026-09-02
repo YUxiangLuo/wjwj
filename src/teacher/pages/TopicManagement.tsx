@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { buildDefaultSamplingPolicy, resolveSamplingPolicy, type SamplingPolicyV1 } from "@/lib/sampling-policy";
 
 export function TopicManagement() {
     const [topics, setTopics] = useState<Topic[]>([]);
@@ -38,6 +39,7 @@ export function TopicManagement() {
         columns: string[];
         preview: any[];
         columnValues?: Record<string, string[]>;
+        columnValuesTruncated?: string[];
     } | null>(null);
     const [columns, setColumns] = useState<string[]>([]);
     const [fieldMapping, setFieldMapping] = useState<FieldMappingState>({
@@ -48,6 +50,7 @@ export function TopicManagement() {
     const [attachments, setAttachments] = useState<TopicDetail["attachments"]>([]);
     const [recommendQuestions, setRecommendQuestions] = useState<Question[]>([]);
     const [weightConfig, setWeightConfig] = useState({ questionnaire: 30, process: 30, report: 40 });
+    const [samplingPolicy, setSamplingPolicy] = useState<SamplingPolicyV1>(() => buildDefaultSamplingPolicy());
     const [loadingDetail, setLoadingDetail] = useState(false);
     const [uploadingExcel, setUploadingExcel] = useState(false);
     const [uploadingAttachment, setUploadingAttachment] = useState(false);
@@ -111,6 +114,7 @@ export function TopicManagement() {
                     columns: res.data.excelInfo.columns,
                     preview: res.data.excelInfo.preview,
                     columnValues: res.data.excelInfo.columnValues,
+                    columnValuesTruncated: res.data.excelInfo.columnValuesTruncated,
                 });
             }
             setAttachments(res.data.attachments ?? []);
@@ -122,12 +126,13 @@ export function TopicManagement() {
                 process: weightParsed?.process ?? 30,
                 report: weightParsed?.report ?? 40,
             });
+            setSamplingPolicy(resolveSamplingPolicy(res.data.topic?.samplingPolicy));
         }
     }
 
     async function handleSubmitTopic() {
         if (!newTopicName.trim()) {
-            toast.error("请输入课题名称");
+            toast.error("请输入实验模板名称");
             return;
         }
 
@@ -153,7 +158,7 @@ export function TopicManagement() {
                 setCurrentStep(2);
                 loadTopicDetail(newId);
             } else if (editingTopicId) {
-                setCurrentStep(Math.min(currentStep + 1, 6));
+                setCurrentStep(Math.min(currentStep + 1, 7));
                 loadTopicDetail(editingTopicId);
             }
             loadTopics();
@@ -174,6 +179,7 @@ export function TopicManagement() {
         setAttachments([]);
         setRecommendQuestions([]);
         setWeightConfig({ questionnaire: 30, process: 30, report: 40 });
+        setSamplingPolicy(buildDefaultSamplingPolicy());
         setShowCreateModal(true);
     }
 
@@ -224,6 +230,7 @@ export function TopicManagement() {
                 columns: res.data.columns,
                 preview: res.data.preview,
                 columnValues: res.data.columnValues,
+                columnValuesTruncated: res.data.columnValuesTruncated,
             });
             setColumns(res.data.columns ?? []);
             setFieldMapping({ stratified: [], numeric: [], others: [] });
@@ -258,7 +265,22 @@ export function TopicManagement() {
         }
         const res = await teacherApi.updateFieldMapping(editingTopicId, fieldMapping);
         if (res.success) {
+            await loadTopicDetail(editingTopicId);
             setCurrentStep(4);
+        } else {
+            toast.error("保存失败: " + res.error?.message);
+        }
+    }
+
+    async function handleSaveSamplingPolicy() {
+        if (!editingTopicId) return;
+        if (editingTopicPublished) {
+            setCurrentStep(5);
+            return;
+        }
+        const res = await teacherApi.updateSamplingPolicy(editingTopicId, samplingPolicy);
+        if (res.success) {
+            setCurrentStep(5);
         } else {
             toast.error("保存失败: " + res.error?.message);
         }
@@ -280,7 +302,7 @@ export function TopicManagement() {
         if (!editingTopicId) return;
         const res = await teacherApi.updateRecommendQuestions(editingTopicId, recommendQuestions);
         if (res.success) {
-            setCurrentStep(6);
+            setCurrentStep(7);
         } else {
             toast.error("保存失败: " + res.error?.message);
         }
@@ -349,15 +371,15 @@ export function TopicManagement() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div>
-                <h2 className="text-subheading font-semibold text-foreground">课题管理</h2>
-                <p className="text-label text-muted-foreground mt-1">配置课题信息、数据与评分权重。</p>
+                <h2 className="text-subheading font-semibold text-foreground">实验模板管理</h2>
+                <p className="text-label text-muted-foreground mt-1">配置总体数据、研究目标、抽样策略、教学资料与评分规则。</p>
             </div>
 
             <div className="grid grid-cols-4 gap-4">
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">课题总数</p>
+                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">模板总数</p>
                             <p className="text-page-title font-semibold text-foreground mt-1">{loading ? "-" : summary.total}</p>
                         </div>
                         <IconTile intent="info">
@@ -403,7 +425,7 @@ export function TopicManagement() {
             <Card>
                 <PageHeader as={CardHeader}>
                     <div>
-                        <CardTitle className="text-body text-foreground">课题列表</CardTitle>
+                        <CardTitle className="text-body text-foreground">实验模板列表</CardTitle>
                         <p className="text-meta text-muted-foreground mt-1">共 {filteredTopics.length} 条数据</p>
                     </div>
                     <div className="flex gap-3 flex-row w-auto">
@@ -411,14 +433,14 @@ export function TopicManagement() {
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 data-testid="teacher-topic-search"
-                                placeholder="搜索课题名称"
+                                placeholder="搜索实验模板名称"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-9 bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "draft" | "published")}>
-                            <SelectTrigger aria-label="按课题状态筛选" data-testid="teacher-topic-status-filter" className="bg-card border-input text-foreground w-28">
+                            <SelectTrigger aria-label="按实验模板状态筛选" data-testid="teacher-topic-status-filter" className="bg-card border-input text-foreground w-28">
                                 <SelectValue placeholder="全部状态" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
@@ -428,7 +450,7 @@ export function TopicManagement() {
                             </SelectContent>
                         </Select>
                         <Button data-testid="teacher-topic-create-open" onClick={openCreateModal} className="bg-primary hover:bg-primary-hover text-primary-foreground">
-                            + 创建课题
+                            + 创建实验模板
                         </Button>
                     </div>
                 </PageHeader>
@@ -448,7 +470,7 @@ export function TopicManagement() {
                                             ) : (
                                                 <StatusBadge intent="warning">草稿</StatusBadge>
                                             )}
-                                            {topic.hasTasks && <StatusBadge intent="info">任务已分配 · 内容只读</StatusBadge>}
+                                            {topic.hasTasks && <StatusBadge intent="info">实验任务已分配 · 内容只读</StatusBadge>}
                                         </div>
                                         <div className="text-meta text-muted-foreground mt-1">创建于 {new Date(topic.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}</div>
                                         <div className="text-label text-muted-foreground mt-2 line-clamp-2 max-w-2xl">{getRichTextPlainText(topic.description) || "暂无描述"}</div>
@@ -548,6 +570,7 @@ export function TopicManagement() {
                         setAttachments([]);
                         setRecommendQuestions([]);
                         setWeightConfig({ questionnaire: 30, process: 30, report: 40 });
+                        setSamplingPolicy(buildDefaultSamplingPolicy());
                     }
                 }}
                 editingTopicId={editingTopicId}
@@ -573,8 +596,11 @@ export function TopicManagement() {
                 setRecommendQuestions={setRecommendQuestions}
                 weightConfig={weightConfig}
                 setWeightConfig={setWeightConfig}
+                samplingPolicy={samplingPolicy}
+                setSamplingPolicy={setSamplingPolicy}
                 onSubmitTopic={handleSubmitTopic}
                 onSaveFieldMapping={handleSaveFieldMapping}
+                onSaveSamplingPolicy={handleSaveSamplingPolicy}
                 onSaveRecommendQuestions={handleSaveRecommendQuestions}
                 onSaveWeights={handleSaveWeights}
             />
@@ -593,8 +619,8 @@ export function TopicManagement() {
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-foreground">确认操作</AlertDialogTitle>
                         <AlertDialogDescription className="text-muted-foreground">
-                            {confirmDialog.type === "delete" && "确认删除该课题吗？删除后无法恢复。"}
-                            {confirmDialog.type === "publish" && "确认发布该课题吗？发布后学生将可见。"}
+                            {confirmDialog.type === "delete" && "确认删除该实验模板吗？删除后无法恢复。"}
+                            {confirmDialog.type === "publish" && "确认发布该实验模板吗？发布后可分配给班级。"}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

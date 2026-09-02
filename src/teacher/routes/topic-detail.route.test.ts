@@ -84,13 +84,14 @@ test("topic detail returns attachments, recommended questions, and parsed excel 
         expect(payload.data.excelInfo).toEqual({
             columns: ["name", "score"],
             preview: [
-                { name: "Alice", score: 95 },
-                { name: "Bob", score: 88 },
+                { name: "Alice", score: "95" },
+                { name: "Bob", score: "88" },
             ],
             columnValues: {
                 name: ["Alice", "Bob"],
                 score: ["95", "88"],
             },
+            columnValuesTruncated: [],
         });
     } finally {
         await unlink(absolutePath).catch(() => undefined);
@@ -114,7 +115,7 @@ test("topic detail returns 404 for topics outside the teacher scope", async () =
         success: false,
         error: {
             code: "NOT_FOUND",
-            message: "课题不存在",
+            message: "实验模板不存在",
         },
     });
     expect(operations.filter((operation) => operation.kind === "select")).toHaveLength(1);

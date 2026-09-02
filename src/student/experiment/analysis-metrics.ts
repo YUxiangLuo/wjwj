@@ -3,6 +3,8 @@ import { createSeededRandom, drawPreparedPPSSample, preparePPSSampling, stratumK
 import type { ResolvedStudyContract } from "../../lib/analysis-target";
 import { resolveStudyContract } from "../../lib/analysis-target";
 import { normalizeConfidenceLevel, zForConfidenceLevel } from "./confidence-level";
+import { isCompletedSamplingResult } from "../../lib/sampling-policy";
+import { createSafeRecord } from "../../lib/safe-record";
 import {
     buildPopulationCategoricalStats,
     buildPopulationNumericStats,
@@ -242,12 +244,11 @@ function estimateWeightedMean(
 }
 
 function estimateSimpleDistribution(rows: Array<Record<string, unknown>>, field: string) {
-    const counts: Record<string, number> = {};
+    const counts = createSafeRecord<number>();
     let total = 0;
 
     for (const row of rows) {
-        const category = toTrimmedCategory(row[field]);
-        if (!category) continue;
+        const category = toTrimmedCategory(row[field]) ?? "（缺失值）";
         counts[category] = (counts[category] || 0) + 1;
         total += 1;
     }
@@ -268,13 +269,13 @@ function estimateWeightedDistribution(
         return {};
     }
 
-    const counts: Record<string, number> = {};
+    const counts = createSafeRecord<number>();
     let totalWeight = 0;
 
     for (let index = 0; index < rows.length; index += 1) {
-        const category = toTrimmedCategory(rows[index]?.[field]);
+        const category = toTrimmedCategory(rows[index]?.[field]) ?? "（缺失值）";
         const inclusionProbability = Number(inclusionProbabilities[index]);
-        if (!category || !Number.isFinite(inclusionProbability) || inclusionProbability <= 0) {
+        if (!Number.isFinite(inclusionProbability) || inclusionProbability <= 0) {
             continue;
         }
         const weight = 1 / inclusionProbability;
@@ -469,7 +470,7 @@ function computeStratifiedValueEstimate(
     totalPopulation: number,
     accessor: NumericAccessor,
 ) {
-    if (!stratifyBy || !Array.isArray(layers) || layers.length === 0 || totalPopulation < 1) {
+    if (!stratifyBy || !hasCompleteStratifiedDesign(layers, totalPopulation)) {
         return null;
     }
 
@@ -477,7 +478,7 @@ function computeStratifiedValueEstimate(
     for (const layer of layers) {
         const layerRows = rows.filter((row) => stratumKey(row[stratifyBy]) === stratumKey(layer.name));
         const values = extractAccessorValues(layerRows, accessor);
-        if (values.length === 0 || layer.count < 1) {
+        if (values.length !== layer.sampleCount || layerRows.length !== layer.sampleCount) {
             return null;
         }
         const layerMean = values.reduce((sum, value) => sum + value, 0) / values.length;
@@ -485,6 +486,30 @@ function computeStratifiedValueEstimate(
     }
 
     return estimate;
+}
+
+function hasCompleteStratifiedDesign(
+    layers: Array<{ name: string; count: number; sampleCount: number }> | undefined,
+    totalPopulation: number,
+): layers is Array<{ name: string; count: number; sampleCount: number }> {
+    if (!Array.isArray(layers) || layers.length === 0 || totalPopulation < 1) return false;
+    const names = new Set<string>();
+    let covered = 0;
+    for (const layer of layers) {
+        const name = stratumKey(layer.name);
+        if (
+            !name
+            || names.has(name)
+            || !Number.isInteger(layer.count)
+            || layer.count < 1
+            || !Number.isInteger(layer.sampleCount)
+            || layer.sampleCount < 1
+            || layer.sampleCount > layer.count
+        ) return false;
+        names.add(name);
+        covered += layer.count;
+    }
+    return covered === totalPopulation;
 }
 
 function computeStratifiedMeanEstimate(
@@ -504,23 +529,19 @@ function computeStratifiedValueSe(
     totalPopulation: number,
     accessor: NumericAccessor,
 ) {
-    if (!stratifyBy || !Array.isArray(layers) || layers.length === 0 || totalPopulation < 1) {
+    if (!stratifyBy || !hasCompleteStratifiedDesign(layers, totalPopulation)) {
         return null;
     }
 
     let variance = 0;
 
     for (const layer of layers) {
-        if (layer.count < 1 || layer.sampleCount < 1) {
-            return null;
-        }
-
         const populationValues = population
             .filter((row) => stratumKey(row[stratifyBy]) === stratumKey(layer.name))
             .map((row) => accessor(row))
             .filter((value): value is number => value !== null);
 
-        if (populationValues.length === 0) {
+        if (populationValues.length !== layer.count) {
             return null;
         }
 
@@ -643,19 +664,15 @@ function computeStratifiedDistributionEstimate(
     layers: Array<{ name: string; count: number; sampleCount: number }> | undefined,
     totalPopulation: number,
 ) {
-    if (!stratifyBy || !Array.isArray(layers) || layers.length === 0 || totalPopulation < 1) {
+    if (!stratifyBy || !hasCompleteStratifiedDesign(layers, totalPopulation)) {
         return {};
     }
 
-    const distribution: Record<string, number> = {};
+    const distribution = createSafeRecord<number>();
 
     for (const layer of layers) {
-        if (layer.count < 1 || layer.sampleCount < 1) {
-            return {};
-        }
-
         const layerRows = rows.filter((row) => stratumKey(row[stratifyBy]) === stratumKey(layer.name));
-        if (layerRows.length === 0) {
+        if (layerRows.length !== layer.sampleCount) {
             return {};
         }
 
@@ -704,7 +721,12 @@ function toPopulationPercentages(counts: Record<string, number>) {
 const MAX_ANALYSIS_CATEGORIES = 20;
 
 function pickAggregatedCategoryLabel(realCategories: string[]) {
-    return realCategories.includes("其他") ? "其余类别" : "其他";
+    const occupied = new Set(realCategories);
+    if (!occupied.has("其他")) return "其他";
+    if (!occupied.has("其余类别")) return "其余类别";
+    let suffix = 2;
+    while (occupied.has(`其余类别${suffix}`)) suffix += 1;
+    return `其余类别${suffix}`;
 }
 
 /**
@@ -730,7 +752,7 @@ function truncateCategoricalDistributions(
             .slice(0, MAX_ANALYSIS_CATEGORIES - 1),
     );
     const truncate = (distribution: Record<string, number>) => {
-        const truncated: Record<string, number> = {};
+        const truncated = createSafeRecord<number>();
         for (const [category, value] of Object.entries(distribution)) {
             const bucket = topCategories.has(category) ? category : aggregatedCategoryLabel;
             truncated[bucket] = (truncated[bucket] ?? 0) + value;
@@ -814,13 +836,13 @@ function buildTargetAnalysis(params: {
         : (row) => {
             const category = toTrimmedCategory(row[target.field]);
             if (category === null) return null;
-            return category === target.value ? 1 : 0;
+            return category.normalize("NFKC") === target.value.normalize("NFKC") ? 1 : 0;
         };
 
     const populationValues = extractAccessorValues(population, accessor);
     if (populationValues.length === 0) return null;
     // 与数值字段的 fail-closed 约定一致：均值目标在数据不完整时不给目标分析。
-    if (target.kind === "mean" && populationValues.length !== populationSize) return null;
+    if (populationValues.length !== populationSize) return null;
     const populationValue = populationValues.reduce((sum, value) => sum + value, 0) / populationValues.length;
     const populationVar = sampleVariance(populationValues);
 
@@ -829,9 +851,10 @@ function buildTargetAnalysis(params: {
     const ppsRows = (params.samplingResults?.pps?.data ?? []) as Array<Record<string, unknown>>;
     const stratifiedRows = (params.samplingResults?.stratified?.data ?? []) as Array<Record<string, unknown>>;
     const ppsUnavailable = Boolean(params.samplingResults?.pps?.unavailable);
+    const ppsCompleted = isCompletedSamplingResult(params.samplingResults?.pps);
 
     let ppsSe: number | null = null;
-    if (!ppsUnavailable) {
+    if (ppsCompleted && !ppsUnavailable) {
         if (target.kind === "mean" && params.sharedPpsContext?.standardErrors[target.field] !== undefined) {
             ppsSe = params.sharedPpsContext.standardErrors[target.field] ?? null;
         } else {
@@ -875,6 +898,7 @@ function buildTargetAnalysis(params: {
 
     const methods = buildEmptyTargetMethodAnalysis();
     for (const method of METHODS) {
+        if (!isCompletedSamplingResult(params.samplingResults?.[method])) continue;
         const { estimate, standardError, sampleSize } = methodInputs[method];
         const marginOfError = standardError !== null ? z * standardError : null;
         const isCensus = sampleSize !== null && sampleSize >= populationSize;
@@ -943,6 +967,9 @@ export function buildAnalysisMetrics(params: {
     const numericFields = unique(params.fieldMapping?.numeric ?? []);
     const categoricalFields = getCategoricalFieldsFromTopicMapping(params.fieldMapping);
     const populationSize = params.population.length;
+    const completedMethods = new Set(METHODS.filter((method) => (
+        isCompletedSamplingResult(params.samplingResults?.[method])
+    )));
     const ppsMonteCarloReplicates = resolvePpsMonteCarloReplicates(
         process.env.PPS_MONTE_CARLO_REPLICATES,
     );
@@ -958,7 +985,7 @@ export function buildAnalysisMetrics(params: {
     const systematicRows = (params.samplingResults?.systematic?.data ?? []) as Array<Record<string, unknown>>;
     const ppsRows = (params.samplingResults?.pps?.data ?? []) as Array<Record<string, unknown>>;
     const stratifiedRows = (params.samplingResults?.stratified?.data ?? []) as Array<Record<string, unknown>>;
-    const ppsStandardErrorContext = params.samplingResults?.pps?.unavailable || completeNumericFields.length === 0
+    const ppsStandardErrorContext = !completedMethods.has("pps") || completeNumericFields.length === 0
         ? null
         : buildPpsStandardErrorContext(
             params.population,
@@ -968,55 +995,59 @@ export function buildAnalysisMetrics(params: {
             ppsMonteCarloReplicates,
         );
 
-    const numeric: Record<string, NumericFieldAnalysis> = {};
+    const numeric = createSafeRecord<NumericFieldAnalysis>();
     for (const field of completeNumericFields) {
         const populationStat = populationNumericStats[field];
         if (!populationStat) continue;
 
         const methods = buildEmptyNumericMethodAnalysis();
-        methods.simple = {
-            estimate: estimateSimpleMean(simpleRows, field),
-            standardError: computeSimpleRandomMeanSe(populationStat, populationSize, extractFiniteValues(simpleRows, field).length),
-        };
-        methods.systematic = {
-            estimate: estimateSimpleMean(systematicRows, field),
-            standardError: computeSystematicExactMeanSe(
-                params.population,
-                field,
-                params.samplingResults?.systematic,
-            ),
-        };
-        methods.pps = {
-            estimate: params.samplingResults?.pps?.unavailable
-                ? null
-                : estimateWeightedMean(
+        if (completedMethods.has("simple")) {
+            methods.simple = {
+                estimate: estimateSimpleMean(simpleRows, field),
+                standardError: computeSimpleRandomMeanSe(populationStat, populationSize, extractFiniteValues(simpleRows, field).length),
+            };
+        }
+        if (completedMethods.has("systematic")) {
+            methods.systematic = {
+                estimate: estimateSimpleMean(systematicRows, field),
+                standardError: computeSystematicExactMeanSe(
+                    params.population,
+                    field,
+                    params.samplingResults?.systematic,
+                ),
+            };
+        }
+        if (completedMethods.has("pps")) {
+            methods.pps = {
+                estimate: estimateWeightedMean(
                     ppsRows,
                     field,
                     params.samplingResults?.pps?.inclusionProbabilities,
                 ),
-            standardError: params.samplingResults?.pps?.unavailable
-                ? null
-                : computePpsMeanSe(
+                standardError: computePpsMeanSe(
                     field,
                     ppsStandardErrorContext,
                 ),
-        };
-        methods.stratified = {
-            estimate: computeStratifiedMeanEstimate(
-                stratifiedRows,
-                params.samplingResults?.stratified?.stratifyBy,
-                params.samplingResults?.stratified?.layers,
-                populationSize,
-                field,
-            ),
-            standardError: computeStratifiedMeanSe(
-                params.population,
-                params.samplingResults?.stratified?.stratifyBy,
-                params.samplingResults?.stratified?.layers,
-                populationSize,
-                field,
-            ),
-        };
+            };
+        }
+        if (completedMethods.has("stratified")) {
+            methods.stratified = {
+                estimate: computeStratifiedMeanEstimate(
+                    stratifiedRows,
+                    params.samplingResults?.stratified?.stratifyBy,
+                    params.samplingResults?.stratified?.layers,
+                    populationSize,
+                    field,
+                ),
+                standardError: computeStratifiedMeanSe(
+                    params.population,
+                    params.samplingResults?.stratified?.stratifyBy,
+                    params.samplingResults?.stratified?.layers,
+                    populationSize,
+                    field,
+                ),
+            };
+        }
 
         numeric[field] = {
             populationMean: populationStat.mean,
@@ -1025,29 +1056,35 @@ export function buildAnalysisMetrics(params: {
         };
     }
 
-    const categorical: Record<string, CategoricalFieldAnalysis> = {};
+    const categorical = createSafeRecord<CategoricalFieldAnalysis>();
     for (const field of categoricalFields) {
         const populationCounts = populationCategoricalCounts[field];
         if (!populationCounts) continue;
 
         const fullPopulationDistribution = toPopulationPercentages(populationCounts);
         const fullMethods = buildEmptyCategoricalMethodAnalysis();
-        fullMethods.simple = estimateSimpleDistribution(simpleRows, field);
-        fullMethods.systematic = estimateSimpleDistribution(systematicRows, field);
-        fullMethods.pps = params.samplingResults?.pps?.unavailable
-            ? {}
-            : estimateWeightedDistribution(
+        if (completedMethods.has("simple")) {
+            fullMethods.simple = estimateSimpleDistribution(simpleRows, field);
+        }
+        if (completedMethods.has("systematic")) {
+            fullMethods.systematic = estimateSimpleDistribution(systematicRows, field);
+        }
+        if (completedMethods.has("pps")) {
+            fullMethods.pps = estimateWeightedDistribution(
                 ppsRows,
                 field,
                 params.samplingResults?.pps?.inclusionProbabilities,
             );
-        fullMethods.stratified = computeStratifiedDistributionEstimate(
-            stratifiedRows,
-            field,
-            params.samplingResults?.stratified?.stratifyBy,
-            params.samplingResults?.stratified?.layers,
-            populationSize,
-        );
+        }
+        if (completedMethods.has("stratified")) {
+            fullMethods.stratified = computeStratifiedDistributionEstimate(
+                stratifiedRows,
+                field,
+                params.samplingResults?.stratified?.stratifyBy,
+                params.samplingResults?.stratified?.layers,
+                populationSize,
+            );
+        }
 
         // 类别数超限时聚合尾部，各方法共用同一映射后再算代表性。
         const truncated = truncateCategoricalDistributions(fullPopulationDistribution, fullMethods);
@@ -1056,7 +1093,7 @@ export function buildAnalysisMetrics(params: {
 
         const representativeness = buildEmptyRepresentativeness();
         for (const method of METHODS) {
-            if (method === "pps" && params.samplingResults?.pps?.unavailable) {
+            if (!completedMethods.has(method)) {
                 representativeness[method] = null;
                 continue;
             }

@@ -196,7 +196,10 @@ export function validateAnalysisTarget(
 
     if (!categorical.includes(target.field)) return "比例对照变量必须是已映射的分层或其他分类字段";
     if (rows) {
-        const present = rows.some((row) => String(row[target.field] ?? "").trim() === target.value);
+        const missingIndex = rows.findIndex((row) => String(row[target.field] ?? "").trim() === "");
+        if (missingIndex >= 0) return `比例对照变量 ${target.field} 在数据第${missingIndex + 1}行存在空值`;
+        const targetValue = target.value.normalize("NFKC");
+        const present = rows.some((row) => String(row[target.field] ?? "").trim().normalize("NFKC") === targetValue);
         if (!present) return `比例对照类别「${target.value}」在字段 ${target.field} 中不存在`;
     }
     return null;

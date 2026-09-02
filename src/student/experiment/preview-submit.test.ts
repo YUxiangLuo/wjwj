@@ -64,7 +64,7 @@ test("preview submit blocker requires estimation type to match the analysis targ
     expect(getPreviewSubmitBlocker({
         ...validExperiment,
         analysisTarget: { target: { kind: "mean", field: "每周学习时长" }, inferred: false },
-    })).toBe("估计类型需与课题对照变量一致");
+    })).toBe("估计类型需与研究目标变量一致");
 });
 
 test("preview submit blocker requires exact systematic sample size", () => {

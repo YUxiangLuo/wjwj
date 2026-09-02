@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Megaphone, ChevronRight, Circle, CheckCircle2, XCircle } from "lucide-react";
+import { LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Megaphone, ChevronRight, Circle, Clock, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RichTextContent } from "@/components/RichTextContent";
 import { teacherApi, type TeacherStats, type TeacherAnnouncement } from "../api-client";
+import { StatusBadge } from "@/components/StatusBadge";
+import { formatDateTimeDisplay } from "@/utils/format";
 
 function StatCard({ icon: Icon, label, value, color, loading, to }: {
     icon: React.ComponentType<{ className?: string }>;
@@ -55,9 +57,9 @@ function StatCard({ icon: Icon, label, value, color, loading, to }: {
 
 export function Dashboard() {
     const [stats, setStats] = useState<TeacherStats["stats"]>([]);
-    const [recentSubmissions, setRecentSubmissions] = useState<TeacherStats["recentSubmissions"]>([]);
-    const [recentGradings, setRecentGradings] = useState<TeacherStats["recentGradings"]>([]);
+    const [activeTasks, setActiveTasks] = useState<TeacherStats["activeTasks"]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [announcements, setAnnouncements] = useState<TeacherAnnouncement[]>([]);
     const [showAnnouncements, setShowAnnouncements] = useState(false);
     const [selectedAnnouncement, setSelectedAnnouncement] = useState<TeacherAnnouncement | null>(null);
@@ -69,11 +71,17 @@ export function Dashboard() {
 
     async function loadData() {
         setLoading(true);
+        setLoadError(null);
         const res = await teacherApi.getStats();
         if (res.success && res.data) {
             setStats(res.data.stats);
-            setRecentSubmissions(res.data.recentSubmissions);
-            setRecentGradings(res.data.recentGradings ?? []);
+            setActiveTasks(res.data.activeTasks ?? []);
+        } else {
+            setStats([]);
+            setActiveTasks([]);
+            setLoadError(res.error?.code === "NETWORK_ERROR"
+                ? "教学概览加载失败，请检查网络后重试"
+                : res.error?.message ?? "教学概览加载失败，请稍后重试");
         }
         setLoading(false);
     }
@@ -92,9 +100,9 @@ export function Dashboard() {
     const getIconAndColor = (label: string) => {
         switch (label) {
             case "我的班级": return { icon: School, color: "blue", to: "/class" };
-            case "我的课题": return { icon: BookOpen, color: "emerald", to: "/topic" };
+            case "我的实验模板": return { icon: BookOpen, color: "emerald", to: "/topic" };
             case "待批改作业": return { icon: PenLine, color: "rose", to: "/grading" };
-            case "进行中任务": return { icon: ClipboardList, color: "amber", to: "/task" };
+            case "进行中实验任务": return { icon: ClipboardList, color: "amber", to: "/task" };
             default: return { icon: LayoutDashboard, color: "slate", to: undefined };
         }
     };
@@ -103,8 +111,15 @@ export function Dashboard() {
         <div className="space-y-6 animate-in fade-in duration-500">
             <div>
                 <h2 className="text-subheading font-semibold text-foreground">教学概览</h2>
-                <p className="text-label text-muted-foreground mt-1">关注班级、课题与待批改任务。</p>
+                <p className="text-label text-muted-foreground mt-1">关注班级、实验模板、活动任务与待批改作业。</p>
             </div>
+
+            {loadError && (
+                <div role="alert" className="flex items-center justify-between gap-4 rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3 text-label text-destructive">
+                    <span className="flex items-center gap-2"><AlertCircle className="h-4 w-4" />{loadError}</span>
+                    <Button type="button" variant="outline" size="sm" onClick={() => void loadData()} className="border-destructive-border bg-background text-destructive hover:bg-destructive-muted hover:text-destructive"><RefreshCw className="mr-1.5 h-4 w-4" />重试</Button>
+                </div>
+            )}
 
             {/* Announcement Banner */}
             {(() => {
@@ -144,100 +159,38 @@ export function Dashboard() {
                             to={to}
                         />
                     );
-                }) : (
+                }) : loading ? (
                     // Skeletons if stats are empty initially or loading
                     Array.from({ length: 4 }).map((_, i) => (
                         <StatCard key={i} icon={LayoutDashboard} label="Loading..." value={0} color="slate" loading={true} />
                     ))
-                )}
+                ) : null}
             </div>
 
-            <div className="grid grid-cols-2 gap-6">
-                {/* Recent Submissions */}
-                <Card className="border-border bg-card">
-                    <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
-                        <CardTitle className="text-subheading text-foreground">最近提交</CardTitle>
-                        <Button variant="outline" size="sm" asChild className="border-input bg-muted text-foreground hover:bg-muted hover:text-foreground">
-                            <Link to="/grading">全部作业</Link>
-                        </Button>
-                    </CardHeader>
-                    <CardContent className="pt-6 space-y-3">
-                        {loading ? (
-                            <div role="status" aria-live="polite" className="text-label text-muted-foreground flex items-center justify-center py-6">加载中...</div>
-                        ) : recentSubmissions.length === 0 ? (
-                            <div className="text-center text-label text-muted-foreground py-8">暂无提交记录</div>
-                        ) : (
-                            recentSubmissions.map((item, idx) => (
-                                <div key={idx} className="flex flex-row items-center justify-between p-4 rounded-surface border border-border bg-background hover:bg-muted hover:border-input transition-colors gap-4">
-                                    <div className="flex min-w-0 items-center gap-4">
-                                        <Avatar className="w-10 h-10 shrink-0 border border-input">
-                                            <AvatarFallback className="bg-primary text-primary-foreground text-label font-semibold">{item.student?.[0] ?? "?"}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="min-w-0">
-                                            <div className="truncate text-label font-medium text-foreground">{item.student}</div>
-                                            <div className="mt-0.5 flex min-w-0 items-center gap-2 text-meta text-muted-foreground">
-                                                <span className="shrink-0 whitespace-nowrap rounded-control bg-muted px-1.5 py-0.5 text-muted-foreground">{item.class}</span>
-                                                <span className="shrink-0">·</span>
-                                                <span className="min-w-0 truncate text-primary" title={item.topic}>{item.topic}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <span className="shrink-0 whitespace-nowrap text-meta text-muted-foreground font-mono">{item.time}</span>
-                                </div>
-                            ))
-                        )}
-                    </CardContent>
-                </Card>
-
-                {/* Recent Gradings */}
-                <Card className="border-border bg-card">
-                    <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
-                        <CardTitle className="text-subheading text-foreground">最近批改</CardTitle>
-                        <Button variant="outline" size="sm" asChild className="border-input bg-muted text-foreground hover:bg-muted hover:text-foreground">
-                            <Link to="/grading">批改列表</Link>
-                        </Button>
-                    </CardHeader>
-                    <CardContent className="pt-6 space-y-3">
-                        {loading ? (
-                            <div role="status" aria-live="polite" className="text-label text-muted-foreground flex items-center justify-center py-6">加载中...</div>
-                        ) : recentGradings.length === 0 ? (
-                            <div className="text-center text-label text-muted-foreground py-8">暂无批改记录</div>
-                        ) : (
-                            recentGradings.map((item, idx) => (
-                                <div key={idx} className="flex flex-row items-center justify-between p-4 rounded-surface border border-border bg-background hover:bg-muted hover:border-input transition-colors gap-4">
-                                    <div className="flex min-w-0 items-center gap-4">
-                                        <Avatar className="w-10 h-10 shrink-0 border border-input">
-                                            <AvatarFallback className={`text-label font-semibold ${item.rejected ? "bg-destructive text-destructive-foreground" : "bg-success text-success-foreground"}`}>{item.student?.[0] ?? "?"}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="min-w-0">
-                                            <div className="truncate text-label font-medium text-foreground">{item.student}</div>
-                                            <div className="mt-0.5 flex min-w-0 items-center gap-2 text-meta text-muted-foreground">
-                                                <span className="shrink-0 whitespace-nowrap rounded-control bg-muted px-1.5 py-0.5 text-muted-foreground">{item.class}</span>
-                                                <span className="shrink-0">·</span>
-                                                <span className="min-w-0 truncate text-primary" title={item.topic}>{item.topic}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex shrink-0 items-center gap-3 whitespace-nowrap">
-                                        {item.rejected ? (
-                                            <span className="flex shrink-0 items-center gap-1 text-meta text-destructive">
-                                                <XCircle className="w-3.5 h-3.5" />
-                                                已驳回
-                                            </span>
-                                        ) : (
-                                            <span className="flex shrink-0 items-center gap-1 text-meta text-success">
-                                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                                {item.score ?? "-"} 分
-                                            </span>
-                                        )}
-                                        <span className="text-meta text-muted-foreground font-mono">{item.time}</span>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
+            <Card className="border-border bg-card" data-testid="teacher-dashboard-active-tasks">
+                <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
+                    <div><CardTitle className="text-subheading text-foreground">当前活动实验任务</CardTitle><p className="mt-1 text-meta text-muted-foreground">按最近截止时间排序，直接进入班级任务进度。</p></div>
+                    <Button variant="outline" size="sm" asChild><Link to="/task">全部实验任务</Link></Button>
+                </CardHeader>
+                <CardContent className="space-y-3 pt-5">
+                    {loading ? (
+                        <div role="status" aria-live="polite" className="flex items-center justify-center py-8 text-label text-muted-foreground">加载中...</div>
+                    ) : loadError ? (
+                        <div className="py-10 text-center text-label text-destructive">活动任务加载失败，请重试</div>
+                    ) : activeTasks.length === 0 ? (
+                        <div className="py-10 text-center"><p className="text-label text-muted-foreground">当前没有已开放且未截止的实验任务</p><Button asChild variant="outline" size="sm" className="mt-3"><Link to="/task">进入实验任务管理</Link></Button></div>
+                    ) : activeTasks.map((item) => {
+                        const progress = item.total > 0 ? item.completed / item.total * 100 : 0;
+                        return (
+                            <Link key={item.id} to={`/task/${item.id}/progress`} className="grid grid-cols-[minmax(0,1.4fr)_minmax(12rem,1fr)_auto] items-center gap-5 rounded-surface border border-border bg-background p-4 transition-colors hover:border-input hover:bg-muted">
+                                <div className="min-w-0"><p className="truncate text-label font-semibold text-foreground">{item.templateName}</p><p className="mt-1 text-meta text-muted-foreground">{item.className}</p></div>
+                                <div><div className="flex justify-between text-meta text-muted-foreground"><span>已提交 {item.completed}/{item.total}</span><span>{Math.round(progress)}%</span></div><Progress aria-label={`${item.templateName}提交进度`} value={progress} className="mt-2 h-1.5" /></div>
+                                <div className="flex items-center gap-2 whitespace-nowrap"><StatusBadge intent={item.pending > 0 ? "warning" : "neutral"}>待批改 {item.pending}</StatusBadge>{item.rejected > 0 && <StatusBadge intent="destructive">需重做 {item.rejected}</StatusBadge>}<span className="flex items-center gap-1 text-meta text-muted-foreground"><Clock className="h-3.5 w-3.5" />{item.deadline ? formatDateTimeDisplay(item.deadline, "-") : "无截止时间"}</span><ChevronRight className="h-4 w-4 text-muted-foreground" /></div>
+                            </Link>
+                        );
+                    })}
+                </CardContent>
+            </Card>
 
             {/* Announcement List Dialog */}
             <Dialog open={showAnnouncements} onOpenChange={setShowAnnouncements}>

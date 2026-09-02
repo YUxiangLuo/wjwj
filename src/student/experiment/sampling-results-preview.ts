@@ -13,13 +13,29 @@ export function previewSamplingMethodResult(value: unknown, limit = SAMPLING_PRE
     if (!isRecord(value)) return value;
     const {
         indices: _indices,
-        inclusionProbabilities: _inclusionProbabilities,
+        inclusionProbabilities,
         data,
         ...metadata
     } = value;
+    const probabilityPreview = Array.isArray(data)
+        && Array.isArray(inclusionProbabilities)
+        && typeof value.sizeField === "string"
+        ? data.slice(0, Math.min(Math.max(0, limit), 10)).flatMap((row, index) => {
+            const probability = Number(inclusionProbabilities[index]);
+            const sizeValue = Number(isRecord(row) ? row[value.sizeField as string] : Number.NaN);
+            if (!Number.isFinite(probability) || probability <= 0 || !Number.isFinite(sizeValue)) return [];
+            return [{
+                samplePosition: index + 1,
+                sizeValue,
+                inclusionProbability: probability,
+                designWeight: 1 / probability,
+            }];
+        })
+        : [];
     return {
         ...metadata,
         ...(Array.isArray(data) ? { data: data.slice(0, Math.max(0, limit)) } : {}),
+        ...(probabilityPreview.length > 0 ? { probabilityPreview } : {}),
     };
 }
 

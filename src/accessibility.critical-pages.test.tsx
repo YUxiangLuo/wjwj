@@ -104,6 +104,20 @@ test("teacher grade export names filters, task selectors, and progress", async (
                 avgScore: 90,
             }]);
         }
+        if (url.includes("/api/teacher/grade-export/analytics")) {
+            return jsonResponse({
+                funnel: { total: 2, notStarted: 0, inProgress: 0, pendingGrading: 1, graded: 1, rejected: 0 },
+                scores: {
+                    count: 1,
+                    average: 90,
+                    median: 90,
+                    componentAverages: { questionnaire: 90, process: 90, report: 90 },
+                    bands: [
+                        { label: "<60", count: 0 }, { label: "60–69", count: 0 }, { label: "70–79", count: 0 }, { label: "80–89", count: 0 }, { label: "90–100", count: 1 },
+                    ],
+                },
+            });
+        }
         throw new Error(`Unhandled fetch: ${url}`);
     }) as unknown as typeof fetch;
 

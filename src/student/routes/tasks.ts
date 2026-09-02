@@ -3,10 +3,11 @@ import { db } from "../../db";
 import { experiment, task, topic, topicAttachment } from "../../db/schema";
 import { experimentProgress } from "../../lib/experiment-progress";
 import { normalizeRecommendQuestionsFromDb } from "../../lib/questionnaire-normalize";
-import { error, getRouteParam, json } from "../../server/http";
+import { error, getPositiveRouteId, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { getStudentTaskAccessError } from "../experiment/task-access";
 import { requireAuth } from "./auth";
+import { resolveSamplingPolicy } from "../../lib/sampling-policy";
 
 function visibleStatus(status: typeof experiment.$inferSelect.status | null) {
     return status ?? "not_started";
@@ -80,7 +81,7 @@ const taskDetailRoutes: RouteDefinition = {
     async GET(req) {
         const auth = await requireAuth(req);
         if (auth.error || !auth.student) return auth.error!;
-        const taskId = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
+        const taskId = getPositiveRouteId(req);
         if (!taskId) return error("无效的任务ID", "INVALID_ID");
 
         const [taskInfo] = await db
@@ -94,6 +95,7 @@ const taskDetailRoutes: RouteDefinition = {
                 description: topic.description,
                 populationSize: topic.excelRowCount,
                 recommendQuestions: topic.recommendQuestions,
+                samplingPolicy: topic.samplingPolicy,
             })
             .from(task)
             .innerJoin(topic, eq(task.topicId, topic.id))
@@ -143,6 +145,7 @@ const taskDetailRoutes: RouteDefinition = {
                 size: item.fileSize,
             })),
             recommendQuestions: normalizeRecommendQuestionsFromDb(taskInfo.recommendQuestions),
+            samplingPolicy: resolveSamplingPolicy(taskInfo.samplingPolicy),
             status: visibleStatus(record?.status ?? null),
             currentStage: record?.currentStage ?? 0,
             score: record?.totalScore == null ? undefined : Number(record.totalScore),

@@ -111,3 +111,27 @@ test("storage inspection rejects malformed compact sections before population lo
         method: "systematic",
     });
 });
+
+test("stratified hydration rejects missing population coverage and mismatched Nh", () => {
+    const stratifiedPopulation = [
+        { id: 1, group: "A" },
+        { id: 2, group: "A" },
+        { id: 3, group: "B" },
+    ];
+    const base = {
+        completed: true,
+        serverGenerated: true,
+        stratifyBy: "group",
+        sampleCount: 2,
+        indices: [0, 2],
+    };
+    expect(hydrateSamplingResults({
+        stratified: { ...base, layers: [{ name: "A", count: 1, sampleCount: 1 }, { name: "B", count: 2, sampleCount: 1 }] },
+    }, stratifiedPopulation)).toMatchObject({ ok: false, method: "stratified" });
+    expect(hydrateSamplingResults({
+        stratified: { ...base, layers: [{ name: "A", count: 2, sampleCount: 1 }, { name: "B", count: 1, sampleCount: 1 }] },
+    }, stratifiedPopulation)).toMatchObject({ ok: true });
+    expect(hydrateSamplingResults({
+        stratified: { ...base, layers: [{ name: "A", count: 2, sampleCount: 1 }] },
+    }, [...stratifiedPopulation, { id: 4, group: "" }])).toMatchObject({ ok: false, method: "stratified" });
+});

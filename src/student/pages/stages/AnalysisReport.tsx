@@ -33,6 +33,7 @@ import {
     readExperimentDraft,
     useExperimentDraft,
 } from "../../experiment/experiment-draft";
+import { isCompletedSamplingResult, SAMPLING_METHODS, resolveSamplingPolicy } from "@/lib/sampling-policy";
 
 interface AnalysisReportProps {
     onPrev: () => void;
@@ -221,6 +222,12 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         [experiment?.samplingResults],
     );
     const isPpsUnavailable = Boolean(experiment?.samplingResults?.pps?.unavailable);
+    const samplingPolicy = useMemo(() => resolveSamplingPolicy(experiment?.samplingPolicy), [experiment?.samplingPolicy]);
+    const completedAnalysisMethods = useMemo<MethodKey[]>(() => SAMPLING_METHODS.filter((method) => (
+        samplingPolicy.methods[method] !== "disabled"
+        && isCompletedSamplingResult(experiment?.samplingResults?.[method])
+    )), [experiment?.samplingResults, samplingPolicy]);
+    const hasPpsCompleted = completedAnalysisMethods.includes("pps");
 
     const minLength = 100;
     const maxLength = 5000;
@@ -259,6 +266,10 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         const preferred = analysisTarget?.kind === "proportion" ? analysisTarget.field : "";
         setSelectedCategoricalField((current) => preferAnalysisField(categoricalFields, current, preferred));
     }, [analysisTarget, categoricalFields]);
+
+    useEffect(() => {
+        if (exportType !== "all" && !completedAnalysisMethods.includes(exportType)) setExportType("all");
+    }, [completedAnalysisMethods, exportType]);
 
     useEffect(() => {
         let cancelled = false;
@@ -312,27 +323,27 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         const fieldMetrics = selectedNumericField ? analysisMetrics?.numeric[selectedNumericField] : null;
         if (!fieldMetrics) return [];
 
-        return (Object.keys(METHOD_META) as MethodKey[]).reduce<ChartRow[]>((rows, method) => {
+        return completedAnalysisMethods.reduce<ChartRow[]>((rows, method) => {
             const estimate = fieldMetrics.methods[method].estimate;
             if (estimate !== null) {
                 rows.push({ label: METHOD_META[method].label, values: { value: estimate } });
             }
             return rows;
         }, []);
-    }, [analysisMetrics, selectedNumericField]);
+    }, [analysisMetrics, completedAnalysisMethods, selectedNumericField]);
 
     const errorRows = useMemo<ChartRow[]>(() => {
         const fieldMetrics = selectedNumericField ? analysisMetrics?.numeric[selectedNumericField] : null;
         if (!fieldMetrics) return [];
 
-        return (Object.keys(METHOD_META) as MethodKey[]).reduce<ChartRow[]>((rows, method) => {
+        return completedAnalysisMethods.reduce<ChartRow[]>((rows, method) => {
             const standardError = fieldMetrics.methods[method].standardError;
             if (standardError !== null) {
                 rows.push({ label: METHOD_META[method].label, values: { value: standardError } });
             }
             return rows;
         }, []);
-    }, [analysisMetrics, selectedNumericField]);
+    }, [analysisMetrics, completedAnalysisMethods, selectedNumericField]);
 
     const distributionRows = useMemo(() => {
         const fieldMetrics = selectedCategoricalField ? analysisMetrics?.categorical[selectedCategoricalField] : null;
@@ -340,20 +351,17 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
         const categories = Array.from(new Set([
             ...Object.keys(fieldMetrics.population),
-            ...Object.values(fieldMetrics.methods).flatMap((methodValues) => Object.keys(methodValues)),
+            ...completedAnalysisMethods.flatMap((method) => Object.keys(fieldMetrics.methods[method])),
         ])).sort((left, right) => left.localeCompare(right, "zh-CN"));
 
         return categories.map((category) => ({
             label: category,
-            values: {
-                simple: fieldMetrics.methods.simple[category] ?? 0,
-                systematic: fieldMetrics.methods.systematic[category] ?? 0,
-                pps: fieldMetrics.methods.pps[category] ?? 0,
-                stratified: fieldMetrics.methods.stratified[category] ?? 0,
-                population: fieldMetrics.population[category] ?? 0,
-            },
+            values: Object.fromEntries([
+                ...completedAnalysisMethods.map((method) => [method, fieldMetrics.methods[method][category] ?? 0]),
+                ["population", fieldMetrics.population[category] ?? 0],
+            ]) as Record<string, number>,
         }));
-    }, [analysisMetrics, selectedCategoricalField]);
+    }, [analysisMetrics, completedAnalysisMethods, selectedCategoricalField]);
 
     const representativenessRows = useMemo(() => {
         const rows: ChartRow[] = [];
@@ -365,7 +373,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             const values: Record<string, number> = {};
             let hasValue = false;
 
-            for (const method of Object.keys(METHOD_META) as MethodKey[]) {
+            for (const method of completedAnalysisMethods) {
                 const estimate = fieldMetrics.methods[method].estimate;
                 if (estimate === null) continue;
                 values[method] = Math.abs(estimate - fieldMetrics.populationMean) / Math.abs(fieldMetrics.populationMean) * 100;
@@ -384,7 +392,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             const values: Record<string, number> = {};
             let hasValue = false;
 
-            for (const method of Object.keys(METHOD_META) as MethodKey[]) {
+            for (const method of completedAnalysisMethods) {
                 const representativeness = fieldMetrics.representativeness[method];
                 if (representativeness === null) continue;
                 values[method] = representativeness;
@@ -397,15 +405,15 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         }
 
         return rows;
-    }, [analysisMetrics, categoricalFields, numericFields]);
+    }, [analysisMetrics, categoricalFields, completedAnalysisMethods, numericFields]);
 
     // ---- Series ----
 
     const methodSeries = useMemo<ChartSeries[]>(() =>
-        (Object.keys(METHOD_META) as MethodKey[]).map((key) => ({
+        completedAnalysisMethods.map((key) => ({
             key, label: METHOD_META[key].label, color: METHOD_META[key].color,
         })),
-    []);
+    [completedAnalysisMethods]);
 
     const meanSeries = useMemo<ChartSeries[]>(() => [
         { key: "value", label: selectedNumericField ? `${selectedNumericField} 估计均值` : "估计均值", color: "var(--chart-2)" },
@@ -422,9 +430,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 return methodSeries;
             }
 
-            const methodKeys = (Object.keys(METHOD_META) as MethodKey[]).filter((method) =>
-                method !== "pps" || !isPpsUnavailable
-            );
+            const methodKeys = completedAnalysisMethods;
 
             return [
                 ...methodKeys.map((key) => ({
@@ -435,10 +441,10 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 POPULATION_SERIES,
             ];
         },
-    [analysisMetrics, isPpsUnavailable, methodSeries, selectedCategoricalField]);
+    [analysisMetrics, completedAnalysisMethods, methodSeries, selectedCategoricalField]);
 
     const representSeries = useMemo<ChartSeries[]>(() => {
-        const availableMethodKeys = (Object.keys(METHOD_META) as MethodKey[]).filter((method) =>
+        const availableMethodKeys = completedAnalysisMethods.filter((method) =>
             representativenessRows.some((row) => Object.prototype.hasOwnProperty.call(row.values, method))
         );
 
@@ -447,7 +453,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             label: METHOD_META[key].label,
             color: METHOD_META[key].color,
         }));
-    }, [representativenessRows]);
+    }, [completedAnalysisMethods, representativenessRows]);
 
     // ---- Chart config (shared by tabs, zoom dialog, and SVG download) ----
 
@@ -555,11 +561,11 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 <Info className="mt-0.5 h-4 w-4 shrink-0" />
                                 <span>
                                     本实验使用完整虚拟总体演示抽样设计，因此可以对照总体真值并计算设计层面的误差。现实调查通常看不到未入样单位，需使用与抽样设计匹配的权重和方差估计。样本量、设计效应和无回答率计算均是基于页面所列假设的规划近似，不替代预调查、抽样框评估和专业统计设计。
-                                    {analysisMetrics && !isPpsUnavailable && ppsStandardErrorMode && <>{ppsStandardErrorNotice}</>}
+                                    {analysisMetrics && hasPpsCompleted && ppsStandardErrorMode && <>{ppsStandardErrorNotice}</>}
                                 </span>
                             </div>
                             {analysisMetrics?.target && (
-                                <TargetMetricsPanel target={analysisMetrics.target} />
+                                <TargetMetricsPanel target={analysisMetrics.target} methods={completedAnalysisMethods} />
                             )}
                             <Tabs defaultValue="charts" className="w-full">
                                 <TabsList
@@ -607,7 +613,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     <TabsTrigger value="represent" data-testid="student-analysis-tab-represent" className="flex-1 rounded-surface py-2 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">总体对照偏差</TabsTrigger>
                                 </TabsList>
 
-                                <TabsContent value="mean">
+                                <TabsContent value="mean" data-testid="student-analysis-mean-chart">
                                     <ChartTabPanel
                                         description="比较各抽样方法对同一数值变量的均值估计，并利用已知虚拟总体显示真值对照。PPS 使用 Hájek 比估计（按一阶包含概率的倒数加权并归一化），不是 Horvitz–Thompson 均值；Hájek 通常更稳定，但并非严格设计无偏，小样本偏差可能不可忽略。"
                                         rows={meanRows}
@@ -621,7 +627,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     />
                                 </TabsContent>
 
-                                <TabsContent value="dist">
+                                <TabsContent value="dist" data-testid="student-analysis-distribution-chart">
                                     <ChartTabPanel
                                         description="比较各抽样方法在分类变量上的分布占比，并利用已知虚拟总体显示真值对照。"
                                         rows={distributionRows}
@@ -641,9 +647,9 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     />
                                 </TabsContent>
 
-                                <TabsContent value="error">
+                                <TabsContent value="error" data-testid="student-analysis-error-chart">
                                     <ChartTabPanel
-                                        description={`利用完整虚拟总体比较均值估计的设计标准误：简单随机和分层采用设计公式，系统抽样枚举随机起点，${ppsStandardErrorDescription}这些结果不是现实调查中仅凭当前样本直接得到的标准误。`}
+                                        description={`利用完整虚拟总体比较已完成方法的设计标准误：简单随机和分层采用设计公式，系统抽样枚举随机起点，${hasPpsCompleted ? ppsStandardErrorDescription : ""}这些结果不是现实调查中仅凭当前样本直接得到的标准误。`}
                                         rows={errorRows}
                                         series={errorSeries}
                                         emptyMessage="暂无可用于误差分析的数值字段"
@@ -655,7 +661,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     />
                                 </TabsContent>
 
-                                <TabsContent value="represent">
+                                <TabsContent value="represent" data-testid="student-analysis-representativeness-chart">
                                     <ChartTabPanel
                                         description="描述当前样本与已知虚拟总体的差异：数值行为 |估计−总体均值|/|总体均值|，分类行为各类占比差的平均。两套百分数不可横比，接近总体也不能单独证明样本无偏或具有整体代表性。"
                                         rows={representativenessRows}
@@ -681,6 +687,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                         samplingResults={experiment?.samplingResults ?? null}
                                         targetSampleSize={experiment?.samplePlan?.finalSampleSize ?? null}
                                         populationSize={populationSize}
+                                        samplingPolicy={samplingPolicy}
                                     />
                                 </TabsContent>
                             </Tabs>
@@ -703,10 +710,9 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border text-foreground">
                                     <SelectItem value="all">全部抽样数据</SelectItem>
-                                    <SelectItem value="simple">{METHOD_META.simple.label}结果</SelectItem>
-                                    <SelectItem value="systematic">{METHOD_META.systematic.label}结果</SelectItem>
-                                    <SelectItem value="pps">{METHOD_META.pps.label}结果</SelectItem>
-                                    <SelectItem value="stratified">{METHOD_META.stratified.label}结果</SelectItem>
+                                    {completedAnalysisMethods.map((method) => (
+                                        <SelectItem key={method} value={method}>{METHOD_META[method].label}结果</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                             <Button className="w-full bg-info hover:bg-info-hover text-info-foreground " onClick={() => handleExport(exportType)}>
@@ -728,7 +734,9 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 • 先比较总体均值估计，判断不同抽样方法是否给出接近的结果。
                                 {isPpsUnavailable
                                     ? "本任务没有合格的 PPS 规模变量，因此 PPS 已按规则跳过，不应纳入方法间比较。"
-                                    : "PPS 看的是可能存在小样本偏差的 Hájek 比估计。"}
+                                    : hasPpsCompleted
+                                        ? "PPS 看的是可能存在小样本偏差的 Hájek 比估计。"
+                                        : "本次未选择 PPS，分析只比较实际完成的方法。"}
                             </p>
                             <p>• 再看分类分布与总体对照偏差，描述当前样本对已知虚拟总体的贴近程度；这不能单独证明无偏或整体代表性。</p>
                             <p>• 最后结合设计标准误说明精度。本页 SE 借助完整虚拟总体；现实调查需使用与设计匹配的样本方差估计。</p>

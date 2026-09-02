@@ -68,7 +68,7 @@ test("PPS sampling rejects a size field that equals the analysis target", async 
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.errorMessage).toBe("PPS 规模变量不能与课题对照变量相同，请改用抽样前已知的辅助变量");
+    expect(result.errorMessage).toBe("PPS 规模变量不能与研究目标变量相同，请改用抽样前已知的辅助变量");
 });
 
 test("PPS sampling rejects categorical size fields even when the field exists", async () => {
@@ -143,6 +143,11 @@ test("PPS sampling rejects malformed or non-numeric sample sizes", async () => {
         fieldMapping: { numeric: ["weight"] },
     });
     expect(valid.ok).toBe(true);
+    if (!valid.ok) return;
+    expect(valid.result.probabilitySummary?.populationCount).toBe(weightedPopulation.length);
+    expect(valid.result.probabilitySummary?.probabilitySum).toBeCloseTo(10, 8);
+    expect(valid.result.probabilitySummary?.minInclusionProbability).toBeGreaterThan(0);
+    expect(valid.result.probabilitySummary?.maxInclusionProbability).toBeLessThanOrEqual(1);
 });
 
 test("PPS sampling caps its accepted range at a small population", async () => {

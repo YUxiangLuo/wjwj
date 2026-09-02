@@ -98,6 +98,42 @@ test("grade export data uses immutable student and topic names", async () => {
     });
 });
 
+test("grade analytics includes students without experiments and summarizes graded scores", async () => {
+    const { module } = await loadExportRoutes({
+        select: [
+            [
+                { status: null, count: 3 },
+                { status: "in_progress", count: 2 },
+                { status: "submitted", count: 1 },
+                { status: "graded", count: 4 },
+                { status: "rejected", count: 1 },
+            ],
+            [{
+                count: 4,
+                average: 82.5,
+                median: 84,
+                questionnaireAverage: 80,
+                processAverage: 83,
+                reportAverage: 85,
+                below60: 0,
+                from60To69: 1,
+                from70To79: 0,
+                from80To89: 2,
+                from90To100: 1,
+            }],
+        ],
+    });
+
+    const response = await module.gradeAnalyticsRoutes.GET!(
+        new Request("https://example.com/api/teacher/grade-export/analytics?classId=3"),
+    );
+    expect(response.status).toBe(200);
+    const payload = await response.json() as any;
+    expect(payload.data.funnel).toEqual({ total: 11, notStarted: 3, inProgress: 2, pendingGrading: 1, graded: 4, rejected: 1 });
+    expect(payload.data.scores).toMatchObject({ count: 4, average: 82.5, median: 84, componentAverages: { questionnaire: 80, process: 83, report: 85 } });
+    expect(payload.data.scores.bands.slice(0, 2)).toEqual([{ label: "<60", count: 0 }, { label: "60–69", count: 1 }]);
+});
+
 test("grade export excel uses local date stamp for download filename", async () => {
     const { module } = await loadExportRoutes({
         select: [[{
@@ -127,4 +163,15 @@ test("grade export excel uses local date stamp for download filename", async () 
     expect(response.headers.get("Content-Disposition")).toBe(
         "attachment; filename=grade-export-2026-03-09.xlsx"
     );
+});
+
+test("grade export rejects fractional, negative, and exponent-form identifiers", async () => {
+    const { module, operations } = await loadExportRoutes();
+    for (const query of ["classId=1.5", "topicId=-1", "taskId=1e2", "taskIds=1,2abc"]) {
+        const response = await module.gradeExportDataRoutes.GET!(
+            new Request(`https://example.com/api/teacher/grade-export/data?${query}`),
+        );
+        expect(response.status).toBe(400);
+    }
+    expect(operations.filter((operation) => operation.kind === "select")).toHaveLength(0);
 });

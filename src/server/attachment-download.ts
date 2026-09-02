@@ -78,6 +78,7 @@ export async function buildAttachmentDownloadResponse(params: {
             "Content-Type": isPreviewMode ? inferredType : "application/octet-stream",
             "Content-Disposition": `${isPreviewMode ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(params.fileName)}`,
             "X-Content-Type-Options": "nosniff",
+            ...(isPreviewMode ? { "Content-Security-Policy": "sandbox; default-src 'none'; img-src data: blob:; media-src blob:" } : {}),
         });
         const range = parseSingleByteRange(params.request.headers.get("range"), file.size);
         if (range === "invalid") {
@@ -87,6 +88,7 @@ export async function buildAttachmentDownloadResponse(params: {
         }
         if (range) {
             headers.set("Content-Range", `bytes ${range.start}-${range.end}/${file.size}`);
+            headers.set("Content-Length", String(range.end - range.start + 1));
             const stream = Readable.toWeb(createReadStream(fullPath, { start: range.start, end: range.end }));
             return new Response(stream as unknown as ReadableStream<Uint8Array>, { status: 206, headers });
         }

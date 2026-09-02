@@ -21,7 +21,7 @@ const meanTaskSize = calculateMeanEstimationSampleSize({
 if (meanTaskSize === null) throw new Error(`无法计算「${DOGFOOD_NAMES.topicB}」任务的 fixture 样本量`);
 
 const requiredReadmeFragments = [
-    `${DOGFOOD_COUNTS.topic} 课题、${DOGFOOD_COUNTS.task} 任务、${DOGFOOD_COUNTS.experiment} 实验`,
+    `${DOGFOOD_COUNTS.topic} 实验模板、${DOGFOOD_COUNTS.task} 实验任务、${DOGFOOD_COUNTS.experiment} 学生实验`,
     `主任务「${DOGFOOD_NAMES.topicA}」`,
     `主任务推荐样本量为 ${mainTaskRecommendedSize}`,
     `「${DOGFOOD_NAMES.topicB}」任务样本量由生产计算函数得到 ${meanTaskSize}`,

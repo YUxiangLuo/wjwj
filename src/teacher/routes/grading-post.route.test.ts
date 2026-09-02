@@ -44,7 +44,7 @@ test("rejecting a submission only changes the current experiment", async () => {
     expect(response.status).toBe(200);
     const update = operations.find((item) => item.kind === "update" && item.table === experiment);
     expect(update?.set).toMatchObject({ status: "rejected", rejectReason: "请补充抽样结果分析", totalScore: null });
-    expect(operations.filter((item) => item.kind === "insert")).toHaveLength(0);
+    expect(operations.filter((item) => item.kind === "insert")).toHaveLength(1);
 });
 
 test("grading returns 409 when a concurrent transition wins first", async () => {
