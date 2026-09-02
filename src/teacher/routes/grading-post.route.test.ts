@@ -23,6 +23,8 @@ const row = {
     id: 99,
     version: 7,
     status: "submitted",
+    studentClassId: 3,
+    taskClassId: 3,
     weightConfig: { questionnaire: 30, process: 30, report: 40 },
     submissionSnapshot: { weightConfig: { questionnaire: 50, process: 20, report: 30 } },
 };
@@ -103,8 +105,10 @@ test("grading and rejection require a numeric observedVersion", async () => {
 const archivedRow = {
     ...row,
     studentDeletedAt: null,
-    taskDeletedAt: new Date("2026-08-01T00:00:00Z"),
+    taskDeletedAt: null,
     topicDeletedAt: null,
+    studentClassId: 4,
+    taskClassId: 3,
 };
 
 test("grading an archived submission returns 409 read-only", async () => {

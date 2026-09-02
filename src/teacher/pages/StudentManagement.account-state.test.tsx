@@ -21,15 +21,15 @@ afterAll(() => {
     restoreDom = null;
 });
 
-test("teacher student management separates normal, locked, and disabled accounts", async () => {
+test("teacher student management separates active and disabled accounts", async () => {
     globalThis.fetch = mock(async (input: RequestInfo | URL) => {
         const url = String(input);
         const data = url.endsWith("/api/teacher/classes")
             ? [{ id: 1, name: "统计一班", semester: "2026-2027-1", studentCount: 3, createdAt: new Date().toISOString() }]
             : [
-                { id: 1, studentId: "SNORMAL", name: "正常学生", email: null, status: 1, lockedUntil: null },
-                { id: 2, studentId: "SLOCKED", name: "锁定学生", email: null, status: 1, lockedUntil: "2099-01-01T00:00:00.000Z" },
-                { id: 3, studentId: "SDISABLED", name: "停用学生", email: null, status: 0, lockedUntil: "2099-01-01T00:00:00.000Z" },
+                { id: 1, studentId: "SNORMAL", name: "正常学生", email: null, status: 1 },
+                { id: 2, studentId: "SACTIVE", name: "另一学生", email: null, status: 1 },
+                { id: 3, studentId: "SDISABLED", name: "停用学生", email: null, status: 0 },
             ];
         return new Response(JSON.stringify({ success: true, data }), {
             headers: { "Content-Type": "application/json" },
@@ -46,11 +46,11 @@ test("teacher student management separates normal, locked, and disabled accounts
 
     await waitFor(() => expect(view.getByTestId("teacher-student-row-2")).toBeTruthy());
     expect(within(view.getByTestId("teacher-student-row-1")).getByText("正常")).toBeTruthy();
-    expect(within(view.getByTestId("teacher-student-row-2")).getByText("已锁定")).toBeTruthy();
+    expect(within(view.getByTestId("teacher-student-row-2")).getByText("正常")).toBeTruthy();
     expect(within(view.getByTestId("teacher-student-row-3")).getByText("已禁用")).toBeTruthy();
 
     expect(view.getByText("学生总数").parentElement?.textContent).toContain("3");
-    expect(view.getByText("正常账号").parentElement?.textContent).toContain("1");
-    expect(view.getAllByText("已锁定").find((item) => item.tagName === "P")?.parentElement?.textContent).toContain("1");
+    expect(view.getByText("正常账号").parentElement?.textContent).toContain("2");
+    expect(view.queryByText("已锁定")).toBeNull();
     expect(view.getAllByText("已禁用").find((item) => item.tagName === "P")?.parentElement?.textContent).toContain("1");
 });

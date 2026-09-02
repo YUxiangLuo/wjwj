@@ -44,6 +44,7 @@ async function getGradeExportRows(teacherId: number, params: URLSearchParams) {
         eq(class_.teacherId, teacherId),
         ...activeEntityFilters(),
         isNull(student.deletedAt),
+        eq(student.classId, task.classId),
         inArray(experiment.status, ["submitted", "graded", "rejected"]),
     ];
     const semesterName = params.get("semester");
@@ -123,6 +124,7 @@ const gradeExportPreviewRoutes: RouteDefinition = {
                 WHERE e.task_id = ${task.id}
                   AND e.status = 'graded'
                   AND counted_student.deleted_at IS NULL
+                  AND counted_student.class_id = ${task.classId}
             )`,
             avgScore: sql<number>`(
                 SELECT COALESCE(AVG(e.total_score), 0)::double precision FROM experiment e
@@ -130,6 +132,7 @@ const gradeExportPreviewRoutes: RouteDefinition = {
                 WHERE e.task_id = ${task.id}
                   AND e.status = 'graded'
                   AND counted_student.deleted_at IS NULL
+                  AND counted_student.class_id = ${task.classId}
             )`,
         })
             .from(task)
@@ -202,7 +205,12 @@ const gradeAnalyticsRoutes: RouteDefinition = {
                 .innerJoin(topic, eq(task.topicId, topic.id))
                 .innerJoin(class_, eq(task.classId, class_.id))
                 .innerJoin(semester, eq(class_.semesterId, semester.id))
-                .where(and(...conditions, isNull(student.deletedAt), eq(experiment.status, "graded"))),
+                .where(and(
+                    ...conditions,
+                    isNull(student.deletedAt),
+                    eq(student.classId, task.classId),
+                    eq(experiment.status, "graded"),
+                )),
         ]);
 
         const statusCounts = { notStarted: 0, inProgress: 0, pendingGrading: 0, graded: 0, rejected: 0 };

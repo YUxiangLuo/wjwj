@@ -2,11 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../../db";
 import { admin } from "../../db/schema";
 import { ADMIN_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
-import { DEV_AUTH_MODE } from "../../lib/dev-mode";
-import { DEMO_MODE, shouldRequireAdminPasswordChange } from "../../lib/demo-mode";
-import { buildSessionCookie, clearSessionCookie, error, getClientIp, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
-import { loginAttemptThrottle } from "../../server/login-throttle";
-import { buildAtomicFailedLoginUpdate, failedLoginMessage, isLoginLocked, nextFailedLoginState } from "../../server/login-lockout";
+import { buildSessionCookie, clearSessionCookie, error, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
 import { hashPassword, verifyPassword } from "../../server/password-work";
 import {
     createUserSession,
@@ -21,16 +17,10 @@ export const ADMIN_USER_TYPE = 1;
 export const ADMIN_SESSION_COOKIE = "admin_session";
 
 const ADMIN_AUTH_CACHE = Symbol("admin_auth");
-const DUMMY_PASSWORD_HASH = "$argon2id$v=19$m=65536,t=2,p=1$w/hP7Qg4tzkpJ83osQKCIhfaHH+AXgyU4icxg2s1sPE$PhYwmBc6O4HkfHsMpS1CoAMXJAGNfXo/vlEUxw0c+zU";
 
 export interface AdminInfo {
     id: number;
     username: string;
-    isFirstLogin: number;
-}
-
-export interface AdminAuthOptions {
-    allowFirstLogin?: boolean;
 }
 
 interface AdminAuthResult {
@@ -39,19 +29,6 @@ interface AdminAuthResult {
 }
 
 type AdminRequestContext = Request & { [ADMIN_AUTH_CACHE]?: AdminAuthResult };
-
-function applyAdminPasswordGate(result: AdminAuthResult, options: AdminAuthOptions): AdminAuthResult {
-    if (result.admin && shouldRequireAdminPasswordChange(result.admin.isFirstLogin, {
-        devAuthMode: DEV_AUTH_MODE,
-        demoMode: DEMO_MODE,
-    }) && !options.allowFirstLogin) {
-        return {
-            admin: null,
-            error: error("首次登录请先修改密码", "PASSWORD_CHANGE_REQUIRED", 403),
-        };
-    }
-    return result;
-}
 
 export function getAdminAuth(req: Request): AdminAuthResult {
     const auth = (req as AdminRequestContext)[ADMIN_AUTH_CACHE];
@@ -65,9 +42,9 @@ export function getAdminUser(req: Request) {
     return auth.admin;
 }
 
-export async function requireAdminAuth(req: Request, options: AdminAuthOptions = {}): Promise<AdminAuthResult> {
+export async function requireAdminAuth(req: Request): Promise<AdminAuthResult> {
     const cached = (req as AdminRequestContext)[ADMIN_AUTH_CACHE];
-    if (cached) return applyAdminPasswordGate(cached, options);
+    if (cached) return cached;
 
     const currentSession = await loadActiveUserSession(req, ADMIN_SESSION_COOKIE, [ADMIN_USER_TYPE]);
     if (!currentSession.session) {
@@ -77,7 +54,7 @@ export async function requireAdminAuth(req: Request, options: AdminAuthOptions =
     }
 
     const [row] = await db
-        .select({ id: admin.id, username: admin.username, isFirstLogin: admin.isFirstLogin })
+        .select({ id: admin.id, username: admin.username })
         .from(admin)
         .where(eq(admin.id, currentSession.session.userId));
 
@@ -85,24 +62,24 @@ export async function requireAdminAuth(req: Request, options: AdminAuthOptions =
         ? { admin: row, error: null }
         : { admin: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) };
     (req as AdminRequestContext)[ADMIN_AUTH_CACHE] = result;
-    return applyAdminPasswordGate(result, options);
+    return result;
 }
 
-function wrapRoute(handler: RouteHandler | undefined, options: AdminAuthOptions): RouteHandler | undefined {
+function wrapRoute(handler: RouteHandler | undefined): RouteHandler | undefined {
     if (!handler) return undefined;
     return async (req) => {
-        const auth = await requireAdminAuth(req, options);
+        const auth = await requireAdminAuth(req);
         if (auth.error) return auth.error;
         return handler(req);
     };
 }
 
-export function withAdminAuth(routes: RouteDefinition, options: AdminAuthOptions = {}): RouteDefinition {
+export function withAdminAuth(routes: RouteDefinition): RouteDefinition {
     return {
-        GET: wrapRoute(routes.GET, options),
-        POST: wrapRoute(routes.POST, options),
-        PUT: wrapRoute(routes.PUT, options),
-        DELETE: wrapRoute(routes.DELETE, options),
+        GET: wrapRoute(routes.GET),
+        POST: wrapRoute(routes.POST),
+        PUT: wrapRoute(routes.PUT),
+        DELETE: wrapRoute(routes.DELETE),
     };
 }
 
@@ -112,32 +89,14 @@ const adminLoginRoutes: RouteDefinition = {
         const username = stringValue(body.username).trim();
         const password = stringValue(body.password);
         if (!username || !password) return error("请输入用户名和密码", "VALIDATION_ERROR", 400);
-        const clientIp = getClientIp(req);
-        if (!loginAttemptThrottle.consume(clientIp, "admin", username)) {
-            return error("登录请求过于频繁，请稍后重试", "RATE_LIMITED", 429);
-        }
-
         const [row] = await db.select().from(admin).where(eq(admin.username, username));
-        if (row && isLoginLocked(row)) return error("用户名或密码错误", "INVALID_CREDENTIALS", 401);
-        const valid = row
-            ? await verifyPassword(password, row.password)
-            : await verifyPassword(password, DUMMY_PASSWORD_HASH).then(() => false).catch(() => false);
-        if (!row) return error("用户名或密码错误", "INVALID_CREDENTIALS", 401);
-        if (!valid) {
-            const failure = nextFailedLoginState(row);
-            await db
-                .update(admin)
-                .set(buildAtomicFailedLoginUpdate(admin))
-                .where(eq(admin.id, row.id));
-            return error(failedLoginMessage(failure, "用户名或密码错误"), "INVALID_CREDENTIALS", 401);
+        if (!row || !(await verifyPassword(password, row.password))) {
+            return error("用户名或密码错误", "INVALID_CREDENTIALS", 401);
         }
-
-        await db.update(admin).set({ loginFailCount: 0, lockedUntil: null }).where(eq(admin.id, row.id));
-        loginAttemptThrottle.clear(clientIp, "admin", username);
 
         const { token, expiresAt } = await createUserSession(ADMIN_USER_TYPE, row.id);
         return json(
-            { user: { id: row.id, username: row.username, isFirstLogin: row.isFirstLogin } },
+            { user: { id: row.id, username: row.username } },
             200,
             { "Set-Cookie": buildSessionCookie(ADMIN_SESSION_COOKIE, token, expiresAt, isSecureRequest(req)) },
         );
@@ -187,7 +146,7 @@ const adminPasswordRoutes: RouteDefinition = {
         if (!readSessionToken(req, ADMIN_SESSION_COOKIE)) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
         await db
             .update(admin)
-            .set({ password: await hashPassword(newPassword), isFirstLogin: 0, loginFailCount: 0, lockedUntil: null, updatedAt: new Date() })
+            .set({ password: await hashPassword(newPassword), updatedAt: new Date() })
             .where(eq(admin.id, current.id));
         const { token, expiresAt } = await rotateUserSession(ADMIN_USER_TYPE, current.id);
         return json({ success: true }, 200, {

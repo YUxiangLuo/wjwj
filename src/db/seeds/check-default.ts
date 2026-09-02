@@ -83,26 +83,37 @@ async function verify() {
     const expectedProgress = { not_started: 3, stage1: 1, stage2: 1, stage3: 1, stage4: 1, submitted: 1, graded: 1, rejected: 1 };
     check(JSON.stringify(progress.counts) === JSON.stringify(expectedProgress), `A progress buckets differ: ${JSON.stringify(progress.counts)}`);
 
-    const demoStudentRows = await db
+    const teacherCredentialRows = await db.select({
+        employeeId: teacher.employeeId,
+        password: teacher.password,
+    }).from(teacher);
+    for (const row of teacherCredentialRows) {
+        check(await Bun.password.verify(row.employeeId, row.password), `${row.employeeId} demo password differs`);
+    }
+
+    const allStudentRows = await db
         .select({
             studentId: student.studentId,
             name: student.name,
             password: student.password,
-            isFirstLogin: student.isFirstLogin,
             status: student.status,
             deletedAt: student.deletedAt,
             className: class_.name,
         })
         .from(student)
-        .innerJoin(class_, eq(student.classId, class_.id))
-        .where(inArray(student.studentId, DEMO_STUDENT_ACCOUNTS.map((account) => account.studentId)));
+        .innerJoin(class_, eq(student.classId, class_.id));
+    for (const row of allStudentRows) {
+        check(await Bun.password.verify(row.studentId, row.password), `${row.studentId} demo password differs`);
+    }
+    const demoStudentRows = allStudentRows.filter((row) => (
+        DEMO_STUDENT_ACCOUNTS.some((account) => account.studentId === row.studentId)
+    ));
     check(demoStudentRows.length === DEMO_STUDENT_ACCOUNTS.length, `Demo student count differs: ${demoStudentRows.length}`);
     for (const account of DEMO_STUDENT_ACCOUNTS) {
         const row = demoStudentRows.find((candidate) => candidate.studentId === account.studentId);
         check(row?.name === account.name, `${account.studentId} demo name differs`);
         check(row.className === DOGFOOD_NAMES.mainClass, `${account.studentId} is outside the demo class`);
-        check(row.status === 1 && row.isFirstLogin === 0 && !row.deletedAt, `${account.studentId} is not demo-login eligible`);
-        check(await Bun.password.verify(account.password, row.password), `${account.studentId} demo password differs`);
+        check(row.status === 1 && !row.deletedAt, `${account.studentId} is not demo-login eligible`);
     }
 
     const authoritative = await db

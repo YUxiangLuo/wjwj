@@ -44,8 +44,13 @@ function baseConditions(teacherId: number, includeArchived = false) {
         eq(class_.teacherId, teacherId),
         inArray(experiment.status, ["submitted", "graded", "rejected"]),
     ];
-    // 归档 = 学生/任务/课题任一被软删；默认不可见，显式 includeArchived 时纳入只读。
-    if (!includeArchived) conditions.push(isNull(student.deletedAt), isNull(task.deletedAt), isNull(topic.deletedAt));
+    // 归档 = 学生/任务/课题任一被软删，或学生已转入其他班级；默认不可见，显式 includeArchived 时纳入只读。
+    if (!includeArchived) conditions.push(
+        isNull(student.deletedAt),
+        isNull(task.deletedAt),
+        isNull(topic.deletedAt),
+        eq(student.classId, task.classId),
+    );
     return conditions;
 }
 
@@ -100,6 +105,8 @@ const gradingRoutes: RouteDefinition = {
                 studentDeletedAt: student.deletedAt,
                 taskDeletedAt: task.deletedAt,
                 topicDeletedAt: topic.deletedAt,
+                studentClassId: student.classId,
+                taskClassId: task.classId,
             })
                 .from(experiment)
                 .innerJoin(student, eq(experiment.studentId, student.id))
@@ -120,11 +127,19 @@ const gradingRoutes: RouteDefinition = {
                     studentDeletedAt,
                     taskDeletedAt,
                     topicDeletedAt,
+                    studentClassId,
+                    taskClassId,
                     ...item
                 } = row;
                 return {
                     ...item,
-                    archived: Boolean(studentDeletedAt || taskDeletedAt || topicDeletedAt),
+                    archived: archivedFlag({
+                        studentDeletedAt,
+                        taskDeletedAt,
+                        topicDeletedAt,
+                        studentClassId,
+                        taskClassId,
+                    }),
                     studentName: snapshot?.studentName ?? row.studentName,
                     topic: snapshot?.topicName ?? row.topic,
                     score: numeric(row.score),
@@ -170,6 +185,8 @@ async function findOwnedExperiment(experimentId: number, teacherId: number, incl
         studentDeletedAt: student.deletedAt,
         taskDeletedAt: task.deletedAt,
         topicDeletedAt: topic.deletedAt,
+        studentClassId: student.classId,
+        taskClassId: task.classId,
     })
         .from(experiment)
         .innerJoin(student, eq(experiment.studentId, student.id))
@@ -181,8 +198,15 @@ async function findOwnedExperiment(experimentId: number, teacherId: number, incl
     return row ?? null;
 }
 
-function archivedFlag(row: { studentDeletedAt: Date | null; taskDeletedAt: Date | null; topicDeletedAt: Date | null }) {
-    return Boolean(row.studentDeletedAt || row.taskDeletedAt || row.topicDeletedAt);
+function archivedFlag(row: {
+    studentDeletedAt: Date | null;
+    taskDeletedAt: Date | null;
+    topicDeletedAt: Date | null;
+    studentClassId: number;
+    taskClassId: number;
+}) {
+    return Boolean(row.studentDeletedAt || row.taskDeletedAt || row.topicDeletedAt)
+        || row.studentClassId !== row.taskClassId;
 }
 
 const gradingDetailRoutes: RouteDefinition = {
@@ -240,6 +264,8 @@ const gradingDetailRoutes: RouteDefinition = {
             studentDeletedAt: _studentDeletedAt,
             taskDeletedAt: _taskDeletedAt,
             topicDeletedAt: _topicDeletedAt,
+            studentClassId: _studentClassId,
+            taskClassId: _taskClassId,
             ...publicRow
         } = row;
         return json({

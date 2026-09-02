@@ -62,11 +62,11 @@ test("student management initializes its request from the classId query", async 
     });
 });
 
-test("student management distinguishes locked accounts", async () => {
+test("student management distinguishes active and disabled accounts", async () => {
     const students = [
-        { id: 1, studentId: "SNORMAL", name: "正常学生", classId: 7, className: "统计一班", status: 1, lockedUntil: null, progress: 0, createdAt: new Date().toISOString() },
-        { id: 2, studentId: "SLOCKED", name: "锁定学生", classId: 7, className: "统计一班", status: 1, lockedUntil: "2099-01-01T00:00:00.000Z", progress: 0, createdAt: new Date().toISOString() },
-        { id: 3, studentId: "SDISABLED", name: "停用学生", classId: 7, className: "统计一班", status: 0, lockedUntil: "2099-01-01T00:00:00.000Z", progress: 0, createdAt: new Date().toISOString() },
+        { id: 1, studentId: "SNORMAL", name: "正常学生", classId: 7, className: "统计一班", status: 1, progress: 0, createdAt: new Date().toISOString() },
+        { id: 2, studentId: "SACTIVE", name: "另一学生", classId: 7, className: "统计一班", status: 1, progress: 0, createdAt: new Date().toISOString() },
+        { id: 3, studentId: "SDISABLED", name: "停用学生", classId: 7, className: "统计一班", status: 0, progress: 0, createdAt: new Date().toISOString() },
     ];
     globalThis.fetch = mock(async (input: RequestInfo | URL) => {
         const url = String(input);
@@ -84,25 +84,23 @@ test("student management distinguishes locked accounts", async () => {
         </MemoryRouter>,
     );
 
-    await waitFor(() => expect(view.getByText("SLOCKED")).toBeTruthy());
+    await waitFor(() => expect(view.getByText("SACTIVE")).toBeTruthy());
     const normalRow = view.getByText("SNORMAL").closest("tr");
-    const lockedRow = view.getByText("SLOCKED").closest("tr");
+    const activeRow = view.getByText("SACTIVE").closest("tr");
     const disabledRow = view.getByText("SDISABLED").closest("tr");
     expect(normalRow).not.toBeNull();
-    expect(lockedRow).not.toBeNull();
+    expect(activeRow).not.toBeNull();
     expect(disabledRow).not.toBeNull();
     expect(within(normalRow!).getByText("正常")).toBeTruthy();
-    expect(within(lockedRow!).getByText("锁定")).toBeTruthy();
+    expect(within(activeRow!).getByText("正常")).toBeTruthy();
     expect(within(disabledRow!).getByText("停用")).toBeTruthy();
 });
 
-test("resetting a locked student refreshes the displayed account state", async () => {
-    let locked = true;
+test("resetting a student password refreshes the list without changing account status", async () => {
     let listRequests = 0;
     globalThis.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
         if (url.includes("/reset-password") && init?.method === "POST") {
-            locked = false;
             return new Response(JSON.stringify({ success: true, data: { success: true } }), {
                 headers: { "Content-Type": "application/json" },
             });
@@ -110,12 +108,11 @@ test("resetting a locked student refreshes the displayed account state", async (
         const data = url.includes("/api/admin/classes") ? [] : {
             items: [{
                 id: 2,
-                studentId: "SLOCKED",
-                name: "锁定学生",
+                studentId: "SACTIVE",
+                name: "正常学生",
                 classId: 7,
                 className: "统计一班",
                 status: 1,
-                lockedUntil: locked ? "2099-01-01T00:00:00.000Z" : null,
                 progress: 0,
                 createdAt: new Date().toISOString(),
             }],
@@ -136,19 +133,18 @@ test("resetting a locked student refreshes the displayed account state", async (
     );
 
     await waitFor(() => {
-        const row = view.getByText("SLOCKED").closest("tr");
+        const row = view.getByText("SACTIVE").closest("tr");
         expect(row).not.toBeNull();
-        expect(within(row!).getByText("锁定")).toBeTruthy();
+        expect(within(row!).getByText("正常")).toBeTruthy();
     });
-    const lockedRow = view.getByText("SLOCKED").closest("tr");
-    expect(lockedRow).not.toBeNull();
-    fireEvent.click(within(lockedRow!).getByRole("button", { name: "重置密码" }));
+    const activeRow = view.getByText("SACTIVE").closest("tr");
+    expect(activeRow).not.toBeNull();
+    fireEvent.click(within(activeRow!).getByRole("button", { name: "重置密码" }));
 
     await waitFor(() => {
         expect(listRequests).toBeGreaterThanOrEqual(2);
-        const refreshedRow = view.getByText("SLOCKED").closest("tr");
+        const refreshedRow = view.getByText("SACTIVE").closest("tr");
         expect(refreshedRow).not.toBeNull();
         expect(within(refreshedRow!).getByText("正常")).toBeTruthy();
-        expect(within(refreshedRow!).queryByText("锁定")).toBeNull();
     });
 });

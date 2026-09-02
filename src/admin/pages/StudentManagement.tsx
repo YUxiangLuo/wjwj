@@ -22,7 +22,6 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
-import { getAccountState, type AccountStateFilter } from "@/lib/account-state";
 import {
     Table,
     TableBody,
@@ -40,15 +39,15 @@ import {
 } from "../api-client";
 
 function renderAccountStatus(item: Student) {
-    const state = getAccountState(item.status, item.lockedUntil);
     return (
-        <StatusBadge intent={state === "normal" ? "success" : state === "locked" ? "warning" : "neutral"}>
-            {state === "normal" ? "正常" : state === "locked" ? "锁定" : "停用"}
+        <StatusBadge intent={item.status === 1 ? "success" : "neutral"}>
+            {item.status === 1 ? "正常" : "停用"}
         </StatusBadge>
     );
 }
 
 const PAGE_SIZE = 20;
+type AccountStatusFilter = "all" | "normal" | "disabled";
 
 export function StudentManagement() {
     const location = useLocation();
@@ -62,7 +61,7 @@ export function StudentManagement() {
     const [classId, setClassId] = useState(requestedClassId);
     const [search, setSearch] = useState("");
     const [appliedSearch, setAppliedSearch] = useState("");
-    const [status, setStatus] = useState<AccountStateFilter>("all");
+    const [status, setStatus] = useState<AccountStatusFilter>("all");
     const [page, setPage] = useState(1);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -77,7 +76,7 @@ export function StudentManagement() {
     }: {
         nextClassId?: string;
         nextSearch?: string;
-        nextStatus?: AccountStateFilter;
+        nextStatus?: AccountStatusFilter;
         nextPage?: number;
     } = {}) => {
         setLoading(true);
@@ -182,7 +181,7 @@ export function StudentManagement() {
                         </SelectContent>
                     </Select>
                     <Select value={status} onValueChange={(value) => {
-                        const nextStatus = value as AccountStateFilter;
+                        const nextStatus = value as AccountStatusFilter;
                         setStatus(nextStatus);
                         void load({ nextStatus, nextPage: 1 });
                     }}>
@@ -192,7 +191,6 @@ export function StudentManagement() {
                         <SelectContent>
                             <SelectItem value="all">全部状态</SelectItem>
                             <SelectItem value="normal">正常</SelectItem>
-                            <SelectItem value="locked">已锁定</SelectItem>
                             <SelectItem value="disabled">已停用</SelectItem>
                         </SelectContent>
                     </Select>
@@ -265,8 +263,8 @@ export function StudentManagement() {
                                                 size="sm"
                                                 onClick={async () => {
                                                     const response = await studentApi.resetPassword(item.id);
-                                                    if (response.success && response.data) {
-                                                        toast.success(`临时密码：${response.data.temporaryPassword}（仅显示一次）`, { duration: 30_000 });
+                                                    if (response.success) {
+                                                        toast.success("密码已重置为学号");
                                                         await load();
                                                     } else {
                                                         toast.error(response.error?.message);

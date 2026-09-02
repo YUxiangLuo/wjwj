@@ -4,7 +4,7 @@ import { notifyAuthExpired } from "@/lib/auth-expired";
 import type { QuestionnaireData, SamplePlanData, SamplingResultsData } from "../student/api-client";
 
 export interface ApiResponse<T> { success: boolean; data?: T; error?: { code: string; message: string } }
-export interface TeacherUser { id: number; employeeId: string; name: string; type: "teacher"; isFirstLogin: number }
+export interface TeacherUser { id: number; employeeId: string; name: string; type: "teacher" }
 export interface TeacherStats {
     stats: Array<{ label: string; value: number }>;
     activeTasks: Array<{ id: number; templateName: string; className: string; deadline: string | null; total: number; completed: number; pending: number; rejected: number }>;
@@ -35,7 +35,7 @@ export type GradingStatus = "submitted" | "graded" | "rejected";
 export interface GradingItem {
     id: number; studentName: string; studentId: string; topic: string; className: string;
     submittedAt: string; status: GradingStatus; score: number | null; gradedByName?: string | null; gradedAt?: string | null;
-    /** 归档 = 学生/任务/课题任一被软删；归档提交仅供查阅。 */
+    /** 归档 = 学生/任务/课题任一被软删，或学生已转入其他班级；归档提交仅供查阅。 */
     archived?: boolean;
 }
 export interface GradingListResponse { items: GradingItem[]; total: number; page: number; pageSize: number }
@@ -65,7 +65,7 @@ export interface SubmissionDetail extends GradingItem {
     rejectReason?: string | null;
     weights?: { questionnaire: number; process: number; report: number };
 }
-export interface Student { id: number; studentId: string; name: string; email: string | null; status: number; lockedUntil: string | null }
+export interface Student { id: number; studentId: string; name: string; email: string | null; status: number }
 export interface TeacherAnnouncement { id: number; title: string; content: string; createdAt: string }
 export interface GradeExportPreviewItem { taskId: number; topicId: number; topic: string; classId: number; className: string; graded: number; total: number; avgScore: number }
 export interface GradeAnalytics {
@@ -153,10 +153,10 @@ export const teacherApi = {
     rejectSubmission: (id: number, observedVersion: number, reason: string) => request<{ success: boolean }>(`/api/teacher/grading/${id}/reject`, { method: "POST", body: JSON.stringify({ reason, observedVersion }) }),
 
     getStudents: (classId: number) => request<Student[]>(`/api/teacher/classes/${classId}/students`),
-    addStudent: (classId: number, data: { studentId: string; name: string; email?: string }) => request<{ success: boolean; temporaryPassword: string }>(`/api/teacher/classes/${classId}/students`, { method: "POST", body: JSON.stringify(data) }),
-    updateStudent: (id: number, data: { action: "reset_password" | "toggle_status" }) => request<{ success: boolean; temporaryPassword?: string }>(`/api/teacher/students/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    addStudent: (classId: number, data: { studentId: string; name: string; email?: string }) => request<{ success: boolean; restored: boolean }>(`/api/teacher/classes/${classId}/students`, { method: "POST", body: JSON.stringify(data) }),
+    updateStudent: (id: number, data: { action: "reset_password" | "toggle_status" }) => request<{ success: boolean }>(`/api/teacher/students/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     deleteStudent: (id: number) => request<{ success: boolean }>(`/api/teacher/students/${id}`, { method: "DELETE" }),
-    importStudents: (classId: number, file: File) => upload<{ successCount: number; failureCount: number; errors: Array<{ row: number; reason: string }>; credentials: Array<{ studentId: string; temporaryPassword: string }> }>(`/api/teacher/classes/${classId}/students/import`, file),
+    importStudents: (classId: number, file: File) => upload<{ successCount: number; restoredCount: number; failureCount: number; errors: Array<{ row: number; reason: string }> }>(`/api/teacher/classes/${classId}/students/import`, file),
 
     getAnnouncements: () => request<TeacherAnnouncement[]>("/api/teacher/announcements"),
     getGradeExportPreview: (params: { semester?: string; classId?: number | string; topicId?: number | string }) => {

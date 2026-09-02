@@ -1,10 +1,10 @@
-import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, semester, student } from "../../db/schema";
 import { isValidOptionalEmail } from "../../lib/email";
-import { generateTemporaryPassword } from "../../lib/temporary-password";
 import { parseSpreadsheetFile, spreadsheetRequestExceedsLimit, validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
 import { hashPassword, mapWithConcurrency } from "../../server/password-work";
+import { writeAuditEvent } from "../../server/audit-event";
 import { error, getPositiveRouteId, json, parseBody, stringValue } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { clearUserSessionsForUser } from "../../server/user-session";
@@ -68,7 +68,6 @@ const classStudentsRoutes: RouteDefinition = {
                     name: student.name,
                     email: student.email,
                     status: student.status,
-                    lockedUntil: student.lockedUntil,
                 })
                 .from(student)
                 .where(and(eq(student.classId, classId), isNull(student.deletedAt)))
@@ -79,7 +78,8 @@ const classStudentsRoutes: RouteDefinition = {
     async POST(req) {
         const classId = parseRouteId(req, "classId");
         if (!classId) return error("无效的班级ID", "INVALID_ID");
-        if (!(await requireOwnedClass(classId, getPrimaryTeacherIdOrThrow(req)))) {
+        const teacherId = getPrimaryTeacherIdOrThrow(req);
+        if (!(await requireOwnedClass(classId, teacherId))) {
             return error("无权限访问该班级", "FORBIDDEN", 403);
         }
         const body = await parseBody<{ studentId?: string; name?: string; email?: string }>(req);
@@ -94,19 +94,60 @@ const classStudentsRoutes: RouteDefinition = {
         if (name.length > MAX_STUDENT_NAME_LENGTH) return error("姓名不能超过100个字符", "VALIDATION_ERROR");
         if (email.length > MAX_STUDENT_EMAIL_LENGTH) return error("邮箱不能超过120个字符", "VALIDATION_ERROR");
         if (!isValidOptionalEmail(email)) return error("邮箱格式无效", "VALIDATION_ERROR");
-        if ((await db.select({ id: student.id }).from(student).where(eq(student.studentId, studentId))).length) {
-            return error("学号已存在", "DUPLICATE_ERROR", 409);
+        const [existing] = await db
+            .select({
+                id: student.id,
+                studentId: student.studentId,
+                deletedAt: student.deletedAt,
+                previousClassId: student.classId,
+                teacherId: class_.teacherId,
+            })
+            .from(student)
+            .innerJoin(class_, eq(student.classId, class_.id))
+            .where(eq(student.studentId, studentId));
+        if (existing) {
+            if (!existing.deletedAt) return error("学号已存在", "DUPLICATE_ERROR", 409);
+            if (existing.teacherId !== teacherId) {
+                return error("该学号属于其他教师管理的历史记录，请联系管理员恢复", "STUDENT_RESTORE_FORBIDDEN", 409);
+            }
+            const password = await hashPassword(existing.studentId);
+            const restored = await db.transaction(async (tx) => {
+                const [updated] = await tx
+                    .update(student)
+                    .set({
+                        name,
+                        email: email || null,
+                        classId,
+                        password,
+                        status: 1,
+                        deletedAt: null,
+                        updatedAt: new Date(),
+                    })
+                    .where(and(eq(student.id, existing.id), isNotNull(student.deletedAt)))
+                    .returning({ id: student.id });
+                if (!updated) return false;
+                await writeAuditEvent(tx, {
+                    actorType: "teacher",
+                    actorId: teacherId,
+                    action: "student.restored",
+                    entityType: "student",
+                    entityId: existing.id,
+                    details: { source: "single", previousClassId: existing.previousClassId, classId },
+                });
+                return true;
+            });
+            if (!restored) return error("学生记录状态已变化，请刷新后重试", "STUDENT_RESTORE_CONFLICT", 409);
+            await clearUserSessionsForUser(STUDENT_USER_TYPE, existing.id);
+            return json({ success: true, restored: true });
         }
-        const temporaryPassword = generateTemporaryPassword();
         await db.insert(student).values({
             studentId,
             name,
             email: email || null,
             classId,
-            password: await hashPassword(temporaryPassword),
-            isFirstLogin: 1,
+            password: await hashPassword(studentId),
         });
-        return json({ success: true, temporaryPassword }, 201);
+        return json({ success: true, restored: false }, 201);
     },
 };
 
@@ -114,7 +155,8 @@ const classStudentsImportRoutes: RouteDefinition = {
     async POST(req) {
         const classId = parseRouteId(req, "classId");
         if (!classId) return error("无效的班级ID", "INVALID_ID");
-        if (!(await requireOwnedClass(classId, getPrimaryTeacherIdOrThrow(req)))) {
+        const teacherId = getPrimaryTeacherIdOrThrow(req);
+        if (!(await requireOwnedClass(classId, teacherId))) {
             return error("无权限访问该班级", "FORBIDDEN", 403);
         }
         if (spreadsheetRequestExceedsLimit(req)) {
@@ -179,36 +221,106 @@ const classStudentsImportRoutes: RouteDefinition = {
         const candidates = parsed;
         const existing = candidates.length
             ? await db
-                  .select({ studentId: student.studentId })
+                  .select({
+                      id: student.id,
+                      studentId: student.studentId,
+                      deletedAt: student.deletedAt,
+                      previousClassId: student.classId,
+                      teacherId: class_.teacherId,
+                  })
                   .from(student)
+                  .innerJoin(class_, eq(student.classId, class_.id))
                   .where(sql`${student.studentId} IN (${sql.join(candidates.map((item) => item.studentId), sql`, `)})`)
             : [];
-        const existingIds = new Set(existing.map((item) => normalizeStudentId(item.studentId)));
+        const existingById = new Map(existing.map((item) => [normalizeStudentId(item.studentId), item]));
+        const newStudents: typeof candidates = [];
+        const studentsToRestore: Array<typeof candidates[number] & {
+            existingId: number;
+            previousClassId: number;
+            storedStudentId: string;
+        }> = [];
         for (const item of candidates) {
-            if (existingIds.has(item.normalizedStudentId)) {
+            const matching = existingById.get(item.normalizedStudentId);
+            if (!matching) {
+                newStudents.push(item);
+            } else if (!matching.deletedAt) {
                 errors.push({ row: item.row, reason: `学号已存在: ${item.studentId}` });
+            } else if (matching.teacherId !== teacherId) {
+                errors.push({ row: item.row, reason: `学号属于其他教师管理的历史记录，请联系管理员恢复: ${item.studentId}` });
+            } else {
+                studentsToRestore.push({
+                    ...item,
+                    existingId: matching.id,
+                    previousClassId: matching.previousClassId,
+                    storedStudentId: matching.studentId,
+                });
             }
         }
-        const inserts = candidates.filter((item) => !existingIds.has(item.normalizedStudentId));
-        const credentials = inserts.map((item) => ({
-            studentId: item.studentId,
-            temporaryPassword: generateTemporaryPassword(),
-        }));
-        const hashes = await mapWithConcurrency(credentials, 4, (item) => hashPassword(item.temporaryPassword));
+        const passwordSources = [
+            ...newStudents.map((item) => ({ ...item, passwordStudentId: item.studentId })),
+            ...studentsToRestore.map((item) => ({ ...item, passwordStudentId: item.storedStudentId })),
+        ];
+        const hashes = await mapWithConcurrency(passwordSources, 4, (item) => hashPassword(item.passwordStudentId));
+        const passwordByStudentId = new Map(passwordSources.map((item, index) => [
+            item.normalizedStudentId,
+            hashes[index]!,
+        ]));
+        const successfullyRestoredIds = new Set<string>();
 
-        if (inserts.length) {
-            await db.insert(student).values(
-                inserts.map((item, index) => ({
-                    studentId: item.studentId,
-                    name: item.name,
-                    email: item.email,
-                    classId,
-                    password: hashes[index]!,
-                    isFirstLogin: 1,
-                })),
-            );
-        }
-        return json({ successCount: inserts.length, failureCount: errors.length, errors, credentials });
+        await db.transaction(async (tx) => {
+            for (const item of studentsToRestore) {
+                const [restored] = await tx
+                    .update(student)
+                    .set({
+                        name: item.name,
+                        email: item.email,
+                        classId,
+                        password: passwordByStudentId.get(item.normalizedStudentId)!,
+                        status: 1,
+                        deletedAt: null,
+                        updatedAt: new Date(),
+                    })
+                    .where(and(eq(student.id, item.existingId), isNotNull(student.deletedAt)))
+                    .returning({ id: student.id });
+                if (!restored) {
+                    errors.push({ row: item.row, reason: `学生记录状态已变化，请重试: ${item.studentId}` });
+                    continue;
+                }
+                successfullyRestoredIds.add(item.normalizedStudentId);
+                await writeAuditEvent(tx, {
+                    actorType: "teacher",
+                    actorId: teacherId,
+                    action: "student.restored",
+                    entityType: "student",
+                    entityId: item.existingId,
+                    details: { source: "import", previousClassId: item.previousClassId, classId },
+                });
+            }
+            if (newStudents.length) {
+                await tx.insert(student).values(
+                    newStudents.map((item) => ({
+                        studentId: item.studentId,
+                        name: item.name,
+                        email: item.email,
+                        classId,
+                        password: passwordByStudentId.get(item.normalizedStudentId)!,
+                    })),
+                );
+            }
+        });
+        const restoredStudents = studentsToRestore
+            .filter((item) => successfullyRestoredIds.has(item.normalizedStudentId));
+        await mapWithConcurrency(restoredStudents, 8, (item) => (
+            clearUserSessionsForUser(STUDENT_USER_TYPE, item.existingId)
+        ));
+
+        const restoredCount = successfullyRestoredIds.size;
+        return json({
+            successCount: newStudents.length + restoredCount,
+            restoredCount,
+            failureCount: errors.length,
+            errors,
+        });
     },
 };
 
@@ -226,13 +338,12 @@ const studentRoutes: RouteDefinition = {
 
         const body = await parseBody<{ action?: "reset_password" | "toggle_status" }>(req);
         if (body.action === "reset_password") {
-            const temporaryPassword = generateTemporaryPassword();
             await db
                 .update(student)
-                .set({ password: await hashPassword(temporaryPassword), isFirstLogin: 1, loginFailCount: 0, lockedUntil: null, updatedAt: new Date() })
+                .set({ password: await hashPassword(owned.studentId), updatedAt: new Date() })
                 .where(eq(student.id, id));
             await clearUserSessionsForUser(STUDENT_USER_TYPE, id);
-            return json({ success: true, temporaryPassword });
+            return json({ success: true });
         } else if (body.action === "toggle_status") {
             const status = owned.status === 1 ? 0 : 1;
             await db.update(student).set({ status, updatedAt: new Date() }).where(eq(student.id, id));

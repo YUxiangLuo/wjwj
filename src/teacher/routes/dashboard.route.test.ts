@@ -32,6 +32,7 @@ test("dashboard counts only visible activity and currently open tasks", async ()
     const activeTaskQuery = dialect.sqlToQuery(selects[3]!.where as SQL);
     const activeListQuery = dialect.sqlToQuery(selects[4]!.where as SQL);
     expect(pendingQuery.sql).toContain('"student"."deleted_at" is null');
+    expect(pendingQuery.sql).toContain('"student"."class_id" = "task"."class_id"');
     expect(selects[4]!.joins?.map((join) => join.table)).toContain(student);
     expect(pendingQuery.params).toEqual([9, "submitted"]);
     expect(activeTaskQuery.sql).toContain('"task"."open_time" is null or "task"."open_time" <=');

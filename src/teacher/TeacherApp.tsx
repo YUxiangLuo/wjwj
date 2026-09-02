@@ -8,7 +8,6 @@ import { LoadingStatus } from "@/components/LoadingStatus";
 import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
 import { WorkspaceShell } from "@/components/WorkspaceShell";
 import { TEACHER_PASSWORD_POLICY } from "@/lib/password-policy";
-import { DEV_AUTH_MODE } from "@/lib/dev-mode";
 import { usePasswordChange } from "@/hooks/usePasswordChange";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { AUTH_EXPIRED_EVENT } from "@/lib/auth-expired";
@@ -42,21 +41,17 @@ const menu = [
 function TeacherWorkspace({
     user,
     onLogout,
-    onPasswordChanged,
 }: {
     user: TeacherUser;
     onLogout: () => Promise<void>;
-    onPasswordChanged: () => void;
 }) {
     const location = useLocation();
     const [passwordOpen, setPasswordOpen] = useState(false);
-    const mustChangePassword = !DEV_AUTH_MODE && user.isFirstLogin === 1;
     const passwordChange = usePasswordChange({
         policy: TEACHER_PASSWORD_POLICY,
         forbiddenSubstrings: [user.employeeId],
         onSubmit: authApi.changePassword,
         onSuccess: () => {
-            onPasswordChanged();
             setPasswordOpen(false);
         },
     });
@@ -83,9 +78,7 @@ function TeacherWorkspace({
                     </div>
                 }
             >
-                {mustChangePassword ? (
-                    <div className="grid min-h-[60vh] place-items-center text-label text-muted-foreground">请先修改初始密码后再使用教学功能。</div>
-                ) : <Suspense fallback={<RouteLoading />}><Routes>
+                <Suspense fallback={<RouteLoading />}><Routes>
                         <Route index element={<Dashboard />} />
                         <Route path="class" element={<ClassManagement />} />
                         <Route path="class/:classId/students" element={<StudentManagement />} />
@@ -96,14 +89,13 @@ function TeacherWorkspace({
                         <Route path="grading/:submissionId" element={<GradingDetail />} />
                         <Route path="export" element={<GradeExport />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes></Suspense>}
+                    </Routes></Suspense>
             </WorkspaceShell>
             <PasswordChangeDialog
-                open={mustChangePassword || passwordOpen}
-                onOpenChange={(open) => { if (!mustChangePassword) setPasswordOpen(open); }}
-                allowClose={!mustChangePassword}
-                title={mustChangePassword ? "首次登录请修改密码" : "修改密码"}
-                description={mustChangePassword ? "当前使用初始或重置密码，设置新密码后才能进入教学工作台。" : "输入当前密码并设置新密码。"}
+                open={passwordOpen}
+                onOpenChange={setPasswordOpen}
+                title="修改密码"
+                description="输入当前密码并设置新密码。"
                 form={passwordChange.form}
                 onFieldChange={passwordChange.setField}
                 error={passwordChange.error}
@@ -138,7 +130,6 @@ export function TeacherApp() {
     if (!user) return <Navigate to="/login" replace />;
     return <TeacherWorkspace
         user={user}
-        onPasswordChanged={() => setUser((current) => current ? { ...current, isFirstLogin: 0 } : current)}
         onLogout={async () => { await authApi.logout(); setUser(null); navigate("/login", { replace: true }); }}
     />;
 }

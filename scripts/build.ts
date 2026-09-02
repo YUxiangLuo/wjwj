@@ -110,7 +110,7 @@ for (const entrypoint of entrypoints) {
 
 if (!demoMode) {
     const forbiddenPasswords = [
-        ...DEMO_STUDENT_ACCOUNTS.map((account) => account.password),
+        ...DEMO_STUDENT_ACCOUNTS.map((account) => account.studentId),
         PREFILL_TEACHER_PASSWORD,
         PREFILL_ADMIN_PASSWORD,
     ];

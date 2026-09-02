@@ -10,7 +10,6 @@ import type { PasswordRuleResult } from "@/lib/password-policy";
 interface PasswordChangeDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    allowClose: boolean;
     title: string;
     description: string;
     form: PasswordFormState;
@@ -42,7 +41,6 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
     const {
         open,
         onOpenChange,
-        allowClose,
         title,
         description,
         form,
@@ -60,11 +58,8 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
     } = props;
 
     return (
-        <Dialog open={open} onOpenChange={(nextOpen) => {
-            if (!allowClose && !nextOpen) return;
-            onOpenChange(nextOpen);
-        }}>
-            <DialogContent className="bg-card border-border text-foreground" showCloseButton={allowClose}>
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="bg-card border-border text-foreground">
                 <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void onSubmit(); }}>
                     <DialogHeader>
                         <DialogTitle className="text-foreground">{title}</DialogTitle>
@@ -130,11 +125,9 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                     {error ? <div id={errorId} role="alert" aria-atomic="true" className="text-label text-destructive bg-destructive-muted p-2 rounded-control">{error}</div> : null}
                     </div>
                     <DialogFooter>
-                        {allowClose ? (
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving} className="text-muted-foreground hover:text-foreground hover:bg-muted">
-                                取消
-                            </Button>
-                        ) : null}
+                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving} className="text-muted-foreground hover:text-foreground hover:bg-muted">
+                            取消
+                        </Button>
                         <Button type="submit" disabled={saving} aria-busy={saving} className="bg-primary hover:bg-primary-hover text-primary-foreground" data-testid={submitTestId}>
                             {saving ? <Loader2 aria-hidden="true" className="w-4 h-4 mr-2 animate-spin" /> : null}
                             {submitLabel}

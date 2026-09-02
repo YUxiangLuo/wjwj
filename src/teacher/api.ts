@@ -37,8 +37,8 @@ import {
 export const teacherApiRoutes = {
     "/api/teacher/login": teacherLoginRoutes,
     "/api/teacher/logout": teacherLogoutRoutes,
-    "/api/teacher/me": withTeacherAuth(teacherMeRoutes, { allowFirstLogin: true }),
-    "/api/teacher/password": withTeacherAuth(teacherPasswordRoutes, { allowFirstLogin: true }),
+    "/api/teacher/me": withTeacherAuth(teacherMeRoutes),
+    "/api/teacher/password": withTeacherAuth(teacherPasswordRoutes),
 
     "/api/teacher/dashboard": withTeacherAuth(dashboardRoutes),
     "/api/teacher/classes": withTeacherAuth(classRoutes),

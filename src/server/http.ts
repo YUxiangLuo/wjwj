@@ -208,20 +208,6 @@ export function getCookieValue(req: Request, name: string): string | null {
     return match?.[1] ?? null;
 }
 
-export function getClientIp(req: Request): string {
-    if (process.env.TRUST_PROXY === "1") {
-        const forwarded = req.headers.get("x-forwarded-for");
-        if (forwarded) return forwarded.split(",")[0]?.trim() ?? "";
-        const realIp = req.headers.get("x-real-ip")?.trim();
-        if (realIp) return realIp;
-    }
-    return (req as Request & { __clientIp?: string }).__clientIp ?? "";
-}
-
-export function attachClientIp(req: Request, clientIp: string | null | undefined) {
-    if (clientIp) (req as Request & { __clientIp?: string }).__clientIp = clientIp;
-}
-
 export function isSecureRequest(req: Request) {
     const forwardedProto = req.headers.get("x-forwarded-proto");
     if (process.env.TRUST_PROXY === "1" && forwardedProto) {

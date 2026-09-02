@@ -68,7 +68,6 @@ function PasswordDialogHarness(props: {
             <PasswordChangeDialog
                 open={open}
                 onOpenChange={setOpen}
-                allowClose={true}
                 title="修改密码"
                 description="请设置新密码。"
                 form={passwordChange.form}
@@ -170,7 +169,7 @@ test("shared password dialog resets form and closes after successful submit", as
     });
 });
 
-test("shared password dialog hides close affordance when closing is disabled", () => {
+test("shared password dialog always exposes close affordances", () => {
     const submit = mock(async () => ({ success: true }));
     const passwordChange = {
         form: { currentPassword: "", newPassword: "", confirmPassword: "" },
@@ -185,9 +184,8 @@ test("shared password dialog hides close affordance when closing is disabled", (
         <PasswordChangeDialog
             open={true}
             onOpenChange={() => undefined}
-            allowClose={false}
-            title="首次登录请修改密码"
-            description="请先更新密码。"
+            title="修改密码"
+            description="输入当前密码并设置新密码。"
             form={passwordChange.form}
             onFieldChange={passwordChange.setField}
             error={passwordChange.error}
@@ -197,5 +195,6 @@ test("shared password dialog hides close affordance when closing is disabled", (
         />
     );
 
-    expect(view.queryByTestId("mock-dialog-close")).toBeNull();
+    expect(view.getByTestId("mock-dialog-close")).toBeTruthy();
+    expect(view.getByRole("button", { name: "取消" })).toBeTruthy();
 });

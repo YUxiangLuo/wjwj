@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Search, Upload, UserPlus, RotateCcw, UserX, Trash2, Users, CheckCircle2, LockKeyhole, PauseCircle } from "lucide-react";
+import { ArrowLeft, Search, Upload, UserPlus, RotateCcw, UserX, Trash2, Users, CheckCircle2, PauseCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,14 +13,12 @@ import { toast } from "sonner";
 import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
-import { getAccountState } from "@/lib/account-state";
 import { isValidOptionalEmail } from "@/lib/email";
 
 function renderAccountStatus(student: Student) {
-    const state = getAccountState(student.status, student.lockedUntil);
     return (
-        <StatusBadge intent={state === "normal" ? "success" : state === "locked" ? "warning" : "neutral"}>
-            {state === "normal" ? "正常" : state === "locked" ? "已锁定" : "已禁用"}
+        <StatusBadge intent={student.status === 1 ? "success" : "neutral"}>
+            {student.status === 1 ? "正常" : "已禁用"}
         </StatusBadge>
     );
 }
@@ -35,7 +33,7 @@ export function StudentManagement() {
     const [searchQuery, setSearchQuery] = useState("");
     const [importFile, setImportFile] = useState<File | null>(null);
     const [importing, setImporting] = useState(false);
-    const [importResult, setImportResult] = useState<{ successCount: number; failureCount: number; errors: Array<{ row: number; reason: string }>; credentials: Array<{ studentId: string; temporaryPassword: string }> } | null>(null);
+    const [importResult, setImportResult] = useState<{ successCount: number; restoredCount: number; failureCount: number; errors: Array<{ row: number; reason: string }> } | null>(null);
 
     // Add Form State
     const [newStudent, setNewStudent] = useState({ id: "", name: "", email: "" });
@@ -99,9 +97,7 @@ export function StudentManagement() {
         if (res.success) {
             setShowAddModal(false);
             setNewStudent({ id: "", name: "", email: "" });
-            if (res.data?.temporaryPassword) {
-                toast.success(`学生已创建，临时密码：${res.data.temporaryPassword}（仅显示一次）`, { duration: 30_000 });
-            }
+            toast.success(`学生已${res.data?.restored ? "恢复" : "创建"}，登录密码与学号相同`);
             void loadData(false);
         } else {
             toast.error("添加失败: " + res.error?.message);
@@ -132,6 +128,7 @@ export function StudentManagement() {
 
         if (res.success && res.data) {
             setImportResult(res.data);
+            toast.success(`导入完成：成功 ${res.data.successCount} 条，学生密码与学号相同`);
             void loadData(false);
         } else {
             toast.error("导入失败: " + res.error?.message);
@@ -168,9 +165,7 @@ export function StudentManagement() {
         }
 
         if (res?.success) {
-            if (type === "reset" && res.data && "temporaryPassword" in res.data && res.data.temporaryPassword) {
-                toast.success(`临时密码：${res.data.temporaryPassword}（仅显示一次）`, { duration: 30_000 });
-            }
+            if (type === "reset") toast.success("密码已重置为学号");
             void loadData(false);
         } else {
             toast.error("操作失败: " + res?.error?.message);
@@ -183,12 +178,10 @@ export function StudentManagement() {
     );
 
     const summary = useMemo(() => {
-        const states = students.map((student) => getAccountState(student.status, student.lockedUntil));
         return {
-            total: states.length,
-            active: states.filter((state) => state === "normal").length,
-            locked: states.filter((state) => state === "locked").length,
-            disabled: states.filter((state) => state === "disabled").length,
+            total: students.length,
+            active: students.filter((student) => student.status === 1).length,
+            disabled: students.filter((student) => student.status !== 1).length,
         };
     }, [students]);
 
@@ -214,7 +207,7 @@ export function StudentManagement() {
                 <p className="text-label text-muted-foreground mt-1">维护班级学生名单与账号状态。</p>
             </div>
 
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-3 gap-4">
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
@@ -234,17 +227,6 @@ export function StudentManagement() {
                         </div>
                         <IconTile intent="success">
                             <CheckCircle2 className="w-5 h-5" />
-                        </IconTile>
-                    </CardContent>
-                </Card>
-                <Card className="transition-colors hover:border-input">
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已锁定</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{summary.locked}</p>
-                        </div>
-                        <IconTile intent="warning">
-                            <LockKeyhole className="w-5 h-5" />
                         </IconTile>
                     </CardContent>
                 </Card>

@@ -30,16 +30,11 @@ export const admin = pgTable(
         id: bigint("id", { mode: "number" }).generatedByDefaultAsIdentity().primaryKey(),
         username: citext("username").notNull().unique(),
         password: varchar("password", { length: 255 }).notNull(),
-        isFirstLogin: smallint("is_first_login").notNull().default(1),
-        loginFailCount: smallint("login_fail_count").notNull().default(0),
-        lockedUntil: timestamp("locked_until", { mode: "date", withTimezone: true }),
         createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
         updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     },
     (table) => ({
         usernameLength: check("admin_ck_username_length", sql`char_length(${table.username}) <= 50`),
-        firstLoginCheck: check("admin_ck_first_login", sql`${table.isFirstLogin} in (0, 1)`),
-        loginFailCountCheck: check("admin_ck_login_fail_count", sql`${table.loginFailCount} >= 0`),
     }),
 );
 
@@ -50,9 +45,6 @@ export const teacher = pgTable(
         employeeId: citext("employee_id").notNull().unique(),
         name: varchar("name", { length: 100 }).notNull(),
         password: varchar("password", { length: 255 }).notNull(),
-        isFirstLogin: smallint("is_first_login").notNull().default(1),
-        loginFailCount: smallint("login_fail_count").notNull().default(0),
-        lockedUntil: timestamp("locked_until", { mode: "date", withTimezone: true }),
         status: smallint("status").notNull().default(1),
         createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
         updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
@@ -61,8 +53,6 @@ export const teacher = pgTable(
         statusIdx: index("teacher_idx_status").on(table.status),
         employeeIdLength: check("teacher_ck_employee_id_length", sql`char_length(${table.employeeId}) <= 50`),
         statusCheck: check("teacher_ck_status_value", sql`${table.status} in (0, 1)`),
-        firstLoginCheck: check("teacher_ck_first_login", sql`${table.isFirstLogin} in (0, 1)`),
-        loginFailCountCheck: check("teacher_ck_login_fail_count", sql`${table.loginFailCount} >= 0`),
     }),
 );
 
@@ -74,9 +64,6 @@ export const student = pgTable(
         name: varchar("name", { length: 100 }).notNull(),
         email: varchar("email", { length: 120 }),
         password: varchar("password", { length: 255 }).notNull(),
-        isFirstLogin: smallint("is_first_login").notNull().default(1),
-        loginFailCount: smallint("login_fail_count").notNull().default(0),
-        lockedUntil: timestamp("locked_until", { mode: "date", withTimezone: true }),
         classId: bigint("class_id", { mode: "number" }).notNull().references(() => class_.id),
         status: smallint("status").notNull().default(1),
         deletedAt: timestamp("deleted_at", { mode: "date", withTimezone: true }),
@@ -89,8 +76,6 @@ export const student = pgTable(
         deletedIdx: index("student_idx_deleted").on(table.deletedAt),
         studentIdLength: check("student_ck_student_id_length", sql`char_length(${table.studentId}) <= 50`),
         statusCheck: check("student_ck_status_value", sql`${table.status} in (0, 1)`),
-        firstLoginCheck: check("student_ck_first_login", sql`${table.isFirstLogin} in (0, 1)`),
-        loginFailCountCheck: check("student_ck_login_fail_count", sql`${table.loginFailCount} >= 0`),
     }),
 );
 

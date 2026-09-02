@@ -13,7 +13,6 @@ import {
  * 开启后：登录页使用默认 seed 的演示账号，访客打开即可登录。
  * 与 DEV_AUTH_MODE 的区别：
  * - 学生账号由受保护的 demo-only 服务端端点随机选择；教师与管理员保持固定；
- * - 管理员跳过首次改密，教师和学生仍保留各自的账号门禁；
  * - `bun run dev` 的浏览器 bundle 没有 process 全局，
  *   readBundledEnv 走 catch 分支恒为关闭（开发预填由 DEV_AUTH_MODE 提供，账号相同）。
  *
@@ -39,21 +38,11 @@ function readBundledEnv(): Record<string, string | undefined> {
 
 export const DEMO_MODE = resolveDemoMode(readBundledEnv());
 
-export function shouldRequireAdminPasswordChange(
-    isFirstLogin: number,
-    modes: { devAuthMode: boolean; demoMode: boolean },
-) {
-    return !modes.devAuthMode && !modes.demoMode && isFirstLogin === 1;
-}
-
 /** 静态学生值仅是 demo API 不可用时的回退；正常 demo 刷新会随机替换。 */
 export const DEMO_STUDENT_ID = DEV_STUDENT_ID;
 export const DEMO_STUDENT_PASSWORD = DEV_STUDENT_PASSWORD;
 export const DEMO_TEACHER_ID = DEV_TEACHER_ID;
 export const DEMO_TEACHER_PASSWORD = DEV_TEACHER_PASSWORD;
 export const DEMO_ADMIN_USERNAME = DEV_ADMIN_USERNAME;
-/**
- * 演示库应使用 `bun run db:reset:demo` 初始化。服务端运行时的 DEMO_MODE
- * 同样会关闭管理员首次改密门禁。
- */
+/** 演示库应使用 `bun run db:reset:demo` 初始化。 */
 export const DEMO_ADMIN_PASSWORD = DEV_ADMIN_PASSWORD;

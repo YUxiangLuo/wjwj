@@ -7,11 +7,10 @@ function withClassId(request: Request, classId: string) {
     return request;
 }
 
-test("teacher student list exposes temporary lock state", async () => {
-    const lockedUntil = new Date("2099-01-01T00:00:00.000Z");
+test("teacher student list omits removed lock state", async () => {
     const { db, operations } = createMockDb({ select: [
         [{ id: 1 }],
-        [{ id: 18, studentId: "S018", name: "锁定学生", email: null, status: 1, lockedUntil }],
+        [{ id: 18, studentId: "S018", name: "普通学生", email: null, status: 1 }],
     ] });
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => createTeacherAuthModuleMock());
@@ -23,11 +22,11 @@ test("teacher student list exposes temporary lock state", async () => {
     ));
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
-        data: [{ studentId: "S018", status: 1, lockedUntil: lockedUntil.toISOString() }],
+        data: [{ studentId: "S018", status: 1 }],
     });
 
     const selections = operations
         .filter((operation) => operation.kind === "select")
         .map((operation) => operation.selection as Record<string, unknown>);
-    expect(selections[1]).toHaveProperty("lockedUntil");
+    expect(selections[1]).not.toHaveProperty("lockedUntil");
 });

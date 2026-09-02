@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { ArrowLeft, BarChart3, KeyRound, LogOut, User } from "lucide-react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -17,7 +17,6 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { DEV_AUTH_MODE } from "@/lib/dev-mode";
 import { STUDENT_PASSWORD_POLICY } from "@/lib/password-policy";
 import { usePasswordChange } from "@/hooks/usePasswordChange";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
@@ -56,12 +55,6 @@ function StudentAppContent() {
             setShowPassword(false);
         },
     });
-    const mustChangePassword = !DEV_AUTH_MODE && currentUser?.isFirstLogin === 1;
-
-    useEffect(() => {
-        if (mustChangePassword) setShowPassword(true);
-    }, [mustChangePassword]);
-
     if (isLoading) return <LoadingScreen />;
     if (isLogin) return currentUser ? <Navigate to="/" replace /> : <Login />;
     if (!currentUser) return <Navigate to="/login" replace />;
@@ -130,9 +123,7 @@ function StudentAppContent() {
             </header>
 
             <main id="main-content" tabIndex={-1} className="mx-auto max-w-7xl py-8 px-8">
-                {mustChangePassword ? (
-                    <div className="grid min-h-[60vh] place-items-center text-label text-muted-foreground">请先修改初始密码后再开始实验。</div>
-                ) : <Suspense fallback={<LoadingScreen />}><Routes>
+                <Suspense fallback={<LoadingScreen />}><Routes>
                         <Route index element={<TaskHall />} />
                         <Route path="task/:taskId" element={<TopicDetails />} />
                         <Route path="task/:taskId/experiment" element={<ExperimentLayout />} />
@@ -140,15 +131,14 @@ function StudentAppContent() {
                         <Route path="task/:taskId/result" element={<SubmissionDetailPage />} />
                         <Route path="profile" element={<Profile />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes></Suspense>}
+                    </Routes></Suspense>
             </main>
 
             <PasswordChangeDialog
-                open={mustChangePassword || showPassword}
-                onOpenChange={(open) => { if (!mustChangePassword) setShowPassword(open); }}
-                allowClose={!mustChangePassword}
-                title={mustChangePassword ? "首次登录请修改密码" : "修改密码"}
-                description={mustChangePassword ? "当前使用初始或重置密码，设置新密码后才能进入实验。" : "输入当前密码并设置新密码。"}
+                open={showPassword}
+                onOpenChange={setShowPassword}
+                title="修改密码"
+                description="输入当前密码并设置新密码。"
                 form={passwordChange.form}
                 onFieldChange={passwordChange.setField}
                 error={passwordChange.error}

@@ -1,8 +1,7 @@
-import { and, count, desc, eq, gt, ilike, inArray, isNull, lte, or } from "drizzle-orm";
+import { and, count, desc, eq, ilike, inArray, isNull, or } from "drizzle-orm";
 import { db } from "../../db";
 import { announcement, class_, experiment, semester, student, task, teacher, topic } from "../../db/schema";
 import { experimentProgress } from "../../lib/experiment-progress";
-import { generateTemporaryPassword } from "../../lib/temporary-password";
 import { error, getPositiveRouteId, getSearchParams, json, parseBody, parsePositiveInteger, stringValue } from "../../server/http";
 import { hashPassword } from "../../server/password-work";
 import type { RouteDefinition } from "../../server/route-types";
@@ -132,12 +131,11 @@ const teacherRoutes: RouteDefinition = {
         if ((await db.select({ id: teacher.id }).from(teacher).where(eq(teacher.employeeId, employeeId))).length > 0) {
             return error("教师工号已存在", "DUPLICATE_ID", 409);
         }
-        const temporaryPassword = generateTemporaryPassword();
         const [created] = await db
             .insert(teacher)
-            .values({ employeeId, name, password: await hashPassword(temporaryPassword), isFirstLogin: 1 })
+            .values({ employeeId, name, password: await hashPassword(employeeId) })
             .returning({ id: teacher.id });
-        return json({ id: created!.id, temporaryPassword }, 201);
+        return json({ id: created!.id }, 201);
     },
 };
 
@@ -179,13 +177,12 @@ const teacherResetPasswordRoutes: RouteDefinition = {
         if (!id) return error("无效的教师ID", "INVALID_ID");
         const [row] = await db.select().from(teacher).where(eq(teacher.id, id));
         if (!row) return error("教师不存在", "NOT_FOUND", 404);
-        const temporaryPassword = generateTemporaryPassword();
         await db
             .update(teacher)
-            .set({ password: await hashPassword(temporaryPassword), isFirstLogin: 1, loginFailCount: 0, lockedUntil: null, updatedAt: new Date() })
+            .set({ password: await hashPassword(row.employeeId), updatedAt: new Date() })
             .where(eq(teacher.id, id));
         await clearUserSessionsForUser(TEACHER_USER_TYPE, id);
-        return json({ success: true, temporaryPassword });
+        return json({ success: true });
     },
 };
 
@@ -294,7 +291,7 @@ const studentRoutes: RouteDefinition = {
         if (rawClassId && !classId) return error("班级筛选无效", "INVALID_PARAM", 400);
         const search = (params.get("search") ?? "").trim().slice(0, 100);
         const accountStatus = params.get("status") ?? "all";
-        if (!(["all", "normal", "locked", "disabled"] as const).includes(accountStatus as "all" | "normal" | "locked" | "disabled")) {
+        if (!(["all", "normal", "disabled"] as const).includes(accountStatus as "all" | "normal" | "disabled")) {
             return error("学生状态筛选无效", "INVALID_PARAM", 400);
         }
         // 兼容：未传分页参数时保持旧版全量数组响应。
@@ -311,14 +308,8 @@ const studentRoutes: RouteDefinition = {
                 )!,
             );
         }
-        // 与 lib/account-state.ts 语义一致：停用 / 锁定中 / 正常。
-        const now = new Date();
         if (accountStatus === "disabled") conditions.push(eq(student.status, 0));
-        if (accountStatus === "locked") conditions.push(and(eq(student.status, 1), gt(student.lockedUntil, now))!);
-        if (accountStatus === "normal") conditions.push(and(
-            eq(student.status, 1),
-            or(isNull(student.lockedUntil), lte(student.lockedUntil, now))!,
-        )!);
+        if (accountStatus === "normal") conditions.push(eq(student.status, 1));
         const baseQuery = db
             .select({
                 id: student.id,
@@ -327,7 +318,6 @@ const studentRoutes: RouteDefinition = {
                 classId: student.classId,
                 className: class_.name,
                 status: student.status,
-                lockedUntil: student.lockedUntil,
                 createdAt: student.createdAt,
             })
             .from(student)
@@ -423,13 +413,12 @@ const studentResetPasswordRoutes: RouteDefinition = {
         if (!id) return error("无效的学生ID", "INVALID_ID");
         const [row] = await db.select().from(student).where(and(eq(student.id, id), isNull(student.deletedAt)));
         if (!row) return error("学生不存在", "NOT_FOUND", 404);
-        const temporaryPassword = generateTemporaryPassword();
         await db
             .update(student)
-            .set({ password: await hashPassword(temporaryPassword), isFirstLogin: 1, loginFailCount: 0, lockedUntil: null, updatedAt: new Date() })
+            .set({ password: await hashPassword(row.studentId), updatedAt: new Date() })
             .where(eq(student.id, id));
         await clearUserSessionsForUser(STUDENT_USER_TYPE, id);
-        return json({ success: true, temporaryPassword });
+        return json({ success: true });
     },
 };
 

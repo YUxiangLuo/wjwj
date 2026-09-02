@@ -7,11 +7,12 @@ overview and seed accounts are in [README.md](README.md).
 Active tables: `admin`, `teacher`, `student`, `semester`, `class`,
 `topic`, `topic_attachment`, `task`, `experiment`, `sampling_attempt`,
 `announcement`, `audit_event`, `user_session`. Migrations live in `drizzle/postgresql`
-(`0000`–`0009`). Migration `0005` adds database-level status/range checks
+(`0000`–`0010`). Migration `0005` adds database-level status/range checks
 and guarantees that at most one semester is current; `0006` adds the compact
 sampling-attempt audit log; `0007` adds experiment-template sampling policies;
 `0008` expands attachment MIME storage for standards-compliant DOCX types;
-`0009` adds immutable business audit events for grading and rejection history.
+`0009` adds immutable business audit events for grading and rejection history;
+`0010` removes unused first-login and login-lockout state from all account tables.
 
 ## Create the database
 
@@ -47,8 +48,9 @@ indices. The main mean/PPS task covers all eight teacher progress buckets. The
 four research scenarios cover mean and proportion targets, person and service-
 period units of analysis, multiple strata, and both eligible and unavailable
 PPS size fields. `SEED_NOW` optionally fixes the relative-time anchor, and
-`SEED_ADMIN_PASSWORD` overrides the generated admin password. `db:seed:demo`
-also marks the administrator demo-ready and supplies the fixed demo password.
+`SEED_ADMIN_PASSWORD` overrides the generated admin password. In the demo
+fixture, every student password equals the student ID and every teacher password
+equals the employee ID; the administrator keeps its independently configured password.
 See the exact credentials/personas in [README.md](README.md). Seed is not
 applied by `db:migrate`.
 

@@ -534,27 +534,21 @@ async function seed() {
     await db.insert(admin).values({
         username: "admin",
         password: await Bun.password.hash(adminInitialPassword),
-        isFirstLogin: demoSeedMode ? 0 : 1,
-        loginFailCount: 0,
-        lockedUntil: null,
         createdAt: anchor,
         updatedAt: anchor,
     });
 
     const teacherSeeds = [
-        { employeeId: "T001", name: "张岚", password: "Teacher!2026", isFirstLogin: 0, status: 1 },
-        { employeeId: "T002", name: "李文博", password: "T002", isFirstLogin: 1, status: 1 },
-        { employeeId: "T003", name: "周妍", password: "Research!003", isFirstLogin: 0, status: 1 },
-        { employeeId: "T004", name: "停用教师", password: "T004", isFirstLogin: 1, status: 0 },
+        { employeeId: "T001", name: "张岚", status: 1 },
+        { employeeId: "T002", name: "李文博", status: 1 },
+        { employeeId: "T003", name: "周妍", status: 1 },
+        { employeeId: "T004", name: "停用教师", status: 0 },
     ];
     const teacherRows = await db.insert(teacher).values(await Promise.all(teacherSeeds.map(async (item) => ({
         employeeId: item.employeeId,
         name: item.name,
-        password: await Bun.password.hash(item.password),
-        isFirstLogin: item.isFirstLogin,
+        password: await Bun.password.hash(item.employeeId),
         status: item.status,
-        loginFailCount: 0,
-        lockedUntil: null,
         createdAt: anchor,
         updatedAt: anchor,
     })))).returning();
@@ -578,32 +572,26 @@ async function seed() {
         ...DEMO_STUDENT_ACCOUNTS.map((account) => ({
             ...account,
             className: DOGFOOD_NAMES.mainClass,
-            isFirstLogin: 0,
             status: 1,
-            loginFailCount: 0,
-            lockedUntil: null,
             deletedAt: null,
         })),
-        { studentId: "S011", name: "周宁", password: "S011", className: DOGFOOD_NAMES.mainClass, isFirstLogin: 1, status: 1, loginFailCount: 0, lockedUntil: null, deletedAt: null },
-        { studentId: "S018", name: "锁定学生", password: "S018", className: DOGFOOD_NAMES.mainClass, isFirstLogin: 1, status: 1, loginFailCount: 5, lockedUntil: day(1), deletedAt: null },
-        { studentId: "S019", name: "停用学生", password: "S019", className: DOGFOOD_NAMES.mainClass, isFirstLogin: 1, status: 0, loginFailCount: 0, lockedUntil: null, deletedAt: null },
-        { studentId: "S020", name: "已删学生", password: "S020", className: DOGFOOD_NAMES.mainClass, isFirstLogin: 1, status: 0, loginFailCount: 0, lockedUntil: null, deletedAt: day(-2) },
-        { studentId: "P101", name: "赵一凡", password: "Research!101", className: DOGFOOD_NAMES.secondaryClass, isFirstLogin: 0, status: 1, loginFailCount: 0, lockedUntil: null, deletedAt: null },
-        { studentId: "P102", name: "钱思远", password: "Research!102", className: DOGFOOD_NAMES.secondaryClass, isFirstLogin: 0, status: 1, loginFailCount: 0, lockedUntil: null, deletedAt: null },
-        { studentId: "P103", name: "孙若溪", password: "Research!103", className: DOGFOOD_NAMES.secondaryClass, isFirstLogin: 0, status: 1, loginFailCount: 0, lockedUntil: null, deletedAt: null },
-        { studentId: "P104", name: "李安然", password: "Research!104", className: DOGFOOD_NAMES.secondaryClass, isFirstLogin: 0, status: 1, loginFailCount: 0, lockedUntil: null, deletedAt: null },
-        { studentId: "P105", name: "周嘉禾", password: "Research!105", className: DOGFOOD_NAMES.secondaryClass, isFirstLogin: 0, status: 1, loginFailCount: 0, lockedUntil: null, deletedAt: null },
-        { studentId: "P106", name: "吴书宁", password: "Research!106", className: DOGFOOD_NAMES.secondaryClass, isFirstLogin: 0, status: 1, loginFailCount: 0, lockedUntil: null, deletedAt: null },
+        { studentId: "S011", name: "周宁", className: DOGFOOD_NAMES.mainClass, status: 1, deletedAt: null },
+        { studentId: "S018", name: "备用学生", className: DOGFOOD_NAMES.mainClass, status: 1, deletedAt: null },
+        { studentId: "S019", name: "停用学生", className: DOGFOOD_NAMES.mainClass, status: 0, deletedAt: null },
+        { studentId: "S020", name: "已删学生", className: DOGFOOD_NAMES.mainClass, status: 0, deletedAt: day(-2) },
+        { studentId: "P101", name: "赵一凡", className: DOGFOOD_NAMES.secondaryClass, status: 1, deletedAt: null },
+        { studentId: "P102", name: "钱思远", className: DOGFOOD_NAMES.secondaryClass, status: 1, deletedAt: null },
+        { studentId: "P103", name: "孙若溪", className: DOGFOOD_NAMES.secondaryClass, status: 1, deletedAt: null },
+        { studentId: "P104", name: "李安然", className: DOGFOOD_NAMES.secondaryClass, status: 1, deletedAt: null },
+        { studentId: "P105", name: "周嘉禾", className: DOGFOOD_NAMES.secondaryClass, status: 1, deletedAt: null },
+        { studentId: "P106", name: "吴书宁", className: DOGFOOD_NAMES.secondaryClass, status: 1, deletedAt: null },
     ];
     const studentRows = await db.insert(student).values(await Promise.all(studentSeeds.map(async (item) => ({
         studentId: item.studentId,
         name: item.name,
         email: `${item.studentId.toLowerCase()}@example.edu`,
-        password: await Bun.password.hash(item.password),
-        isFirstLogin: item.isFirstLogin,
+        password: await Bun.password.hash(item.studentId),
         status: item.status,
-        loginFailCount: item.loginFailCount,
-        lockedUntil: item.lockedUntil,
         deletedAt: item.deletedAt,
         classId: classByName[item.className]!.id,
         createdAt: day(-40),
@@ -815,7 +803,7 @@ async function seed() {
     console.log("Seed completed.");
     console.log(`Counts: ${Object.entries(DOGFOOD_COUNTS).map(([key, value]) => `${key}=${value}`).join(" ")}`);
     console.log("Admin: admin (demo-ready; password configured by the explicit demo seed command)");
-    console.log("Teachers: T001 / Teacher!2026 (fixed demo); T002 / T002 (first-login); T003 / Research!003; T004 disabled");
+    console.log("Teachers: T001 / T001 (fixed demo); T002 / T002; T003 / T003; T004 disabled");
     console.log(`Random demo students: ${DEMO_STUDENT_ACCOUNTS.map((account) => account.studentId).join(", ")} in ${DOGFOOD_NAMES.mainClass}`);
 }
 

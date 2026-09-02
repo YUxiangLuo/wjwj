@@ -6,8 +6,8 @@
  * 普通生产浏览器包。
  */
 export const PREFILL_STUDENT_ID = "S010";
-export const PREFILL_STUDENT_PASSWORD = "Student!010";
+export const PREFILL_STUDENT_PASSWORD = PREFILL_STUDENT_ID;
 export const PREFILL_TEACHER_ID = "T001";
-export const PREFILL_TEACHER_PASSWORD = "Teacher!2026";
+export const PREFILL_TEACHER_PASSWORD = PREFILL_TEACHER_ID;
 export const PREFILL_ADMIN_USERNAME = "admin";
 export const PREFILL_ADMIN_PASSWORD = "admin123";

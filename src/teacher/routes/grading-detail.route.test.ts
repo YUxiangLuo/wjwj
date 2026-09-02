@@ -111,7 +111,7 @@ test("teacher sampling export returns every row from the immutable submission sn
     expect(csv).not.toContain("当前值");
 });
 
-test("grading detail marks archived submissions as read-only when includeArchived=1", async () => {
+test("grading detail marks a prior-class submission as archived when includeArchived=1", async () => {
     const { db } = createMockDb({ select: [
         [{
             id: 99, version: 7, studentName: "已删学生", studentId: "S020", className: "统计一班", topic: "当前课题", topicName: "当前课题", topicDesc: "描述",
@@ -120,7 +120,8 @@ test("grading detail marks archived submissions as read-only when includeArchive
             reportContent: "报告", samplePlan: null, questionnaire: null, samplingResults: null,
             scoreQuestionnaire: "80", scoreProcess: "90", scoreReport: "100", totalScore: "88.00",
             teacherComment: null, rejectReason: null, gradedAt: new Date(), gradedByName: "张老师",
-            studentDeletedAt: new Date("2026-08-01T00:00:00Z"), taskDeletedAt: null, topicDeletedAt: null,
+            studentDeletedAt: null, taskDeletedAt: null, topicDeletedAt: null,
+            studentClassId: 4, taskClassId: 3,
         }],
         [],
     ] });
@@ -134,4 +135,6 @@ test("grading detail marks archived submissions as read-only when includeArchive
     expect(payload.data).not.toHaveProperty("studentDeletedAt");
     expect(payload.data).not.toHaveProperty("taskDeletedAt");
     expect(payload.data).not.toHaveProperty("topicDeletedAt");
+    expect(payload.data).not.toHaveProperty("studentClassId");
+    expect(payload.data).not.toHaveProperty("taskClassId");
 });

@@ -10,7 +10,7 @@ import { registerLongRunningProcessSignals } from "./server/process-signals";
 import { getTemplateContentDisposition, getTemplateContentType, resolveTemplatePath } from "./server/template-files";
 import { closeDatabase } from "./db";
 import { acceptsGzip, createGzipCache } from "./server/asset-gzip";
-import { attachClientIp, buildResponseHeaders, handleServerError, validateApiRequest, withPrivateApiHeaders } from "./server/http";
+import { buildResponseHeaders, handleServerError, validateApiRequest, withPrivateApiHeaders } from "./server/http";
 import type { RouteDefinition, RouteHandler } from "./server/route-types";
 import { resolveDemoMode } from "./lib/demo-mode";
 import { createDemoStudentRoutes } from "./server/demo-student";
@@ -95,7 +95,6 @@ const productionAssetRoutes: Record<string, typeof productionAssetRoute> = isPro
 function secureRouteHandler(handler: RouteHandler | undefined): RouteHandler | undefined {
   if (!handler) return undefined;
   return async (req) => {
-    attachClientIp(req, server.requestIP(req)?.address);
     const rejected = validateApiRequest(req);
     return withPrivateApiHeaders(rejected ?? await handler(req));
   };

@@ -8,8 +8,6 @@ import { LoadingStatus } from "@/components/LoadingStatus";
 import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
 import { WorkspaceShell } from "@/components/WorkspaceShell";
 import { ADMIN_PASSWORD_POLICY } from "@/lib/password-policy";
-import { DEV_AUTH_MODE } from "@/lib/dev-mode";
-import { DEMO_MODE, shouldRequireAdminPasswordChange } from "@/lib/demo-mode";
 import { usePasswordChange } from "@/hooks/usePasswordChange";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { AUTH_EXPIRED_EVENT } from "@/lib/auth-expired";
@@ -37,19 +35,14 @@ const menu = [
     { path: "/announcement", label: "公告管理", icon: Megaphone },
 ];
 
-function AdminWorkspace({ user, onLogout, onPasswordChanged }: { user: AdminUser; onLogout: () => Promise<void>; onPasswordChanged: () => void }) {
+function AdminWorkspace({ user, onLogout }: { user: AdminUser; onLogout: () => Promise<void> }) {
     const location = useLocation();
     const [passwordOpen, setPasswordOpen] = useState(false);
-    const mustChangePassword = shouldRequireAdminPasswordChange(user.isFirstLogin, {
-        devAuthMode: DEV_AUTH_MODE,
-        demoMode: DEMO_MODE,
-    });
     const passwordChange = usePasswordChange({
         policy: ADMIN_PASSWORD_POLICY,
         forbiddenSubstrings: [user.username],
         onSubmit: authApi.changePassword,
         onSuccess: () => {
-            onPasswordChanged();
             setPasswordOpen(false);
         },
     });
@@ -70,9 +63,7 @@ function AdminWorkspace({ user, onLogout, onPasswordChanged }: { user: AdminUser
                     <div className="flex items-center gap-1"><IconButton aria-label="修改密码" variant="ghost" title="修改密码" onClick={() => { passwordChange.reset(); setPasswordOpen(true); }}><KeyRound className="h-5 w-5" /></IconButton><IconButton aria-label="退出登录" variant="ghost" title="退出登录" className="text-destructive hover:bg-destructive-muted hover:text-destructive" onClick={() => void onLogout()}><LogOut className="h-5 w-5" /></IconButton></div>
                 }
             >
-                {mustChangePassword ? (
-                    <div className="grid min-h-[60vh] place-items-center text-label text-muted-foreground">请先修改初始密码后再使用管理功能。</div>
-                ) : <Suspense fallback={<RouteLoading />}><Routes>
+                <Suspense fallback={<RouteLoading />}><Routes>
                         <Route index element={<Dashboard />} />
                         <Route path="semester" element={<SemesterManagement />} />
                         <Route path="teacher" element={<TeacherManagement />} />
@@ -80,9 +71,9 @@ function AdminWorkspace({ user, onLogout, onPasswordChanged }: { user: AdminUser
                         <Route path="student" element={<StudentManagement />} />
                         <Route path="announcement" element={<AnnouncementManagement />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes></Suspense>}
+                    </Routes></Suspense>
             </WorkspaceShell>
-            <PasswordChangeDialog open={mustChangePassword || passwordOpen} onOpenChange={(open) => { if (!mustChangePassword) setPasswordOpen(open); }} allowClose={!mustChangePassword} title={mustChangePassword ? "首次登录请修改密码" : "修改密码"} description={mustChangePassword ? "当前使用初始密码，设置新密码后才能进入管理后台。" : "输入当前密码并设置新密码。"} form={passwordChange.form} onFieldChange={passwordChange.setField} error={passwordChange.error} saving={passwordChange.saving} onSubmit={passwordChange.submit} submitLabel="保存" />
+            <PasswordChangeDialog open={passwordOpen} onOpenChange={setPasswordOpen} title="修改密码" description="输入当前密码并设置新密码。" form={passwordChange.form} onFieldChange={passwordChange.setField} error={passwordChange.error} saving={passwordChange.saving} onSubmit={passwordChange.submit} submitLabel="保存" />
             <AppToaster />
         </>
     );
@@ -110,7 +101,6 @@ export function AdminApp() {
     if (!user) return <Navigate to="/login" replace />;
     return <AdminWorkspace
         user={user}
-        onPasswordChanged={() => setUser((current) => current ? { ...current, isFirstLogin: 0 } : current)}
         onLogout={async () => { await authApi.logout(); setUser(null); navigate("/login", { replace: true }); }}
     />;
 }

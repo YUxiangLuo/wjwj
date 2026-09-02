@@ -2,10 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../../db";
 import { teacher } from "../../db/schema";
 import { TEACHER_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
-import { DEV_AUTH_MODE } from "../../lib/dev-mode";
-import { buildSessionCookie, clearSessionCookie, error, getClientIp, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
-import { loginAttemptThrottle } from "../../server/login-throttle";
-import { buildAtomicFailedLoginUpdate, failedLoginMessage, isLoginLocked, nextFailedLoginState } from "../../server/login-lockout";
+import { buildSessionCookie, clearSessionCookie, error, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
 import { hashPassword, verifyPassword } from "../../server/password-work";
 import type { RouteDefinition, RouteHandler } from "../../server/route-types";
 import {
@@ -20,23 +17,17 @@ export const TEACHER_USER_TYPE = 2;
 export const TEACHER_SESSION_COOKIE = "teacher_session";
 
 const TEACHER_AUTH_CACHE = Symbol("teacher_auth");
-const DUMMY_PASSWORD_HASH = "$argon2id$v=19$m=65536,t=2,p=1$w/hP7Qg4tzkpJ83osQKCIhfaHH+AXgyU4icxg2s1sPE$PhYwmBc6O4HkfHsMpS1CoAMXJAGNfXo/vlEUxw0c+zU";
 
 export interface AuthUser {
     id: number;
     type: "teacher";
     name: string;
     employeeId: string;
-    isFirstLogin: number;
 }
 
 interface TeacherAuthResult {
     user: AuthUser | null;
     error: Response | null;
-}
-
-export interface TeacherAuthOptions {
-    allowFirstLogin?: boolean;
 }
 
 type TeacherRequestContext = Request & { [TEACHER_AUTH_CACHE]?: TeacherAuthResult };
@@ -57,28 +48,15 @@ export function getPrimaryTeacherIdOrThrow(req: Request) {
     return getTeacherUser(req).id;
 }
 
-function applyTeacherPasswordGate(result: TeacherAuthResult, options: TeacherAuthOptions): TeacherAuthResult {
-    if (!DEV_AUTH_MODE && result.user?.isFirstLogin === 1 && !options.allowFirstLogin) {
-        return {
-            user: null,
-            error: error("首次登录或密码已重置，请先修改密码", "PASSWORD_CHANGE_REQUIRED", 403),
-        };
-    }
-    return result;
-}
-
-export async function requireTeacherAuth(
-    req: Request,
-    options: TeacherAuthOptions = {},
-): Promise<TeacherAuthResult> {
+export async function requireTeacherAuth(req: Request): Promise<TeacherAuthResult> {
     const cached = (req as TeacherRequestContext)[TEACHER_AUTH_CACHE];
-    if (cached) return applyTeacherPasswordGate(cached, options);
+    if (cached) return cached;
 
     const currentSession = await loadActiveUserSession(req, TEACHER_SESSION_COOKIE, [TEACHER_USER_TYPE]);
     if (!currentSession.session) {
         const result = { user: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
         (req as TeacherRequestContext)[TEACHER_AUTH_CACHE] = result;
-        return applyTeacherPasswordGate(result, options);
+        return result;
     }
 
     const [row] = await db
@@ -87,7 +65,6 @@ export async function requireTeacherAuth(
             employeeId: teacher.employeeId,
             name: teacher.name,
             status: teacher.status,
-            isFirstLogin: teacher.isFirstLogin,
         })
         .from(teacher)
         .where(eq(teacher.id, currentSession.session.userId));
@@ -104,31 +81,30 @@ export async function requireTeacherAuth(
                 type: "teacher",
                 name: row.name,
                 employeeId: row.employeeId,
-                isFirstLogin: row.isFirstLogin,
             },
             error: null,
         };
     }
 
     (req as TeacherRequestContext)[TEACHER_AUTH_CACHE] = result;
-    return applyTeacherPasswordGate(result, options);
+    return result;
 }
 
-function wrapRoute(handler: RouteHandler | undefined, options: TeacherAuthOptions): RouteHandler | undefined {
+function wrapRoute(handler: RouteHandler | undefined): RouteHandler | undefined {
     if (!handler) return undefined;
     return async (req) => {
-        const auth = await requireTeacherAuth(req, options);
+        const auth = await requireTeacherAuth(req);
         if (auth.error) return auth.error;
         return handler(req);
     };
 }
 
-export function withTeacherAuth(routes: RouteDefinition, options: TeacherAuthOptions = {}): RouteDefinition {
+export function withTeacherAuth(routes: RouteDefinition): RouteDefinition {
     return {
-        GET: wrapRoute(routes.GET, options),
-        POST: wrapRoute(routes.POST, options),
-        PUT: wrapRoute(routes.PUT, options),
-        DELETE: wrapRoute(routes.DELETE, options),
+        GET: wrapRoute(routes.GET),
+        POST: wrapRoute(routes.POST),
+        PUT: wrapRoute(routes.PUT),
+        DELETE: wrapRoute(routes.DELETE),
     };
 }
 
@@ -138,32 +114,13 @@ const teacherLoginRoutes: RouteDefinition = {
         const employeeId = stringValue(body.employeeId).trim();
         const password = stringValue(body.password);
         if (!employeeId || !password) return error("请输入工号和密码", "VALIDATION_ERROR", 400);
-        const clientIp = getClientIp(req);
-        if (!loginAttemptThrottle.consume(clientIp, "teacher", employeeId)) {
-            return error("登录请求过于频繁，请稍后重试", "RATE_LIMITED", 429);
-        }
-
         const [row] = await db.select().from(teacher).where(eq(teacher.employeeId, employeeId));
-        if (row && (row.status !== 1 || isLoginLocked(row))) {
+        if (!row || row.status !== 1) {
             return error("工号或密码错误", "INVALID_CREDENTIALS", 401);
         }
-        const valid = row
-            ? await verifyPassword(password, row.password)
-            : await verifyPassword(password, DUMMY_PASSWORD_HASH).then(() => false).catch(() => false);
-        if (!row) {
+        if (!(await verifyPassword(password, row.password))) {
             return error("工号或密码错误", "INVALID_CREDENTIALS", 401);
         }
-        if (!valid) {
-            const failure = nextFailedLoginState(row);
-            await db
-                .update(teacher)
-                .set(buildAtomicFailedLoginUpdate(teacher))
-                .where(eq(teacher.id, row.id));
-            return error(failedLoginMessage(failure, "工号或密码错误"), "INVALID_CREDENTIALS", 401);
-        }
-
-        await db.update(teacher).set({ loginFailCount: 0, lockedUntil: null }).where(eq(teacher.id, row.id));
-        loginAttemptThrottle.clear(clientIp, "teacher", employeeId);
 
         const { token, expiresAt } = await createUserSession(TEACHER_USER_TYPE, row.id);
         return json(
@@ -173,7 +130,6 @@ const teacherLoginRoutes: RouteDefinition = {
                     type: "teacher",
                     name: row.name,
                     employeeId: row.employeeId,
-                    isFirstLogin: row.isFirstLogin,
                 },
             },
             200,
@@ -225,7 +181,7 @@ const teacherPasswordRoutes: RouteDefinition = {
         if (!readSessionToken(req, TEACHER_SESSION_COOKIE)) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
         await db
             .update(teacher)
-            .set({ password: await hashPassword(newPassword), isFirstLogin: 0, loginFailCount: 0, lockedUntil: null, updatedAt: new Date() })
+            .set({ password: await hashPassword(newPassword), updatedAt: new Date() })
             .where(eq(teacher.id, current.id));
         const { token, expiresAt } = await rotateUserSession(TEACHER_USER_TYPE, current.id);
         return json({ success: true }, 200, {

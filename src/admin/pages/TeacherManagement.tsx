@@ -31,8 +31,8 @@ export function TeacherManagement() {
             : await teacherApi.create({ employeeId: form.employeeId.trim(), name: form.name.trim() });
         if (!response.success) return toast.error(response.error?.message ?? "保存失败");
         setEditing(null); setCreating(false); setForm({ employeeId: "", name: "" });
-        if (!editing && response.data && "temporaryPassword" in response.data) {
-            toast.success(`教师已创建，临时密码：${response.data.temporaryPassword}（仅显示一次）`, { duration: 30_000 });
+        if (!editing) {
+            toast.success("教师已创建，初始密码与工号相同");
         } else {
             toast.success("保存成功");
         }
@@ -40,14 +40,14 @@ export function TeacherManagement() {
     };
     return (
         <Card>
-            <CardHeader className="flex-row items-center justify-between"><div><CardTitle>教师管理</CardTitle><p className="mt-1 text-label text-muted-foreground">新建账号首次登录必须改密；重置后会生成仅显示一次的随机临时密码。</p></div><Button onClick={() => { setCreating(true); setForm({ employeeId: "", name: "" }); }}><Plus className="mr-2 h-4 w-4" />新增教师</Button></CardHeader>
+            <CardHeader className="flex-row items-center justify-between"><div><CardTitle>教师管理</CardTitle><p className="mt-1 text-label text-muted-foreground">新建及重置后的登录密码与教师工号相同，教师也可主动修改密码。</p></div><Button onClick={() => { setCreating(true); setForm({ employeeId: "", name: "" }); }}><Plus className="mr-2 h-4 w-4" />新增教师</Button></CardHeader>
             <CardContent>
                 <div className="mb-4 flex max-w-md gap-2"><Input value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => event.key === "Enter" && void load()} placeholder="搜索工号或姓名" /><IconButton aria-label="搜索教师" title="搜索教师" variant="outline" onClick={() => void load()}><Search className="h-4 w-4" /></IconButton></div>
                 {loading ? <LoadingStatus className="py-12" label="正在加载教师列表" /> : (
                     <Table><TableHeader><TableRow><TableHead>工号</TableHead><TableHead>姓名</TableHead><TableHead>班级数</TableHead><TableHead>状态</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader><TableBody>{rows.length === 0 ? (
                         <TableRow><TableCell colSpan={5} className="py-12 text-center"><div className="flex flex-col items-center gap-3 text-muted-foreground"><Search className="h-6 w-6" /><p>{search.trim() ? `未找到与“${search.trim()}”匹配的教师` : "暂无教师数据"}</p>{search.trim() && <Button variant="outline" size="sm" onClick={() => { setSearch(""); void load(""); }}>清除搜索</Button>}</div></TableCell></TableRow>
                     ) : rows.map((row) => (
-                        <TableRow key={row.id}><TableCell className="font-mono">{row.employeeId}</TableCell><TableCell>{row.name}</TableCell><TableCell>{row.classCount}</TableCell><TableCell><StatusBadge intent={row.status === 1 ? "success" : "neutral"}>{row.status === 1 ? "正常" : "停用"}</StatusBadge></TableCell><TableCell><div className="flex justify-end gap-1"><Button variant="ghost" size="sm" onClick={() => { setEditing(row); setForm({ employeeId: row.employeeId, name: row.name }); }}><Pencil className="mr-1 h-4 w-4" />编辑</Button><Button variant="ghost" size="sm" onClick={async () => { const response = await teacherApi.resetPassword(row.id); response.success && response.data ? toast.success(`临时密码：${response.data.temporaryPassword}（仅显示一次）`, { duration: 30_000 }) : toast.error(response.error?.message); }}><RotateCcw className="mr-1 h-4 w-4" />重置密码</Button><Button variant="ghost" size="sm" className={row.status === 1 ? "text-destructive" : "text-success"} onClick={async () => { const response = await teacherApi.updateStatus(row.id, row.status === 1 ? 0 : 1); if (response.success) void load(); }}>{row.status === 1 ? "停用" : "启用"}</Button></div></TableCell></TableRow>
+                        <TableRow key={row.id}><TableCell className="font-mono">{row.employeeId}</TableCell><TableCell>{row.name}</TableCell><TableCell>{row.classCount}</TableCell><TableCell><StatusBadge intent={row.status === 1 ? "success" : "neutral"}>{row.status === 1 ? "正常" : "停用"}</StatusBadge></TableCell><TableCell><div className="flex justify-end gap-1"><Button variant="ghost" size="sm" onClick={() => { setEditing(row); setForm({ employeeId: row.employeeId, name: row.name }); }}><Pencil className="mr-1 h-4 w-4" />编辑</Button><Button variant="ghost" size="sm" onClick={async () => { const response = await teacherApi.resetPassword(row.id); response.success ? toast.success("密码已重置为工号") : toast.error(response.error?.message); }}><RotateCcw className="mr-1 h-4 w-4" />重置密码</Button><Button variant="ghost" size="sm" className={row.status === 1 ? "text-destructive" : "text-success"} onClick={async () => { const response = await teacherApi.updateStatus(row.id, row.status === 1 ? 0 : 1); if (response.success) void load(); }}>{row.status === 1 ? "停用" : "启用"}</Button></div></TableCell></TableRow>
                     ))}</TableBody></Table>
                 )}
             </CardContent>

@@ -22,18 +22,18 @@ test("student login creates an independent fixed session", async () => {
     const password = "Teaching123!";
     const { module, operations } = await load([[{
         id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1,
-        deletedAt: null, password: await Bun.password.hash(password), isFirstLogin: 0,
+        deletedAt: null, password: await Bun.password.hash(password),
     }]]);
     const response = await module.loginRoutes.POST!(request("POST", { studentId: "S001", password }));
     expect(response.status).toBe(200);
     expect(response.headers.get("Set-Cookie")).toContain("student_session=");
-    expect(await response.json()).toMatchObject({ data: { user: { isFirstLogin: 0 } } });
+    expect(await response.json()).toMatchObject({ data: { user: { studentId: "S001" } } });
     const session = operations.find((item) => item.kind === "insert");
     expect(session?.values).toMatchObject({ userType: 3, userId: 11, expiresAt: expect.any(Date) });
     expect(session?.values).not.toHaveProperty("deviceInfo");
 });
 
-test("student login rejects non-string fields before querying or changing lockout state", async () => {
+test("student login rejects non-string fields before querying", async () => {
     for (const body of [
         { studentId: 123, password: "wrong" },
         { studentId: "S001", password: 123 },
@@ -46,58 +46,32 @@ test("student login rejects non-string fields before querying or changing lockou
     }
 });
 
-test("fifth wrong student password locks the account", async () => {
-    const { module, operations } = await load([[{
+test("wrong student passwords never create lockout state", async () => {
+    const row = {
         id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1,
-        deletedAt: null, password: await Bun.password.hash("Teaching123!"), isFirstLogin: 0,
-        loginFailCount: 4, lockedUntil: null,
-    }]]);
-    const response = await module.loginRoutes.POST!(request("POST", { studentId: "S001", password: "wrong" }));
-    expect(response.status).toBe(401);
-    expect(await response.json()).toMatchObject({
-        error: { code: "INVALID_CREDENTIALS", message: "账号或密码错误" },
-    });
-    expect(operations.find((item) => item.kind === "update")?.set).toMatchObject({
-        loginFailCount: expect.any(SQL),
-        lockedUntil: expect.any(SQL),
-    });
-});
-
-test("already-locked student login rejects before spending another password verification", async () => {
-    const password = "Teaching123!";
-    const passwordHash = await Bun.password.hash(password);
-    const { module, operations } = await load([[{
-        id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1,
-        deletedAt: null, password: passwordHash, isFirstLogin: 0,
-        loginFailCount: 5, lockedUntil: new Date(Date.now() + 60_000),
-    }]]);
-    const originalVerify = Bun.password.verify;
-    const verifySpy = mock((candidate: string, hash: string) => originalVerify(candidate, hash));
-    Bun.password.verify = verifySpy as typeof Bun.password.verify;
-
-    try {
-        const response = await module.loginRoutes.POST!(request("POST", { studentId: "S001", password }));
+        deletedAt: null, password: await Bun.password.hash("S001"),
+    };
+    const { module, operations } = await load(Array.from({ length: 6 }, () => [row]));
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+        const response = await module.loginRoutes.POST!(request("POST", { studentId: "S001", password: "wrong" }));
         expect(response.status).toBe(401);
         expect(await response.json()).toMatchObject({
             error: { code: "INVALID_CREDENTIALS", message: "账号或密码错误" },
         });
-        expect(verifySpy).toHaveBeenCalledTimes(0);
-        expect(operations.some((item) => item.kind === "update")).toBe(false);
-    } finally {
-        Bun.password.verify = originalVerify;
     }
+    expect(operations.some((item) => item.kind === "update")).toBe(false);
 });
 
 test("student me reads the fixed session without extending it", async () => {
     const { module, operations } = await load([
         [{ id: 5, sessionToken: "token", userType: 3, userId: 11, createdAt: new Date(), expiresAt: new Date(Date.now() + 60_000) }],
-        [{ id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1, isFirstLogin: 1 }],
+        [{ id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1 }],
         [{ className: "统计一班" }],
     ]);
     const response = await module.meRoutes.GET!(request("GET", undefined, "student_session=token"));
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
-        data: { studentId: "S001", className: "统计一班", isFirstLogin: 1 },
+        data: { studentId: "S001", className: "统计一班" },
     });
     expect(operations.some((item) => item.kind === "update")).toBe(false);
 });
@@ -114,7 +88,7 @@ test("student password change revokes all old sessions and rotates the cookie", 
     const currentPassword = "Teaching123!";
     const { module, operations } = await load([
         [{ id: 5, sessionToken: "current-token", userType: 3, userId: 11, createdAt: new Date(), expiresAt: new Date(Date.now() + 60_000) }],
-        [{ id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1, isFirstLogin: 1 }],
+        [{ id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1 }],
         [{ id: 11, studentId: "S001", password: await Bun.password.hash(currentPassword) }],
     ]);
 
@@ -126,7 +100,7 @@ test("student password change revokes all old sessions and rotates the cookie", 
 
     expect(response.status).toBe(200);
     const update = operations.find((item) => item.kind === "update");
-    expect(update?.set).toMatchObject({ password: expect.any(String), isFirstLogin: 0, updatedAt: expect.any(Date) });
+    expect(update?.set).toMatchObject({ password: expect.any(String), updatedAt: expect.any(Date) });
     const deletions = operations.filter((item) => item.kind === "delete");
     expect(deletions).toHaveLength(2);
     expect(operations.filter((item) => item.kind === "insert")).toHaveLength(1);
@@ -136,7 +110,7 @@ test("student password change revokes all old sessions and rotates the cookie", 
     expect(revokeQuery.params).toEqual([3, 11]);
 });
 
-test("student protected routes stay locked until the first-login flag is cleared", async () => {
+test("student sessions can access protected routes without a first-login gate", async () => {
     const session = (token: string) => ({
         id: 5,
         sessionToken: token,
@@ -146,18 +120,11 @@ test("student protected routes stay locked until the first-login flag is cleared
         expiresAt: new Date(Date.now() + 60_000),
     });
     const { module } = await load([
-        [session("student-first")],
-        [{ id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1, isFirstLogin: 1 }],
-        [session("student-changed")],
-        [{ id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1, isFirstLogin: 0 }],
+        [session("student-session")],
+        [{ id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1 }],
     ]);
 
-    const locked = await module.requireAuth(request("GET", undefined, "student_session=student-first"));
-    expect(locked.student).toBeNull();
-    expect(locked.error?.status).toBe(403);
-    expect(await locked.error?.json()).toMatchObject({ error: { code: "PASSWORD_CHANGE_REQUIRED" } });
-
-    const unlocked = await module.requireAuth(request("GET", undefined, "student_session=student-changed"));
-    expect(unlocked.error).toBeNull();
-    expect(unlocked.student).toMatchObject({ studentId: "S001", isFirstLogin: 0 });
+    const auth = await module.requireAuth(request("GET", undefined, "student_session=student-session"));
+    expect(auth.error).toBeNull();
+    expect(auth.student).toMatchObject({ studentId: "S001" });
 });

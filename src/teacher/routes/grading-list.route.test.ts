@@ -19,6 +19,8 @@ test("grading list reads current experiment statuses directly", async () => {
             gradedByName: null,
             gradedAt: null,
             submissionSnapshot: { studentName: "提交时学生名", topicName: "提交时课题名" },
+            studentClassId: 3,
+            taskClassId: 3,
         }],
     ] });
     mock.module("../../db", () => ({ db }));
@@ -37,6 +39,7 @@ test("grading list reads current experiment statuses directly", async () => {
     const listQuery = operations.find((item) => item.kind === "select");
     const sql = new PgDialect().sqlToQuery(listQuery?.where as SQL).sql;
     expect(sql).toContain('"student"."deleted_at" is null');
+    expect(sql).toContain('"student"."class_id" = "task"."class_id"');
 });
 
 test("grading list includes archived rows only when requested", async () => {
@@ -48,12 +51,14 @@ test("grading list includes archived rows only when requested", async () => {
                 submittedAt: new Date(), status: "submitted", score: null, gradedByName: null, gradedAt: null,
                 submissionSnapshot: null,
                 studentDeletedAt: null, taskDeletedAt: null, topicDeletedAt: null,
+                studentClassId: 3, taskClassId: 3,
             },
             {
                 id: 8, studentName: "学生乙", studentId: "S002", topic: "课题B", className: "统计一班",
                 submittedAt: new Date(), status: "graded", score: "90.00", gradedByName: "张老师", gradedAt: new Date(),
                 submissionSnapshot: null,
-                studentDeletedAt: null, taskDeletedAt: new Date(), topicDeletedAt: null,
+                studentDeletedAt: null, taskDeletedAt: null, topicDeletedAt: null,
+                studentClassId: 4, taskClassId: 3,
             },
         ],
     ] });
@@ -71,4 +76,5 @@ test("grading list includes archived rows only when requested", async () => {
     const sql = new PgDialect().sqlToQuery(listQuery?.where as SQL).sql;
     expect(sql).not.toContain('"student"."deleted_at" is null');
     expect(sql).not.toContain('"task"."deleted_at" is null');
+    expect(sql).not.toContain('"student"."class_id" = "task"."class_id"');
 });

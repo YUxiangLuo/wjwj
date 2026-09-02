@@ -67,10 +67,12 @@ test("grade export preview accepts semester filter and joins semester data", asy
     const dialect = new PgDialect();
     expect(dialect.sqlToQuery(selection!.graded!).sql).toContain("INNER JOIN student counted_student");
     expect(dialect.sqlToQuery(selection!.avgScore!).sql).toContain("counted_student.deleted_at IS NULL");
+    expect(dialect.sqlToQuery(selection!.graded!).sql).toContain('counted_student.class_id = "task"."class_id"');
+    expect(dialect.sqlToQuery(selection!.avgScore!).sql).toContain('counted_student.class_id = "task"."class_id"');
 });
 
 test("grade export data uses immutable student and topic names", async () => {
-    const { module } = await loadExportRoutes({
+    const { module, operations } = await loadExportRoutes({
         select: [[{
             studentId: "2024001",
             studentName: "当前学生名",
@@ -96,10 +98,13 @@ test("grade export data uses immutable student and topic names", async () => {
     expect(await response.json()).toMatchObject({
         data: [{ studentId: "2024001", name: "提交时学生名", topicName: "提交时课题名" }],
     });
+    const query = operations.find((operation) => operation.kind === "select");
+    const sql = new PgDialect().sqlToQuery(query?.where as SQL).sql;
+    expect(sql).toContain('"student"."class_id" = "task"."class_id"');
 });
 
 test("grade analytics includes students without experiments and summarizes graded scores", async () => {
-    const { module } = await loadExportRoutes({
+    const { module, operations } = await loadExportRoutes({
         select: [
             [
                 { status: null, count: 3 },
@@ -132,6 +137,9 @@ test("grade analytics includes students without experiments and summarizes grade
     expect(payload.data.funnel).toEqual({ total: 11, notStarted: 3, inProgress: 2, pendingGrading: 1, graded: 4, rejected: 1 });
     expect(payload.data.scores).toMatchObject({ count: 4, average: 82.5, median: 84, componentAverages: { questionnaire: 80, process: 83, report: 85 } });
     expect(payload.data.scores.bands.slice(0, 2)).toEqual([{ label: "<60", count: 0 }, { label: "60–69", count: 1 }]);
+    const scoreQuery = operations.filter((operation) => operation.kind === "select")[1];
+    const sql = new PgDialect().sqlToQuery(scoreQuery?.where as SQL).sql;
+    expect(sql).toContain('"student"."class_id" = "task"."class_id"');
 });
 
 test("grade export excel uses local date stamp for download filename", async () => {

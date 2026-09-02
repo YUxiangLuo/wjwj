@@ -30,12 +30,9 @@ async function bootstrapAdmin() {
     await db.insert(admin).values({
         username,
         password: await hashPassword(password),
-        isFirstLogin: 1,
-        loginFailCount: 0,
-        lockedUntil: null,
     });
 
-    console.log(`管理员 ${username} 已创建，首次登录必须修改密码。`);
+    console.log(`管理员 ${username} 已创建。`);
     if (!suppliedPassword) {
         console.log(`一次性初始密码：${password}`);
         console.log("请立即安全保存；该密码不会再次显示。");

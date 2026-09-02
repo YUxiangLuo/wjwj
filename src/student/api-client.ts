@@ -18,7 +18,6 @@ export interface CurrentStudent {
     name: string;
     classId: number;
     className: string | null;
-    isFirstLogin: number;
 }
 
 export type TaskStatus = "not_started" | ExperimentStatus;

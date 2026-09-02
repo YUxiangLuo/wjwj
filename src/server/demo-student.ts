@@ -8,14 +8,13 @@ import {
     type DemoStudentAccount,
 } from "@/db/seeds/demo-accounts";
 import { error, json } from "@/server/http";
-import type { RouteDefinition } from "@/server/route-types";
 import { verifyPassword } from "@/server/password-work";
+import type { RouteDefinition } from "@/server/route-types";
 
 interface DemoStudentRow {
     studentId: string;
     name: string;
     passwordHash: string;
-    lockedUntil: Date | null;
 }
 
 interface DemoStudentRouteDependencies {
@@ -32,10 +31,9 @@ export function orderedDemoCandidates(
     rows: readonly DemoStudentRow[],
     randomValue: number,
 ): Array<{ row: DemoStudentRow; account: DemoStudentAccount }> {
-    const now = Date.now();
     const candidates = rows.flatMap((row) => {
         const account = accountByStudentId.get(row.studentId);
-        if (!account || (row.lockedUntil?.getTime() ?? 0) > now) return [];
+        if (!account) return [];
         return [{ row, account }];
     });
     if (candidates.length < 2) return candidates;
@@ -53,14 +51,12 @@ async function loadDemoStudentCandidates(): Promise<DemoStudentRow[]> {
             studentId: student.studentId,
             name: student.name,
             passwordHash: student.password,
-            lockedUntil: student.lockedUntil,
         })
         .from(student)
         .innerJoin(class_, eq(student.classId, class_.id))
         .where(and(
             eq(class_.name, DEMO_CLASS_NAME),
             eq(student.status, 1),
-            eq(student.isFirstLogin, 0),
             isNull(student.deletedAt),
         ));
 }
@@ -86,9 +82,9 @@ export function createDemoStudentRoutes(
                 );
                 for (const { row, account } of candidates) {
                     if (row.name !== account.name) continue;
-                    if (await dependencies.verifyPassword(account.password, row.passwordHash)) {
+                    if (await dependencies.verifyPassword(account.studentId, row.passwordHash)) {
                         return json(
-                            { studentId: account.studentId, password: account.password },
+                            { studentId: account.studentId, password: account.studentId },
                             200,
                             { "Cache-Control": "no-store" },
                         );

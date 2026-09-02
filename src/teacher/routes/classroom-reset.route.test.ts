@@ -8,7 +8,7 @@ function withId(request: Request, id: string) {
     return request;
 }
 
-test("student password reset requires a password change and clears sessions", async () => {
+test("student password reset restores the student ID password and clears sessions", async () => {
     const { db, operations } = createMockDb({ select: [[{ id: 12, studentId: "2024002", status: 1 }]] });
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => createTeacherAuthModuleMock());
@@ -21,11 +21,10 @@ test("student password reset requires a password change and clears sessions", as
     }), "12"));
 
     expect(response.status).toBe(200);
-    const payload = await response.json() as any;
-    expect(payload.data.temporaryPassword).toMatch(/^[^\s]{12}$/);
     const update = operations.find((operation) => operation.kind === "update" && operation.table === student);
-    expect(update?.set).toMatchObject({ password: expect.any(String), isFirstLogin: 1, updatedAt: expect.any(Date) });
-    expect(update?.set).toMatchObject({ loginFailCount: 0, lockedUntil: null });
+    const password = (update?.set as any).password as string;
+    expect(update?.set).toMatchObject({ password: expect.any(String), updatedAt: expect.any(Date) });
     expect(operations.filter((operation) => operation.kind === "delete")).toHaveLength(1);
-    expect((update?.set as any).password).not.toBe("2024002");
+    expect(password).toStartWith("$argon2id$");
+    expect(await Bun.password.verify("2024002", password)).toBe(true);
 });
