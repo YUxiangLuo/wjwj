@@ -6,6 +6,51 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+function setForwardedRef<T>(ref: React.Ref<T> | undefined, value: T | null) {
+  if (typeof ref === "function") ref(value);
+  else if (ref) ref.current = value;
+}
+
+function useInertAriaHiddenBackground(content: HTMLElement | null) {
+  React.useEffect(() => {
+    if (!content || typeof document === "undefined") return;
+
+    const inerted = new Set<HTMLElement>();
+    const applyInert = () => {
+      const hiddenElements = document.querySelectorAll<HTMLElement>(
+        '[data-aria-hidden="true"][aria-hidden="true"]',
+      );
+      for (const element of hiddenElements) {
+        if (
+          element.hasAttribute("data-radix-focus-guard")
+          || element.contains(content)
+          || element.inert
+          || inerted.has(element)
+        ) continue;
+        element.inert = true;
+        inerted.add(element);
+      }
+    };
+
+    applyInert();
+    const frame = requestAnimationFrame(applyInert);
+    const observer = new MutationObserver(applyInert);
+    observer.observe(document.body, {
+      attributes: true,
+      subtree: true,
+      attributeFilter: ["aria-hidden", "data-aria-hidden"],
+    });
+
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      for (const element of inerted) {
+        if (element.isConnected) element.inert = false;
+      }
+    };
+  }, [content]);
+}
+
 function Select({ ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) {
   return <SelectPrimitive.Root data-slot="select" {...props} />;
 }
@@ -54,11 +99,20 @@ function SelectContent({
   children,
   position = "popper",
   align = "center",
+  ref: forwardedRef,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
+  const [content, setContent] = React.useState<HTMLDivElement | null>(null);
+  const composedRef = React.useCallback((element: HTMLDivElement | null) => {
+    setContent(element);
+    setForwardedRef(forwardedRef, element);
+  }, [forwardedRef]);
+  useInertAriaHiddenBackground(content);
+
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
+        ref={composedRef}
         data-slot="select-content"
         className={cn(
           "relative z-50 max-h-(--radix-select-content-available-height) min-w-[8rem] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-overlay border border-border bg-popover text-popover-foreground shadow-floating data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-150",

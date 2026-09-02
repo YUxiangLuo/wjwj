@@ -48,7 +48,7 @@ Default controls are 40px high, compact controls are 36px, and prominent control
 
 ## Local shadcn fork policy
 
-The primitives are not disposable generated files. Dialog and AlertDialog restore focus for controlled use; Button exports `IconButton`; Select, Slider, and Progress enforce accessible names; DatetimePicker contains application timezone behavior.
+The primitives are not disposable generated files. Dialog and AlertDialog restore focus for controlled use; Button exports `IconButton`; Select mirrors Radix's hidden background state to native `inert` and enforces accessible names; Slider and Progress enforce accessible names; DatetimePicker contains application timezone behavior.
 
 - Inspect upstream changes with `bunx shadcn@latest add <component> --diff -y`.
 - Never run shadcn with `--overwrite` against this repository.

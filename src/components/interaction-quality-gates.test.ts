@@ -33,8 +33,29 @@ test("controlled alerts and immersive sampling preserve keyboard focus", async (
 
 test("immersive planning bottom chrome does not cover content actions", async () => {
     const planner = await Bun.file("src/student/components/immersive-sample-planning/index.tsx").text();
-    expect(planner).toContain('className="pointer-events-none fixed bottom-0');
-    expect(planner).toContain('className="pointer-events-auto text-muted-foreground');
+    expect(planner).toContain('className="pointer-events-none fixed bottom-4 left-6');
+    expect(planner).not.toContain('fixed bottom-0 left-0 right-0');
+    expect(planner).toContain('className="pointer-events-auto bg-card text-muted-foreground');
+});
+
+test("minimum desktop styling protects long values and third-party control text", async () => {
+    const adminDashboard = await Bun.file("src/admin/pages/Dashboard.tsx").text();
+    const datePicker = await Bun.file("src/components/ui/datetime-picker.tsx").text();
+    expect(adminDashboard).toContain("grid-cols-[1.35fr_repeat(4,minmax(0,1fr))]");
+    expect(datePicker).toContain('weekday: "rdp-weekday !text-meta font-medium text-muted-foreground !opacity-100"');
+});
+
+test("embedded PDF previews do not take initial dialog focus", async () => {
+    const topicDetails = await Bun.file("src/student/pages/TopicDetails.tsx").text();
+    expect(topicDetails).toContain('title={previewFile?.name ?? "PDF预览"} src={previewUrl} tabIndex={-1}');
+});
+
+test("selects make Radix aria-hidden background containers inert", async () => {
+    const select = await Bun.file("src/components/ui/select.tsx").text();
+    expect(select).toContain("useInertAriaHiddenBackground(content)");
+    expect(select).toContain('element.hasAttribute("data-radix-focus-guard")');
+    expect(select).toContain("element.inert = true");
+    expect(select).toContain("element.inert = false");
 });
 
 test("the shared theme disables decorative motion for reduced-motion users", async () => {

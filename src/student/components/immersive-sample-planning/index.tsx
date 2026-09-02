@@ -637,14 +637,14 @@ export function ImmersiveSamplePlanning({
                     </div>
                 </div>
 
-                {/* Bottom bar */}
+                {/* Keep the back action isolated from centered teaching content. */}
                 {canGoPrev && (
-                    <div className="pointer-events-none fixed bottom-0 left-0 right-0 z-10 flex items-center justify-start border-t border-border bg-card px-6 pb-4 pt-2">
+                    <div className="pointer-events-none fixed bottom-4 left-6 z-10">
                         <Button
                             type="button"
-                            variant="ghost"
+                            variant="outline"
                             onClick={goPrev}
-                            className="pointer-events-auto text-muted-foreground hover:text-foreground"
+                            className="pointer-events-auto bg-card text-muted-foreground hover:text-foreground"
                         >
                             <ChevronLeft className="w-4 h-4 mr-1" />
                             上一步

@@ -441,7 +441,7 @@ export function TopicDetails() {
                             <img src={previewUrl} alt={previewFile?.name ?? "附件图片"} className="max-h-[70vh] w-full object-contain rounded-surface" />
                         )}
                         {previewType === "pdf" && (
-                            <iframe title={previewFile?.name ?? "PDF预览"} src={previewUrl} className="w-full h-[70vh] rounded-surface" />
+                            <iframe title={previewFile?.name ?? "PDF预览"} src={previewUrl} tabIndex={-1} className="w-full h-[70vh] rounded-surface" />
                         )}
                         {previewType === "video" && (
                             <video src={previewUrl} controls className="max-h-[70vh] w-full rounded-surface bg-overlay" />

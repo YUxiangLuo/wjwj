@@ -26,7 +26,7 @@ export function Dashboard() {
     ];
     return (
         <div className="space-y-6">
-            <div className="grid gap-4 grid-cols-5">
+            <div className="grid grid-cols-[1.35fr_repeat(4,minmax(0,1fr))] gap-4">
                 {cards.map(({ label, value, icon: Icon }) => (
                     <Card key={label}><CardContent className="flex items-center justify-between gap-3 p-5"><div className="min-w-0"><p className="text-label text-muted-foreground">{label}</p><p className={`mt-2 font-bold ${label === "当前学期" ? "whitespace-nowrap text-section-title" : "text-page-title"}`}>{value}</p></div><span className="grid h-11 w-11 shrink-0 place-items-center rounded-surface bg-primary-muted text-primary"><Icon className="h-5 w-5" /></span></CardContent></Card>
                 ))}

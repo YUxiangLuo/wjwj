@@ -114,6 +114,9 @@ export function DatetimePicker24({
                             mode="single"
                             locale={zhCN}
                             className="rounded-control"
+                            classNames={{
+                                weekday: "rdp-weekday !text-meta font-medium text-muted-foreground !opacity-100",
+                            }}
                             selected={calendarDate}
                             onSelect={handleDateSelect}
                             defaultMonth={calendarDate ?? calendarToday}
