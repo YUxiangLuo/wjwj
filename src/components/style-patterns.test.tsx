@@ -5,6 +5,7 @@ import { CheckCircle2 } from "lucide-react";
 import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Card } from "@/components/ui/card";
 import { installDomGlobals } from "@/test-utils/dom";
 
 let restoreDom: (() => void) | null = null;
@@ -49,6 +50,20 @@ test("icon tile keeps repeated stat icon styling tokenized", () => {
 
     expect(view.getByTestId("primary-tile").className).toContain("bg-primary/10");
     expect(view.getByTestId("neutral-tile").className).toContain("h-10");
+});
+
+test("card variants expose semantic surface and elevation roles", () => {
+    const view = render(
+        <div>
+            <Card data-testid="default-card" />
+            <Card variant="subtle" data-testid="subtle-card" />
+            <Card variant="elevated" data-testid="elevated-card" />
+        </div>,
+    );
+
+    expect(view.getByTestId("default-card").className).toContain("shadow-surface");
+    expect(view.getByTestId("subtle-card").className).toContain("bg-card/50");
+    expect(view.getByTestId("elevated-card").className).toContain("shadow-floating");
 });
 
 test("shared pattern components render expected accessible content", () => {

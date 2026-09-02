@@ -109,11 +109,11 @@ export function DatetimePicker24({
                 onOpenAutoFocus={(e) => e.preventDefault()}
             >
                 <div className="flex gap-3 p-3 flex-row items-start">
-                    <div className="rounded-md p-1">
+                    <div className="rounded-control p-1">
                         <DayPicker
                             mode="single"
                             locale={zhCN}
-                            className="rounded-md"
+                            className="rounded-control"
                             selected={calendarDate}
                             onSelect={handleDateSelect}
                             defaultMonth={calendarDate ?? calendarToday}
@@ -125,7 +125,7 @@ export function DatetimePicker24({
                             <Label htmlFor={hourId} className="text-xs text-muted-foreground">时（24 小时）</Label>
                             <select
                                 id={hourId}
-                                className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground shadow-sm"
+                                className="flex h-9 w-full rounded-control border border-input bg-background px-2 text-sm text-foreground shadow-control"
                                 value={hour}
                                 onChange={(e) => handleHourChange(Number(e.target.value))}
                             >
@@ -140,7 +140,7 @@ export function DatetimePicker24({
                             <Label htmlFor={minuteId} className="text-xs text-muted-foreground">分</Label>
                             <select
                                 id={minuteId}
-                                className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground shadow-sm"
+                                className="flex h-9 w-full rounded-control border border-input bg-background px-2 text-sm text-foreground shadow-control"
                                 value={minute}
                                 onChange={(e) => handleMinuteChange(Number(e.target.value))}
                             >

@@ -3,7 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
-const iconTileVariants = cva("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border", {
+const iconTileVariants = cva("flex h-10 w-10 shrink-0 items-center justify-center rounded-control border", {
     variants: {
         intent: {
             success: "border-success/20 bg-success/10 text-success",

@@ -6,8 +6,7 @@ import { IconButton } from "@/components/ui/button";
 import { AppToaster } from "@/components/AppToaster";
 import { LoadingStatus } from "@/components/LoadingStatus";
 import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
-import { SkipLink } from "@/components/SkipLink";
-import { WorkspaceSidebar } from "@/components/WorkspaceSidebar";
+import { WorkspaceShell } from "@/components/WorkspaceShell";
 import { TEACHER_PASSWORD_POLICY } from "@/lib/password-policy";
 import { DEV_AUTH_MODE } from "@/lib/dev-mode";
 import { usePasswordChange } from "@/hooks/usePasswordChange";
@@ -64,45 +63,41 @@ function TeacherWorkspace({
     const title = menu.find((item) => item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path))?.label ?? "教师工作台";
 
     return (
-        <div className="flex min-h-screen bg-background text-foreground">
-            <SkipLink />
-            <WorkspaceSidebar
-                title="教师工作台"
-                titleIcon={BarChart3}
-                items={menu}
-                footer={
+        <>
+            <WorkspaceShell
+                sidebarTitle="教师工作台"
+                sidebarIcon={BarChart3}
+                menuItems={menu}
+                sidebarFooter={
                     <div className="flex items-center gap-3">
                         <Avatar className="h-9 w-9"><AvatarFallback className="bg-primary text-primary-foreground">{user.name.charAt(0)}</AvatarFallback></Avatar>
                         <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{user.name}</p><p className="truncate text-xs text-muted-foreground">{user.employeeId}</p></div>
                     </div>
                 }
-            />
-
-            <main className="min-w-0 flex-1">
-                <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/80 backdrop-blur px-6">
-                    <div><h1 className="font-semibold">{title}</h1><p className="text-xs text-muted-foreground">统计学虚拟仿真实验平台</p></div>
+                pageTitle={title}
+                pageSubtitle="统计学虚拟仿真实验平台"
+                headerActions={
                     <div className="flex items-center gap-1">
                         <IconButton aria-label="修改密码" variant="ghost" title="修改密码" onClick={() => { passwordChange.reset(); setPasswordOpen(true); }}><KeyRound className="h-5 w-5" /></IconButton>
                         <IconButton aria-label="退出登录" variant="ghost" title="退出登录" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => void onLogout()}><LogOut className="h-5 w-5" /></IconButton>
                     </div>
-                </header>
-                <div id="main-content" tabIndex={-1} className="p-6">
-                    {mustChangePassword ? (
-                        <div className="grid min-h-[60vh] place-items-center text-sm text-muted-foreground">请先修改初始密码后再使用教学功能。</div>
-                    ) : <Suspense fallback={<RouteLoading />}><Routes>
-                            <Route index element={<Dashboard />} />
-                            <Route path="class" element={<ClassManagement />} />
-                            <Route path="class/:classId/students" element={<StudentManagement />} />
-                            <Route path="topic" element={<TopicManagement />} />
-                            <Route path="task" element={<TaskManagement />} />
-                            <Route path="task/:taskId/progress" element={<TaskProgressDetail />} />
-                            <Route path="grading" element={<GradingManagement />} />
-                            <Route path="grading/:submissionId" element={<GradingDetail />} />
-                            <Route path="export" element={<GradeExport />} />
-                            <Route path="*" element={<Navigate to="/" replace />} />
-                        </Routes></Suspense>}
-                </div>
-            </main>
+                }
+            >
+                {mustChangePassword ? (
+                    <div className="grid min-h-[60vh] place-items-center text-sm text-muted-foreground">请先修改初始密码后再使用教学功能。</div>
+                ) : <Suspense fallback={<RouteLoading />}><Routes>
+                        <Route index element={<Dashboard />} />
+                        <Route path="class" element={<ClassManagement />} />
+                        <Route path="class/:classId/students" element={<StudentManagement />} />
+                        <Route path="topic" element={<TopicManagement />} />
+                        <Route path="task" element={<TaskManagement />} />
+                        <Route path="task/:taskId/progress" element={<TaskProgressDetail />} />
+                        <Route path="grading" element={<GradingManagement />} />
+                        <Route path="grading/:submissionId" element={<GradingDetail />} />
+                        <Route path="export" element={<GradeExport />} />
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes></Suspense>}
+            </WorkspaceShell>
             <PasswordChangeDialog
                 open={mustChangePassword || passwordOpen}
                 onOpenChange={(open) => { if (!mustChangePassword) setPasswordOpen(open); }}
@@ -117,7 +112,7 @@ function TeacherWorkspace({
                 submitLabel="保存"
             />
             <AppToaster />
-        </div>
+        </>
     );
 }
 

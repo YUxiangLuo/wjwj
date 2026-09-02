@@ -76,6 +76,23 @@ const sameIntentSolidHoverClassPattern = new RegExp(
 );
 const semanticAlphaTextClassPattern = new RegExp(`text-(?:${semanticIntentPattern})/[0-9]+`, "g");
 const responsiveViewportClassPattern = /(?<![\w-])(?:sm|md|lg|xl|2xl|(?:min|max)-(?:sm|md|lg|xl|2xl)|(?:min|max)-\[[^\]]+\]|@(?:sm|md|lg|xl|2xl)(?:\/[\w-]+)?|@\[[^\]]+\]|portrait|landscape|(?:any-)?pointer-(?:fine|coarse)):(?=\S)/g;
+const nonSemanticRadiusClassPattern = /(?<![\w-])rounded-(?:xs|sm|md|lg|xl|2xl|3xl)(?![\w-])/g;
+const nonSemanticShadowClassPattern = /(?<![\w-])shadow-(?:2xs|xs|sm|md|lg|xl|2xl)(?![\w-])/g;
+const legacyRadiusClassPattern = /(?<![\w-])rounded-(?:xs|sm|md|lg|xl|2xl|3xl)(?![\w-])/g;
+const legacyShadowClassPattern = /(?<![\w-])shadow-(?:2xs|xs|sm|md|lg|xl|2xl)(?![\w-])/g;
+const legacyColoredShadowClassPattern = /(?<![\w-])shadow-(?:primary|success|warning|info|destructive|auxiliary)(?:\/[0-9]+)?(?![\w-])/g;
+const MAX_LEGACY_RADIUS_CLASSES = 431;
+const MAX_LEGACY_SHADOW_CLASSES = 154;
+const MAX_LEGACY_COLORED_SHADOW_CLASSES = 43;
+const DESIGN_SYSTEM_FILES = new Set([
+    "src/components/AuthLoginScreen.tsx",
+    "src/components/IconTile.tsx",
+    "src/components/PageHeader.tsx",
+    "src/components/SkipLink.tsx",
+    "src/components/StatusBadge.tsx",
+    "src/components/WorkspaceShell.tsx",
+    "src/components/WorkspaceSidebar.tsx",
+]);
 
 type FileStats = {
     path: string;
@@ -85,6 +102,11 @@ type FileStats = {
     sameIntentSolidHoverClasses: number;
     semanticAlphaTextClasses: number;
     responsiveViewportClasses: number;
+    nonSemanticRadiusClasses: number;
+    nonSemanticShadowClasses: number;
+    legacyRadiusClasses: number;
+    legacyShadowClasses: number;
+    legacyColoredShadowClasses: number;
 };
 
 async function listSourceFiles() {
@@ -104,6 +126,34 @@ export function countHardcodedPaletteClasses(text: string) {
 
 export function countResponsiveViewportClasses(text: string) {
     return countMatches(text, responsiveViewportClassPattern);
+}
+
+export function countNonSemanticRadiusClasses(text: string) {
+    return countMatches(text, nonSemanticRadiusClassPattern);
+}
+
+export function countNonSemanticShadowClasses(text: string) {
+    return countMatches(text, nonSemanticShadowClassPattern);
+}
+
+export function countLegacyRadiusClasses(text: string) {
+    return countMatches(text, legacyRadiusClassPattern);
+}
+
+export function countLegacyShadowClasses(text: string) {
+    return countMatches(text, legacyShadowClassPattern);
+}
+
+export function countLegacyColoredShadowClasses(text: string) {
+    return countMatches(text, legacyColoredShadowClassPattern);
+}
+
+function isMaintainedDesignSystemFile(path: string) {
+    return path.startsWith("src/components/ui/") || DESIGN_SYSTEM_FILES.has(path);
+}
+
+function isRuntimeSourceFile(path: string) {
+    return !path.includes(".test.") && !path.startsWith("src/test-utils/");
 }
 
 function quotedEnd(text: string, start: number) {
@@ -363,6 +413,21 @@ async function collectStats() {
             sameIntentSolidHoverClasses: countMatches(text, sameIntentSolidHoverClassPattern),
             semanticAlphaTextClasses: countMatches(text, semanticAlphaTextClassPattern),
             responsiveViewportClasses: countMatches(text, responsiveViewportClassPattern),
+            nonSemanticRadiusClasses: isMaintainedDesignSystemFile(path)
+                ? countNonSemanticRadiusClasses(text)
+                : 0,
+            nonSemanticShadowClasses: isMaintainedDesignSystemFile(path)
+                ? countNonSemanticShadowClasses(text)
+                : 0,
+            legacyRadiusClasses: isRuntimeSourceFile(path) && !isMaintainedDesignSystemFile(path)
+                ? countLegacyRadiusClasses(text)
+                : 0,
+            legacyShadowClasses: isRuntimeSourceFile(path) && !isMaintainedDesignSystemFile(path)
+                ? countLegacyShadowClasses(text)
+                : 0,
+            legacyColoredShadowClasses: isRuntimeSourceFile(path) && !isMaintainedDesignSystemFile(path)
+                ? countLegacyColoredShadowClasses(text)
+                : 0,
         });
     }
 
@@ -386,6 +451,11 @@ async function main() {
     const sameIntentSolidHoverClasses = stats.reduce((sum, item) => sum + item.sameIntentSolidHoverClasses, 0);
     const semanticAlphaTextClasses = stats.reduce((sum, item) => sum + item.semanticAlphaTextClasses, 0);
     const responsiveViewportClasses = stats.reduce((sum, item) => sum + item.responsiveViewportClasses, 0);
+    const nonSemanticRadiusClasses = stats.reduce((sum, item) => sum + item.nonSemanticRadiusClasses, 0);
+    const nonSemanticShadowClasses = stats.reduce((sum, item) => sum + item.nonSemanticShadowClasses, 0);
+    const legacyRadiusClasses = stats.reduce((sum, item) => sum + item.legacyRadiusClasses, 0);
+    const legacyShadowClasses = stats.reduce((sum, item) => sum + item.legacyShadowClasses, 0);
+    const legacyColoredShadowClasses = stats.reduce((sum, item) => sum + item.legacyColoredShadowClasses, 0);
     const uiHardcodedColorClasses = stats
         .filter((item) => item.path.startsWith("src/components/ui/"))
         .reduce((sum, item) => sum + item.hardcodedColorClasses, 0);
@@ -441,6 +511,21 @@ async function main() {
             `Viewport-responsive classes increased to ${responsiveViewportClasses}; maximum is ${MAX_RESPONSIVE_VIEWPORT_CLASSES}. The frontend is desktop-only.`,
         );
     }
+    if (nonSemanticRadiusClasses > 0) {
+        failures.push(`Maintained design-system files contain ${nonSemanticRadiusClasses} non-semantic radius classes.`);
+    }
+    if (nonSemanticShadowClasses > 0) {
+        failures.push(`Maintained design-system files contain ${nonSemanticShadowClasses} non-semantic shadow classes.`);
+    }
+    if (legacyRadiusClasses > MAX_LEGACY_RADIUS_CLASSES) {
+        failures.push(`Legacy radius classes increased to ${legacyRadiusClasses}; ratchet maximum is ${MAX_LEGACY_RADIUS_CLASSES}.`);
+    }
+    if (legacyShadowClasses > MAX_LEGACY_SHADOW_CLASSES) {
+        failures.push(`Legacy shadow classes increased to ${legacyShadowClasses}; ratchet maximum is ${MAX_LEGACY_SHADOW_CLASSES}.`);
+    }
+    if (legacyColoredShadowClasses > MAX_LEGACY_COLORED_SHADOW_CLASSES) {
+        failures.push(`Legacy colored shadows increased to ${legacyColoredShadowClasses}; ratchet maximum is ${MAX_LEGACY_COLORED_SHADOW_CLASSES}.`);
+    }
 
     const appHtmlFiles = ["src/admin/admin.html", "src/teacher/teacher.html", "src/student/student.html"];
     for (const path of appHtmlFiles) {
@@ -467,6 +552,11 @@ async function main() {
     console.log(`  semantic alpha text:       ${semanticAlphaTextClasses}/${MAX_SEMANTIC_ALPHA_TEXT_CLASSES}`);
     console.log(`  responsive viewport:       ${responsiveViewportClasses}/${MAX_RESPONSIVE_VIEWPORT_CLASSES}`);
     console.log(`  ui palette classes:        ${uiHardcodedColorClasses}`);
+    console.log(`  design-system raw radius:  ${nonSemanticRadiusClasses}/0`);
+    console.log(`  design-system raw shadow:  ${nonSemanticShadowClasses}/0`);
+    console.log(`  legacy radius classes:     ${legacyRadiusClasses}/${MAX_LEGACY_RADIUS_CLASSES}`);
+    console.log(`  legacy shadow classes:     ${legacyShadowClasses}/${MAX_LEGACY_SHADOW_CLASSES}`);
+    console.log(`  legacy colored shadows:    ${legacyColoredShadowClasses}/${MAX_LEGACY_COLORED_SHADOW_CLASSES}`);
 
     if (failures.length === 0) return;
 
@@ -487,6 +577,11 @@ async function main() {
         ["Top alpha semantic text files:", topFiles(stats, "semanticAlphaTextClasses")],
         ["Top dark: variant files:", topFiles(stats, "darkClasses")],
         ["Top responsive viewport files:", topFiles(stats, "responsiveViewportClasses")],
+        ["Design-system raw radius files:", topFiles(stats, "nonSemanticRadiusClasses")],
+        ["Design-system raw shadow files:", topFiles(stats, "nonSemanticShadowClasses")],
+        ["Legacy radius files:", topFiles(stats, "legacyRadiusClasses")],
+        ["Legacy shadow files:", topFiles(stats, "legacyShadowClasses")],
+        ["Legacy colored-shadow files:", topFiles(stats, "legacyColoredShadowClasses")],
     ];
 
     for (const [heading, report] of reports) {

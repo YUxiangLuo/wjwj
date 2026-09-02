@@ -160,4 +160,5 @@ storage/              课题数据与附件
 
 - [DATABASE.md](DATABASE.md) — 建库、迁移、旧库切换、校对版本修复
 - [SECURITY.md](SECURITY.md) — 依赖审计、生产 HTTP 头、CSP
+- [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) — 主题 token、组件分层与本地 shadcn fork 约定
 - [AGENTS.md](AGENTS.md) — 本仓库的 Bun / 前端 / 样式约定

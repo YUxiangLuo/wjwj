@@ -2,6 +2,11 @@ import { describe, expect, test } from "bun:test";
 import {
     countHardcodedPaletteClasses,
     countJsxSameIntentPairs,
+    countLegacyColoredShadowClasses,
+    countLegacyRadiusClasses,
+    countLegacyShadowClasses,
+    countNonSemanticRadiusClasses,
+    countNonSemanticShadowClasses,
     countResponsiveViewportClasses,
 } from "./check-styles";
 
@@ -46,6 +51,17 @@ describe("style guard", () => {
     test("detects viewport-responsive utilities without confusing component sizes", () => {
         expect(countResponsiveViewportClasses("grid sm:grid-cols-2 xl:grid-cols-4 min-[900px]:flex max-2xl:block @md/card:flex landscape:grid")).toBe(6);
         expect(countResponsiveViewportClasses('sm: "h-8" lg: "h-10" backdrop-blur-sm')).toBe(0);
+    });
+
+    test("requires semantic shape and elevation classes in maintained design-system files", () => {
+        expect(countNonSemanticRadiusClasses("rounded-xs rounded-sm rounded-md rounded-2xl rounded-control rounded-full")).toBe(4);
+        expect(countNonSemanticShadowClasses("shadow-2xs shadow-sm shadow-lg shadow-surface shadow-primary/20")).toBe(3);
+    });
+
+    test("counts legacy page shape and shadow debt for ratcheting", () => {
+        expect(countLegacyRadiusClasses("rounded-xs rounded-sm rounded-md rounded-lg rounded-xl rounded-2xl rounded-feature")).toBe(6);
+        expect(countLegacyShadowClasses("shadow-2xs shadow-xs shadow-sm shadow-2xl shadow-surface")).toBe(4);
+        expect(countLegacyColoredShadowClasses("shadow-primary/20 shadow-info shadow-destructive/20 shadow-card")).toBe(3);
     });
 
     test("keeps normal success text above WCAG AA contrast on tinted surfaces", async () => {
