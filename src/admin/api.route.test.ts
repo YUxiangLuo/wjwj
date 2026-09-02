@@ -4,7 +4,7 @@ import { PgDialect } from "drizzle-orm/pg-core";
 import { student } from "../db/schema";
 import { createMockDb } from "../test-utils/mock-db";
 
-test("admin pending count excludes soft-deleted and moved students", async () => {
+test("admin pending count includes only students in the task class", async () => {
     const { db, operations } = createMockDb({ select: [
         [{ name: "2026-2027-1" }],
         [{ count: 3 }],
@@ -22,7 +22,6 @@ test("admin pending count excludes soft-deleted and moved students", async () =>
     const selects = operations.filter((item) => item.kind === "select");
     expect(selects[4]!.joins?.map((join) => join.table)).toContain(student);
     const pendingQuery = new PgDialect().sqlToQuery(selects[4]!.where as SQL);
-    expect(pendingQuery.sql).toContain('"student"."deleted_at" is null');
     expect(pendingQuery.sql).toContain('"student"."class_id" = "task"."class_id"');
     expect(pendingQuery.params).toEqual(["submitted"]);
 });

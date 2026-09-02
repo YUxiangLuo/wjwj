@@ -5,7 +5,7 @@ test("an unpublished topic cannot be opened through a task URL", async () => {
     const { db } = createMockDb({
         select: [
             [],
-            [{ taskDeletedAt: null, topicDeletedAt: null, topicStatus: 0 }],
+            [{ topicStatus: 0 }],
         ],
     });
     mock.module("../../db", () => ({ db }));

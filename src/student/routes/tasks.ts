@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment, task, topic, topicAttachment } from "../../db/schema";
 import { experimentProgress } from "../../lib/experiment-progress";
@@ -32,9 +32,7 @@ const tasksRoutes: RouteDefinition = {
             .innerJoin(topic, eq(task.topicId, topic.id))
             .where(and(
                 eq(task.classId, auth.student.classId),
-                isNull(task.deletedAt),
                 eq(topic.status, 1),
-                isNull(topic.deletedAt),
             ))
             .orderBy(desc(task.createdAt));
 
@@ -102,9 +100,7 @@ const taskDetailRoutes: RouteDefinition = {
             .where(and(
                 eq(task.id, taskId),
                 eq(task.classId, auth.student.classId),
-                isNull(task.deletedAt),
                 eq(topic.status, 1),
-                isNull(topic.deletedAt),
             ));
         if (!taskInfo) {
             return (await getStudentTaskAccessError(taskId, auth.student.classId))

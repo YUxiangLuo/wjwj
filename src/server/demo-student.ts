@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { class_, student } from "@/db/schema";
@@ -57,7 +57,6 @@ async function loadDemoStudentCandidates(): Promise<DemoStudentRow[]> {
         .where(and(
             eq(class_.name, DEMO_CLASS_NAME),
             eq(student.status, 1),
-            isNull(student.deletedAt),
         ));
 }
 

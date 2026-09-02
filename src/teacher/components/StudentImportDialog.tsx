@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 
 interface StudentImportResult {
     successCount: number;
-    restoredCount: number;
     failureCount: number;
     errors: Array<{ row: number; reason: string }>;
 }
@@ -66,11 +65,10 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                         <div className="bg-background border border-border rounded-surface p-3 text-label text-muted-foreground space-y-2">
                             <div className="flex gap-4">
                                 <span className="text-success">成功：{importResult.successCount} 条</span>
-                                {importResult.restoredCount > 0 && <span className="text-info">其中恢复：{importResult.restoredCount} 条</span>}
                                 <span className={importResult.failureCount > 0 ? "text-destructive" : ""}>失败：{importResult.failureCount} 条</span>
                             </div>
                             {importResult.successCount > 0 && (
-                                <p className="text-meta text-info">新建及恢复学生的登录密码与学号相同。</p>
+                                <p className="text-meta text-info">新建学生的登录密码与学号相同。</p>
                             )}
                             {importResult.errors.length > 0 && (
                                 <div className="max-h-32 overflow-y-auto text-meta space-y-1 bg-card p-2 rounded-control border border-border">

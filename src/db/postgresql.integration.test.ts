@@ -21,6 +21,7 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
     const suffix = crypto.randomUUID();
     const username = `PgCase_${suffix}`;
     const sessionToken = `integration-${suffix}`;
+    const studentSessionToken = `student-integration-${suffix}`;
     const employeeId = `PG-${suffix}`;
     const semesterName = `PG-${suffix.slice(0, 8)}`;
     const studentNumber = `PG student ${suffix}`;
@@ -28,6 +29,7 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
     let semesterId: number | undefined;
     let classId: number | undefined;
     let studentId: number | undefined;
+    let cascadeStudentId: number | undefined;
     let topicId: number | undefined;
     let unassignedTopicId: number | undefined;
     let taskId: number | undefined;
@@ -127,7 +129,7 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
             filePath: `/storage/integration-${suffix}.docx`,
             fileType: docxMime,
             fileSize: 10,
-        }).returning({ fileType: schema.topicAttachment.fileType });
+        }).returning({ id: schema.topicAttachment.id, fileType: schema.topicAttachment.fileType });
         expect(createdAttachment?.fileType).toBe(docxMime);
         const [createdUnassignedTopic] = await database
             .insert(schema.topic)
@@ -291,14 +293,16 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
         const [
             { listTeacherTasks },
             { requireTopicOwner },
-            { publishTopicTasks },
-            { softDeleteTeacherTopic },
+            { deleteTeacherTask, publishTopicTasks },
+            { deleteTeacherTopic },
+            { deleteTeacherStudent },
             applicationDatabase,
         ] = await Promise.all([
             import("../teacher/topic/query-service"),
             import("../teacher/topic/access"),
             import("../teacher/topic/task-service"),
             import("../teacher/topic/manage-service"),
+            import("../teacher/routes/classroom"),
             import("./index"),
         ]);
         closeApplicationDatabase = applicationDatabase.closeDatabase;
@@ -316,10 +320,10 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
 
         const [publishRace, deleteRace] = await Promise.all([
             publishTopicTasks({ teacherId, topicId: unassignedTopicId, classIds: [classId] }),
-            softDeleteTeacherTopic({ teacherId, topicId: unassignedTopicId }),
+            deleteTeacherTopic({ teacherId, topicId: unassignedTopicId }),
         ]);
         const [raceTopic] = await database
-            .select({ deletedAt: schema.topic.deletedAt })
+            .select({ id: schema.topic.id })
             .from(schema.topic)
             .where(eq(schema.topic.id, unassignedTopicId));
         const raceTasks = await database
@@ -328,13 +332,87 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
             .where(eq(schema.task.topicId, unassignedTopicId));
         raceTaskId = raceTasks[0]?.id;
         expect(Number(publishRace.ok) + Number(deleteRace.ok)).toBe(1);
-        expect(Boolean(raceTopic?.deletedAt) && raceTasks.length > 0).toBe(false);
+        expect(Boolean(raceTopic)).toBe(raceTasks.length > 0);
+
+        await database.insert(schema.userSession).values({
+            sessionToken: studentSessionToken,
+            userType: 3,
+            userId: studentId,
+            expiresAt,
+        });
+        const [studentDeleteAttempt] = await database.insert(schema.samplingAttempt).values({
+            experimentId: createdExperiment!.id,
+            method: "systematic",
+            seed: 2027,
+            sampleCount: 1,
+            details: {},
+        }).returning({ id: schema.samplingAttempt.id });
+        await database.insert(schema.auditEvent).values([
+            { actorType: "teacher", actorId: teacherId, action: "test.student", entityType: "student", entityId: studentId },
+            { actorType: "teacher", actorId: teacherId, action: "test.experiment", entityType: "experiment", entityId: createdExperiment!.id },
+            { actorType: "teacher", actorId: teacherId, action: "test.attempt", entityType: "sampling_attempt", entityId: studentDeleteAttempt!.id },
+            { actorType: "student", actorId: studentId, action: "test.actor", entityType: "session", entityId: 1 },
+        ]);
+        expect(await deleteTeacherStudent({ teacherId, studentId })).toBe(true);
+        expect(await database.select().from(schema.student).where(eq(schema.student.id, studentId))).toHaveLength(0);
+        expect(await database.select().from(schema.experiment).where(eq(schema.experiment.id, createdExperiment!.id))).toHaveLength(0);
+        expect(await database.select().from(schema.samplingAttempt).where(eq(schema.samplingAttempt.experimentId, createdExperiment!.id))).toHaveLength(0);
+        expect(await database.select().from(schema.userSession).where(eq(schema.userSession.sessionToken, studentSessionToken))).toHaveLength(0);
+        expect(await database.select().from(schema.auditEvent).where(eq(schema.auditEvent.action, "test.student"))).toHaveLength(0);
+        expect(await database.select().from(schema.auditEvent).where(eq(schema.auditEvent.action, "test.experiment"))).toHaveLength(0);
+        expect(await database.select().from(schema.auditEvent).where(eq(schema.auditEvent.action, "test.attempt"))).toHaveLength(0);
+        expect(await database.select().from(schema.auditEvent).where(eq(schema.auditEvent.action, "test.actor"))).toHaveLength(0);
+        studentId = undefined;
+
+        const [taskDeleteStudent] = await database.insert(schema.student).values({
+            studentId: `task-delete-${suffix}`,
+            name: "Task delete student",
+            password: "test-password",
+            classId,
+        }).returning({ id: schema.student.id });
+        cascadeStudentId = taskDeleteStudent!.id;
+        const [taskDeleteExperiment] = await database.insert(schema.experiment).values({
+            studentId: taskDeleteStudent!.id,
+            taskId,
+        }).returning({ id: schema.experiment.id });
+        await database.insert(schema.samplingAttempt).values({
+            experimentId: taskDeleteExperiment!.id,
+            method: "simple",
+            seed: 3030,
+            sampleCount: 1,
+            details: {},
+        });
+        await database.insert(schema.auditEvent).values([
+            { actorType: "teacher", actorId: teacherId, action: "test.task", entityType: "task", entityId: taskId },
+            { actorType: "teacher", actorId: teacherId, action: "test.task-experiment", entityType: "experiment", entityId: taskDeleteExperiment!.id },
+        ]);
+        expect(await deleteTeacherTask({ teacherId, taskId })).toEqual({ ok: true });
+        expect(await database.select().from(schema.task).where(eq(schema.task.id, taskId))).toHaveLength(0);
+        expect(await database.select().from(schema.experiment).where(eq(schema.experiment.id, taskDeleteExperiment!.id))).toHaveLength(0);
+        expect(await database.select().from(schema.samplingAttempt).where(eq(schema.samplingAttempt.experimentId, taskDeleteExperiment!.id))).toHaveLength(0);
+        expect(await database.select().from(schema.auditEvent).where(eq(schema.auditEvent.action, "test.task"))).toHaveLength(0);
+        expect(await database.select().from(schema.auditEvent).where(eq(schema.auditEvent.action, "test.task-experiment"))).toHaveLength(0);
+        await database.delete(schema.student).where(eq(schema.student.id, taskDeleteStudent!.id));
+        cascadeStudentId = undefined;
+        taskId = undefined;
+
+        await database.insert(schema.auditEvent).values([
+            { actorType: "teacher", actorId: teacherId, action: "test.topic", entityType: "topic", entityId: topicId },
+            { actorType: "teacher", actorId: teacherId, action: "test.attachment", entityType: "topic_attachment", entityId: createdAttachment!.id },
+        ]);
+        expect(await deleteTeacherTopic({ teacherId, topicId })).toEqual({ ok: true });
+        expect(await database.select().from(schema.topic).where(eq(schema.topic.id, topicId))).toHaveLength(0);
+        expect(await database.select().from(schema.topicAttachment).where(eq(schema.topicAttachment.topicId, topicId))).toHaveLength(0);
+        expect(await database.select().from(schema.auditEvent).where(eq(schema.auditEvent.action, "test.topic"))).toHaveLength(0);
+        expect(await database.select().from(schema.auditEvent).where(eq(schema.auditEvent.action, "test.attachment"))).toHaveLength(0);
+        topicId = undefined;
     } finally {
         await closeApplicationDatabase?.();
         if (raceTaskId) await database.delete(schema.task).where(eq(schema.task.id, raceTaskId));
         if (taskId) await database.delete(schema.task).where(eq(schema.task.id, taskId));
         if (unassignedTopicId) await database.delete(schema.topic).where(eq(schema.topic.id, unassignedTopicId));
         if (topicId) await database.delete(schema.topic).where(eq(schema.topic.id, topicId));
+        if (cascadeStudentId) await database.delete(schema.student).where(eq(schema.student.id, cascadeStudentId));
         if (studentId) await database.delete(schema.student).where(eq(schema.student.id, studentId));
         if (classId) await database.delete(schema.class_).where(eq(schema.class_.id, classId));
         if (semesterId) await database.delete(schema.semester).where(eq(schema.semester.id, semesterId));

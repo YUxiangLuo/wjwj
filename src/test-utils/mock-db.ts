@@ -77,6 +77,9 @@ function createBuilder(kind: QueryKind, operation: MockDbOperation, queues: Requ
         groupBy() {
             return builder;
         },
+        for() {
+            return builder;
+        },
         values(values: unknown) {
             operation.values = values;
             return builder;

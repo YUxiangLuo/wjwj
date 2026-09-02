@@ -1,13 +1,10 @@
-import { and, eq, isNull, type SQL } from "drizzle-orm";
+import { and, eq, type SQL } from "drizzle-orm";
 import { db } from "../../db";
 import { task, topic } from "../../db/schema";
 import { error } from "../../server/http";
 
 /**
- * 通用的活跃/已删除状态检测逻辑：
- * 1. 查是否有活跃行（未删除的 task + 未删除的 topic）→ 有则允许访问
- * 2. 否则查是否存在行 → 根据删除原因返回对应错误码
- * 3. 都查不到 → 返回 fallback 错误
+ * 通用的任务可用性检测：已发布课题允许访问；不存在或未发布时返回稳定错误。
  */
 async function checkAccess(
     activeConditions: SQL[],
@@ -16,11 +13,7 @@ async function checkAccess(
     fallbackCode: string,
     fallbackStatus: number,
 ): Promise<Response | null> {
-    const sharedActiveFilters: SQL[] = [
-        isNull(task.deletedAt),
-        isNull(topic.deletedAt),
-        eq(topic.status, 1),
-    ];
+    const sharedActiveFilters: SQL[] = [eq(topic.status, 1)];
 
     const [activeRow] = await db
         .select({ id: task.id })
@@ -32,8 +25,6 @@ async function checkAccess(
 
     const [row] = await db
         .select({
-            taskDeletedAt: task.deletedAt,
-            topicDeletedAt: topic.deletedAt,
             topicStatus: topic.status,
         })
         .from(task)
@@ -45,13 +36,6 @@ async function checkAccess(
         return error(fallbackMessage, fallbackCode, fallbackStatus);
     }
 
-    const topicUnavailable = row.topicDeletedAt !== null;
-    if (topicUnavailable) {
-        return error("课题已删除", "TOPIC_DELETED", 410);
-    }
-    if (row.taskDeletedAt !== null) {
-        return error("任务已撤销", "TASK_REVOKED", 410);
-    }
     if (row.topicStatus !== 1) {
         return error("课题未发布", "TOPIC_UNAVAILABLE", 404);
     }

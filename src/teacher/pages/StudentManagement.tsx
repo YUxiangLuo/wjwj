@@ -33,7 +33,7 @@ export function StudentManagement() {
     const [searchQuery, setSearchQuery] = useState("");
     const [importFile, setImportFile] = useState<File | null>(null);
     const [importing, setImporting] = useState(false);
-    const [importResult, setImportResult] = useState<{ successCount: number; restoredCount: number; failureCount: number; errors: Array<{ row: number; reason: string }> } | null>(null);
+    const [importResult, setImportResult] = useState<{ successCount: number; failureCount: number; errors: Array<{ row: number; reason: string }> } | null>(null);
 
     // Add Form State
     const [newStudent, setNewStudent] = useState({ id: "", name: "", email: "" });
@@ -97,7 +97,7 @@ export function StudentManagement() {
         if (res.success) {
             setShowAddModal(false);
             setNewStudent({ id: "", name: "", email: "" });
-            toast.success(`学生已${res.data?.restored ? "恢复" : "创建"}，登录密码与学号相同`);
+            toast.success("学生已创建，登录密码与学号相同");
             void loadData(false);
         } else {
             toast.error("添加失败: " + res.error?.message);

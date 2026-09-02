@@ -66,14 +66,12 @@ export const student = pgTable(
         password: varchar("password", { length: 255 }).notNull(),
         classId: bigint("class_id", { mode: "number" }).notNull().references(() => class_.id),
         status: smallint("status").notNull().default(1),
-        deletedAt: timestamp("deleted_at", { mode: "date", withTimezone: true }),
         createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
         updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     },
     (table) => ({
         classIdIdx: index("student_idx_class_id").on(table.classId),
         statusIdx: index("student_idx_status").on(table.status),
-        deletedIdx: index("student_idx_deleted").on(table.deletedAt),
         studentIdLength: check("student_ck_student_id_length", sql`char_length(${table.studentId}) <= 50`),
         statusCheck: check("student_ck_status_value", sql`${table.status} in (0, 1)`),
     }),
@@ -129,14 +127,12 @@ export const topic = pgTable(
         weightConfig: nativeJsonb("weight_config"),
         recommendQuestions: nativeJsonb("recommend_questions"),
         status: smallint("status").notNull().default(0),
-        deletedAt: timestamp("deleted_at", { mode: "date", withTimezone: true }),
         createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
         updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     },
     (table) => ({
         teacherIdIdx: index("topic_idx_teacher_id").on(table.teacherId),
         statusIdx: index("topic_idx_status").on(table.status),
-        deletedIdx: index("topic_idx_deleted").on(table.deletedAt),
         fieldMappingObject: check(
             "topic_ck_field_mapping_object",
             sql`${table.fieldMapping} is null or jsonb_typeof(${table.fieldMapping}) = 'object'`,
@@ -183,14 +179,12 @@ export const task = pgTable(
         classId: bigint("class_id", { mode: "number" }).notNull().references(() => class_.id),
         openTime: timestamp("open_time", { mode: "date", withTimezone: true }),
         deadline: timestamp("deadline", { mode: "date", withTimezone: true }),
-        deletedAt: timestamp("deleted_at", { mode: "date", withTimezone: true }),
         createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
         updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     },
     (table) => ({
         uniqueTopicClass: uniqueIndex("task_uk_topic_class").on(table.topicId, table.classId),
         classIdIdx: index("task_idx_class_id").on(table.classId),
-        deletedIdx: index("task_idx_deleted").on(table.deletedAt),
     }),
 );
 

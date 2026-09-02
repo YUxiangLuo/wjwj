@@ -1,7 +1,8 @@
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../../db";
-import { class_, task, topic } from "../../db/schema";
+import { class_, experiment, samplingAttempt, task, topic } from "../../db/schema";
 import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
+import { deleteAuditEventsForEntities } from "../../server/audit-event";
 import { validateTopicPublishReadiness } from "./validation";
 
 interface TaskServiceFailure {
@@ -69,7 +70,7 @@ export async function publishTopicTasks(params: {
                 weightConfig: topic.weightConfig,
             })
             .from(topic)
-            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)));
         if (!topicRow) {
             return fail("无权限使用该实验模板", "FORBIDDEN", 403);
         }
@@ -96,33 +97,20 @@ export async function publishTopicTasks(params: {
         }
 
         const rowsForTopic = await tx
-            .select({ id: task.id, classId: task.classId, deletedAt: task.deletedAt })
+            .select({ classId: task.classId })
             .from(task)
             .where(and(eq(task.topicId, params.topicId), sql`${task.classId} IN (${sql.join(params.classIds, sql`, `)})`));
 
-        const classIdToRow = new Map(rowsForTopic.map((row) => [row.classId, row]));
+        const existingClassIds = new Set(rowsForTopic.map((row) => row.classId));
         const skipped: number[] = [];
         const toInsert: number[] = [];
-        const toRevive: { taskId: number; classId: number }[] = [];
 
         for (const classId of params.classIds) {
-            const row = classIdToRow.get(classId);
-            if (!row) {
-                toInsert.push(classId);
-            } else if (row.deletedAt == null) {
-                skipped.push(classId);
-            } else {
-                toRevive.push({ taskId: row.id, classId });
-            }
+            if (existingClassIds.has(classId)) skipped.push(classId);
+            else toInsert.push(classId);
         }
 
         const now = new Date();
-        if (toRevive.length > 0) {
-            await tx
-                .update(task)
-                .set({ deletedAt: null, openTime: now, deadline: deadlineDate, updatedAt: now })
-                .where(inArray(task.id, toRevive.map((row) => row.taskId)));
-        }
         if (toInsert.length > 0) {
             await tx.insert(task).values(
                 toInsert.map((classId) => ({
@@ -157,7 +145,7 @@ export async function extendTopicTaskDeadline(params: {
         .from(task)
         .innerJoin(class_, eq(task.classId, class_.id))
         .where(
-            and(eq(task.id, params.taskId), eq(class_.teacherId, params.teacherId), isNull(task.deletedAt))
+            and(eq(task.id, params.taskId), eq(class_.teacherId, params.teacherId))
         );
 
     if (!row) {
@@ -175,24 +163,36 @@ export async function extendTopicTaskDeadline(params: {
     return { ok: true };
 }
 
-/** 将任务标记为已删除（学生端不再可见）；仅可删除本人班级下的任务 */
-export async function softDeleteTeacherTask(params: {
+/** 永久删除任务及其学生实验；仅可删除本人班级下的任务。 */
+export async function deleteTeacherTask(params: {
     teacherId: number;
     taskId: number;
 }): Promise<TaskServiceSuccess | TaskServiceFailure> {
-    const [row] = await db
-        .select({ id: task.id })
-        .from(task)
-        .innerJoin(class_, eq(task.classId, class_.id))
-        .where(
-            and(eq(task.id, params.taskId), eq(class_.teacherId, params.teacherId), isNull(task.deletedAt))
-        );
+    return db.transaction(async (tx) => {
+        await acquireStorageMutationLock(tx);
+        const [row] = await tx
+            .select({ id: task.id })
+            .from(task)
+            .innerJoin(class_, eq(task.classId, class_.id))
+            .where(and(eq(task.id, params.taskId), eq(class_.teacherId, params.teacherId)))
+            .for("update");
+        if (!row) return fail("任务不存在", "NOT_FOUND", 404);
 
-    if (!row) {
-        return fail("任务不存在", "NOT_FOUND", 404);
-    }
-
-    const deletedAt = new Date();
-    await db.update(task).set({ deletedAt, updatedAt: deletedAt }).where(eq(task.id, params.taskId));
-    return { ok: true };
+        const experimentRows = await tx
+            .select({ id: experiment.id })
+            .from(experiment)
+            .where(eq(experiment.taskId, params.taskId));
+        const experimentIds = experimentRows.map((item) => item.id);
+        const attemptRows = experimentIds.length
+            ? await tx
+                .select({ id: samplingAttempt.id })
+                .from(samplingAttempt)
+                .where(inArray(samplingAttempt.experimentId, experimentIds))
+            : [];
+        await tx.delete(task).where(eq(task.id, params.taskId));
+        await deleteAuditEventsForEntities(tx, "sampling_attempt", attemptRows.map((item) => item.id));
+        await deleteAuditEventsForEntities(tx, "experiment", experimentIds);
+        await deleteAuditEventsForEntities(tx, "task", [params.taskId]);
+        return { ok: true };
+    });
 }

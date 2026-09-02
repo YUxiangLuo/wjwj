@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { createMockDb } from "../src/test-utils/mock-db";
 import { loadReferences, storageDeletionToken } from "./audit-storage";
 
-test("storage audit treats only active topics and their attachments as current references", async () => {
+test("storage audit treats every persisted topic and attachment as a current reference", async () => {
     const { db, operations } = createMockDb({
         select: [
             [{ path: "/storage/uploads/active-topic.csv" }],
@@ -28,9 +28,9 @@ test("storage audit treats only active topics and their attachments as current r
 
     const selects = operations.filter((operation) => operation.kind === "select");
     expect(selects).toHaveLength(2);
-    expect(selects[0]?.where).toBeTruthy();
-    expect(selects[1]?.where).toBeTruthy();
-    expect(selects[1]?.joins?.map((join) => join.type)).toEqual(["innerJoin"]);
+    expect(selects[0]?.where).toBeUndefined();
+    expect(selects[1]?.where).toBeUndefined();
+    expect(selects[1]?.joins).toBeUndefined();
 });
 
 test("storage deletion confirmation changes with the exact orphan manifest", () => {

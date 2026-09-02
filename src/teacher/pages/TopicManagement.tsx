@@ -619,7 +619,7 @@ export function TopicManagement() {
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-foreground">确认操作</AlertDialogTitle>
                         <AlertDialogDescription className="text-muted-foreground">
-                            {confirmDialog.type === "delete" && "确认删除该实验模板吗？删除后无法恢复。"}
+                            {confirmDialog.type === "delete" && "将永久删除该实验模板、总体数据和全部附件。已分配任务的模板不能删除，此操作无法恢复。"}
                             {confirmDialog.type === "publish" && "确认发布该实验模板吗？发布后可分配给班级。"}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -628,7 +628,7 @@ export function TopicManagement() {
                             取消
                         </AlertDialogCancel>
                         <AlertDialogAction onClick={executeConfirmAction} variant={confirmDialog.type === "delete" ? "destructive" : "default"}>
-                            确认
+                            {confirmDialog.type === "delete" ? "永久删除" : "确认"}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

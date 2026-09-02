@@ -35,11 +35,9 @@ export type GradingStatus = "submitted" | "graded" | "rejected";
 export interface GradingItem {
     id: number; studentName: string; studentId: string; topic: string; className: string;
     submittedAt: string; status: GradingStatus; score: number | null; gradedByName?: string | null; gradedAt?: string | null;
-    /** 归档 = 学生/任务/课题任一被软删，或学生已转入其他班级；归档提交仅供查阅。 */
-    archived?: boolean;
 }
 export interface GradingListResponse { items: GradingItem[]; total: number; page: number; pageSize: number }
-export interface GradingListParams { status?: string; className?: string; topicName?: string; keyword?: string; page?: number; pageSize?: number; includeArchived?: boolean }
+export interface GradingListParams { status?: string; className?: string; topicName?: string; keyword?: string; page?: number; pageSize?: number }
 export interface SubmissionDetail extends GradingItem {
     version: number;
     topicDesc: string | null;
@@ -148,15 +146,15 @@ export const teacherApi = {
         for (const [key, value] of Object.entries(params)) if (value !== undefined && value !== "") search.set(key, value === true ? "1" : String(value));
         return request<GradingListResponse>(`/api/teacher/grading${search.size ? `?${search}` : ""}`);
     },
-    getSubmissionDetail: (id: number, options: { includeArchived?: boolean } = {}) => request<SubmissionDetail>(`/api/teacher/grading/${id}${options.includeArchived ? "?includeArchived=1" : ""}`),
+    getSubmissionDetail: (id: number) => request<SubmissionDetail>(`/api/teacher/grading/${id}`),
     submitGrade: (id: number, observedVersion: number, data: { scoreQuestionnaire: number; scoreProcess: number; scoreReport: number; comment: string }) => request<{ success: boolean; totalScore: number }>(`/api/teacher/grading/${id}`, { method: "POST", body: JSON.stringify({ ...data, observedVersion }) }),
     rejectSubmission: (id: number, observedVersion: number, reason: string) => request<{ success: boolean }>(`/api/teacher/grading/${id}/reject`, { method: "POST", body: JSON.stringify({ reason, observedVersion }) }),
 
     getStudents: (classId: number) => request<Student[]>(`/api/teacher/classes/${classId}/students`),
-    addStudent: (classId: number, data: { studentId: string; name: string; email?: string }) => request<{ success: boolean; restored: boolean }>(`/api/teacher/classes/${classId}/students`, { method: "POST", body: JSON.stringify(data) }),
+    addStudent: (classId: number, data: { studentId: string; name: string; email?: string }) => request<{ success: boolean }>(`/api/teacher/classes/${classId}/students`, { method: "POST", body: JSON.stringify(data) }),
     updateStudent: (id: number, data: { action: "reset_password" | "toggle_status" }) => request<{ success: boolean }>(`/api/teacher/students/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     deleteStudent: (id: number) => request<{ success: boolean }>(`/api/teacher/students/${id}`, { method: "DELETE" }),
-    importStudents: (classId: number, file: File) => upload<{ successCount: number; restoredCount: number; failureCount: number; errors: Array<{ row: number; reason: string }> }>(`/api/teacher/classes/${classId}/students/import`, file),
+    importStudents: (classId: number, file: File) => upload<{ successCount: number; failureCount: number; errors: Array<{ row: number; reason: string }> }>(`/api/teacher/classes/${classId}/students/import`, file),
 
     getAnnouncements: () => request<TeacherAnnouncement[]>("/api/teacher/announcements"),
     getGradeExportPreview: (params: { semester?: string; classId?: number | string; topicId?: number | string }) => {

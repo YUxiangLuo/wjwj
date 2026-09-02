@@ -1,1 +1,0 @@
-ALTER TABLE "topic_attachment" ALTER COLUMN "file_type" SET DATA TYPE varchar(120);

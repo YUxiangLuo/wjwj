@@ -1,4 +1,4 @@
-import { and, count, desc, eq, ilike, inArray, isNull, or } from "drizzle-orm";
+import { and, count, desc, eq, ilike, inArray, or, type SQL } from "drizzle-orm";
 import { db } from "../../db";
 import { announcement, class_, experiment, semester, student, task, teacher, topic } from "../../db/schema";
 import { experimentProgress } from "../../lib/experiment-progress";
@@ -214,7 +214,7 @@ const classRoutes: RouteDefinition = {
             db
                 .select({ key: student.classId, count: count() })
                 .from(student)
-                .where(and(inArray(student.classId, ids), isNull(student.deletedAt)))
+                .where(inArray(student.classId, ids))
                 .groupBy(student.classId),
         );
         return json(rows.map((row) => ({ ...row, studentCount: studentCounts.get(row.id) ?? 0 })));
@@ -298,7 +298,7 @@ const studentRoutes: RouteDefinition = {
         const paged = params.has("page") || params.has("pageSize");
         const page = Math.max(1, Number.parseInt(params.get("page") ?? "1", 10) || 1);
         const pageSize = Math.min(100, Math.max(1, Number.parseInt(params.get("pageSize") ?? "20", 10) || 20));
-        const conditions = [isNull(student.deletedAt)];
+        const conditions: SQL[] = [];
         if (classId) conditions.push(eq(student.classId, classId));
         if (search) {
             conditions.push(
@@ -399,7 +399,7 @@ const studentStatusRoutes: RouteDefinition = {
         const updated = await db
             .update(student)
             .set({ status: body.status, updatedAt: new Date() })
-            .where(and(eq(student.id, id), isNull(student.deletedAt)))
+            .where(eq(student.id, id))
             .returning({ id: student.id });
         if (!updated.length) return error("学生不存在", "NOT_FOUND", 404);
         if (body.status === 0) await clearUserSessionsForUser(STUDENT_USER_TYPE, id);
@@ -411,7 +411,7 @@ const studentResetPasswordRoutes: RouteDefinition = {
     async POST(req) {
         const id = parseId(req);
         if (!id) return error("无效的学生ID", "INVALID_ID");
-        const [row] = await db.select().from(student).where(and(eq(student.id, id), isNull(student.deletedAt)));
+        const [row] = await db.select().from(student).where(eq(student.id, id));
         if (!row) return error("学生不存在", "NOT_FOUND", 404);
         await db
             .update(student)

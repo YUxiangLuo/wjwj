@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { RichTextContent } from "@/components/RichTextContent";
 import { LoadingStatus } from "@/components/LoadingStatus";
 import { tasksApi, type TaskDetail, type TaskStatus, type TopicAttachment } from "../api-client";
-import { TopicDeletedState } from "../components/TopicDeletedState";
 import { getTaskPrimaryAction, shouldShowTaskAvailabilityHint } from "./topic-detail-action";
 import { parseDeadline, formatDateTimeDisplay, getRemainingDeadlineSummary } from "@/utils/format";
 import { notifyAuthExpiredFromResponse } from "@/lib/auth-expired";
@@ -96,7 +95,6 @@ export function TopicDetails() {
     const [task, setTask] = useState<TaskDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
-    const [accessDeniedVariant, setAccessDeniedVariant] = useState<"topic_deleted" | "task_revoked" | null>(null);
     const [previewFile, setPreviewFile] = useState<TopicAttachment | null>(null);
 
     useEffect(() => {
@@ -108,14 +106,10 @@ export function TopicDetails() {
 
             setLoading(true);
             setNotFound(false);
-            setAccessDeniedVariant(null);
             try {
                 const res = await tasksApi.get(parseInt(taskId));
                 if (res.success && res.data) {
                     setTask(res.data);
-                } else if (res.error?.code === "TOPIC_DELETED" || res.error?.code === "TASK_REVOKED") {
-                    setTask(null);
-                    setAccessDeniedVariant(res.error?.code === "TASK_REVOKED" ? "task_revoked" : "topic_deleted");
                 } else {
                     setTask(null);
                     setNotFound(true);
@@ -133,10 +127,6 @@ export function TopicDetails() {
 
     if (loading) {
         return <LoadingStatus className="py-24" iconClassName="h-10 w-10" label="正在加载实验任务" />;
-    }
-
-    if (accessDeniedVariant) {
-        return <TopicDeletedState variant={accessDeniedVariant} />;
     }
 
     if (notFound || !task) {

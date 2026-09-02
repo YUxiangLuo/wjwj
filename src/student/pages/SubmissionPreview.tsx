@@ -17,7 +17,6 @@ import {
 import { RichTextContent } from "@/components/RichTextContent";
 import { LoadingStatus } from "@/components/LoadingStatus";
 import { experimentApi, tasksApi, type ExperimentData, type TaskDetail, type Question } from "../api-client";
-import { TopicDeletedState } from "../components/TopicDeletedState";
 import {
     formatMarginOfError,
     getAdvancedPlanSourceLabel,
@@ -94,7 +93,6 @@ export function SubmissionPreview() {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [accessDeniedVariant, setAccessDeniedVariant] = useState<"topic_deleted" | "task_revoked" | null>(null);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [showFullPreview, setShowFullPreview] = useState(false);
 
@@ -102,25 +100,11 @@ export function SubmissionPreview() {
         async function loadData() {
             if (!taskId) return;
             setLoading(true);
-            setAccessDeniedVariant(null);
             try {
                 const [taskRes, expRes] = await Promise.all([
                     tasksApi.get(Number(taskId)),
                     experimentApi.get(Number(taskId)),
                 ]);
-
-                if (
-                    taskRes.error?.code === "TOPIC_DELETED" ||
-                    taskRes.error?.code === "TASK_REVOKED" ||
-                    expRes.error?.code === "TOPIC_DELETED" ||
-                    expRes.error?.code === "TASK_REVOKED"
-                ) {
-                    setTask(null);
-                    setExperiment(null);
-                    const code = taskRes.error?.code ?? expRes.error?.code;
-                    setAccessDeniedVariant(code === "TASK_REVOKED" ? "task_revoked" : "topic_deleted");
-                    return;
-                }
 
                 if (taskRes.success && taskRes.data) {
                     setTask(taskRes.data);
@@ -162,10 +146,6 @@ export function SubmissionPreview() {
 
     if (loading) {
         return <LoadingStatus className="py-24" iconClassName="h-8 w-8 text-info" label="正在加载提交预览" />;
-    }
-
-    if (accessDeniedVariant) {
-        return <TopicDeletedState variant={accessDeniedVariant} />;
     }
 
     if (!task || !experiment) {

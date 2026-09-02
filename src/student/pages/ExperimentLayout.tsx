@@ -18,7 +18,6 @@ import { LoadingStatus } from "@/components/LoadingStatus";
 import { experimentApi, tasksApi, type ExperimentData } from "../api-client";
 import { formatStudyContractSummary } from "@/lib/analysis-target";
 import { formatMarginOfError } from "../experiment/sample-plan-display";
-import { TopicDeletedState } from "../components/TopicDeletedState";
 import { getExperimentRouteRedirect } from "../experiment/page-access";
 import { AnalysisReport } from "./stages/AnalysisReport";
 import { QuestionnaireDesign } from "./stages/QuestionnaireDesign";
@@ -59,7 +58,6 @@ export function ExperimentLayout() {
     const [deadline, setDeadline] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
-    const [accessDenied, setAccessDenied] = useState<"topic_deleted" | "task_revoked" | null>(null);
     const [redirect, setRedirect] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
@@ -72,9 +70,7 @@ export function ExperimentLayout() {
         if (!Number.isInteger(numericTaskId) || numericTaskId <= 0) { setNotFound(true); setLoading(false); return; }
         void Promise.all([experimentApi.get(numericTaskId), tasksApi.get(numericTaskId)]).then(([experimentResponse, taskResponse]) => {
             if (!taskResponse.success || !taskResponse.data) {
-                const code = taskResponse.error?.code;
-                if (code === "TOPIC_DELETED" || code === "TASK_REVOKED") setAccessDenied(code === "TASK_REVOKED" ? "task_revoked" : "topic_deleted");
-                else setNotFound(true);
+                setNotFound(true);
                 return;
             }
             setTaskName(taskResponse.data.name);
@@ -161,7 +157,6 @@ export function ExperimentLayout() {
     }, [currentStage, experiment]);
 
     if (loading) return <LoadingStatus className="py-24" iconClassName="h-10 w-10" label="正在加载实验进度" />;
-    if (accessDenied) return <TopicDeletedState variant={accessDenied} />;
     if (redirect) return <Navigate to={redirect} replace />;
     if (notFound || !experiment) return <Navigate to="/" replace />;
     const completed = [experiment.stage1CompletedAt, experiment.stage2CompletedAt, experiment.stage3CompletedAt, experiment.stage4CompletedAt];

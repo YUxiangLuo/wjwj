@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, student } from "../../db/schema";
 import { STUDENT_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
@@ -49,7 +49,7 @@ export async function getCurrentStudent(req: Request): Promise<StudentAuthResult
             status: student.status,
         })
         .from(student)
-        .where(and(eq(student.id, currentSession.session.userId), isNull(student.deletedAt)));
+        .where(eq(student.id, currentSession.session.userId));
 
     const result: StudentAuthResult = !row
         ? { student: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) }
@@ -70,7 +70,7 @@ const loginRoutes: RouteDefinition = {
         const studentId = stringValue(body.studentId).trim();
         const password = stringValue(body.password);
         if (!studentId || !password) return error("请输入学号和密码", "VALIDATION_ERROR", 400);
-        const [row] = await db.select().from(student).where(and(eq(student.studentId, studentId), isNull(student.deletedAt)));
+        const [row] = await db.select().from(student).where(eq(student.studentId, studentId));
         if (!row || row.status !== 1) {
             return error("账号或密码错误", "INVALID_CREDENTIALS", 401);
         }

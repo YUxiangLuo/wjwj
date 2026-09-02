@@ -22,7 +22,7 @@ test("student login creates an independent fixed session", async () => {
     const password = "Teaching123!";
     const { module, operations } = await load([[{
         id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1,
-        deletedAt: null, password: await Bun.password.hash(password),
+        password: await Bun.password.hash(password),
     }]]);
     const response = await module.loginRoutes.POST!(request("POST", { studentId: "S001", password }));
     expect(response.status).toBe(200);
@@ -49,7 +49,7 @@ test("student login rejects non-string fields before querying", async () => {
 test("wrong student passwords never create lockout state", async () => {
     const row = {
         id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1,
-        deletedAt: null, password: await Bun.password.hash("S001"),
+        password: await Bun.password.hash("S001"),
     };
     const { module, operations } = await load(Array.from({ length: 6 }, () => [row]));
     for (let attempt = 0; attempt < 6; attempt += 1) {

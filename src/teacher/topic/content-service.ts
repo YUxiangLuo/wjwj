@@ -1,4 +1,4 @@
-import { and, count, eq, isNull, sum } from "drizzle-orm";
+import { and, count, eq, sum } from "drizzle-orm";
 import { basename } from "node:path";
 import { db } from "../../db";
 import { task, topic, topicAttachment } from "../../db/schema";
@@ -62,7 +62,7 @@ export async function uploadTopicAttachment(params: {
             const [activeTopic] = await tx
                 .select({ id: topic.id })
                 .from(topic)
-                .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
+                .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)));
             if (!activeTopic) return fail("实验模板不存在", "NOT_FOUND", 404);
             const [taskReference] = await tx
                 .select({ id: task.id })
@@ -130,7 +130,7 @@ export async function replaceTopicRecommendQuestions(params: {
         const [activeTopic] = await tx
             .select({ id: topic.id })
             .from(topic)
-            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)));
         if (!activeTopic) return fail("实验模板不存在", "NOT_FOUND", 404);
         const [taskReference] = await tx
             .select({ id: task.id })
@@ -147,7 +147,7 @@ export async function replaceTopicRecommendQuestions(params: {
         const [updated] = await tx
             .update(topic)
             .set({ recommendQuestions: parsed.questions, updatedAt: new Date() })
-            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)))
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)))
             .returning({ id: topic.id });
         return updated ? { ok: true as const } : fail("实验模板不存在", "NOT_FOUND", 404);
     });
@@ -163,7 +163,7 @@ export async function deleteTopicAttachment(params: {
         const [activeTopic] = await tx
             .select({ id: topic.id })
             .from(topic)
-            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)));
         if (!activeTopic) return fail("实验模板不存在", "NOT_FOUND", 404);
         const [taskReference] = await tx
             .select({ id: task.id })
@@ -205,7 +205,7 @@ export async function copyTopicWithResources(params: {
             const [sourceTopic] = await tx
                 .select()
                 .from(topic)
-                .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
+                .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)));
             if (!sourceTopic) return null;
             const attachments = await tx.select().from(topicAttachment).where(eq(topicAttachment.topicId, params.topicId));
 

@@ -1,6 +1,6 @@
 import { readdir, unlink } from "node:fs/promises";
 import { relative, resolve, sep } from "node:path";
-import { eq, isNull, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { closeDatabase, db } from "../src/db";
 import { topic, topicAttachment } from "../src/db/schema";
 import { acquireStorageMutationLock } from "../src/db/storage-mutation-lock";
@@ -72,16 +72,13 @@ export async function loadReferences(
     if (state?.topic_table) {
         const topics = await client
             .select({ path: topic.excelFilePath })
-            .from(topic)
-            .where(isNull(topic.deletedAt));
+            .from(topic);
         for (const row of topics) addReference(references, row.path);
     }
     if (state?.attachment_table && state.topic_table) {
         const attachments = await client
             .select({ path: topicAttachment.filePath })
-            .from(topicAttachment)
-            .innerJoin(topic, eq(topicAttachment.topicId, topic.id))
-            .where(isNull(topic.deletedAt));
+            .from(topicAttachment);
         for (const row of attachments) addReference(references, row.path);
     }
     if (state?.submission_table) {

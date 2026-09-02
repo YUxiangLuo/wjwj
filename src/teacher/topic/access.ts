@@ -1,4 +1,4 @@
-import { and, eq, exists, isNull } from "drizzle-orm";
+import { and, eq, exists } from "drizzle-orm";
 import { db } from "../../db";
 import { task, topic } from "../../db/schema";
 
@@ -15,7 +15,7 @@ export async function requireTopicOwner(topicId: number, teacherId: number) {
             hasTasks: exists(assignedTask),
         })
         .from(topic)
-        .where(and(eq(topic.id, topicId), eq(topic.teacherId, teacherId), isNull(topic.deletedAt)));
+        .where(and(eq(topic.id, topicId), eq(topic.teacherId, teacherId)));
 
     return row ?? null;
 }

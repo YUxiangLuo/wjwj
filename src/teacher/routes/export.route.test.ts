@@ -66,7 +66,6 @@ test("grade export preview accepts semester filter and joins semester data", asy
     const selection = query?.selection as { graded?: SQL; avgScore?: SQL } | undefined;
     const dialect = new PgDialect();
     expect(dialect.sqlToQuery(selection!.graded!).sql).toContain("INNER JOIN student counted_student");
-    expect(dialect.sqlToQuery(selection!.avgScore!).sql).toContain("counted_student.deleted_at IS NULL");
     expect(dialect.sqlToQuery(selection!.graded!).sql).toContain('counted_student.class_id = "task"."class_id"');
     expect(dialect.sqlToQuery(selection!.avgScore!).sql).toContain('counted_student.class_id = "task"."class_id"');
 });

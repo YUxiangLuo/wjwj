@@ -34,7 +34,7 @@ export function StudentConfirmDialog(props: StudentConfirmDialogProps) {
                 <AlertDialogHeader>
                     <AlertDialogTitle className="text-foreground">确认操作</AlertDialogTitle>
                     <AlertDialogDescription className="text-muted-foreground">
-                        {state.type === "delete" && "确认删除该学生吗？此操作不可恢复。"}
+                        {state.type === "delete" && "将永久删除该学生账号、全部实验进度、提交、成绩和抽样记录。此操作不可恢复；之后再次导入同一学号会创建全新账号。"}
                         {state.type === "reset" && "确认重置该学生的密码为学号吗？"}
                         {state.type === "toggle" && `确认${state.student?.status === 1 ? "禁用" : "启用"}该学生账号吗？`}
                     </AlertDialogDescription>
@@ -44,7 +44,7 @@ export function StudentConfirmDialog(props: StudentConfirmDialogProps) {
                         取消
                     </AlertDialogCancel>
                     <AlertDialogAction data-testid="teacher-student-confirm-submit" onClick={onConfirm} variant={state.type === "delete" ? "destructive" : "default"}>
-                        确认
+                        {state.type === "delete" ? "永久删除" : "确认"}
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

@@ -386,7 +386,7 @@ export function TaskManagement() {
                         <AlertDialogTitle className="text-foreground">删除任务？</AlertDialogTitle>
                         <AlertDialogDescription className="text-muted-foreground">
                             {taskToDelete
-                                ? `将取消「${taskToDelete.topic}」在「${taskToDelete.className}」的实验任务：学生端与批改中均不再显示。需要再次布置同一模板时，可在「发布实验任务」中重新向该班级发布。`
+                                ? `将永久删除「${taskToDelete.topic}」在「${taskToDelete.className}」的任务，以及全部学生实验进度、提交、成绩和抽样记录。此操作不可恢复；再次发布会创建全新的空任务。`
                                 : null}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -401,7 +401,7 @@ export function TaskManagement() {
                             data-testid="teacher-task-delete-confirm"
                             onClick={() => void confirmDeleteTask()}
                         >
-                            {deleteSubmitting ? "删除中…" : "删除"}
+                            {deleteSubmitting ? "删除中…" : "永久删除"}
                         </Button>
                     </AlertDialogFooter>
                 </AlertDialogContent>

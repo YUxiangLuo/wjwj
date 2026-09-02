@@ -1,4 +1,4 @@
-import { and, asc, count, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, count, eq, inArray } from "drizzle-orm";
 import { closeDatabase, db } from "../index";
 import {
     admin,
@@ -63,7 +63,7 @@ async function verify() {
         .select({ id: task.id, classId: task.classId })
         .from(task)
         .innerJoin(topic, eq(task.topicId, topic.id))
-        .where(and(eq(topic.name, DOGFOOD_NAMES.topicA), isNull(topic.deletedAt), isNull(task.deletedAt)));
+        .where(eq(topic.name, DOGFOOD_NAMES.topicA));
     check(aTask, "Active A task is missing");
 
     const progressRows = await db
@@ -77,7 +77,7 @@ async function verify() {
         })
         .from(student)
         .leftJoin(experiment, and(eq(experiment.studentId, student.id), eq(experiment.taskId, aTask.id)))
-        .where(and(eq(student.classId, aTask.classId), isNull(student.deletedAt)))
+        .where(eq(student.classId, aTask.classId))
         .orderBy(asc(student.studentId));
     const progress = buildTaskProgressSnapshot(progressRows);
     const expectedProgress = { not_started: 3, stage1: 1, stage2: 1, stage3: 1, stage4: 1, submitted: 1, graded: 1, rejected: 1 };
@@ -97,7 +97,6 @@ async function verify() {
             name: student.name,
             password: student.password,
             status: student.status,
-            deletedAt: student.deletedAt,
             className: class_.name,
         })
         .from(student)
@@ -113,7 +112,7 @@ async function verify() {
         const row = demoStudentRows.find((candidate) => candidate.studentId === account.studentId);
         check(row?.name === account.name, `${account.studentId} demo name differs`);
         check(row.className === DOGFOOD_NAMES.mainClass, `${account.studentId} is outside the demo class`);
-        check(row.status === 1 && !row.deletedAt, `${account.studentId} is not demo-login eligible`);
+        check(row.status === 1, `${account.studentId} is not demo-login eligible`);
     }
 
     const authoritative = await db
@@ -131,7 +130,7 @@ async function verify() {
         .innerJoin(task, eq(experiment.taskId, task.id))
         .innerJoin(topic, eq(task.topicId, topic.id))
         .where(eq(experiment.currentStage, 4));
-    check(authoritative.length === 13, `Expected 13 stage4/terminal authoritative fixtures, got ${authoritative.length}`);
+    check(authoritative.length === 10, `Expected 10 stage4/terminal authoritative fixtures, got ${authoritative.length}`);
 
     function checkAuthoritativeMethods(label: string, value: unknown, ppsDisabled: boolean, allowChoicePair = false) {
         const results = value as Record<string, Record<string, unknown> | undefined> | null;
@@ -226,9 +225,7 @@ async function verify() {
         .innerJoin(class_, eq(task.classId, class_.id))
         .where(and(
             eq(class_.teacherId, (await db.select({ id: teacher.id }).from(teacher).where(eq(teacher.employeeId, "T001")))[0]!.id),
-            isNull(student.deletedAt),
-            isNull(task.deletedAt),
-            isNull(topic.deletedAt),
+            eq(student.classId, task.classId),
             inArray(experiment.status, ["submitted", "graded", "rejected"]),
         ));
     const visibleKeys = visible.map((row) => `${row.studentId}|${row.topicName}`).sort();
@@ -244,22 +241,10 @@ async function verify() {
     ].sort();
     check(JSON.stringify(visibleKeys) === JSON.stringify(expectedVisible), `Visible grading fixtures differ: ${JSON.stringify(visibleKeys)}`);
 
-    const deletionRows = await db
-        .select({ topicName: topic.name, topicDeletedAt: topic.deletedAt, taskDeletedAt: task.deletedAt, historicalCount: count(experiment.id) })
-        .from(topic)
-        .innerJoin(task, eq(task.topicId, topic.id))
-        .leftJoin(experiment, eq(experiment.taskId, task.id))
-        .where(inArray(topic.name, [DOGFOOD_NAMES.topicF, DOGFOOD_NAMES.topicG]))
-        .groupBy(topic.name, topic.deletedAt, task.deletedAt);
-    const deletedTopic = deletionRows.find((row) => row.topicName === DOGFOOD_NAMES.topicF);
-    const deletedTask = deletionRows.find((row) => row.topicName === DOGFOOD_NAMES.topicG);
-    check(deletedTopic?.topicDeletedAt && !deletedTopic.taskDeletedAt && deletedTopic.historicalCount === 1, "Deleted-topic historical invariant is missing");
-    check(!deletedTask?.topicDeletedAt && deletedTask?.taskDeletedAt && deletedTask.historicalCount === 1, "Deleted-task historical invariant is missing");
-
     const storedTopics = await db
         .select({ name: topic.name, path: topic.excelFilePath, rowCount: topic.excelRowCount, fieldMapping: topic.fieldMapping, samplingPolicy: topic.samplingPolicy })
         .from(topic)
-        .where(and(inArray(topic.name, [DOGFOOD_NAMES.topicA, DOGFOOD_NAMES.topicB, DOGFOOD_NAMES.topicH, DOGFOOD_NAMES.topicI]), isNull(topic.deletedAt)));
+        .where(inArray(topic.name, [DOGFOOD_NAMES.topicA, DOGFOOD_NAMES.topicB, DOGFOOD_NAMES.topicH, DOGFOOD_NAMES.topicI]));
     check(storedTopics.length === 4, `Expected stored population metadata for four research scenarios, got ${storedTopics.length}`);
 
     const expectedTopicFiles = {
@@ -337,7 +322,7 @@ async function verify() {
         .select({ path: topicAttachment.filePath, storedSize: topicAttachment.fileSize })
         .from(topicAttachment)
         .innerJoin(topic, eq(topicAttachment.topicId, topic.id))
-        .where(and(eq(topic.name, DOGFOOD_NAMES.topicA), isNull(topic.deletedAt)));
+        .where(eq(topic.name, DOGFOOD_NAMES.topicA));
     check(attachments.length === 2, `Expected two A attachments, got ${attachments.length}`);
     for (const expectedPath of [GUIDE_ATTACHMENT_PATH, QUESTIONNAIRE_TEMPLATE_ATTACHMENT_PATH]) {
         const storedAttachment = attachments.find((item) => item.path === expectedPath);

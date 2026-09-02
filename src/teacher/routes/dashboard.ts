@@ -9,11 +9,11 @@ const dashboardRoutes: RouteDefinition = {
     async GET(req) {
         const teacherId = getPrimaryTeacherIdOrThrow(req);
         const now = new Date();
-        const teacherScope = [eq(class_.teacherId, teacherId), isNull(task.deletedAt), isNull(topic.deletedAt)];
+        const teacherScope = [eq(class_.teacherId, teacherId)];
 
         const [[myClasses], [myTopics], [pendingGrading], [activeTasks]] = await Promise.all([
             db.select({ count: count() }).from(class_).where(eq(class_.teacherId, teacherId)),
-            db.select({ count: count() }).from(topic).where(and(eq(topic.teacherId, teacherId), isNull(topic.deletedAt))),
+            db.select({ count: count() }).from(topic).where(eq(topic.teacherId, teacherId)),
             db.select({ count: count() })
                 .from(experiment)
                 .innerJoin(student, eq(experiment.studentId, student.id))
@@ -22,7 +22,6 @@ const dashboardRoutes: RouteDefinition = {
                 .innerJoin(class_, eq(task.classId, class_.id))
                 .where(and(
                     ...teacherScope,
-                    isNull(student.deletedAt),
                     eq(student.classId, task.classId),
                     eq(experiment.status, "submitted"),
                 )),
@@ -51,7 +50,7 @@ const dashboardRoutes: RouteDefinition = {
             .from(task)
             .innerJoin(topic, eq(task.topicId, topic.id))
             .innerJoin(class_, eq(task.classId, class_.id))
-            .leftJoin(student, and(eq(student.classId, class_.id), isNull(student.deletedAt)))
+            .leftJoin(student, eq(student.classId, class_.id))
             .leftJoin(experiment, and(eq(experiment.studentId, student.id), eq(experiment.taskId, task.id)))
             .where(and(
                 ...teacherScope,

@@ -5,78 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1784364770050,
-      "tag": "0000_steady_magma",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1784388936241,
-      "tag": "0001_mushy_thor_girl",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1784401596926,
-      "tag": "0002_unusual_wonder_man",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1784728982464,
-      "tag": "0003_medical_galactus",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1785269017511,
-      "tag": "0004_normalize_jsonb_values",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1787682326509,
-      "tag": "0005_spicy_redwing",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1787683609348,
-      "tag": "0006_cultured_martin_li",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1788345147572,
-      "tag": "0007_talented_gwen_stacy",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1788347224304,
-      "tag": "0008_rapid_sunfire",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1788366394172,
-      "tag": "0009_sloppy_micromacro",
-      "breakpoints": true
-    },
-    {
-      "idx": 10,
-      "version": "7",
-      "when": 1788369659996,
-      "tag": "0010_ambiguous_lockjaw",
+      "when": 1788373122270,
+      "tag": "0000_amusing_rage",
       "breakpoints": true
     }
   ]

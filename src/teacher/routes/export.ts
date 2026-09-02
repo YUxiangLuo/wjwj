@@ -1,4 +1,4 @@
-import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
 import * as XLSX from "xlsx";
 import { db } from "../../db";
 import { class_, experiment, semester, student, task, teacher, topic } from "../../db/schema";
@@ -7,10 +7,6 @@ import type { RouteDefinition } from "../../server/route-types";
 import { parseStoredJson } from "../../student/experiment/serialization";
 import { formatDateStampCN, formatDateTimeCN } from "../../utils/format";
 import { getPrimaryTeacherIdOrThrow } from "./auth";
-
-function activeEntityFilters() {
-    return [isNull(task.deletedAt), isNull(topic.deletedAt)];
-}
 
 function parseIdList(value: string | null) {
     if (!value) return [];
@@ -42,8 +38,6 @@ async function getGradeExportRows(teacherId: number, params: URLSearchParams) {
     if ([classId, topicId, taskId].some(Number.isNaN)) return null;
     const conditions = [
         eq(class_.teacherId, teacherId),
-        ...activeEntityFilters(),
-        isNull(student.deletedAt),
         eq(student.classId, task.classId),
         inArray(experiment.status, ["submitted", "graded", "rejected"]),
     ];
@@ -105,7 +99,7 @@ const gradeExportPreviewRoutes: RouteDefinition = {
         const classId = parseOptionalId(params.get("classId"));
         const topicId = parseOptionalId(params.get("topicId"));
         if ([classId, topicId].some(Number.isNaN)) return error("查询参数无效", "INVALID_PARAM", 400);
-        const conditions = [eq(class_.teacherId, teacherId), ...activeEntityFilters()];
+        const conditions = [eq(class_.teacherId, teacherId)];
         const semesterName = params.get("semester");
         if (semesterName && semesterName !== "all") conditions.push(eq(semester.name, semesterName));
         if (classId != null) conditions.push(eq(class_.id, classId));
@@ -123,7 +117,6 @@ const gradeExportPreviewRoutes: RouteDefinition = {
                 INNER JOIN student counted_student ON counted_student.id = e.student_id
                 WHERE e.task_id = ${task.id}
                   AND e.status = 'graded'
-                  AND counted_student.deleted_at IS NULL
                   AND counted_student.class_id = ${task.classId}
             )`,
             avgScore: sql<number>`(
@@ -131,7 +124,6 @@ const gradeExportPreviewRoutes: RouteDefinition = {
                 INNER JOIN student counted_student ON counted_student.id = e.student_id
                 WHERE e.task_id = ${task.id}
                   AND e.status = 'graded'
-                  AND counted_student.deleted_at IS NULL
                   AND counted_student.class_id = ${task.classId}
             )`,
         })
@@ -139,7 +131,7 @@ const gradeExportPreviewRoutes: RouteDefinition = {
             .innerJoin(topic, eq(task.topicId, topic.id))
             .innerJoin(class_, eq(task.classId, class_.id))
             .innerJoin(semester, eq(class_.semesterId, semester.id))
-            .leftJoin(student, and(eq(student.classId, class_.id), isNull(student.deletedAt)))
+            .leftJoin(student, eq(student.classId, class_.id))
             .where(and(...conditions))
             .groupBy(task.id, topic.id, class_.id);
         return json(rows.map((row) => ({
@@ -170,7 +162,7 @@ const gradeAnalyticsRoutes: RouteDefinition = {
         const topicId = parseOptionalId(params.get("topicId"));
         if ([classId, topicId].some(Number.isNaN)) return error("查询参数无效", "INVALID_PARAM", 400);
 
-        const conditions = [eq(class_.teacherId, teacherId), ...activeEntityFilters()];
+        const conditions = [eq(class_.teacherId, teacherId)];
         const semesterName = params.get("semester");
         if (semesterName && semesterName !== "all") conditions.push(eq(semester.name, semesterName));
         if (classId != null) conditions.push(eq(class_.id, classId));
@@ -182,7 +174,7 @@ const gradeAnalyticsRoutes: RouteDefinition = {
                 .innerJoin(topic, eq(task.topicId, topic.id))
                 .innerJoin(class_, eq(task.classId, class_.id))
                 .innerJoin(semester, eq(class_.semesterId, semester.id))
-                .leftJoin(student, and(eq(student.classId, class_.id), isNull(student.deletedAt)))
+                .leftJoin(student, eq(student.classId, class_.id))
                 .leftJoin(experiment, and(eq(experiment.studentId, student.id), eq(experiment.taskId, task.id)))
                 .where(and(...conditions))
                 .groupBy(experiment.status),
@@ -207,7 +199,6 @@ const gradeAnalyticsRoutes: RouteDefinition = {
                 .innerJoin(semester, eq(class_.semesterId, semester.id))
                 .where(and(
                     ...conditions,
-                    isNull(student.deletedAt),
                     eq(student.classId, task.classId),
                     eq(experiment.status, "graded"),
                 )),

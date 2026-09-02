@@ -101,28 +101,3 @@ test("grading and rejection require a numeric observedVersion", async () => {
     expect(rejectResponse.status).toBe(400);
     expect(await rejectResponse.json()).toMatchObject({ error: { code: "VALIDATION_ERROR" } });
 });
-
-const archivedRow = {
-    ...row,
-    studentDeletedAt: null,
-    taskDeletedAt: null,
-    topicDeletedAt: null,
-    studentClassId: 4,
-    taskClassId: 3,
-};
-
-test("grading an archived submission returns 409 read-only", async () => {
-    const { module, operations } = await load(archivedRow);
-    const response = await module.gradingDetailRoutes.POST!(post("99", { observedVersion: 7, scoreQuestionnaire: 80, scoreProcess: 90, scoreReport: 100 }));
-    expect(response.status).toBe(409);
-    expect(await response.json()).toMatchObject({ error: { code: "ARCHIVED_READ_ONLY", message: "该提交已归档，仅供查阅，不能评分" } });
-    expect(operations.filter((item) => item.kind === "update")).toHaveLength(0);
-});
-
-test("rejecting an archived submission returns 409 read-only", async () => {
-    const { module, operations } = await load(archivedRow);
-    const response = await module.gradingRejectRoutes.POST!(post("99", { observedVersion: 7, reason: "请补充抽样结果分析" }));
-    expect(response.status).toBe(409);
-    expect(await response.json()).toMatchObject({ error: { code: "ARCHIVED_READ_ONLY" } });
-    expect(operations.filter((item) => item.kind === "update")).toHaveLength(0);
-});

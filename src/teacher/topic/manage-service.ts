@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { task, topic, topicAttachment } from "../../db/schema";
 import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
@@ -10,6 +10,7 @@ import { parseExcelFile, sanitizeUploadFileName } from "./file-utils";
 import { deleteTopicStorageFileIfUnreferenced } from "./storage-cleanup";
 import { getPpsEligibleNumericFields, parseTopicFieldMapping } from "../../student/experiment/population-data";
 import { canonicalizeRichTextHtmlForStorage } from "../../server/rich-text";
+import { deleteAuditEventsForEntities } from "../../server/audit-event";
 import {
     validateMappedPopulationData,
     validateParsedExcelUpload,
@@ -100,7 +101,7 @@ export async function updateTeacherTopicBasics(params: {
                 weightConfig: topic.weightConfig,
             })
             .from(topic)
-            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)));
         if (!topicInfo) return fail("实验模板不存在", "NOT_FOUND", 404);
         const [taskReference] = await tx
             .select({ id: task.id })
@@ -147,7 +148,7 @@ export async function updateTeacherTopicBasics(params: {
         const [updated] = await tx
             .update(topic)
             .set(updateData)
-            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)))
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)))
             .returning({ id: topic.id });
         return updated ? { ok: true as const } : fail("实验模板不存在", "NOT_FOUND", 404);
     });
@@ -155,23 +156,20 @@ export async function updateTeacherTopicBasics(params: {
 
 const assignedTopicDeletion = Symbol("assigned-topic-deletion");
 
-export async function softDeleteTeacherTopic(params: { teacherId: number; topicId: number }) {
-    const deletedAt = new Date();
-
+export async function deleteTeacherTopic(params: { teacherId: number; topicId: number }) {
     let deletion: { cleanupPaths: string[] } | null;
     try {
         deletion = await db.transaction(async (tx) => {
             await acquireStorageMutationLock(tx);
-            const [deletedTopic] = await tx
-                .update(topic)
-                .set({ deletedAt, updatedAt: deletedAt })
-                .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)))
-                .returning({ id: topic.id, excelFilePath: topic.excelFilePath });
-
-            if (!deletedTopic) return null;
+            const [topicRow] = await tx
+                .select({ id: topic.id, excelFilePath: topic.excelFilePath })
+                .from(topic)
+                .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)))
+                .for("update");
+            if (!topicRow) return null;
 
             const attachmentRows = await tx
-                .select({ filePath: topicAttachment.filePath })
+                .select({ id: topicAttachment.id, filePath: topicAttachment.filePath })
                 .from(topicAttachment)
                 .where(eq(topicAttachment.topicId, params.topicId));
             const [taskReference] = await tx
@@ -182,14 +180,16 @@ export async function softDeleteTeacherTopic(params: { teacherId: number; topicI
 
             if (taskReference) throw assignedTopicDeletion;
 
-            await tx
-                .update(task)
-                .set({ deletedAt, updatedAt: deletedAt })
-                .where(and(eq(task.topicId, params.topicId), isNull(task.deletedAt)));
-            await tx.delete(topicAttachment).where(eq(topicAttachment.topicId, params.topicId));
+            const [deletedTopic] = await tx
+                .delete(topic)
+                .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)))
+                .returning({ id: topic.id });
+            if (!deletedTopic) return null;
+            await deleteAuditEventsForEntities(tx, "topic_attachment", attachmentRows.map((row) => row.id));
+            await deleteAuditEventsForEntities(tx, "topic", [params.topicId]);
 
             return {
-                cleanupPaths: [deletedTopic.excelFilePath, ...attachmentRows.map((row) => row.filePath)].filter(
+                cleanupPaths: [topicRow.excelFilePath, ...attachmentRows.map((row) => row.filePath)].filter(
                     (filePath): filePath is string => Boolean(filePath),
                 ),
             };
@@ -206,8 +206,8 @@ export async function softDeleteTeacherTopic(params: { teacherId: number; topicI
     }
 
     await Promise.all(deletion.cleanupPaths.map(async (filePath) => {
-        await deleteTopicStorageFileIfUnreferenced(filePath, { excludeTopicId: params.topicId }).catch((error) => {
-            console.warn(`已删除课题的存储文件清理失败：${filePath}`, error);
+        await deleteTopicStorageFileIfUnreferenced(filePath).catch((error) => {
+            console.warn(`已删除实验模板的存储文件清理失败：${filePath}`, error);
         });
     }));
 
@@ -236,7 +236,7 @@ export async function replaceTopicExcelData(params: {
             const [currentTopic] = await tx
                 .select({ excelFilePath: topic.excelFilePath, status: topic.status })
                 .from(topic)
-                .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
+                .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)));
             if (!currentTopic) return fail("实验模板不存在", "NOT_FOUND", 404);
             const [taskReference] = await tx.select({ id: task.id }).from(task).where(eq(task.topicId, params.topicId)).limit(1);
             if (currentTopic.status === 1 || taskReference) {
@@ -252,7 +252,7 @@ export async function replaceTopicExcelData(params: {
                     fieldMapping: null,
                     updatedAt: new Date(),
                 })
-                .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)))
+                .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)))
                 .returning({ id: topic.id });
             if (!updated) throw new Error("TOPIC_UPDATE_CONFLICT");
             return { ok: true as const, previousFilePath: currentTopic.excelFilePath };
@@ -301,7 +301,7 @@ export async function updateTopicFieldMapping(params: {
         const [topicInfo] = await tx
             .select({ excelFilePath: topic.excelFilePath, status: topic.status })
             .from(topic)
-            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)));
         if (!topicInfo) return fail("实验模板不存在", "NOT_FOUND", 404);
         const [taskReference] = await tx.select({ id: task.id }).from(task).where(eq(task.topicId, params.topicId)).limit(1);
         if (topicInfo.status === 1 || taskReference) {
@@ -331,7 +331,7 @@ export async function updateTopicFieldMapping(params: {
                 samplingPolicy: buildDefaultSamplingPolicy({ ppsEnabled }),
                 updatedAt: new Date(),
             })
-            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)))
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)))
             .returning({ id: topic.id });
         return updated ? { ok: true as const } : fail("实验模板不存在", "NOT_FOUND", 404);
     });
@@ -355,7 +355,7 @@ export async function updateTopicSamplingPolicy(params: {
                 fieldMapping: topic.fieldMapping,
             })
             .from(topic)
-            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)));
         if (!topicInfo) return fail("实验模板不存在", "NOT_FOUND", 404);
         const [taskReference] = await tx.select({ id: task.id }).from(task).where(eq(task.topicId, params.topicId)).limit(1);
         if (topicInfo.status === 1 || taskReference) {
@@ -381,7 +381,7 @@ export async function updateTopicSamplingPolicy(params: {
         const [updated] = await tx
             .update(topic)
             .set({ samplingPolicy, updatedAt: new Date() })
-            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)))
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)))
             .returning({ id: topic.id });
         return updated ? { ok: true as const } : fail("实验模板不存在", "NOT_FOUND", 404);
     });
@@ -400,7 +400,7 @@ export async function updateTopicWeightConfig(params: {
         const [topicInfo] = await tx
             .select({ status: topic.status })
             .from(topic)
-            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)));
         if (!topicInfo) return fail("实验模板不存在", "NOT_FOUND", 404);
         const [taskReference] = await tx.select({ id: task.id }).from(task).where(eq(task.topicId, params.topicId)).limit(1);
         if (topicInfo.status === 1 || taskReference) {
@@ -409,7 +409,7 @@ export async function updateTopicWeightConfig(params: {
         const [updated] = await tx
             .update(topic)
             .set({ weightConfig: params.weightConfig, updatedAt: new Date() })
-            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)))
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)))
             .returning({ id: topic.id });
         return updated ? { ok: true as const } : fail("实验模板不存在", "NOT_FOUND", 404);
     });

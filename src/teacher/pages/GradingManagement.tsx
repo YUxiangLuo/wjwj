@@ -6,7 +6,6 @@ import { IconButton } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import {
     Select,
     SelectContent,
@@ -27,7 +26,6 @@ export function GradingManagement() {
     const [page, setPage] = useState(1);
     const [status, setStatus] = useState("all");
     const [keyword, setKeyword] = useState("");
-    const [includeArchived, setIncludeArchived] = useState(false);
     const [loading, setLoading] = useState(true);
 
     const load = async (nextPage = 1) => {
@@ -35,7 +33,6 @@ export function GradingManagement() {
         const response = await teacherApi.getGradingList({
             status: status === "all" ? undefined : status,
             keyword: keyword.trim() || undefined,
-            includeArchived: includeArchived || undefined,
             page: nextPage,
             pageSize: PAGE_SIZE,
         });
@@ -49,7 +46,7 @@ export function GradingManagement() {
 
     useEffect(() => {
         void load(1);
-    }, [status, includeArchived]);
+    }, [status]);
 
     const badge = (item: GradingItem) => {
         if (item.status === "submitted") return <StatusBadge intent="warning">待批改</StatusBadge>;
@@ -91,15 +88,6 @@ export function GradingManagement() {
                                 <SelectItem value="rejected">已驳回</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Label className="flex cursor-pointer items-center gap-2 text-label text-muted-foreground">
-                            <Switch
-                                checked={includeArchived}
-                                onCheckedChange={setIncludeArchived}
-                                aria-label="显示已归档提交"
-                                data-testid="grading-include-archived"
-                            />
-                            显示归档
-                        </Label>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -125,9 +113,6 @@ export function GradingManagement() {
                             </div>
                             <div className="text-right">
                                 {badge(item)}
-                                {item.archived && (
-                                    <StatusBadge intent="auxiliary" data-testid="grading-archived-badge">已归档</StatusBadge>
-                                )}
                                 <p className="mt-2 text-meta text-muted-foreground">
                                     {formatDateTimeDisplay(item.submittedAt, "-")}
                                 </p>

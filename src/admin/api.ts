@@ -1,4 +1,4 @@
-import { and, count, eq, isNull } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { db } from "../db";
 import { class_, experiment, semester, student, task, teacher, topic } from "../db/schema";
 import { json } from "../server/http";
@@ -36,7 +36,7 @@ export const statsRoutes = {
             db.select({ name: semester.name }).from(semester).where(eq(semester.isCurrent, 1)).limit(1),
             db.select({ count: count() }).from(teacher),
             db.select({ count: count() }).from(class_),
-            db.select({ count: count() }).from(student).where(isNull(student.deletedAt)),
+            db.select({ count: count() }).from(student),
             db.select({ count: count() })
                 .from(experiment)
                 .innerJoin(student, eq(experiment.studentId, student.id))
@@ -44,10 +44,7 @@ export const statsRoutes = {
                 .innerJoin(topic, eq(task.topicId, topic.id))
                 .where(and(
                     eq(experiment.status, "submitted"),
-                    isNull(student.deletedAt),
                     eq(student.classId, task.classId),
-                    isNull(task.deletedAt),
-                    isNull(topic.deletedAt),
                 )),
         ]);
 

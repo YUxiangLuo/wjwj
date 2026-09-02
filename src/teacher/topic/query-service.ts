@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, exists, isNull, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, exists, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, experiment, student, task, topic, topicAttachment } from "../../db/schema";
 import { normalizeRecommendQuestionsFromDb } from "../../lib/questionnaire-normalize";
@@ -24,7 +24,7 @@ export async function listTeacherTopics(teacherId: number) {
             createdAt: topic.createdAt,
         })
         .from(topic)
-        .where(and(eq(topic.teacherId, teacherId), isNull(topic.deletedAt)))
+        .where(eq(topic.teacherId, teacherId))
         .orderBy(desc(topic.createdAt));
 }
 
@@ -63,7 +63,6 @@ export async function getTeacherTopicDetail(topicId: number) {
         const {
             teacherId: _teacherId,
             excelFilePath: _excelFilePath,
-            deletedAt: _deletedAt,
             ...safeTopic
         } = topicInfo;
         return safeTopic;
@@ -95,15 +94,9 @@ export async function listTeacherTasks(teacherId: number) {
         .from(task)
         .innerJoin(topic, eq(task.topicId, topic.id))
         .innerJoin(class_, eq(task.classId, class_.id))
-        .leftJoin(student, and(eq(student.classId, class_.id), isNull(student.deletedAt)))
+        .leftJoin(student, eq(student.classId, class_.id))
         .leftJoin(experiment, and(eq(experiment.studentId, student.id), eq(experiment.taskId, task.id)))
-        .where(
-            and(
-                eq(class_.teacherId, teacherId),
-                isNull(task.deletedAt),
-                isNull(topic.deletedAt)
-            )
-        )
+        .where(eq(class_.teacherId, teacherId))
         .groupBy(task.id, topic.id, class_.id)
         .orderBy(desc(task.createdAt));
 }
@@ -120,14 +113,7 @@ export async function getTeacherTaskProgress(taskId: number, teacherId: number) 
         .from(task)
         .innerJoin(topic, eq(task.topicId, topic.id))
         .innerJoin(class_, eq(task.classId, class_.id))
-        .where(
-            and(
-                eq(task.id, taskId),
-                eq(class_.teacherId, teacherId),
-                isNull(task.deletedAt),
-                isNull(topic.deletedAt)
-            )
-        );
+        .where(and(eq(task.id, taskId), eq(class_.teacherId, teacherId)));
 
     if (!taskRow) {
         return null;
@@ -145,7 +131,7 @@ export async function getTeacherTaskProgress(taskId: number, teacherId: number) 
         })
         .from(student)
         .leftJoin(experiment, and(eq(experiment.studentId, student.id), eq(experiment.taskId, taskId)))
-        .where(and(eq(student.classId, taskRow.classId), isNull(student.deletedAt)))
+        .where(eq(student.classId, taskRow.classId))
         .orderBy(asc(student.studentId));
 
     const snapshot = buildTaskProgressSnapshot(students);

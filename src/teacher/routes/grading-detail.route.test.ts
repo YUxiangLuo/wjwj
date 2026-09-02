@@ -110,31 +110,3 @@ test("teacher sampling export returns every row from the immutable submission sn
     expect(csv).toContain("提交-60");
     expect(csv).not.toContain("当前值");
 });
-
-test("grading detail marks a prior-class submission as archived when includeArchived=1", async () => {
-    const { db } = createMockDb({ select: [
-        [{
-            id: 99, version: 7, studentName: "已删学生", studentId: "S020", className: "统计一班", topic: "当前课题", topicName: "当前课题", topicDesc: "描述",
-            populationSize: 8000, weightConfig: null, status: "graded", submittedAt: new Date(),
-            submissionSnapshot: { studentName: "提交时学生", samplingResults: null },
-            reportContent: "报告", samplePlan: null, questionnaire: null, samplingResults: null,
-            scoreQuestionnaire: "80", scoreProcess: "90", scoreReport: "100", totalScore: "88.00",
-            teacherComment: null, rejectReason: null, gradedAt: new Date(), gradedByName: "张老师",
-            studentDeletedAt: null, taskDeletedAt: null, topicDeletedAt: null,
-            studentClassId: 4, taskClassId: 3,
-        }],
-        [],
-    ] });
-    mock.module("../../db", () => ({ db }));
-    mock.module("./auth", () => createTeacherAuthModuleMock());
-    const module = await import(`./grading.ts?detail-archived=${crypto.randomUUID()}`);
-    const response = await module.gradingDetailRoutes.GET!(withId(new Request("https://example.com/api/teacher/grading/99?includeArchived=1"), "99"));
-    expect(response.status).toBe(200);
-    const payload = await response.json() as any;
-    expect(payload.data).toMatchObject({ id: 99, archived: true, studentName: "提交时学生" });
-    expect(payload.data).not.toHaveProperty("studentDeletedAt");
-    expect(payload.data).not.toHaveProperty("taskDeletedAt");
-    expect(payload.data).not.toHaveProperty("topicDeletedAt");
-    expect(payload.data).not.toHaveProperty("studentClassId");
-    expect(payload.data).not.toHaveProperty("taskClassId");
-});

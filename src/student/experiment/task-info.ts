@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, task, teacher, topic } from "../../db/schema";
 
@@ -11,9 +11,7 @@ export async function findStudentTaskTopicInfo(taskId: number, classId: number) 
             and(
                 eq(task.id, taskId),
                 eq(task.classId, classId),
-                isNull(task.deletedAt),
                 eq(topic.status, 1),
-                isNull(topic.deletedAt)
             )
         );
 
@@ -29,9 +27,7 @@ export async function findStudentTaskSchedule(taskId: number, classId: number) {
             and(
                 eq(task.id, taskId),
                 eq(task.classId, classId),
-                isNull(task.deletedAt),
                 eq(topic.status, 1),
-                isNull(topic.deletedAt)
             )
         );
 
@@ -47,9 +43,7 @@ export async function findStudentTaskPopulationSize(taskId: number, classId: num
             and(
                 eq(task.id, taskId),
                 eq(task.classId, classId),
-                isNull(task.deletedAt),
                 eq(topic.status, 1),
-                isNull(topic.deletedAt)
             )
         );
 
@@ -71,9 +65,7 @@ export async function findStudentTaskSamplingInfo(taskId: number, classId: numbe
             and(
                 eq(task.id, taskId),
                 eq(task.classId, classId),
-                isNull(task.deletedAt),
                 eq(topic.status, 1),
-                isNull(topic.deletedAt)
             )
         );
 
@@ -104,9 +96,7 @@ export async function findStudentTaskSubmitInfo(taskId: number, classId: number)
             and(
                 eq(task.id, taskId),
                 eq(task.classId, classId),
-                isNull(task.deletedAt),
                 eq(topic.status, 1),
-                isNull(topic.deletedAt)
             )
         );
 

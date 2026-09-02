@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { topic, topicAttachment } from "../../db/schema";
 import { spreadsheetRequestExceedsLimit } from "../../lib/spreadsheet";
@@ -15,7 +15,7 @@ import {
 import {
     createTeacherTopic,
     replaceTopicExcelData,
-    softDeleteTeacherTopic,
+    deleteTeacherTopic,
     updateTeacherTopicBasics,
     updateTopicFieldMapping,
     updateTopicSamplingPolicy,
@@ -27,7 +27,7 @@ import {
     listTeacherTasks,
     listTeacherTopics,
 } from "../topic/query-service";
-import { extendTopicTaskDeadline, publishTopicTasks, softDeleteTeacherTask } from "../topic/task-service";
+import { deleteTeacherTask, extendTopicTaskDeadline, publishTopicTasks } from "../topic/task-service";
 import { getPrimaryTeacherIdOrThrow } from "./auth";
 
 function assignedTopicContentError() {
@@ -92,7 +92,7 @@ const topicItemRoutes: RouteDefinition = {
         const topicRow = await requireTopicOwner(id, currentTeacherId);
         if (!topicRow) return error("实验模板不存在", "NOT_FOUND", 404);
 
-        const deleteResult = await softDeleteTeacherTopic({ teacherId: currentTeacherId, topicId: id });
+        const deleteResult = await deleteTeacherTopic({ teacherId: currentTeacherId, topicId: id });
         if (!deleteResult.ok) return error(deleteResult.message, deleteResult.code, deleteResult.status);
         return json({ success: true });
     }
@@ -231,7 +231,6 @@ const topicAttachmentDownloadRoutes: RouteDefinition = {
                 eq(topicAttachment.id, attachmentId),
                 eq(topicAttachment.topicId, topicId),
                 eq(topic.teacherId, currentTeacherId),
-                isNull(topic.deletedAt),
             ));
         if (!attachment) return error("附件不存在", "NOT_FOUND", 404);
 
@@ -346,7 +345,7 @@ const taskItemRoutes: RouteDefinition = {
         const taskId = parsePositiveRouteId(req);
         if (!taskId) return error("Invalid ID", "INVALID_ID");
 
-        const result = await softDeleteTeacherTask({ teacherId: currentTeacherId, taskId });
+        const result = await deleteTeacherTask({ teacherId: currentTeacherId, taskId });
         if (!result.ok) {
             return error(result.message, result.code, result.status);
         }

@@ -6,13 +6,8 @@ overview and seed accounts are in [README.md](README.md).
 
 Active tables: `admin`, `teacher`, `student`, `semester`, `class`,
 `topic`, `topic_attachment`, `task`, `experiment`, `sampling_attempt`,
-`announcement`, `audit_event`, `user_session`. Migrations live in `drizzle/postgresql`
-(`0000`–`0010`). Migration `0005` adds database-level status/range checks
-and guarantees that at most one semester is current; `0006` adds the compact
-sampling-attempt audit log; `0007` adds experiment-template sampling policies;
-`0008` expands attachment MIME storage for standards-compliant DOCX types;
-`0009` adds immutable business audit events for grading and rejection history;
-`0010` removes unused first-login and login-lockout state from all account tables.
+`announcement`, `audit_event`, `user_session`. `drizzle/postgresql/0000` is the
+single clean empty-database baseline and contains the complete current schema.
 
 ## Create the database
 
@@ -29,19 +24,16 @@ foreign keys, constraints, and indexes. The role applying it must be
 allowed to run `CREATE EXTENSION citext`; otherwise a database administrator
 must install that extension first.
 
-This repository uses a simplified-schema baseline intended for an empty
-database. `db:migrate` stops if it sees the former schema (`public.submission`)
-or application tables without a `drizzle.__drizzle_migrations` record. For an
-installation from before the simplification, first take a database and
-`storage/` backup. If retaining the old records is not required, run
-`bun run db:reset`; otherwise keep the old database for export and deploy this
-version against a new empty database.
+This baseline replaces all previous migration history and supports only an
+empty database. Existing installations must run `bun run db:reset` or deploy
+against a new database; in-place upgrades are intentionally unsupported and
+existing application data is discarded.
 
 `db:seed` is a guarded alias for the deterministic dogfood fixture and refuses
 to run unless `DEMO_MODE=1`; normal production bootstrap must use
 `db:bootstrap-admin`. `db:seed:demo` writes the fixture in
 `src/db/seeds/default.ts`: 1 admin, 4 teachers, 3 semesters, 4 classes,
-17 students, 9 topics, 8 tasks, 18 experiments, 12 bounded sampling-attempt
+16 students, 7 topics, 6 tasks, 15 experiments, 12 bounded sampling-attempt
 audit rows, 5 announcements, 2 attachments, and four generated population
 files. The stage-4 and terminal fixtures use production-style compact replay
 indices. The main mean/PPS task covers all eight teacher progress buckets. The
@@ -101,13 +93,17 @@ bun run storage:audit
 
 After reviewing the exact list and rerunning with the printed
 `--confirm=<snapshot-token>`, `bun run storage:clean` deletes only files not
-referenced by current topic data, attachments, or recognized legacy
-submission paths. Soft-deleted topics and their attachments are intentionally
-excluded from current references because the product does not provide a restore
-flow; their files therefore appear in the audit before cleanup. Upload, copy, task publication, topic deletion, audit, and cleanup operations
+referenced by topic data, attachments, or recognized legacy submission paths.
+Upload, copy, task publication, task deletion, topic deletion, audit, and cleanup operations
 share a PostgreSQL advisory lock. Ownership and mutability are revalidated only
 after that lock is held, so a file cannot be deleted while a task or another
 metadata reference is being committed by the application.
+
+Students, tasks, and unassigned topics are hard-deleted. Student and task
+deletion cascades through experiments and sampling attempts and removes related
+audit events; student sessions are removed in the same transaction. Assigned
+topics remain protected until every task has been deleted. Topic deletion
+removes attachment metadata transactionally and then removes unreferenced files.
 
 ## Coordinated single-instance backup and restore
 
