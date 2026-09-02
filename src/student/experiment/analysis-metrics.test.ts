@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import {
     DEFAULT_PPS_MONTE_CARLO_REPLICATES,
     buildAnalysisMetrics,
+    computeFinitePopulationEquivalentSampleSize,
     resolvePpsMonteCarloReplicates,
 } from "./analysis-metrics";
 import {
@@ -19,6 +20,20 @@ test("PPS Monte Carlo replicate configuration is bounded and defaults safely", (
     expect(resolvePpsMonteCarloReplicates("31")).toBe(DEFAULT_PPS_MONTE_CARLO_REPLICATES);
     expect(resolvePpsMonteCarloReplicates("1025")).toBe(DEFAULT_PPS_MONTE_CARLO_REPLICATES);
     expect(resolvePpsMonteCarloReplicates("not-a-number")).toBe(DEFAULT_PPS_MONTE_CARLO_REPLICATES);
+});
+
+test("finite-population equivalent SRS sample size never exceeds the population", () => {
+    const populationVariance = 100;
+    const populationSize = 200;
+    const actualSampleSize = 49;
+    const srsSe = Math.sqrt((1 - actualSampleSize / populationSize) * populationVariance / actualSampleSize);
+
+    expect(computeFinitePopulationEquivalentSampleSize(populationVariance, populationSize, srsSe))
+        .toBeCloseTo(actualSampleSize, 10);
+    expect(computeFinitePopulationEquivalentSampleSize(populationVariance, populationSize, 0.1668))
+        .toBeLessThanOrEqual(populationSize);
+    expect(computeFinitePopulationEquivalentSampleSize(populationVariance, populationSize, 0))
+        .toBe(populationSize);
 });
 
 test("analysis metrics use the true population mean as the numeric comparison baseline", () => {
@@ -324,11 +339,15 @@ test("mean target analysis reuses numeric field estimates and shared PPS context
     // 教学误差半宽 = z95 × SE
     const simpleSe = target!.methods.simple.standardError!;
     expect(target!.methods.simple.marginOfError).toBeCloseTo(1.96 * simpleSe, 10);
-    // Kish 有效样本量：simple 的 deff = 1，n_eff = n
+    // 有限总体等效 SRS 样本量：simple 的 n_eff = n
     expect(target!.methods.simple.effectiveSampleSize).toBeCloseTo(target!.methods.simple.sampleSize!, 6);
     // n_eff < 30 → caution
     expect(target!.methods.simple.reliability.status).toBe("caution");
-    expect(target!.methods.simple.reliability.reasons[0]).toBe("设计有效样本量低于 30");
+    expect(target!.methods.simple.reliability.reasons[0]).toBe("等效 SRS 样本量低于 30");
+    for (const method of ["simple", "systematic", "pps", "stratified"] as const) {
+        const effective = target!.methods[method].effectiveSampleSize;
+        if (effective !== null) expect(effective).toBeLessThanOrEqual(population.length);
+    }
     // 系统抽样：估计 (10+30)/2
     expect(target!.methods.systematic.estimate).toBe(20);
 });

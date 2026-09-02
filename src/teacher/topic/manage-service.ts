@@ -2,7 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../../db";
 import { task, topic, topicAttachment } from "../../db/schema";
 import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
-import { validateAnalysisTarget } from "../../lib/analysis-target";
+import { retitleGeneratedStudyContract, validateAnalysisTarget } from "../../lib/analysis-target";
 import { validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
 import { createStorageUploadPath, deleteStorageFileIfExists, resolveStoragePath, writeStorageFile } from "../../server/storage-files";
 import { parseExcelFile, sanitizeUploadFileName } from "./file-utils";
@@ -90,6 +90,7 @@ export async function updateTeacherTopicBasics(params: {
         await acquireStorageMutationLock(tx);
         const [topicInfo] = await tx
             .select({
+                name: topic.name,
                 excelFilePath: topic.excelFilePath,
                 fieldMapping: topic.fieldMapping,
                 weightConfig: topic.weightConfig,
@@ -110,10 +111,19 @@ export async function updateTeacherTopicBasics(params: {
             );
         }
 
+        if (typeof updateData.name === "string" && updateData.name !== topicInfo.name) {
+            const renamedMapping = retitleGeneratedStudyContract(
+                topicInfo.fieldMapping,
+                topicInfo.name,
+                updateData.name,
+            );
+            if (renamedMapping !== topicInfo.fieldMapping) updateData.fieldMapping = renamedMapping;
+        }
+
         if (params.body.status === 1) {
             const publishReadinessError = validateTopicPublishReadiness({
                 excelFilePath: topicInfo.excelFilePath,
-                fieldMapping: topicInfo.fieldMapping as Record<string, unknown> | string | null | undefined,
+                fieldMapping: (updateData.fieldMapping ?? topicInfo.fieldMapping) as Record<string, unknown> | string | null | undefined,
                 weightConfig: topicInfo.weightConfig as Record<string, unknown> | string | null | undefined,
             });
             if (publishReadinessError) return fail(publishReadinessError);

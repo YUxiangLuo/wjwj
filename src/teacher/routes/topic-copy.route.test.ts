@@ -37,6 +37,7 @@ test("topic copy duplicates the topic and related resources under the current te
     const recommendQuestions = [
         { id: "q1", type: "single" as const, content: "你最关注哪项指标？", options: ["价格", "质量"] },
     ];
+    const analysisTarget = { kind: "mean" as const, field: "score" };
     const { module, operations } = await loadTopicRoutes({
         select: [
             [{ id: 12, status: 0 }],
@@ -47,7 +48,18 @@ test("topic copy duplicates the topic and related resources under the current te
                 description: "原始课题",
                 excelFilePath: sourceExcelPath,
                 excelRowCount: 16,
-                fieldMapping: JSON.stringify({ identifier: "id" }),
+                fieldMapping: JSON.stringify({
+                    identifier: "id",
+                    numeric: ["score"],
+                    analysisTarget,
+                    studyContract: {
+                        version: 1,
+                        researchQuestion: "抽样设计课题中score的平均水平是多少？",
+                        targetPopulation: "测试总体",
+                        unitOfAnalysis: "一行",
+                        target: analysisTarget,
+                    },
+                }),
                 weightConfig: JSON.stringify({ questionnaire: 30, process: 40, report: 30 }),
                 recommendQuestions,
                 status: 1,
@@ -85,7 +97,18 @@ test("topic copy duplicates the topic and related resources under the current te
             name: "抽样设计课题 (副本)",
             description: "原始课题",
             excelRowCount: 16,
-            fieldMapping: { identifier: "id" },
+            fieldMapping: {
+                identifier: "id",
+                numeric: ["score"],
+                analysisTarget,
+                studyContract: {
+                    version: 1,
+                    researchQuestion: "抽样设计课题 (副本)中score的平均水平是多少？",
+                    targetPopulation: "测试总体",
+                    unitOfAnalysis: "一行",
+                    target: analysisTarget,
+                },
+            },
             weightConfig: { questionnaire: 30, process: 40, report: 30 },
             recommendQuestions,
             status: 0,

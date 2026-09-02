@@ -97,3 +97,8 @@ export function formatMarginOfError(
     }
     return `±${marginOfError}%`;
 }
+
+/** 样本规划参数统一使用最多一位小数，避免把浮点计算尾差直接展示给学生。 */
+export function formatSamplePlanNumber(value: number): string {
+    return Number(value.toFixed(1)).toString();
+}

@@ -1,12 +1,14 @@
 import { expect, test } from "bun:test";
 import {
     analysisTargetConflictsWithSizeField,
+    buildDefaultResearchQuestion,
     formatAnalysisTargetSummary,
     formatStudyContractSummary,
     parseAnalysisTarget,
     parseStudyContract,
     resolveAnalysisTarget,
     resolveStudyContract,
+    retitleGeneratedStudyContract,
     validateAnalysisTarget,
     validateStudyContract,
 } from "./analysis-target";
@@ -82,6 +84,31 @@ test("parseStudyContract requires complete versioned payloads", () => {
     expect(parseStudyContract({ ...contractMapping, studyContract: { ...contractMapping.studyContract, version: 2 } })).toBeNull();
     expect(parseStudyContract({ ...contractMapping, studyContract: { ...contractMapping.studyContract, researchQuestion: " " } })).toBeNull();
     expect(parseStudyContract({ ...contractMapping, studyContract: { ...contractMapping.studyContract, target: { kind: "mean", field: "" } } })).toBeNull();
+});
+
+test("retitleGeneratedStudyContract updates only system-generated research questions", () => {
+    const target = { kind: "mean" as const, field: "每周学习时长" };
+    const generated = {
+        ...mapping,
+        analysisTarget: target,
+        studyContract: {
+            version: 1 as const,
+            researchQuestion: buildDefaultResearchQuestion("学习调查", target),
+            targetPopulation: "全体学生",
+            unitOfAnalysis: "一名学生",
+            target,
+        },
+    };
+    expect(retitleGeneratedStudyContract(generated, "学习调查", "学习调查 (副本)"))
+        .toMatchObject({
+            studyContract: { researchQuestion: "学习调查 (副本)中每周学习时长的平均水平是多少？" },
+        });
+
+    const custom = {
+        ...generated,
+        studyContract: { ...generated.studyContract, researchQuestion: "学生投入学习时间是否充足？" },
+    };
+    expect(retitleGeneratedStudyContract(custom, "学习调查", "新名称")).toBe(custom);
 });
 
 test("parseAnalysisTarget prefers the study contract target over the legacy field", () => {

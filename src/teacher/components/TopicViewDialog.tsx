@@ -9,6 +9,7 @@ import { teacherApi, type TopicDetail, type Topic } from "../api-client";
 import { questionTypeLabels } from "@/lib/questionnaire-labels";
 import type { QuestionType } from "@/lib/questionnaire-types";
 import { StatusBadge } from "@/components/StatusBadge";
+import { resolveStudyContract } from "@/lib/analysis-target";
 
 type TabKey = "basic" | "data" | "mapping" | "attachments" | "questions" | "weights";
 
@@ -20,6 +21,19 @@ const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?
     { key: "questions", label: "推荐题目", icon: ListChecks },
     { key: "weights", label: "评分权重", icon: PieChart },
 ];
+
+function safeParseJson(raw: unknown): Record<string, unknown> | null {
+    if (!raw) return null;
+    if (typeof raw === "object") return raw as Record<string, unknown>;
+    if (typeof raw === "string") {
+        try { return JSON.parse(raw); } catch { return null; }
+    }
+    return null;
+}
+
+export function resolveTopicViewStudyContract(fieldMapping: unknown, topicName: string) {
+    return resolveStudyContract(safeParseJson(fieldMapping), { topicName });
+}
 
 interface TopicViewDialogProps {
     open: boolean;
@@ -52,24 +66,17 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
         setLoading(false);
     }
 
-    function safeParseJson(raw: unknown): Record<string, unknown> | null {
-        if (!raw) return null;
-        if (typeof raw === "object") return raw as Record<string, unknown>;
-        if (typeof raw === "string") {
-            try { return JSON.parse(raw); } catch { return null; }
-        }
-        return null;
-    }
-
-    const fieldMapping = (() => {
-        const parsed = safeParseJson(detail?.topic?.fieldMapping);
-        return {
-            identifier: parsed?.identifier as string | undefined,
-            stratified: (parsed?.stratified ?? []) as string[],
-            numeric: (parsed?.numeric ?? []) as string[],
-            others: (parsed?.others ?? []) as string[],
-        };
-    })();
+    const parsedFieldMapping = safeParseJson(detail?.topic?.fieldMapping);
+    const fieldMapping = {
+        identifier: parsedFieldMapping?.identifier as string | undefined,
+        stratified: (parsedFieldMapping?.stratified ?? []) as string[],
+        numeric: (parsedFieldMapping?.numeric ?? []) as string[],
+        others: (parsedFieldMapping?.others ?? []) as string[],
+    };
+    const resolvedStudyContract = resolveTopicViewStudyContract(
+        parsedFieldMapping,
+        detail?.topic?.name ?? topic?.name ?? "",
+    );
 
     const weightConfig = (() => {
         const parsed = safeParseJson(detail?.topic?.weightConfig);
@@ -129,7 +136,12 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                 </div>
 
                 {/* Tab content */}
-                <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+                <div
+                    role="region"
+                    aria-label="课题详情内容，可滚动查看"
+                    tabIndex={0}
+                    className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+                >
                     {loading ? (
                         <div role="status" aria-live="polite" className="flex items-center justify-center py-20 text-muted-foreground">加载中...</div>
                     ) : (
@@ -213,6 +225,41 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                             {/* Field Mapping Tab */}
                             {activeTab === "mapping" && (
                                 <div className="space-y-4 py-4 animate-in fade-in duration-300">
+                                    {resolvedStudyContract && (
+                                        <div
+                                            className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-4"
+                                            data-testid="teacher-topic-view-study-contract"
+                                        >
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className="text-sm font-semibold text-foreground">研究合同</div>
+                                                {resolvedStudyContract.inferred && (
+                                                    <StatusBadge intent="neutral" className="text-xs">兼容推断</StatusBadge>
+                                                )}
+                                            </div>
+                                            <dl className="grid grid-cols-2 gap-3 text-sm">
+                                                <div className="col-span-2 rounded-md bg-background/70 p-3">
+                                                    <dt className="text-xs text-muted-foreground">研究问题</dt>
+                                                    <dd className="mt-1 text-foreground">{resolvedStudyContract.contract.researchQuestion}</dd>
+                                                </div>
+                                                <div className="rounded-md bg-background/70 p-3">
+                                                    <dt className="text-xs text-muted-foreground">目标总体</dt>
+                                                    <dd className="mt-1 text-foreground">{resolvedStudyContract.contract.targetPopulation}</dd>
+                                                </div>
+                                                <div className="rounded-md bg-background/70 p-3">
+                                                    <dt className="text-xs text-muted-foreground">分析单位</dt>
+                                                    <dd className="mt-1 text-foreground">{resolvedStudyContract.contract.unitOfAnalysis}</dd>
+                                                </div>
+                                                <div className="col-span-2 rounded-md bg-background/70 p-3">
+                                                    <dt className="text-xs text-muted-foreground">估计目标</dt>
+                                                    <dd className="mt-1 text-foreground">
+                                                        {resolvedStudyContract.contract.target.kind === "mean"
+                                                            ? `${resolvedStudyContract.contract.target.field} 的均值`
+                                                            : `${resolvedStudyContract.contract.target.field} 中「${resolvedStudyContract.contract.target.value}」的比例`}
+                                                    </dd>
+                                                </div>
+                                            </dl>
+                                        </div>
+                                    )}
                                     {fieldMapping.identifier || fieldMapping.stratified.length > 0 || fieldMapping.numeric.length > 0 ? (
                                         <div className="grid grid-cols-3 gap-4">
                                             <div className="bg-background border border-border rounded-lg p-4 space-y-3">

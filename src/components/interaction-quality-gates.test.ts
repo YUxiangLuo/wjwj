@@ -31,6 +31,12 @@ test("controlled alerts and immersive sampling preserve keyboard focus", async (
     expect(samplingAnimation).toContain("if (opener?.isConnected) opener.focus()");
 });
 
+test("immersive planning bottom chrome does not cover content actions", async () => {
+    const planner = await Bun.file("src/student/components/immersive-sample-planning/index.tsx").text();
+    expect(planner).toContain('className="pointer-events-none fixed bottom-0');
+    expect(planner).toContain('className="pointer-events-auto text-muted-foreground');
+});
+
 test("the shared theme disables decorative motion for reduced-motion users", async () => {
     const theme = await Bun.file("styles/theme.css").text();
     const reducedMotionBlock = theme.match(/@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?\n\}/)?.[0] ?? "";

@@ -19,6 +19,7 @@ export function getPreviewSubmitBlocker(experiment: Pick<ExperimentData, "questi
         experiment.samplePlan,
         experiment.populationSize,
         experiment.analysisTarget?.target.kind,
+        { allowLegacyAdvancedSourceWithoutSnapshot: true },
     );
     if (samplePlanError) return samplePlanError;
 

@@ -7,6 +7,7 @@ import { useExperiment } from "../ExperimentLayout";
 import { experimentApi, type SamplePlanData } from "../../api-client";
 import {
     formatMarginOfError,
+    formatSamplePlanNumber,
     getEstimationTypeLabel,
     getMarginOfErrorLabel,
     normalizeSamplePlanData,
@@ -272,7 +273,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                                 {displayData.estimationType === "mean" && displayData.populationVariance != null && (
                                     <SummaryRow
                                         label="总体方差 σ²"
-                                        value={String(displayData.populationVariance)}
+                                        value={formatSamplePlanNumber(displayData.populationVariance)}
                                     />
                                 )}
                                 <SummaryRow label="设计效应" value={displayData.designEffect.toFixed(1)} />

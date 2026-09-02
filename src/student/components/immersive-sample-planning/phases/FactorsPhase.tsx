@@ -95,7 +95,7 @@ export function FactorsPhase({ step, params, onNext }: Props) {
                     onClick={onNext}
                     className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-5 rounded-xl shadow-lg shadow-primary/20"
                 >
-                    {step === "summary" ? "继续：进入样本量公式" : "继续：看下一个因素"}
+                    {step === "summary" ? "继续：进入四步法小结" : "继续：看下一个因素"}
                     <ChevronRight className="w-5 h-5 ml-2" />
                 </Button>
             </div>
@@ -669,7 +669,7 @@ function SummaryContent() {
 
             <div className="mx-auto max-w-lg rounded-xl border border-primary/20 bg-primary/10 p-4">
                 <p className="text-sm text-primary">
-                    下一步进入公式阶段：先选估计目标，再把这些条件量化成样本量 n。
+                    下一步用四步法把这些条件串起来，再进入决策面板确认样本量 n。
                 </p>
             </div>
         </div>

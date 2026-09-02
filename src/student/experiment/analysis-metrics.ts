@@ -101,7 +101,7 @@ export interface TargetMethodAnalysis {
     /** z × 设计 SE 的教学误差半宽。 */
     marginOfError: number | null;
     sampleSize: number | null;
-    /** Kish 有效样本量：n × (SE_srs² / SE_design²)，普查时为总体量。 */
+    /** 在同一有限总体方差下，与当前设计 SE 等价的简单随机样本量。 */
     effectiveSampleSize: number | null;
     reliability: {
         status: "ok" | "caution" | "census" | "unavailable";
@@ -760,6 +760,26 @@ function computeSimpleRandomValueSe(populationVariance: number, populationSize: 
     return Math.sqrt((1 - samplingFraction) * populationVariance / sampleSize);
 }
 
+/**
+ * 把设计标准误反解为同一有限总体上的等效 SRS 样本量：
+ * SE² = S²(1/n - 1/N) => n = S² / (SE² + S²/N)。
+ * 结果天然不超过总体规模；零设计方差或零总体方差按完整总体的信息量展示。
+ */
+export function computeFinitePopulationEquivalentSampleSize(
+    populationVariance: number,
+    populationSize: number,
+    standardError: number,
+) {
+    if (!Number.isFinite(populationVariance) || populationVariance < 0) return null;
+    if (!Number.isInteger(populationSize) || populationSize < 1) return null;
+    if (!Number.isFinite(standardError) || standardError < 0) return null;
+    if (standardError === 0 || populationVariance === 0) return populationSize;
+
+    const denominator = standardError * standardError + populationVariance / populationSize;
+    if (!(denominator > 0)) return null;
+    return Math.min(populationSize, populationVariance / denominator);
+}
+
 function buildEmptyTargetMethodAnalysis(): Record<MethodKey, TargetMethodAnalysis> {
     return {
         simple: { estimate: null, standardError: null, marginOfError: null, sampleSize: null, effectiveSampleSize: null, reliability: { status: "unavailable", reasons: ["该方法没有可用的目标估计或设计标准误"] } },
@@ -771,7 +791,7 @@ function buildEmptyTargetMethodAnalysis(): Record<MethodKey, TargetMethodAnalysi
 
 /**
  * 研究目标聚合分析：以研究合同的目标估计量（均值或比例）为中心，
- * 给出每种抽样方法的目标估计、设计标准误、教学误差半宽、Kish 有效样本量与可靠性提示。
+ * 给出每种抽样方法的目标估计、设计标准误、教学误差半宽、有限总体等效 SRS 样本量与可靠性提示。
  * 比例目标通过 0/1 指示变量复用全部均值机制；均值目标的 PPS 标准误直接共享数值字段上下文。
  */
 function buildTargetAnalysis(params: {
@@ -862,11 +882,12 @@ function buildTargetAnalysis(params: {
         let effectiveSampleSize: number | null = null;
         if (isCensus) {
             effectiveSampleSize = populationSize;
-        } else if (standardError !== null && standardError > 0 && sampleSize !== null) {
-            const srsSe = computeSimpleRandomValueSe(populationVar, populationSize, sampleSize);
-            effectiveSampleSize = srsSe !== null && srsSe > 0
-                ? sampleSize * (srsSe * srsSe) / (standardError * standardError)
-                : null;
+        } else if (standardError !== null && sampleSize !== null) {
+            effectiveSampleSize = computeFinitePopulationEquivalentSampleSize(
+                populationVar,
+                populationSize,
+                standardError,
+            );
         }
 
         const analysis: TargetMethodAnalysis = {
@@ -882,7 +903,13 @@ function buildTargetAnalysis(params: {
                 analysis.reliability = { status: "census", reasons: ["当前方法覆盖完整虚拟总体"] };
             } else {
                 const reasons: string[] = [];
-                if (effectiveSampleSize !== null && effectiveSampleSize < 30) reasons.push("设计有效样本量低于 30");
+                if (
+                    effectiveSampleSize !== null
+                    && effectiveSampleSize < 30
+                    && effectiveSampleSize < populationSize * (1 - 1e-9)
+                ) {
+                    reasons.push("等效 SRS 样本量低于 30");
+                }
                 if (params.plannedMarginOfError !== null && marginOfError !== null
                     && marginOfError > params.plannedMarginOfError * (1 + 1e-9)) {
                     reasons.push("教学误差半宽超过规划误差限");

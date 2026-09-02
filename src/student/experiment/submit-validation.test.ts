@@ -120,7 +120,28 @@ describe("validateSamplePlanForSubmit", () => {
         expect(validateSamplePlanForSubmit(plan({ advancedPlanSource: "unknown" }), 200)).toBe("高级规划来源无效");
         expect(validateSamplePlanForSubmit(plan({ estimationType: "unknown" }), 200)).toBe("估计类型无效");
         expect(validateSamplePlanForSubmit(plan({ recommendedSize: 131 }), 200)).toBe("建议样本量与当前规划参数不一致，请重新计算");
-        expect(validateSamplePlanForSubmit(plan({ advancedPlanSource: "cost" }), 200)).toBeNull();
+        expect(validateSamplePlanForSubmit(
+            plan({ advancedPlanSource: "cost" }),
+            200,
+            "proportion",
+            { allowLegacyAdvancedSourceWithoutSnapshot: true },
+        )).toBeNull();
+    });
+
+    test("高级规划来源必须与研究估计类型相容", () => {
+        const meanPlan = plan({
+            estimationType: "mean",
+            marginOfError: 2,
+            populationVariance: 100,
+            recommendedSize: 66,
+            advancedPlanSource: "cost",
+        });
+        expect(validateSamplePlanForSubmit(meanPlan, 200, "mean"))
+            .toBe("当前高级规划仅适用于比例估计，请改用均值规划工具");
+        expect(validateSamplePlanForSubmit(plan({ advancedPlanSource: "cv" }), 200, "proportion"))
+            .toBe("CV-based 规划仅适用于具有自然零点的均值目标");
+        expect(validateSamplePlanForSubmit(plan({ advancedPlanSource: "cost" }), 200, "proportion"))
+            .toBe("高级样本量缺少可复核快照，请重新应用该高级规划");
     });
 
     test("估计类型需与课题对照变量一致", () => {
@@ -214,7 +235,7 @@ describe("getTargetSampleSizeFromSamplePlan", () => {
         // 来源种类快照缺失
         expect(validateSamplePlanForSubmit(plan({
             recommendedSize: basicRecommended,
-            advancedPlanSource: "cv",
+            advancedPlanSource: "cluster",
             advancedPlans: [costSnapshot],
             finalSampleSize: genuineCostSize,
         }), populationSize)).toBe("高级样本量缺少可复核快照，请重新应用该高级规划");
@@ -249,9 +270,14 @@ describe("getTargetSampleSizeFromSamplePlan", () => {
         }), populationSize)).toBe("每类高级规划最多保留一份快照");
 
         // 历史数据：只有来源标记、没有快照 → 放行（grandfathered）
-        expect(validateSamplePlanForSubmit(plan({
-            recommendedSize: basicRecommended,
-            advancedPlanSource: "cost",
-            finalSampleSize: requiredSampleSize,
-        }), populationSize)).toBeNull();
+        expect(validateSamplePlanForSubmit(
+            plan({
+                recommendedSize: basicRecommended,
+                advancedPlanSource: "cost",
+                finalSampleSize: requiredSampleSize,
+            }),
+            populationSize,
+            "proportion",
+            { allowLegacyAdvancedSourceWithoutSnapshot: true },
+        )).toBeNull();
     });

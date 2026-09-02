@@ -4,6 +4,14 @@ import { tmpdir } from "node:os";
 import { parse, relative, resolve } from "node:path";
 import { gzipSync } from "node:zlib";
 import { countHardcodedPaletteClasses } from "./check-styles";
+import {
+    PREFILL_ADMIN_PASSWORD,
+    PREFILL_ADMIN_USERNAME,
+    PREFILL_STUDENT_ID,
+    PREFILL_STUDENT_PASSWORD,
+    PREFILL_TEACHER_ID,
+    PREFILL_TEACHER_PASSWORD,
+} from "../src/lib/prefill-credentials";
 
 const projectRoot = resolve(import.meta.dir, "..");
 const outdir = resolve(projectRoot, process.env.BUILD_OUTDIR ?? "dist");
@@ -33,6 +41,27 @@ if (demoMode) {
     console.warn("⚠️  DEMO_MODE=1：演示构建会自动填入各端演示账号和密码，仅限演示环境，切勿用于正式教学部署。");
 }
 
+const prefillCredentials = {
+    PREFILL_STUDENT_ID,
+    PREFILL_STUDENT_PASSWORD,
+    PREFILL_TEACHER_ID,
+    PREFILL_TEACHER_PASSWORD,
+    PREFILL_ADMIN_USERNAME,
+    PREFILL_ADMIN_PASSWORD,
+};
+const prefillCredentialsPlugin: Bun.BunPlugin = {
+    name: "production-prefill-credentials",
+    target: "browser",
+    setup(builder) {
+        builder.onLoad({ filter: /prefill-credentials\.ts$/ }, () => ({
+            loader: "ts",
+            contents: Object.entries(prefillCredentials)
+                .map(([name, value]) => `export const ${name} = ${JSON.stringify(demoMode ? value : "")};`)
+                .join("\n"),
+        }));
+    },
+};
+
 let outputCount = 0;
 const MAX_INITIAL_JS_GZIP_BYTES = 350 * 1024;
 const MAX_FONT_BYTES = 300 * 1024;
@@ -44,7 +73,7 @@ for (const entrypoint of entrypoints) {
     const result = await Bun.build({
         entrypoints: [entrypoint],
         outdir,
-        plugins: [tailwind],
+        plugins: [tailwind, prefillCredentialsPlugin],
         target: "browser",
         splitting: true,
         publicPath: "/",
@@ -76,6 +105,20 @@ for (const entrypoint of entrypoints) {
     }
 
     outputCount += result.outputs.length;
+}
+
+if (!demoMode) {
+    const forbiddenPasswords = [
+        PREFILL_STUDENT_PASSWORD,
+        PREFILL_TEACHER_PASSWORD,
+        PREFILL_ADMIN_PASSWORD,
+    ];
+    for (const fileName of await readdir(outdir)) {
+        if (!fileName.endsWith(".js")) continue;
+        const source = await Bun.file(resolve(outdir, fileName)).text();
+        const leaked = forbiddenPasswords.find((password) => source.includes(password));
+        if (leaked) throw new Error(`普通生产构建包含演示密码：${fileName}`);
+    }
 }
 
 async function collectInitialJavaScript(entryFile: string, seen = new Set<string>()) {

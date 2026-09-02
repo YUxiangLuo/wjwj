@@ -215,10 +215,18 @@ export function DecisionPhase({
         [onAdvancedApplied],
     );
 
-    const isUnsupportedInMeanMode = useCallback(
+    const isUnsupportedForEstimation = useCallback(
         (key: AdvancedTab) =>
-            isMeanEstimation && (key === "cost" || key === "cluster"),
+            (isMeanEstimation && (key === "cost" || key === "cluster"))
+            || (!isMeanEstimation && key === "cv"),
         [isMeanEstimation],
+    );
+
+    const unsupportedToolTitle = useCallback(
+        (key: AdvancedTab) => key === "cv"
+            ? "当前工具仅支持具有自然零点的均值目标"
+            : "当前工具仅支持比例估计，请切换为比例估计后使用",
+        [],
     );
 
     /** 统一构造高级规划快照并上报父级。 */
@@ -432,16 +440,16 @@ export function DecisionPhase({
                     {ADVANCED_TAB_CONFIG.map(({ key, label }) => {
                         const isActiveSource = advancedPlanSource === key;
                         const isDisabled =
-                            isUnsupportedInMeanMode(key);
+                            isUnsupportedForEstimation(key);
                         return (
                             <button
                                 key={key}
                                 type="button"
                                 disabled={isDisabled}
                                 title={
-                                    isUnsupportedInMeanMode(key)
-                                            ? "当前工具仅支持比例估计，请切换为比例估计后使用"
-                                            : undefined
+                                    isUnsupportedForEstimation(key)
+                                        ? unsupportedToolTitle(key)
+                                        : undefined
                                 }
                                 onClick={() => {
                                     if (isDisabled) return;

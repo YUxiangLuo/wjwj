@@ -168,4 +168,6 @@ test("FactorsPhase 汇总页展示六因素卡片", () => {
     }
     expect(text).toContain("复杂设计的精度折扣 deff");
     expect(text).toContain("发放量按 1/(1−r) 放大");
+    expect(text).toContain("继续：进入四步法小结");
+    expect(text).not.toContain("下一步进入公式阶段");
 });

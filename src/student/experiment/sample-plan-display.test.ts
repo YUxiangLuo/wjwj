@@ -1,5 +1,10 @@
 import { expect, test } from "bun:test";
-import { normalizeSamplePlanData } from "./sample-plan-display";
+import { formatSamplePlanNumber, normalizeSamplePlanData } from "./sample-plan-display";
+
+test("sample-plan numbers hide floating-point tails with at most one decimal", () => {
+    expect(formatSamplePlanNumber(66.79239999999999)).toBe("66.8");
+    expect(formatSamplePlanNumber(100)).toBe("100");
+});
 
 test("normalizeSamplePlanData backfills legacy proportion sample plans", () => {
     const normalized = normalizeSamplePlanData({

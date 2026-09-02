@@ -14,7 +14,7 @@ import {
 import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize } from "../../experiment/sample-plan";
 import type { ConfidenceLevel } from "../../experiment/confidence-level";
 import { normalizeConfidenceLevel } from "../../experiment/confidence-level";
-import { formatMarginOfError } from "../../experiment/sample-plan-display";
+import { formatMarginOfError, formatSamplePlanNumber } from "../../experiment/sample-plan-display";
 import type { AdvancedNonStandardSampleSource } from "../sample-planning/advancedTabs";
 import type { AdvancedPlanSnapshot } from "../../experiment/advanced-plan";
 import type { Domain } from "../DomainEstimationManager";
@@ -525,7 +525,7 @@ export function ImmersiveSamplePlanning({
                                 <ParamSummaryItem label="设计效应" value={designEffect.toFixed(1)} />
                                 <ParamSummaryItem label="无回答率" value={`${Math.round(nonResponseRate * 100)}%`} />
                                 {estimationType === "mean" && (
-                                    <ParamSummaryItem label="总体方差" value={populationVariance.toString()} />
+                                    <ParamSummaryItem label="总体方差" value={formatSamplePlanNumber(populationVariance)} />
                                 )}
                             </div>
                         </div>
@@ -639,12 +639,12 @@ export function ImmersiveSamplePlanning({
 
                 {/* Bottom bar */}
                 {canGoPrev && (
-                    <div className="fixed bottom-0 left-0 right-0 z-10 flex items-center justify-start px-6 pb-4 pt-2 bg-gradient-to-t from-background via-background/80 to-transparent">
+                    <div className="pointer-events-none fixed bottom-0 left-0 right-0 z-10 flex items-center justify-start px-6 pb-4 pt-2 bg-gradient-to-t from-background via-background/80 to-transparent">
                         <Button
                             type="button"
                             variant="ghost"
                             onClick={goPrev}
-                            className="text-muted-foreground hover:text-foreground/90"
+                            className="pointer-events-auto text-muted-foreground hover:text-foreground/90"
                         >
                             <ChevronLeft className="w-4 h-4 mr-1" />
                             上一步

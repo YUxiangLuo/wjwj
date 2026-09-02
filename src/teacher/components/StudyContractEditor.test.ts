@@ -37,6 +37,14 @@ test("resolveResearchQuestionForTargetChange only regenerates untouched defaults
         previousQuestion: "学生投入学习时间是否充足？",
         nextTarget: proportionTarget,
     })).toBe("学生投入学习时间是否充足？");
+
+    // 复制/改名后的旧默认问题仍应被识别为系统生成，不能把旧目标带进新合同。
+    expect(resolveResearchQuestionForTargetChange({
+        topicName: "学习情况调查 (副本)",
+        previousTarget: meanTarget,
+        previousQuestion: previousDefault,
+        nextTarget: proportionTarget,
+    })).toBe("学习情况调查 (副本)中性别为「女」的单位占比是多少？");
 });
 
 test("buildDefaultStudyContract fills population and unit defaults", () => {

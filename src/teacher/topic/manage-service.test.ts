@@ -91,6 +91,44 @@ test("updateTeacherTopicBasics allows publishing a fully configured topic", asyn
     expect(updates[0]?.set).toMatchObject({ status: 1, updatedAt: expect.any(Date) });
 });
 
+test("renaming a topic retitles only its generated study-contract question", async () => {
+    const target = { kind: "mean" as const, field: "score" };
+    const { module, operations } = await loadManageService({
+        select: [[{
+            name: "原课题",
+            excelFilePath: "/storage/uploads/topic.xlsx",
+            fieldMapping: {
+                identifier: "id",
+                stratified: ["gender"],
+                numeric: ["score"],
+                analysisTarget: target,
+                studyContract: {
+                    version: 1,
+                    researchQuestion: "原课题中score的平均水平是多少？",
+                    targetPopulation: "测试总体",
+                    unitOfAnalysis: "一行",
+                    target,
+                },
+            },
+            weightConfig: { questionnaire: 30, process: 40, report: 30 },
+        }], []],
+    });
+
+    expect(await module.updateTeacherTopicBasics({
+        teacherId: 9,
+        topicId: 12,
+        body: { name: "新课题" },
+    })).toEqual({ ok: true });
+
+    const update = operations.find((operation) => operation.kind === "update");
+    expect(update?.set).toMatchObject({
+        name: "新课题",
+        fieldMapping: {
+            studyContract: { researchQuestion: "新课题中score的平均水平是多少？" },
+        },
+    });
+});
+
 test("assigned topic basics remain immutable after the mutation lock is acquired", async () => {
     const { module, operations } = await loadManageService({
         select: [[{

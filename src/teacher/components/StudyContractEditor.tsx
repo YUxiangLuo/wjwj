@@ -2,7 +2,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { AnalysisTarget, StudyContract } from "@/lib/analysis-target";
+import {
+    buildDefaultResearchQuestion,
+    resemblesGeneratedResearchQuestion,
+    type AnalysisTarget,
+    type StudyContract,
+} from "@/lib/analysis-target";
+
+export { buildDefaultResearchQuestion } from "@/lib/analysis-target";
 
 export interface FieldMappingState {
     identifier?: string;
@@ -11,13 +18,6 @@ export interface FieldMappingState {
     others: string[];
     analysisTarget?: AnalysisTarget;
     studyContract?: StudyContract;
-}
-
-export function buildDefaultResearchQuestion(topicName: string, target: AnalysisTarget) {
-    const subject = topicName.trim() || "本课题";
-    return target.kind === "mean"
-        ? `${subject}中${target.field}的平均水平是多少？`
-        : `${subject}中${target.field}为「${target.value || "目标类别"}」的单位占比是多少？`;
 }
 
 /**
@@ -34,7 +34,11 @@ export function resolveResearchQuestionForTargetChange(params: {
     const previousDefault = params.previousTarget
         ? buildDefaultResearchQuestion(params.topicName, params.previousTarget)
         : "";
-    if (!previousQuestion.trim() || (previousDefault && previousQuestion.trim() === previousDefault)) {
+    if (
+        !previousQuestion.trim()
+        || (previousDefault && previousQuestion.trim() === previousDefault)
+        || (params.previousTarget && resemblesGeneratedResearchQuestion(previousQuestion, params.previousTarget))
+    ) {
         return buildDefaultResearchQuestion(params.topicName, params.nextTarget);
     }
     return previousQuestion;

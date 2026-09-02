@@ -26,6 +26,21 @@ export interface ResolvedStudyContract {
     inferred: boolean;
 }
 
+export function buildDefaultResearchQuestion(topicName: string, target: AnalysisTarget) {
+    const subject = topicName.trim() || "本课题";
+    return target.kind === "mean"
+        ? `${subject}中${target.field}的平均水平是多少？`
+        : `${subject}中${target.field}为「${target.value || "目标类别"}」的单位占比是多少？`;
+}
+
+/** 兼容旧合同：识别由系统模板生成、但因课题改名而不再等于当前默认值的问题。 */
+export function resemblesGeneratedResearchQuestion(question: string, target: AnalysisTarget) {
+    const suffix = target.kind === "mean"
+        ? `中${target.field}的平均水平是多少？`
+        : `中${target.field}为「${target.value || "目标类别"}」的单位占比是多少？`;
+    return question.trim().endsWith(suffix);
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -72,6 +87,37 @@ export function parseStudyContract(fieldMapping: unknown): StudyContract | null 
     const target = parseTarget(raw.target);
     if (raw.version !== 1 || !researchQuestion || !targetPopulation || !unitOfAnalysis || !target) return null;
     return { version: 1, researchQuestion, targetPopulation, unitOfAnalysis, target };
+}
+
+/**
+ * 课题改名/复制时，只同步仍等于旧系统默认值的研究问题；教师手写内容保持不变。
+ * 返回原引用表示无需更新，便于调用方避免无意义的 JSONB 写入。
+ */
+export function retitleGeneratedStudyContract(
+    fieldMapping: unknown,
+    previousTopicName: string,
+    nextTopicName: string,
+): unknown {
+    let parsed = fieldMapping;
+    if (typeof parsed === "string") {
+        try {
+            parsed = JSON.parse(parsed);
+        } catch {
+            return fieldMapping;
+        }
+    }
+    if (!isRecord(parsed) || !isRecord(parsed.studyContract)) return fieldMapping;
+    const contract = parseStudyContract(parsed);
+    if (!contract) return fieldMapping;
+    const previousDefault = buildDefaultResearchQuestion(previousTopicName, contract.target);
+    if (contract.researchQuestion !== previousDefault) return fieldMapping;
+    return {
+        ...parsed,
+        studyContract: {
+            ...parsed.studyContract,
+            researchQuestion: buildDefaultResearchQuestion(nextTopicName, contract.target),
+        },
+    };
 }
 
 function parseTarget(raw: unknown): AnalysisTarget | null {

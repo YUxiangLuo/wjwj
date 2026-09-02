@@ -71,6 +71,7 @@ export function validateExperimentSubmission(params: {
             samplePlan,
             populationSize,
             resolveAnalysisTarget(params.taskInfo.fieldMapping)?.target.kind,
+            { allowLegacyAdvancedSourceWithoutSnapshot: true },
         ) ??
         validateSamplingResultsForSubmit(samplingResults, getTargetSampleSizeFromSamplePlan(samplePlan), populationSize) ??
         validateReportForSubmit(record.reportContent);

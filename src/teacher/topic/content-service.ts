@@ -13,6 +13,7 @@ import {
 import { validateTopicAttachmentUpload } from "./validation";
 import type { Question } from "../../lib/questionnaire-types";
 import { parseRecommendQuestionsPayload } from "../../lib/validate-question";
+import { retitleGeneratedStudyContract } from "../../lib/analysis-target";
 import { deleteTopicStorageFileIfUnreferenced } from "./storage-cleanup";
 
 interface ServiceFailure {
@@ -235,15 +236,17 @@ export async function copyTopicWithResources(params: {
                     | Question[]
                     | null;
 
+            const copiedName = `${sourceTopic.name} (副本)`;
+            const sourceFieldMapping = normalizeJsonColumnValue(sourceTopic.fieldMapping);
             const [created] = await tx
                 .insert(topic)
                 .values({
                     teacherId: params.teacherId,
-                    name: `${sourceTopic.name} (副本)`,
+                    name: copiedName,
                     description: sourceTopic.description ?? "",
                     excelFilePath: copiedExcelFilePath,
                     excelRowCount: sourceTopic.excelRowCount,
-                    fieldMapping: normalizeJsonColumnValue(sourceTopic.fieldMapping),
+                    fieldMapping: retitleGeneratedStudyContract(sourceFieldMapping, sourceTopic.name, copiedName),
                     weightConfig: normalizeJsonColumnValue(sourceTopic.weightConfig),
                     recommendQuestions: recommendQuestions ?? null,
                     status: 0,

@@ -210,7 +210,8 @@ test("completing the overlay persists the variance used to compute n, not a late
     fireEvent.click(view.getByTestId("mock-planning-complete"));
     await waitFor(() => expect(view.getByTestId("student-sample-plan-summary")).toBeTruthy());
     const summary = view.getByTestId("student-sample-plan-summary").textContent ?? "";
-    expect(summary).toContain(String(lastPlanningProps?.initialPopulationVariance));
+    expect(summary).toContain("66.8");
+    expect(summary).not.toContain(String(lastPlanningProps?.initialPopulationVariance));
     expect(summary).not.toContain("67.128040201005");
     expect(summary).toContain("49");
 });

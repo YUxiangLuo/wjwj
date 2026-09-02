@@ -48,7 +48,7 @@ export function TargetMetricsPanel({ target }: { target: TargetAnalysisMetrics }
                             <th className="pb-2">目标估计</th>
                             <th className="pb-2">设计 SE</th>
                             <th className="pb-2">{target.confidenceLevel}% 教学误差半宽</th>
-                            <th className="pb-2">有效样本量</th>
+                            <th className="pb-2">等效 SRS 样本量</th>
                             <th className="pb-2">可靠性提示</th>
                         </tr>
                     </thead>

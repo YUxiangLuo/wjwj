@@ -1,3 +1,12 @@
+import {
+    PREFILL_ADMIN_PASSWORD,
+    PREFILL_ADMIN_USERNAME,
+    PREFILL_STUDENT_ID,
+    PREFILL_STUDENT_PASSWORD,
+    PREFILL_TEACHER_ID,
+    PREFILL_TEACHER_PASSWORD,
+} from "./prefill-credentials";
+
 /**
  * 开发模式开关（前后端共用）。
  *
@@ -31,11 +40,11 @@ function readBundledEnv(): Record<string, string | undefined> {
 export const DEV_AUTH_MODE = resolveDevAuthMode(readBundledEnv());
 
 /** 开发模式下的演示账号和密码（与 src/db/seeds/default.ts 一致）。 */
-export const DEV_STUDENT_ID = "S010";
-export const DEV_STUDENT_PASSWORD = "Student!010";
-export const DEV_TEACHER_ID = "T001";
-export const DEV_TEACHER_PASSWORD = "Teacher!2026";
-export const DEV_ADMIN_USERNAME = "admin";
+export const DEV_STUDENT_ID = PREFILL_STUDENT_ID;
+export const DEV_STUDENT_PASSWORD = PREFILL_STUDENT_PASSWORD;
+export const DEV_TEACHER_ID = PREFILL_TEACHER_ID;
+export const DEV_TEACHER_PASSWORD = PREFILL_TEACHER_PASSWORD;
+export const DEV_ADMIN_USERNAME = PREFILL_ADMIN_USERNAME;
 
 /** 开发模式下管理员演示密码（src/db/seeds/default.ts 在开发鉴权开启时写入该值）。 */
-export const DEV_ADMIN_PASSWORD = "admin123";
+export const DEV_ADMIN_PASSWORD = PREFILL_ADMIN_PASSWORD;

@@ -67,6 +67,7 @@ export function validateSamplePlanForSubmit(
     samplePlan: unknown,
     populationSize: number | null,
     analysisTargetKind?: "mean" | "proportion" | null,
+    options: { allowLegacyAdvancedSourceWithoutSnapshot?: boolean } = {},
 ): string | null {
     if (!samplePlan || typeof samplePlan !== "object") {
         return "请先完成样本量规划";
@@ -133,6 +134,15 @@ export function validateSamplePlanForSubmit(
         && advancedSource !== "cluster"
     ) {
         return "高级规划来源无效";
+    }
+    if (estimationType === "mean" && (advancedSource === "cost" || advancedSource === "cluster")) {
+        return "当前高级规划仅适用于比例估计，请改用均值规划工具";
+    }
+    if (estimationType === "proportion" && advancedSource === "cv") {
+        return "CV-based 规划仅适用于具有自然零点的均值目标";
+    }
+    if (advancedSource && data.advancedPlans === undefined && !options.allowLegacyAdvancedSourceWithoutSnapshot) {
+        return "高级样本量缺少可复核快照，请重新应用该高级规划";
     }
 
     // 高级规划快照：形状严格校验、逐份复算 inputs→result；
