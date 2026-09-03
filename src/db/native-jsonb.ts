@@ -1,3 +1,4 @@
+import { sql, type SQL } from "drizzle-orm";
 import { customType } from "drizzle-orm/pg-core";
 
 export type JsonDocument = Record<string, unknown> | unknown[];
@@ -29,6 +30,16 @@ export function decodeNativeJsonDocument(value: unknown): unknown {
         // application boundary that turns malformed historical values into null.
         return value;
     }
+}
+
+/**
+ * Compare a JSONB expression with an observed application value while treating
+ * a missing key, SQL NULL, and JSON null as the same empty state. Bun SQL binds
+ * a JavaScript null as SQL NULL, so both sides must be normalized before using
+ * equality or the predicate can never match an initially empty value.
+ */
+export function jsonbNullSafeEquals(expression: SQL, observedValue: JsonDocument | null) {
+    return sql`coalesce(${expression}, 'null'::jsonb) = coalesce(${observedValue}::jsonb, 'null'::jsonb)`;
 }
 
 /**

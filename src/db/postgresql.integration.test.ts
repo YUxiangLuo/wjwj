@@ -3,6 +3,7 @@ import { expect, test } from "bun:test";
 import { and, count, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sql";
 import * as schema from "./schema";
+import { jsonbNullSafeEquals } from "./native-jsonb";
 import { MAX_SAMPLING_ATTEMPTS_PER_EXPERIMENT, trimSamplingAttempts } from "../student/experiment/sampling-attempt-retention";
 
 const testDatabaseUrl = process.env.TEST_DATABASE_URL?.trim();
@@ -182,6 +183,44 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
             .where(eq(schema.samplingAttempt.experimentId, createdExperiment!.id));
         expect(retainedAttempts?.value).toBe(MAX_SAMPLING_ATTEMPTS_PER_EXPERIMENT);
 
+        await database
+            .update(schema.experiment)
+            .set({ samplingResults: null })
+            .where(eq(schema.experiment.id, createdExperiment!.id));
+        const firstSimpleResult = { completed: true, sampleCount: 2, serverGenerated: true };
+        const firstSamplingWrite = await database
+            .update(schema.experiment)
+            .set({
+                samplingResults: sql`jsonb_set(
+                    coalesce(${schema.experiment.samplingResults}, '{}'::jsonb),
+                    array[${"simple"}]::text[],
+                    ${firstSimpleResult}::jsonb,
+                    true
+                )`,
+            })
+            .where(and(
+                eq(schema.experiment.id, createdExperiment!.id),
+                jsonbNullSafeEquals(
+                    sql`${schema.experiment.samplingResults} -> ${"simple"}`,
+                    null,
+                ),
+            ))
+            .returning({ samplingResults: schema.experiment.samplingResults });
+        expect(firstSamplingWrite).toEqual([{ samplingResults: { simple: firstSimpleResult } }]);
+
+        const staleEmptySamplingWrite = await database
+            .update(schema.experiment)
+            .set({ samplingResults: { simple: { completed: false } } })
+            .where(and(
+                eq(schema.experiment.id, createdExperiment!.id),
+                jsonbNullSafeEquals(
+                    sql`${schema.experiment.samplingResults} -> ${"simple"}`,
+                    null,
+                ),
+            ))
+            .returning({ id: schema.experiment.id });
+        expect(staleEmptySamplingWrite).toHaveLength(0);
+
         const systematicResult = { completed: true, sampleCount: 2, serverGenerated: true };
         await database
             .update(schema.experiment)
@@ -199,7 +238,7 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
             .from(schema.experiment)
             .where(eq(schema.experiment.id, createdExperiment!.id));
         expect(mergedSamplingResults?.samplingResults).toEqual({
-            simple: { completed: true, data: [] },
+            simple: firstSimpleResult,
             systematic: { completed: true, sampleCount: 2, serverGenerated: true },
         });
 

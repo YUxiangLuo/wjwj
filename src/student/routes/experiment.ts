@@ -1,5 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
+import { jsonbNullSafeEquals } from "../../db/native-jsonb";
 import { experiment, samplingAttempt } from "../../db/schema";
 import { validateObservedVersion } from "../../lib/observed-version";
 import { error, getPositiveRouteId, getRouteParam, json, parseBody, parsePositiveInteger } from "../../server/http";
@@ -180,7 +181,10 @@ async function persistSamplingMethodResult(
             })
             .where(and(
                 matchesObservedExperiment(record, record.version),
-                sql`coalesce(${experiment.samplingResults} -> ${method}, 'null'::jsonb) = ${observedMethodResult}::jsonb`,
+                jsonbNullSafeEquals(
+                    sql`${experiment.samplingResults} -> ${method}`,
+                    observedMethodResult,
+                ),
             ))
             .returning();
         if (!persisted) return null;

@@ -99,6 +99,10 @@ test("sampling action atomically persists its server-generated method result", a
     expect(storedResult).toMatchObject({ serverGenerated: true, indices: expect.any(Array) });
     expect(storedResult).not.toHaveProperty("data");
 
+    const optimisticQuery = new PgDialect().sqlToQuery(update?.where as SQL);
+    expect(optimisticQuery.sql).toContain("= coalesce(");
+    expect(optimisticQuery.params).toContain(null);
+
     const payload = await response.json() as any;
     expect(payload.data.result.data).toHaveLength(2);
     expect(payload.data.result).not.toHaveProperty("indices");
