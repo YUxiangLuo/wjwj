@@ -189,6 +189,7 @@ test("mean-locked first visit waits for target variance then opens overlay with 
     expect(lastPlanningProps?.initialMarginOfError).toBe(2);
     expect(lastPlanningProps?.initialPopulationVariance).toBeCloseTo(66.7924, 10);
     expect(lastPlanningProps?.initialEstimationType).toBe("mean");
+    expect(view.container.textContent).toContain("200 个总体单位");
 });
 
 test("closing the immersive planner restores focus to its trigger", async () => {

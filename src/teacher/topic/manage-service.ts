@@ -291,6 +291,7 @@ export async function updateTopicFieldMapping(params: {
         numeric?: string[];
         others?: string[];
         analysisTarget?: { kind?: string; field?: string; value?: string };
+        studyContract?: unknown;
     };
 }) {
     const mappingError = validateTopicFieldMappingConfig(params.fieldMapping);
@@ -328,7 +329,10 @@ export async function updateTopicFieldMapping(params: {
             .update(topic)
             .set({
                 fieldMapping: params.fieldMapping,
-                samplingPolicy: buildDefaultSamplingPolicy({ ppsEnabled }),
+                samplingPolicy: buildDefaultSamplingPolicy({
+                    ppsEnabled,
+                    stratifiedEnabled: (params.fieldMapping.stratified?.length ?? 0) > 0,
+                }),
                 updatedAt: new Date(),
             })
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)))
@@ -376,6 +380,10 @@ export async function updateTopicSamplingPolicy(params: {
             if (eligible.length === 0) {
                 return fail("当前总体没有合格的 PPS 规模变量，请将 PPS 设为不适用");
             }
+        }
+        const mapping = parseTopicFieldMapping(topicInfo.fieldMapping);
+        if (samplingPolicy.methods.stratified !== "disabled" && (mapping?.stratified?.length ?? 0) === 0) {
+            return fail("当前研究没有分层变量，请将分层抽样设为不适用");
         }
 
         const [updated] = await tx

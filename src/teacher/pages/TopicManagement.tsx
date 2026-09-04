@@ -249,10 +249,6 @@ export function TopicManagement() {
             toast.error("请选择标识符字段");
             return;
         }
-        if (fieldMapping.stratified.length === 0 || fieldMapping.numeric.length === 0) {
-            toast.error("至少选择1个分层变量和1个数值变量");
-            return;
-        }
         // 新课题要求研究合同完整；仅有旧版对照变量的历史课题保持可保存（兼容）。
         if (parseStudyContract(fieldMapping) !== null || fieldMapping.studyContract !== undefined) {
             if (!isStudyContractComplete(fieldMapping.studyContract)) {

@@ -1,6 +1,7 @@
 import { expect, mock, test } from "bun:test";
 import { auditEvent, experiment, task } from "../../db/schema";
 import { createMockDb } from "../../test-utils/mock-db";
+import { buildDefaultSamplingPolicy } from "../../lib/sampling-policy";
 
 async function load(select: unknown[], update: unknown[] = []) {
     const { db, operations } = createMockDb({ select, update });
@@ -40,7 +41,7 @@ test("task publish rejects duplicate class IDs before taking the mutation lock",
 
 test("task publish creates one task per newly selected class without notifications", async () => {
     const { module, operations } = await load([
-        [{ id: 12, name: "抽样课题", status: 1, excelFilePath: "/storage/topic.xlsx", fieldMapping: { identifier: "id", stratified: ["组"], numeric: ["值"], analysisTarget: { kind: "mean", field: "值" } }, weightConfig: { questionnaire: 30, process: 30, report: 40 } }],
+        [{ id: 12, name: "抽样课题", status: 1, excelFilePath: "/storage/topic.xlsx", fieldMapping: { identifier: "id", stratified: ["组"], numeric: ["值"], analysisTarget: { kind: "mean", field: "值" } }, samplingPolicy: buildDefaultSamplingPolicy({ ppsEnabled: false }), weightConfig: { questionnaire: 30, process: 30, report: 40 } }],
         [{ id: 101 }, { id: 102 }],
         [],
     ]);
@@ -59,7 +60,7 @@ test("task publish creates one task per newly selected class without notificatio
 
 test("task publish skips an existing task instead of reviving state", async () => {
     const { module, operations } = await load([
-        [{ id: 12, name: "抽样课题", status: 1, excelFilePath: "/storage/topic.xlsx", fieldMapping: { identifier: "id", stratified: ["组"], numeric: ["值"], analysisTarget: { kind: "mean", field: "值" } }, weightConfig: { questionnaire: 30, process: 30, report: 40 } }],
+        [{ id: 12, name: "抽样课题", status: 1, excelFilePath: "/storage/topic.xlsx", fieldMapping: { identifier: "id", stratified: ["组"], numeric: ["值"], analysisTarget: { kind: "mean", field: "值" } }, samplingPolicy: buildDefaultSamplingPolicy({ ppsEnabled: false }), weightConfig: { questionnaire: 30, process: 30, report: 40 } }],
         [{ id: 101 }],
         [{ classId: 101 }],
     ]);

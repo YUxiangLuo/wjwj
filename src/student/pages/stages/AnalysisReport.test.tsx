@@ -206,6 +206,9 @@ test("AnalysisReport labels a PPS census SE as exact instead of simulated", asyn
     expect(notice).not.toContain("模拟误差");
     expect(view.container.textContent).toContain("PPS 为全体入样");
     expect(view.container.textContent).not.toContain("有限重复次数会带来模拟误差");
+    expect(view.container.textContent).toContain("PPS 本次覆盖完整总体");
+    expect(view.container.textContent).toContain("当前结果没有抽样误差");
+    expect(view.container.textContent).not.toContain("小样本偏差");
 });
 
 test("AnalysisReport omits PPS-only guidance when PPS is unavailable", async () => {
@@ -350,6 +353,8 @@ test("AnalysisReport omits disabled and unselected methods from export and param
     expect(view.container.querySelector('[data-value="pps"]')).toBeNull();
     expect(view.queryByTestId("student-analysis-sampling-params-pps")).toBeNull();
     expect(view.getByTestId("student-analysis-sampling-params-systematic")).toBeTruthy();
+    expect(view.getByText(/PPS 已由教师在实验模板中设为不适用/)).toBeTruthy();
+    expect(view.container.textContent).not.toContain("本次未选择 PPS");
 });
 
 test("AnalysisReport excludes unselected methods from every analysis chart", async () => {

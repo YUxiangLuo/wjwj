@@ -44,13 +44,13 @@ describe("validateSamplePlanForSubmit", () => {
         expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 1, recommendedSize: 45 }), 50)).toBeNull();
         expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 50, recommendedSize: 45 }), 50)).toBeNull();
         expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 51, recommendedSize: 45 }), 50)).toBe(
-            "最终样本量需在 1～50 人之间",
+            "最终样本量需在 1～50 个单位之间",
         );
     });
 
     test("有总体规模时：高于上限时报错", () => {
         expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 201 }), 200)).toBe(
-            "最终样本量需在 1～200 人之间",
+            "最终样本量需在 1～200 个单位之间",
         );
     });
 

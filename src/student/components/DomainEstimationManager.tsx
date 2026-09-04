@@ -332,7 +332,7 @@ export function DomainEstimationManager({
                                             max={totalPopulationSize}
                                         />
                                         <p className="text-meta text-primary">
-                                            该子总体在总体中的人数
+                                            该子总体包含的单位数
                                         </p>
                                     </div>
 

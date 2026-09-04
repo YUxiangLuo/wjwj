@@ -48,6 +48,38 @@ test("draft experiment template saves a validated sampling policy", async () => 
     }
 });
 
+test("sampling policy requires stratified sampling to be disabled without strata", async () => {
+    const filePath = `/storage/uploads/sampling-policy-no-strata-${crypto.randomUUID()}.xlsx`;
+    const absolutePath = `${process.cwd()}${filePath}`;
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([
+        { id: 1, target: 10 },
+        { id: 2, target: 20 },
+    ]), "总体数据");
+    await Bun.write(absolutePath, XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }));
+
+    const policy = buildDefaultSamplingPolicy({ ppsEnabled: false });
+    const { db, operations } = createMockDb({ select: [
+        [{ id: 12, status: 0, hasTasks: false }],
+        [{ status: 0, excelFilePath: filePath, fieldMapping: { identifier: "id", stratified: [], numeric: ["target"], analysisTarget: { kind: "mean", field: "target" } } }],
+        [],
+    ] });
+    mock.module("../../db", () => ({ db }));
+    mock.module("./auth", () => createTeacherAuthModuleMock());
+
+    try {
+        const module = await import(`./topic-task.ts?sampling-policy-no-strata=${crypto.randomUUID()}`);
+        const response = await module.topicSamplingPolicyRoutes.PUT!(request(policy));
+        expect(response.status).toBe(400);
+        expect(await response.json()).toMatchObject({
+            error: { message: "当前研究没有分层变量，请将分层抽样设为不适用" },
+        });
+        expect(operations.some((operation) => operation.kind === "update")).toBeFalse();
+    } finally {
+        await unlink(absolutePath).catch(() => undefined);
+    }
+});
+
 test("published experiment template sampling policy is immutable", async () => {
     const { db, operations } = createMockDb({ select: [[{ id: 12, status: 1, hasTasks: false }]] });
     mock.module("../../db", () => ({ db }));

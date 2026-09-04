@@ -79,4 +79,6 @@ test("ImmersiveReportPreview shows persisted sample plan semantics in overview",
     expect(text).toContain("±2（与均值同单位）");
     expect(text).toContain("总体方差 σ²");
     expect(text).toContain("100");
+    expect(text).toContain("8,000个单位");
+    expect(text).not.toContain("8,000人");
 });

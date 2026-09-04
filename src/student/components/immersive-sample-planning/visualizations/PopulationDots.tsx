@@ -87,7 +87,7 @@ export function PopulationDots({ total, highlighted, className }: Props) {
         <canvas
             ref={canvasRef}
             className={`w-full h-36 ${className ?? ""}`}
-            aria-label={`总体 ${total.toLocaleString()} 人中高亮 ${highlighted.toLocaleString()} 人`}
+            aria-label={`总体 ${total.toLocaleString()} 个单位中高亮 ${highlighted.toLocaleString()} 个单位`}
         />
     );
 }

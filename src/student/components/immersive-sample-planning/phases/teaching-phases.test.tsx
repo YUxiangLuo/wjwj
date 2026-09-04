@@ -3,6 +3,7 @@ import { cleanup, render } from "@testing-library/react";
 import { installDomGlobals } from "@/test-utils/dom";
 import type { SampleParams } from "../types";
 import { PrecisionPhase } from "./PrecisionPhase";
+import { ChallengePhase } from "./ChallengePhase";
 import { FactorsPhase } from "./FactorsPhase";
 import { FormulaPhase } from "./FormulaPhase";
 import { QuizPhase } from "./QuizPhase";
@@ -52,6 +53,26 @@ function proportionParams(overrides: Partial<SampleParams> = {}): SampleParams {
     };
 }
 
+test("ChallengePhase uses research-neutral unit copy", () => {
+    const view = render(
+        <ChallengePhase
+            populationSize={18}
+            estimationType="mean"
+            confidenceLevel="95"
+            marginOfError={2}
+            recommendedSize={11}
+            guess={null}
+            revealed={false}
+            onCommitGuess={() => undefined}
+            onNext={() => undefined}
+        />,
+    );
+    const text = view.container.textContent ?? "";
+    expect(text).toContain("总体共有 18 个单位");
+    expect(text).toContain("调查多少个单位");
+    expect(text).not.toContain("18 人");
+});
+
 test("FormulaPhase 小结把有限总体校正标为 n₂，并使用 deff 后再校正的恒等式", () => {
     const view = render(
         <FormulaPhase
@@ -70,6 +91,8 @@ test("FormulaPhase 小结把有限总体校正标为 n₂，并使用 deff 后�
     expect(text).toContain("n₂ =");
     expect(text).toContain("200 − 1 +");
     expect(text).not.toContain("n₁ =");
+    expect(text).toContain("200 个单位后");
+    expect(text).not.toContain("200 人后");
 });
 
 test("PrecisionPhase 在均值估计下展示均值公式而非比例公式", () => {
@@ -148,7 +171,7 @@ test("FactorsPhase 无回答率页：发放量按 1/(1−r) 放大并以 N 封�
 
     expect(text).toContain("因素 5");
     expect(text).toContain("n ÷ (1 − r)");
-    expect(text).toContain("目标完成 132 人");
+    expect(text).toContain("目标完成 132 个有效样本");
     // 默认 20%：invite = ceil(132/0.8) = 165，完成约 floor(165×0.8) = 132
     expect(text).toContain("发 165 / 完成约 132");
     // 0%：发放与完成相同
@@ -167,7 +190,7 @@ test("FactorsPhase 汇总页展示六因素卡片", () => {
         expect(text).toContain(title);
     }
     expect(text).toContain("复杂设计的精度折扣 deff");
-    expect(text).toContain("发放量按 1/(1−r) 放大");
+    expect(text).toContain("邀请量按 1/(1−r) 放大");
     expect(text).toContain("继续：进入四步法小结");
     expect(text).not.toContain("下一步进入公式阶段");
 });

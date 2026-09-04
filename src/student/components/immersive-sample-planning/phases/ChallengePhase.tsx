@@ -79,8 +79,8 @@ export function ChallengePhase({
                             现在开始规划你的样本量
                         </h2>
                         <p className="text-muted-foreground text-subheading">
-                            你的调查总体共有 <span className="text-primary tabular-nums">{populationSize.toLocaleString()}</span> 人。<br />
-                            先凭直觉猜一猜：大约要调查多少人，估计才够准？
+                            你的调查总体共有 <span className="text-primary tabular-nums">{populationSize.toLocaleString()}</span> 个单位。<br />
+                            先凭直觉猜一猜：大约要调查多少个单位，估计才够准？
                         </p>
                     </div>
 
@@ -180,7 +180,7 @@ function ComparisonBar({
         <div className="text-left space-y-1">
             <div className="flex justify-between items-baseline">
                 <span className="text-label text-muted-foreground">{label}</span>
-                <span className={`text-subheading font-bold tabular-nums ${textColor}`}>{value.toLocaleString()} 人</span>
+                <span className={`text-subheading font-bold tabular-nums ${textColor}`}>{value.toLocaleString()} 个单位</span>
             </div>
             <div className="h-3 rounded-control bg-muted overflow-hidden">
                 <div

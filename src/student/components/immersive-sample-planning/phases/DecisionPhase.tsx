@@ -391,7 +391,7 @@ export function DecisionPhase({
                         <p className="text-meta text-warning text-center">
                             已达全体发放上限（邀请 n = N = {N.toLocaleString()}）。
                             {params.nonResponseRate > 0
-                                ? `最多邀请 ${N.toLocaleString()} 人，预期完成约 ${Math.ceil(metrics?.expectedCompleted ?? 0).toLocaleString()} 人；不等于完整普查。`
+                                ? `最多邀请 ${N.toLocaleString()} 个总体单位，预期完成约 ${Math.ceil(metrics?.expectedCompleted ?? 0).toLocaleString()} 个有效样本；不等于完整普查。`
                                 : "仅在全部单位完成回答时才是完整普查。"}
                         </p>
                     )}
@@ -661,7 +661,7 @@ export function DecisionPhase({
                                 applyAdvancedSource("cluster", () => {
                                     onFinalSizeChange(sampleSize);
                                 });
-                                toast.success(`整群方案：${clusters} 个群，共 ${sampleSize} 人`, {
+                                toast.success(`整群方案：${clusters} 个群，共 ${sampleSize} 个单位`, {
                                     description: TOAST_APPLY_SAMPLE_SIZE_ONLY_DESC,
                                 });
                                 closeAdvancedDialog();
@@ -737,7 +737,7 @@ export function DecisionPhase({
                 <div className="flex gap-3 items-end">
                     <div className="flex-1 space-y-1">
                         <div className="flex justify-between text-meta">
-                            <span className="text-muted-foreground">这里实际准备调查多少人</span>
+                            <span className="text-muted-foreground">这里实际准备纳入多少个单位</span>
                             <span className="text-success font-medium">
                                 建议值 {recommendedSize.toLocaleString()}
                             </span>
@@ -755,11 +755,11 @@ export function DecisionPhase({
                                 max={maxSize}
                                 data-testid="immersive-sp-final-size"
                                 className={cn(
-                                    "pr-12 text-subheading font-bold bg-card border-input",
+                                    "pr-20 text-subheading font-bold bg-card border-input",
                                     isValidSize ? "text-primary" : "text-destructive",
                                 )}
                             />
-                            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground text-label">人</span>
+                            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground text-label">个单位</span>
                         </div>
                     </div>
                     <Button

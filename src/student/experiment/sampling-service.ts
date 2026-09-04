@@ -246,7 +246,7 @@ export async function executeSamplingAction(params: {
                 if (sampleCount > groupCount) {
                     return {
                         ok: false as const,
-                        errorMessage: `分层“${name}”样本数不能超过该层总体人数（${groupCount}）`,
+                        errorMessage: `分层“${name}”样本数不能超过该层总体单位数（${groupCount}）`,
                     };
                 }
 

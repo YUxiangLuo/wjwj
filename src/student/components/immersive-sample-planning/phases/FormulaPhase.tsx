@@ -375,8 +375,8 @@ export function FormulaPhase({
             <div className="text-center space-y-2 animate-in fade-in duration-500" style={{ animationDelay: "800ms", animationFillMode: "both" }}>
                 <p className="text-muted-foreground text-subheading">
                     在无限大总体下先算得 <strong className="text-primary tabular-nums">{n0RawDisplay}</strong>，
-                    规划时向上取整为 <strong className="text-primary tabular-nums">{n0Rounded.toLocaleString()}</strong> 人；
-                    再考虑总体只有 <strong className="tabular-nums">{params.populationSize.toLocaleString()}</strong> 人后，约为 <strong className="text-success tabular-nums">{nFpcRawDisplay}</strong>，规划时取 <strong className="text-success tabular-nums">{nFpcRounded.toLocaleString()}</strong> 人。此步尚未计入设计效应与无回答率。
+                    规划时向上取整为 <strong className="text-primary tabular-nums">{n0Rounded.toLocaleString()}</strong> 个单位；
+                    再考虑总体只有 <strong className="tabular-nums">{params.populationSize.toLocaleString()}</strong> 个单位后，约为 <strong className="text-success tabular-nums">{nFpcRawDisplay}</strong>，规划时取 <strong className="text-success tabular-nums">{nFpcRounded.toLocaleString()}</strong> 个单位。此步尚未计入设计效应与无回答率。
                 </p>
                 <p className="text-muted-foreground text-label">
                     接下来单独看看“有限总体校正”为何会起作用。

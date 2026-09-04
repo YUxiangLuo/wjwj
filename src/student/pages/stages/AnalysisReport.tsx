@@ -223,6 +223,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     );
     const isPpsUnavailable = Boolean(experiment?.samplingResults?.pps?.unavailable);
     const samplingPolicy = useMemo(() => resolveSamplingPolicy(experiment?.samplingPolicy), [experiment?.samplingPolicy]);
+    const isPpsDisabled = samplingPolicy.methods.pps === "disabled";
     const completedAnalysisMethods = useMemo<MethodKey[]>(() => SAMPLING_METHODS.filter((method) => (
         samplingPolicy.methods[method] !== "disabled"
         && isCompletedSamplingResult(experiment?.samplingResults?.[method])
@@ -244,6 +245,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         ?? (typeof reportedPpsMonteCarloReplicates === "number" && reportedPpsMonteCarloReplicates > 0
             ? "monte_carlo"
             : null);
+    const isPpsCensus = hasPpsCompleted && ppsStandardErrorMode === "census_exact";
     const ppsStandardErrorNotice = ppsStandardErrorMode === "census_exact"
         ? "PPS 本次为全体入样，每个单位的包含概率均为 1，设计标准误精确为 0；该结果未执行 Monte Carlo 重复抽样。"
         : `PPS 标准误是 ${ppsMonteCarloReplicates} 次重复抽样的 Monte Carlo 估计（按 R−1 计算重复间标准差），仍有模拟误差。`;
@@ -615,7 +617,11 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
                                 <TabsContent value="mean" data-testid="student-analysis-mean-chart">
                                     <ChartTabPanel
-                                        description="比较各抽样方法对同一数值变量的均值估计，并利用已知虚拟总体显示真值对照。PPS 使用 Hájek 比估计（按一阶包含概率的倒数加权并归一化），不是 Horvitz–Thompson 均值；Hájek 通常更稳定，但并非严格设计无偏，小样本偏差可能不可忽略。"
+                                        description={`比较各抽样方法对同一数值变量的均值估计，并利用已知虚拟总体显示真值对照。${hasPpsCompleted
+                                            ? isPpsCensus
+                                                ? "PPS 本次覆盖完整总体，估计等于总体真值。"
+                                                : "PPS 使用 Hájek 比估计（按一阶包含概率的倒数加权并归一化），不是 Horvitz–Thompson 均值；Hájek 通常更稳定，但并非严格设计无偏，小样本偏差可能不可忽略。"
+                                            : ""}`}
                                         rows={meanRows}
                                         series={meanSeries}
                                         emptyMessage="暂无可用于均值分析的数值字段"
@@ -732,11 +738,15 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         <CardContent className="space-y-3 text-label text-primary">
                             <p>
                                 • 先比较总体均值估计，判断不同抽样方法是否给出接近的结果。
-                                {isPpsUnavailable
-                                    ? "本任务没有合格的 PPS 规模变量，因此 PPS 已按规则跳过，不应纳入方法间比较。"
-                                    : hasPpsCompleted
-                                        ? "PPS 看的是可能存在小样本偏差的 Hájek 比估计。"
-                                        : "本次未选择 PPS，分析只比较实际完成的方法。"}
+                                {isPpsDisabled
+                                    ? "PPS 已由教师在实验模板中设为不适用，不应纳入方法间比较。"
+                                    : isPpsUnavailable
+                                        ? "本任务没有合格的 PPS 规模变量，因此 PPS 已按规则跳过，不应纳入方法间比较。"
+                                        : isPpsCensus
+                                            ? "PPS 本次覆盖完整总体，当前结果没有抽样误差；这不代表非普查情形下也具有相同精度。"
+                                            : hasPpsCompleted
+                                                ? "PPS 看的是可能存在小样本偏差的 Hájek 比估计。"
+                                                : "本次未选择 PPS，分析只比较实际完成的方法。"}
                             </p>
                             <p>• 再看分类分布与总体对照偏差，描述当前样本对已知虚拟总体的贴近程度；这不能单独证明无偏或整体代表性。</p>
                             <p>• 最后结合设计标准误说明精度。本页 SE 借助完整虚拟总体；现实调查需使用与设计匹配的样本方差估计。</p>

@@ -149,15 +149,9 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
         }));
     }
 
-    const uniqueFieldCount = new Set(
-        [fieldMapping.identifier, ...fieldMapping.stratified, ...fieldMapping.numeric].filter(Boolean)
-    ).size;
     const analysisTarget = fieldMapping.analysisTarget;
     const mappingRules = [
         { ok: Boolean(fieldMapping.identifier), text: "已选择 1 个标识符" },
-        { ok: fieldMapping.stratified.length > 0, text: "至少 1 个分层变量" },
-        { ok: fieldMapping.numeric.length > 0, text: "至少 1 个数值变量" },
-        { ok: uniqueFieldCount >= 3, text: "至少 3 个不同字段" },
         // 研究合同完整，或仅有旧版对照变量的历史课题（保存时自动升级）
         { ok: parseStudyContract(fieldMapping) !== null
             ? isStudyContractComplete(fieldMapping.studyContract)
@@ -192,6 +186,8 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
     const samplingPolicyError = validateSamplingPolicy(samplingPolicy)
         ?? (ppsEligibleFields.length === 0 && samplingPolicy.methods.pps !== "disabled"
             ? "当前总体没有合格的 PPS 规模变量，请将 PPS 设为不适用"
+            : fieldMapping.stratified.length === 0 && samplingPolicy.methods.stratified !== "disabled"
+                ? "当前研究没有分层变量，请将分层抽样设为不适用"
             : null);
     const methodLabels: Record<SamplingMethod, string> = {
         simple: "简单随机抽样",
@@ -273,7 +269,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         dataTestId="teacher-topic-desc"
                                         value={newTopicDesc}
                                         onChange={setNewTopicDesc}
-                                        placeholder="请输入实验背景、目标人群和教学目的"
+                                        placeholder="请输入实验背景、目标总体和教学目的"
                                         className="bg-background border-border"
                                     />
                                 </div>
@@ -455,8 +451,8 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <Label className="text-foreground">分层变量（已选 {fieldMapping.stratified.length}）</Label>
-                                        <p className="text-meta text-muted-foreground">用于按类别分组对比，建议 1-3 个，且每个字段唯一值不超过 20（如性别、学历、地区）。</p>
+                                        <Label className="text-foreground">分层变量（按需，已选 {fieldMapping.stratified.length}）</Label>
+                                        <p className="text-meta text-muted-foreground">仅在需要分层抽样或分类分布比较时选择，建议 1-3 个，且每个字段唯一值不超过 20。</p>
                                         {riskyStratifiedFields.length > 0 && (
                                             <p className="text-meta text-warning">
                                                 当前分层变量包含高基数或 ID 类字段（{riskyStratifiedFields.join("、")}），保存时可能失败，建议替换。
@@ -502,8 +498,8 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-foreground">数值变量（已选 {fieldMapping.numeric.length}）</Label>
-                                        <p className="text-meta text-muted-foreground">用于统计计算，建议选择连续值/可比较大小的字段。</p>
+                                        <Label className="text-foreground">数值变量（按需，已选 {fieldMapping.numeric.length}）</Label>
+                                        <p className="text-meta text-muted-foreground">均值目标和 PPS 辅助规模需要数值字段；纯分类比例研究可以不选。</p>
                                         <div className="bg-background border border-border rounded-surface p-3 max-h-60 overflow-y-auto space-y-2">
                                             {columns.map((c) => {
                                                 const checked = fieldMapping.numeric.includes(c);
@@ -565,6 +561,8 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     {SAMPLING_METHODS.map((method) => {
                                         const isSimple = method === "simple";
                                         const ppsUnavailable = method === "pps" && ppsEligibleFields.length === 0;
+                                        const stratifiedUnavailable = method === "stratified" && fieldMapping.stratified.length === 0;
+                                        const methodUnavailable = ppsUnavailable || stratifiedUnavailable;
                                         const requirement = samplingPolicy.methods[method];
                                         return (
                                             <div key={method} className="rounded-surface border border-border bg-background p-4">
@@ -580,7 +578,9 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                                         ? ppsUnavailable
                                                                             ? "当前总体没有与研究目标不同、且对每个单位均为正数的规模变量。"
                                                                             : `可用规模变量：${ppsEligibleFields.join("、")}`
-                                                                        : "适合存在明确分层变量并需要控制各层样本构成的场景。"}
+                                                                        : stratifiedUnavailable
+                                                                            ? "当前研究没有配置分层变量。"
+                                                                            : "适合存在明确分层变量并需要控制各层样本构成的场景。"}
                                                         </p>
                                                     </div>
                                                     {isSimple ? (
@@ -596,8 +596,8 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                         >
                                                             <SelectTrigger aria-label={`${methodLabels[method]}要求`} className="w-28 bg-card"><SelectValue /></SelectTrigger>
                                                             <SelectContent>
-                                                                <SelectItem value="required" disabled={ppsUnavailable}>必做</SelectItem>
-                                                                <SelectItem value="optional" disabled={ppsUnavailable}>选做</SelectItem>
+                                                                <SelectItem value="required" disabled={methodUnavailable}>必做</SelectItem>
+                                                                <SelectItem value="optional" disabled={methodUnavailable}>选做</SelectItem>
                                                                 <SelectItem value="disabled">不适用</SelectItem>
                                                             </SelectContent>
                                                         </Select>

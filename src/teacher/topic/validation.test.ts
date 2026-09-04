@@ -12,6 +12,7 @@ import {
     validateWeightConfig,
 } from "./validation";
 import { validateRecommendQuestionsPayload } from "../../lib/validate-question";
+import { buildDefaultSamplingPolicy } from "../../lib/sampling-policy";
 
 describe("topic validation helpers", () => {
     test("validateParsedExcelUpload rejects duplicate columns, blank headers, and blank rows", () => {
@@ -56,21 +57,50 @@ describe("topic validation helpers", () => {
         expect(validateNumericFieldValues([{ score: true }], ["score"])).toBe("数值变量 score 在数据第1行存在空值或非数值");
     });
 
-    test("validateTopicFieldMappingConfig enforces required categories", () => {
+    test("validateTopicFieldMappingConfig enforces identifiers and disjoint field roles", () => {
         expect(validateTopicFieldMappingConfig(null)).toBe("字段映射不能为空");
         expect(validateTopicFieldMappingConfig([])).toBe("字段映射格式无效");
         expect(validateTopicFieldMappingConfig({ identifier: 1, stratified: ["gender"], numeric: ["score"] })).toBe("字段映射格式无效");
         expect(validateTopicFieldMappingConfig({ identifier: "id", stratified: 1, numeric: ["score"] })).toBe("字段映射格式无效");
         expect(validateTopicFieldMappingConfig({ identifier: "id", stratified: ["gender"], numeric: [{}] })).toBe("字段映射格式无效");
         expect(validateTopicFieldMappingConfig({ stratified: ["gender"], numeric: ["score"] })).toBe("必须选择1个标识符字段");
-        expect(validateTopicFieldMappingConfig({ identifier: "id", stratified: [], numeric: ["score"] })).toBe("至少选择1个分层变量");
-        expect(validateTopicFieldMappingConfig({ identifier: "id", stratified: ["id"], numeric: [] })).toBe("至少选择1个数值变量");
+        expect(validateTopicFieldMappingConfig({ identifier: "id", stratified: [], numeric: ["score"] })).toBeNull();
+        expect(validateTopicFieldMappingConfig({ identifier: "id", stratified: ["group"], numeric: [] })).toBeNull();
         expect(validateTopicFieldMappingConfig({ identifier: "id", stratified: ["group"], numeric: ["score"], others: [" "] }))
             .toBe("字段映射不能包含空字段");
         expect(validateTopicFieldMappingConfig({ identifier: "id", stratified: ["group", "group"], numeric: ["score"] }))
             .toBe("分层变量中不能重复选择字段 group");
         expect(validateTopicFieldMappingConfig({ identifier: "id", stratified: ["group"], numeric: ["group"] }))
             .toBe("字段 group 不能同时作为分层变量和数值变量");
+    });
+
+    test("field mapping accepts pure categorical proportions and two-column means", () => {
+        expect(validateTopicFieldMappingConfig({
+            identifier: "编号",
+            stratified: ["地区", "是否参与"],
+            numeric: [],
+            analysisTarget: { kind: "proportion", field: "是否参与", value: "是" },
+            studyContract: {
+                version: 1,
+                researchQuestion: "社区活动参与比例是多少？",
+                targetPopulation: "三个社区的全部登记单位",
+                unitOfAnalysis: "一个登记单位",
+                target: { kind: "proportion", field: "是否参与", value: "是" },
+            },
+        })).toBeNull();
+        expect(validateTopicFieldMappingConfig({
+            identifier: "编号",
+            stratified: [],
+            numeric: ["测量值"],
+            analysisTarget: { kind: "mean", field: "测量值" },
+            studyContract: {
+                version: 1,
+                researchQuestion: "全部登记单位的平均测量值是多少？",
+                targetPopulation: "当前登记的全部单位",
+                unitOfAnalysis: "一个登记单位",
+                target: { kind: "mean", field: "测量值" },
+            },
+        })).toBeNull();
     });
 
     test("validateTopicFieldMappingColumns rejects mappings left over from a replaced workbook", () => {
@@ -123,6 +153,7 @@ describe("topic validation helpers", () => {
                     numeric: ["score"],
                     analysisTarget: { kind: "mean", field: "score" },
                 }),
+                samplingPolicy: buildDefaultSamplingPolicy({ ppsEnabled: false }),
                 weightConfig: JSON.stringify({ questionnaire: 30, process: 30, report: 40 }),
             })
         ).toBeNull();
@@ -152,6 +183,7 @@ describe("topic validation helpers", () => {
     test("validateTopicPublishReadiness accepts study contracts and keeps legacy targets working", () => {
         const base = {
             excelFilePath: "/storage/uploads/topic.xlsx",
+            samplingPolicy: buildDefaultSamplingPolicy({ ppsEnabled: false }),
             weightConfig: JSON.stringify({ questionnaire: 30, process: 30, report: 40 }),
         };
         const contract = {
@@ -199,6 +231,47 @@ describe("topic validation helpers", () => {
                 }),
             })
         ).toBe("研究问题长度需在 5-300 字之间");
+    });
+
+    test("publish readiness matches sampling capabilities to optional field roles", () => {
+        const weightConfig = { questionnaire: 30, process: 30, report: 40 };
+        const categoricalMapping = {
+            identifier: "编号",
+            stratified: ["地区", "是否参与"],
+            numeric: [] as string[],
+            analysisTarget: { kind: "proportion" as const, field: "是否参与", value: "是" },
+        };
+        expect(validateTopicPublishReadiness({
+            excelFilePath: "/storage/uploads/categorical.csv",
+            fieldMapping: categoricalMapping,
+            samplingPolicy: buildDefaultSamplingPolicy({ ppsEnabled: false }),
+            weightConfig,
+        })).toBeNull();
+        expect(validateTopicPublishReadiness({
+            excelFilePath: "/storage/uploads/categorical.csv",
+            fieldMapping: categoricalMapping,
+            samplingPolicy: buildDefaultSamplingPolicy(),
+            weightConfig,
+        })).toBe("没有非目标数值字段时必须将 PPS 设为不适用");
+
+        const twoColumnMeanMapping = {
+            identifier: "编号",
+            stratified: [] as string[],
+            numeric: ["测量值"],
+            analysisTarget: { kind: "mean" as const, field: "测量值" },
+        };
+        expect(validateTopicPublishReadiness({
+            excelFilePath: "/storage/uploads/mean.csv",
+            fieldMapping: twoColumnMeanMapping,
+            samplingPolicy: buildDefaultSamplingPolicy({ ppsEnabled: false, stratifiedEnabled: false }),
+            weightConfig,
+        })).toBeNull();
+        expect(validateTopicPublishReadiness({
+            excelFilePath: "/storage/uploads/mean.csv",
+            fieldMapping: twoColumnMeanMapping,
+            samplingPolicy: buildDefaultSamplingPolicy({ ppsEnabled: false }),
+            weightConfig,
+        })).toBe("没有分层变量时必须将分层抽样设为不适用");
     });
 
     test("validateTopicFieldMappingConfig validates study contract when present", () => {

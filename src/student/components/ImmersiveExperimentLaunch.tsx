@@ -168,7 +168,7 @@ export function ImmersiveExperimentLaunch({
                         </div>
                         <h2 className="text-page-title font-bold text-foreground mb-2">准备就绪</h2>
                         <p className="text-muted-foreground mb-8">
-                            总体 {populationSize.toLocaleString()} 人，计划抽取 {sampleSize.toLocaleString()} 个样本
+                            总体 {populationSize.toLocaleString()} 个单位，计划抽取 {sampleSize.toLocaleString()} 个样本单位
                         </p>
                         <button
                             onClick={handleProceed}

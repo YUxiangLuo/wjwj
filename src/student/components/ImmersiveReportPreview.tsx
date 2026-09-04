@@ -151,8 +151,8 @@ function OverviewSection({
 }) {
     const advancedSourceLabel = getAdvancedPlanSourceLabel(samplePlan?.advancedPlanSource);
     const stats = [
-        { label: "总体规模", value: populationSize.toLocaleString(), sub: "人" },
-        { label: "最终样本量", value: samplePlan?.finalSampleSize?.toLocaleString() ?? "—", sub: "个" },
+        { label: "总体规模", value: populationSize.toLocaleString(), sub: "个单位" },
+        { label: "最终样本量", value: samplePlan?.finalSampleSize?.toLocaleString() ?? "—", sub: "个单位" },
         { label: "置信水平", value: samplePlan ? `${samplePlan.confidenceLevel}%` : "—", sub: "" },
         { label: "问卷题数", value: String(questionCount), sub: "题" },
     ];

@@ -343,7 +343,7 @@ export function StratifiedSamplingTab({
                             <TableHeader className="bg-background">
                                 <TableRow className="border-border hover:bg-transparent">
                                     <TableHead className="text-muted-foreground">层 (Layer)</TableHead>
-                                    <TableHead className="text-muted-foreground">人数 (N<sub>h</sub>)</TableHead>
+                                    <TableHead className="text-muted-foreground">单位数 (N<sub>h</sub>)</TableHead>
                                     <TableHead className="text-muted-foreground">占比（自动）</TableHead>
                                     <TableHead className="text-muted-foreground w-[120px]">样本数 (n<sub>h</sub>)</TableHead>
                                 </TableRow>
@@ -397,7 +397,7 @@ export function StratifiedSamplingTab({
                         <div className="p-3 bg-warning-muted text-warning border border-warning-border rounded-surface text-meta flex items-center gap-2">
                             <Target className="w-4 h-4 shrink-0" />
                             {hasLayerOverflow
-                                ? "部分层的样本数超过了该层总体人数，请调整"
+                                ? "部分层的样本数超过了该层总体单位数，请调整"
                                 : hasLayerUnderflow
                                     ? "每层样本数至少为 1"
                                     : `各层样本数之和必须等于目标样本量 ${n}（当前：${stratifiedTotal}）`}

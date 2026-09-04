@@ -52,6 +52,23 @@ test("mapping recommendation leaves numeric fields empty when the data is entire
     expect(result.studyContract).toBeUndefined();
 });
 
+test("mapping recommendation supports an identifier plus a mean outcome without inventing strata", () => {
+    const result = buildRecommendedFieldMapping({
+        columns: ["编号", "测量值"],
+        preview: [
+            { 编号: "M1", 测量值: 10 },
+            { 编号: "M2", 测量值: 20 },
+            { 编号: "M3", 测量值: 30 },
+        ],
+        topicName: "两字段均值研究",
+    });
+
+    expect(result.identifier).toBe("编号");
+    expect(result.numeric).toEqual(["测量值"]);
+    expect(result.stratified).toEqual([]);
+    expect(result.studyContract?.target).toEqual({ kind: "mean", field: "测量值" });
+});
+
 test("mapping recommendation rejects mixed and blank values even when the field name sounds numeric", () => {
     const result = buildRecommendedFieldMapping({
         columns: ["编号", "地区", "满意度分数"],

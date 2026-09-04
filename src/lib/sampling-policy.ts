@@ -18,12 +18,13 @@ export const DEFAULT_SAMPLING_POLICY: SamplingPolicyV1 = Object.freeze({
     }),
 });
 
-export function buildDefaultSamplingPolicy(options: { ppsEnabled?: boolean } = {}): SamplingPolicyV1 {
+export function buildDefaultSamplingPolicy(options: { ppsEnabled?: boolean; stratifiedEnabled?: boolean } = {}): SamplingPolicyV1 {
     return {
         version: 1,
         methods: {
             ...DEFAULT_SAMPLING_POLICY.methods,
             pps: options.ppsEnabled === false ? "disabled" : "optional",
+            stratified: options.stratifiedEnabled === false ? "disabled" : "optional",
         },
     };
 }

@@ -1,5 +1,5 @@
-import { parseStudyContract, validateAnalysisTarget, validateStudyContract } from "../../lib/analysis-target";
-import { buildDefaultSamplingPolicy, validateSamplingPolicy } from "../../lib/sampling-policy";
+import { parseStudyContract, resolveAnalysisTarget, validateAnalysisTarget, validateStudyContract } from "../../lib/analysis-target";
+import { buildDefaultSamplingPolicy, resolveSamplingPolicy, validateSamplingPolicy } from "../../lib/sampling-policy";
 import { isRowEmpty } from "./file-utils";
 
 interface ParsedExcelFile {
@@ -99,8 +99,6 @@ export function validateTopicFieldMappingConfig(fieldMapping: unknown) {
     const others = (input.others ?? []) as string[];
 
     if (!identifier?.trim()) return "必须选择1个标识符字段";
-    if (stratified.length < 1) return "至少选择1个分层变量";
-    if (numeric.length < 1) return "至少选择1个数值变量";
     const roleEntries = [
         ["标识符", [identifier]],
         ["分层变量", stratified],
@@ -169,6 +167,15 @@ export function validateTopicPublishReadiness(topicInfo: TopicPublishReadyInput 
         topicInfo.samplingPolicy ?? buildDefaultSamplingPolicy(),
     );
     if (samplingPolicyError) return `实验模板需先完成抽样策略配置：${samplingPolicyError}`;
+    const samplingPolicy = resolveSamplingPolicy(topicInfo.samplingPolicy);
+    if (samplingPolicy.methods.stratified !== "disabled" && (fieldMapping.stratified?.length ?? 0) === 0) {
+        return "没有分层变量时必须将分层抽样设为不适用";
+    }
+    if (samplingPolicy.methods.pps !== "disabled") {
+        const target = resolveAnalysisTarget(fieldMapping)?.target;
+        const hasMappedPpsCandidate = (fieldMapping.numeric ?? []).some((field) => field !== target?.field);
+        if (!hasMappedPpsCandidate) return "没有非目标数值字段时必须将 PPS 设为不适用";
+    }
 
     const weightConfig = parseObjectLike<TopicWeightConfigInput>(topicInfo.weightConfig);
     if (!weightConfig || validateWeightConfig(weightConfig)) {

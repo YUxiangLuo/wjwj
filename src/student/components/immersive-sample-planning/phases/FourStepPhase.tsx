@@ -84,7 +84,7 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
 
                     {params.designEffect > 1 && (
                         <p className="text-label text-warning text-center animate-in fade-in duration-300">
-                            需要多抽 <strong className="tabular-nums">{(withDeff - baseN).toLocaleString()}</strong> 人，才能达到与简单随机抽样相近的精度
+                            需要多抽 <strong className="tabular-nums">{(withDeff - baseN).toLocaleString()}</strong> 个单位，才能达到与简单随机抽样相近的精度
                         </p>
                     )}
                 </div>
@@ -106,7 +106,7 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
                 <ScenarioHeader
                     icon={MailX}
                     tag="Step 4: 无回答率"
-                    title="不是所有人都会回应"
+                    title="不是所有单位都会回应"
                     description={`你发出问卷，但只收回 ${100 - nrrPct}%。为拿到足够有效问卷，需要多发一些。`}
                 />
 

@@ -1,6 +1,7 @@
 import { expect, mock, test } from "bun:test";
 import { auditEvent, topic } from "../../db/schema";
 import { createMockDb } from "../../test-utils/mock-db";
+import { buildDefaultSamplingPolicy } from "../../lib/sampling-policy";
 
 async function loadManageService(options: {
     select?: unknown[];
@@ -78,6 +79,7 @@ test("updateTeacherTopicBasics allows publishing a fully configured topic", asyn
         select: [[{
             excelFilePath: populationPath,
             fieldMapping: { identifier: "id", stratified: ["gender"], numeric: ["score"], analysisTarget: { kind: "mean", field: "score" } },
+            samplingPolicy: buildDefaultSamplingPolicy({ ppsEnabled: false }),
             weightConfig: { questionnaire: 30, process: 30, report: 40 },
         }]],
     });
@@ -95,6 +97,55 @@ test("updateTeacherTopicBasics allows publishing a fully configured topic", asyn
         expect(updates[0]?.set).toMatchObject({ status: 1, updatedAt: expect.any(Date) });
     } finally {
         await Bun.file(`${process.cwd()}${populationPath}`).delete().catch(() => undefined);
+    }
+});
+
+test("field mapping derives method capabilities for categorical and two-column studies", async () => {
+    const categoricalPath = `/storage/uploads/categorical-${crypto.randomUUID()}.csv`;
+    const meanPath = `/storage/uploads/two-column-${crypto.randomUUID()}.csv`;
+    await Bun.write(`${process.cwd()}${categoricalPath}`, "id,group,response\n1,A,yes\n2,B,no\n");
+    await Bun.write(`${process.cwd()}${meanPath}`, "id,value\n1,10\n2,20\n");
+    const { module, operations } = await loadManageService({
+        select: [
+            [{ excelFilePath: categoricalPath, status: 0 }],
+            [],
+            [{ excelFilePath: meanPath, status: 0 }],
+            [],
+        ],
+    });
+
+    try {
+        expect(await module.updateTopicFieldMapping({
+            teacherId: 9,
+            topicId: 12,
+            fieldMapping: {
+                identifier: "id",
+                stratified: ["group", "response"],
+                numeric: [],
+                analysisTarget: { kind: "proportion", field: "response", value: "yes" },
+            },
+        })).toEqual({ ok: true });
+        expect(await module.updateTopicFieldMapping({
+            teacherId: 9,
+            topicId: 13,
+            fieldMapping: {
+                identifier: "id",
+                stratified: [],
+                numeric: ["value"],
+                analysisTarget: { kind: "mean", field: "value" },
+            },
+        })).toEqual({ ok: true });
+
+        const updates = operations.filter((operation) => operation.kind === "update");
+        expect(updates[0]?.set).toMatchObject({
+            samplingPolicy: buildDefaultSamplingPolicy({ ppsEnabled: false }),
+        });
+        expect(updates[1]?.set).toMatchObject({
+            samplingPolicy: buildDefaultSamplingPolicy({ ppsEnabled: false, stratifiedEnabled: false }),
+        });
+    } finally {
+        await Bun.file(`${process.cwd()}${categoricalPath}`).delete().catch(() => undefined);
+        await Bun.file(`${process.cwd()}${meanPath}`).delete().catch(() => undefined);
     }
 });
 

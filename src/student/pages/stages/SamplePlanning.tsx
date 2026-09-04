@@ -244,7 +244,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                 <CardContent className="px-4 pb-1 pt-3">
                     <div className="flex items-center justify-between rounded-surface border border-border bg-background px-3 py-2.5">
                         <span className="text-muted-foreground">总体规模 (N)</span>
-                        <span className="text-section-title font-bold tabular-nums text-primary">{N.toLocaleString()} <span className="text-label font-normal text-muted-foreground">人</span></span>
+                        <span className="text-section-title font-bold tabular-nums text-primary">{N.toLocaleString()} <span className="text-label font-normal text-muted-foreground">个总体单位</span></span>
                     </div>
                 </CardContent>
             </Card>
@@ -310,7 +310,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                     {!isValidFinalSize && (
                         <div className="flex items-center gap-2 rounded-surface border border-destructive-border bg-destructive-muted px-3 py-2 text-label text-destructive">
                             <Info className="h-4 w-4 shrink-0" />
-                            最终样本量需在 {minSampleSize}～{maxSampleSize.toLocaleString()} 人之间，请重新规划样本量。
+                            最终样本量需在 {minSampleSize}～{maxSampleSize.toLocaleString()} 个单位之间，请重新规划样本量。
                         </div>
                     )}
                 </>

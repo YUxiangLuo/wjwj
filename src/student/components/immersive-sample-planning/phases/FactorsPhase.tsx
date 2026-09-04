@@ -34,13 +34,13 @@ const STEP_META: Record<FactorsStep, { label: string; badge: string; icon: typeo
         label: "抽样设计的影响",
         badge: "因素 4",
         icon: Boxes,
-        intro: "抽样不一定都是简单随机。整群、不等概等复杂设计会让同样人数带来的精度打折扣，这个折扣用设计效应衡量。",
+        intro: "抽样不一定都是简单随机。整群、不等概等复杂设计会让同样样本量带来的精度打折扣，这个折扣用设计效应衡量。",
     },
     non_response: {
-        label: "不是每个人都会回答",
+        label: "不是每个单位都能获得回答",
         badge: "因素 5",
         icon: UserX,
-        intro: "公式算出的是需要完成的人数。总有人不回答——要完成目标人数，发放时还要按无回答率多放一些。",
+        intro: "公式算出的是需要完成的有效样本数。部分单位不会回答——要达到目标样本数，邀请时还要按无回答率适当增加。",
     },
     cost_balance: {
         label: "精度与费用的平衡",
@@ -411,7 +411,7 @@ function DesignEffectContent({ params }: { params: SampleParams }) {
         <div className="space-y-6">
             <p className="text-center text-muted-foreground text-label">
                 设计效应 <strong className="text-foreground">deff = 复杂设计的方差 ÷ 简单随机抽样的方差</strong>。
-                deff 越大，同样人数能买到的精度越少，规划时就要把样本量按 deff 放大。
+                deff 越大，同样样本量能达到的精度越低，规划时就要把样本量按 deff 放大。
             </p>
 
             <div className="mx-auto max-w-lg rounded-surface border border-border bg-background overflow-hidden">
@@ -473,8 +473,8 @@ function DesignEffectContent({ params }: { params: SampleParams }) {
 
             <div className="mx-auto max-w-lg rounded-surface border border-info-border bg-info-muted p-4">
                 <p className="text-label text-info">
-                    <strong>关键洞察：</strong>当前假设下 deff = {demoDeff} 时需要 {demoN.toLocaleString()} 人，
-                    约为简单随机（{baseN.toLocaleString()} 人）的 {baseN > 0 ? (demoN / baseN).toFixed(2) : "—"} 倍。
+                    <strong>关键洞察：</strong>当前假设下 deff = {demoDeff} 时需要 {demoN.toLocaleString()} 个单位，
+                    约为简单随机（{baseN.toLocaleString()} 个单位）的 {baseN > 0 ? (demoN / baseN).toFixed(2) : "—"} 倍。
                     低估 deff 是实际调查中最常见的样本量失误之一。
                 </p>
             </div>
@@ -497,7 +497,7 @@ function NonResponseContent({ params }: { params: SampleParams }) {
     return (
         <div className="space-y-6">
             <p className="text-center text-muted-foreground text-label">
-                需要完成 <strong className="text-foreground">n</strong> 人，并不等于只需邀请 n 人。
+                需要完成 <strong className="text-foreground">n</strong> 个有效样本，并不等于只需邀请 n 个总体单位。
                 无回答率 r 越高，发放量要按 <strong className="text-foreground">n ÷ (1 − r)</strong> 放得越大，并以总体规模封顶。
             </p>
 
@@ -505,7 +505,7 @@ function NonResponseContent({ params }: { params: SampleParams }) {
                 <div className="bg-card px-4 py-2.5 border-b border-border">
                     <p className="text-label text-center text-muted-foreground">
                         不同无回答率下的发放量与预计完成量
-                        <span className="text-meta"> (目标完成 {baseN.toLocaleString()} 人，N={params.populationSize.toLocaleString()})</span>
+                        <span className="text-meta"> (目标完成 {baseN.toLocaleString()} 个有效样本，N={params.populationSize.toLocaleString()})</span>
                     </p>
                 </div>
                 <div className="p-4 space-y-2">
@@ -549,7 +549,7 @@ function NonResponseContent({ params }: { params: SampleParams }) {
 
             <div className="mx-auto max-w-lg rounded-surface border border-warning-border bg-warning-muted p-4">
                 <p className="text-label text-warning">
-                    <strong>关键洞察：</strong>无回答率 {demo.rate}% 时要完成约 {demo.completed.toLocaleString()} 人，需发放 {demo.invite.toLocaleString()} 份
+                    <strong>关键洞察：</strong>无回答率 {demo.rate}% 时要完成约 {demo.completed.toLocaleString()} 个有效样本，需邀请 {demo.invite.toLocaleString()} 个总体单位
                     {demo.capped && "（已触及总体上限，实际精度会进一步下降）"}。
                     放大发放量只补足数量——回答意愿与调查内容相关时，完成样本仍可能系统性偏斜。
                     降低无回答本身（追访、激励、简短的问卷）比事后加权更重要。
@@ -644,7 +644,7 @@ function SummaryContent() {
         { icon: Layers, title: "子总体估计", desc: "需要分域估计时，样本量可能翻数倍" },
         { icon: BarChart3, title: "总体变异", desc: "变异越大，需要更多样本来捕捉总体特征" },
         { icon: Boxes, title: "设计效应", desc: "复杂设计的精度折扣 deff，样本量按倍数放大" },
-        { icon: UserX, title: "无回答率", desc: "完成目标人数，发放量按 1/(1−r) 放大" },
+        { icon: UserX, title: "无回答率", desc: "达到目标有效样本数，邀请量按 1/(1−r) 放大" },
         { icon: DollarSign, title: "精度与费用", desc: "边际递减效应——超过拐点后收益极低" },
     ];
 

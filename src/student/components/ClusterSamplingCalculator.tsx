@@ -49,7 +49,7 @@ export function ClusterSamplingCalculator({
     const [confidenceLevelLocal, setConfidenceLevelLocal] = useState(() => confidenceLevel);
     const [marginOfErrorLocal, setMarginOfErrorLocal] = useState(() => marginOfError);
 
-    const [clusterSize, setClusterSize] = useState(50); // 群规模（每群平均人数）
+    const [clusterSize, setClusterSize] = useState(50); // 群规模（每群平均单位数）
     const [deff, setDeff] = useState(2.0); // 设计效应
     const [nonResponseRate, setNonResponseRate] = useState(() =>
         nonResponseDecimalToFormPercent(initialNonResponseRate),
@@ -125,10 +125,10 @@ export function ClusterSamplingCalculator({
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
                             <Label className="text-meta text-primary">
-                                平均群规模（每群人数）
+                                平均群规模（每群单位数）
                             </Label>
                             <span className="text-label font-bold text-primary">
-                                {clusterSize} 人
+                                {clusterSize} 个单位
                             </span>
                         </div>
                         <Slider
@@ -246,7 +246,7 @@ export function ClusterSamplingCalculator({
                                     <div className="text-page-title font-bold tabular-nums text-info">
                                         {result.requiredSampleSize.toLocaleString()}
                                     </div>
-                                    <div className="text-meta text-primary">人</div>
+                                    <div className="text-meta text-primary">个单位</div>
                                 </div>
                             </div>
 

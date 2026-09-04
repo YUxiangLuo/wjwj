@@ -175,7 +175,7 @@ export function validateSamplePlanForSubmit(
     if (populationSize !== null && Number.isFinite(populationSize) && populationSize > 0) {
         const { min, max } = getFinalSampleSizeBounds(populationSize);
         if (finalSampleSize < min || finalSampleSize > max) {
-            return `最终样本量需在 ${min}～${max} 人之间`;
+            return `最终样本量需在 ${min}～${max} 个单位之间`;
         }
 
         const calculatedRecommendedSize = estimationType === "mean"

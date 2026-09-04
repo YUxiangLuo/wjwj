@@ -29,6 +29,15 @@ describe("sampling policy", () => {
         expect(validateSamplingPolicy(policy)).toBe("至少需要启用两种抽样方法");
     });
 
+    test("default capabilities can disable PPS and stratified sampling independently", () => {
+        expect(buildDefaultSamplingPolicy({ ppsEnabled: false, stratifiedEnabled: false }).methods).toEqual({
+            simple: "required",
+            systematic: "optional",
+            pps: "disabled",
+            stratified: "disabled",
+        });
+    });
+
     test("parsing accepts stored JSON and rejects unknown method keys", () => {
         expect(parseSamplingPolicy(JSON.stringify(buildDefaultSamplingPolicy()))).toEqual(buildDefaultSamplingPolicy());
         expect(parseSamplingPolicy({

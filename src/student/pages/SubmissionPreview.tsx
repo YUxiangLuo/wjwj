@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { ArrowLeft, FileText, Send, Loader2, AlertCircle, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     AlertDialog,
@@ -198,10 +198,10 @@ export function SubmissionPreview() {
                 <div className="absolute top-0 left-0 h-1 w-full bg-primary" />
                 <CardHeader className="border-b border-input pb-4">
                     <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-3 text-page-title text-foreground">
+                        <h1 className="flex items-center gap-3 text-page-title font-semibold text-foreground">
                             <FileText className="w-6 h-6 text-primary" />
                             提交前预览
-                        </CardTitle>
+                        </h1>
                         <Button variant="outline" size="sm" className="border-primary-border bg-primary-muted text-primary hover:bg-primary-muted hover:text-primary" onClick={() => setShowFullPreview(true)}>
                             <Maximize2 className="w-4 h-4 mr-1.5" />
                             全屏预览
@@ -233,7 +233,7 @@ export function SubmissionPreview() {
                         <TabsContent value="report" className="mt-6 space-y-4 animate-in fade-in-50 slide-in-from-bottom-2">
                             <div className="bg-muted rounded-surface p-6 border border-border min-h-[300px] space-y-5">
                                 <div className="rounded-surface border border-border bg-card p-4">
-                                    <h3 className="text-body font-semibold text-foreground mb-3">阶段一：问卷预试</h3>
+                                    <h2 className="text-body font-semibold text-foreground mb-3">阶段一：问卷预试</h2>
                                     <div className="text-label text-foreground space-y-1">
                                         <p>问卷标题：{questionnaire?.title || "未填写"}</p>
                                         <p>题目数量：{questionnaireQuestions.length} 题</p>
@@ -241,7 +241,7 @@ export function SubmissionPreview() {
                                 </div>
 
                                 <div className="rounded-surface border border-border bg-card p-4">
-                                    <h3 className="text-body font-semibold text-foreground mb-3">阶段二：样本量规划</h3>
+                                    <h2 className="text-body font-semibold text-foreground mb-3">阶段二：样本量规划</h2>
                                     {samplePlan ? (
                                         <div className="text-label text-foreground space-y-1">
                                             <p>估计类型：{getEstimationTypeLabel(samplePlan.estimationType)}</p>
@@ -270,7 +270,7 @@ export function SubmissionPreview() {
                                 </div>
 
                                 <div className="rounded-surface border border-border bg-card p-4">
-                                    <h3 className="text-body font-semibold text-foreground mb-3">阶段三：抽样执行</h3>
+                                    <h2 className="text-body font-semibold text-foreground mb-3">阶段三：抽样执行</h2>
                                     <div className="text-label text-foreground space-y-1">
                                         {samplingMethodRows.map((row) => (
                                             <p key={row.method} data-testid={`student-preview-sampling-${row.method}`}>{row.label}：{row.status}</p>
@@ -279,10 +279,10 @@ export function SubmissionPreview() {
                                 </div>
 
                                 <div className="rounded-surface border border-border bg-card p-4">
-                                    <h3 className="text-body font-semibold text-foreground mb-3 flex items-center gap-2">
+                                    <h2 className="text-body font-semibold text-foreground mb-3 flex items-center gap-2">
                                         <FileText className="w-4 h-4 text-success" />
                                         阶段四：分析报告
-                                    </h3>
+                                    </h2>
                                     {reportContent ? (
                                         <RichTextContent
                                             html={reportContent}
@@ -302,7 +302,7 @@ export function SubmissionPreview() {
                                 ) : (
                                     <>
                                         <div className="mb-6 pb-4 border-b border-border">
-                                            <div className="text-section-title font-bold text-foreground mb-2">{questionnaire.title || "未命名问卷"}</div>
+                                            <h2 className="text-section-title font-bold text-foreground mb-2">{questionnaire.title || "未命名问卷"}</h2>
                                             <RichTextContent
                                                 html={questionnaire.welcomeText ?? ""}
                                                 className="text-label text-muted-foreground bg-card p-3 rounded-surface border border-border"

@@ -52,7 +52,7 @@ export function EnhancedMetricsCard({
                 </CardDescription>
                 {metrics.cappedAtPopulation && (
                     <p className="text-meta text-warning mt-1">
-                        邀请数已封顶为全体发放（n = {metrics.n}）；预期完成约 {Math.ceil(metrics.expectedCompleted).toLocaleString()} 人。若存在无回答，这不等于完整普查或零误差。
+                        邀请数已封顶为全体发放（n = {metrics.n}）；预期完成约 {Math.ceil(metrics.expectedCompleted).toLocaleString()} 个有效样本。若存在无回答，这不等于完整普查或零误差。
                     </p>
                 )}
                 {metrics.precisionUnreachable && (

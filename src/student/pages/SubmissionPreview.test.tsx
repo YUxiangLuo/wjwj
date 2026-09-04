@@ -74,6 +74,7 @@ test("submission previews distinguish selected, unselected, and disabled samplin
     );
 
     await waitFor(() => expect(view.getByTestId("student-preview-sampling-pps").textContent).toContain("未选择"));
+    expect(view.getByRole("heading", { level: 1, name: "提交前预览" })).toBeTruthy();
     expect(view.getByTestId("student-preview-sampling-simple").textContent).toContain("已完成");
     expect(view.queryByTestId("student-preview-sampling-stratified")).toBeNull();
 

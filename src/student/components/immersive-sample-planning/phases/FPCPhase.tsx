@@ -160,7 +160,7 @@ export function FPCPhase({ params, onNext }: Props) {
             <div className="text-center space-y-2">
                 <p className="text-label text-muted-foreground">
                     总体越小，有限总体校正减少的样本量越多。<br />
-                    你的总体 {params.populationSize.toLocaleString()} 人 → 在仅考虑 FPC（不含设计效应与无回答率）时约需{" "}
+                    你的总体有 {params.populationSize.toLocaleString()} 个单位 → 在仅考虑 FPC（不含设计效应与无回答率）时约需{" "}
                     <strong className="text-primary tabular-nums">{fpcOnlyUserN.toLocaleString()}</strong>
                     （无限总体计算值约为 {n0RawDisplay}，规划时取 {n0.toLocaleString()}）
                 </p>
