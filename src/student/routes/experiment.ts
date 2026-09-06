@@ -5,7 +5,7 @@ import { experiment, samplingAttempt } from "../../db/schema";
 import { validateObservedVersion } from "../../lib/observed-version";
 import { error, getPositiveRouteId, getRouteParam, json, parseBody, parsePositiveInteger } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
-import { buildAnalysisMetrics } from "../experiment/analysis-metrics";
+import { analysisService, AnalysisServiceError } from "../experiment/analysis-service";
 import {
     buildPopulationCategoricalStats,
     buildPopulationNumericStats,
@@ -484,21 +484,18 @@ const analysisMetricsRoutes: RouteDefinition = {
         const record = await loadOwnedExperiment(auth.student.id, taskId);
         const taskInfo = await findStudentTaskSamplingInfo(taskId, auth.student.classId);
         if (!record || !taskInfo?.excelFilePath) return error("实验或总体数据不存在", "NOT_FOUND", 404);
-        const population = await readPopulationData(taskInfo.excelFilePath, taskInfo.fieldMapping);
-        if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
-        const hydrated = hydrateSamplingResults(parseStoredJson(record.samplingResults), population);
-        if (!hydrated.ok) {
-            return error(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
-        }
-        return json(
-            buildAnalysisMetrics({
-                population,
-                fieldMapping: parseTopicFieldMapping(taskInfo.fieldMapping),
-                samplingResults: hydrated.value as Parameters<typeof buildAnalysisMetrics>[0]["samplingResults"],
-                samplePlan: normalizeSamplePlanData(parseStoredJson(record.samplePlan), population.length),
+        try {
+            return json(await analysisService.run({
+                populationPath: taskInfo.excelFilePath,
+                fieldMapping: taskInfo.fieldMapping,
+                samplingResults: record.samplingResults,
+                samplePlan: record.samplePlan,
                 topicName: taskInfo.topicName,
-            }),
-        );
+            }));
+        } catch (cause) {
+            if (cause instanceof AnalysisServiceError) return error(cause.message, cause.code, cause.status);
+            throw cause;
+        }
     },
 };
 

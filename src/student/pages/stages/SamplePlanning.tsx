@@ -1,3 +1,4 @@
+import { DraftSaveStatus } from "../../components/DraftSaveStatus";
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -180,7 +181,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             if (!ok) {
                 toast.error("保存失败，请重试");
             } else {
-                clearDraft();
+                clearDraft.clear();
             }
         } finally {
             setConfirmNextSaving(false);
@@ -207,6 +208,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-sample-plan">
+            <DraftSaveStatus status={clearDraft.status} onRetry={clearDraft.retry} />
             {immersiveOpen && targetVarianceReady && (
                 <ImmersiveSamplePlanning
                     populationSize={N}
@@ -221,6 +223,8 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                     estimationLocked={Boolean(lockedEstimationType)}
                     initialDraft={wizardDraft}
                     onDraftChange={handleImmersiveDraftChange}
+                    draftSaveStatus={clearDraft.status}
+                    onRetryDraftSave={clearDraft.retry}
                     onComplete={handleImmersiveComplete}
                     onClose={closeImmersivePlanning}
                 />

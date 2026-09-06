@@ -148,3 +148,28 @@ test("resetting a student password refreshes the list without changing account s
         expect(within(refreshedRow!).getByText("正常")).toBeTruthy();
     });
 });
+
+test("student list ignores stale requests and retries failures instead of showing an empty result", async () => {
+    const pending: Array<(r: Response) => void> = [];
+    globalThis.fetch = ((input: RequestInfo | URL) => String(input).includes("/classes")
+        ? Promise.resolve(Response.json({ success: true, data: [] }))
+        : new Promise<Response>(resolve => pending.push(resolve))) as unknown as typeof fetch;
+    const response = (name: string) => Response.json({ success: true, data: {
+        items: [{ id: 1, studentId: "S1", name, classId: 7, className: "班级", status: 1, progress: 0, createdAt: new Date().toISOString() }], total: 1, page: 1, pageSize: 20,
+    } });
+    const view = render(<MemoryRouter><StudentManagement /></MemoryRouter>);
+    await waitFor(() => expect(pending.length).toBe(1));
+    fireEvent.click(view.getByRole("button", { name: "搜索" }));
+    pending[1]!(response("最新学生"));
+    await waitFor(() => expect(view.getByText("最新学生")).toBeTruthy());
+    pending[0]!(response("旧学生"));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(view.queryByText("旧学生")).toBeNull();
+    fireEvent.click(view.getByRole("button", { name: "搜索" }));
+    pending[2]!(Response.json({ success: false, error: { code: "FAILED", message: "学生查询失败" } }));
+    await waitFor(() => expect(view.getByRole("alert").textContent).toContain("学生查询失败"));
+    expect(view.queryByText("暂无学生")).toBeNull();
+    fireEvent.click(view.getByRole("button", { name: "重试加载" }));
+    pending[3]!(response("重试学生"));
+    await waitFor(() => expect(view.getByText("重试学生")).toBeTruthy());
+});

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useMemo, useState } from "react";
 import { Eye, ChevronLeft, ChevronRight, Loader2, RotateCcw, Search, Users } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -65,6 +65,9 @@ export function StudentManagement() {
     const [page, setPage] = useState(1);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
+    const requestIdRef = useRef(0);
+    useEffect(() => () => { requestIdRef.current += 1; }, []);
     const [selected, setSelected] = useState<Student | null>(null);
     const [experiments, setExperiments] = useState<StudentExperiment[]>([]);
 
@@ -79,7 +82,10 @@ export function StudentManagement() {
         nextStatus?: AccountStatusFilter;
         nextPage?: number;
     } = {}) => {
+        const requestId = ++requestIdRef.current;
+        setPage(nextPage);
         setLoading(true);
+        setLoadError(null);
         const response = await studentApi.listPaged({
             classId: nextClassId,
             search: nextSearch || undefined,
@@ -87,6 +93,7 @@ export function StudentManagement() {
             page: nextPage,
             pageSize: PAGE_SIZE,
         });
+        if (requestId !== requestIdRef.current) return;
         if (response.success && response.data) {
             setStudents(response.data.items);
             setTotal(response.data.total);
@@ -94,7 +101,7 @@ export function StudentManagement() {
         } else {
             setStudents([]);
             setTotal(0);
-            toast.error(response.error?.message ?? "学生列表加载失败");
+            setLoadError(response.error?.message ?? "学生列表加载失败");
         }
         setLoading(false);
     };
@@ -199,11 +206,12 @@ export function StudentManagement() {
                     )}
                 </div>
 
+                {loadError && <div role="alert" className="mb-3 flex items-center gap-3 text-label text-destructive"><span>{loadError}</span><Button variant="outline" onClick={() => void load()}>重试加载</Button></div>}
                 {loading ? (
                     <div className="grid place-items-center py-12" role="status" aria-label="正在加载学生列表">
                         <Loader2 aria-hidden="true" className="h-6 w-6 animate-spin" />
                     </div>
-                ) : filtered.length === 0 ? (
+                ) : loadError ? null : filtered.length === 0 ? (
                     <div className="grid place-items-center gap-3 rounded-surface border border-dashed border-border px-4 py-12 text-center">
                         <span className="rounded-control bg-muted p-3 text-muted-foreground">
                             <Users className="h-6 w-6" />

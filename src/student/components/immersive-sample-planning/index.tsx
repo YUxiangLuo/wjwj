@@ -1,3 +1,5 @@
+import { DraftSaveStatus } from "../DraftSaveStatus";
+import type { DraftSaveState } from "../../experiment/experiment-draft";
 import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useId } from "react";
 import { X, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -68,6 +70,8 @@ interface Props {
     initialAdvancedPlanSource?: AdvancedNonStandardSampleSource | null;
     estimationLocked?: boolean;
     initialDraft?: SamplePlanningWizardDraft | null;
+    draftSaveStatus?: DraftSaveState;
+    onRetryDraftSave?: () => void;
     onDraftChange?: (draft: SamplePlanningWizardDraft) => void;
     onComplete: (params: SampleParams) => void;
     onClose: () => void;
@@ -88,6 +92,8 @@ export function ImmersiveSamplePlanning({
     estimationLocked = false,
     initialDraft = null,
     onDraftChange,
+    draftSaveStatus = "idle",
+    onRetryDraftSave,
     onComplete,
     onClose,
     onLaunchComplete,
@@ -633,6 +639,7 @@ export function ImmersiveSamplePlanning({
                 <div className="h-full flex flex-col items-center justify-center overflow-y-auto px-6 pt-16 pb-24">
                     <div key={pageKey} className={`w-full max-w-2xl ${animationClass}`}>
                         <h1 id={titleId} className="sr-only">样本量规划</h1>
+                        {onRetryDraftSave && <DraftSaveStatus status={draftSaveStatus} onRetry={onRetryDraftSave} />}
                         {renderPhase()}
                     </div>
                 </div>
@@ -681,7 +688,7 @@ export function ImmersiveSamplePlanning({
                     <AlertDialogHeader>
                         <AlertDialogTitle>退出样本量规划？</AlertDialogTitle>
                         <AlertDialogDescription>
-                            当前规划进度已自动保存。下次打开本阶段时可以从这里继续。
+                            {draftSaveStatus === "saved" ? "当前规划进度已保存到本机，下次打开本阶段时可以继续。" : draftSaveStatus === "error" ? "当前草稿保存失败，请取消退出并重试保存，以免丢失进度。" : "请确认草稿保存成功后再退出。"}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

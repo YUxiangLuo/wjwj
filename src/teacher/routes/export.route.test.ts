@@ -74,9 +74,9 @@ test("grade export data uses immutable student and topic names", async () => {
     const { module, operations } = await loadExportRoutes({
         select: [[{
             studentId: "2024001",
-            studentName: "当前学生名",
+            studentName: "提交时学生名",
             className: "统计学原理 A班",
-            topicName: "当前课题名",
+            topicName: "提交时课题名",
             submittedAt: new Date("2026-03-09T04:25:06+08:00"),
             scoreQuestionnaire: "88.00",
             scoreProcess: "90.00",
@@ -85,7 +85,6 @@ test("grade export data uses immutable student and topic names", async () => {
             status: "graded",
             gradedByName: "张教授",
             gradedAt: new Date("2026-03-09T04:25:06+08:00"),
-            submissionSnapshot: { studentName: "提交时学生名", topicName: "提交时课题名" },
         }]],
     });
 
@@ -98,6 +97,10 @@ test("grade export data uses immutable student and topic names", async () => {
         data: [{ studentId: "2024001", name: "提交时学生名", topicName: "提交时课题名" }],
     });
     const query = operations.find((operation) => operation.kind === "select");
+    const selection = query?.selection as Record<string, SQL>;
+    expect(selection.submissionSnapshot).toBeUndefined();
+    expect(new PgDialect().sqlToQuery(selection.studentName!).sql).toContain("->> 'studentName'");
+    expect(new PgDialect().sqlToQuery(selection.topicName!).sql).toContain("->> 'topicName'");
     const sql = new PgDialect().sqlToQuery(query?.where as SQL).sql;
     expect(sql).toContain('"student"."class_id" = "task"."class_id"');
 });

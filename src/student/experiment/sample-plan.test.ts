@@ -522,6 +522,19 @@ test("cluster sampling: 置信水平影响所需样本量", () => {
 
 // ========== calculateOptimalAllocationWithCost tests ==========
 
+test("cluster planning includes a partial last cluster rather than reducing required precision", () => {
+    const params = { populationSize: 95, confidenceLevel: "95", marginOfError: 1, clusterSize: 30, deff: 2 };
+    const result = calculateClusterSamplingSize(params)!;
+    expect(result.requiredClusters).toBe(4);
+    expect(result.requiredSampleSize).toBe(95);
+    expect(result.marginOfError).toBe(0);
+    expect(result.precisionUnreachable).toBe(false);
+    const withNonresponse = calculateClusterSamplingSize({ ...params, nonResponseRate: 0.5 })!;
+    expect(withNonresponse.requiredSampleSize).toBe(95);
+    expect(withNonresponse.marginOfError).toBeGreaterThan(0.01);
+    expect(withNonresponse.precisionUnreachable).toBe(true);
+});
+
 test("optimal allocation with cost produces valid result", () => {
     const result = calculateOptimalAllocationWithCost(
         [

@@ -49,7 +49,7 @@ export function ClusterSamplingCalculator({
     const [confidenceLevelLocal, setConfidenceLevelLocal] = useState(() => confidenceLevel);
     const [marginOfErrorLocal, setMarginOfErrorLocal] = useState(() => marginOfError);
 
-    const [clusterSize, setClusterSize] = useState(50); // 群规模（每群平均单位数）
+    const [clusterSize, setClusterSize] = useState(50); // 规划群规模（末群可不足）
     const [deff, setDeff] = useState(2.0); // 设计效应
     const [nonResponseRate, setNonResponseRate] = useState(() =>
         nonResponseDecimalToFormPercent(initialNonResponseRate),
@@ -125,14 +125,14 @@ export function ClusterSamplingCalculator({
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
                             <Label className="text-meta text-primary">
-                                平均群规模（每群单位数）
+                                规划群规模（每群单位数）
                             </Label>
                             <span className="text-label font-bold text-primary">
                                 {clusterSize} 个单位
                             </span>
                         </div>
                         <Slider
-                            aria-label="平均群规模"
+                            aria-label="规划群规模"
                             value={[clusterSize]}
                             onValueChange={(v) => setClusterSize(v[0] ?? 50)}
                             min={10}
@@ -141,7 +141,7 @@ export function ClusterSamplingCalculator({
                             className={primarySliderClassName}
                         />
                         <p className="text-meta text-muted-foreground">
-                            例如：每栋楼平均50户、每班平均30名学生
+                            按每群固定单位数估算，末群可不足；请在执行前核对实际群框。
                         </p>
                     </div>
 
@@ -250,6 +250,8 @@ export function ClusterSamplingCalculator({
                                 </div>
                             </div>
 
+                            <p className="text-label text-muted-foreground">规划实际可达误差限：{(result.marginOfError * 100).toFixed(2)}%</p>
+                            {result.precisionUnreachable && <p role="alert" className="text-label text-destructive">即使向全体发放，当前无回答率下仍无法达到目标精度。请调整精度或无回答率后再应用。</p>}
                             {/* 设计效应说明 */}
                             <div className="rounded-surface border border-primary bg-background p-3">
                                 <div className="space-y-2 text-label">
@@ -287,6 +289,7 @@ export function ClusterSamplingCalculator({
                                         「应用」仅将总样本量写入最终样本量。若本工具内参数与左侧不一致，理解此 n 时以本工具为准；左侧不会随本工具更新，勿用左侧参数代回标准公式验算。
                                     </p>
                                     <Button
+                                        disabled={result.precisionUnreachable}
                                         onClick={() => {
                                             onSnapshot?.({
                                                 inputs: {

@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { AUTH_EXPIRED_EVENT } from "@/lib/auth-expired";
 import { meApi, type CurrentStudent } from "../api-client";
-import { clearAllExperimentDrafts } from "../experiment/experiment-draft";
 
 interface StudentContextValue {
     currentUser: CurrentStudent | null;
@@ -25,7 +24,6 @@ export function StudentProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const clearAuthState = useCallback(() => {
-        clearAllExperimentDrafts();
         setCurrentUser(null);
     }, []);
 

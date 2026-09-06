@@ -1,3 +1,4 @@
+import { DraftSaveStatus } from "../../components/DraftSaveStatus";
 import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -482,7 +483,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         try {
             const success = await completeStage(4, { reportContent });
             if (!success) return;
-            clearDraft();
+            clearDraft.clear();
             onSubmit();
         } finally {
             setIsSubmitting(false);
@@ -527,6 +528,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-analysis-report">
+            <DraftSaveStatus status={clearDraft.status} onRetry={clearDraft.retry} />
             <div className="grid grid-cols-3 gap-6">
                 <div className="col-span-2 space-y-6">
                     <Card className="rounded-surface border-border bg-card ">

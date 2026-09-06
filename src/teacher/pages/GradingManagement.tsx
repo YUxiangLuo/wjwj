@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, ClipboardList, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { IconButton } from "@/components/ui/button";
+import { Button, IconButton } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,19 +27,30 @@ export function GradingManagement() {
     const [status, setStatus] = useState("all");
     const [keyword, setKeyword] = useState("");
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
+    const requestIdRef = useRef(0);
+    useEffect(() => () => { requestIdRef.current += 1; }, []);
 
     const load = async (nextPage = 1) => {
+        const requestId = ++requestIdRef.current;
+        setPage(nextPage);
         setLoading(true);
+        setLoadError(null);
         const response = await teacherApi.getGradingList({
             status: status === "all" ? undefined : status,
             keyword: keyword.trim() || undefined,
             page: nextPage,
             pageSize: PAGE_SIZE,
         });
+        if (requestId !== requestIdRef.current) return;
         if (response.success && response.data) {
             setItems(response.data.items);
             setTotal(response.data.total);
             setPage(response.data.page);
+        } else {
+            setItems([]);
+            setTotal(0);
+            setLoadError(response.error?.message ?? "批改列表加载失败");
         }
         setLoading(false);
     };
@@ -77,6 +88,7 @@ export function GradingManagement() {
                                 placeholder="搜索学生或实验模板"
                             />
                         </div>
+                        <Button variant="outline" onClick={() => void load(1)}>搜索</Button>
                         <Select value={status} onValueChange={setStatus}>
                             <SelectTrigger aria-label="按批改状态筛选" className="w-32">
                                 <SelectValue />
@@ -91,6 +103,7 @@ export function GradingManagement() {
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                    {loadError && <div role="alert" className="flex items-center gap-3 text-label text-destructive"><span>{loadError}</span><Button variant="outline" onClick={() => void load(page)}>重试加载</Button></div>}
                     {loading ? (
                         <p className="py-12 text-center text-label text-muted-foreground" role="status">加载中...</p>
                     ) : items.map((item) => (
@@ -119,7 +132,7 @@ export function GradingManagement() {
                             </div>
                         </button>
                     ))}
-                    {!loading && !items.length && (
+                    {!loading && !loadError && !items.length && (
                         <div className="grid place-items-center gap-2 py-12 text-muted-foreground">
                             <ClipboardList className="h-8 w-8" />
                             <p className="text-label">暂无记录</p>
@@ -130,7 +143,7 @@ export function GradingManagement() {
                             <IconButton
                                 aria-label="上一页"
                                 variant="outline"
-                                disabled={page <= 1}
+                                disabled={loading || page <= 1}
                                 onClick={() => void load(page - 1)}
                             >
                                 <ChevronLeft className="h-4 w-4" />
@@ -139,7 +152,7 @@ export function GradingManagement() {
                             <IconButton
                                 aria-label="下一页"
                                 variant="outline"
-                                disabled={page >= pages}
+                                disabled={loading || page >= pages}
                                 onClick={() => void load(page + 1)}
                             >
                                 <ChevronRight className="h-4 w-4" />

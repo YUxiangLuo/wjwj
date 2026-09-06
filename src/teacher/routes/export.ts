@@ -4,7 +4,7 @@ import { db } from "../../db";
 import { class_, experiment, semester, student, task, teacher, topic } from "../../db/schema";
 import { error, getSearchParams, json, parsePositiveInteger } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
-import { parseStoredJson } from "../../student/experiment/serialization";
+import { gradeExportNames } from "../topic/grade-export-names";
 import { formatDateStampCN, formatDateTimeCN } from "../../utils/format";
 import { getPrimaryTeacherIdOrThrow } from "./auth";
 
@@ -52,9 +52,9 @@ async function getGradeExportRows(teacherId: number, params: URLSearchParams) {
 
     const rows = await db.select({
         studentId: student.studentId,
-        studentName: student.name,
+        studentName: gradeExportNames.studentName,
         className: class_.name,
-        topicName: topic.name,
+        topicName: gradeExportNames.topicName,
         submittedAt: experiment.submittedAt,
         scoreQuestionnaire: experiment.scoreQuestionnaire,
         scoreProcess: experiment.scoreProcess,
@@ -63,7 +63,6 @@ async function getGradeExportRows(teacherId: number, params: URLSearchParams) {
         status: experiment.status,
         gradedByName: teacher.name,
         gradedAt: experiment.gradedAt,
-        submissionSnapshot: experiment.submissionSnapshot,
     })
         .from(experiment)
         .innerJoin(student, eq(experiment.studentId, student.id))
@@ -74,12 +73,11 @@ async function getGradeExportRows(teacherId: number, params: URLSearchParams) {
         .leftJoin(teacher, eq(experiment.gradedByTeacherId, teacher.id))
         .where(and(...conditions));
     return rows.map((row) => {
-        const snapshot = parseStoredJson<{ studentName?: string; topicName?: string }>(row.submissionSnapshot);
         return {
         studentId: row.studentId,
-        name: snapshot?.studentName ?? row.studentName,
+        name: row.studentName,
         className: row.className,
-        topicName: snapshot?.topicName ?? row.topicName,
+        topicName: row.topicName,
         submittedAt: row.submittedAt ? formatDateTimeCN(row.submittedAt) : "",
         scoreQuestionnaire: row.scoreQuestionnaire ?? "",
         scoreProcess: row.scoreProcess ?? "",

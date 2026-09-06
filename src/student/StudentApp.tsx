@@ -151,7 +151,7 @@ function StudentAppContent() {
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>确认退出登录？</AlertDialogTitle>
-                        <AlertDialogDescription>退出后需要重新登录才能继续实验。</AlertDialogDescription>
+                        <AlertDialogDescription>退出后需要重新登录才能继续实验。未完成阶段的草稿会保留在当前浏览器，最后编辑后保留 7 天。</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>取消</AlertDialogCancel>

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { installDomGlobals } from "@/test-utils/dom";
 import {
     clearAllExperimentDrafts,
@@ -101,6 +101,46 @@ test("unmount flushes the latest payload inside the debounce window", () => {
     expect(readExperimentDraft<{ title: string }>(identity)).toEqual({ title: "离开前最后一次编辑" });
 });
 
+test("pagehide flushes edits before the debounce and completion cannot resurrect them", () => {
+    const identity = { experimentId: 24, experimentVersion: 1, stage: 4 };
+    const hook = renderHook(() => useExperimentDraft({ ...identity, data: { report: "最后编辑" }, saveDelayMs: 60_000 }));
+    expect(readExperimentDraft(identity)).toBeNull();
+    act(() => window.dispatchEvent(new Event("pagehide")));
+    expect(readExperimentDraft<{ report: string }>(identity)).toEqual({ report: "最后编辑" });
+    expect(hook.result.current.status).toBe("saved");
+    act(() => hook.result.current.clear());
+    act(() => window.dispatchEvent(new Event("pagehide")));
+    expect(readExperimentDraft(identity)).toBeNull();
+    hook.unmount();
+});
+
+test("storage failure is visible and retry saves the latest payload", async () => {
+    const identity = { experimentId: 25, experimentVersion: 1, stage: 4 };
+    const storage = localStorage;
+    const values = new Map<string, string>();
+    let fail = true;
+    globalThis.localStorage = {
+        get length() { return values.size; },
+        key: (index: number) => [...values.keys()][index] ?? null,
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => { if (fail) throw new Error("quota"); values.set(key, value); },
+        removeItem: (key: string) => { values.delete(key); },
+        clear: () => values.clear(),
+    };
+    const hook = renderHook(() => useExperimentDraft({ ...identity, data: { report: "不能丢失" }, saveDelayMs: 0 }));
+    try {
+        await waitFor(() => expect(hook.result.current.status).toBe("error"));
+        expect(readExperimentDraft(identity)).toBeNull();
+        fail = false;
+        act(() => hook.result.current.retry());
+        expect(hook.result.current.status).toBe("saved");
+        expect(readExperimentDraft<{ report: string }>(identity)).toEqual({ report: "不能丢失" });
+    } finally {
+        hook.unmount();
+        globalThis.localStorage = storage;
+    }
+});
+
 test("successful completion remains cleared after the editor unmounts", () => {
     const identity = { experimentId: 22, experimentVersion: 4, stage: 4 };
     const hook = renderHook(() => useExperimentDraft({
@@ -109,7 +149,7 @@ test("successful completion remains cleared after the editor unmounts", () => {
         saveDelayMs: 60_000,
     }));
 
-    act(() => hook.result.current());
+    act(() => hook.result.current.clear());
     hook.unmount();
 
     expect(readExperimentDraft(identity)).toBeNull();
@@ -127,7 +167,7 @@ test("successful completion stays suspended across the server version update", (
         { initialProps: { identity: oldIdentity } },
     );
 
-    act(() => hook.result.current());
+    act(() => hook.result.current.clear());
     act(() => hook.rerender({ identity: newIdentity }));
     hook.unmount();
 

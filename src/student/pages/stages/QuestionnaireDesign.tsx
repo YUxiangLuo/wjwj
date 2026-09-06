@@ -1,3 +1,4 @@
+import { DraftSaveStatus } from "../../components/DraftSaveStatus";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useControlledOverlayFocusRestore } from "@/components/ui/controlled-overlay-focus";
@@ -362,7 +363,7 @@ export function QuestionnaireDesign() {
 
     const handleConfirmComplete = async () => {
         const completed = await completeStage(1, { questionnaire: questionnaireData });
-        if (completed) clearDraft();
+        if (completed) clearDraft.clear();
     };
 
     const renderStep = () => {
@@ -876,6 +877,7 @@ export function QuestionnaireDesign() {
 
     return (
         <div className="space-y-8 pb-12" data-testid="student-stage-questionnaire">
+            <DraftSaveStatus status={clearDraft.status} onRetry={clearDraft.retry} />
             {/* Compact sub-step indicator */}
             <div className="flex items-center gap-2 px-1" data-testid="student-questionnaire-steps">
                 {steps.map((s, idx) => {

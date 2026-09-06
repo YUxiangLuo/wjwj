@@ -193,7 +193,7 @@ export function ExperimentLayout() {
                         })}
                     </div>
                 </div>
-                <div className="my-6 flex items-center gap-3 rounded-surface border border-border bg-card px-4 py-3"><span className="grid h-8 w-8 place-items-center rounded-surface bg-primary-muted text-primary">{(() => { const Icon = stages[currentStage - 1]!.icon; return <Icon className="h-4 w-4" />; })()}</span><div><p className="text-label font-semibold">阶段 {currentStage}：{stages[currentStage - 1]!.name}</p><p className="text-meta text-muted-foreground">{stages[currentStage - 1]!.description}。编辑草稿自动保存在当前浏览器；抽样结果每次执行即保存，点击阶段完成后正式写入服务器。</p></div></div>
+                <div className="my-6 flex items-center gap-3 rounded-surface border border-border bg-card px-4 py-3"><span className="grid h-8 w-8 place-items-center rounded-surface bg-primary-muted text-primary">{(() => { const Icon = stages[currentStage - 1]!.icon; return <Icon className="h-4 w-4" />; })()}</span><div><p className="text-label font-semibold">阶段 {currentStage}：{stages[currentStage - 1]!.name}</p><p className="text-meta text-muted-foreground">{stages[currentStage - 1]!.description}。编辑草稿自动保存在当前浏览器，退出登录后保留，最后编辑后保留 7 天；抽样结果每次执行即保存，点击阶段完成后正式写入服务器。</p></div></div>
                 <p className="mb-6 rounded-surface border border-info-border bg-info-muted px-4 py-3 text-label text-info" data-testid="student-analysis-target-summary">
                     {formatStudyContractSummary(experiment.studyContract ?? null, experiment.samplePlan
                         ? { marginLabel: formatMarginOfError(experiment.samplePlan.marginOfError, experiment.studyContract?.contract.target.kind ?? experiment.samplePlan.estimationType) }

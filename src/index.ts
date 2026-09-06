@@ -9,6 +9,7 @@ import { teacherApiRoutes } from "./teacher/api";
 import { registerLongRunningProcessSignals } from "./server/process-signals";
 import { getTemplateContentDisposition, getTemplateContentType, resolveTemplatePath } from "./server/template-files";
 import { closeDatabase } from "./db";
+import { analysisService } from "./student/experiment/analysis-service";
 import { acceptsGzip, createGzipCache } from "./server/asset-gzip";
 import { buildResponseHeaders, handleServerError, validateApiRequest, withPrivateApiHeaders } from "./server/http";
 import type { RouteDefinition, RouteHandler } from "./server/route-types";
@@ -232,6 +233,7 @@ registerLongRunningProcessSignals({
         const drain = server.stop();
         const timeout = new Promise<void>((resolve) => setTimeout(resolve, 5000));
         await Promise.race([drain, timeout]);
+        analysisService.close();
         await closeDatabase();
     },
 });

@@ -1,3 +1,4 @@
+import { gradeExportNames } from "../teacher/topic/grade-export-names";
 import { SQL } from "bun";
 import { expect, test } from "bun:test";
 import { and, count, eq, sql } from "drizzle-orm";
@@ -155,6 +156,31 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
             })
             .returning({ id: schema.experiment.id, version: schema.experiment.version });
         expect(createdExperiment?.version).toBe(1);
+
+        // Exercise the exact export projection against PostgreSQL, including
+        // absent/null name fallbacks and a large report that must stay in SQL.
+        for (const snapshot of [
+            { studentName: "提交时学生名", topicName: "提交时模板名", reportContent: "报告".repeat(50_000) },
+            { studentName: null },
+            {},
+            null,
+        ]) {
+            await database.update(schema.experiment).set({ submissionSnapshot: snapshot })
+                .where(eq(schema.experiment.id, createdExperiment!.id));
+            const rows = await database.select(gradeExportNames).from(schema.experiment)
+                .innerJoin(schema.student, eq(schema.experiment.studentId, schema.student.id))
+                .innerJoin(schema.task, eq(schema.experiment.taskId, schema.task.id))
+                .innerJoin(schema.topic, eq(schema.task.topicId, schema.topic.id))
+                .where(eq(schema.experiment.id, createdExperiment!.id));
+            expect(rows).toEqual([{
+                studentName: snapshot?.studentName ?? "PostgreSQL student",
+                topicName: snapshot && "topicName" in snapshot ? snapshot.topicName ?? "PostgreSQL topic" : "PostgreSQL topic",
+            }]);
+            expect(JSON.stringify(rows).length).toBeLessThan(200);
+        }
+        await database.update(schema.experiment).set({ submissionSnapshot: { studentName: "PostgreSQL student" } })
+            .where(eq(schema.experiment.id, createdExperiment!.id));
+
 
         const [createdAttempt] = await database
             .insert(schema.samplingAttempt)

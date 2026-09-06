@@ -598,13 +598,15 @@ export interface ClusterSamplingParams {
     populationSize: number;
     confidenceLevel: string;
     marginOfError: number;
-    clusterSize: number;           // 群规模（每群平均单元数）
+    clusterSize: number;           // 规划群规模（末群可不足）
     deff: number;                  // 设计效应（整群抽样通常1.5-3.0）
     nonResponseRate?: number;
     p?: number;
 }
 
 export interface ClusterSamplingResult {
+    marginOfError: number;
+    precisionUnreachable: boolean;
     requiredClusters: number;      // 所需群数
     requiredSampleSize: number;    // 所需样本量（群数×群规模）
     intraClassCorrelation: number; // 群内相关系数ρ（估计值）
@@ -633,7 +635,9 @@ export function calculateClusterSamplingSize(params: ClusterSamplingParams): Clu
         params.deff,
         params.nonResponseRate,
     ).nInvite;
-    const maxClusters = Math.max(1, Math.floor(params.populationSize / params.clusterSize) || 1);
+    // Planning assumption: fixed group size with a possibly smaller final group.
+    // Rounding down would silently discard the remaining population units.
+    const maxClusters = Math.max(1, Math.ceil(params.populationSize / params.clusterSize));
     const requiredClusters = Math.min(Math.max(1, Math.ceil(nCluster / params.clusterSize)), maxClusters);
     
     // 反推群内相关系数ρ（用于教育展示）
@@ -642,13 +646,20 @@ export function calculateClusterSamplingSize(params: ClusterSamplingParams): Clu
     
     // 总样本量 = 群数 × 群规模，但不能超过总体
     const requiredSampleSize = Math.min(requiredClusters * params.clusterSize, params.populationSize);
+    const completed = requiredSampleSize * (1 - normalizeNrr(params.nonResponseRate));
+    const marginOfError = z * Math.sqrt(
+        normalizeDeff(params.deff) * p * (1 - p)
+        * finitePopulationVarianceFactor(params.populationSize, completed) / completed,
+    );
 
     return {
+        marginOfError,
+        precisionUnreachable: marginOfError > e + 1e-12,
         requiredClusters,
         requiredSampleSize,
         intraClassCorrelation: Math.min(rho, 1),  // ρ不超过1
         deff: params.deff,
-        explanation: `在当前目标变量的 deff=${params.deff} 假设下，规划样本量按相对简单随机抽样的方差放大进行补偿。`,
+        explanation: `按固定群规模规划，末群可不足一群；实际执行前需核对真实群框。在当前目标变量的 deff=${params.deff} 假设下补偿样本量。`,
     };
 }
 
