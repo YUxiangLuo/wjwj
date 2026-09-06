@@ -23,7 +23,7 @@ test("student login creates an independent fixed session", async () => {
     const { module, operations } = await load([[{
         id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1,
         password: await Bun.password.hash(password),
-    }]]);
+    }], [{ id: 11 }]]);
     const response = await module.loginRoutes.POST!(request("POST", { studentId: "S001", password }));
     expect(response.status).toBe(200);
     expect(response.headers.get("Set-Cookie")).toContain("student_session=");

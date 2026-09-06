@@ -21,6 +21,7 @@ React Router 公告已通过升级至 `7.18.2+` 清除；`happy-dom` 的 `ws` �
 ## 鉴权
 
 - 会话写在 `user_session`，按角色使用独立 cookie。
+- 登录在密码校验后，以事务锁定账号行并复核当前密码哈希和启用状态，再写入会话，避免与停用、重置或删除竞争。主动改密与会话旋转也在同一事务内完成，并校验旧密码哈希仍匹配。
 - 学生的新建和重置密码为学号；教师的新建和重置密码为工号；管理员使用独立配置的密码。
 - 系统面向受信任内网，不维护首次改密、登录失败次数、临时锁定或 IP/账号登录限速状态。
 - 学生、教师和管理员仍可主动修改密码；新密码需满足对应强度规则，成功后旋转当前会话并清除旧会话。
@@ -40,6 +41,8 @@ React Router 公告已通过升级至 `7.18.2+` 清除；`happy-dom` 的 `ws` �
 `bun run start` 会先执行生产构建；若直接以 `NODE_ENV=production bun src/index.ts` 启动，则必须预先运行 `bun run build`。生产模式下，Bun 服务从 `dist/` 提供构建产物，并统一设置 CSP（包括 `frame-ancestors 'self'`）、`X-Frame-Options: SAMEORIGIN`、`X-Content-Type-Options`、`Referrer-Policy`、`Permissions-Policy` 和同源资源策略。构建脚本使用根路径资源 URL，因此 SPA 深链也能正确加载静态资源。
 
 TLS 与 HSTS 仍由正式环境的反向代理或负载均衡器负责；只有确认所有流量均已强制 HTTPS 后才能启用 HSTS。
+
+Bun HTTP 连接空闲超时为60秒，高于分析服务的30秒等待/计算期限，保证分析超时能返回可重试的JSON错误；反向代理配置也应为该错误响应保留足够时间。
 
 ## 复核规则
 

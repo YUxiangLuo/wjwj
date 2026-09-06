@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { admin } from "../../db/schema";
 import { ADMIN_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
@@ -94,7 +94,14 @@ const adminLoginRoutes: RouteDefinition = {
             return error("用户名或密码错误", "INVALID_CREDENTIALS", 401);
         }
 
-        const { token, expiresAt } = await createUserSession(ADMIN_USER_TYPE, row.id);
+        const session = await db.transaction(async (tx) => {
+            // Serialize issuance with disable/reset/delete and recheck the verified hash.
+            const [active] = await tx.select({ id: admin.id }).from(admin)
+                .where(and(eq(admin.id, row.id), eq(admin.password, row.password))).for("update");
+            return active ? createUserSession(ADMIN_USER_TYPE, row.id, tx) : null;
+        });
+        if (!session) return error("账号或密码错误", "INVALID_CREDENTIALS", 401);
+        const { token, expiresAt } = session;
         return json(
             { user: { id: row.id, username: row.username } },
             200,
@@ -144,11 +151,16 @@ const adminPasswordRoutes: RouteDefinition = {
         if (!policy.isPolicyValid) return error(ADMIN_PASSWORD_POLICY.errorMessage, "VALIDATION_ERROR", 400);
 
         if (!readSessionToken(req, ADMIN_SESSION_COOKIE)) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
-        await db
-            .update(admin)
-            .set({ password: await hashPassword(newPassword), updatedAt: new Date() })
-            .where(eq(admin.id, current.id));
-        const { token, expiresAt } = await rotateUserSession(ADMIN_USER_TYPE, current.id);
+        const passwordHash = await hashPassword(newPassword);
+        const session = await db.transaction(async (tx) => {
+            const changed = await tx.update(admin)
+                .set({ password: passwordHash, updatedAt: new Date() })
+                .where(and(eq(admin.id, current.id), eq(admin.password, row.password)))
+                .returning({ id: admin.id });
+            return changed.length ? rotateUserSession(ADMIN_USER_TYPE, current.id, tx) : null;
+        });
+        if (!session) return error("账户状态已变化，请重新登录", "INVALID_CREDENTIALS", 401);
+        const { token, expiresAt } = session;
         return json({ success: true }, 200, {
             "Set-Cookie": buildSessionCookie(ADMIN_SESSION_COOKIE, token, expiresAt, isSecureRequest(req)),
         });

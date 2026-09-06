@@ -25,7 +25,6 @@ import {
 import {
     readExperimentDraft,
     useExperimentDraft,
-    writeExperimentDraft,
 } from "../../experiment/experiment-draft";
 
 interface SamplePlanningProps {
@@ -135,16 +134,12 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
     }, [initialData, restoredDraft?.wizard, targetVarianceReady]);
 
     const handleImmersiveDraftChange = useCallback((draft: SamplePlanningWizardDraft) => {
-        writeExperimentDraft({
-            experimentId: experiment?.id,
-            experimentVersion: experiment?.version,
-            stage: 2,
-        }, {
+        setWizardDraft(draft);
+        clearDraft.save({
             samplePlan: displayData,
             wizard: draft,
         } satisfies SamplePlanningStageDraft);
-        setWizardDraft(draft);
-    }, [displayData, experiment?.id, experiment?.version]);
+    }, [clearDraft.save, displayData]);
 
     const handleImmersiveComplete = useCallback((result: SampleParams) => {
         const estimationType = lockedEstimationType ?? result.estimationType;
@@ -186,6 +181,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
         }
         setConfirmNextSaving(true);
         try {
+            if (clearDraft.save(samplePlanDraft) === "conflict") return;
             const ok = await completeStage(2, { samplePlan: displayData });
             if (!ok) {
                 toast.error("保存失败，请重试");
@@ -195,7 +191,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
         } finally {
             setConfirmNextSaving(false);
         }
-    }, [clearDraft, completeStage, displayData, experiment, targetVarianceReady, targetVarianceError]);
+    }, [clearDraft, completeStage, displayData, experiment, samplePlanDraft, targetVarianceReady, targetVarianceError]);
 
     const handleConfirmNext = () => {
         if (!displayData || experiment == null) {
@@ -385,7 +381,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                     <Button
                         type="button"
                         onClick={handleConfirmNext}
-                        disabled={!targetVarianceReady || !isValidFinalSize || confirmNextSaving || launching}
+                        disabled={clearDraft.status === "conflict" || !targetVarianceReady || !isValidFinalSize || confirmNextSaving || launching}
                         data-testid="student-sample-plan-next"
                         className="bg-primary text-primary-foreground hover:bg-primary-hover disabled:border-border disabled:bg-muted disabled:text-muted-foreground"
                     >

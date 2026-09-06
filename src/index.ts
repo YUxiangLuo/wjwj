@@ -212,6 +212,8 @@ const server = serve({
   port: Number(process.env.PORT) || 3000,
   // Keep Bun's global ceiling explicit. Individual spreadsheet routes enforce 20 MiB.
   maxRequestBodySize: 128 * 1024 * 1024,
+  // Allow the analysis queue/worker's 30-second deadline to return its JSON error.
+  idleTimeout: 60,
   routes,
   error: handleServerError,
 

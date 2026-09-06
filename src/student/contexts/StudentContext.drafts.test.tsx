@@ -27,7 +27,8 @@ test("logging out and session expiry preserve unfinished drafts for the next log
         expect(view.getByText("未登录")).toBeTruthy();
         expect(readExperimentDraft<{ title: string }>(identity)).toEqual({ title: "未完成问卷" });
     } finally {
-        cleanup();
+        await act(async () => cleanup());
+        await new Promise((resolve) => setTimeout(resolve, 0));
         globalThis.fetch = originalFetch;
         dom.restore();
     }

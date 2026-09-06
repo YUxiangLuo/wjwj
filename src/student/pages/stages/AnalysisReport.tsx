@@ -487,6 +487,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const handleSubmit = async () => {
         setIsSubmitting(true);
         try {
+            if (clearDraft.save({ reportContent }) === "conflict") return;
             const success = await completeStage(4, { reportContent });
             if (!success) return;
             clearDraft.clear();
@@ -817,7 +818,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 <Button variant="outline" onClick={onPrev} data-testid="student-analysis-prev" className="border-input bg-muted text-foreground hover:bg-muted hover:text-foreground">
                     上一阶段
                 </Button>
-                <Button onClick={handleSubmit} disabled={!isValidLength || isSubmitting} data-testid="student-analysis-preview" className="bg-success hover:bg-success-hover text-success-foreground ">
+                <Button onClick={handleSubmit} disabled={!isValidLength || isSubmitting || clearDraft.status === "conflict"} data-testid="student-analysis-preview" className="bg-success hover:bg-success-hover text-success-foreground ">
                     {isSubmitting ? (
                         <>
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />

@@ -46,14 +46,16 @@ export async function loadActiveUserSession(
     return { token, session, userType: session.userType, failure: null };
 }
 
-export async function createUserSession(userType: number, userId: number) {
+type SessionExecutor = Pick<typeof db, "delete" | "insert">;
+
+export async function createUserSession(userType: number, userId: number, executor: SessionExecutor = db) {
     const now = new Date();
     const token = crypto.randomUUID();
     const expiresAt = new Date(now.getTime() + SESSION_TTL_MS);
 
     // Fixed sessions need no scheduler. Expired rows are removed opportunistically.
-    await db.delete(userSession).where(lte(userSession.expiresAt, now));
-    await db.insert(userSession).values({ sessionToken: token, userType, userId, expiresAt });
+    await executor.delete(userSession).where(lte(userSession.expiresAt, now));
+    await executor.insert(userSession).values({ sessionToken: token, userType, userId, expiresAt });
 
     return { token, expiresAt };
 }
@@ -62,8 +64,8 @@ export async function deleteUserSessionByToken(token: string) {
     await db.delete(userSession).where(eq(userSession.sessionToken, token));
 }
 
-export async function clearUserSessionsForUser(userType: number, userId: number) {
-    await db.delete(userSession).where(and(eq(userSession.userType, userType), eq(userSession.userId, userId)));
+export async function clearUserSessionsForUser(userType: number, userId: number, executor: SessionExecutor = db) {
+    await executor.delete(userSession).where(and(eq(userSession.userType, userType), eq(userSession.userId, userId)));
 }
 
 export async function clearOtherUserSessionsForUser(userType: number, userId: number, currentToken: string) {
@@ -75,7 +77,7 @@ export async function clearOtherUserSessionsForUser(userType: number, userId: nu
 }
 
 /** Invalidate every copied token and issue a fresh token after a password change. */
-export async function rotateUserSession(userType: number, userId: number) {
-    await clearUserSessionsForUser(userType, userId);
-    return createUserSession(userType, userId);
+export async function rotateUserSession(userType: number, userId: number, executor: SessionExecutor = db) {
+    await clearUserSessionsForUser(userType, userId, executor);
+    return createUserSession(userType, userId, executor);
 }

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { teacher } from "../../db/schema";
 import { TEACHER_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
@@ -122,7 +122,14 @@ const teacherLoginRoutes: RouteDefinition = {
             return error("工号或密码错误", "INVALID_CREDENTIALS", 401);
         }
 
-        const { token, expiresAt } = await createUserSession(TEACHER_USER_TYPE, row.id);
+        const session = await db.transaction(async (tx) => {
+            // Serialize issuance with disable/reset/delete and recheck the verified hash.
+            const [active] = await tx.select({ id: teacher.id }).from(teacher)
+                .where(and(eq(teacher.id, row.id), eq(teacher.password, row.password), eq(teacher.status, 1))).for("update");
+            return active ? createUserSession(TEACHER_USER_TYPE, row.id, tx) : null;
+        });
+        if (!session) return error("账号或密码错误", "INVALID_CREDENTIALS", 401);
+        const { token, expiresAt } = session;
         return json(
             {
                 user: {
@@ -179,11 +186,16 @@ const teacherPasswordRoutes: RouteDefinition = {
         if (!policy.isPolicyValid) return error(TEACHER_PASSWORD_POLICY.errorMessage, "VALIDATION_ERROR", 400);
 
         if (!readSessionToken(req, TEACHER_SESSION_COOKIE)) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
-        await db
-            .update(teacher)
-            .set({ password: await hashPassword(newPassword), updatedAt: new Date() })
-            .where(eq(teacher.id, current.id));
-        const { token, expiresAt } = await rotateUserSession(TEACHER_USER_TYPE, current.id);
+        const passwordHash = await hashPassword(newPassword);
+        const session = await db.transaction(async (tx) => {
+            const changed = await tx.update(teacher)
+                .set({ password: passwordHash, updatedAt: new Date() })
+                .where(and(eq(teacher.id, current.id), eq(teacher.password, row.password), eq(teacher.status, 1)))
+                .returning({ id: teacher.id });
+            return changed.length ? rotateUserSession(TEACHER_USER_TYPE, current.id, tx) : null;
+        });
+        if (!session) return error("账户状态已变化，请重新登录", "INVALID_CREDENTIALS", 401);
+        const { token, expiresAt } = session;
         return json({ success: true }, 200, {
             "Set-Cookie": buildSessionCookie(TEACHER_SESSION_COOKIE, token, expiresAt, isSecureRequest(req)),
         });

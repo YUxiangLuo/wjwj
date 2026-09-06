@@ -363,6 +363,7 @@ export function QuestionnaireDesign() {
     const warningCount = scoreItems.filter((item) => item.status === "warning").length;
 
     const handleConfirmComplete = async () => {
+        if (clearDraft.save(questionnaireDraft) === "conflict") return;
         const completed = await completeStage(1, { questionnaire: questionnaireData });
         if (completed) clearDraft.clear();
     };
@@ -967,7 +968,7 @@ export function QuestionnaireDesign() {
                 ) : (
                     <Button
                         onClick={() => setConfirmNextOpen(true)}
-                        disabled={!canProceed}
+                        disabled={!canProceed || clearDraft.status === "conflict"}
                         data-testid="student-questionnaire-complete"
                         className="bg-success hover:bg-success-hover text-success-foreground "
                     >

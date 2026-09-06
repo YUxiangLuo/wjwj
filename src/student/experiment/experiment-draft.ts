@@ -131,7 +131,7 @@ export function clearExperimentDraft(identity: ExperimentDraftIdentity) {
     }
 }
 
-export type DraftSaveState = "idle" | "saving" | "saved" | "error";
+export type DraftSaveState = "idle" | "saving" | "saved" | "error" | "conflict";
 
 export function useExperimentDraft<T>({
     data,
@@ -150,11 +150,55 @@ export function useExperimentDraft<T>({
     // Compare content so status renders do not restart the debounce when callers
     // construct their payload inline.
     const content = JSON.stringify(data);
-    const retry = useCallback(() => {
+    const writerRef = useRef<{ key: string | null; raw: string | null; savedContent: string | null } | null>(null);
+    const key = draftKey(identity);
+    if (!writerRef.current || writerRef.current.key !== key) {
+        let raw: string | null = null;
+        let savedContent: string | null = null;
+        try {
+            raw = key ? getStorage()?.getItem(key) ?? null : null;
+            if (raw) savedContent = JSON.stringify(JSON.parse(raw).data);
+        } catch { /* Persist reports unavailable storage or an invalid draft. */ }
+        writerRef.current = { key, raw, savedContent: savedContent === content ? content : null };
+    }
+    const persist = useCallback((requireCurrent = false): DraftSaveState | null => {
         const latest = latestRef.current;
-        if (!latest.enabled || suspendedRef.current || !hasValidIdentity(latest.identity)) return;
-        setStatus(writeExperimentDraft(latest.identity, latest.data) ? "saved" : "error");
+        if (!latest.enabled || suspendedRef.current || !hasValidIdentity(latest.identity)) return null;
+        const writer = writerRef.current;
+        if (!writer?.key) return null;
+        const nextContent = JSON.stringify(latest.data);
+        // An untouched tab must not overwrite a newer tab when it hides/unmounts.
+        if (!requireCurrent && writer.savedContent === nextContent) return "saved";
+        const storage = getStorage();
+        if (!storage) return "error";
+        try {
+            const current = storage.getItem(writer.key);
+            if (current !== writer.raw) {
+                if (!current || JSON.stringify(JSON.parse(current).data) !== nextContent) {
+                    writer.savedContent = null;
+                    return "conflict";
+                }
+                writer.raw = current;
+                writer.savedContent = nextContent;
+                return "saved";
+            }
+            const raw = JSON.stringify({ experimentVersion: Number(latest.identity.experimentVersion), updatedAt: new Date().toISOString(), data: latest.data });
+            storage.setItem(writer.key, raw);
+            writer.raw = raw;
+            writer.savedContent = nextContent;
+            return "saved";
+        } catch { return "error"; }
     }, []);
+    const retry = useCallback(() => {
+        const next = persist();
+        if (next) setStatus(next);
+    }, [persist]);
+    const save = useCallback((nextData: T) => {
+        latestRef.current = { ...latestRef.current, data: nextData, enabled: true };
+        const next = persist(true);
+        if (next) setStatus(next);
+        return next;
+    }, [persist]);
 
     useEffect(() => {
         if (!enabled || suspendedRef.current || !hasValidIdentity(identity)) return;
@@ -170,11 +214,9 @@ export function useExperimentDraft<T>({
         return () => {
             window.removeEventListener("pagehide", retry);
             document.removeEventListener("visibilitychange", onHidden);
-            const latest = latestRef.current;
-            if (!latest.enabled || suspendedRef.current || !hasValidIdentity(latest.identity)) return;
-            writeExperimentDraft(latest.identity, latest.data);
+            persist();
         };
-    }, [retry]);
+    }, [persist, retry]);
 
     const clear = useCallback(() => {
         suspendedRef.current = true;
@@ -184,5 +226,5 @@ export function useExperimentDraft<T>({
         if (draftKey(latestIdentity) !== draftKey(identity)) clearExperimentDraft(latestIdentity);
     }, [identity.experimentId, identity.experimentVersion, identity.stage]);
 
-    return { clear, status, retry };
+    return { clear, status, retry, save };
 }

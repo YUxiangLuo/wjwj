@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, student } from "../../db/schema";
 import { STUDENT_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
@@ -78,7 +78,14 @@ const loginRoutes: RouteDefinition = {
             return error("账号或密码错误", "INVALID_CREDENTIALS", 401);
         }
 
-        const { token, expiresAt } = await createUserSession(STUDENT_USER_TYPE, row.id);
+        const session = await db.transaction(async (tx) => {
+            // Serialize issuance with disable/reset/delete and recheck the verified hash.
+            const [active] = await tx.select({ id: student.id }).from(student)
+                .where(and(eq(student.id, row.id), eq(student.password, row.password), eq(student.status, 1))).for("update");
+            return active ? createUserSession(STUDENT_USER_TYPE, row.id, tx) : null;
+        });
+        if (!session) return error("账号或密码错误", "INVALID_CREDENTIALS", 401);
+        const { token, expiresAt } = session;
         return json(
             {
                 user: {
@@ -131,11 +138,16 @@ const passwordRoutes: RouteDefinition = {
         if (!policy.isPolicyValid) return error(STUDENT_PASSWORD_POLICY.errorMessage, "PASSWORD_WEAK", 400);
 
         if (!readSessionToken(req, STUDENT_SESSION_COOKIE)) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
-        await db
-            .update(student)
-            .set({ password: await hashPassword(newPassword), updatedAt: new Date() })
-            .where(eq(student.id, row.id));
-        const { token, expiresAt } = await rotateUserSession(STUDENT_USER_TYPE, row.id);
+        const passwordHash = await hashPassword(newPassword);
+        const session = await db.transaction(async (tx) => {
+            const changed = await tx.update(student)
+                .set({ password: passwordHash, updatedAt: new Date() })
+                .where(and(eq(student.id, row.id), eq(student.password, row.password), eq(student.status, 1)))
+                .returning({ id: student.id });
+            return changed.length ? rotateUserSession(STUDENT_USER_TYPE, row.id, tx) : null;
+        });
+        if (!session) return error("账户状态已变化，请重新登录", "INVALID_CREDENTIALS", 401);
+        const { token, expiresAt } = session;
         return json({ success: true }, 200, {
             "Set-Cookie": buildSessionCookie(STUDENT_SESSION_COOKIE, token, expiresAt, isSecureRequest(req)),
         });

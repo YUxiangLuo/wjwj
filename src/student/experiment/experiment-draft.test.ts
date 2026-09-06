@@ -31,6 +31,45 @@ test("experiment draft round-trips for the same experiment version", () => {
     expect(readExperimentDraft<typeof data>(identity)).toEqual(data);
 });
 
+test("leaving an untouched tab cannot restore its stale draft over another tab", async () => {
+    const identity = { experimentId: 18, experimentVersion: 7, stage: 4 };
+    writeExperimentDraft(identity, { report: "original" });
+    const first = renderHook(({ report }) => useExperimentDraft({ ...identity, data: { report }, saveDelayMs: 0 }), { initialProps: { report: "original" } });
+    const stale = renderHook(() => useExperimentDraft({ ...identity, data: { report: "original" }, saveDelayMs: 0 }));
+    await waitFor(() => expect(stale.result.current.status).toBe("saved"));
+    first.rerender({ report: "newer report" });
+    await waitFor(() => expect(readExperimentDraft<{ report: string }>(identity)).toEqual({ report: "newer report" }));
+    first.unmount();
+    stale.unmount();
+    expect(readExperimentDraft<{ report: string }>(identity)).toEqual({ report: "newer report" });
+});
+
+test("editing a stale tab reports a conflict and preserves the other tab's saved work", async () => {
+    const identity = { experimentId: 18, experimentVersion: 7, stage: 4 };
+    writeExperimentDraft(identity, { report: "original" });
+    const stale = renderHook(({ report }) => useExperimentDraft({ ...identity, data: { report }, saveDelayMs: 0 }), { initialProps: { report: "original" } });
+    await waitFor(() => expect(stale.result.current.status).toBe("saved"));
+    writeExperimentDraft(identity, { report: "other tab saved" });
+    stale.rerender({ report: "local unsaved revision" });
+    await waitFor(() => expect(stale.result.current.status).toBe("conflict"));
+    act(() => stale.result.current.retry());
+    stale.unmount();
+    expect(readExperimentDraft<{ report: string }>(identity)).toEqual({ report: "other tab saved" });
+});
+
+test("explicit stage save detects a newer draft even when this tab was untouched", async () => {
+    const identity = { experimentId: 18, experimentVersion: 7, stage: 4 };
+    writeExperimentDraft(identity, { report: "original" });
+    const stale = renderHook(() => useExperimentDraft({ ...identity, data: { report: "original" }, saveDelayMs: 0 }));
+    await waitFor(() => expect(stale.result.current.status).toBe("saved"));
+    writeExperimentDraft(identity, { report: "newer report" });
+    act(() => expect(stale.result.current.save({ report: "original" })).toBe("conflict"));
+    act(() => stale.result.current.retry());
+    expect(stale.result.current.status).toBe("conflict");
+    stale.unmount();
+    expect(readExperimentDraft<{ report: string }>(identity)).toEqual({ report: "newer report" });
+});
+
 test("stale experiment drafts are discarded after the server version changes", () => {
     const oldIdentity = { experimentId: 18, experimentVersion: 7, stage: 4 };
     expect(writeExperimentDraft(oldIdentity, { reportContent: "旧草稿" })).toBe(true);
