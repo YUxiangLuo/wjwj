@@ -222,8 +222,14 @@ export async function replaceTopicExcelData(params: {
     const fileError = validateSpreadsheetUploadFile(params.file);
     if (fileError) return fail(fileError.message, fileError.code, fileError.status);
 
-    const buffer = await params.file.arrayBuffer();
-    const parsed = await parseExcelFile(buffer, params.file.name);
+    let buffer: ArrayBuffer;
+    let parsed: Awaited<ReturnType<typeof parseExcelFile>>;
+    try {
+        buffer = await params.file.arrayBuffer();
+        parsed = await parseExcelFile(buffer, params.file.name);
+    } catch {
+        return fail("无法读取表格文件，请上传有效的 CSV 或 XLSX 文件", "INVALID_FILE");
+    }
     const validationError = validateParsedExcelUpload(parsed);
     if (validationError) return fail(validationError);
 

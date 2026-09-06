@@ -3,7 +3,7 @@ import { db } from "../../db";
 import { topic, topicAttachment } from "../../db/schema";
 import { spreadsheetRequestExceedsLimit } from "../../lib/spreadsheet";
 import { buildAttachmentDownloadResponse } from "../../server/attachment-download";
-import { error, getPositiveRouteId, json, parseBody } from "../../server/http";
+import { error, getPositiveRouteId, json, parseBody, parseFormData } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { requireTopicOwner } from "../topic/access";
 import {
@@ -126,7 +126,7 @@ const topicExcelUploadRoutes: RouteDefinition = {
             return error("表格文件不能超过20 MiB", "FILE_TOO_LARGE", 413);
         }
 
-        const formData = await req.formData();
+        const formData = await parseFormData(req);
         const file = formData.get("file");
         if (!file || !(file instanceof File)) return error("请选择文件", "VALIDATION_ERROR", 400);
         const replaceResult = await replaceTopicExcelData({
@@ -204,7 +204,7 @@ const topicAttachmentRoutes: RouteDefinition = {
         if (!topicRow) return error("实验模板不存在", "NOT_FOUND", 404);
         if (topicRow.hasTasks) return assignedTopicContentError();
 
-        const formData = await req.formData();
+        const formData = await parseFormData(req);
         const file = formData.get("file");
         if (!file || !(file instanceof File)) return error("请选择文件", "VALIDATION_ERROR", 400);
         const uploadResult = await uploadTopicAttachment({ teacherId: currentTeacherId, topicId: id, file });

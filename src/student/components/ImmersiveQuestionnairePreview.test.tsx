@@ -127,6 +127,27 @@ describe("ImmersiveQuestionnairePreview", () => {
         expect(onComplete).toHaveBeenCalled();
     });
 
+    test("jumping to the last question cannot complete an unanswered preview", () => {
+        const onComplete = mock(() => {});
+        const view = render(<ImmersiveQuestionnairePreview questionnaire={baseQuestionnaire({ questions: [
+            { id: "first", type: "boolean", content: "第一题？" },
+            { id: "last", type: "boolean", content: "最后一题？" },
+        ] })} onComplete={onComplete} onClose={() => {}} />);
+        fireEvent.click(view.getByTestId("immersive-preview-start"));
+        fireEvent.click(view.getByTitle("第 2 题"));
+        fireEvent.click(view.getByText("是"));
+        expect((view.getByTestId("immersive-preview-submit") as HTMLButtonElement).disabled).toBe(true);
+        fireEvent.click(view.getByTestId("immersive-preview-submit"));
+        expect(onComplete).not.toHaveBeenCalled();
+        fireEvent.click(view.getByText("返回未答题"));
+        expect(view.getByText("第一题？")).toBeTruthy();
+        fireEvent.click(view.getByText("否"));
+        fireEvent.click(view.getByText("是"));
+        expect((view.getByTestId("immersive-preview-submit") as HTMLButtonElement).disabled).toBe(false);
+        fireEvent.click(view.getByTestId("immersive-preview-submit"));
+        expect(onComplete).toHaveBeenCalledTimes(1);
+    });
+
     test("dialog container keeps focus so space does not accidentally trigger exit or select options", async () => {
         const onClose = mock(() => {});
         const view = render(

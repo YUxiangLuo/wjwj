@@ -124,9 +124,9 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
     const [ppsSizeField, setPpsSizeField] = useState(initialResults?.pps?.sizeField ?? "");
     const [ppsSampleSize, setPpsSampleSize] = useState(initialResults?.pps?.sampleCount ?? n);
-    const [simpleSeed, setSimpleSeed] = useState(initialResults?.simple?.seed ? String(initialResults.simple.seed) : "");
-    const [systematicSeed, setSystematicSeed] = useState(initialResults?.systematic?.seed ? String(initialResults.systematic.seed) : "");
-    const [ppsSeed, setPpsSeed] = useState(initialResults?.pps?.seed ? String(initialResults.pps.seed) : "");
+    const [simpleSeed, setSimpleSeed] = useState(String(initialResults?.simple?.seed ?? ""));
+    const [systematicSeed, setSystematicSeed] = useState(String(initialResults?.systematic?.seed ?? ""));
+    const [ppsSeed, setPpsSeed] = useState(String(initialResults?.pps?.seed ?? ""));
     const [executionTimes, setExecutionTimes] = useState<Record<SamplingMethod, number | null>>({ simple: null, systematic: null, pps: null, stratified: null });
     const [populationStats, setPopulationStats] = useState<Record<string, Record<string, number>>>({});
     const [numericFields, setNumericFields] = useState<string[]>([]);
@@ -545,7 +545,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                         </div>
                                     ) : (
                                         <SamplingSuccessState
-                                            summary={`共成功抽取 ${simpleResult.sampleCount} 个样本${executionTimes.simple !== null ? `，耗时 ${executionTimes.simple} ms` : ""}${simpleResult.seed ? `，Seed ${simpleResult.seed}` : ""}`}
+                                            summary={`共成功抽取 ${simpleResult.sampleCount} 个样本${executionTimes.simple !== null ? `，耗时 ${executionTimes.simple} ms` : ""}${simpleResult.seed != null ? `，Seed ${simpleResult.seed}` : ""}`}
                                             onRerun={() => void executeSimple()}
                                             disabled={executing !== null}
                                             rerunTestId="student-sampling-simple-rerun"

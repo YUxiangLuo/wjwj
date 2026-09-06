@@ -29,12 +29,12 @@ export interface SpreadsheetParseResult {
 }
 
 export function validateSpreadsheetUploadFile(file: SpreadsheetUploadFile) {
+    if (typeof file.name !== "string" || !Number.isSafeInteger(file.size) || file.size <= 0) {
+        return { code: "INVALID_FILE", message: "表格文件为空或大小无效", status: 400 } as const;
+    }
     const normalizedName = file.name.trim().toLowerCase();
     if (!normalizedName.endsWith(".csv") && !normalizedName.endsWith(".xlsx")) {
         return { code: "INVALID_FILE", message: "仅支持 .csv 或 .xlsx 表格文件", status: 400 } as const;
-    }
-    if (!Number.isSafeInteger(file.size) || file.size <= 0) {
-        return { code: "INVALID_FILE", message: "表格文件为空或大小无效", status: 400 } as const;
     }
     if (file.size > MAX_SPREADSHEET_UPLOAD_BYTES) {
         return { code: "FILE_TOO_LARGE", message: "表格文件不能超过20 MiB", status: 413 } as const;

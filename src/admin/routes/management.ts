@@ -2,7 +2,7 @@ import { and, count, desc, eq, ilike, inArray, or, type SQL } from "drizzle-orm"
 import { db } from "../../db";
 import { announcement, class_, experiment, semester, student, task, teacher, topic } from "../../db/schema";
 import { experimentProgress } from "../../lib/experiment-progress";
-import { error, getPositiveRouteId, getSearchParams, json, parseBody, parsePositiveInteger, stringValue } from "../../server/http";
+import { error, getPositiveRouteId, getSearchParams, json, parseBody, parsePagination, parsePositiveInteger, stringValue } from "../../server/http";
 import { hashPassword } from "../../server/password-work";
 import type { RouteDefinition } from "../../server/route-types";
 import { clearUserSessionsForUser } from "../../server/user-session";
@@ -296,8 +296,9 @@ const studentRoutes: RouteDefinition = {
         }
         // 兼容：未传分页参数时保持旧版全量数组响应。
         const paged = params.has("page") || params.has("pageSize");
-        const page = Math.max(1, Number.parseInt(params.get("page") ?? "1", 10) || 1);
-        const pageSize = Math.min(100, Math.max(1, Number.parseInt(params.get("pageSize") ?? "20", 10) || 20));
+        const pagination = parsePagination(params);
+        if (!pagination) return error("分页参数无效", "INVALID_PARAM", 400);
+        const { page, pageSize, offset } = pagination;
         const conditions: SQL[] = [];
         if (classId) conditions.push(eq(student.classId, classId));
         if (search) {
@@ -325,7 +326,7 @@ const studentRoutes: RouteDefinition = {
             .where(and(...conditions))
             .orderBy(desc(student.createdAt), desc(student.id));
         const rows = paged
-            ? await baseQuery.limit(pageSize).offset((page - 1) * pageSize)
+            ? await baseQuery.limit(pageSize).offset(offset)
             : await baseQuery;
         const ids = rows.map((row) => row.id);
         const experimentRows = ids.length

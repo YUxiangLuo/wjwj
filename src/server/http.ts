@@ -162,6 +162,9 @@ export async function parseBody<T extends Record<string, unknown>>(req: Request)
 }
 
 export function handleServerError(cause: unknown): Response {
+    if (cause instanceof InvalidFormDataError) {
+        return error(cause.message, "INVALID_FORM_DATA", 400);
+    }
     if (cause instanceof Error && cause.name === "PasswordWorkQueueFullError") {
         return error("密码服务繁忙，请稍后重试", "AUTH_BUSY", 429);
     }
@@ -170,6 +173,17 @@ export function handleServerError(cause: unknown): Response {
     }
     if (cause instanceof InvalidJsonError) {
         return error(cause.message, "INVALID_JSON", 400);
+    }
+
+    // Drizzle wraps Bun's PostgreSQL error in Error.cause. A concurrent
+    // insert may race the friendly duplicate preflight in a route.
+    let databaseCause: unknown = cause;
+    for (let depth = 0; depth < 5 && databaseCause instanceof Error; depth++) {
+        const details = databaseCause as Error & { errno?: string; code?: string };
+        if (details.errno === "23505" || details.code === "23505") {
+            return error("数据已存在或已被其他操作更新，请刷新后重试", "CONFLICT", 409);
+        }
+        databaseCause = databaseCause.cause;
     }
 
     if (process.env.NODE_ENV === "production") {
@@ -187,6 +201,21 @@ export function getSearchParams(req: Request) {
     return new URL(req.url).searchParams;
 }
 
+export class InvalidFormDataError extends Error {
+    constructor() {
+        super("上传请求格式无效，请重新选择文件后重试");
+        this.name = "InvalidFormDataError";
+    }
+}
+
+export async function parseFormData(req: Request): Promise<FormData> {
+    try {
+        return await req.formData();
+    } catch {
+        throw new InvalidFormDataError();
+    }
+}
+
 export function getRouteParam(req: Request, name: string): string | null {
     const routedReq = req as Request & { params?: Record<string, string> };
     return routedReq.params?.[name] ?? null;
@@ -196,6 +225,16 @@ export function parsePositiveInteger(value: string | null | undefined): number |
     if (!value || !/^[1-9]\d*$/.test(value)) return null;
     const parsed = Number(value);
     return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
+export function parsePagination(params: URLSearchParams) {
+    const page = params.has("page") ? parsePositiveInteger(params.get("page")) : 1;
+    const requestedSize = params.has("pageSize") ? parsePositiveInteger(params.get("pageSize")) : 20;
+    if (page === null || requestedSize === null) return null;
+    const pageSize = Math.min(100, requestedSize);
+    const offset = (page - 1) * pageSize;
+    if (!Number.isSafeInteger(offset)) return null;
+    return { page, pageSize, offset };
 }
 
 export function getPositiveRouteId(req: Request, name = "id") {

@@ -42,6 +42,9 @@ export async function uploadTopicAttachment(params: {
     topicId: number;
     file: File;
 }) {
+    if (typeof params.file.name !== "string" || params.file.size <= 0) {
+        return fail("附件文件为空或无效", "INVALID_FILE");
+    }
     const attachmentType = getAttachmentType(params.file.name);
     const validationError = validateTopicAttachmentUpload(
         { currentCount: 0, fileSize: params.file.size, fileName: params.file.name },

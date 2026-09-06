@@ -25,6 +25,16 @@ async function loadTopicRoutes(options: {
     return { module, operations };
 }
 
+test("empty attachment is a validation error without writing metadata", async () => {
+    const { module, operations } = await loadTopicRoutes({ select: [[{ id: 12, status: 0 }]] });
+    const form = new FormData();
+    form.append("file", new File([""], "empty.pdf"));
+    const response = await module.topicAttachmentRoutes.POST!(withRouteParams(new Request("https://example.com/api/teacher/topics/12/attachments", { method: "POST", body: form }), { id: "12" }));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ error: { code: "INVALID_FILE" } });
+    expect(operations.some(operation => operation.kind === "insert")).toBe(false);
+});
+
 test("topic attachment upload stores metadata and writes the file under storage", async () => {
     const { module, operations } = await loadTopicRoutes({
         select: [

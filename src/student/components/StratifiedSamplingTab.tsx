@@ -102,7 +102,7 @@ export function StratifiedSamplingTab({
     setExecutionTime,
 }: StratifiedSamplingTabProps) {
     const [stratifyBy, setStratifyBy] = useState(() => resolveStratifyBy(populationStats, initialResult?.stratifyBy));
-    const [stratifiedSeed, setStratifiedSeed] = useState(initialResult?.seed ? String(initialResult.seed) : "");
+    const [stratifiedSeed, setStratifiedSeed] = useState(String(initialResult?.seed ?? ""));
     const [layers, setLayers] = useState<StratifiedLayer[]>([]);
     const [result, setResult] = useState<StratifiedResult | null>(initialResult);
     const [showAllocationComparison, setShowAllocationComparison] = useState(false);

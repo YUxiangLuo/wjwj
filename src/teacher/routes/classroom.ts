@@ -5,7 +5,7 @@ import { isValidOptionalEmail } from "../../lib/email";
 import { parseSpreadsheetFile, spreadsheetRequestExceedsLimit, validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
 import { hashPassword, mapWithConcurrency } from "../../server/password-work";
 import { deleteAuditEventsForActor, deleteAuditEventsForEntities } from "../../server/audit-event";
-import { error, getPositiveRouteId, json, parseBody, stringValue } from "../../server/http";
+import { error, getPositiveRouteId, json, parseBody, parseFormData, stringValue } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { clearUserSessionsForUser } from "../../server/user-session";
 import { STUDENT_USER_TYPE } from "../../student/routes/auth";
@@ -152,7 +152,7 @@ const classStudentsImportRoutes: RouteDefinition = {
             return error("表格文件不能超过20 MiB", "FILE_TOO_LARGE", 413);
         }
 
-        const formData = await req.formData();
+        const formData = await parseFormData(req);
         const file = formData.get("file");
         if (!(file instanceof File)) return error("请选择文件", "VALIDATION_ERROR", 400);
         const fileError = validateSpreadsheetUploadFile(file);

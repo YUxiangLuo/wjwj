@@ -134,6 +134,24 @@ afterEach(async () => {
     restoreDom = null;
 });
 
+test("SamplingExecution restores zero seeds instead of switching to random execution", async () => {
+    mockExperimentApi.getStats.mockResolvedValueOnce({ success: true, data: { stats: {}, numericFields: ["weight"], ppsEligibleFields: ["weight"] } });
+    mockExperimentContext.experiment = {
+        ...mockExperimentContext.experiment,
+        samplingResults: {
+            simple: { completed: true, sampleCount: 13, seed: 0, data: [] },
+            systematic: { completed: true, sampleCount: 13, seed: 0, data: [] },
+            pps: { completed: true, sampleCount: 13, seed: 0, sizeField: "weight", data: [] },
+        },
+    };
+    const view = render(<SamplingExecution onPrev={() => undefined} />);
+    await waitFor(() => expect(mockExperimentApi.getStats).toHaveBeenCalledTimes(1));
+    for (const method of ["simple", "systematic", "pps"]) {
+        expect((view.getByTestId(`student-sampling-${method}-seed`) as HTMLInputElement).value).toBe("0");
+    }
+    expect(view.container.textContent).toContain("Seed 0");
+});
+
 test("SamplingExecution blocks the stage when sample plan is missing", async () => {
     mockExperimentContext.experiment = {
         id: 88,

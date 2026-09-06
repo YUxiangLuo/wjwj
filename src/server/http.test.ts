@@ -5,13 +5,59 @@ import {
     json,
     MAX_JSON_BODY_BYTES,
     parseBody,
+    parseFormData,
+    InvalidFormDataError,
     parsePositiveInteger,
+    parsePagination,
     RequestBodyTooLargeError,
     stringValue,
     validateApiRequest,
     withPrivateApiHeaders,
     getEffectiveRequestOrigin,
 } from "./http";
+
+test("malformed multipart uploads become a client error rather than a server error", async () => {
+    for (const contentType of ["multipart/form-data", "multipart/form-data; boundary=missing"]) {
+        const request = new Request("https://example.com/upload", {
+            method: "POST", headers: { "Content-Type": contentType }, body: "--broken",
+        });
+        let failure: unknown;
+        try { await parseFormData(request); } catch (cause) { failure = cause; }
+        expect(failure).toBeInstanceOf(InvalidFormDataError);
+        const response = handleServerError(failure);
+        expect(response.status).toBe(400);
+        expect(await response.json()).toMatchObject({ error: { code: "INVALID_FORM_DATA" } });
+    }
+    const form = new FormData();
+    form.append("file", new File(["id,value\n1,2"], "population.csv"));
+    const parsed = await parseFormData(new Request("https://example.com/upload", { method: "POST", body: form }));
+    expect(await (parsed.get("file") as File).text()).toBe("id,value\n1,2");
+});
+
+test("pagination rejects malformed and overflowing values before querying PostgreSQL", () => {
+    expect(parsePagination(new URLSearchParams())).toEqual({ page: 1, pageSize: 20, offset: 0 });
+    expect(parsePagination(new URLSearchParams("page=2&pageSize=200"))).toEqual({ page: 2, pageSize: 100, offset: 100 });
+    for (const value of ["", "0", "-1", "1.5", "1e5", "Infinity", "NaN", "1abc", "99999999999999999999999"]) {
+        for (const key of ["page", "pageSize"]) {
+            expect(parsePagination(new URLSearchParams({ [key]: value }))).toBeNull();
+        }
+    }
+    expect(parsePagination(new URLSearchParams(`page=${Number.MAX_SAFE_INTEGER}&pageSize=100`))).toBeNull();
+    expect(parsePagination(new URLSearchParams("page=999999&pageSize=100"))).toEqual({ page: 999999, pageSize: 100, offset: 99999800 });
+});
+
+test("concurrent unique constraint failures return a conflict without database details", async () => {
+    for (const property of ["errno", "code"]) {
+        const postgres = Object.assign(new Error("private SQL and values"), { [property]: "23505" });
+        for (const cause of [postgres, new Error("Failed query", { cause: postgres })]) {
+            const response = handleServerError(cause);
+            expect(response.status).toBe(409);
+            expect(await response.json()).toEqual({ success: false, error: {
+                code: "CONFLICT", message: "数据已存在或已被其他操作更新，请刷新后重试",
+            } });
+        }
+    }
+});
 
 test("parseBody parses valid JSON", async () => {
     const request = new Request("http://localhost/api", {

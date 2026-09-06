@@ -3,7 +3,7 @@ import { db } from "../../db";
 import { class_, experiment, samplingAttempt, student, task, teacher, topic } from "../../db/schema";
 import { validateObservedVersion } from "../../lib/observed-version";
 import { scoringWeightsFrom } from "../../lib/scoring-weights";
-import { error, getPositiveRouteId, getSearchParams, json, parseBody, stringValue } from "../../server/http";
+import { error, getPositiveRouteId, getSearchParams, json, parseBody, parsePagination, stringValue } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { normalizeSamplePlanData } from "../../student/experiment/sample-plan-display";
 import { readPopulationData } from "../../student/experiment/population-data";
@@ -51,8 +51,9 @@ const gradingRoutes: RouteDefinition = {
     async GET(req) {
         const current = getTeacherUser(req);
         const params = getSearchParams(req);
-        const page = Math.max(1, Number(params.get("page")) || 1);
-        const pageSize = Math.min(100, Math.max(1, Number(params.get("pageSize")) || 20));
+        const pagination = parsePagination(params);
+        if (!pagination) return error("分页参数无效", "INVALID_PARAM", 400);
+        const { page, pageSize, offset } = pagination;
         const conditions = baseConditions(current.id);
         const status = params.get("status");
         if (status === "pending") conditions.push(eq(experiment.status, "submitted"));
@@ -104,7 +105,7 @@ const gradingRoutes: RouteDefinition = {
                 .where(where)
                 .orderBy(desc(experiment.submittedAt))
                 .limit(pageSize)
-                .offset((page - 1) * pageSize),
+                .offset(offset),
         ]);
         return json({
             items: rows.map((row) => {

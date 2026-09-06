@@ -124,11 +124,12 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                 return { type: "ending" };
             }
             if (prev.type === "ending") {
+                if (answeredCount !== totalQuestions) return prev;
                 return { type: "complete" };
             }
             return prev;
         });
-    }, [totalQuestions]);
+    }, [answeredCount, totalQuestions]);
 
     const goPrev = useCallback(() => {
         setDirection("backward");
@@ -627,12 +628,25 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                 <Button
                                     type="button"
                                     onClick={goNext}
+                                    disabled={answeredCount !== totalQuestions}
                                     size="lg"
                                     data-testid="immersive-preview-submit"
                                     className="bg-primary hover:bg-primary-hover text-primary-foreground text-body px-10 py-6 rounded-surface "
                                 >
                                     提交问卷
                                 </Button>
+                                {answeredCount !== totalQuestions && (
+                                    <div className="space-y-3">
+                                        <p role="status" className="text-body text-warning">还有 {totalQuestions - answeredCount} 道题未完成，请补充作答后提交。</p>
+                                        <Button type="button" variant="outline" onClick={() => {
+                                            const index = questions.findIndex((question, i) => !isQuestionAnswered(question, answersByIndex[i]));
+                                            if (index >= 0) {
+                                                setDirection("backward");
+                                                setPage({ type: "question", index });
+                                            }
+                                        }}>返回未答题</Button>
+                                    </div>
+                                )}
                             </div>
                         )}
 

@@ -4,6 +4,19 @@ import { PgDialect } from "drizzle-orm/pg-core";
 import { createTeacherAuthModuleMock } from "../../test-utils/mock-auth-modules";
 import { createMockDb } from "../../test-utils/mock-db";
 
+test("grading rejects invalid pagination before any database query", async () => {
+    const { db, operations } = createMockDb({});
+    mock.module("../../db", () => ({ db }));
+    mock.module("./auth", () => createTeacherAuthModuleMock());
+    const module = await import(`./grading.ts?invalid-pagination=${crypto.randomUUID()}`);
+    for (const query of ["page=99999999999999999999999", "page=Infinity", "pageSize=1.5", "page=9007199254740991&pageSize=100"]) {
+        const response = await module.gradingRoutes.GET!(new Request(`https://example.com/api/teacher/grading?${query}`));
+        expect(response.status).toBe(400);
+        expect(await response.json()).toMatchObject({ error: { code: "INVALID_PARAM" } });
+    }
+    expect(operations).toHaveLength(0);
+});
+
 test("grading list reads current experiment statuses directly", async () => {
     const { db, operations } = createMockDb({ select: [
         [{ count: 1 }],

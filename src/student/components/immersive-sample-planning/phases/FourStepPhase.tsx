@@ -255,7 +255,7 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
                 <p className="text-meta font-medium uppercase tracking-wider text-muted-foreground">
                     {isProportion
                         ? "方案对比（课件例 7.2，互斥分层，N=10,000）"
-                        : `方案对比（互斥分层，σ²=${populationVariance}，e=${params.marginOfError}，N=10,000）`}
+                        : `方案对比（互斥分层，σ²=${Number(populationVariance.toPrecision(6))}，e=${Number(params.marginOfError.toPrecision(6))}，N=10,000）`}
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-surface bg-info-muted p-3 text-center">

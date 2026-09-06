@@ -32,6 +32,18 @@ async function loadTopicRoutes(options: {
     return { module, operations };
 }
 
+test("topic upload rejects empty and corrupt files without changing stored data", async () => {
+    for (const [name, content] of [["empty.csv", ""], ["fake.xlsx", "plain text"], ["truncated.xlsx", "PK\u0003\u0004"]]) {
+        const { module, operations } = await loadTopicRoutes({ select: [[{ id: 12, status: 0 }]] });
+        const form = new FormData();
+        form.append("file", new File([content!], name!));
+        const response = await module.topicExcelUploadRoutes.POST!(withRouteParam(new Request("https://example.com/api/teacher/topics/12/excel", { method: "POST", body: form }), "12"));
+        expect(response.status).toBe(400);
+        expect(await response.json()).toMatchObject({ error: { code: "INVALID_FILE" } });
+        expect(operations.some(operation => operation.kind === "update" || operation.kind === "insert")).toBe(false);
+    }
+});
+
 test("topic excel upload stores parsed metadata and writes workbook to storage", async () => {
     const previousFilePath = `/storage/uploads/previous-topic-${crypto.randomUUID()}.xlsx`;
     const previousAbsolutePath = `${process.cwd()}${previousFilePath}`;
