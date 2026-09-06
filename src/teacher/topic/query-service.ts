@@ -5,7 +5,7 @@ import { normalizeRecommendQuestionsFromDb } from "../../lib/questionnaire-norma
 import { resolveStoragePath } from "../../server/storage-files";
 import { parseExcelFile } from "./file-utils";
 import { buildTaskProgressSnapshot } from "./task-progress";
-import { parseTopicFieldMapping } from "../../student/experiment/population-data";
+import { parseTopicFieldMapping } from "@/domain/statistics/population";
 
 export async function listTeacherTopics(teacherId: number) {
     const assignedTask = db

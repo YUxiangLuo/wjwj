@@ -18,7 +18,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { RichTextContent } from "@/components/RichTextContent";
 import { LoadingStatus } from "@/components/LoadingStatus";
-import { experimentApi, tasksApi, type ExperimentData, type TaskDetail, type Question } from "../api-client";
+import { experimentApi, tasksApi } from "../api-client";
+import type { ExperimentData } from "@/domain/experiment/types";
+import type { TaskDetail } from "@/domain/experiment/student-contracts";
+import type { Question } from "@/lib/questionnaire-types";
 import {
     formatMarginOfError,
     getAdvancedPlanSourceLabel,

@@ -1,4 +1,4 @@
-import type { TargetAnalysisMetrics } from "../api-client";
+import type { TargetAnalysisMetrics } from "@/domain/experiment/analysis-types";
 import { METHOD_META, type MethodKey } from "../pages/stages/analysis-utils";
 
 function formatMaybe(value: number | null, format: (value: number) => string) {

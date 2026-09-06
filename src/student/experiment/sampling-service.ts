@@ -7,9 +7,9 @@ import {
     stratumKey,
 } from "../sampling";
 import { analysisTargetConflictsWithSizeField, resolveAnalysisTarget } from "../../lib/analysis-target";
-import { parseTopicFieldMapping } from "./population-data";
+import { parseTopicFieldMapping } from "@/domain/statistics/population";
 import { getSamplingAcceptedRange } from "./sampling-tolerance";
-import type { MethodKey as SamplingMethod } from "../api-client";
+import type { MethodKey as SamplingMethod } from "@/domain/experiment/types";
 export type { SamplingMethod };
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

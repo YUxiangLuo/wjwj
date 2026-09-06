@@ -2,7 +2,7 @@ import { useState } from "react";
 import { X, FileText, Users, BarChart3, Layers, ChevronDown } from "lucide-react";
 import { RichTextContent } from "@/components/RichTextContent";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import type { ExperimentData, MethodKey } from "../api-client";
+import type { ExperimentData, MethodKey } from "@/domain/experiment/types";
 import {
     formatMarginOfError,
     getAdvancedPlanSourceLabel,

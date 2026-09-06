@@ -23,7 +23,8 @@ import { useExperiment } from "../ExperimentLayout";
 import { QuestionEditor } from "../../components/QuestionEditor";
 import { RichTextEditor } from "../../components/RichTextEditor";
 import { ImmersiveQuestionnairePreview } from "../../components/ImmersiveQuestionnairePreview";
-import { tasksApi, type Question, type QuestionType, type QuestionnaireData } from "../../api-client";
+import { tasksApi } from "../../api-client";
+import type { Question, QuestionType, QuestionnaireData } from "@/lib/questionnaire-types";
 import { calculateQuestionnaireScoreSummary, getInvalidOptionQuestionIndexes } from "./questionnaire-scoring";
 import {
     readExperimentDraft,

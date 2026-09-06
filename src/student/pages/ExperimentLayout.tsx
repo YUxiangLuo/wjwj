@@ -17,7 +17,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { getRemainingDeadlineSummary } from "@/utils/format";
 import { LoadingStatus } from "@/components/LoadingStatus";
-import { experimentApi, tasksApi, type ExperimentData } from "../api-client";
+import { experimentApi, tasksApi } from "../api-client";
+import type { ExperimentData } from "@/domain/experiment/types";
 import { formatStudyContractSummary } from "@/lib/analysis-target";
 import { formatMarginOfError } from "../experiment/sample-plan-display";
 import { getExperimentRouteRedirect } from "../experiment/page-access";

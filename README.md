@@ -167,13 +167,16 @@ src/index.ts          进程入口与路由
 src/student/          学生 SPA 与 /api/student
 src/teacher/          教师 SPA 与 /api/teacher
 src/admin/            管理 SPA 与 /api/admin
-src/student/sampling.ts
-src/student/experiment/   样本量、抽样、紧凑结果存储、分析、提交
+src/domain/experiment/    跨端实验、规划快照与分析结果类型
+src/domain/statistics/    抽样算法、总体统计与分方法分析计算
+src/student/experiment/   样本量规划、文件缓存、紧凑结果存储、Worker、提交
 src/db/               schema、迁移、seed
 styles/theme.css      唯一主题源
 public/templates/     教师上传模板
 storage/              课题数据与附件
 ```
+
+统计分析由 `src/domain/statistics/analysis.ts` 汇总，简单随机、系统、PPS、分层和研究目标分析分别维护；环境参数在服务入口解析后传给计算模块。`src/domain/` 不依赖三端页面、API 客户端、数据库或文件系统，这一边界有自动测试。原 `student/sampling.ts`、`experiment/analysis-metrics.ts` 等路径保留兼容导出；新共享代码应直接引用领域模块。浏览器与服务端共用分析结果类型，同时保留旧响应中部分字段可缺省的兼容约定。
 
 ## 更多文档
 

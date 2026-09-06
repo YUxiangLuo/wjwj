@@ -1,4 +1,4 @@
-import type { MethodKey } from "../api-client";
+import type { MethodKey } from "@/domain/experiment/types";
 
 interface SamplingResultLike {
     sampleCount?: number;

@@ -15,7 +15,7 @@ import {
 } from "../schema";
 import { parseSpreadsheetFile } from "../../lib/spreadsheet";
 import { resolveStoragePath } from "../../server/storage-files";
-import { getPpsEligibleNumericFields, parseTopicFieldMapping } from "../../student/experiment/population-data";
+import { getPpsEligibleNumericFields, parseTopicFieldMapping } from "@/domain/statistics/population";
 import { validateReportForSubmit } from "../../student/experiment/submit-validation";
 import { buildTaskProgressSnapshot } from "../../teacher/topic/task-progress";
 import {

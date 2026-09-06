@@ -1,4 +1,4 @@
-import type { ExperimentData } from "../api-client";
+import type { ExperimentData } from "@/domain/experiment/types";
 import {
     getTargetSampleSizeFromSamplePlan,
     validateQuestionnaireForSubmit,

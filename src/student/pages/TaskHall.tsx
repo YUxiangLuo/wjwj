@@ -12,7 +12,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { RichTextContent } from "@/components/RichTextContent";
 import { LoadingStatus } from "@/components/LoadingStatus";
 import { getRichTextPlainText } from "@/utils/rich-text";
-import { announcementsApi, tasksApi, type StudentTask, type TaskStatus, type Announcement } from "../api-client";
+import { announcementsApi, tasksApi } from "../api-client";
+import type { StudentTask, Announcement } from "@/domain/experiment/student-contracts";
+import type { TaskStatus } from "@/domain/experiment/types";
 import { formatDateTimeDisplay, getRemainingDeadlineSummary, DAY_MS } from "@/utils/format";
 
 // Re-export types for compatibility

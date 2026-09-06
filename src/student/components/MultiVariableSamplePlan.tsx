@@ -1,3 +1,4 @@
+import type { SurveyVariableSpec } from "@/domain/experiment/planning-types";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,17 +20,7 @@ import {
 } from "lucide-react";
 import { calculateSurveyVariableRequiredSampleSize as calculateSurveyVariableRequiredSampleSizeImpl } from "../experiment/sample-plan";
 
-export interface SurveyVariable {
-    id: string;
-    name: string;
-    type: "proportion" | "mean";
-    estimatedValue: number;   // 估计值 (p或均值)
-    estimatedStdDev?: number;  // 估计标准差 (均值类型时需要)
-    importance: "primary" | "secondary" | "tertiary";
-    confidenceLevel: string;
-    marginOfError: number;
-    requiredSampleSize: number;
-}
+export type SurveyVariable = SurveyVariableSpec;
 
 interface MultiVariableSamplePlanProps {
     populationSize: number;

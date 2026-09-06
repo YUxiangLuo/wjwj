@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, ClipboardList, Sparkles, ChevronLeft, ChevronRight, Info, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useExperiment } from "../ExperimentLayout";
-import { experimentApi, type SamplePlanData } from "../../api-client";
+import { experimentApi } from "../../api-client";
+import type { SamplePlanData } from "@/domain/experiment/types";
 import {
     formatMarginOfError,
     formatSamplePlanNumber,

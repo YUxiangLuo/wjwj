@@ -1,4 +1,4 @@
-import type { TaskStatus } from "../api-client";
+import type { TaskStatus } from "@/domain/experiment/types";
 
 export interface TaskPrimaryAction {
     text: string;

@@ -1,4 +1,4 @@
-import type { SamplePlanData } from "../api-client";
+import type { SamplePlanData } from "@/domain/experiment/types";
 import { attachCalculatedSampleSize } from "./sample-plan";
 
 export type SamplePlanEstimationType = "proportion" | "mean";

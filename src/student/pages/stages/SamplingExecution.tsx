@@ -25,8 +25,9 @@ import {
 } from "@/components/ui/select";
 import { AlertCircle, CheckCircle2, Play, Loader2, Target, Layers, ArrowRight, Database, RefreshCw } from "lucide-react";
 import { useExperiment } from "../ExperimentLayout";
-import { experimentApi, type SamplingResultsData, type SamplePlanData } from "../../api-client";
-import type { MethodKey as SamplingMethod } from "../../api-client";
+import { experimentApi } from "../../api-client";
+import type { SamplingResultsData, SamplePlanData } from "@/domain/experiment/types";
+import type { MethodKey as SamplingMethod } from "@/domain/experiment/types";
 import { ImmersiveSamplingAnimation } from "../../components/ImmersiveSamplingAnimation";
 import { SamplingSuccessState } from "../../components/SamplingSuccessState";
 import { SamplePreviewTable } from "../../components/SamplePreviewTable";

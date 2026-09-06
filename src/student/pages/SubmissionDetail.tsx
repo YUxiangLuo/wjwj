@@ -14,7 +14,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { formatDateTimeDisplay } from "@/utils/format";
-import { submissionsApi, type SubmissionDetail } from "../api-client";
+import { submissionsApi } from "../api-client";
+import type { SubmissionDetail } from "@/domain/experiment/student-contracts";
 
 const statusConfig: Record<SubmissionDetail["status"], { label: string; intent: StatusBadgeIntent }> = {
     submitted: { label: "待批改", intent: "warning" },

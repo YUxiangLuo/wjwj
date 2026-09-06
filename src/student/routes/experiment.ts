@@ -6,16 +6,8 @@ import { validateObservedVersion } from "../../lib/observed-version";
 import { error, getPositiveRouteId, getRouteParam, json, parseBody, parsePositiveInteger } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { analysisService, AnalysisServiceError } from "../experiment/analysis-service";
-import {
-    buildPopulationCategoricalStats,
-    buildPopulationNumericStats,
-    buildStratifiedNumericStats,
-    buildStratifiedStats,
-    getCategoricalFieldsFromTopicMapping,
-    getPpsEligibleNumericFields,
-    parseTopicFieldMapping,
-    readPopulationData,
-} from "../experiment/population-data";
+import { readPopulationData } from "../experiment/population-data";
+import { buildPopulationCategoricalStats, buildPopulationNumericStats, buildStratifiedNumericStats, buildStratifiedStats, getCategoricalFieldsFromTopicMapping, getPpsEligibleNumericFields, parseTopicFieldMapping } from "@/domain/statistics/population";
 import { normalizeSamplePlanData } from "../experiment/sample-plan-display";
 import {
     previewSamplingMethodResult,

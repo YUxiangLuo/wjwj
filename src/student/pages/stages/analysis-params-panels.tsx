@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Info } from "lucide-react";
-import type { SamplePlanData, SamplingResultsData } from "../../api-client";
+import type { SamplePlanData, SamplingResultsData } from "@/domain/experiment/types";
 import {
     formatMarginOfError,
     getAdvancedPlanSourceLabel,

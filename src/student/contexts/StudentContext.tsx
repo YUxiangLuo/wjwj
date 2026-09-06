@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { AUTH_EXPIRED_EVENT } from "@/lib/auth-expired";
-import { meApi, type CurrentStudent } from "../api-client";
+import { meApi } from "../api-client";
+import type { CurrentStudent } from "@/domain/experiment/student-contracts";
 
 interface StudentContextValue {
     currentUser: CurrentStudent | null;

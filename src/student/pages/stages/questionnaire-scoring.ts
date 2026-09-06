@@ -1,5 +1,5 @@
 import { getRichTextPlainText } from "@/utils/rich-text";
-import type { Question } from "../../api-client";
+import type { Question } from "@/lib/questionnaire-types";
 
 export type ScoreStatus = "pass" | "warning" | "fail";
 

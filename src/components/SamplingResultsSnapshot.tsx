@@ -1,6 +1,6 @@
 import { StatusBadge } from "@/components/StatusBadge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { SamplingResultsData } from "@/student/api-client";
+import type { SamplingResultsData } from "@/domain/experiment/types";
 import { SamplePreviewTable } from "@/student/components/SamplePreviewTable";
 import { getSamplingResultCount } from "@/student/experiment/sampling-results";
 import {

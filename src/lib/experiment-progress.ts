@@ -1,5 +1,7 @@
+import type { ExperimentStatusValue } from "../domain/experiment/status";
+
 type ProgressRecord = {
-    status: "in_progress" | "submitted" | "graded" | "rejected";
+    status: ExperimentStatusValue;
     currentStage: number;
     stage4CompletedAt?: unknown;
 };

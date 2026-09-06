@@ -1,5 +1,5 @@
 import { Info } from "lucide-react";
-import type { SamplingResultsData } from "@/student/api-client";
+import type { SamplingResultsData } from "@/domain/experiment/types";
 
 function formatNumber(value: number, digits = 4) {
     return Number.isFinite(value) ? value.toFixed(digits).replace(/\.?0+$/, "") : "—";

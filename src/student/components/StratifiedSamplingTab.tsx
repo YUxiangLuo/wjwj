@@ -21,7 +21,8 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog";
 import { Play, Loader2, Target, BarChart3, Percent, Equal, TrendingUp } from "lucide-react";
-import { experimentApi, type MethodKey } from "../api-client";
+import { experimentApi } from "../api-client";
+import type { MethodKey } from "@/domain/experiment/types";
 import { SamplingSuccessState } from "./SamplingSuccessState";
 import { SamplePreviewTable } from "./SamplePreviewTable";
 import { StratifiedAllocationComparison } from "./StratifiedAllocationComparison";

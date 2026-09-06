@@ -21,7 +21,7 @@ const citext = customType<{ data: string; driverData: string }>({
     },
 });
 
-export type ExperimentStatus = "in_progress" | "submitted" | "graded" | "rejected";
+export type ExperimentStatus = import("../domain/experiment/status").ExperimentStatusValue;
 
 // User domain
 export const admin = pgTable(

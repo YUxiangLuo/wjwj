@@ -8,7 +8,7 @@ import { validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
 import { createStorageUploadPath, deleteStorageFileIfExists, resolveStoragePath, writeStorageFile } from "../../server/storage-files";
 import { parseExcelFile, sanitizeUploadFileName } from "./file-utils";
 import { deleteTopicStorageFileIfUnreferenced } from "./storage-cleanup";
-import { getPpsEligibleNumericFields, parseTopicFieldMapping } from "../../student/experiment/population-data";
+import { getPpsEligibleNumericFields, parseTopicFieldMapping } from "@/domain/statistics/population";
 import { canonicalizeRichTextHtmlForStorage } from "../../server/rich-text";
 import { deleteAuditEventsForEntities } from "../../server/audit-event";
 import {

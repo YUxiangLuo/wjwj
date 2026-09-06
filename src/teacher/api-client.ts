@@ -1,7 +1,7 @@
-import type { Question } from "@/lib/questionnaire-types";
+import type { Question, QuestionnaireData } from "@/lib/questionnaire-types";
 import type { SamplingPolicyV1 } from "@/lib/sampling-policy";
 import { notifyAuthExpired } from "@/lib/auth-expired";
-import type { QuestionnaireData, SamplePlanData, SamplingResultsData } from "../student/api-client";
+import type { SamplePlanData, SamplingResultsData } from "@/domain/experiment/types";
 
 export interface ApiResponse<T> { success: boolean; data?: T; error?: { code: string; message: string } }
 export interface TeacherUser { id: number; employeeId: string; name: string; type: "teacher" }

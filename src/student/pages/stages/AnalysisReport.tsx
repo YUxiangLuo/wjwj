@@ -17,7 +17,8 @@ import { BarChart3, Download, FileText, Send, Loader2, Sparkles, Maximize2, Rule
 import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
 import { RichTextEditor } from "../../components/RichTextEditor";
-import { experimentApi, type AnalysisMetricsData } from "../../api-client";
+import { experimentApi } from "../../api-client";
+import type { AnalysisMetricsData } from "@/domain/experiment/analysis-types";
 import {
     type MethodKey,
     type ChartSeries,

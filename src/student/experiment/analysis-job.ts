@@ -1,5 +1,6 @@
 import { buildAnalysisMetrics, type AnalysisMetricsResult } from "./analysis-metrics";
-import { parseTopicFieldMapping, readPopulationData } from "./population-data";
+import { readPopulationData } from "./population-data";
+import { parseTopicFieldMapping } from "@/domain/statistics/population";
 import { normalizeSamplePlanData } from "./sample-plan-display";
 import { hydrateSamplingResults, INVALID_SAMPLING_STORAGE_MESSAGE } from "./sampling-storage";
 import { parseStoredJson } from "./serialization";

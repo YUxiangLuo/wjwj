@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef, memo } from "react";
 import { X, Users, Target, Layers, Shuffle, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { MethodKey as SamplingMethod } from "../api-client";
+import type { MethodKey as SamplingMethod } from "@/domain/experiment/types";
 import { computeSampleProgressDisplay } from "./sample-progress-display";
 import { formatSystematicInterval } from "../experiment/systematic-sampling";
 

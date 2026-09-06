@@ -1,3 +1,5 @@
+import type { SurveyVariableSpec } from "../../domain/experiment/planning-types";
+export type { SurveyVariableSpec } from "../../domain/experiment/planning-types";
 import { zForConfidenceLevel, isConfidenceLevel, Z_VALUES } from "./confidence-level";
 
 /**
@@ -931,19 +933,6 @@ function calculateOptimalVariance(
     }
 
     return variance;
-}
-
-/** 多变量规划中的单个调查变量（与 MultiVariableSamplePlan 的 SurveyVariable 同形）。 */
-export interface SurveyVariableSpec {
-    id: string;
-    name: string;
-    type: "proportion" | "mean";
-    estimatedValue: number;      // 估计值 (p或均值)
-    estimatedStdDev?: number;    // 估计标准差 (均值类型时需要)
-    importance: "primary" | "secondary" | "tertiary";
-    confidenceLevel: string;
-    marginOfError: number;
-    requiredSampleSize: number;
 }
 
 /** 计算单个调查变量在有限总体下的所需样本量；输入不合法时返回 0。 */
