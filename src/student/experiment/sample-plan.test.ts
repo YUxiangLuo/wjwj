@@ -522,6 +522,27 @@ test("cluster sampling: 置信水平影响所需样本量", () => {
 
 // ========== calculateOptimalAllocationWithCost tests ==========
 
+test("cost allocation reports missing strata instead of omitting their variance", () => {
+    const layers = [
+        { name: "A", populationSize: 100, stdDev: 10, unitCost: 1 },
+        { name: "B", populationSize: 100, stdDev: 10, unitCost: 1 },
+    ];
+    const partial = calculateOptimalAllocationWithCost(layers, 1)!;
+    expect(partial.allocation.map(layer => layer.sampleSize)).toEqual([1, 0]);
+    expect(partial.uncoveredLayers).toEqual(["B"]);
+    expect(partial.totalVariance).toBeNull();
+    expect(partial.efficiency).toBeNull();
+    const covered = calculateOptimalAllocationWithCost(layers, 2)!;
+    expect(covered.uncoveredLayers).toEqual([]);
+    expect(covered.totalVariance).toBeCloseTo(49.5);
+    const census = calculateOptimalAllocationWithCost(layers, 200)!;
+    expect(census.totalVariance).toBe(0);
+    expect(census.efficiency).toBeNull();
+    const zeroVariance = calculateOptimalAllocationWithCost(layers.map(layer => ({ ...layer, stdDev: 0 })), 10)!;
+    expect(zeroVariance.uncoveredLayers).toEqual(["A", "B"]);
+    expect(zeroVariance.totalVariance).toBeNull();
+});
+
 test("cluster planning includes a partial last cluster rather than reducing required precision", () => {
     const params = { populationSize: 95, confidenceLevel: "95", marginOfError: 1, clusterSize: 30, deff: 2 };
     const result = calculateClusterSamplingSize(params)!;

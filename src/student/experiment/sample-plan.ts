@@ -682,8 +682,10 @@ export interface OptimalAllocationWithCostResult {
     }>;
     totalSampleSize: number;
     totalCost: number;
-    totalVariance: number;
-    efficiency: number;
+    /** Nonempty strata with no sampled units make the overall estimate unavailable. */
+    uncoveredLayers: string[];
+    totalVariance: number | null;
+    efficiency: number | null;
     formula: string;
 }
 
@@ -796,14 +798,17 @@ export function calculateOptimalAllocationWithCost(
     }
 
     const totalCost = fixedCost + allocation.reduce((sum, item) => sum + item.cost, 0);
-    const totalVariance = calculateOptimalVariance(allocation, layers);
+    const uncoveredLayers = layers.filter((layer, index) => layer.populationSize > 0 && allocation[index]!.sampleSize === 0)
+        .map(layer => layer.name);
+    const totalVariance = uncoveredLayers.length ? null : calculateOptimalVariance(allocation, layers);
 
     return {
         allocation,
         totalSampleSize,
         totalCost,
+        uncoveredLayers,
         totalVariance,
-        efficiency: 1 / (totalVariance || 1),
+        efficiency: totalVariance !== null && totalVariance > 0 ? 1 / totalVariance : null,
         formula: "n_h = C × (N_h S_h / √c_h) / Σ(N_i S_i √c_i)",
     };
 }
