@@ -1,3 +1,4 @@
+import { RouteErrorBoundary } from "@/components/PageErrorBoundary";
 import { lazy, Suspense, useState } from "react";
 import { ArrowLeft, BarChart3, KeyRound, LogOut, User } from "lucide-react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
@@ -123,7 +124,7 @@ function StudentAppContent() {
             </header>
 
             <main id="main-content" tabIndex={-1} className="mx-auto max-w-7xl py-8 px-8">
-                <Suspense fallback={<LoadingScreen />}><Routes>
+                <RouteErrorBoundary><Suspense fallback={<LoadingScreen />}><Routes>
                         <Route index element={<TaskHall />} />
                         <Route path="task/:taskId" element={<TopicDetails />} />
                         <Route path="task/:taskId/experiment" element={<ExperimentLayout />} />
@@ -131,7 +132,7 @@ function StudentAppContent() {
                         <Route path="task/:taskId/result" element={<SubmissionDetailPage />} />
                         <Route path="profile" element={<Profile />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes></Suspense>
+                    </Routes></Suspense></RouteErrorBoundary>
             </main>
 
             <PasswordChangeDialog

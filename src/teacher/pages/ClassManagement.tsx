@@ -1,3 +1,5 @@
+import { RequestError } from "@/components/RequestError";
+import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -12,7 +14,7 @@ import { PageHeader } from "@/components/PageHeader";
 
 export function ClassManagement() {
     const [classes, setClasses] = useState<TeacherClass[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { loading, error: loadError, run } = useAsyncLoad("班级列表加载失败");
     const [semesterFilter, setSemesterFilter] = useState("all");
     const [searchTerm, setSearchTerm] = useState("");
 
@@ -21,12 +23,7 @@ export function ClassManagement() {
     }, []);
 
     async function loadClasses() {
-        setLoading(true);
-        const res = await teacherApi.getClasses();
-        if (res.success && res.data) {
-            setClasses(res.data);
-        }
-        setLoading(false);
+        return run(async () => requireApiData(await teacherApi.getClasses(), "班级列表加载失败"), setClasses);
     }
 
     const semesters = useMemo(() => {
@@ -62,7 +59,7 @@ export function ClassManagement() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">班级总数</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading ? "-" : summary.total}</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.total}</p>
                         </div>
                         <IconTile intent="info">
                             <School className="w-5 h-5" />
@@ -73,7 +70,7 @@ export function ClassManagement() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">学生总数</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading ? "-" : summary.studentTotal}</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.studentTotal}</p>
                         </div>
                         <IconTile intent="success">
                             <Users className="w-5 h-5" />
@@ -84,7 +81,7 @@ export function ClassManagement() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">学期数量</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading ? "-" : summary.semesterCount}</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.semesterCount}</p>
                         </div>
                         <IconTile intent="warning">
                             <CalendarDays className="w-5 h-5" />
@@ -126,7 +123,7 @@ export function ClassManagement() {
                     </div>
                 </PageHeader>
                 <CardContent className="pt-0">
-                    {loading ? (
+                    {loadError ? <RequestError message={loadError} onRetry={() => void loadClasses()} /> : loading ? (
                         <div role="status" aria-live="polite" className="flex items-center justify-center py-12 text-muted-foreground">加载中...</div>
                     ) : (
                         <Table>

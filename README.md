@@ -158,7 +158,7 @@ bun audit && bun run audit:applicable
 
 改表结构：编辑 `src/db/schema.ts` → `bun run db:generate` → 检查 `drizzle/postgresql` → `bun run db:migrate`。不要用 Drizzle Kit 的 `push` / `studio` / `drop`。
 
-`test:teaching` 使用锁定版本的 agent-browser；首次运行先执行 `bun node_modules/agent-browser/bin/agent-browser.js install`，Linux CI 可加 `--with-deps`。脚本只用 `TEST_DATABASE_URL` 创建随机命名的临时数据库，不迁移或清空该连接所指向的库；总体文件和附件写入临时目录，结束后删除临时库与目录。测试覆盖模板复制发布、学生四阶段持久化及页面加载、PPS 分析、提交确认、教师驳回、修改重交、评分、学生成绩和 Excel 导出。阶段内容通过已登录浏览器调用真实 API 填充；提交、驳回和评分使用页面控件，不声称覆盖教学向导的所有手动交互。截图、日志和结果保存在 `test-results/teaching-flow/`，CI 自动上传这些验收文件。
+`test:teaching` 使用锁定版本的 agent-browser；首次运行先执行 `bun node_modules/agent-browser/bin/agent-browser.js install`，Linux CI 可加 `--with-deps`。脚本只用 `TEST_DATABASE_URL` 创建随机命名的临时数据库，不迁移或清空该连接所指向的库；总体文件和附件写入临时目录，结束后删除临时库与目录。测试覆盖模板复制发布、学生四阶段持久化及页面加载、PPS 分析、提交确认、教师驳回、修改重交、评分、学生成绩和 Excel 导出，以及请求失败重试、页面异常恢复和报告草稿保留。阶段内容通过已登录浏览器调用真实 API 填充；提交、驳回和评分使用页面控件，不声称覆盖教学向导的所有手动交互。截图、日志和结果保存在 `test-results/teaching-flow/`，CI 自动上传这些验收文件。
 
 ## 目录
 

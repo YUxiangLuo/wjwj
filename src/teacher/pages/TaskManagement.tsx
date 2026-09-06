@@ -1,3 +1,5 @@
+import { RequestError } from "@/components/RequestError";
+import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,7 +31,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 
 export function TaskManagement() {
     const [tasks, setTasks] = useState<Task[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { loading, error: loadError, run } = useAsyncLoad("任务列表加载失败");
     const [showPublishModal, setShowPublishModal] = useState(false);
     const [showExtendModal, setShowExtendModal] = useState(false);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -55,9 +57,7 @@ export function TaskManagement() {
     // Load form data when modal opens；静默拉取任务列表以更新「已发布班级」禁用状态
     useEffect(() => {
         if (showPublishModal) {
-            void teacherApi.getTasks().then((res) => {
-                if (res.success && res.data) setTasks(res.data);
-            });
+            void loadTasks();
             Promise.all([
                 teacherApi.getTopics(),
                 teacherApi.getClasses()
@@ -81,12 +81,7 @@ export function TaskManagement() {
     }, [publishedClassIdsForTopic]);
 
     async function loadTasks() {
-        setLoading(true);
-        const res = await teacherApi.getTasks();
-        if (res.success && res.data) {
-            setTasks(res.data);
-        }
-        setLoading(false);
+        return run(async () => requireApiData(await teacherApi.getTasks(), "任务列表加载失败"), setTasks);
     }
 
     async function handlePublish() {
@@ -183,7 +178,7 @@ export function TaskManagement() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">实验任务总数</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading ? "-" : summary.total}</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.total}</p>
                         </div>
                         <IconTile intent="info">
                             <ClipboardList className="w-5 h-5" />
@@ -194,7 +189,7 @@ export function TaskManagement() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">待批改</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading ? "-" : summary.pendingTotal}</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.pendingTotal}</p>
                         </div>
                         <IconTile intent="destructive">
                             <AlertTriangle className="w-5 h-5" />
@@ -205,7 +200,7 @@ export function TaskManagement() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已完成</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading ? "-" : summary.completedTotal}</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.completedTotal}</p>
                         </div>
                         <IconTile intent="success">
                             <CheckCircle2 className="w-5 h-5" />
@@ -216,7 +211,7 @@ export function TaskManagement() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">应交人次</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading ? "-" : summary.expectedCount}</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.expectedCount}</p>
                             <p className="mt-1 text-meta text-muted-foreground">按任务覆盖班级学生数累计，非实际提交数</p>
                         </div>
                         <IconTile intent="warning">
@@ -262,7 +257,7 @@ export function TaskManagement() {
                     </div>
                 </PageHeader>
                 <CardContent className="pt-0">
-                    {loading ? <div role="status" aria-live="polite" className="text-center py-12 text-muted-foreground">加载中...</div> : (
+                    {loadError ? <RequestError message={loadError} onRetry={() => void loadTasks()} /> : loading ? <div role="status" aria-live="polite" className="text-center py-12 text-muted-foreground">加载中...</div> : (
                         <Table>
                             <TableHeader>
                                 <TableRow className="border-border hover:bg-card">

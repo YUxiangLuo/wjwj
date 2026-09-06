@@ -1,3 +1,5 @@
+import { RequestError } from "@/components/RequestError";
+import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { ArrowLeft, FileText, Send, Loader2, AlertCircle, Maximize2 } from "lucide-react";
@@ -90,34 +92,21 @@ export function SubmissionPreview() {
     const navigate = useNavigate();
     const [task, setTask] = useState<TaskDetail | null>(null);
     const [experiment, setExperiment] = useState<ExperimentData | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { loading, error: loadError, run, cancel } = useAsyncLoad("提交预览加载失败");
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [showFullPreview, setShowFullPreview] = useState(false);
 
+    const numericTaskId = Number(taskId);
+    const loadData = () => run(async () => {
+        const [taskRes, expRes] = await Promise.all([tasksApi.get(numericTaskId), experimentApi.get(numericTaskId)]);
+        return { task: requireApiData(taskRes, "任务加载失败"), experiment: requireApiData(expRes, "实验加载失败") };
+    }, (data) => { setTask(data.task); setExperiment(data.experiment); });
     useEffect(() => {
-        async function loadData() {
-            if (!taskId) return;
-            setLoading(true);
-            try {
-                const [taskRes, expRes] = await Promise.all([
-                    tasksApi.get(Number(taskId)),
-                    experimentApi.get(Number(taskId)),
-                ]);
-
-                if (taskRes.success && taskRes.data) {
-                    setTask(taskRes.data);
-                }
-                if (expRes.success && expRes.data) {
-                    setExperiment(expRes.data);
-                }
-            } finally {
-                setLoading(false);
-            }
-        }
-        loadData();
-    }, [taskId]);
+        if (Number.isInteger(numericTaskId) && numericTaskId > 0) void loadData();
+        return cancel;
+    }, [numericTaskId, cancel]);
 
     const handleSubmit = async () => {
         if (!taskId || !experiment) return;
@@ -144,6 +133,8 @@ export function SubmissionPreview() {
         }
     };
 
+    if (!Number.isInteger(numericTaskId) || numericTaskId <= 0) return <p>无效的任务</p>;
+    if (loadError) return <RequestError message={loadError} onRetry={() => void loadData()} />;
     if (loading) {
         return <LoadingStatus className="py-24" iconClassName="h-8 w-8 text-info" label="正在加载提交预览" />;
     }

@@ -1,3 +1,4 @@
+import { RequestError } from "@/components/RequestError";
 import { useState } from "react";
 import { ArrowDown, ArrowUp, CheckCircle2, ChevronRight, Download, FileText, HelpCircle, Loader2, Pencil, Play, School, Sparkles, Trash2, Upload, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,8 @@ interface TopicWizardDialogProps {
     newTopicDesc: string;
     setNewTopicDesc: (value: string) => void;
     loadingDetail: boolean;
+    detailError?: string | null;
+    onRetryDetail?: () => void;
     excelInfo: { rowCount: number; colCount: number; columns: string[]; preview: any[]; columnValues?: Record<string, string[]>; columnValuesTruncated?: string[] } | null;
     uploadingExcel: boolean;
     onExcelUpload: (file: File) => void;
@@ -76,6 +79,8 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
         newTopicDesc,
         setNewTopicDesc,
         loadingDetail,
+        detailError,
+        onRetryDetail,
         excelInfo,
         uploadingExcel,
         onExcelUpload,
@@ -234,7 +239,8 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                     </div>
 
                     <div className="flex-1">
-                        {loadingDetail && currentStep > 1 && (
+                        {detailError && onRetryDetail && <RequestError message={detailError} onRetry={onRetryDetail} />}
+                        {loadingDetail && !detailError && currentStep > 1 && (
                             <div role="status" aria-live="polite" className="flex flex-col items-center justify-center py-20 text-muted-foreground animate-in fade-in duration-200">
                                 <Loader2 aria-hidden="true" className="w-6 h-6 animate-spin mb-3" />
                                 <span className="text-label">加载中...</span>

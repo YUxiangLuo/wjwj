@@ -1,3 +1,5 @@
+import { RequestError } from "@/components/RequestError";
+import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useState, useEffect, useMemo } from "react";
 import { Plus, Trash2, Users, Pencil, Loader2, School, CalendarDays, UserCircle2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,7 +24,8 @@ export function ClassManagement() {
     const [classes, setClasses] = useState<Class[]>([]);
     const [semesters, setSemesters] = useState<Semester[]>([]);
     const [teachers, setTeachers] = useState<Teacher[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { loading, error: loadError, run } = useAsyncLoad("班级列表加载失败");
+    const optionsLoad = useAsyncLoad("班级选项加载失败");
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [filterSemester, setFilterSemester] = useState("all");
@@ -42,50 +45,19 @@ export function ClassManagement() {
     }, [filterSemester, filterTeacher]);
 
     async function loadInitialData() {
-        try {
-            const [semestersRes, teachersRes] = await Promise.all([
-                semesterApi.list(),
-                teacherApi.list(),
-            ]);
-
-            if (semestersRes.success && semestersRes.data) {
-                setSemesters(semestersRes.data);
-                const firstSemester = semestersRes.data[0];
-                if (firstSemester) {
-                    setNewClass(prev => ({ ...prev, semesterId: String(firstSemester.id) }));
-                }
-            }
-
-            if (teachersRes.success && teachersRes.data) {
-                const activeTeachers = teachersRes.data.filter(t => t.status === 1);
-                setTeachers(activeTeachers);
-                const firstTeacher = activeTeachers[0];
-                if (firstTeacher) {
-                    setNewClass(prev => ({ ...prev, teacherId: String(firstTeacher.id) }));
-                }
-            }
-        } catch (error) {
-            console.error("Failed to load initial data:", error);
-        }
-
-        loadClasses();
+        await optionsLoad.run(async () => {
+            const [semestersRes, teachersRes] = await Promise.all([semesterApi.list(), teacherApi.list()]);
+            return { semesters: requireApiData(semestersRes, "学期选项加载失败"), teachers: requireApiData(teachersRes, "教师选项加载失败") };
+        }, ({ semesters, teachers }) => {
+            setSemesters(semesters);
+            const active = teachers.filter(teacher => teacher.status === 1);
+            setTeachers(active);
+            setNewClass(previous => ({ ...previous, semesterId: previous.semesterId || String(semesters[0]?.id ?? ""), teacherId: previous.teacherId || String(active[0]?.id ?? "") }));
+        });
     }
 
     async function loadClasses() {
-        setLoading(true);
-        try {
-            const res = await classApi.list({
-                semesterId: filterSemester,
-                teacherId: filterTeacher,
-            });
-            if (res.success && res.data) {
-                setClasses(res.data);
-            }
-        } catch (error) {
-            console.error("Failed to load classes:", error);
-        } finally {
-            setLoading(false);
-        }
+        return run(async () => requireApiData(await classApi.list({ semesterId: filterSemester, teacherId: filterTeacher }), "班级列表加载失败"), setClasses);
     }
 
     async function handleAddClass() {
@@ -214,6 +186,7 @@ export function ClassManagement() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
+            {optionsLoad.error && <RequestError message={optionsLoad.error} onRetry={() => void loadInitialData()} />}
             <PageHeader border={false}>
                 <div>
                     <h2 className="text-subheading font-semibold text-foreground">班级管理</h2>
@@ -230,7 +203,7 @@ export function ClassManagement() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">班级总数</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading ? "-" : summary.total}</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.total}</p>
                         </div>
                         <IconTile intent="info">
                             <School className="w-5 h-5" />
@@ -241,7 +214,7 @@ export function ClassManagement() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">学生总数</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading ? "-" : summary.studentTotal}</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.studentTotal}</p>
                         </div>
                         <IconTile intent="success">
                             <Users className="w-5 h-5" />
@@ -252,7 +225,7 @@ export function ClassManagement() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">当前学期</p>
-                            <p className="text-label font-bold text-foreground mt-2">{loading ? "-" : summary.currentSemesterName}</p>
+                            <p className="text-label font-bold text-foreground mt-2">{loading || loadError ? "-" : summary.currentSemesterName}</p>
                         </div>
                         <IconTile intent="warning">
                             <CalendarDays className="w-5 h-5" />
@@ -263,7 +236,7 @@ export function ClassManagement() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">授课教师</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading ? "-" : summary.teacherCount}</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.teacherCount}</p>
                         </div>
                         <IconTile intent="auxiliary">
                             <UserCircle2 className="w-5 h-5" />
@@ -311,7 +284,7 @@ export function ClassManagement() {
                     </div>
                 </PageHeader>
                 <CardContent className="pt-0">
-                    {loading ? (
+                    {loadError ? <RequestError message={loadError} onRetry={() => void loadClasses()} /> : loading ? (
                         <LoadingStatus className="py-12" iconClassName="text-muted-foreground" label="正在加载班级列表" />
                     ) : (
                         <Table>

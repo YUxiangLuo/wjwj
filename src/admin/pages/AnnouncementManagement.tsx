@@ -1,3 +1,5 @@
+import { RequestError } from "@/components/RequestError";
+import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Pencil, Plus, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -52,7 +54,7 @@ export function createAnnouncementSubmitGuard(onSubmittingChange: (submitting: b
 
 export function AnnouncementManagement() {
     const [rows, setRows] = useState<Announcement[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { loading, error: loadError, run } = useAsyncLoad("公告加载失败");
     const [open, setOpen] = useState(false);
     const [editing, setEditing] = useState<Announcement | null>(null);
     const [form, setForm] = useState(emptyForm);
@@ -61,10 +63,7 @@ export function AnnouncementManagement() {
     submitGuardRef.current ??= createAnnouncementSubmitGuard(setSubmitting);
 
     const load = async () => {
-        setLoading(true);
-        const response = await announcementApi.list();
-        if (response.success && response.data) setRows(response.data);
-        setLoading(false);
+        return run(async () => requireApiData(await announcementApi.list(), "公告加载失败"), setRows);
     };
 
     useEffect(() => {
@@ -104,7 +103,7 @@ export function AnnouncementManagement() {
                 </Button>
             </CardHeader>
             <CardContent>
-                {loading ? (
+                {loadError ? <RequestError message={loadError} onRetry={() => void load()} /> : loading ? (
                     <div className="grid place-items-center py-12" role="status" aria-label="正在加载公告">
                         <Loader2 aria-hidden="true" className="h-6 w-6 animate-spin" />
                     </div>

@@ -1,3 +1,5 @@
+import { RequestError } from "@/components/RequestError";
+import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useEffect, useState } from "react";
 import { Pencil, Plus, RotateCcw, Search } from "lucide-react";
 import { toast } from "sonner";
@@ -13,16 +15,13 @@ import { teacherApi, type Teacher } from "../api-client";
 
 export function TeacherManagement() {
     const [rows, setRows] = useState<Teacher[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { loading, error: loadError, run } = useAsyncLoad("教师列表加载失败");
     const [search, setSearch] = useState("");
     const [editing, setEditing] = useState<Teacher | null>(null);
     const [creating, setCreating] = useState(false);
     const [form, setForm] = useState({ employeeId: "", name: "" });
     const load = async (keyword = search) => {
-        setLoading(true);
-        const response = await teacherApi.list(keyword.trim() || undefined);
-        if (response.success && response.data) setRows(response.data);
-        setLoading(false);
+        return run(async () => requireApiData(await teacherApi.list(keyword.trim() || undefined), "教师列表加载失败"), setRows);
     };
     useEffect(() => { void load(""); }, []);
     const save = async () => {
@@ -43,7 +42,7 @@ export function TeacherManagement() {
             <CardHeader className="flex-row items-center justify-between"><div><CardTitle>教师管理</CardTitle><p className="mt-1 text-label text-muted-foreground">新建及重置后的登录密码与教师工号相同，教师也可主动修改密码。</p></div><Button onClick={() => { setCreating(true); setForm({ employeeId: "", name: "" }); }}><Plus className="mr-2 h-4 w-4" />新增教师</Button></CardHeader>
             <CardContent>
                 <div className="mb-4 flex max-w-md gap-2"><Input value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => event.key === "Enter" && void load()} placeholder="搜索工号或姓名" /><IconButton aria-label="搜索教师" title="搜索教师" variant="outline" onClick={() => void load()}><Search className="h-4 w-4" /></IconButton></div>
-                {loading ? <LoadingStatus className="py-12" label="正在加载教师列表" /> : (
+                {loadError ? <RequestError message={loadError} onRetry={() => void load()} /> : loading ? <LoadingStatus className="py-12" label="正在加载教师列表" /> : (
                     <Table><TableHeader><TableRow><TableHead>工号</TableHead><TableHead>姓名</TableHead><TableHead>班级数</TableHead><TableHead>状态</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader><TableBody>{rows.length === 0 ? (
                         <TableRow><TableCell colSpan={5} className="py-12 text-center"><div className="flex flex-col items-center gap-3 text-muted-foreground"><Search className="h-6 w-6" /><p>{search.trim() ? `未找到与“${search.trim()}”匹配的教师` : "暂无教师数据"}</p>{search.trim() && <Button variant="outline" size="sm" onClick={() => { setSearch(""); void load(""); }}>清除搜索</Button>}</div></TableCell></TableRow>
                     ) : rows.map((row) => (

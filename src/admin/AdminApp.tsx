@@ -1,3 +1,4 @@
+import { RouteErrorBoundary } from "@/components/PageErrorBoundary";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { BarChart3, Calendar, GraduationCap, KeyRound, LayoutDashboard, LogOut, Megaphone, School, Users } from "lucide-react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
@@ -63,7 +64,7 @@ function AdminWorkspace({ user, onLogout }: { user: AdminUser; onLogout: () => P
                     <div className="flex items-center gap-1"><IconButton aria-label="修改密码" variant="ghost" title="修改密码" onClick={() => { passwordChange.reset(); setPasswordOpen(true); }}><KeyRound className="h-5 w-5" /></IconButton><IconButton aria-label="退出登录" variant="ghost" title="退出登录" className="text-destructive hover:bg-destructive-muted hover:text-destructive" onClick={() => void onLogout()}><LogOut className="h-5 w-5" /></IconButton></div>
                 }
             >
-                <Suspense fallback={<RouteLoading />}><Routes>
+                <RouteErrorBoundary><Suspense fallback={<RouteLoading />}><Routes>
                         <Route index element={<Dashboard />} />
                         <Route path="semester" element={<SemesterManagement />} />
                         <Route path="teacher" element={<TeacherManagement />} />
@@ -71,7 +72,7 @@ function AdminWorkspace({ user, onLogout }: { user: AdminUser; onLogout: () => P
                         <Route path="student" element={<StudentManagement />} />
                         <Route path="announcement" element={<AnnouncementManagement />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes></Suspense>
+                    </Routes></Suspense></RouteErrorBoundary>
             </WorkspaceShell>
             <PasswordChangeDialog open={passwordOpen} onOpenChange={setPasswordOpen} title="修改密码" description="输入当前密码并设置新密码。" form={passwordChange.form} onFieldChange={passwordChange.setField} error={passwordChange.error} saving={passwordChange.saving} onSubmit={passwordChange.submit} submitLabel="保存" />
             <AppToaster />

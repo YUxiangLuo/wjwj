@@ -1,3 +1,5 @@
+import { RequestError } from "@/components/RequestError";
+import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Users, Clock, Search, FileEdit, Eye } from "lucide-react";
@@ -59,21 +61,16 @@ export function TaskProgressDetail() {
     const { taskId } = useParams();
     const navigate = useNavigate();
     const [data, setData] = useState<TaskProgressData | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { loading, error: loadError, run, cancel } = useAsyncLoad("任务进度加载失败");
     const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => {
-        if (!taskId) return;
-        loadProgress(Number(taskId));
+        if (Number.isInteger(Number(taskId)) && Number(taskId) > 0) void loadProgress(Number(taskId));
+        return cancel;
     }, [taskId]);
 
     async function loadProgress(id: number) {
-        setLoading(true);
-        const res = await teacherApi.getTaskProgress(id);
-        if (res.success && res.data) {
-            setData(res.data);
-        }
-        setLoading(false);
+        return run(async () => requireApiData(await teacherApi.getTaskProgress(id), "任务进度加载失败"), setData);
     }
 
     const filteredStudents = useMemo(() => {
@@ -87,6 +84,8 @@ export function TaskProgressDetail() {
 
     const total = data ? Object.values(data.counts).reduce((a, b) => a + b, 0) : 0;
 
+    if (!Number.isInteger(Number(taskId)) || Number(taskId) <= 0) return <p>无效的任务编号</p>;
+    if (loadError) return <RequestError message={loadError} onRetry={() => void loadProgress(Number(taskId))} />;
     if (loading) return <div role="status" aria-live="polite" className="p-12 text-center text-muted-foreground">加载中...</div>;
     if (!data) return <div className="p-12 text-center text-muted-foreground">未找到任务</div>;
 

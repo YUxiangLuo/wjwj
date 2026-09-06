@@ -1,3 +1,5 @@
+import { RequestError } from "@/components/RequestError";
+import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useState, useEffect, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Search, Upload, UserPlus, RotateCcw, UserX, Trash2, Users, CheckCircle2, PauseCircle } from "lucide-react";
@@ -27,7 +29,7 @@ export function StudentManagement() {
     const { classId } = useParams();
     const [classInfo, setClassInfo] = useState<TeacherClass | null>(null);
     const [students, setStudents] = useState<Student[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { loading, error: loadError, run, cancel } = useAsyncLoad("班级学生加载失败");
     const [showAddModal, setShowAddModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -47,28 +49,22 @@ export function StudentManagement() {
     }>({ open: false, type: null, student: null });
 
     useEffect(() => {
-        if (!classId) return;
-        loadData();
+        setClassInfo(null);
+        if (Number.isInteger(Number(classId)) && Number(classId) > 0) void loadData();
+        return cancel;
     }, [classId]);
 
-    async function loadData(showLoading = true) {
-        if (showLoading) setLoading(true);
-        const id = Number(classId);
-
-        const [resClasses, resStudents] = await Promise.all([
-            teacherApi.getClasses(),
-            teacherApi.getStudents(id)
-        ]);
-
-        if (resClasses.success && resClasses.data) {
-            const cls = resClasses.data.find(c => c.id === id);
-            if (cls) setClassInfo(cls);
-        }
-
-        if (resStudents.success && resStudents.data) {
-            setStudents(resStudents.data);
-        }
-        if (showLoading) setLoading(false);
+    async function loadData(_showLoading = true) {
+        return run(async () => {
+            const [resClasses, resStudents] = await Promise.all([teacherApi.getClasses(), teacherApi.getStudents(Number(classId))]);
+            return {
+                classes: requireApiData(resClasses, "班级加载失败"),
+                students: requireApiData(resStudents, "学生列表加载失败"),
+            };
+        }, (data) => {
+            setClassInfo(data.classes.find(cls => cls.id === Number(classId)) ?? null);
+            setStudents(data.students);
+        });
     }
 
     async function handleAddStudent() {
@@ -185,11 +181,14 @@ export function StudentManagement() {
         };
     }, [students]);
 
-    if (loading) return <div role="status" aria-live="polite" className="p-12 text-center text-muted-foreground">加载中...</div>;
+    if (!Number.isInteger(Number(classId)) || Number(classId) <= 0) return <p>无效的班级编号</p>;
+    if (!classInfo && loadError) return <RequestError message={loadError} onRetry={() => void loadData()} />;
+    if (loading && !classInfo) return <div role="status" aria-live="polite" className="p-12 text-center text-muted-foreground">加载中...</div>;
     if (!classInfo && !loading) return <div className="p-12 text-center text-muted-foreground">未找到班级</div>;
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
+            {loadError && <RequestError message={loadError} onRetry={() => void loadData()} retrying={loading} />}
             <div className="flex items-center gap-3">
                 <Button asChild variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-muted">
                     <Link to="/class">

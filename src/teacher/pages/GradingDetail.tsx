@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { RequestError } from "@/components/RequestError";
+import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, CheckCircle2, Download, History, XCircle } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -21,32 +23,34 @@ export function GradingDetail() {
     const { submissionId } = useParams();
     const navigate = useNavigate();
     const [data, setData] = useState<SubmissionDetail | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { loading, error: loadError, run, cancel } = useAsyncLoad("批改记录加载失败");
+    const [conflict, setConflict] = useState(false);
     const [saving, setSaving] = useState(false);
     const [rejectOpen, setRejectOpen] = useState(false);
     const [rejectReason, setRejectReason] = useState("");
     const [scores, setScores] = useState({ questionnaire: "0", process: "0", report: "0" });
     const [comment, setComment] = useState("");
     const id = Number(submissionId);
-    const load = async () => {
-        setLoading(true);
-        const response = await teacherApi.getSubmissionDetail(id);
-        if (response.success && response.data) {
-            setData(response.data);
-            setScores({ questionnaire: String(response.data.scoreQuestionnaire ?? 0), process: String(response.data.scoreProcess ?? 0), report: String(response.data.scoreReport ?? 0) });
-            setComment(response.data.teacherComment ?? "");
-            setRejectReason(response.data.rejectReason ?? "");
-        } else toast.error(response.error?.message ?? "加载失败");
-        setLoading(false);
-    };
-    useEffect(() => {
-        if (!Number.isInteger(id) || id <= 0) {
-            setData(null);
-            setLoading(false);
-            return;
+    const currentId = useRef(id);
+    currentId.current = id;
+    const load = (preserveInput = false) => run(async () => requireApiData(await teacherApi.getSubmissionDetail(id), "批改记录加载失败"), (loaded) => {
+        setData(loaded);
+        setConflict(false);
+        if (!preserveInput) {
+            setScores({ questionnaire: String(loaded.scoreQuestionnaire ?? 0), process: String(loaded.scoreProcess ?? 0), report: String(loaded.scoreReport ?? 0) });
+            setComment(loaded.teacherComment ?? "");
+            setRejectReason(loaded.rejectReason ?? "");
         }
-        void load();
-    }, [id]);
+    });
+    useEffect(() => {
+        currentId.current = id;
+        setData(null);
+        setConflict(false);
+        setSaving(false);
+        setRejectOpen(false);
+        if (Number.isInteger(id) && id > 0) void load();
+        return () => { currentId.current = Number.NaN; cancel(); };
+    }, [id, cancel]);
     const weights = data?.weights ?? { questionnaire: 30, process: 30, report: 40 };
     const total = useMemo(() => (
         (Number(scores.questionnaire) || 0) * weights.questionnaire
@@ -62,10 +66,11 @@ export function GradingDetail() {
             scoreReport: Number(scores.report),
             comment,
         });
+        if (currentId.current !== id) return;
         setSaving(false);
         if (!response.success) {
             toast.error(response.error?.message ?? "评分失败");
-            if (response.error?.code === "VERSION_CONFLICT") void load();
+            if (response.error?.code === "VERSION_CONFLICT") setConflict(true);
             return;
         }
         toast.success("评分已保存");
@@ -74,17 +79,20 @@ export function GradingDetail() {
     const reject = async () => {
         if (!data) return;
         const response = await teacherApi.rejectSubmission(id, data.version, rejectReason);
+        if (currentId.current !== id) return;
         if (!response.success) {
             toast.error(response.error?.message ?? "驳回失败");
-            if (response.error?.code === "VERSION_CONFLICT") void load();
+            if (response.error?.code === "VERSION_CONFLICT") { setConflict(true); setRejectOpen(false); }
             return;
         }
         toast.success("已驳回，学生可修改后重交");
         navigate("/grading");
     };
-    if (loading) return <p role="status" aria-live="polite" className="py-12 text-center text-muted-foreground">加载中...</p>;
+    if (!Number.isInteger(id) || id <= 0) return <p className="py-12 text-center text-muted-foreground">未找到提交记录</p>;
+    if (!data && loadError) return <RequestError message={loadError} onRetry={() => void load()} />;
+    if (loading && !data) return <p role="status" aria-live="polite" className="py-12 text-center text-muted-foreground">加载中...</p>;
     if (!data) return <p className="py-12 text-center text-muted-foreground">未找到提交记录</p>;
-    const canGrade = data.status === "submitted" || data.status === "graded";
+    const canGrade = !conflict && !loading && !loadError && (data.status === "submitted" || data.status === "graded");
     const scoreLabels = {
         questionnaire: `问卷设计（${weights.questionnaire}%）`,
         process: `实验过程（${weights.process}%）`,
@@ -92,6 +100,8 @@ export function GradingDetail() {
     };
     return (
         <div className="space-y-5">
+            {loadError && <RequestError message={loadError} onRetry={() => void load(true)} retrying={loading} />}
+            {conflict && <div role="alert" className="space-y-3 rounded-surface border border-warning-border bg-warning-muted p-4 text-label text-warning"><p>记录已在其他页面更新，当前评分和评语已保留。请加载最新记录后核对再提交。</p><Button variant="outline" disabled={loading} onClick={() => void load(true)}>加载最新记录并保留输入</Button></div>}
             <div className="flex items-center justify-between">
                 <Button variant="ghost" onClick={() => navigate("/grading")}><ArrowLeft className="mr-2 h-4 w-4" />返回列表</Button>
                 <div className="flex items-center gap-2">
@@ -196,7 +206,7 @@ export function GradingDetail() {
                         <div className="flex flex-wrap items-center justify-between gap-3 rounded-surface bg-muted p-4">
                             <p>加权总分：<span className="text-page-title font-bold text-primary">{total.toFixed(2)}</span></p>
                             <div className="flex gap-2">
-                                {data.status === "submitted" && <Button variant="destructive" onClick={() => setRejectOpen(true)}>驳回修改</Button>}
+                                {data.status === "submitted" && <Button variant="destructive" disabled={!canGrade || saving} onClick={() => setRejectOpen(true)}>驳回修改</Button>}
                                 <Button disabled={!canGrade || saving} onClick={() => void grade()}>{saving ? "保存中..." : data.status === "graded" ? "更新评分" : "提交评分"}</Button>
                             </div>
                         </div>

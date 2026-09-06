@@ -1,3 +1,5 @@
+import { RequestError } from "@/components/RequestError";
+import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useState, useEffect, useMemo } from "react";
 import { BookOpen, Search, Layers, FileText } from "lucide-react";
 import { getRichTextPlainText } from "@/utils/rich-text";
@@ -31,7 +33,7 @@ export function TopicManagement() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
     const [viewingTopic, setViewingTopic] = useState<Topic | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { loading, error: loadError, run } = useAsyncLoad("模板列表加载失败");
     const [currentStep, setCurrentStep] = useState(1);
     const [excelInfo, setExcelInfo] = useState<{
         rowCount: number;
@@ -51,7 +53,7 @@ export function TopicManagement() {
     const [recommendQuestions, setRecommendQuestions] = useState<Question[]>([]);
     const [weightConfig, setWeightConfig] = useState({ questionnaire: 30, process: 30, report: 40 });
     const [samplingPolicy, setSamplingPolicy] = useState<SamplingPolicyV1>(() => buildDefaultSamplingPolicy());
-    const [loadingDetail, setLoadingDetail] = useState(false);
+    const detailLoad = useAsyncLoad("实验模板详情加载失败");
     const [uploadingExcel, setUploadingExcel] = useState(false);
     const [uploadingAttachment, setUploadingAttachment] = useState(false);
     const [copyingTopicId, setCopyingTopicId] = useState<number | null>(null);
@@ -77,24 +79,16 @@ export function TopicManagement() {
     }, []);
 
     async function loadTopics() {
-        setLoading(true);
-        const res = await teacherApi.getTopics();
-        if (res.success && res.data) {
-            setTopics(res.data);
-        }
-        setLoading(false);
+        return run(async () => requireApiData(await teacherApi.getTopics(), "模板列表加载失败"), setTopics);
     }
 
     async function loadTopicDetail(id: number) {
-        setLoadingDetail(true);
-        const res = await teacherApi.getTopicDetail(id);
-        setLoadingDetail(false);
-        if (res.success && res.data) {
-            const topicRow = res.data.topic;
+        await detailLoad.run(async () => requireApiData(await teacherApi.getTopicDetail(id), "实验模板详情加载失败"), (data) => {
+            const topicRow = data.topic;
             if (topicRow && typeof topicRow.status === "number") {
                 setEditingTopicPublished(topicRow.status === 1);
             }
-            const mapping = res.data.topic?.fieldMapping ?? null;
+            const mapping = data.topic?.fieldMapping ?? null;
             const parsed = typeof mapping === "string" ? (() => { try { return JSON.parse(mapping); } catch { return null; } })() : mapping;
             setFieldMapping({
                 identifier: parsed?.identifier ?? undefined,
@@ -104,30 +98,30 @@ export function TopicManagement() {
                 analysisTarget: parsed?.analysisTarget,
                 studyContract: parsed?.studyContract,
             });
-            if (res.data.excelInfo?.columns?.length) {
-                setColumns(res.data.excelInfo.columns);
+            if (data.excelInfo?.columns?.length) {
+                setColumns(data.excelInfo.columns);
             }
-            if (res.data.excelInfo) {
+            if (data.excelInfo) {
                 setExcelInfo({
-                    rowCount: res.data.topic?.excelRowCount ?? 0,
-                    colCount: res.data.excelInfo.columns.length,
-                    columns: res.data.excelInfo.columns,
-                    preview: res.data.excelInfo.preview,
-                    columnValues: res.data.excelInfo.columnValues,
-                    columnValuesTruncated: res.data.excelInfo.columnValuesTruncated,
+                    rowCount: data.topic?.excelRowCount ?? 0,
+                    colCount: data.excelInfo.columns.length,
+                    columns: data.excelInfo.columns,
+                    preview: data.excelInfo.preview,
+                    columnValues: data.excelInfo.columnValues,
+                    columnValuesTruncated: data.excelInfo.columnValuesTruncated,
                 });
             }
-            setAttachments(res.data.attachments ?? []);
-            setRecommendQuestions(res.data.recommendQuestions ?? []);
-            const weight = res.data.topic?.weightConfig;
+            setAttachments(data.attachments ?? []);
+            setRecommendQuestions(data.recommendQuestions ?? []);
+            const weight = data.topic?.weightConfig;
             const weightParsed = typeof weight === "string" ? (() => { try { return JSON.parse(weight); } catch { return null; } })() : weight;
             setWeightConfig({
                 questionnaire: weightParsed?.questionnaire ?? 30,
                 process: weightParsed?.process ?? 30,
                 report: weightParsed?.report ?? 40,
             });
-            setSamplingPolicy(resolveSamplingPolicy(res.data.topic?.samplingPolicy));
-        }
+            setSamplingPolicy(resolveSamplingPolicy(data.topic?.samplingPolicy));
+        });
     }
 
     async function handleSubmitTopic() {
@@ -376,7 +370,7 @@ export function TopicManagement() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">模板总数</p>
-                            <p className="text-page-title font-semibold text-foreground mt-1">{loading ? "-" : summary.total}</p>
+                            <p className="text-page-title font-semibold text-foreground mt-1">{loading || loadError ? "-" : summary.total}</p>
                         </div>
                         <IconTile intent="info">
                             <BookOpen className="w-5 h-5" />
@@ -387,7 +381,7 @@ export function TopicManagement() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已发布</p>
-                            <p className="text-page-title font-semibold text-foreground mt-1">{loading ? "-" : summary.published}</p>
+                            <p className="text-page-title font-semibold text-foreground mt-1">{loading || loadError ? "-" : summary.published}</p>
                         </div>
                         <IconTile intent="success">
                             <Layers className="w-5 h-5" />
@@ -398,7 +392,7 @@ export function TopicManagement() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">草稿</p>
-                            <p className="text-page-title font-semibold text-foreground mt-1">{loading ? "-" : summary.draft}</p>
+                            <p className="text-page-title font-semibold text-foreground mt-1">{loading || loadError ? "-" : summary.draft}</p>
                         </div>
                         <IconTile intent="warning">
                             <FileText className="w-5 h-5" />
@@ -409,7 +403,7 @@ export function TopicManagement() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">数据行数</p>
-                            <p className="text-page-title font-semibold text-foreground mt-1">{loading ? "-" : summary.totalRows.toLocaleString()}</p>
+                            <p className="text-page-title font-semibold text-foreground mt-1">{loading || loadError ? "-" : summary.totalRows.toLocaleString()}</p>
                         </div>
                         <IconTile intent="auxiliary">
                             <Layers className="w-5 h-5" />
@@ -451,7 +445,7 @@ export function TopicManagement() {
                     </div>
                 </PageHeader>
                 <CardContent className="space-y-4 pt-4">
-                    {loading ? <div role="status" aria-live="polite" className="text-center py-12 text-muted-foreground">加载中...</div> : filteredTopics.map((topic) => (
+                    {loadError ? <RequestError message={loadError} onRetry={() => void loadTopics()} /> : loading ? <div role="status" aria-live="polite" className="text-center py-12 text-muted-foreground">加载中...</div> : filteredTopics.map((topic) => (
                         <div data-testid={`teacher-topic-row-${topic.id}`} key={topic.id} className="border border-border rounded-surface p-5 bg-background hover:bg-card hover:border-input transition-colors">
                             <div className="flex gap-3 flex-row items-start justify-between mb-4">
                                 <div className="flex items-start gap-4">
@@ -555,6 +549,7 @@ export function TopicManagement() {
                 onOpenChange={(open) => {
                     setShowCreateModal(open);
                     if (!open) {
+                        detailLoad.cancel();
                         setEditingTopicId(null);
                         setEditingTopicPublished(false);
                         setNewTopicName("");
@@ -577,7 +572,9 @@ export function TopicManagement() {
                 setNewTopicName={setNewTopicName}
                 newTopicDesc={newTopicDesc}
                 setNewTopicDesc={setNewTopicDesc}
-                loadingDetail={loadingDetail}
+                loadingDetail={detailLoad.loading || Boolean(detailLoad.error)}
+                detailError={editingTopicId ? detailLoad.error : null}
+                onRetryDetail={() => { if (editingTopicId) void loadTopicDetail(editingTopicId); }}
                 excelInfo={excelInfo}
                 uploadingExcel={uploadingExcel}
                 onExcelUpload={handleExcelUpload}

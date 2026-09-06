@@ -1,3 +1,5 @@
+import { RequestError } from "@/components/RequestError";
+import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useState, useEffect, useMemo } from "react";
 import { Plus, Trash2, Star, Loader2, Pencil, CalendarDays, School, CheckCircle, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,7 +26,7 @@ export function isRecommendedSemesterName(value: string) {
 export function SemesterManagement() {
     const { confirm, dialog } = useConfirmDialog();
     const [semesters, setSemesters] = useState<Semester[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { loading, error: loadError, run } = useAsyncLoad("学期列表加载失败");
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [newSemesterName, setNewSemesterName] = useState("");
@@ -40,17 +42,7 @@ export function SemesterManagement() {
     }, []);
 
     async function loadSemesters() {
-        setLoading(true);
-        try {
-            const res = await semesterApi.list();
-            if (res.success && res.data) {
-                setSemesters(res.data);
-            }
-        } catch (error) {
-            console.error("Failed to load semesters:", error);
-        } finally {
-            setLoading(false);
-        }
+        return run(async () => requireApiData(await semesterApi.list(), "学期列表加载失败"), setSemesters);
     }
 
     async function handleAddSemester() {
@@ -208,7 +200,7 @@ export function SemesterManagement() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">学期总数</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading ? "-" : summary.total}</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.total}</p>
                         </div>
                         <IconTile intent="info">
                             <CalendarDays className="w-5 h-5" />
@@ -219,7 +211,7 @@ export function SemesterManagement() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">当前学期</p>
-                            <p className="text-label font-bold text-foreground mt-2">{loading ? "-" : summary.currentName}</p>
+                            <p className="text-label font-bold text-foreground mt-2">{loading || loadError ? "-" : summary.currentName}</p>
                         </div>
                         <IconTile intent="success">
                             <Star className="w-5 h-5" />
@@ -230,7 +222,7 @@ export function SemesterManagement() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">历史学期</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading ? "-" : summary.history}</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.history}</p>
                         </div>
                         <div className="w-10 h-10 rounded-surface bg-muted text-muted-foreground flex items-center justify-center border border-input">
                             <CheckCircle className="w-5 h-5" />
@@ -241,7 +233,7 @@ export function SemesterManagement() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已建班学期</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading ? "-" : summary.withClasses}</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.withClasses}</p>
                         </div>
                         <IconTile intent="auxiliary">
                             <School className="w-5 h-5" />
@@ -276,7 +268,7 @@ export function SemesterManagement() {
                     </div>
                 </PageHeader>
                 <CardContent className="pt-0">
-                    {loading ? (
+                    {loadError ? <RequestError message={loadError} onRetry={() => void loadSemesters()} /> : loading ? (
                         <LoadingStatus className="py-12" iconClassName="text-muted-foreground" label="正在加载学期列表" />
                     ) : (
                         <Table>

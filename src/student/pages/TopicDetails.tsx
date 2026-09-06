@@ -1,3 +1,5 @@
+import { RequestError } from "@/components/RequestError";
+import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useState, useEffect } from "react";
 import { ArrowLeft, FileText, Download, Play, Image, File, CheckCircle, Clock, AlertTriangle, BookOpen, ChevronRight, Eye } from "lucide-react";
 import { Link, Navigate, useParams } from "react-router-dom";
@@ -93,43 +95,23 @@ function formatFileSize(bytes: number): string {
 export function TopicDetails() {
     const { taskId } = useParams();
     const [task, setTask] = useState<TaskDetail | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [notFound, setNotFound] = useState(false);
+    const { loading, error: loadError, run, cancel } = useAsyncLoad("实验任务加载失败");
+    const id = Number(taskId);
+    const load = () => run(async () => requireApiData(await tasksApi.get(id), "实验任务加载失败"), setTask);
     const [previewFile, setPreviewFile] = useState<TopicAttachment | null>(null);
 
     useEffect(() => {
-        async function loadTask() {
-            if (!taskId) {
-                setNotFound(true);
-                return;
-            }
-
-            setLoading(true);
-            setNotFound(false);
-            try {
-                const res = await tasksApi.get(parseInt(taskId));
-                if (res.success && res.data) {
-                    setTask(res.data);
-                } else {
-                    setTask(null);
-                    setNotFound(true);
-                }
-            } catch (error) {
-                console.error("Failed to load task:", error);
-                setTask(null);
-                setNotFound(true);
-            } finally {
-                setLoading(false);
-            }
-        }
-        loadTask();
-    }, [taskId]);
+        if (Number.isInteger(id) && id > 0) void load();
+        return cancel;
+    }, [id, cancel]);
+    if (!Number.isInteger(id) || id <= 0) return <Navigate to="/" replace />;
+    if (loadError) return <RequestError message={loadError} onRetry={() => void load()} />;
 
     if (loading) {
         return <LoadingStatus className="py-24" iconClassName="h-10 w-10" label="正在加载实验任务" />;
     }
 
-    if (notFound || !task) {
+    if (!task) {
         return <Navigate to="/" replace />;
     }
 

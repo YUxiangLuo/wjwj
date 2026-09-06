@@ -1,3 +1,4 @@
+import { RouteErrorBoundary } from "@/components/PageErrorBoundary";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -11,7 +12,7 @@ const elem = document.getElementById("root")!;
 const app = (
     <StrictMode>
         <BrowserRouter basename="/admin">
-            <AdminApp />
+            <RouteErrorBoundary><AdminApp /></RouteErrorBoundary>
         </BrowserRouter>
     </StrictMode>
 );

@@ -1,3 +1,4 @@
+import { RouteErrorBoundary } from "@/components/PageErrorBoundary";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { BarChart3, BookOpen, ClipboardList, Download, KeyRound, LayoutDashboard, LogOut, PenLine, School } from "lucide-react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
@@ -78,7 +79,7 @@ function TeacherWorkspace({
                     </div>
                 }
             >
-                <Suspense fallback={<RouteLoading />}><Routes>
+                <RouteErrorBoundary><Suspense fallback={<RouteLoading />}><Routes>
                         <Route index element={<Dashboard />} />
                         <Route path="class" element={<ClassManagement />} />
                         <Route path="class/:classId/students" element={<StudentManagement />} />
@@ -89,7 +90,7 @@ function TeacherWorkspace({
                         <Route path="grading/:submissionId" element={<GradingDetail />} />
                         <Route path="export" element={<GradeExport />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes></Suspense>
+                    </Routes></Suspense></RouteErrorBoundary>
             </WorkspaceShell>
             <PasswordChangeDialog
                 open={passwordOpen}

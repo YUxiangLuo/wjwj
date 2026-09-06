@@ -1,3 +1,5 @@
+import { RequestError } from "@/components/RequestError";
+import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useEffect, useState } from "react";
 import { AlertCircle, ArrowLeft, Calendar, CheckCircle2, FileText, Loader2, User } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
@@ -23,21 +25,16 @@ const statusConfig: Record<SubmissionDetail["status"], { label: string; intent: 
 export function SubmissionDetailPage() {
     const { taskId } = useParams();
     const [detail, setDetail] = useState<SubmissionDetail | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const { loading, error, run, cancel } = useAsyncLoad("实验结果加载失败");
+    const numericTaskId = Number(taskId);
+    const load = () => run(async () => requireApiData(await submissionsApi.getByTask(numericTaskId), "实验结果加载失败"), setDetail);
 
     useEffect(() => {
-        const numericTaskId = Number(taskId);
-        if (!Number.isInteger(numericTaskId) || numericTaskId <= 0) {
-            setError("无效的任务");
-            setLoading(false);
-            return;
-        }
-        void submissionsApi.getByTask(numericTaskId).then((response) => {
-            if (response.success && response.data) setDetail(response.data);
-            else setError(response.error?.message ?? "未找到提交记录");
-        }).finally(() => setLoading(false));
-    }, [taskId]);
+        if (Number.isInteger(numericTaskId) && numericTaskId > 0) void load();
+        return cancel;
+    }, [numericTaskId, cancel]);
+    if (!Number.isInteger(numericTaskId) || numericTaskId <= 0) return <p>无效的任务</p>;
+    if (error) return <RequestError message={error} onRetry={() => void load()} />;
 
     if (loading) return <LoadingStatus className="py-24" iconClassName="h-8 w-8" label="正在加载实验结果" />;
     if (!detail) return <div className="mx-auto max-w-xl rounded-surface border border-border bg-card p-8 text-center text-muted-foreground">{error ?? "未找到提交记录"}</div>;

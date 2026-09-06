@@ -1,3 +1,5 @@
+import { RequestError } from "@/components/RequestError";
+import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AlertCircle, ArrowLeft, BarChart3, CheckCircle2, ChevronRight, Clock, FileText, Home, Play, RefreshCw, Ruler } from "lucide-react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
@@ -56,8 +58,7 @@ export function ExperimentLayout() {
     const [experiment, setExperiment] = useState<ExperimentData | null>(null);
     const [taskName, setTaskName] = useState("");
     const [deadline, setDeadline] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [notFound, setNotFound] = useState(false);
+    const { loading, error: loadError, run, cancel } = useAsyncLoad("实验加载失败，请重试");
     const [redirect, setRedirect] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
@@ -66,20 +67,24 @@ export function ExperimentLayout() {
     const [reopenStage, setReopenStage] = useState<number | null>(null);
     const [inspectStage, setInspectStage] = useState<number | null>(null);
 
+    const loadExperiment = useCallback(() => run(async () => {
+        const [experimentResponse, taskResponse] = await Promise.all([experimentApi.get(numericTaskId), tasksApi.get(numericTaskId)]);
+        return {
+            experiment: requireApiData(experimentResponse, "实验加载失败，请重试"),
+            task: requireApiData(taskResponse, "任务加载失败，请重试"),
+        };
+    }, ({ experiment: loaded, task }) => {
+        setExperiment(loaded);
+        setTaskName(task.name);
+        setDeadline(task.deadline);
+        setRedirect(getExperimentRouteRedirect({ taskId: numericTaskId, publishedAt: task.publishedAt, deadline: task.deadline, status: task.status }));
+        setVersionConflict(false);
+        setSaveError(null);
+    }), [numericTaskId, run]);
     useEffect(() => {
-        if (!Number.isInteger(numericTaskId) || numericTaskId <= 0) { setNotFound(true); setLoading(false); return; }
-        void Promise.all([experimentApi.get(numericTaskId), tasksApi.get(numericTaskId)]).then(([experimentResponse, taskResponse]) => {
-            if (!taskResponse.success || !taskResponse.data) {
-                setNotFound(true);
-                return;
-            }
-            setTaskName(taskResponse.data.name);
-            setDeadline(taskResponse.data.deadline);
-            setRedirect(getExperimentRouteRedirect({ taskId: numericTaskId, publishedAt: taskResponse.data.publishedAt, deadline: taskResponse.data.deadline, status: taskResponse.data.status }));
-            if (experimentResponse.success && experimentResponse.data) setExperiment(experimentResponse.data);
-            else setNotFound(true);
-        }).finally(() => setLoading(false));
-    }, [numericTaskId]);
+        if (Number.isInteger(numericTaskId) && numericTaskId > 0) void loadExperiment();
+        return cancel;
+    }, [numericTaskId, loadExperiment, cancel]);
 
     const completeStage = useCallback(async (stage: number, data: Record<string, unknown>) => {
         if (!experiment) return false;
@@ -156,9 +161,11 @@ export function ExperimentLayout() {
         if (heading instanceof HTMLElement) heading.focus?.();
     }, [currentStage, experiment]);
 
+    if (!Number.isInteger(numericTaskId) || numericTaskId <= 0) return <Navigate to="/" replace />;
+    if (loadError) return <RequestError message={loadError} onRetry={() => void loadExperiment()} />;
     if (loading) return <LoadingStatus className="py-24" iconClassName="h-10 w-10" label="正在加载实验进度" />;
     if (redirect) return <Navigate to={redirect} replace />;
-    if (notFound || !experiment) return <Navigate to="/" replace />;
+    if (!experiment) return <Navigate to="/" replace />;
     const completed = [experiment.stage1CompletedAt, experiment.stage2CompletedAt, experiment.stage3CompletedAt, experiment.stage4CompletedAt];
     const renderStage = () => {
         if (currentStage === 1) return <QuestionnaireDesign />;
