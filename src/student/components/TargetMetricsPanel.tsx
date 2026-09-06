@@ -1,5 +1,6 @@
 import type { TargetAnalysisMetrics } from "@/domain/experiment/analysis-types";
 import { METHOD_META, type MethodKey } from "../pages/stages/analysis-utils";
+import { formatStatistic } from "@/utils/statistic-format";
 
 function formatMaybe(value: number | null, format: (value: number) => string) {
     return value === null ? "—" : format(value);
@@ -18,10 +19,10 @@ export function TargetMetricsPanel({
     const kind = target.contract.contract.target.kind;
     const formatEstimate = (value: number | null) => value === null
         ? "—"
-        : kind === "proportion" ? `${(value * 100).toFixed(2)}%` : value.toFixed(4);
+        : kind === "proportion" ? `${formatStatistic(value * 100, 2)}%` : formatStatistic(value);
     const formatMargin = (value: number | null) => value === null
         ? "—"
-        : kind === "proportion" ? `±${(value * 100).toFixed(2)} 个百分点` : `±${value.toFixed(4)}`;
+        : kind === "proportion" ? `±${formatStatistic(value * 100, 2)} 个百分点` : `±${formatStatistic(value)}`;
     const { contract } = target.contract;
 
     return (
@@ -65,7 +66,7 @@ export function TargetMetricsPanel({
                                 <tr key={method} data-testid={`student-target-method-${method}`}>
                                     <th className="py-2.5 font-medium text-foreground">{METHOD_META[method].label}</th>
                                     <td className="py-2.5 font-mono">{formatEstimate(metrics.estimate)}</td>
-                                    <td className="py-2.5 font-mono">{formatMaybe(metrics.standardError, (value) => value.toFixed(4))}</td>
+                                    <td className="py-2.5 font-mono">{formatMaybe(metrics.standardError, formatStatistic)}</td>
                                     <td className="py-2.5 font-mono">{formatMargin(metrics.marginOfError)}</td>
                                     <td className="py-2.5 font-mono">
                                         {formatMaybe(metrics.effectiveSampleSize, (value) => value.toFixed(0))}

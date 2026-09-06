@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
     validateParsedExcelUpload,
+    validateMappedPopulationData,
     validateIdentifierFieldValues,
     validateNumericFieldValues,
     validateTopicPublishReadiness,
@@ -13,6 +14,23 @@ import {
 } from "./validation";
 import { validateRecommendQuestionsPayload } from "../../lib/validate-question";
 import { buildDefaultSamplingPolicy } from "../../lib/sampling-policy";
+
+test("constant mean targets fail early while constant proportions remain valid", () => {
+    for (const value of [0, 100]) {
+        const rows = [{ id: "a", value }, { id: "b", value }];
+        const parsed = { rows, columns: ["id", "value"], rowCount: 2, colCount: 2 };
+        expect(validateMappedPopulationData(parsed, {
+            identifier: "id", numeric: ["value"], analysisTarget: { kind: "mean", field: "value" },
+        })).toContain("方差为0");
+        expect(validateMappedPopulationData(parsed, {
+            identifier: "id", others: ["value"], analysisTarget: { kind: "proportion", field: "value", value: String(value) },
+        })).toBeNull();
+        rows[1]!.value = value + 1;
+        expect(validateMappedPopulationData(parsed, {
+            identifier: "id", numeric: ["value"], analysisTarget: { kind: "mean", field: "value" },
+        })).toBeNull();
+    }
+});
 
 describe("topic validation helpers", () => {
     test("validateParsedExcelUpload rejects duplicate columns, blank headers, and blank rows", () => {

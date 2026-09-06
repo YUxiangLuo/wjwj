@@ -1,4 +1,6 @@
 import type { ChartRow, ChartSeries } from "./analysis-utils";
+import { chartScale } from "./chart-scale";
+import { formatStatistic } from "@/utils/statistic-format";
 
 export function sanitizeFileName(input: string) {
     return input.replace(/[\\/:*?"<>|\s]+/g, "_").replace(/_+/g, "_");
@@ -56,13 +58,14 @@ export function buildChartSvg(params: ChartSvgParams, theme: ChartSvgTheme) {
     if (rows.length === 0 || series.length === 0) return null;
 
     const values = rows.flatMap((row) => series.map((s) => row.values[s.key] ?? 0));
-    const maxValue = Math.max(...values, 1);
+    const scale = chartScale(values);
 
     const width = 1080;
     const height = 620;
     const margin = { top: 90, right: 60, bottom: 150, left: 90 };
     const plotWidth = width - margin.left - margin.right;
     const plotHeight = height - margin.top - margin.bottom;
+    const zeroY = margin.top + scale.max / scale.range * plotHeight;
     const groupWidth = plotWidth / rows.length;
     const barGroupWidth = groupWidth * 0.72;
     const barWidth = barGroupWidth / Math.max(series.length, 1);
@@ -70,7 +73,7 @@ export function buildChartSvg(params: ChartSvgParams, theme: ChartSvgTheme) {
     const gridLines = Array.from({ length: 6 }, (_, i) => {
         const ratio = i / 5;
         const y = margin.top + plotHeight * (1 - ratio);
-        const value = maxValue * ratio;
+        const value = scale.min + scale.range * ratio;
         return { y, value };
     });
 
@@ -90,13 +93,13 @@ export function buildChartSvg(params: ChartSvgParams, theme: ChartSvgTheme) {
             const rowBars = series
                 .map((s, seriesIndex) => {
                     const value = row.values[s.key] ?? 0;
-                    const barHeight = maxValue > 0 ? (value / maxValue) * plotHeight : 0;
+                    const barHeight = Math.abs(value) / scale.range * plotHeight;
                     const x = groupStart + seriesIndex * barWidth;
-                    const y = margin.top + plotHeight - barHeight;
-                    const labelY = y - 8;
+                    const y = value >= 0 ? zeroY - barHeight : zeroY;
+                    const labelY = value >= 0 ? y - 8 : y + barHeight + 14;
                     return `
           <rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${Math.max(barWidth - 4, 1).toFixed(2)}" height="${barHeight.toFixed(2)}" rx="4" fill="${s.color}" />
-          <text x="${(x + (barWidth - 4) / 2).toFixed(2)}" y="${labelY.toFixed(2)}" text-anchor="middle" fill="${escapeXml(theme.mutedForeground)}" font-size="11">${value.toFixed(2)}${escapeXml(unit)}</text>
+          <text x="${(x + (barWidth - 4) / 2).toFixed(2)}" y="${labelY.toFixed(2)}" text-anchor="middle" fill="${escapeXml(theme.mutedForeground)}" font-size="11">${formatStatistic(value, 2)}${escapeXml(unit)}</text>
         `;
                 })
                 .join("\n");
@@ -112,7 +115,7 @@ export function buildChartSvg(params: ChartSvgParams, theme: ChartSvgTheme) {
     const grid = gridLines
         .map((line) => `
       <line x1="${margin.left}" y1="${line.y.toFixed(2)}" x2="${(margin.left + plotWidth).toFixed(2)}" y2="${line.y.toFixed(2)}" stroke="${escapeXml(theme.border)}" stroke-width="1" />
-      <text x="${margin.left - 12}" y="${(line.y + 4).toFixed(2)}" text-anchor="end" fill="${escapeXml(theme.mutedForeground)}" font-size="11">${line.value.toFixed(1)}${escapeXml(unit)}</text>
+      <text x="${margin.left - 12}" y="${(line.y + 4).toFixed(2)}" text-anchor="end" fill="${escapeXml(theme.mutedForeground)}" font-size="11">${formatStatistic(line.value, 1)}${escapeXml(unit)}</text>
     `)
         .join("\n");
 
@@ -122,7 +125,7 @@ export function buildChartSvg(params: ChartSvgParams, theme: ChartSvgTheme) {
   <text x="${margin.left}" y="30" fill="${escapeXml(theme.foreground)}" font-size="22" font-weight="700">${escapeXml(title)}</text>
   ${legend}
   ${grid}
-  <line x1="${margin.left}" y1="${margin.top + plotHeight}" x2="${margin.left + plotWidth}" y2="${margin.top + plotHeight}" stroke="${escapeXml(theme.mutedForeground)}" stroke-width="1.2" />
+  <line x1="${margin.left}" y1="${zeroY}" x2="${margin.left + plotWidth}" y2="${zeroY}" stroke="${escapeXml(theme.mutedForeground)}" stroke-width="1.2" />
   <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${margin.top + plotHeight}" stroke="${escapeXml(theme.mutedForeground)}" stroke-width="1.2" />
   ${bars}
 </svg>`.trim();

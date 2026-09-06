@@ -11,8 +11,10 @@ beforeAll(() => {
     restoreDom = installDomGlobals("http://localhost/teacher/class/1/students").restore;
 });
 
-afterEach(() => {
+afterEach(async () => {
     cleanup();
+    // Let React's queued scheduler callback finish before afterAll removes window.
+    await new Promise((resolve) => setTimeout(resolve, 0));
     globalThis.fetch = originalFetch;
 });
 

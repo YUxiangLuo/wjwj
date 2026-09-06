@@ -247,7 +247,7 @@ export function validateMappedPopulationData(
     parsed: ParsedExcelFile,
     fieldMapping: TopicFieldMappingInput,
 ) {
-    return validateParsedExcelUpload(parsed)
+    const validationError = validateParsedExcelUpload(parsed)
         ?? validateTopicFieldMappingColumns(fieldMapping, parsed.columns)
         ?? validateIdentifierFieldValues(parsed.rows, fieldMapping.identifier ?? "")
         ?? validateStratifiedValueCardinality(parsed.rows, fieldMapping.stratified ?? [])
@@ -255,6 +255,15 @@ export function validateMappedPopulationData(
         ?? (fieldMapping.studyContract !== undefined
             ? validateStudyContract(fieldMapping, parsed.rows)
             : validateAnalysisTarget(fieldMapping, parsed.rows));
+    if (validationError) return validationError;
+    const target = resolveAnalysisTarget(fieldMapping)?.target;
+    if (target?.kind === "mean" && parsed.rows.length > 0) {
+        const first = Number(parsed.rows[0]?.[target.field]);
+        if (parsed.rows.every(row => Number(row[target.field]) === first)) {
+            return `均值研究目标 ${target.field} 的总体值全部相同（方差为0），当前样本量规划要求正方差，请调整研究目标或总体数据`;
+        }
+    }
+    return null;
 }
 
 export function validateTopicAttachmentUpload(input: TopicAttachmentInput, attachmentType: string) {

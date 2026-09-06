@@ -1,3 +1,4 @@
+import { formatStatistic } from "@/utils/statistic-format";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Sigma, Target, Minus, Plus } from "lucide-react";
@@ -23,7 +24,7 @@ export function EnhancedMetricsCard({
 }: EnhancedMetricsCardProps) {
     if (!metrics) return null;
     const isMeanEstimation = estimationType === "mean";
-    const formattedMeanMetricMargin = formatMarginOfError(Number(metrics.marginOfError.toFixed(4)), "mean");
+    const formattedMeanMetricMargin = formatMarginOfError(metrics.marginOfError, "mean");
 
     // 格式化百分比
     const formatPercent = (value: number) => (value * 100).toFixed(2) + "%";
@@ -75,7 +76,7 @@ export function EnhancedMetricsCard({
                             <span className="text-meta text-primary">标准误差 (SE)</span>
                         </div>
                         <div className="text-subheading font-bold text-primary">
-                            {isMeanEstimation ? metrics.standardError.toFixed(4) : formatPercent(metrics.standardError)}
+                            {isMeanEstimation ? formatStatistic(metrics.standardError) : formatPercent(metrics.standardError)}
                         </div>
                         <div className="text-meta text-primary mt-1">
                             {isMeanEstimation ? "SE(ȳ) = √[σ²/n × (N−n)/(N−1)]" : "SE = √[p(1−p)/n × (N−n)/(N−1)]"}
@@ -135,7 +136,7 @@ export function EnhancedMetricsCard({
                         </div>
                         <div className="space-y-2 text-label text-primary">
                             <div className="rounded-surface bg-primary-muted px-3 py-2">
-                                <span className="font-mono">ȳ ± Z×SE = ȳ ± {metrics.marginOfError.toFixed(4)}</span>
+                                <span className="font-mono">ȳ ± Z×SE = ȳ ± {formatStatistic(metrics.marginOfError)}</span>
                             </div>
                             <p className="text-meta leading-relaxed text-primary">
                                 这里展示的是当前样本量下的理论区间半宽。正式区间应以实际样本均值 ȳ 为中心，而不是预先假定一个真值中心。

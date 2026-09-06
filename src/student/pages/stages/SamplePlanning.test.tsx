@@ -166,6 +166,27 @@ afterEach(async () => {
     restoreDom = null;
 });
 
+test("zero target variance does not open a wizard with invented variance", async () => {
+    mockExperimentApi.getStats.mockResolvedValueOnce({ success: true, data: {
+        populationNumericStats: { 每周学习时长: { mean: 0, variance: 0, stdDev: 0, count: 200 } },
+    } });
+    const view = render(<SamplePlanning onPrev={() => {}} />);
+    await waitFor(() => expect(view.getByRole("alert").textContent).toContain("方差为0"));
+    expect(lastPlanningProps).toBeNull();
+    expect(view.queryByTestId("student-sample-plan-next")).toBeNull();
+});
+
+test("failed target variance can be retried without silently using 100", async () => {
+    mockExperimentApi.getStats.mockRejectedValueOnce(new Error("offline"));
+    const view = render(<SamplePlanning onPrev={() => {}} />);
+    await waitFor(() => expect(view.getByRole("alert").textContent).toContain("方差加载失败"));
+    expect(lastPlanningProps).toBeNull();
+    fireEvent.click(view.getByText("重新加载研究目标方差"));
+    await waitFor(() => expect(lastPlanningProps?.initialPopulationVariance).toBeGreaterThan(0));
+    expect(lastPlanningProps?.initialPopulationVariance).not.toBe(100);
+    expect(view.queryByRole("alert")).toBeNull();
+});
+
 test("mean-locked first visit waits for target variance then opens overlay with ME=2", async () => {
     let releaseStats: (() => void) | undefined;
     mockExperimentApi.getStats.mockImplementationOnce(() => new Promise((resolve) => {

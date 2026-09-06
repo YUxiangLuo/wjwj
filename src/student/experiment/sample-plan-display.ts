@@ -93,12 +93,13 @@ export function formatMarginOfError(
     options?: { meanSuffix?: string },
 ): string {
     if (normalizeSamplePlanEstimationType(estimationType) === "mean") {
-        return `±${marginOfError}${options?.meanSuffix ?? ""}`;
+        return `±${Number(marginOfError.toPrecision(6))}${options?.meanSuffix ?? ""}`;
     }
     return `±${marginOfError}%`;
 }
 
 /** 样本规划参数统一使用最多一位小数，避免把浮点计算尾差直接展示给学生。 */
 export function formatSamplePlanNumber(value: number): string {
+    if (value !== 0 && Math.abs(value) < 0.1) return Number(value.toPrecision(4)).toString();
     return Number(value.toFixed(1)).toString();
 }

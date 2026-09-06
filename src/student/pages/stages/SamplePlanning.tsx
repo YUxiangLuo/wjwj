@@ -59,9 +59,9 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
         initialData?.populationVariance ?? null,
     );
     const needsTargetVariance = lockedEstimationType === "mean";
-    const [targetVarianceReady, setTargetVarianceReady] = useState(
-        !needsTargetVariance || (typeof experiment?.samplePlan?.populationVariance === "number" && experiment.samplePlan.populationVariance > 0),
-    );
+    const [targetVarianceReady, setTargetVarianceReady] = useState(!needsTargetVariance);
+    const [targetVarianceError, setTargetVarianceError] = useState("");
+    const [varianceReloadKey, setVarianceReloadKey] = useState(0);
 
     useEffect(() => {
         if (lockedEstimationType !== "mean" || !experiment?.taskId || !experiment.analysisTarget) {
@@ -70,22 +70,30 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
         }
         const field = experiment.analysisTarget.target.field;
         let cancelled = false;
+        setTargetVarianceReady(false);
+        setTargetVarianceError("");
         void experimentApi.getStats(experiment.taskId).then((res) => {
             if (cancelled) return;
-            const stat = res.data?.populationNumericStats?.[field];
+            const stat = res.success ? res.data?.populationNumericStats?.[field] : undefined;
             const variance = stat
                 ? finitePopulationS2ToSigma2(stat.variance, stat.count)
                 : null;
             if (variance != null && variance > 0) {
                 setTargetVariance(variance);
+            } else {
+                setTargetVarianceError(variance === 0
+                    ? "研究目标的总体值全部相同（方差为0）。当前均值样本量规划要求正方差，请联系教师调整研究目标或总体数据。"
+                    : "无法取得研究目标的有效总体方差，请重试；不会使用默认方差代替实际数据。");
             }
-        }).catch(() => {}).finally(() => {
+        }).catch(() => {
+            if (!cancelled) setTargetVarianceError("研究目标方差加载失败，请重试；不会使用默认方差代替实际数据。");
+        }).finally(() => {
             if (!cancelled) setTargetVarianceReady(true);
         });
         return () => {
             cancelled = true;
         };
-    }, [experiment?.analysisTarget, experiment?.taskId, lockedEstimationType]);
+    }, [experiment?.analysisTarget, experiment?.taskId, lockedEstimationType, varianceReloadKey]);
 
     const [confirmNextSaving, setConfirmNextSaving] = useState(false);
     // 进入抽样执行前的启动动画：点击“确认进入”后先播放，动画结束再保存。
@@ -172,7 +180,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
         && displayData.finalSampleSize <= maxSampleSize;
 
     const saveStage = useCallback(async () => {
-        if (!displayData || experiment == null) {
+        if (!displayData || experiment == null || !targetVarianceReady || targetVarianceError) {
             toast.error("实验数据未就绪，请稍后重试");
             return;
         }
@@ -187,7 +195,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
         } finally {
             setConfirmNextSaving(false);
         }
-    }, [clearDraft, completeStage, displayData, experiment]);
+    }, [clearDraft, completeStage, displayData, experiment, targetVarianceReady, targetVarianceError]);
 
     const handleConfirmNext = () => {
         if (!displayData || experiment == null) {
@@ -206,6 +214,17 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
         setLaunching(false);
         void saveStage();
     }, [saveStage]);
+
+    if (targetVarianceError) return (
+        <div className="space-y-4" data-testid="student-stage-sample-plan">
+            <DraftSaveStatus status={clearDraft.status} onRetry={clearDraft.retry} />
+            <div role="alert" className="space-y-3 rounded-surface border border-warning-border bg-warning-muted p-4 text-body text-warning">
+                <p>{targetVarianceError}</p>
+                <Button type="button" variant="outline" onClick={() => setVarianceReloadKey(key => key + 1)}>重新加载研究目标方差</Button>
+            </div>
+            <Button type="button" variant="outline" onClick={onPrev}>上一阶段</Button>
+        </div>
+    );
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-sample-plan">
@@ -366,7 +385,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                     <Button
                         type="button"
                         onClick={handleConfirmNext}
-                        disabled={!isValidFinalSize || confirmNextSaving || launching}
+                        disabled={!targetVarianceReady || !isValidFinalSize || confirmNextSaving || launching}
                         data-testid="student-sample-plan-next"
                         className="bg-primary text-primary-foreground hover:bg-primary-hover disabled:border-border disabled:bg-muted disabled:text-muted-foreground"
                     >

@@ -1,3 +1,4 @@
+import { formatStatistic } from "@/utils/statistic-format";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -184,19 +185,19 @@ export function DecisionPhase({
 
     const currentMarginLabel = getMarginOfErrorLabel(params.estimationType);
     const currentMarginValue = formatMarginOfError(params.marginOfError, params.estimationType);
-    const formattedMeanMetricMargin = formatMarginOfError(Number(metrics?.marginOfError.toFixed(4) ?? 0), "mean");
+    const formattedMeanMetricMargin = formatMarginOfError(metrics?.marginOfError ?? 0, "mean");
 
     const metricCards = useMemo(() => {
         if (!metrics) return [];
         if (isMeanEstimation) {
             return [
-                { label: "SE", value: metrics.standardError.toFixed(4) },
+                { label: "SE", value: formatStatistic(metrics.standardError) },
                 { label: "预期 ME", value: formattedMeanMetricMargin },
                 { label: "预期完成", value: Math.ceil(metrics.expectedCompleted).toLocaleString() },
             ];
         }
         return [
-            { label: "SE", value: metrics.standardError.toFixed(4) },
+            { label: "SE", value: formatStatistic(metrics.standardError) },
             { label: "预期半宽", value: `±${(metrics.marginOfError * 100).toFixed(2)}%` },
             { label: "预期完成", value: Math.ceil(metrics.expectedCompleted).toLocaleString() },
         ];

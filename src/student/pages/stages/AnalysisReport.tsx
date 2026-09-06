@@ -30,6 +30,8 @@ import {
 import { downloadChartAsSvg, sanitizeFileName } from "./chart-svg-export";
 import { SamplePlanDecisionPanel, SamplingMethodParamsPanel } from "./analysis-params-panels";
 import { TargetMetricsPanel } from "../../components/TargetMetricsPanel";
+import { chartScale } from "./chart-scale";
+import { formatStatistic } from "@/utils/statistic-format";
 import { notifyAuthExpiredFromResponse } from "@/lib/auth-expired";
 import {
     readExperimentDraft,
@@ -61,9 +63,9 @@ function ChartBars({
     emptyMessage: string;
     heightClass?: string;
 }) {
-    const maxValue = useMemo(() => {
+    const scale = useMemo(() => {
         const values = rows.flatMap((row) => series.map((s) => row.values[s.key] ?? 0));
-        return Math.max(...values, 1);
+        return chartScale(values);
     }, [rows, series]);
 
     if (rows.length === 0) {
@@ -88,21 +90,24 @@ function ChartBars({
                         <div className="space-y-2">
                             {series.map((s) => {
                                 const value = row.values[s.key] ?? 0;
-                                const widthPercent = maxValue > 0 ? (value / maxValue) * 100 : 0;
+                                const widthPercent = Math.abs(value) / scale.range * 100;
+                                const leftPercent = (Math.min(value, 0) - scale.min) / scale.range * 100;
                                 return (
                                     <div key={`${row.label}-${s.key}`} className="flex items-center gap-2">
                                         <span className="w-20 text-meta text-muted-foreground shrink-0">{s.label}</span>
-                                        <div className="h-3 flex-1 rounded-control bg-muted overflow-hidden">
+                                        <div className="relative h-3 flex-1 rounded-control bg-muted overflow-hidden">
                                             <div
-                                                className="h-full rounded-control"
+                                                className="absolute h-full rounded-control"
                                                 style={{
+                                                    left: `${leftPercent}%`,
                                                     width: `${Math.max(0, Math.min(100, widthPercent))}%`,
                                                     backgroundColor: s.color,
                                                 }}
                                             />
+                                            <span className="absolute inset-y-0 border-l border-muted-foreground" style={{ left: `${-scale.min / scale.range * 100}%` }} />
                                         </div>
                                         <span className="w-20 text-right text-meta text-muted-foreground font-mono">
-                                            {value.toFixed(2)}{unit}
+                                            {formatStatistic(value, 2)}{unit}
                                         </span>
                                     </div>
                                 );
