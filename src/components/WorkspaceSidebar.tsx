@@ -31,7 +31,7 @@ export function WorkspaceSidebar({
                     {title}
                 </div>
             </div>
-            <nav aria-label={`${title}主导航`} className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain p-3">
+            <nav aria-label={`${title}主导航`} className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-3">
                 {items.map((item) => {
                     const Icon = item.icon;
                     return (
@@ -39,10 +39,10 @@ export function WorkspaceSidebar({
                             key={item.path}
                             to={item.path}
                             end={item.path === "/"}
-                            className={({ isActive }) => `flex min-h-10 items-center gap-3 rounded-control px-3 py-2 text-label font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-navigation-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-navigation ${isActive ? "bg-navigation-active text-navigation-active-foreground" : "text-navigation-muted hover:bg-navigation-active hover:text-navigation-active-foreground"}`}
+                            className="workspace-nav-link"
                         >
-                            <Icon className="h-4 w-4" />
-                            {item.label}
+                            <Icon className="pointer-events-none h-4 w-4 shrink-0" />
+                            <span className="pointer-events-none">{item.label}</span>
                         </NavLink>
                     );
                 })}

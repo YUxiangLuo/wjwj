@@ -84,6 +84,8 @@
     --color-navigation: var(--navigation);
     --color-navigation-foreground: var(--navigation-foreground);
     --color-navigation-muted: var(--navigation-muted);
+    --color-navigation-hover: var(--navigation-hover);
+    --color-navigation-hover-foreground: var(--navigation-hover-foreground);
     --color-navigation-active: var(--navigation-active);
     --color-navigation-active-foreground: var(--navigation-active-foreground);
     --color-navigation-border: var(--navigation-border);
@@ -205,6 +207,8 @@
     --navigation: #123a63;
     --navigation-foreground: #ffffff;
     --navigation-muted: #c4d2e1;
+    --navigation-hover: #194d7a;
+    --navigation-hover-foreground: #ffffff;
     --navigation-active: #1d5f9e;
     --navigation-active-foreground: #ffffff;
     --navigation-border: #315575;
@@ -301,6 +305,35 @@
 
     :where(:disabled, [aria-disabled="true"], [data-disabled]) {
         cursor: not-allowed;
+    }
+}
+
+@layer components {
+    /* Each row owns its entire rectangle, with no gaps or rounded hit-test
+     * corners. Solid colors switch immediately; no interrupted hover fades. */
+    .workspace-nav-link {
+        @apply relative flex min-h-11 items-center gap-3 border-l-4 border-navigation bg-navigation px-5 py-2.5 text-label font-medium text-navigation-muted outline-none;
+    }
+
+    .workspace-nav-link:not([aria-current="page"]) {
+        @apply hover:border-navigation-hover hover:bg-navigation-hover hover:text-navigation-hover-foreground;
+    }
+
+    .workspace-nav-link,
+    .workspace-nav-link * {
+        transition: none;
+        animation: none;
+    }
+
+    /* Current location remains distinct and stable under both pointer and
+     * keyboard interaction. The border width is reserved in every state. */
+    .workspace-nav-link[aria-current="page"] {
+        @apply border-navigation-active-foreground bg-navigation-active text-navigation-active-foreground;
+    }
+
+    .workspace-nav-link:focus-visible {
+        outline: 2px solid var(--navigation-foreground);
+        outline-offset: -4px;
     }
 }
 
