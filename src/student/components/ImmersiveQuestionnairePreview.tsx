@@ -296,10 +296,10 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     key={`bool-${i}`}
                                     type="button"
                                     onClick={() => setSingleAnswer(qIndex, option)}
-                                    className={`w-full flex items-center gap-4 p-5 rounded-surface border-2 transition-colors text-left ${
+                                    className={`w-full flex items-center gap-4 p-5 rounded-surface border-2 transition-none text-left ${
                                         selected
                                             ? "border-primary bg-primary "
-                                            : "border-border bg-background hover:border-input hover:bg-card hover:bg-muted"
+                                            : "border-border bg-background hover:border-input hover:bg-muted"
                                     }`}
                                 >
                                     <span className={`w-9 h-9 rounded-surface flex items-center justify-center text-label font-bold shrink-0 ${
@@ -338,10 +338,10 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     key={`${question.id}-opt-${i}`}
                                     type="button"
                                     onClick={() => setSingleAnswer(qIndex, option)}
-                                    className={`w-full flex items-center gap-4 p-5 rounded-surface border-2 transition-colors text-left ${
+                                    className={`w-full flex items-center gap-4 p-5 rounded-surface border-2 transition-none text-left ${
                                         selected
                                             ? "border-primary bg-primary "
-                                            : "border-border bg-background hover:border-input hover:bg-card hover:bg-muted"
+                                            : "border-border bg-background hover:border-input hover:bg-muted"
                                     }`}
                                 >
                                     <span className={`w-9 h-9 rounded-surface flex items-center justify-center text-label font-bold shrink-0 ${
@@ -388,12 +388,12 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     type="button"
                                     onClick={() => !disabled && toggleMultipleAnswer(qIndex, question, option)}
                                     disabled={disabled}
-                                    className={`w-full flex items-center gap-4 p-5 rounded-surface border-2 transition-colors text-left ${
+                                    className={`w-full flex items-center gap-4 p-5 rounded-surface border-2 transition-none text-left ${
                                         selected
                                             ? "border-primary bg-primary "
                                             : disabled
                                                 ? "border-input bg-card opacity-50 cursor-not-allowed"
-                                                : "border-border bg-background hover:border-input hover:bg-card hover:bg-muted"
+                                                : "border-border bg-background hover:border-input hover:bg-muted"
                                     }`}
                                 >
                                     <span className={`w-9 h-9 rounded-surface flex items-center justify-center text-label font-bold shrink-0 ${
@@ -439,7 +439,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                         key={val}
                                         type="button"
                                         onClick={() => setScaleAnswer(qIndex, val)}
-                                        className={`min-w-0 flex-1 basis-0 rounded-surface text-body font-bold transition-colors h-12 ${
+                                        className={`min-w-0 flex-1 basis-0 rounded-surface text-body font-bold transition-none h-12 ${
                                             selected
                                                 ? "bg-primary text-primary-foreground  ring-2 ring-primary ring-offset-2 z-10"
                                                 : "bg-background border-2 border-border text-muted-foreground hover:border-primary hover:bg-primary-muted"
@@ -509,7 +509,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                         <button
                             type="button"
                             onClick={requestClose}
-                            className="w-10 h-10 rounded-control flex items-center justify-center text-muted-foreground hover:text-muted-foreground hover:bg-muted transition-colors"
+                            className="w-10 h-10 rounded-control flex items-center justify-center text-muted-foreground hover:text-muted-foreground hover:bg-muted transition-none"
                             aria-label="关闭预览"
                             data-testid="immersive-preview-close"
                         >
@@ -690,7 +690,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                         <button
                             type="button"
                             onClick={goPrev}
-                            className="fixed top-1/2 -translate-y-1/2 left-[calc(50%-21rem)] z-10 w-12 h-12 rounded-control border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted hover:border-input transition-colors"
+                            className="fixed top-1/2 -translate-y-1/2 left-[calc(50%-21rem)] z-10 w-12 h-12 rounded-control border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted hover:border-input transition-none"
                             aria-label="上一题"
                         >
                             <ChevronLeft className="w-5 h-5" />
@@ -708,7 +708,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                             type="button"
                                             onClick={() => jumpToQuestion(i)}
                                             title={`第 ${i + 1} 题`}
-                                            className={`h-1.5 rounded-control transition-colors min-w-[6px] ${
+                                            className={`h-1.5 rounded-control transition-none min-w-[6px] ${
                                                 i === page.index
                                                     ? "bg-primary w-4"
                                                     : isQuestionAnswered(q, answersByIndex[i])
@@ -731,7 +731,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                     <button
                         type="button"
                         onClick={goPrev}
-                        className="fixed top-1/2 -translate-y-1/2 left-[calc(50%-21rem)] z-10 w-12 h-12 rounded-control border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted hover:border-input transition-colors"
+                        className="fixed top-1/2 -translate-y-1/2 left-[calc(50%-21rem)] z-10 w-12 h-12 rounded-control border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted hover:border-input transition-none"
                         aria-label="返回上一题"
                     >
                         <ChevronLeft className="w-5 h-5" />

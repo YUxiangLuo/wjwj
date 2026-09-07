@@ -115,7 +115,7 @@ export function PrecisionPhase({ params, onNext }: Props) {
                                 type="button"
                                 onClick={() => setDemoN(n)}
                                 aria-pressed={demoN === n}
-                                className={`px-3 py-1.5 rounded-surface text-label font-medium transition-colors ${
+                                className={`px-3 py-1.5 rounded-surface text-label font-medium transition-none ${
                                     demoN === n
                                         ? "bg-primary text-primary-foreground "
                                         : "bg-muted text-muted-foreground hover:bg-input"

@@ -207,7 +207,7 @@ export function StudentManagement() {
             </div>
 
             <div className="grid grid-cols-3 gap-4">
-                <Card className="transition-colors hover:border-input">
+                <Card className="transition-none hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">学生总数</p>
@@ -218,7 +218,7 @@ export function StudentManagement() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-colors hover:border-input">
+                <Card className="transition-none hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">正常账号</p>
@@ -229,7 +229,7 @@ export function StudentManagement() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-colors hover:border-input">
+                <Card className="transition-none hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已禁用</p>
@@ -293,7 +293,7 @@ export function StudentManagement() {
                                     </TableCell>
                                 </TableRow>
                             ) : filteredStudents.map((student) => (
-                                <TableRow data-testid={`teacher-student-row-${student.id}`} key={student.id} className="border-border hover:bg-muted transition-colors">
+                                <TableRow data-testid={`teacher-student-row-${student.id}`} key={student.id} className="border-border hover:bg-muted transition-none">
                                     <TableCell className="font-mono text-primary">{student.studentId}</TableCell>
                                     <TableCell className="font-medium text-foreground">{student.name}</TableCell>
                                     <TableCell className="text-muted-foreground">{student.email || "-"}</TableCell>

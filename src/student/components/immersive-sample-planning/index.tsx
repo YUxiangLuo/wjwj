@@ -635,7 +635,7 @@ export function ImmersiveSamplePlanning({
                     <button
                         type="button"
                         onClick={requestClose}
-                        className="w-10 h-10 rounded-control flex items-center justify-center text-muted-foreground hover:text-muted-foreground hover:bg-muted transition-colors"
+                        className="w-10 h-10 rounded-control flex items-center justify-center text-muted-foreground hover:text-muted-foreground hover:bg-muted transition-none"
                         aria-label="关闭"
                         data-testid="immersive-sp-close"
                     >
@@ -672,7 +672,7 @@ export function ImmersiveSamplePlanning({
                     <button
                         type="button"
                         onClick={goPrev}
-                        className="flex fixed top-1/2 -translate-y-1/2 left-4 z-10 w-11 h-11 rounded-control border border-border bg-background items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        className="flex fixed top-1/2 -translate-y-1/2 left-4 z-10 w-11 h-11 rounded-control border border-border bg-background items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-none"
                         aria-label="上一步"
                     >
                         <ChevronLeft className="w-5 h-5" />
@@ -683,7 +683,7 @@ export function ImmersiveSamplePlanning({
                         type="button"
                         onClick={goNext}
                         data-testid="immersive-sp-next"
-                        className="fixed top-1/2 right-4 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-control bg-primary text-primary-foreground transition-colors hover:bg-primary-hover"
+                        className="fixed top-1/2 right-4 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-control bg-primary text-primary-foreground transition-none hover:bg-primary-hover"
                         aria-label="下一步"
                     >
                         <ChevronRight className="w-5 h-5" />

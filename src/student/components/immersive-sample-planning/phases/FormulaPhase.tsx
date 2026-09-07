@@ -69,7 +69,7 @@ export function FormulaPhase({
                                 type="button"
                                 onClick={() => !estimationLocked && onEstimationTypeChange("proportion")}
                                 disabled={estimationLocked && !isProportion}
-                                className={`px-4 py-2 rounded-surface text-label font-medium transition-colors ${
+                                className={`px-4 py-2 rounded-surface text-label font-medium transition-none ${
                                     isProportion
                                         ? "bg-background text-primary "
                                         : "text-muted-foreground hover:text-foreground"
@@ -81,7 +81,7 @@ export function FormulaPhase({
                                 type="button"
                                 onClick={() => !estimationLocked && onEstimationTypeChange("mean")}
                                 disabled={estimationLocked && isProportion}
-                                className={`px-4 py-2 rounded-surface text-label font-medium transition-colors ${
+                                className={`px-4 py-2 rounded-surface text-label font-medium transition-none ${
                                     !isProportion
                                         ? "bg-background text-primary "
                                         : "text-muted-foreground hover:text-foreground"

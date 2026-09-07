@@ -116,7 +116,7 @@ export function TaskProgressDetail() {
                     const cfg = STATUS_CONFIG[key];
                     const count = data.counts[key];
                     return (
-                        <Card key={key} className={`border-border bg-card ${count > 0 ? "hover:border-input" : ""} transition-colors`}>
+                        <Card key={key} className={`border-border bg-card ${count > 0 ? "hover:border-input" : ""} transition-none`}>
                             <CardContent className="p-3 text-center">
                                 <p className="text-meta text-muted-foreground mb-1">{cfg.label}</p>
                                 <p className={`text-section-title font-bold ${count > 0 ? cfg.color : "text-muted-foreground"}`}>{count}</p>
@@ -258,7 +258,7 @@ export function TaskProgressDetail() {
                             {filteredStudents.map((s) => {
                                 const cfg: StatusConfig = STATUS_CONFIG[s.status as StatusKey] ?? STATUS_CONFIG.not_started;
                                 return (
-                                    <TableRow key={s.studentId} className="border-border hover:bg-muted transition-colors">
+                                    <TableRow key={s.studentId} className="border-border hover:bg-muted transition-none">
                                         <TableCell className="font-mono text-foreground text-label">{s.studentId}</TableCell>
                                         <TableCell className="text-foreground">{s.name}</TableCell>
                                         <TableCell>

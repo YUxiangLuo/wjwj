@@ -145,7 +145,7 @@ function TaskCard({ task }: TaskCardProps) {
 
     return (
         <>
-            <Card className="rounded-surface border-border bg-card transition-colors hover:border-input" data-testid={`student-task-card-${task.id}`}>
+            <Card className="rounded-surface border-border bg-card transition-none hover:border-input" data-testid={`student-task-card-${task.id}`}>
                 <CardHeader className="pb-3 text-foreground">
                 <div className="flex justify-between items-start gap-2">
                     <CardTitle className="text-subheading line-clamp-1 text-foreground">{task.name}</CardTitle>
@@ -340,28 +340,28 @@ export function TaskHall() {
                     <button
                         onClick={() => setFilter("all")}
                         data-testid="student-filter-all"
-                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-colors ${filter === "all" ? "bg-muted text-foreground " : "text-muted-foreground hover:text-foreground"}`}
+                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-none ${filter === "all" ? "bg-muted text-foreground " : "text-muted-foreground hover:text-foreground"}`}
                     >
                         全部
                     </button>
                     <button
                         onClick={() => setFilter("in_progress")}
                         data-testid="student-filter-in-progress"
-                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-colors ${filter === "in_progress" ? "bg-muted text-foreground " : "text-muted-foreground hover:text-foreground"}`}
+                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-none ${filter === "in_progress" ? "bg-muted text-foreground " : "text-muted-foreground hover:text-foreground"}`}
                     >
                         进行中
                     </button>
                     <button
                         onClick={() => setFilter("submitted")}
                         data-testid="student-filter-submitted"
-                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-colors ${filter === "submitted" ? "bg-muted text-foreground " : "text-muted-foreground hover:text-foreground"}`}
+                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-none ${filter === "submitted" ? "bg-muted text-foreground " : "text-muted-foreground hover:text-foreground"}`}
                     >
                         已提交
                     </button>
                     <button
                         onClick={() => setFilter("graded")}
                         data-testid="student-filter-graded"
-                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-colors ${filter === "graded" ? "bg-muted text-foreground " : "text-muted-foreground hover:text-foreground"}`}
+                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-none ${filter === "graded" ? "bg-muted text-foreground " : "text-muted-foreground hover:text-foreground"}`}
                     >
                         已批改
                     </button>
@@ -419,11 +419,11 @@ export function TaskHall() {
                             {announcements.map((announcement) => (
                                 <button
                                     key={announcement.id}
-                                    className={`w-full text-left p-4 rounded-surface border transition-colors duration-200 group ${selectedAnnouncement?.id === announcement.id ? "bg-primary-muted border-primary-border ring-1 ring-ring" : "bg-background border-border hover:bg-muted hover:border-input"}`}
+                                    className={`w-full text-left p-4 rounded-surface border transition-none group ${selectedAnnouncement?.id === announcement.id ? "bg-primary-muted border-primary-border ring-1 ring-ring" : "bg-background border-border hover:bg-muted hover:border-input"}`}
                                     onClick={() => handleOpenAnnouncement(announcement)}
                                 >
                                     <div className="flex justify-between items-start gap-2">
-                                        <div className="text-label font-medium line-clamp-1 text-foreground group-hover:text-primary transition-colors">
+                                        <div className="text-label font-medium line-clamp-1 text-foreground group-hover:text-primary transition-none">
                                             {announcement.title}
                                         </div>
                                     </div>

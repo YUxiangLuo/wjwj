@@ -71,7 +71,7 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
                     type="button"
                     aria-label="关闭全屏预览"
                     onClick={onClose}
-                    className="p-2 rounded-control hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                    className="p-2 rounded-control hover:bg-muted text-muted-foreground hover:text-foreground transition-none"
                 >
                     <X className="w-5 h-5" />
                 </button>
@@ -87,7 +87,7 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
                             <button
                                 key={s.key}
                                 onClick={() => setActiveSection(s.key)}
-                                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-surface text-label transition-colors ${
+                                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-surface text-label transition-none ${
                                     isActive
                                         ? "bg-primary-muted text-primary border border-primary-border"
                                         : "text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent"
@@ -258,7 +258,7 @@ function OverviewSection({
                 onClick={() => {
                     // scroll hint—user can click "分析报告" in sidebar
                 }}
-                className="flex items-center gap-2 text-label text-muted-foreground hover:text-muted-foreground transition-colors mx-auto"
+                className="flex items-center gap-2 text-label text-muted-foreground hover:text-muted-foreground transition-none mx-auto"
             >
                 <ChevronDown className="w-4 h-4 animate-bounce" />
                 使用左侧导航查看各部分详情

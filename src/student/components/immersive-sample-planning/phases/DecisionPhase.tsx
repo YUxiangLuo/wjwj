@@ -457,7 +457,7 @@ export function DecisionPhase({
                                     setActiveAdvancedTab(key);
                                 }}
                                 className={cn(
-                                    "rounded-surface border px-2.5 py-2 text-meta font-medium transition-colors",
+                                    "rounded-surface border px-2.5 py-2 text-meta font-medium transition-none",
                                     isDisabled && "opacity-45 cursor-not-allowed",
                                     isActiveSource
                                         ? "ring-2 ring-primary border-primary bg-primary text-primary-foreground "

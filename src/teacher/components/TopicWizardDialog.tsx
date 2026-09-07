@@ -312,7 +312,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     </div>
                                 </div>
                                 <div
-                                    className={`border-2 border-dashed border-input bg-background rounded-surface p-8 text-center transition-colors ${isPublishedTopic ? "opacity-80 pointer-events-none" : "hover:border-primary-border"}`}
+                                    className={`border-2 border-dashed border-input bg-background rounded-surface p-8 text-center transition-none ${isPublishedTopic ? "opacity-80 pointer-events-none" : "hover:border-primary-border"}`}
                                 >
                                     <Upload className="w-10 h-10 mx-auto text-muted-foreground mb-4" />
                                     <p className="text-label text-muted-foreground mb-2">
@@ -677,7 +677,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         const badge = questionTypeBadgeColors[qt] ?? "bg-muted text-muted-foreground border-border";
                                         const optionsArr = q.options ?? [];
                                         return (
-                                            <div key={q.id} className="border border-border bg-background rounded-surface p-4 relative group hover:border-input transition-colors">
+                                            <div key={q.id} className="border border-border bg-background rounded-surface p-4 relative group hover:border-input transition-none">
                                                 <div className="flex items-start gap-3">
                                                     <div className="flex flex-col gap-0.5 pt-0.5">
                                                         <Button

@@ -637,7 +637,7 @@ export function ImmersiveSamplingAnimation({
                             ref={closeButtonRef}
                             type="button"
                             onClick={onClose}
-                            className="w-10 h-10 rounded-control flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                            className="w-10 h-10 rounded-control flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-none"
                             aria-label="关闭抽样动画"
                         >
                             <X className="w-5 h-5" />

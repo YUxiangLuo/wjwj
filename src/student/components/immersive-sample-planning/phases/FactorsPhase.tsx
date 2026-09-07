@@ -186,7 +186,7 @@ function ErrorToleranceContent({ params }: { params: SampleParams }) {
                                 type="button"
                                 onClick={() => setDemoError(e)}
                                 aria-pressed={demoError === e}
-                                className={`px-3 py-1.5 rounded-surface text-label font-medium transition-colors ${
+                                className={`px-3 py-1.5 rounded-surface text-label font-medium transition-none ${
                                     demoError === e
                                         ? "bg-info text-info-foreground "
                                         : "bg-muted text-muted-foreground hover:bg-input"
@@ -434,7 +434,7 @@ function DesignEffectContent({ params }: { params: SampleParams }) {
                                 type="button"
                                 onClick={() => setDemoDeff(deff)}
                                 aria-pressed={demoDeff === deff}
-                                className={`px-3 py-1.5 rounded-surface text-label font-medium transition-colors ${
+                                className={`px-3 py-1.5 rounded-surface text-label font-medium transition-none ${
                                     demoDeff === deff
                                         ? "bg-info text-info-foreground "
                                         : "bg-muted text-muted-foreground hover:bg-input"
@@ -517,7 +517,7 @@ function NonResponseContent({ params }: { params: SampleParams }) {
                                 type="button"
                                 onClick={() => setDemoRate(rate)}
                                 aria-pressed={demoRate === rate}
-                                className={`px-3 py-1.5 rounded-surface text-label font-medium transition-colors ${
+                                className={`px-3 py-1.5 rounded-surface text-label font-medium transition-none ${
                                     demoRate === rate
                                         ? "bg-info text-info-foreground "
                                         : "bg-muted text-muted-foreground hover:bg-input"

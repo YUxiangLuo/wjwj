@@ -199,7 +199,7 @@ export function ClassManagement() {
             </PageHeader>
 
             <div className="grid grid-cols-4 gap-4">
-                <Card className="transition-colors hover:border-input">
+                <Card className="transition-none hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">班级总数</p>
@@ -210,7 +210,7 @@ export function ClassManagement() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-colors hover:border-input">
+                <Card className="transition-none hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">学生总数</p>
@@ -221,7 +221,7 @@ export function ClassManagement() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-colors hover:border-input">
+                <Card className="transition-none hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">当前学期</p>
@@ -232,7 +232,7 @@ export function ClassManagement() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-colors hover:border-input">
+                <Card className="transition-none hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">授课教师</p>
@@ -300,7 +300,7 @@ export function ClassManagement() {
                             </TableHeader>
                             <TableBody>
                                 {filteredClasses.map((cls) => (
-                                    <TableRow key={cls.id} data-testid={`class-row-${cls.id}`} className="border-border hover:bg-muted transition-colors">
+                                    <TableRow key={cls.id} data-testid={`class-row-${cls.id}`} className="border-border hover:bg-muted transition-none">
                                         <TableCell className="font-medium text-foreground">{cls.name}</TableCell>
                                         <TableCell>
                                             <StatusBadge intent="info">

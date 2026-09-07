@@ -104,7 +104,7 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
                             type="button"
                             onClick={() => !submitted && setSelected(i)}
                             disabled={submitted}
-                            className={`w-full flex items-center gap-4 p-4 rounded-surface border-2 transition-colors text-left ${borderClass}`}
+                            className={`w-full flex items-center gap-4 p-4 rounded-surface border-2 transition-none text-left ${borderClass}`}
                         >
                             <span className={`w-8 h-8 rounded-surface flex items-center justify-center text-label font-bold shrink-0 ${
                                 submitted && i === q.correctIndex

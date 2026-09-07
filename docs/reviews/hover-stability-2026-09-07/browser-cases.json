@@ -1,0 +1,881 @@
+{
+  "baseline": "b24d854",
+  "url": "http://5.223.66.40:6363",
+  "browser": "agent-browser with system Chromium",
+  "procedure": "Eight center/outside pointer round trips per control, then 350 ms settle and 20 stationary samples at 40 ms intervals. Preparation selectors and scrolling retries are excluded from observations.",
+  "caseCount": 24,
+  "backgroundReversalCases": 18,
+  "cases": [
+    {
+      "id": "admin-edit-ghost",
+      "label": "管理员行内编辑按钮",
+      "selector": "[data-testid=\"semester-edit-open-1\"]",
+      "hoverEntered": true,
+      "baselineBackground": "rgba(0, 0, 0, 0)",
+      "hoverBackground": "rgb(234, 242, 251)",
+      "baselineTransition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), fill 0.15s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-from 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-via 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-to 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+      "transitions": {
+        "background-color": {
+          "run": 17,
+          "cancel": 10,
+          "end": 7
+        },
+        "color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        }
+      },
+      "heldBackgrounds": [
+        "rgb(234, 242, 251)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    },
+    {
+      "id": "admin-table-row",
+      "label": "管理员学期表格行",
+      "selector": "tbody tr:first-child",
+      "hoverEntered": true,
+      "baselineBackground": "rgba(0, 0, 0, 0)",
+      "hoverBackground": "rgb(237, 241, 245)",
+      "baselineTransition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), fill 0.15s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-from 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-via 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-to 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+      "transitions": {
+        "background-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        }
+      },
+      "heldBackgrounds": [
+        "rgb(237, 241, 245)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    },
+    {
+      "id": "alternate-role-link",
+      "label": "登录页其他端入口链接",
+      "selector": "a[href=\"/admin/login\"]",
+      "hoverEntered": true,
+      "baselineBackground": "rgb(255, 255, 255)",
+      "hoverBackground": "rgb(234, 242, 251)",
+      "baselineTransition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), fill 0.15s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-from 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-via 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-to 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+      "transitions": {
+        "background-color": {
+          "run": 17,
+          "cancel": 10,
+          "end": 7
+        },
+        "border-bottom-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        },
+        "border-left-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        },
+        "border-right-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        },
+        "border-top-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        },
+        "color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        }
+      },
+      "heldBackgrounds": [
+        "rgb(234, 242, 251)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    },
+    {
+      "id": "analysis-tab",
+      "label": "分析标签页 hover（对照）",
+      "selector": "[data-testid=\"student-analysis-tab-dist\"]",
+      "hoverEntered": true,
+      "baselineBackground": "rgba(0, 0, 0, 0)",
+      "hoverBackground": "rgba(0, 0, 0, 0)",
+      "baselineTransition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), fill 0.15s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-from 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-via 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-to 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+      "transitions": {},
+      "heldBackgrounds": [
+        "rgba(0, 0, 0, 0)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    },
+    {
+      "id": "announcement-item",
+      "label": "学生公告列表项",
+      "selector": "[aria-label=\"公告列表\"] button:nth-child(2)",
+      "hoverEntered": true,
+      "baselineBackground": "rgb(243, 246, 250)",
+      "hoverBackground": "rgb(237, 241, 245)",
+      "baselineTransition": "color 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), fill 0.2s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.2s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-from 0.2s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-via 0.2s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-to 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+      "transitions": {
+        "background-color": {
+          "run": 17,
+          "cancel": 11,
+          "end": 6
+        },
+        "border-bottom-color": {
+          "run": 17,
+          "cancel": 12,
+          "end": 5
+        },
+        "border-left-color": {
+          "run": 17,
+          "cancel": 12,
+          "end": 5
+        },
+        "border-right-color": {
+          "run": 17,
+          "cancel": 12,
+          "end": 5
+        },
+        "border-top-color": {
+          "run": 17,
+          "cancel": 12,
+          "end": 5
+        }
+      },
+      "heldBackgrounds": [
+        "rgb(237, 241, 245)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    },
+    {
+      "id": "border-only-card",
+      "label": "统计卡片（边框变化）",
+      "selector": "main .grid > [data-slot=\"card\"]:first-child",
+      "hoverEntered": true,
+      "baselineBackground": "rgb(255, 255, 255)",
+      "hoverBackground": "rgb(255, 255, 255)",
+      "baselineTransition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), fill 0.15s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-from 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-via 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-to 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+      "transitions": {
+        "border-bottom-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        },
+        "border-left-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        },
+        "border-right-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        },
+        "border-top-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        }
+      },
+      "heldBackgrounds": [
+        "rgb(255, 255, 255)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    },
+    {
+      "id": "dialog-close",
+      "label": "共享弹窗右上角关闭",
+      "selector": "[data-slot=\"dialog-close\"]",
+      "hoverEntered": true,
+      "baselineBackground": "rgba(0, 0, 0, 0)",
+      "hoverBackground": "rgb(228, 237, 248)",
+      "baselineTransition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), fill 0.15s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-from 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-via 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-to 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+      "transitions": {
+        "background-color": {
+          "run": 17,
+          "cancel": 13,
+          "end": 4
+        },
+        "color": {
+          "run": 17,
+          "cancel": 15,
+          "end": 2
+        }
+      },
+      "heldBackgrounds": [
+        "rgb(228, 237, 248)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    },
+    {
+      "id": "disabled-button",
+      "label": "禁用的删除按钮（对照）",
+      "selector": "[data-testid=\"semester-delete-1\"]",
+      "hoverEntered": true,
+      "baselineBackground": "rgb(237, 241, 245)",
+      "hoverBackground": "rgb(237, 241, 245)",
+      "baselineTransition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), fill 0.15s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-from 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-via 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-to 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+      "transitions": {},
+      "heldBackgrounds": [
+        "rgb(237, 241, 245)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    },
+    {
+      "id": "fixed-sidebar",
+      "label": "已修复的侧栏（对照）",
+      "selector": "aside nav a[href=\"/admin/teacher\"]",
+      "hoverEntered": true,
+      "baselineBackground": "rgb(18, 58, 99)",
+      "hoverBackground": "rgb(25, 77, 122)",
+      "baselineTransition": "none",
+      "transitions": {},
+      "heldBackgrounds": [
+        "rgb(25, 77, 122)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    },
+    {
+      "id": "grading-row-card",
+      "label": "教师批改列表卡片按钮",
+      "selector": "main [data-slot=\"card-content\"] > button:first-of-type",
+      "hoverEntered": true,
+      "baselineBackground": "rgba(0, 0, 0, 0)",
+      "hoverBackground": "rgb(237, 241, 245)",
+      "baselineTransition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), fill 0.15s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-from 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-via 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-to 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+      "transitions": {
+        "background-color": {
+          "run": 17,
+          "cancel": 14,
+          "end": 3
+        }
+      },
+      "heldBackgrounds": [
+        "rgb(237, 241, 245)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    },
+    {
+      "id": "login-primary",
+      "label": "三端共用的安全登录按钮",
+      "selector": "[data-testid=\"student-login-submit\"]",
+      "hoverEntered": true,
+      "baselineBackground": "rgb(29, 95, 175)",
+      "hoverBackground": "rgb(23, 76, 140)",
+      "baselineTransition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), fill 0.15s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-from 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-via 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-to 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+      "transitions": {
+        "background-color": {
+          "run": 17,
+          "cancel": 14,
+          "end": 3
+        }
+      },
+      "heldBackgrounds": [
+        "rgb(23, 76, 140)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    },
+    {
+      "id": "outline-search",
+      "label": "教师搜索按钮（outline）",
+      "selector": "main [data-slot=\"card-header\"] button[data-slot=\"button\"]",
+      "hoverEntered": true,
+      "baselineBackground": "rgb(255, 255, 255)",
+      "hoverBackground": "rgb(234, 242, 251)",
+      "baselineTransition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), fill 0.15s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-from 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-via 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-to 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+      "transitions": {
+        "background-color": {
+          "run": 17,
+          "cancel": 10,
+          "end": 7
+        },
+        "border-bottom-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        },
+        "border-left-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        },
+        "border-right-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        },
+        "border-top-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        },
+        "color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        }
+      },
+      "heldBackgrounds": [
+        "rgb(234, 242, 251)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    },
+    {
+      "id": "planning-size-chip",
+      "label": "样本量教学参数按钮",
+      "selector": "[aria-label=\"选择样本量\"] button[aria-pressed=\"false\"]",
+      "hoverEntered": true,
+      "baselineBackground": "rgb(237, 241, 245)",
+      "hoverBackground": "rgb(131, 150, 170)",
+      "baselineTransition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), fill 0.15s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-from 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-via 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-to 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+      "transitions": {
+        "background-color": {
+          "run": 17,
+          "cancel": 14,
+          "end": 3
+        }
+      },
+      "heldBackgrounds": [
+        "rgb(131, 150, 170)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    },
+    {
+      "id": "preview-boolean",
+      "label": "问卷试填是/否选项",
+      "selector": "[data-testid=\"immersive-questionnaire-preview\"] button[class*=\"text-left\"]",
+      "hoverEntered": true,
+      "baselineBackground": "rgb(243, 246, 250)",
+      "hoverBackground": "rgb(237, 241, 245)",
+      "baselineTransition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), fill 0.15s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-from 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-via 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-to 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+      "transitions": {
+        "background-color": {
+          "run": 17,
+          "cancel": 11,
+          "end": 6
+        },
+        "border-bottom-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        },
+        "border-left-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        },
+        "border-right-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        },
+        "border-top-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        }
+      },
+      "heldBackgrounds": [
+        "rgb(237, 241, 245)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    },
+    {
+      "id": "preview-multiple",
+      "label": "问卷试填多选项",
+      "selector": "[data-testid=\"immersive-questionnaire-preview\"] button[class*=\"text-left\"]",
+      "hoverEntered": true,
+      "baselineBackground": "rgb(243, 246, 250)",
+      "hoverBackground": "rgb(237, 241, 245)",
+      "baselineTransition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), fill 0.15s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-from 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-via 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-to 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+      "transitions": {
+        "background-color": {
+          "run": 17,
+          "cancel": 14,
+          "end": 3
+        },
+        "border-bottom-color": {
+          "run": 17,
+          "cancel": 15,
+          "end": 2
+        },
+        "border-left-color": {
+          "run": 17,
+          "cancel": 15,
+          "end": 2
+        },
+        "border-right-color": {
+          "run": 17,
+          "cancel": 15,
+          "end": 2
+        },
+        "border-top-color": {
+          "run": 17,
+          "cancel": 15,
+          "end": 2
+        }
+      },
+      "heldBackgrounds": [
+        "rgb(237, 241, 245)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    },
+    {
+      "id": "preview-scale",
+      "label": "问卷试填评分选项",
+      "selector": "[data-testid=\"immersive-questionnaire-preview\"] button.basis-0",
+      "hoverEntered": true,
+      "baselineBackground": "rgb(243, 246, 250)",
+      "hoverBackground": "rgb(234, 242, 251)",
+      "baselineTransition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), fill 0.15s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-from 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-via 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-to 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+      "transitions": {
+        "background-color": {
+          "run": 17,
+          "cancel": 13,
+          "end": 4
+        },
+        "border-bottom-color": {
+          "run": 17,
+          "cancel": 15,
+          "end": 2
+        },
+        "border-left-color": {
+          "run": 17,
+          "cancel": 15,
+          "end": 2
+        },
+        "border-right-color": {
+          "run": 17,
+          "cancel": 15,
+          "end": 2
+        },
+        "border-top-color": {
+          "run": 17,
+          "cancel": 15,
+          "end": 2
+        }
+      },
+      "heldBackgrounds": [
+        "rgb(234, 242, 251)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    },
+    {
+      "id": "preview-single",
+      "label": "问卷试填单选项",
+      "selector": "[data-testid=\"immersive-questionnaire-preview\"] button[class*=\"text-left\"]:first-child",
+      "hoverEntered": true,
+      "baselineBackground": "rgb(243, 246, 250)",
+      "hoverBackground": "rgb(237, 241, 245)",
+      "baselineTransition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), fill 0.15s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-from 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-via 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-to 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+      "transitions": {
+        "background-color": {
+          "run": 17,
+          "cancel": 11,
+          "end": 6
+        },
+        "border-bottom-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        },
+        "border-left-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        },
+        "border-right-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        },
+        "border-top-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        }
+      },
+      "heldBackgrounds": [
+        "rgb(237, 241, 245)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    },
+    {
+      "id": "questionnaire-row",
+      "label": "问卷题目行及隐藏操作组",
+      "selector": "[data-testid=\"student-questionnaire-item-q2\"]",
+      "hoverEntered": true,
+      "baselineBackground": "rgb(243, 246, 250)",
+      "hoverBackground": "rgb(237, 241, 245)",
+      "baselineTransition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), fill 0.15s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-from 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-via 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-to 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+      "transitions": {
+        "background-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        }
+      },
+      "heldBackgrounds": [
+        "rgb(237, 241, 245)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 17,
+        "cancel": 16,
+        "end": 1
+      }
+    },
+    {
+      "id": "richtext-toolbar",
+      "label": "富文本加粗工具按钮",
+      "selector": "button[aria-label=\"加粗\"]",
+      "hoverEntered": true,
+      "baselineBackground": "rgba(0, 0, 0, 0)",
+      "hoverBackground": "rgb(237, 241, 245)",
+      "baselineTransition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), fill 0.15s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-from 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-via 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-to 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+      "transitions": {
+        "background-color": {
+          "run": 17,
+          "cancel": 12,
+          "end": 5
+        },
+        "color": {
+          "run": 17,
+          "cancel": 13,
+          "end": 4
+        }
+      },
+      "heldBackgrounds": [
+        "rgb(237, 241, 245)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    },
+    {
+      "id": "select-item",
+      "label": "下拉选项（对照）",
+      "selector": "[data-slot=\"select-item\"]:nth-of-type(2)",
+      "hoverEntered": true,
+      "baselineBackground": "rgba(0, 0, 0, 0)",
+      "hoverBackground": "rgb(228, 237, 248)",
+      "baselineTransition": "all",
+      "transitions": {},
+      "heldBackgrounds": [
+        "rgb(228, 237, 248)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 17,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    },
+    {
+      "id": "select-trigger",
+      "label": "批改状态下拉触发器（对照）",
+      "selector": "[aria-label=\"按批改状态筛选\"]",
+      "hoverEntered": true,
+      "baselineBackground": "rgb(255, 255, 255)",
+      "hoverBackground": "rgb(255, 255, 255)",
+      "baselineTransition": "border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+      "transitions": {},
+      "heldBackgrounds": [
+        "rgb(255, 255, 255)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    },
+    {
+      "id": "task-start",
+      "label": "任务大厅开始实验",
+      "selector": "[data-testid=\"student-task-primary-25\"]",
+      "hoverEntered": true,
+      "baselineBackground": "rgb(29, 95, 175)",
+      "hoverBackground": "rgb(23, 76, 140)",
+      "baselineTransition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), fill 0.15s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-from 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-via 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-to 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+      "transitions": {
+        "background-color": {
+          "run": 17,
+          "cancel": 14,
+          "end": 3
+        }
+      },
+      "heldBackgrounds": [
+        "rgb(23, 76, 140)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    },
+    {
+      "id": "topic-card",
+      "label": "教师模板卡片",
+      "selector": "[data-testid=\"teacher-topic-row-17\"]",
+      "hoverEntered": true,
+      "baselineBackground": "rgb(243, 246, 250)",
+      "hoverBackground": "rgb(255, 255, 255)",
+      "baselineTransition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), fill 0.15s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-from 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-via 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-to 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+      "transitions": {
+        "background-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        },
+        "border-bottom-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        },
+        "border-left-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        },
+        "border-right-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        },
+        "border-top-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        }
+      },
+      "heldBackgrounds": [
+        "rgb(255, 255, 255)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    },
+    {
+      "id": "topic-view-tab",
+      "label": "教师模板详情内的原生标签按钮",
+      "selector": "[data-slot=\"dialog-content\"] .flex.gap-1 > button:nth-child(2)",
+      "hoverEntered": true,
+      "baselineBackground": "rgba(0, 0, 0, 0)",
+      "hoverBackground": "rgb(237, 241, 245)",
+      "baselineTransition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), fill 0.15s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-from 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-via 0.15s cubic-bezier(0.4, 0, 0.2, 1), --tw-gradient-to 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+      "transitions": {
+        "background-color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        },
+        "color": {
+          "run": 17,
+          "cancel": 16,
+          "end": 1
+        }
+      },
+      "heldBackgrounds": [
+        "rgb(237, 241, 245)"
+      ],
+      "heldHoverStates": [
+        true
+      ],
+      "rectangleVariants": 1,
+      "domMutations": 0,
+      "opacityTransitions": {
+        "run": 0,
+        "cancel": 0,
+        "end": 0
+      }
+    }
+  ]
+}

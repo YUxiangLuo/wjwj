@@ -186,7 +186,7 @@ export function GradeExport() {
             </div>
 
             <div className="grid grid-cols-4 gap-4">
-                <Card className="transition-colors hover:border-input">
+                <Card className="transition-none hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">应交人次</p>
@@ -198,7 +198,7 @@ export function GradeExport() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-colors hover:border-input">
+                <Card className="transition-none hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已批改人次</p>
@@ -209,7 +209,7 @@ export function GradeExport() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-colors hover:border-input">
+                <Card className="transition-none hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">总分均值</p>
@@ -221,7 +221,7 @@ export function GradeExport() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-colors hover:border-input">
+                <Card className="transition-none hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">总分中位数</p>
@@ -373,7 +373,7 @@ export function GradeExport() {
                                     </TableCell>
                                 </TableRow>
                             ) : preview.map((task) => (
-                                <TableRow data-testid={`teacher-export-row-${task.taskId}`} key={task.taskId} className="border-border hover:bg-muted transition-colors">
+                                <TableRow data-testid={`teacher-export-row-${task.taskId}`} key={task.taskId} className="border-border hover:bg-muted transition-none">
                                     <TableCell className="text-center">
                                         <input
                                             aria-label={`选择导出任务：${task.topic}，${task.className}`}

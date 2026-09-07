@@ -280,13 +280,13 @@ export function TopicDetails() {
                             <CardContent className="pt-3 pb-3">
                                 <div className="grid grid-cols-2 gap-2">
                                     {task.attachments.map((file) => (
-                                        <div key={file.id} className="flex items-center justify-between rounded-surface border border-input bg-muted px-3 py-2 hover:bg-muted transition-colors group gap-2">
+                                        <div key={file.id} className="flex items-center justify-between rounded-surface border border-input bg-muted px-3 py-2 hover:bg-muted transition-none group gap-2">
                                             <div className="flex items-center gap-2.5 overflow-hidden">
                                                 <div className="p-1.5 rounded-control bg-card border border-input shrink-0">
                                                     {getFileIcon(file.type)}
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <p className="text-label font-medium text-foreground truncate group-hover:text-primary transition-colors">{file.name}</p>
+                                                    <p className="text-label font-medium text-foreground truncate group-hover:text-primary transition-none">{file.name}</p>
                                                     <p className="text-meta text-muted-foreground">{formatFileSize(file.size)}</p>
                                                 </div>
                                             </div>

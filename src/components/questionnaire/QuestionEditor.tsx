@@ -339,7 +339,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                                 setScaleMaxLabel(preset.scaleMaxLabel);
                                             }}
                                             data-testid={`student-question-scale-preset-${idx}`}
-                                            className={`text-left px-3 py-2 text-meta rounded-surface border transition-colors ${
+                                            className={`text-left px-3 py-2 text-meta rounded-surface border transition-none ${
                                                 scaleMin === preset.scaleMin && scaleMax === preset.scaleMax && scaleMinLabel === preset.scaleMinLabel && scaleMaxLabel === preset.scaleMaxLabel
                                                     ? "border-primary bg-primary-muted text-primary"
                                                     : "border-border text-muted-foreground hover:border-input"

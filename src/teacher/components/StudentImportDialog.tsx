@@ -41,7 +41,7 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
-                    <div className="border-2 border-dashed border-input bg-background rounded-surface p-8 text-center hover:border-primary-border transition-colors">
+                    <div className="border-2 border-dashed border-input bg-background rounded-surface p-8 text-center hover:border-primary-border transition-none">
                         <Upload className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                         <label htmlFor="teacher-student-import-file" className="mb-2 block text-label text-muted-foreground">选择文件上传</label>
                         <p className="text-meta text-muted-foreground">支持 .xlsx, .csv 格式</p>

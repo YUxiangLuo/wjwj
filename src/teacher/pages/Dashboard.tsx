@@ -30,7 +30,7 @@ function StatCard({ icon: Icon, label, value, color, loading, to }: {
     const style = colorStyles[color] || colorStyles.slate!;
 
     const card = (
-        <Card className={`border-border bg-card hover:border-input transition-colors duration-200 ${to ? "cursor-pointer" : ""}`}>
+        <Card className={`border-border bg-card hover:border-input transition-none ${to ? "cursor-pointer" : ""}`}>
             <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                     <div>
@@ -182,7 +182,7 @@ export function Dashboard() {
                     ) : activeTasks.map((item) => {
                         const progress = item.total > 0 ? item.completed / item.total * 100 : 0;
                         return (
-                            <Link key={item.id} to={`/task/${item.id}/progress`} className="grid grid-cols-[minmax(0,1.4fr)_minmax(12rem,1fr)_auto] items-center gap-5 rounded-surface border border-border bg-background p-4 transition-colors hover:border-input hover:bg-muted">
+                            <Link key={item.id} to={`/task/${item.id}/progress`} className="grid grid-cols-[minmax(0,1.4fr)_minmax(12rem,1fr)_auto] items-center gap-5 rounded-surface border border-border bg-background p-4 transition-none hover:border-input hover:bg-muted">
                                 <div className="min-w-0"><p className="truncate text-label font-semibold text-foreground">{item.templateName}</p><p className="mt-1 text-meta text-muted-foreground">{item.className}</p></div>
                                 <div><div className="flex justify-between text-meta text-muted-foreground"><span>已提交 {item.completed}/{item.total}</span><span>{Math.round(progress)}%</span></div><Progress aria-label={`${item.templateName}提交进度`} value={progress} className="mt-2 h-1.5" /></div>
                                 <div className="flex items-center gap-2 whitespace-nowrap"><StatusBadge intent={item.pending > 0 ? "warning" : "neutral"}>待批改 {item.pending}</StatusBadge>{item.rejected > 0 && <StatusBadge intent="destructive">需重做 {item.rejected}</StatusBadge>}<span className="flex items-center gap-1 text-meta text-muted-foreground"><Clock className="h-3.5 w-3.5" />{item.deadline ? formatDateTimeDisplay(item.deadline, "-") : "无截止时间"}</span><ChevronRight className="h-4 w-4 text-muted-foreground" /></div>
@@ -211,7 +211,7 @@ export function Dashboard() {
                             announcements.map(item => (
                                 <button
                                     key={item.id}
-                                    className="w-full text-left p-3 rounded-surface border border-border hover:bg-muted hover:border-input transition-colors"
+                                    className="w-full text-left p-3 rounded-surface border border-border hover:bg-muted hover:border-input transition-none"
                                     onClick={() => handleAnnouncementClick(item)}
                                 >
                                     <div className="flex items-start gap-2">

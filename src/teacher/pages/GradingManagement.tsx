@@ -109,7 +109,7 @@ export function GradingManagement() {
                     ) : items.map((item) => (
                         <button
                             key={item.id}
-                            className="flex w-full gap-3 rounded-surface border border-border p-4 text-left transition-colors hover:bg-muted flex-row items-center"
+                            className="flex w-full gap-3 rounded-surface border border-border p-4 text-left transition-none hover:bg-muted flex-row items-center"
                             onClick={() => navigate(`/grading/${item.id}`)}
                         >
                             <Avatar>

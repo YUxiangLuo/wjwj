@@ -1,0 +1,370 @@
+{
+  "date": "2026-09-08",
+  "base": "b24d854",
+  "url": "http://127.0.0.1:3220",
+  "browser": "agent-browser 0.36.0 + system Chromium",
+  "procedure": "8 real mouse center/outside round trips, 350 ms settling, 20 held samples at 40 ms intervals; requestAnimationFrame colors and geometry, transition and mutation events",
+  "count": 24,
+  "cases": [
+    {
+      "id": "admin-edit-ghost",
+      "selector": "[data-testid=\"semester-edit-open-1\"]",
+      "hoverEntered": true,
+      "normal": "rgba(0, 0, 0, 0)",
+      "hover": "rgb(234, 242, 251)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(234, 242, 251)"
+      ]
+    },
+    {
+      "id": "admin-table-row",
+      "selector": "tbody tr:first-child",
+      "hoverEntered": true,
+      "normal": "rgba(0, 0, 0, 0)",
+      "hover": "rgb(237, 241, 245)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(237, 241, 245)"
+      ]
+    },
+    {
+      "id": "alert-cancel",
+      "selector": "[role=\"alertdialog\"] button[data-variant=\"outline\"]",
+      "hoverEntered": true,
+      "normal": "rgb(255, 255, 255)",
+      "hover": "rgb(234, 242, 251)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(234, 242, 251)"
+      ]
+    },
+    {
+      "id": "alternate-role-link",
+      "selector": "a[href=\"/admin/login\"]",
+      "hoverEntered": true,
+      "normal": "rgb(255, 255, 255)",
+      "hover": "rgb(234, 242, 251)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(234, 242, 251)"
+      ]
+    },
+    {
+      "id": "announcement-item",
+      "selector": "[aria-label=\"公告列表\"] button:nth-child(2)",
+      "hoverEntered": true,
+      "normal": "rgb(243, 246, 250)",
+      "hover": "rgb(237, 241, 245)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(237, 241, 245)"
+      ]
+    },
+    {
+      "id": "destructive-confirm",
+      "selector": "[role=\"alertdialog\"] button[data-variant=\"destructive\"]",
+      "hoverEntered": true,
+      "normal": "rgb(180, 35, 24)",
+      "hover": "rgb(143, 28, 20)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(143, 28, 20)"
+      ]
+    },
+    {
+      "id": "dialog-close",
+      "selector": "[data-slot=\"dialog-close\"]",
+      "hoverEntered": true,
+      "normal": "rgba(0, 0, 0, 0)",
+      "hover": "rgb(228, 237, 248)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(228, 237, 248)"
+      ]
+    },
+    {
+      "id": "disabled-button",
+      "selector": "[data-testid=\"semester-delete-1\"]",
+      "hoverEntered": true,
+      "normal": "rgb(237, 241, 245)",
+      "hover": "rgb(237, 241, 245)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(237, 241, 245)"
+      ]
+    },
+    {
+      "id": "disabled-multiple",
+      "selector": "[data-testid=\"immersive-questionnaire-preview\"] button[class*=\"text-left\"]:disabled",
+      "hoverEntered": true,
+      "normal": "rgb(255, 255, 255)",
+      "hover": "rgb(255, 255, 255)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(255, 255, 255)"
+      ]
+    },
+    {
+      "id": "fixed-sidebar",
+      "selector": "aside nav a[href=\"/admin/teacher\"]",
+      "hoverEntered": true,
+      "normal": "rgb(18, 58, 99)",
+      "hover": "rgb(25, 77, 122)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(25, 77, 122)"
+      ]
+    },
+    {
+      "id": "grading-row-card",
+      "selector": "main [data-slot=\"card-content\"] > button:first-of-type",
+      "hoverEntered": true,
+      "normal": "rgba(0, 0, 0, 0)",
+      "hover": "rgb(237, 241, 245)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(237, 241, 245)"
+      ]
+    },
+    {
+      "id": "login-primary",
+      "selector": "button[type=\"submit\"]",
+      "hoverEntered": true,
+      "normal": "rgb(29, 95, 175)",
+      "hover": "rgb(23, 76, 140)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(23, 76, 140)"
+      ]
+    },
+    {
+      "id": "outline-search",
+      "selector": "main [data-slot=\"card-header\"] button[data-slot=\"button\"]",
+      "hoverEntered": true,
+      "normal": "rgb(255, 255, 255)",
+      "hover": "rgb(234, 242, 251)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(234, 242, 251)"
+      ]
+    },
+    {
+      "id": "planning-size-chip",
+      "selector": "[aria-label=\"选择样本量\"] button[aria-pressed=\"false\"]",
+      "hoverEntered": true,
+      "normal": "rgb(237, 241, 245)",
+      "hover": "rgb(131, 150, 170)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(131, 150, 170)"
+      ]
+    },
+    {
+      "id": "preview-boolean",
+      "selector": "[data-testid=\"immersive-questionnaire-preview\"] button[class*=\"text-left\"]",
+      "hoverEntered": true,
+      "normal": "rgb(243, 246, 250)",
+      "hover": "rgb(237, 241, 245)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(237, 241, 245)"
+      ]
+    },
+    {
+      "id": "preview-multiple",
+      "selector": "[data-testid=\"immersive-questionnaire-preview\"] button[class*=\"text-left\"]",
+      "hoverEntered": true,
+      "normal": "rgb(243, 246, 250)",
+      "hover": "rgb(237, 241, 245)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(237, 241, 245)"
+      ]
+    },
+    {
+      "id": "preview-scale",
+      "selector": "[data-testid=\"immersive-questionnaire-preview\"] button.basis-0",
+      "hoverEntered": true,
+      "normal": "rgb(243, 246, 250)",
+      "hover": "rgb(234, 242, 251)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(234, 242, 251)"
+      ]
+    },
+    {
+      "id": "preview-single",
+      "selector": "[data-testid=\"immersive-questionnaire-preview\"] button[class*=\"text-left\"]",
+      "hoverEntered": true,
+      "normal": "rgb(243, 246, 250)",
+      "hover": "rgb(237, 241, 245)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(237, 241, 245)"
+      ]
+    },
+    {
+      "id": "questionnaire-row",
+      "selector": "[data-testid^=\"student-questionnaire-item-\"]",
+      "hoverEntered": true,
+      "normal": "rgb(243, 246, 250)",
+      "hover": "rgb(237, 241, 245)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(237, 241, 245)"
+      ]
+    },
+    {
+      "id": "richtext-toolbar",
+      "selector": "button[aria-label=\"加粗\"]",
+      "hoverEntered": true,
+      "normal": "rgba(0, 0, 0, 0)",
+      "hover": "rgb(237, 241, 245)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(237, 241, 245)"
+      ]
+    },
+    {
+      "id": "selected-single",
+      "selector": "[data-testid=\"immersive-questionnaire-preview\"] button[class*=\"text-left\"]",
+      "hoverEntered": true,
+      "normal": "rgb(29, 95, 175)",
+      "hover": "rgb(29, 95, 175)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(29, 95, 175)"
+      ]
+    },
+    {
+      "id": "task-start",
+      "selector": "[data-testid=\"student-task-primary-2\"]",
+      "hoverEntered": true,
+      "normal": "rgb(29, 95, 175)",
+      "hover": "rgb(23, 76, 140)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(23, 76, 140)"
+      ]
+    },
+    {
+      "id": "topic-card",
+      "selector": "[data-testid^=\"teacher-topic-row-\"]",
+      "hoverEntered": true,
+      "normal": "rgb(243, 246, 250)",
+      "hover": "rgb(255, 255, 255)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(255, 255, 255)"
+      ]
+    },
+    {
+      "id": "topic-view-tab",
+      "selector": "[data-slot=\"dialog-content\"] .flex.gap-1 > button:nth-child(2)",
+      "hoverEntered": true,
+      "normal": "rgba(0, 0, 0, 0)",
+      "hover": "rgb(237, 241, 245)",
+      "transitions": {},
+      "subtreeTransitions": 0,
+      "intermediateColors": [],
+      "geometryVariants": 1,
+      "domMutations": 0,
+      "heldColors": [
+        "rgb(237, 241, 245)"
+      ]
+    }
+  ]
+}

@@ -58,7 +58,7 @@ function ToolbarButton({
                 onClick();
             }}
             className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-control transition-colors",
+                "flex h-9 w-9 items-center justify-center rounded-control transition-none",
                 "text-muted-foreground hover:text-foreground hover:bg-muted",
                 active && "bg-muted text-foreground",
                 disabled && "cursor-not-allowed bg-muted text-muted-foreground",

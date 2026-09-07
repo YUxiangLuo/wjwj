@@ -475,7 +475,7 @@ export function QuestionnaireDesign() {
                                                 <div
                                                     key={q.id}
                                                     data-testid={`student-questionnaire-item-${q.id}`}
-                                                    className={`flex items-center gap-3 p-3 rounded-surface border transition-colors group hover:bg-muted ${dragOverId === q.id && draggingId !== q.id
+                                                    className={`flex items-center gap-3 p-3 rounded-surface border transition-none group hover:bg-muted ${dragOverId === q.id && draggingId !== q.id
                                                         ? "border-primary ring-1 ring-ring bg-primary-muted"
                                                         : "border-border bg-background"
                                                         } ${draggingId === q.id ? "opacity-50" : ""}`}
@@ -495,7 +495,7 @@ export function QuestionnaireDesign() {
                                                         {QUESTION_SECTION_LABELS[q.section ?? "main"]}
                                                     </Badge>
                                                     <span className="flex-1 text-label text-foreground truncate font-medium">{q.content}</span>
-                                                    <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                                                    <div className="flex gap-1">
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
@@ -601,7 +601,7 @@ export function QuestionnaireDesign() {
                                         {recommendQuestions.map((rq) => {
                                             const recommendAlreadyInQuestionnaire = questions.some((q) => q.recommendSourceId === rq.id);
                                             return (
-                                            <div key={rq.id} className="flex flex-col gap-2 p-3 rounded-surface border border-border bg-background hover:bg-card transition-colors">
+                                            <div key={rq.id} className="flex flex-col gap-2 p-3 rounded-surface border border-border bg-background hover:bg-card transition-none">
                                                 <div className="space-y-1">
                                                     <div className="text-label font-medium text-foreground line-clamp-2">{rq.content}</div>
                                                     <div className="text-meta text-muted-foreground">
@@ -900,7 +900,7 @@ export function QuestionnaireDesign() {
                                 disabled={s.num > step}
                                 data-testid={`student-questionnaire-step-${s.num}`}
                                 aria-label={`第 ${s.num} 步: ${s.title}`}
-                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-surface text-meta font-medium transition-colors duration-200 disabled:cursor-not-allowed ${
+                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-surface text-meta font-medium transition-none disabled:cursor-not-allowed ${
                                     isCurrent
                                         ? "bg-primary-muted text-primary border border-primary-border"
                                         : isCompleted

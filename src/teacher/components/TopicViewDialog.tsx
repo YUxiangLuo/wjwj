@@ -127,7 +127,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                         <button
                             key={key}
                             onClick={() => setActiveTab(key)}
-                            className={`flex items-center gap-1.5 px-3 py-2 text-meta font-medium rounded-control transition-colors border-b-2 whitespace-nowrap ${
+                            className={`flex items-center gap-1.5 px-3 py-2 text-meta font-medium rounded-control transition-none border-b-2 whitespace-nowrap ${
                                 activeTab === key
                                     ? "text-primary border-primary bg-primary-muted"
                                     : "text-muted-foreground border-transparent hover:text-foreground hover:bg-muted"
@@ -338,7 +338,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                 <div className="space-y-3 py-4 animate-in fade-in duration-300">
                                     {detail?.attachments && detail.attachments.length > 0 ? (
                                         detail.attachments.map((a) => (
-                                            <div key={a.id} className="flex items-center justify-between p-3 bg-background border border-border rounded-surface hover:border-input transition-colors">
+                                            <div key={a.id} className="flex items-center justify-between p-3 bg-background border border-border rounded-surface hover:border-input transition-none">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-9 h-9 rounded-surface bg-primary-muted text-primary flex items-center justify-center border border-primary-border">
                                                         <FileText className="w-4 h-4" />
