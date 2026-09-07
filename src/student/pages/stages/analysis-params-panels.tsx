@@ -1,3 +1,4 @@
+import { SamplingObservationNotice } from "../../components/SamplingObservationNotice";
 import type { ReactNode } from "react";
 import { Info } from "lucide-react";
 import type { SamplePlanData, SamplingResultsData } from "@/domain/experiment/types";
@@ -225,7 +226,8 @@ export function SamplePlanDecisionPanel({
                 </div>
             ) : (
                 <div className="rounded-surface border border-border bg-background p-4">
-                    <ParamRow label="总体规模 N" value={populationSize > 0 ? populationSize.toLocaleString() : "—"} />
+                    <SamplingObservationNotice nonResponseRate={samplePlan.nonResponseRate} />
+<ParamRow label="总体规模 N" value={populationSize > 0 ? populationSize.toLocaleString() : "—"} />
                     <ParamRow
                         label="估计类型"
                         value={

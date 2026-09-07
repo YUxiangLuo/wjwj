@@ -69,7 +69,7 @@ export function validateSamplePlanForSubmit(
     samplePlan: unknown,
     populationSize: number | null,
     analysisTargetKind?: "mean" | "proportion" | null,
-    options: { allowLegacyAdvancedSourceWithoutSnapshot?: boolean } = {},
+    options: { allowLegacyAdvancedSourceWithoutSnapshot?: boolean; minimumSampleSize?: number } = {},
 ): string | null {
     if (!samplePlan || typeof samplePlan !== "object") {
         return "请先完成样本量规划";
@@ -173,7 +173,7 @@ export function validateSamplePlanForSubmit(
     }
 
     if (populationSize !== null && Number.isFinite(populationSize) && populationSize > 0) {
-        const { min, max } = getFinalSampleSizeBounds(populationSize);
+        const { min, max } = getFinalSampleSizeBounds(populationSize, options.minimumSampleSize);
         if (finalSampleSize < min || finalSampleSize > max) {
             return `最终样本量需在 ${min}～${max} 个单位之间`;
         }

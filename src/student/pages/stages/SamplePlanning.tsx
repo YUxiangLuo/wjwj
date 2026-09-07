@@ -15,6 +15,8 @@ import {
     normalizeSamplePlanData,
 } from "../../experiment/sample-plan-display";
 import { finitePopulationS2ToSigma2 } from "../../experiment/sample-plan";
+import { getRequiredStratifiedMinimum } from "../../experiment/final-sample-bounds";
+import { resolveSamplingPolicy } from "@/lib/sampling-policy";
 import { ImmersiveSamplePlanning } from "../../components/immersive-sample-planning";
 import { ImmersiveExperimentLaunch } from "../../components/ImmersiveExperimentLaunch";
 import {
@@ -58,22 +60,35 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
         initialData?.populationVariance ?? null,
     );
     const needsTargetVariance = lockedEstimationType === "mean";
-    const [targetVarianceReady, setTargetVarianceReady] = useState(!needsTargetVariance);
+    const requiresStratification = resolveSamplingPolicy(experiment?.samplingPolicy).methods.stratified === "required";
+    const needsStats = needsTargetVariance || requiresStratification;
+    const [minimumSampleSize, setMinimumSampleSize] = useState(1);
+    const [targetVarianceReady, setTargetVarianceReady] = useState(!needsStats);
     const [targetVarianceError, setTargetVarianceError] = useState("");
     const [varianceReloadKey, setVarianceReloadKey] = useState(0);
 
     useEffect(() => {
-        if (lockedEstimationType !== "mean" || !experiment?.taskId || !experiment.analysisTarget) {
+        if (!needsStats || !experiment?.taskId) {
+            setMinimumSampleSize(1);
             setTargetVarianceReady(true);
             return;
         }
-        const field = experiment.analysisTarget.target.field;
+        const field = experiment.analysisTarget?.target.field;
         let cancelled = false;
         setTargetVarianceReady(false);
         setTargetVarianceError("");
         void experimentApi.getStats(experiment.taskId).then((res) => {
             if (cancelled) return;
-            const stat = res.success ? res.data?.populationNumericStats?.[field] : undefined;
+            if (requiresStratification) {
+                const minimum = res.success ? getRequiredStratifiedMinimum(res.data?.stats, experiment.samplingPolicy, N) : null;
+                if (minimum === null) {
+                    setTargetVarianceError("必做分层抽样的总体分层数据尚不可用，请重新加载；仍失败时请联系教师检查课题。");
+                    return;
+                }
+                setMinimumSampleSize(minimum);
+            }
+            if (!needsTargetVariance) return;
+            const stat = res.success && field ? res.data?.populationNumericStats?.[field] : undefined;
             const variance = stat
                 ? finitePopulationS2ToSigma2(stat.variance, stat.count)
                 : null;
@@ -85,14 +100,14 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                     : "无法取得研究目标的有效总体方差，请重试；不会使用默认方差代替实际数据。");
             }
         }).catch(() => {
-            if (!cancelled) setTargetVarianceError("研究目标方差加载失败，请重试；不会使用默认方差代替实际数据。");
+            if (!cancelled) setTargetVarianceError("规划数据加载失败，请重试；不会使用默认方差或分层数代替实际数据。");
         }).finally(() => {
             if (!cancelled) setTargetVarianceReady(true);
         });
         return () => {
             cancelled = true;
         };
-    }, [experiment?.analysisTarget, experiment?.taskId, lockedEstimationType, varianceReloadKey]);
+    }, [experiment?.analysisTarget, experiment?.taskId, experiment?.samplingPolicy, needsStats, needsTargetVariance, requiresStratification, N, varianceReloadKey]);
 
     const [confirmNextSaving, setConfirmNextSaving] = useState(false);
     // 进入抽样执行前的启动动画：点击“确认进入”后先播放，动画结束再保存。
@@ -166,8 +181,8 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
     }, [initialData]);
 
     const { min: minSampleSize, max: maxSampleSize } = useMemo(
-        () => getFinalSampleSizeBounds(N),
-        [N],
+        () => getFinalSampleSizeBounds(N, minimumSampleSize),
+        [N, minimumSampleSize],
     );
     const isValidFinalSize =
         displayData != null
@@ -216,7 +231,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             <DraftSaveStatus status={clearDraft.status} onRetry={clearDraft.retry} />
             <div role="alert" className="space-y-3 rounded-surface border border-warning-border bg-warning-muted p-4 text-body text-warning">
                 <p>{targetVarianceError}</p>
-                <Button type="button" variant="outline" onClick={() => setVarianceReloadKey(key => key + 1)}>重新加载研究目标方差</Button>
+                <Button type="button" variant="outline" onClick={() => setVarianceReloadKey(key => key + 1)}>重新加载规划数据</Button>
             </div>
             <Button type="button" variant="outline" onClick={onPrev}>上一阶段</Button>
         </div>
@@ -228,6 +243,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             {immersiveOpen && targetVarianceReady && (
                 <ImmersiveSamplePlanning
                     populationSize={N}
+                    minimumSampleSize={minimumSampleSize}
                     initialConfidenceLevel={displayData?.confidenceLevel}
                     initialMarginOfError={displayData?.marginOfError ?? (lockedEstimationType === "mean" ? 2 : 5)}
                     initialDesignEffect={displayData?.designEffect}

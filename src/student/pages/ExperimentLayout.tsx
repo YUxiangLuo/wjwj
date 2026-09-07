@@ -31,7 +31,7 @@ import { SamplePlanSnapshot } from "@/components/SamplePlanSnapshot";
 import { SamplingResultsSnapshot } from "@/components/SamplingResultsSnapshot";
 
 const stages = [
-    { name: "问卷预试", description: "设计问卷原型并完成认知预试", icon: FileText },
+    { name: "问卷预试", description: "设计问卷原型并完成受访者视角试填", icon: FileText },
     { name: "样本量规划", description: "按研究目标变量计算邀请单位数", icon: Ruler },
     { name: "抽样执行", description: "按实验模板要求完成必做与选做抽样方法", icon: Play },
     { name: "分析与报告", description: "比较抽样框字段上的设计并撰写报告", icon: BarChart3 },

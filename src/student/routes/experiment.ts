@@ -321,6 +321,13 @@ const stageCompleteRoutes: RouteDefinition = {
             ? await findStudentTaskSamplingInfo(taskId, auth.student.classId)
             : undefined;
         const fieldMapping = stage === 2 ? stageTaskInfo?.fieldMapping : undefined;
+        let stratifiedStats: Record<string, Record<string, number>> | undefined;
+        if (stage === 2 && resolveSamplingPolicy(stageTaskInfo?.samplingPolicy).methods.stratified === "required") {
+            if (!stageTaskInfo?.excelFilePath) return error("必做分层抽样缺少总体数据文件", "NO_DATA_FILE");
+            const population = await readPopulationData(stageTaskInfo.excelFilePath, fieldMapping);
+            if (!population.length) return error("分层总体数据读取失败，请重试", "READ_FAILED", 500);
+            stratifiedStats = buildStratifiedStats(population, fieldMapping);
+        }
         let payload = clientPayload;
         let completionRecord = record;
         if (stage === 3) {
@@ -340,6 +347,7 @@ const stageCompleteRoutes: RouteDefinition = {
             deadlinePassed: hasTaskDeadlinePassed(schedule?.deadline),
             fieldMapping,
             samplingPolicy: stageTaskInfo?.samplingPolicy,
+            stratifiedStats,
         });
         if (!result.ok) return error(result.message, result.code, result.status);
 

@@ -378,9 +378,9 @@ export interface MeanSampleSizeMetrics {
     precisionUnreachable: boolean;
     targetMarginOfError: number;
     standardError: number;
-    relativeStandardError: number;
+    relativeStandardError: number | null;
     marginOfError: number;
-    confidenceInterval: { lower: number; upper: number };
+    confidenceInterval: { lower: number; upper: number } | null;
 }
 
 /**
@@ -408,8 +408,9 @@ export function calculateMeanSampleSizeMetrics(params: {
         ? Math.sqrt(deffValue * sigma2 / expectedCompleted * fpc)
         : 0;
 
-    const mean = params.estimatedMean ?? 0;
-    const relativeStandardError = mean !== 0 ? standardError / Math.abs(mean) : 0;
+    const mean = params.estimatedMean;
+    const hasMean = typeof mean === "number" && Number.isFinite(mean);
+    const relativeStandardError = hasMean && mean !== 0 ? standardError / Math.abs(mean) : null;
     const marginOfErrorAbs = z * standardError;
 
     return {
@@ -425,10 +426,10 @@ export function calculateMeanSampleSizeMetrics(params: {
         standardError,
         relativeStandardError,
         marginOfError: marginOfErrorAbs,
-        confidenceInterval: {
+        confidenceInterval: hasMean ? {
             lower: mean - marginOfErrorAbs,
             upper: mean + marginOfErrorAbs,
-        },
+        } : null,
     };
 }
 
@@ -694,94 +695,65 @@ export interface OptimalAllocationWithCostResult {
 /**
  * 考虑费用的最优分配（Neyman 分配推广，固定预算）
  * 闭式解: n_h = C × (N_h S_h / √c_h) / Σ(N_i S_i √c_i)
- * 超额层先全数调查，剩余预算在未满层上重算。
+ * 连续解施加每层覆盖和容量约束，整数预算结果为近似方案，不保证全局最优。
  */
 export function calculateOptimalAllocationWithCost(
     layers: LayerWithCost[],
     totalBudget: number,
     fixedCost: number = 0
 ): OptimalAllocationWithCostResult | null {
-    if (!layers.length || totalBudget <= fixedCost) return null;
+    if (!layers.length || !Number.isFinite(totalBudget) || !Number.isFinite(fixedCost)
+        || fixedCost < 0 || totalBudget <= fixedCost
+        || new Set(layers.map((layer) => layer.name)).size !== layers.length
+        || layers.some((layer) => !Number.isInteger(layer.populationSize) || layer.populationSize < 0
+            || !Number.isFinite(layer.stdDev) || layer.stdDev < 0
+            || !Number.isFinite(layer.unitCost) || layer.unitCost <= 0)) return null;
 
-    let remainingBudget = totalBudget - fixedCost;
-    const locked = layers.map(() => false);
+    const budget = totalBudget - fixedCost;
     const sampleSizes = layers.map(() => 0);
-
-    const weightOf = (layer: LayerWithCost) => {
-        const costFactor = Math.sqrt(layer.unitCost);
-        return costFactor > 0 ? (layer.populationSize * layer.stdDev) / costFactor : 0;
-    };
-
-    for (let round = 0; round <= layers.length; round += 1) {
-        const active = layers
-            .map((layer, index) => ({ layer, index }))
-            .filter(({ layer, index }) => !locked[index] && layer.unitCost > 0 && layer.populationSize > 0);
-        if (active.length === 0 || remainingBudget <= 0) break;
-
-        const denom = active.reduce((sum, { layer }) => sum + weightOf(layer) * layer.unitCost, 0);
-        if (denom <= 0) break;
-
-        let lockedThisRound = false;
-        for (const { layer, index } of active) {
-            const exact = remainingBudget * weightOf(layer) / denom;
-            const censusCost = layer.populationSize * layer.unitCost;
-            if (exact >= layer.populationSize - 1e-9 && censusCost <= remainingBudget + 1e-9) {
-                sampleSizes[index] = layer.populationSize;
-                remainingBudget -= censusCost;
-                locked[index] = true;
-                lockedThisRound = true;
+    const coverageCost = layers.reduce((sum, layer) => sum + (layer.populationSize > 0 ? layer.unitCost : 0), 0);
+    let leftover = budget;
+    if (coverageCost > budget) {
+        // A partial allocation is explicitly reported as uncovered below.
+        for (let i = 0; i < layers.length; i++) {
+            if (layers[i]!.populationSize > 0 && layers[i]!.unitCost <= leftover) {
+                sampleSizes[i] = 1;
+                leftover -= layers[i]!.unitCost;
             }
         }
-        if (lockedThisRound) continue;
-
-        const exacts = active.map(({ layer }) => remainingBudget * weightOf(layer) / denom);
-        const floored = exacts.map((exact, position) => {
-            const cap = active[position]!.layer.populationSize;
-            return Math.min(cap, Math.max(0, Math.floor(exact)));
-        });
-        let leftover = remainingBudget - floored.reduce(
-            (sum, count, position) => sum + count * active[position]!.layer.unitCost,
-            0,
-        );
-
-        const remainderOrder = exacts
-            .map((_, position) => position)
-            .sort((left, right) => (exacts[right]! - floored[right]!) - (exacts[left]! - floored[left]!));
-        for (const position of remainderOrder) {
-            const layer = active[position]!.layer;
-            if ((floored[position] ?? 0) >= layer.populationSize) continue;
-            if (layer.unitCost > leftover + 1e-9) continue;
-            floored[position] = (floored[position] ?? 0) + 1;
-            leftover -= layer.unitCost;
+    } else {
+        const maxStd = layers.reduce((maximum, layer) => Math.max(maximum, layer.stdDev), 0);
+        const weights = layers.map((layer) => maxStd > 0
+            ? layer.populationSize * (layer.stdDev / maxStd) / Math.sqrt(layer.unitCost) : 0);
+        // Continuous constrained solution: n_h = clamp(lambda*w_h, 1, N_h).
+        const countAt = (i: number, lambda: number) => layers[i]!.populationSize === 0 ? 0
+            : Math.min(layers[i]!.populationSize, Math.max(1, lambda * weights[i]!));
+        let low = 0;
+        let high = weights.reduce((maximum, weight, i) => weight > 0
+            ? Math.max(maximum, layers[i]!.populationSize / weight) : maximum, 0);
+        for (let iteration = 0; iteration < 100; iteration++) {
+            const midpoint = (low + high) / 2;
+            const cost = layers.reduce((sum, layer, i) => sum + countAt(i, midpoint) * layer.unitCost, 0);
+            if (cost <= budget) low = midpoint; else high = midpoint;
         }
-
-        let progressed = true;
-        while (progressed) {
-            progressed = false;
+        for (let i = 0; i < layers.length; i++) sampleSizes[i] = Math.floor(countAt(i, low));
+        leftover -= layers.reduce((sum, layer, i) => sum + sampleSizes[i]! * layer.unitCost, 0);
+        // Integer budget approximation, not a claim of global knapsack optimality.
+        while (leftover > 0) {
             let best = -1;
-            let bestScore = -Infinity;
-            for (let position = 0; position < active.length; position += 1) {
-                const layer = active[position]!.layer;
-                if ((floored[position] ?? 0) >= layer.populationSize) continue;
-                if (layer.unitCost > leftover + 1e-9) continue;
-                const score = weightOf(layer) / layer.unitCost;
-                if (score > bestScore) {
-                    bestScore = score;
-                    best = position;
-                }
+            let bestGain = -1;
+            for (let i = 0; i < layers.length; i++) {
+                const layer = layers[i]!;
+                const n = sampleSizes[i]!;
+                if (n >= layer.populationSize || layer.unitCost > leftover) continue;
+                const gain = maxStd > 0
+                    ? (layer.populationSize * (layer.stdDev / maxStd)) ** 2 / (n * (n + 1) * layer.unitCost) : 0;
+                if (gain > bestGain) { best = i; bestGain = gain; }
             }
-            if (best >= 0) {
-                floored[best] = (floored[best] ?? 0) + 1;
-                leftover -= active[best]!.layer.unitCost;
-                progressed = true;
-            }
+            if (best < 0) break;
+            sampleSizes[best]!++;
+            leftover -= layers[best]!.unitCost;
         }
-
-        for (let position = 0; position < active.length; position += 1) {
-            sampleSizes[active[position]!.index] = floored[position] ?? 0;
-        }
-        remainingBudget = leftover;
-        break;
     }
 
     const allocation = layers.map((layer, index) => {
@@ -811,7 +783,7 @@ export function calculateOptimalAllocationWithCost(
         uncoveredLayers,
         totalVariance,
         efficiency: totalVariance !== null && totalVariance > 0 ? 1 / totalVariance : null,
-        formula: "n_h = C × (N_h S_h / √c_h) / Σ(N_i S_i √c_i)",
+        formula: "连续无约束解 n_h = C × (N_h S_h / √c_h) / Σ(N_i S_i √c_i)；实际结果为保留层覆盖的整数预算近似，不保证全局最优",
     };
 }
 

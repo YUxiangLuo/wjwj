@@ -1,3 +1,4 @@
+import { SamplingObservationNotice } from "../../components/SamplingObservationNotice";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -382,6 +383,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-sampling">
+            <SamplingObservationNotice nonResponseRate={samplePlan?.nonResponseRate} />
             <Card className="rounded-surface border-border bg-card ">
                 <CardContent className="py-6 px-6">
                     <div className="flex flex-wrap items-center justify-between gap-6">

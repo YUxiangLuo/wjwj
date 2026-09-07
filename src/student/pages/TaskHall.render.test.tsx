@@ -66,7 +66,7 @@ function LocationProbe() {
     return <div data-testid="location-probe">{location.pathname}</div>;
 }
 
-test("TaskHall renders stats and filters by real task status", async () => {
+test("TaskHall renders tasks directly and filters by real task status", async () => {
     const tasks: StudentTask[] = [
         buildTask({ id: 1, status: "not_started", name: "未开始任务" }),
         buildTask({ id: 2, status: "in_progress", name: "进行中任务", progress: 50, currentStage: 2 }),
@@ -106,9 +106,7 @@ test("TaskHall renders stats and filters by real task status", async () => {
         expect(view.getByTestId("student-task-card-1")).toBeTruthy();
     });
 
-    expect(view.getByTestId("student-stat-in-progress").textContent).toContain("2");
-    expect(view.getByTestId("student-stat-graded").textContent).toContain("1");
-    expect(view.getByTestId("student-stat-average").textContent).toContain("95");
+    expect(view.queryByTestId("student-stats-section")).toBeNull();
 
     fireEvent.click(view.getByTestId("student-filter-in-progress"));
 
@@ -230,45 +228,4 @@ test("TaskHall rejected task continues the same experiment", async () => {
         expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/student/tasks/7/reset"))).toBe(false);
         expect(view.getByTestId("location-probe").textContent).toBe("/task/7/experiment");
     });
-});
-
-test("stat tiles act as task filters: click to filter, click again to reset", async () => {
-    const tasks: StudentTask[] = [
-        buildTask({ id: 1, status: "not_started", name: "未开始任务" }),
-        buildTask({ id: 2, status: "in_progress", name: "进行中任务", progress: 50, currentStage: 2 }),
-        buildTask({ id: 5, status: "graded", name: "已批改任务", progress: 100, currentStage: 4, score: 95 }),
-    ];
-    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        const data = url.endsWith("/api/student/tasks") ? tasks : [];
-        return new Response(JSON.stringify({ success: true, data }), {
-            headers: { "Content-Type": "application/json" },
-        });
-    }) as unknown as typeof fetch;
-
-    const view = render(
-        <MemoryRouter>
-            <TaskHall />
-        </MemoryRouter>
-    );
-    await waitFor(() => {
-        expect(view.getByTestId("student-task-card-1")).toBeTruthy();
-    });
-
-    // 点击「进行中的实验」统计卡 → 列表只显示进行中相关任务
-    fireEvent.click(view.getByTestId("student-stat-in-progress"));
-    expect(view.queryByTestId("student-task-card-5")).toBeNull();
-    expect(view.getByTestId("student-task-card-2")).toBeTruthy();
-    expect(view.getByTestId("student-stat-in-progress").getAttribute("aria-pressed")).toBe("true");
-
-    // 再点一次 → 回到全部
-    fireEvent.click(view.getByTestId("student-stat-in-progress"));
-    expect(view.getByTestId("student-task-card-5")).toBeTruthy();
-    expect(view.getByTestId("student-stat-in-progress").getAttribute("aria-pressed")).toBe("false");
-
-    // 点击「已批改实验」统计卡 → 只显示已批改
-    fireEvent.click(view.getByTestId("student-stat-graded"));
-    expect(view.queryByTestId("student-task-card-1")).toBeNull();
-    expect(view.queryByTestId("student-task-card-2")).toBeNull();
-    expect(view.getByTestId("student-task-card-5")).toBeTruthy();
 });

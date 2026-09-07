@@ -1,8 +1,10 @@
 import { expect, test } from "bun:test";
 import { formatSamplePlanNumber, normalizeSamplePlanData } from "./sample-plan-display";
 
-test("sample-plan numbers hide floating-point tails with at most one decimal", () => {
-    expect(formatSamplePlanNumber(66.79239999999999)).toBe("66.8");
+test("sample-plan numbers retain useful precision without floating-point tails", () => {
+    expect(formatSamplePlanNumber(66.79239999999999)).toBe("66.7924");
+    expect(formatSamplePlanNumber(0.25)).toBe("0.25");
+    expect(formatSamplePlanNumber(0.000002)).toBe("0.000002");
     expect(formatSamplePlanNumber(100)).toBe("100");
 });
 

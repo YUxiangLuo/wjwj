@@ -123,3 +123,20 @@ test("reopening a completed stage keeps that stage data and clears downstream da
     });
     expect(result.updates.samplePlan).toBeUndefined();
 });
+
+test("required stratification blocks a saved plan below H and uses any complete available frame", () => {
+    const samplingPolicy = { version: 1, methods: { simple: "required", systematic: "optional", pps: "disabled", stratified: "required" } };
+    const base = { experimentRecord: record(), stage: 2, populationSize: 30, deadlinePassed: false, samplingPolicy,
+        fieldMapping: { numeric: ["y"], stratified: ["fine", "coarse"], analysisTarget: { kind: "mean", field: "y" } },
+        stratifiedStats: { fine: { A: 10, B: 10, C: 10 }, coarse: { X: 15, Y: 15 } } };
+    const payload = (n: number) => ({ samplePlan: { estimationType: "mean", confidenceLevel: "95", marginOfError: 10,
+        populationVariance: .25, designEffect: 1, nonResponseRate: 0, recommendedSize: 1, finalSampleSize: n } });
+    expect(buildStageCompletionUpdates({ ...base, payload: payload(1) })).toMatchObject({ ok: false, message: "必做分层抽样至少需要 2 个样本，以覆盖每个非空层" });
+    expect(buildStageCompletionUpdates({ ...base, payload: payload(2) }).ok).toBe(true);
+    expect(buildStageCompletionUpdates({ ...base, stratifiedStats: { singleton: { A: 1, B: 29 } }, payload: payload(2) }).ok).toBe(true);
+    expect(buildStageCompletionUpdates({ ...base, stratifiedStats: { incomplete: { A: 1, B: 20 } }, payload: payload(2) }).ok).toBe(false);
+    for (const requirement of ["optional", "disabled"]) {
+        expect(buildStageCompletionUpdates({ ...base, payload: payload(1), stratifiedStats: undefined,
+            samplingPolicy: { ...samplingPolicy, methods: { ...samplingPolicy.methods, stratified: requirement } } }).ok).toBe(true);
+    }
+});

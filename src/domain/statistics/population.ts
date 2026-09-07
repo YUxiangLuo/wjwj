@@ -102,11 +102,12 @@ export function buildStratifiedNumericStats(
                     .map((row) => toFiniteNumericValue(row[numField]))
                     .filter((value): value is number => value !== null);
 
-                if (values.length < 2) continue;
+                if (values.length === 0 || values.length !== rows.length) continue;
 
                 const mean = values.reduce((a, b) => a + b, 0) / values.length;
-                const variance =
-                    values.reduce((a, v) => a + (v - mean) ** 2, 0) / (values.length - 1);
+                const variance = values.length > 1
+                    ? values.reduce((a, v) => a + (v - mean) ** 2, 0) / (values.length - 1)
+                    : 0;
 
                 stratStats[numField] = { mean, stdDev: Math.sqrt(variance) };
             }

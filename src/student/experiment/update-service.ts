@@ -2,6 +2,7 @@ import { experiment } from "../../db/schema";
 import { attachCalculatedSampleSize } from "./sample-plan";
 import { parseStoredJson } from "./serialization";
 import { ExperimentStatus } from "./status";
+import { getRequiredStratifiedMinimum } from "./final-sample-bounds";
 import { resolveAnalysisTarget } from "../../lib/analysis-target";
 import { canonicalizeRichTextHtmlForStorage } from "../../server/rich-text";
 import {
@@ -45,6 +46,7 @@ export function buildStageCompletionUpdates(params: {
     deadlinePassed: boolean;
     fieldMapping?: unknown;
     samplingPolicy?: unknown;
+    stratifiedStats?: Record<string, Record<string, number>>;
 }) {
     const { experimentRecord: record, stage, payload } = params;
     if (!Number.isInteger(stage) || stage < 1 || stage > 4) return fail("阶段必须是1-4的整数");
@@ -84,7 +86,12 @@ export function buildStageCompletionUpdates(params: {
         }
         const samplePlan = attachCalculatedSampleSize(rawSamplePlan as Record<string, unknown>, params.populationSize);
         const analysisTargetKind = resolveAnalysisTarget(params.fieldMapping)?.target.kind;
-        const validationError = validateSamplePlanForSubmit(samplePlan, params.populationSize, analysisTargetKind);
+        const minimumSampleSize = getRequiredStratifiedMinimum(params.stratifiedStats, params.samplingPolicy, params.populationSize ?? 0);
+        if (minimumSampleSize === null) return fail("必做分层抽样缺少覆盖完整总体的分层数据，请联系教师检查课题");
+        if (minimumSampleSize > 1 && Number(samplePlan.finalSampleSize) < minimumSampleSize) {
+            return fail(`必做分层抽样至少需要 ${minimumSampleSize} 个样本，以覆盖每个非空层`);
+        }
+        const validationError = validateSamplePlanForSubmit(samplePlan, params.populationSize, analysisTargetKind, { minimumSampleSize });
         if (validationError) return fail(validationError);
         updates.samplePlan = samplePlan;
         updates.stage2CompletedAt = now;

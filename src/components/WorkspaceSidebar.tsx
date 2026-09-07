@@ -22,8 +22,8 @@ export function WorkspaceSidebar({
     footer,
 }: WorkspaceSidebarProps) {
     return (
-        <aside className="flex w-64 shrink-0 flex-col border-r border-navigation-border bg-navigation text-navigation-foreground">
-            <div className="flex h-16 items-center border-b border-navigation-border px-5">
+        <aside className="sticky top-0 flex h-dvh w-64 shrink-0 self-start flex-col overflow-hidden border-r border-navigation-border bg-navigation text-navigation-foreground">
+            <div className="flex h-16 shrink-0 items-center border-b border-navigation-border px-5">
                 <div className="flex items-center gap-2.5 text-subheading font-semibold">
                     <span className="rounded-control border border-navigation-border bg-navigation-active p-2 text-navigation-active-foreground">
                         <TitleIcon className="h-5 w-5" />
@@ -31,7 +31,7 @@ export function WorkspaceSidebar({
                     {title}
                 </div>
             </div>
-            <nav aria-label={`${title}主导航`} className="flex-1 space-y-1 p-3">
+            <nav aria-label={`${title}主导航`} className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain p-3">
                 {items.map((item) => {
                     const Icon = item.icon;
                     return (
@@ -47,7 +47,7 @@ export function WorkspaceSidebar({
                     );
                 })}
             </nav>
-            <div className="border-t border-navigation-border p-4 text-navigation-foreground">{footer}</div>
+            <div className="shrink-0 border-t border-navigation-border p-4 text-navigation-foreground">{footer}</div>
         </aside>
     );
 }

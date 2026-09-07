@@ -1,3 +1,4 @@
+import { SamplingObservationNotice } from "../../components/SamplingObservationNotice";
 import { DraftSaveStatus } from "../../components/DraftSaveStatus";
 import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -575,7 +576,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     {analysisMetrics && hasPpsCompleted && ppsStandardErrorMode && <>{ppsStandardErrorNotice}</>}
                                 </span>
                             </div>
-                            {analysisMetrics?.target && (
+                            <SamplingObservationNotice nonResponseRate={experiment?.samplePlan?.nonResponseRate} />
+{analysisMetrics?.target && (
                                 <TargetMetricsPanel target={analysisMetrics.target} methods={completedAnalysisMethods} />
                             )}
                             <Tabs defaultValue="charts" className="w-full">

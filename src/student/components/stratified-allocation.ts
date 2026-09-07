@@ -3,6 +3,45 @@ function fractionalPart(value: number): number {
 }
 
 /**
+ * Fixed total n, equal unit costs, independent SRS within each stratum.
+ * The marginal decrease A_h/[n_h(n_h+1)] is decreasing in n_h, so assigning
+ * each next unit to the largest decrease solves the bounded integer problem.
+ * Zero-variance strata retain one observation; unknown variances are rejected.
+ */
+export function allocateNeymanSampleCounts(params: {
+    targetSampleSize: number;
+    populationCounts: number[];
+    stdDevs: number[];
+}): number[] | null {
+    const { targetSampleSize: target, populationCounts: caps, stdDevs } = params;
+    if (!Number.isInteger(target) || caps.length !== stdDevs.length
+        || caps.some((cap) => !Number.isInteger(cap) || cap < 0)
+        || stdDevs.some((value) => !Number.isFinite(value) || value < 0)) return null;
+    const counts: number[] = caps.map((cap) => cap > 0 ? 1 : 0);
+    let remaining = target - counts.reduce((sum, n) => sum + n, 0);
+    if (remaining < 0 || target > caps.reduce((sum, cap) => sum + cap, 0)) return null;
+    // A common rescaling preserves the minimizer while avoiding squared overflow.
+    const maxStd = stdDevs.reduce((maximum, value) => Math.max(maximum, value), 0);
+    const weights = caps.map((cap, i) => maxStd > 0 ? cap * (stdDevs[i]! / maxStd) : 0);
+    const scale = weights.reduce((maximum, value) => Math.max(maximum, value), 0);
+    const coefficients = weights.map((weight) => scale > 0 ? (weight / scale) ** 2 : 0);
+    while (remaining > 0) {
+        let best = -1;
+        let gain = -1;
+        for (let i = 0; i < caps.length; i++) {
+            const n = counts[i]!;
+            if (n >= caps[i]!) continue;
+            const nextGain = coefficients[i]! / (n * (n + 1));
+            if (nextGain > gain) { best = i; gain = nextGain; }
+        }
+        if (best < 0) return null;
+        counts[best]!++;
+        remaining--;
+    }
+    return counts;
+}
+
+/**
  * 按原始权重做带上下界的比例分配，再用最大余数法整数化。
  * 层达到容量上限后会锁定并重新归一化剩余层权重，避免退化成轮询等额分配。
  */

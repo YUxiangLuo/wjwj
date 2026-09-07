@@ -1,3 +1,4 @@
+import { SamplingObservationNotice } from "../SamplingObservationNotice";
 import { DraftSaveStatus } from "../DraftSaveStatus";
 import type { DraftSaveState } from "../../experiment/experiment-draft";
 import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useId } from "react";
@@ -60,6 +61,7 @@ const PHASE_LABELS: Record<string, string> = {
 
 interface Props {
     populationSize: number;
+    minimumSampleSize?: number;
     initialConfidenceLevel?: string;
     initialMarginOfError?: number;
     initialDesignEffect?: number;
@@ -81,6 +83,7 @@ interface Props {
 
 export function ImmersiveSamplePlanning({
     populationSize,
+    minimumSampleSize = 1,
     initialConfidenceLevel = "95",
     initialMarginOfError,
     initialDesignEffect = 1,
@@ -161,7 +164,7 @@ export function ImmersiveSamplePlanning({
     }, [estimationType, confidenceLevel, marginOfError, populationSize, populationVariance, designEffect, nonResponseRate]);
 
     const [finalSampleSize, setFinalSampleSize] = useState(
-        initialDraft?.finalSampleSize ?? initialFinalSampleSize ?? recommendedSize,
+        initialDraft?.finalSampleSize ?? initialFinalSampleSize ?? Math.max(minimumSampleSize, recommendedSize),
     );
 
     // Keep final in sync with recommended when user hasn't touched it yet
@@ -170,12 +173,13 @@ export function ImmersiveSamplePlanning({
     );
     useEffect(() => {
         if (!userTouchedFinal) {
-            setFinalSampleSize(recommendedSize);
+            setFinalSampleSize(Math.max(minimumSampleSize, recommendedSize));
         }
-    }, [recommendedSize, userTouchedFinal]);
+    }, [recommendedSize, userTouchedFinal, minimumSampleSize]);
 
     const params: SampleParams = {
         populationSize,
+        minimumSampleSize,
         estimationType,
         confidenceLevel,
         marginOfError,
@@ -251,7 +255,10 @@ export function ImmersiveSamplePlanning({
 
     // 确认规划结果仅完成规划并返回阶段页；进入抽样执行的启动动画由阶段页的
     // “确认并进入下一阶段”触发（见 SamplePlanning.tsx）。
-    const handleConfirm = useCallback(() => jumpTo("done"), [jumpTo]);
+    const handleConfirm = useCallback(() => {
+        const n = paramsRef.current.finalSampleSize;
+        jumpTo(Number.isInteger(n) && n >= minimumSampleSize && n <= populationSize ? "done" : "decision");
+    }, [jumpTo, minimumSampleSize, populationSize]);
 
     const handleLaunchComplete = useCallback(() => {
         jumpTo("done");
@@ -402,8 +409,8 @@ export function ImmersiveSamplePlanning({
     const resetFinalSize = useCallback(() => {
         clearAdvancedPlanSource();
         setUserTouchedFinal(false);
-        setFinalSampleSize(recommendedSize);
-    }, [clearAdvancedPlanSource, recommendedSize]);
+        setFinalSampleSize(Math.max(minimumSampleSize, recommendedSize));
+    }, [clearAdvancedPlanSource, recommendedSize, minimumSampleSize]);
 
     // --- Render current phase ---
     const renderPhase = () => {
@@ -521,7 +528,8 @@ export function ImmersiveSamplePlanning({
                                 <p className="text-label text-muted-foreground mt-1">建议值 {recommendedSize.toLocaleString()}</p>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <SamplingObservationNotice nonResponseRate={nonResponseRate} />
+<div className="grid grid-cols-2 gap-3">
                                 <ParamSummaryItem label="估计类型" value={estimationType === "proportion" ? "比例" : "均值"} />
                                 <ParamSummaryItem label="置信水平" value={`${confidenceLevel}%`} />
                                 <ParamSummaryItem

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-    LayoutDashboard, FileText, FlaskConical, CheckCircle,
+    LayoutDashboard, FileText,
     ChevronRight, Clock, AlertCircle, Trophy, BookOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -303,12 +303,6 @@ export function TaskHall() {
         return true;
     });
 
-    // Calculate stats
-    const inProgressCount = tasks.filter(isTaskOngoing).length;
-    const gradedCount = tasks.filter(t => t.status === "graded").length;
-    const averageScore = tasks
-        .filter(t => t.status === "graded" && t.score !== undefined)
-        .reduce((acc, t, _, arr) => acc + (t.score || 0) / arr.length, 0);
     if (loading) {
         return <LoadingStatus className="py-24" iconClassName="h-10 w-10" label="正在加载实验任务" />;
     }
@@ -335,62 +329,6 @@ export function TaskHall() {
                     </Button>
                 </div>
             )}
-
-            {/* Stats Cards */}
-            <div className="grid grid-cols-3 gap-4" data-testid="student-stats-section">
-                {/* 统计卡同时是筛选器：点击切换任务筛选，再次点击回到全部 */}
-                <button
-                    type="button"
-                    onClick={() => setFilter(filter === "in_progress" ? "all" : "in_progress")}
-                    aria-pressed={filter === "in_progress"}
-                    aria-label="按进行中筛选任务"
-                    data-testid="student-stat-in-progress"
-                    className={`text-left rounded-surface transition-colors ${filter === "in_progress" ? "ring-2 ring-primary" : ""}`}
-                >
-                    <Card className="rounded-surface border-border bg-card hover:border-input transition-colors group cursor-pointer">
-                        <CardContent className="p-6 flex items-center gap-5">
-                            <div className="p-4 bg-primary-muted rounded-surface text-primary group-hover:bg-primary-muted transition-colors duration-300">
-                                <FlaskConical className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <p className="text-display font-bold text-foreground group-hover:text-primary transition-colors">{inProgressCount}</p>
-                                <p className="text-label text-muted-foreground">进行中的实验</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </button>
-                <button
-                    type="button"
-                    onClick={() => setFilter(filter === "graded" ? "all" : "graded")}
-                    aria-pressed={filter === "graded"}
-                    aria-label="按已批改筛选任务"
-                    data-testid="student-stat-graded"
-                    className={`text-left rounded-surface transition-colors ${filter === "graded" ? "ring-2 ring-success" : ""}`}
-                >
-                    <Card className="rounded-surface border-border bg-card hover:border-input transition-colors group cursor-pointer">
-                        <CardContent className="p-6 flex items-center gap-5">
-                            <div className="p-4 bg-success-muted rounded-surface text-success group-hover:bg-success-muted transition-colors duration-300">
-                                <CheckCircle className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <p className="text-display font-bold text-foreground group-hover:text-success transition-colors">{gradedCount}</p>
-                                <p className="text-label text-muted-foreground">已批改实验</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </button>
-                <Card className="rounded-surface border-border bg-card hover:border-input transition-colors group" data-testid="student-stat-average">
-                    <CardContent className="p-6 flex items-center gap-5">
-                        <div className="p-4 bg-auxiliary-muted rounded-surface text-auxiliary group-hover:bg-auxiliary-muted transition-colors duration-300">
-                            <Trophy className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <p className="text-display font-bold text-foreground group-hover:text-auxiliary transition-colors">{averageScore.toFixed(0) || "-"}</p>
-                            <p className="text-label text-muted-foreground">平均得分</p>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
 
             {/* Filter Header */}
             <div className="flex flex-row items-center justify-between gap-4 border-b border-border pb-4">

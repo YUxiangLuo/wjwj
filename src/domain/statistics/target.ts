@@ -136,6 +136,9 @@ export function buildTargetAnalysis(params: {
             effectiveSampleSize,
             reliability: { status: "unavailable", reasons: ["该方法没有可用的目标估计或设计标准误"] },
         };
+        if (method === "pps" && estimate !== null && standardError === null && !ppsUnavailable) {
+            analysis.reliability.reasons = ["PPS 模拟不足以确认设计标准误；重复结果相同不代表零误差"];
+        }
         if (estimate !== null && standardError !== null) {
             if (isCensus) {
                 analysis.reliability = { status: "census", reasons: ["当前方法覆盖完整虚拟总体"] };
@@ -147,6 +150,26 @@ export function buildTargetAnalysis(params: {
                     && effectiveSampleSize < populationSize * (1 - 1e-9)
                 ) {
                     reasons.push("等效 SRS 样本量低于 30");
+                }
+                if (standardError > 0) {
+                    if (sampleSize !== null && sampleSize < 30) reasons.push("实际入样量低于 30，不能仅凭等效样本量判断近似条件");
+                    const rows = method === "simple" ? simpleRows : method === "systematic" ? systematicRows : method === "pps" ? ppsRows : stratifiedRows;
+                    const observed = extractAccessorValues(rows, accessor);
+                    if (target.kind === "proportion") {
+                        const events = observed.reduce((sum, value) => sum + value, 0);
+                        const expectedMinority = observed.length * Math.min(populationValue, 1 - populationValue);
+                        if (Math.min(events, observed.length - events) < 5 || expectedMinority < 5) {
+                            reasons.push("事件或非事件数量偏少，对称正态区间可能覆盖不足");
+                        }
+                    } else {
+                        const squaredDeviations = populationValues.map((value) => (value - populationValue) ** 2);
+                        const total = squaredDeviations.reduce((sum, value) => sum + value, 0);
+                        if (total > 0 && squaredDeviations.some((value) => value > total * 0.1)) {
+                            reasons.push("总体含高影响单位（单个单位占离差平方和超过 10%），需检查区间近似");
+                        }
+                    }
+                    if (method === "systematic") reasons.push("系统抽样的区间覆盖取决于排序与起点分布，尚未验证");
+                    if (method === "pps") reasons.push("PPS 比估计可能有偏，模拟标准误不能保证区间覆盖");
                 }
                 if (params.plannedMarginOfError !== null && marginOfError !== null
                     && marginOfError > params.plannedMarginOfError * (1 + 1e-9)) {

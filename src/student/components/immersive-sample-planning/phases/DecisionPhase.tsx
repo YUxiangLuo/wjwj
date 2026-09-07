@@ -96,8 +96,8 @@ export function DecisionPhase({
 }: Props) {
     const { populationSize: N, recommendedSize, finalSampleSize } = params;
     const isMeanEstimation = params.estimationType === "mean";
-    const { min: minSize, max: maxSize } = useMemo(() => getFinalSampleSizeBounds(N), [N]);
-    const isValidSize = finalSampleSize >= minSize && finalSampleSize <= maxSize;
+    const { min: minSize, max: maxSize } = useMemo(() => getFinalSampleSizeBounds(N, params.minimumSampleSize), [N, params.minimumSampleSize]);
+    const isValidSize = Number.isInteger(finalSampleSize) && finalSampleSize >= minSize && finalSampleSize <= maxSize;
 
     const hasAdvancedSource = advancedPlanSource != null;
     const sourceLabel =
@@ -735,6 +735,7 @@ export function DecisionPhase({
                 )}
             >
                 <h3 className="text-label font-semibold text-foreground">最终样本量（将带入抽样执行）</h3>
+                {minSize > 1 && <p className="text-meta text-info">本课题要求完成分层抽样。至少需要 {minSize} 个样本，才能在一个可用分层方案中覆盖每个非空层；分层更细时还需相应增加样本量。</p>}
                 <div className="flex gap-3 items-end">
                     <div className="flex-1 space-y-1">
                         <div className="flex justify-between text-meta">

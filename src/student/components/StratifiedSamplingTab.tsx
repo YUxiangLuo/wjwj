@@ -26,7 +26,7 @@ import type { MethodKey } from "@/domain/experiment/types";
 import { SamplingSuccessState } from "./SamplingSuccessState";
 import { SamplePreviewTable } from "./SamplePreviewTable";
 import { StratifiedAllocationComparison } from "./StratifiedAllocationComparison";
-import { allocateStratifiedSampleCounts } from "./stratified-allocation";
+import { allocateNeymanSampleCounts, allocateStratifiedSampleCounts } from "./stratified-allocation";
 import { getSamplingResultCount } from "../experiment/sampling-results";
 
 const FIELD_LABELS: Record<string, string> = {
@@ -188,7 +188,7 @@ export function StratifiedSamplingTab({
     const neymanStdDevs = useMemo(() => {
         for (const field of numericFields) {
             const devs = layers.map((layer) => stratumNumericStats[stratifyBy]?.[layer.name]?.[field]?.stdDev);
-            if (devs.every((value): value is number => value !== undefined && value > 0)) {
+            if (devs.every((value): value is number => value !== undefined && Number.isFinite(value) && value >= 0)) {
                 return devs;
             }
         }
@@ -216,11 +216,19 @@ export function StratifiedSamplingTab({
                 : layers.map(() => n / layers.length);
         }
 
-        const nextCounts = allocateStratifiedSampleCounts({
+        const nextCounts = method === "neyman" && neymanStdDevs ? allocateNeymanSampleCounts({
+            targetSampleSize: n,
+            populationCounts: layers.map((layer) => layer.count),
+            stdDevs: neymanStdDevs,
+        }) : allocateStratifiedSampleCounts({
             targetSampleSize: n,
             rawCounts,
             caps: layers.map((layer) => layer.count),
         });
+        if (!nextCounts) {
+            toast.error("当前样本量无法覆盖每个非空层，请先修改样本量规划");
+            return;
+        }
 
         setLayers((prev) => prev.map((l, i) => ({ ...l, sampleCount: nextCounts[i]! })));
         const labels = { proportional: "按比例", equal: "等额", neyman: "奈曼" };

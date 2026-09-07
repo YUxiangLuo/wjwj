@@ -43,6 +43,8 @@ export { Z_VALUES, zForConfidenceLevel };
 /** Parameters shared across all phases. */
 export interface SampleParams {
     populationSize: number;
+    /** Required design constraint supplied by the current topic's frame. */
+    minimumSampleSize?: number;
     estimationType: EstimationType;
     confidenceLevel: ConfidenceLevel;
     marginOfError: number;

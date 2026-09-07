@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatStatistic } from "@/utils/statistic-format";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, Crosshair, Layers, BarChart3, DollarSign, CheckCircle2, Boxes, UserX } from "lucide-react";
 import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize } from "../../../experiment/sample-plan";
@@ -34,7 +35,7 @@ const STEP_META: Record<FactorsStep, { label: string; badge: string; icon: typeo
         label: "抽样设计的影响",
         badge: "因素 4",
         icon: Boxes,
-        intro: "抽样不一定都是简单随机。整群、不等概等复杂设计会让同样样本量带来的精度打折扣，这个折扣用设计效应衡量。",
+        intro: "设计效应是同一估计量的设计方差与简单随机方差之比，可能大于或小于 1；它取决于目标变量、分配和权重。",
     },
     non_response: {
         label: "不是每个单位都能获得回答",
@@ -57,12 +58,12 @@ const STEP_META: Record<FactorsStep, { label: string; badge: string; icon: typeo
 };
 
 function formatAbsoluteErrorValue(value: number): string {
-    return Number(value.toFixed(1)).toString();
+    return formatStatistic(value);
 }
 
 function buildMeanErrorChoices(current: number) {
-    const base = [0.5, 1, 2, 3, 5, 8];
-    if (current > 0) base.push(current);
+    const scale = Number.isFinite(current) && current > 0 ? current : 2;
+    const base = [0.25, 0.5, 1, 2, 4].map((factor) => scale * factor).filter((value) => Number.isFinite(value) && value > 0);
     return [...new Set(base)].sort((a, b) => a - b);
 }
 
@@ -156,7 +157,7 @@ function ErrorToleranceContent({ params }: { params: SampleParams }) {
                 {isMeanEstimation ? (
                     <>
                         绝对误差限 <strong className="text-foreground">e</strong> 越小，对均值估计的精度要求越高，
-                        所需样本量按 <strong className="text-foreground">1/e²</strong> 增长。
+                        忽略有限总体修正时，基准样本量与 <strong className="text-foreground">1/e²</strong> 成比例；有限总体下增幅趋缓，上限为 N。
                     </>
                 ) : (
                     <>
@@ -208,7 +209,7 @@ function ErrorToleranceContent({ params }: { params: SampleParams }) {
                 <p className="text-label text-info">
                     {isMeanEstimation ? (
                         <>
-                            <strong>关键洞察：</strong>把绝对误差限减半，样本量大约增加 4 倍。
+                            <strong>关键洞察：</strong>只有在有限总体修正可忽略时，把绝对误差限减半才使未取整的基准样本量增加到 4 倍。
                             教学中常先用历史数据或预调查估计 σ²，再根据业务能接受的绝对误差来定样本量。
                         </>
                     ) : (
@@ -643,7 +644,7 @@ function SummaryContent() {
         { icon: Crosshair, title: "误差限", desc: "容许的最大抽样误差，越小需要的样本越多" },
         { icon: Layers, title: "子总体估计", desc: "需要分域估计时，样本量可能翻数倍" },
         { icon: BarChart3, title: "总体变异", desc: "变异越大，需要更多样本来捕捉总体特征" },
-        { icon: Boxes, title: "设计效应", desc: "复杂设计的精度折扣 deff，样本量按倍数放大" },
+        { icon: Boxes, title: "设计效应", desc: "deff 是方差之比，可以低于 1；样本量还需结合有限总体修正" },
         { icon: UserX, title: "无回答率", desc: "达到目标有效样本数，邀请量按 1/(1−r) 放大" },
         { icon: DollarSign, title: "精度与费用", desc: "边际递减效应——超过拐点后收益极低" },
     ];

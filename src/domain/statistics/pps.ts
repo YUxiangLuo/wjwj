@@ -1,6 +1,7 @@
 import { toTrimmedCategory, type NumericAccessor, fieldAccessor } from "./values";
 import { createSafeRecord } from "../../lib/safe-record";
 import { createSeededRandom, drawPreparedPPSSample, preparePPSSampling } from "./sampling";
+import { computeSystematicExactValueSe } from "./systematic";
 
 export const DEFAULT_PPS_MONTE_CARLO_REPLICATES = 512;
 
@@ -197,6 +198,22 @@ export function buildPpsStandardErrorContext(
 
     const standardErrors = Object.fromEntries(fields.map((field) => {
         const accumulator = accumulators[field.key]!;
+        const firstValue = population[0] ? field.accessor(population[0]) : null;
+        const knownConstant = firstValue !== null && population.every((row) => field.accessor(row) === firstValue);
+        if (knownConstant) return [field.key, 0];
+        // Zero dispersion in a finite simulation is not proof of zero design
+        // variance. Equal positive sizes reduce to fractional systematic sampling,
+        // whose full start distribution can certify a balanced zero-variance design.
+        if (accumulator.count > 1 && accumulator.squaredDeviation === 0) {
+            const size = Number(population[0]?.[sizeField]);
+            const equalSizes = size > 0 && population.every((row) => Number(row[sizeField]) === size);
+            const provenZero = equalSizes && computeSystematicExactValueSe(population, field.accessor, {
+                completed: true,
+                sampleCount: normalizedSampleSize,
+                interval: population.length / normalizedSampleSize,
+            }) === 0;
+            return [field.key, provenZero ? 0 : null];
+        }
         return [
             field.key,
             accumulator.count > 1

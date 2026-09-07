@@ -49,8 +49,8 @@ import { DEMO_STUDENT_ACCOUNTS } from "./demo-accounts";
 import { buildDefaultSamplingPolicy, type SamplingPolicyV1 } from "../../lib/sampling-policy";
 
 const questionnaire = {
-    title: "校园学习体验调查（认知预试）",
-    welcomeText: "您好！本问卷用于课堂认知预试，帮助练习问卷设计。预试答案不进入抽样或统计分析。请根据真实情况作答。",
+    title: "校园学习体验调查（受访者视角试填）",
+    welcomeText: "您好！本问卷用于课堂受访者视角试填，帮助练习问卷设计。预试答案不进入抽样或统计分析。请根据真实情况作答。",
     endingText: "感谢您的认真作答，您的反馈将帮助我们更好地理解抽样调查与统计推断。",
     questions: [
         { id: "q1", type: "single", content: "您每天用于自主学习的时间？", options: ["1小时以内", "1-2小时", "2-3小时", "3小时以上"] },
@@ -65,7 +65,7 @@ const questionnaire = {
 };
 
 const graduateQuestionnaire = {
-    title: "毕业发展与就业准备调查（认知预试）",
+    title: "毕业发展与就业准备调查（受访者视角试填）",
     welcomeText: "您好！本问卷用于了解毕业生发展意向与就业准备情况。课堂预试答案不会进入正式估计，请按真实想法体验作答。",
     endingText: "感谢您的参与。您的反馈将帮助完善毕业发展服务，也将用于检查问题措辞和选项设置是否清晰。",
     questions: [
@@ -79,7 +79,7 @@ const graduateQuestionnaire = {
 };
 
 const diningQuestionnaire = {
-    title: "校园餐厅午间服务体验调查（认知预试）",
+    title: "校园餐厅午间服务体验调查（受访者视角试填）",
     welcomeText: "您好！本问卷用于课堂演练校园餐厅服务调查。预试回答只帮助检查问卷可理解性，不会进入等待时间估计。",
     endingText: "感谢您完成体验。正式研究将以服务时段观测记录估计等待时间，并结合客流和开放窗口数解释结果。",
     questions: [
@@ -179,7 +179,7 @@ const diningPlan = {
     finalSampleSize: diningRecommendedSize,
 };
 
-const reportContent = `<h2>实验目的</h2><p>本实验对照虚拟总体中每周学习时长的均值，比较四种抽样设计。问卷阶段是认知预试，答案不进入估计。</p><h2>方法与结果</h2><p>在百分之九十五置信水平和绝对误差限 2 下确定样本量，分别使用简单随机、系统、PPS 和分层抽样。PPS 使用月生活费作为规模变量，避免与对照变量循环。对不同方法的样本构成、每周学习时长与总体分布进行了比较，并记录随机种子以保证结果可复现。</p><h2>结论</h2><p>分层抽样能够稳定保持各层比例，简单随机抽样实现方便。实际调查中应结合总体结构、抽样框质量和执行成本选择方法，同时完整说明误差限和无回答率假设。</p>`;
+const reportContent = `<h2>实验目的</h2><p>本实验对照虚拟总体中每周学习时长的均值，比较四种抽样设计。问卷阶段是受访者视角试填，答案不进入估计。</p><h2>方法与结果</h2><p>在百分之九十五置信水平和绝对误差限 2 下确定样本量，分别使用简单随机、系统、PPS 和分层抽样。PPS 使用月生活费作为规模变量，避免与对照变量循环。对不同方法的样本构成、每周学习时长与总体分布进行了比较，并记录随机种子以保证结果可复现。</p><h2>结论</h2><p>分层抽样能够稳定保持各层比例，简单随机抽样实现方便。实际调查中应结合总体结构、抽样框质量和执行成本选择方法，同时完整说明误差限和无回答率假设。</p>`;
 const meanReportContent = `<h2>实验目的</h2><p>本实验以每周阅读时长的均值为估计目标，使用总体方差估计、绝对误差限和有限总体校正确定样本量，并比较可执行抽样方法的结果。</p><h2>方法与结果</h2><p>总体中每周阅读时长包含零值，且没有其他对每个单位都为正数的数值字段，因此不存在合格的 PPS 规模变量。实验模板按规则将 PPS 设为不适用，随后完成简单随机、系统和按学院分层抽样。</p><h2>结论</h2><p>均值估计流程使用样本量 15。三种启用方法均保留随机种子和完整样本行；PPS 未启用是由总体数据条件决定的有效策略，而不是执行失败。分析时应明确记录这一限制，避免为完成形式而选用不满足正值条件的规模变量。</p>`;
 const graduateReportContent = `<h2>研究问题</h2><p>本研究估计某综合大学本届毕业生中计划直接就业的学生比例，分析单位为一名毕业生。</p><h2>抽样设计</h2><p>以学院进行分层，并使用求职准备度作为 PPS 规模变量。目标类别属于分类变量，因此样本量规划采用最保守比例方差，误差限按百分点解释。</p><h2>结果解释</h2><p>比较四种抽样方法的直接就业比例、设计标准误与总体已知比例。结果仅代表该虚拟总体和当前抽样设计，不应外推到其他学校或毕业年份。</p>`;
 const diningReportContent = `<h2>研究问题</h2><p>本研究估计校园餐厅工作日午间高峰服务时段的平均等待分钟数，分析单位是一个十五分钟服务时段，而不是一名学生。</p><h2>抽样设计</h2><p>按校区分层，并以客流量作为 PPS 规模变量，比较简单随机、系统、PPS 与分层抽样。</p><h2>结果解释</h2><p>等待时间会同时受到时段、客流量和开放窗口数影响。单次样本的均值差异不能直接解释为餐厅服务质量的因果差异。</p>`;
@@ -784,7 +784,7 @@ async function seed() {
 
     await db.insert(announcement).values([
         { title: "2026-2027-1 学期实验平台开放", content: "本学期实验包含学习投入、毕业去向和餐厅服务三类研究场景。请先核对研究问题、目标总体和分析单位，再选择抽样设计。", targetScope: "all", status: 1, createdAt: day(-8), updatedAt: day(-8) },
-        { title: "学生端：完成实验前请检查估计目标", content: `学习投入课题推荐样本量为 ${ppsMeanRecommendedSize}；毕业去向课题使用比例估计，误差限按百分点解释。问卷均为认知预试，不直接进入估计。`, targetScope: "student", status: 1, createdAt: day(-6), updatedAt: day(-6) },
+        { title: "学生端：完成实验前请检查估计目标", content: `学习投入课题推荐样本量为 ${ppsMeanRecommendedSize}；毕业去向课题使用比例估计，误差限按百分点解释。问卷均为受访者视角试填，不直接进入估计。`, targetScope: "student", status: 1, createdAt: day(-6), updatedAt: day(-6) },
         { title: "教师端：本周批改与课堂演示安排", content: "批改列表已准备待批改、已批改和已驳回示例。课堂演示可比较人员总体与服务时段总体，以及均值和比例两类估计目标。", targetScope: "teacher", status: 1, createdAt: day(-5), updatedAt: day(-5) },
         { title: "数据使用说明", content: "演示总体均为合成数据，不包含真实学生或个人信息。导出样本仅用于课堂练习。", targetScope: "all", status: 1, createdAt: day(-4), updatedAt: day(-4) },
         { title: "公告草稿", content: "未发布公告不应出现在学生或教师首页。", targetScope: "all", status: 0, createdAt: day(-1), updatedAt: day(-1) },

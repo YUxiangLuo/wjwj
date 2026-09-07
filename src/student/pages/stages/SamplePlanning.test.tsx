@@ -179,9 +179,9 @@ test("zero target variance does not open a wizard with invented variance", async
 test("failed target variance can be retried without silently using 100", async () => {
     mockExperimentApi.getStats.mockRejectedValueOnce(new Error("offline"));
     const view = render(<SamplePlanning onPrev={() => {}} />);
-    await waitFor(() => expect(view.getByRole("alert").textContent).toContain("方差加载失败"));
+    await waitFor(() => expect(view.getByRole("alert").textContent).toContain("规划数据加载失败"));
     expect(lastPlanningProps).toBeNull();
-    fireEvent.click(view.getByText("重新加载研究目标方差"));
+    fireEvent.click(view.getByText("重新加载规划数据"));
     await waitFor(() => expect(lastPlanningProps?.initialPopulationVariance).toBeGreaterThan(0));
     expect(lastPlanningProps?.initialPopulationVariance).not.toBe(100);
     expect(view.queryByRole("alert")).toBeNull();
@@ -232,7 +232,7 @@ test("completing the overlay persists the variance used to compute n, not a late
     fireEvent.click(view.getByTestId("mock-planning-complete"));
     await waitFor(() => expect(view.getByTestId("student-sample-plan-summary")).toBeTruthy());
     const summary = view.getByTestId("student-sample-plan-summary").textContent ?? "";
-    expect(summary).toContain("66.8");
+    expect(summary).toContain("66.7924");
     expect(summary).not.toContain(String(lastPlanningProps?.initialPopulationVariance));
     expect(summary).not.toContain("67.128040201005");
     expect(summary).toContain("49");

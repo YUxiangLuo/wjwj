@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/select";
 import { BarChart3, Calculator, AlertCircle } from "lucide-react";
 import { useState, useMemo } from "react";
-import { allocateStratifiedSampleCounts } from "./stratified-allocation";
+import { allocateNeymanSampleCounts, allocateStratifiedSampleCounts } from "./stratified-allocation";
+import { formatStatistic } from "@/utils/statistic-format";
 
 interface LayerInfo {
     name: string;
@@ -72,7 +73,7 @@ export function StratifiedAllocationComparison({
     const layerStdDevs = useMemo(() => {
         if (!targetVariable || !stratumStdDevs) return undefined;
         const devs = layers.map(l => stratumStdDevs[l.name]?.[targetVariable]?.stdDev);
-        return devs.every((s): s is number => s !== undefined && s > 0) ? devs : undefined;
+        return devs.every((s): s is number => s !== undefined && Number.isFinite(s) && s >= 0) ? devs : undefined;
     }, [layers, targetVariable, stratumStdDevs]);
 
     const layerMeans = useMemo(() => {
@@ -260,10 +261,10 @@ export function StratifiedAllocationComparison({
                                 {/* 指标 */}
                                 <div className="grid grid-cols-2 gap-3 pt-3 border-t border-auxiliary-border">
                                     <div className="text-center">
-                                        <div className="text-meta text-auxiliary mb-1">估计方差（相对）</div>
+                                        <div className="text-meta text-auxiliary mb-1">设计方差</div>
                                         <div className="font-bold text-auxiliary-strong">
                                             {canCompareVariance && comparison.totalVariance != null
-                                                ? comparison.totalVariance.toFixed(4)
+                                                ? formatStatistic(comparison.totalVariance)
                                                 : "—"}
                                         </div>
                                     </div>
@@ -312,7 +313,7 @@ export function StratifiedAllocationComparison({
                                 <p className="font-medium">效率解读</p>
                                 <p className="text-warning">
                                     相对效率以按比例分配为基准（1.00×）。&gt; 1 表示比按比例分配更精确。
-                                    在固定总样本量、层内 SRS 和等单位成本下，奈曼分配针对所选变量最小化总体均值估计方差；改变目标变量、成本或域精度目标后，结论也会改变。
+                                    奈曼方案在固定总样本量、层内 SRS 和等单位成本下，用边际方差下降量求整数最优分配；改变目标变量、成本或域精度目标后，结论也会改变。已知层内方差为零时仍保留该层的最低覆盖样本。
                                 </p>
                             </div>
                         </div>
@@ -320,7 +321,7 @@ export function StratifiedAllocationComparison({
                 )}
 
                 <p className="text-meta leading-relaxed text-auxiliary">
-                    所有方法都使用同一容量约束分配器：某层达到 Nₕ 后，剩余名额会继续分配给未满层；只要 n≤ΣNₕ，最终各层样本量之和就等于计划 n。
+                    所有方案都遵守层容量和总样本量约束。奈曼按边际方差下降量分配，其他方法在某层达到 Nₕ 后重新分配剩余份额；当非空层数≤n≤ΣNₕ 时，各层样本量合计等于计划 n，并覆盖每层。
                 </p>
             </CardContent>
         </Card>
@@ -399,14 +400,21 @@ function calculateNeymanAllocation(layers: LayerInfo[], totalSampleSize: number,
         };
     });
 
-    allocation = normalizeAllocation(allocation, totalSampleSize, layers);
+    const exactCounts = allocateNeymanSampleCounts({
+        targetSampleSize: totalSampleSize,
+        populationCounts: layers.map((layer) => layer.count),
+        stdDevs,
+    });
+    allocation = exactCounts ? allocation.map((item, index) => ({
+        ...item, sampleSize: exactCounts[index]!, proportion: exactCounts[index]! / totalSampleSize,
+    })) : normalizeAllocation(allocation, totalSampleSize, layers);
 
     const totalVariance = calculateStratifiedMeanVariance(allocation, layers, stdDevs);
 
     return {
         method: "neyman",
         name: "奈曼分配",
-        description: "在固定总样本量、层内 SRS 和等单位成本下，按 NₕSₕ 分配使目标均值估计的方差最小",
+        description: "连续份额与 NₕSₕ 成比例；在每层至少 1 个样本和容量上限内，用边际方差下降量求等成本整数最优分配",
         allocation,
         totalVariance,
         efficiency: null, // overridden by comparisons useMemo with relative-to-proportional ratio

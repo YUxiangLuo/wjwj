@@ -1,0 +1,206 @@
+{
+  "ppsRareTail": {
+    "estimate": {
+      "estimate": 0,
+      "standardError": null,
+      "marginOfError": null,
+      "sampleSize": 40,
+      "effectiveSampleSize": null,
+      "reliability": {
+        "status": "unavailable",
+        "reasons": [
+          "PPS 模拟不足以确认设计标准误；重复结果相同不代表零误差"
+        ]
+      }
+    },
+    "piRare": 0.00004003999995996,
+    "rareEstimate": 962.4639076034648,
+    "exactDesignMean": 0.03853705482190568,
+    "exactDesignSD": 6.090077115014714,
+    "bias": -0.9614629451780943,
+    "truth": 1,
+    "probabilityMC512Miss": 0.979707824132427,
+    "correction": "MC zero is unavailable unless independently certified"
+  },
+  "rareProportion": {
+    "coverage": 0.8846252264288337,
+    "cases": [
+      {
+        "x": 0,
+        "probability": 0.8846252264288337,
+        "estimate": 0,
+        "standardError": 0.008476783343689637,
+        "marginOfError": 0.01661449535363169,
+        "sampleSize": 40,
+        "effectiveSampleSize": 40.000000000000014,
+        "reliability": {
+          "status": "caution",
+          "reasons": [
+            "事件或非事件数量偏少，对称正态区间可能覆盖不足"
+          ]
+        },
+        "covers": true
+      },
+      {
+        "x": 1,
+        "probability": 0.11080900539818375,
+        "estimate": 0.025,
+        "standardError": 0.008476783343689637,
+        "marginOfError": 0.01661449535363169,
+        "sampleSize": 40,
+        "effectiveSampleSize": 40.000000000000014,
+        "reliability": {
+          "status": "caution",
+          "reasons": [
+            "事件或非事件数量偏少，对称正态区间可能覆盖不足"
+          ]
+        },
+        "covers": false
+      },
+      {
+        "x": 2,
+        "probability": 0.00450630991713156,
+        "estimate": 0.05,
+        "standardError": 0.008476783343689637,
+        "marginOfError": 0.01661449535363169,
+        "sampleSize": 40,
+        "effectiveSampleSize": 40.000000000000014,
+        "reliability": {
+          "status": "caution",
+          "reasons": [
+            "事件或非事件数量偏少，对称正态区间可能覆盖不足"
+          ]
+        },
+        "covers": false
+      },
+      {
+        "x": 3,
+        "probability": 0.000059458255851041415,
+        "estimate": 0.075,
+        "standardError": 0.008476783343689637,
+        "marginOfError": 0.01661449535363169,
+        "sampleSize": 40,
+        "effectiveSampleSize": 40.000000000000014,
+        "reliability": {
+          "status": "caution",
+          "reasons": [
+            "事件或非事件数量偏少，对称正态区间可能覆盖不足"
+          ]
+        },
+        "covers": false
+      }
+    ]
+  },
+  "integerNeyman": {
+    "counts": [
+      2,
+      2,
+      11
+    ],
+    "variance": 0.11679292929292934
+  },
+  "budgetCoverage": {
+    "allocation": [
+      {
+        "layerName": "A",
+        "sampleSize": 1,
+        "proportion": 0.25,
+        "cost": 2,
+        "isOverAllocated": false
+      },
+      {
+        "layerName": "B",
+        "sampleSize": 3,
+        "proportion": 0.75,
+        "cost": 3,
+        "isOverAllocated": false
+      }
+    ],
+    "totalSampleSize": 4,
+    "totalCost": 5,
+    "uncoveredLayers": [],
+    "totalVariance": 1.1583333333333332,
+    "efficiency": 0.8633093525179857,
+    "formula": "连续无约束解 n_h = C × (N_h S_h / √c_h) / Σ(N_i S_i √c_i)；实际结果为保留层覆盖的整数预算近似，不保证全局最优"
+  },
+  "meanZeroRse": null,
+  "api": {
+    "topicId": 18,
+    "taskId": 17,
+    "rejected": {
+      "status": 400,
+      "success": false,
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "message": "必做分层抽样至少需要 3 个样本，以覆盖每个非空层"
+      }
+    },
+    "acceptedStage": 3,
+    "analysisStage": 4,
+    "simpleCount": 3,
+    "stratifiedCount": 3
+  },
+  "sidebar": {
+    "longPage": {
+      "footer": {
+        "bottom": 700,
+        "height": 75,
+        "left": 0,
+        "right": 255,
+        "top": 625,
+        "width": 255,
+        "x": 0,
+        "y": 625
+      },
+      "nav": {
+        "bottom": 625,
+        "height": 561,
+        "left": 0,
+        "right": 255,
+        "top": 64,
+        "width": 255,
+        "x": 0,
+        "y": 64
+      },
+      "scrollY": 261,
+      "sidebar": {
+        "bottom": 700,
+        "height": 700,
+        "left": 0,
+        "right": 256,
+        "top": 0,
+        "width": 256,
+        "x": 0,
+        "y": 0
+      },
+      "viewport": 700
+    },
+    "shortViewport": {
+      "footer": {
+        "bottom": 320,
+        "height": 75,
+        "left": 0,
+        "right": 255,
+        "top": 245,
+        "width": 255,
+        "x": 0,
+        "y": 245
+      },
+      "navContentHeight": 284,
+      "navHeight": 181,
+      "navScroll": 103,
+      "scrollY": 261,
+      "sidebar": {
+        "bottom": 320,
+        "height": 320,
+        "left": 0,
+        "right": 256,
+        "top": 0,
+        "width": 256,
+        "x": 0,
+        "y": 0
+      },
+      "viewport": 320
+    }
+  }
+}

@@ -1,0 +1,80 @@
+import {buildTargetAnalysis} from '../../../src/domain/statistics/target.ts';
+import {calculateSampleSizeMetrics,calculateMeanSampleSizeMetrics,calculateMeanEstimationSampleSize,calculateOptimalAllocationWithCost} from '../../../src/student/experiment/sample-plan.ts';
+import {executeSamplingAction} from '../../../src/student/experiment/sampling-service.ts';
+import {validateSamplePlanForSubmit} from '../../../src/student/experiment/submit-validation.ts';
+import {allocateStratifiedSampleCounts} from '../../../src/student/components/stratified-allocation.ts';
+const contract=(kind='mean')=>({inferred:false,contract:{version:1,researchQuestion:'Review probe',targetPopulation:'Synthetic frame',unitOfAnalysis:'row',target:kind==='mean'?{kind,field:'y'}:{kind,field:'y',value:'1'}}});
+const analyze=(population,samplingResults,kind='mean',plannedMarginOfError=1)=>buildTargetAnalysis({population,samplingResults,contract:contract(kind),confidenceLevel:'95',plannedMarginOfError,ppsReplicates:512,sharedPpsContext:null});
+const findings:any={};
+// Exact hypergeometric distribution: N=1000, K=3 successes, n=40.
+const N=1000,K=3,n=40;
+const population=Array.from({length:N},(_,i)=>({y:i<K?1:0}));
+let p0=1;for(let j=0;j<n;j++)p0*=(N-K-j)/(N-j);
+const cases=[];let px=p0;
+for(let x=0;x<=K;x++){
+ if(x>0)px*=((K-x+1)*(n-x+1))/(x*(N-K-n+x));
+ const sample=[...Array(x).fill({y:1}),...Array(n-x).fill({y:0})];
+ const m=analyze(population,{simple:{completed:true,sampleCount:n,data:sample}},'proportion',.1)!.methods.simple;
+ cases.push({x,probability:px,...m,covers:Math.abs(m.estimate!-K/N)<=m.marginOfError!});
+}
+findings.rareProportion={N,K,n,cases,coverage:cases.reduce((s,c)=>s+(c.covers?c.probability:0),0)};
+// Planning invitation at census cap, but execution treats all rows as observed.
+const nrpop=Array.from({length:100},(_,i)=>({y:i%2}));
+const nrPlan=calculateSampleSizeMetrics({populationSize:100,confidenceLevel:'95',marginOfError:5,designEffect:1,nonResponseRate:.5})!;
+const nrDraw=await executeSamplingAction({method:'simple',rawParams:{sampleSize:nrPlan.n,seed:0},targetSampleSize:nrPlan.n,population:nrpop,fieldMapping:{numeric:['y']}});
+findings.nonresponse={planning:nrPlan,execution:nrDraw.ok?{sampleCount:nrDraw.result.sampleCount,analysis:analyze(nrpop,{simple:nrDraw.result},'proportion',.05)?.methods.simple}:nrDraw};
+// Plan validation accepts n=1; required stratification has three nonempty strata.
+const strpop=Array.from({length:30},(_,i)=>({y:i%2,group:['A','B','C'][i%3]}));
+const strPlan={estimationType:'mean',confidenceLevel:'95',marginOfError:10,populationVariance:.25,designEffect:1,nonResponseRate:0,recommendedSize:1,finalSampleSize:1};
+findings.infeasibleStratification={recommended:calculateMeanEstimationSampleSize({...strPlan,populationSize:30}),planError:validateSamplePlanForSubmit(strPlan,30,'mean'),draw:await executeSamplingAction({method:'stratified',rawParams:{stratifyBy:'group',layers:['A','B','C'].map(name=>({name,sampleCount:1})),seed:0},targetSampleSize:1,population:strpop,fieldMapping:{stratified:['group'],numeric:['y']}})};
+// Integer Neyman: independent exhaustive search over every feasible 3-stratum allocation.
+const variance=(ns,Nh,Sh)=>ns.reduce((s,nh,i)=>s+Nh[i]**2*Sh[i]**2*(1/nh-1/Nh[i]),0)/(Nh.reduce((a,b)=>a+b,0)**2);
+let worst=null;
+for(let a=2;a<=12;a++)for(let b=2;b<=12;b++)for(let c=2;c<=12;c++){
+ const Nh=[a,b,c];const Sh=[1,2,5];
+ for(let total=4;total<=Math.min(a+b+c-1,15);total++){
+  const counts=allocateStratifiedSampleCounts({targetSampleSize:total,rawCounts:Nh.map((nh,i)=>nh*Sh[i]),caps:Nh,minPerLayer:1});
+  const got=variance(counts,Nh,Sh);let best=Infinity,bestCounts;
+  for(let x=1;x<=a;x++)for(let y=1;y<=b;y++){const z=total-x-y;if(z<1||z>c)continue;const v=variance([x,y,z],Nh,Sh);if(v<best){best=v;bestCounts=[x,y,z]}}
+  if(got>best+1e-10&&(!worst||got/best>worst.ratio))worst={Nh,Sh,total,counts,got,bestCounts,best,ratio:got/best};
+ }
+}
+findings.integerNeyman=worst;
+findings.meanPrecision=calculateMeanSampleSizeMetrics({populationSize:1000,confidenceLevel:'95',marginOfError:1,populationVariance:25,designEffect:4,nonResponseRate:0,estimatedMean:0});
+// Auxiliary exported fixed-budget function (not currently used by a page).
+let costWorst=null;
+for(let B=5;B<=40;B++)for(let ca=1;ca<=6;ca++)for(let cb=1;cb<=6;cb++){
+ const layers=[{name:'A',populationSize:10,stdDev:1,unitCost:ca},{name:'B',populationSize:10,stdDev:4,unitCost:cb}];
+ const got=calculateOptimalAllocationWithCost(layers,B)!;let best=Infinity,bestCounts;
+ for(let a=1;a<=10;a++)for(let b=1;b<=10;b++){if(a*ca+b*cb>B)continue;const v=variance([a,b],[10,10],[1,4]);if(v<best){best=v;bestCounts=[a,b]}}
+ if(Number.isFinite(best)&&(got.totalVariance===null||(got.totalVariance>best+1e-9))&&(!costWorst||(got.totalVariance??Infinity)/best>costWorst.ratio))costWorst={B,ca,cb,got,best,bestCounts,ratio:(got.totalVariance??Infinity)/best};
+}
+findings.auxiliaryCostAllocation=costWorst;
+console.log(JSON.stringify(findings,null,2));
+await Bun.write('test-results/statistical-review-2026-09-07/probes.reproduced.json',JSON.stringify(findings,null,2));
+// Rare high-weight PPS outcome absent from the fixed 512-replicate simulation.
+const ppsPopulation=Array.from({length:1000},(_,i)=>({y:i===0?1000:0,size:i===0?.001:1}));
+const ppsDraw=await executeSamplingAction({method:'pps',rawParams:{sampleSize:40,sizeField:'size',seed:0},targetSampleSize:40,population:ppsPopulation,fieldMapping:{id:'id',numeric:['y','size'],analysisTarget:{kind:'mean',field:'y'}}});
+if(ppsDraw.ok){
+ const got=analyze(ppsPopulation,{pps:ppsDraw.result},'mean',.1)!.methods.pps;
+ const piRare=40*.001/(999+.001),piCommon=40/(999+.001);
+ const rareEstimate=(1000/piRare)/(1/piRare+39/piCommon);
+ const expectation=piRare*rareEstimate;
+ const trueVariance=piRare*(rareEstimate-expectation)**2+(1-piRare)*expectation**2;
+ findings.ppsRareTail={estimate:got,piRare,rareEstimate,exactDesignMean:expectation,exactDesignSD:Math.sqrt(trueVariance),bias:expectation-1,truth:1,probabilityMC512Miss:Math.pow(1-piRare,512)};
+}
+console.log('PPS independent exact two-outcome distribution:',JSON.stringify(findings.ppsRareTail,null,2));
+await Bun.write('test-results/statistical-review-2026-09-07/probes.reproduced.json',JSON.stringify(findings,null,2));
+// Second confirmation through the actual sampler on both possible target outcomes.
+const {performPPSSampling}=await import('../../../src/domain/statistics/sampling');
+const {estimateWeightedValue}=await import('../../../src/domain/statistics/pps');
+const rare=performPPSSampling(ppsPopulation,'size',40,()=>findings.ppsRareTail.piRare/2);
+const normal=performPPSSampling(ppsPopulation,'size',40,()=>.5);
+findings.ppsForcedDraws={rare:{sampleCount:rare.data.length,containsRare:rare.indices.includes(0),estimate:estimateWeightedValue(rare.data,r=>r.y,rare.inclusionProbabilities)},common:{sampleCount:normal.data.length,containsRare:normal.indices.includes(0),estimate:estimateWeightedValue(normal.data,r=>r.y,normal.inclusionProbabilities)}};
+// Exact finite-population e/2 comparison, independent algebra alongside production values.
+const finiteN=e=>calculateMeanEstimationSampleSize({populationSize:100,confidenceLevel:'95',marginOfError:e,populationVariance:100,designEffect:1,nonResponseRate:0});
+findings.finiteHalvedMargin={N:100,sigma2:100,e:2,n:finiteN(2),halfE:1,halfN:finiteN(1),ratio:finiteN(1)!/finiteN(2)!};
+findings.displayedSeWithoutDeff=Math.sqrt(25/278*(1000-278)/(1000-1));
+findings.planningEquivalentSrs=1/(1/1000+4*(1/278-1/1000));
+await Bun.write('test-results/statistical-review-2026-09-07/probes.reproduced.json',JSON.stringify(findings,null,2));
+console.log(JSON.stringify({forced:findings.ppsForcedDraws,fpc:findings.finiteHalvedMargin,printedSe:findings.displayedSeWithoutDeff,equivalent:findings.planningEquivalentSrs},null,2));

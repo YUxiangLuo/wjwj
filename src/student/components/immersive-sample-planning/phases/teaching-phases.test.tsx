@@ -111,7 +111,8 @@ test("FactorsPhase 的均值误差页使用绝对误差与均值样本量文案"
 
     expect(text).toContain("绝对误差限 e 越小");
     expect(text).toContain("σ²=100");
-    expect(text).toContain("减半，样本量大约增加 4 倍");
+    expect(text).toContain("只有在有限总体修正可忽略时");
+    expect(text).toContain("基准样本量增加到 4 倍");
     expect(text).not.toContain("±1%");
     expect(text).not.toContain("25 倍");
 });
@@ -189,7 +190,7 @@ test("FactorsPhase 汇总页展示六因素卡片", () => {
     for (const title of ["误差限", "子总体估计", "总体变异", "设计效应", "无回答率", "精度与费用"]) {
         expect(text).toContain(title);
     }
-    expect(text).toContain("复杂设计的精度折扣 deff");
+    expect(text).toContain("deff 是方差之比，可以低于 1");
     expect(text).toContain("邀请量按 1/(1−r) 放大");
     expect(text).toContain("继续：进入四步法小结");
     expect(text).not.toContain("下一步进入公式阶段");

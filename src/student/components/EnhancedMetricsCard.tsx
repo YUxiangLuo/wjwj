@@ -27,10 +27,10 @@ export function EnhancedMetricsCard({
     const formattedMeanMetricMargin = formatMarginOfError(metrics.marginOfError, "mean");
 
     // 格式化百分比
-    const formatPercent = (value: number) => (value * 100).toFixed(2) + "%";
+    const formatPercent = (value: number | null) => value === null ? "不可定义" : formatStatistic(value * 100, 2) + "%";
 
     // 格式化置信区间
-    const formatCI = (value: number) => (value * 100).toFixed(1) + "%";
+    const formatCI = (value: number | undefined) => value === undefined ? "—" : formatStatistic(value * 100, 1) + "%";
 
     const sizeDeviation = finalSampleSize !== undefined && finalSampleSize !== metrics.n;
 
@@ -79,7 +79,8 @@ export function EnhancedMetricsCard({
                             {isMeanEstimation ? formatStatistic(metrics.standardError) : formatPercent(metrics.standardError)}
                         </div>
                         <div className="text-meta text-primary mt-1">
-                            {isMeanEstimation ? "SE(ȳ) = √[σ²/n × (N−n)/(N−1)]" : "SE = √[p(1−p)/n × (N−n)/(N−1)]"}
+                            {isMeanEstimation ? "SE(ȳ) = √[deff × σ²/m × (N−m)/(N−1)]" : "SE = √[deff × p(1−p)/m × (N−m)/(N−1)]"}
+                            <span className="block">m 为预期完成量，n 为计划发放量</span>
                         </div>
                     </div>
 
@@ -100,13 +101,13 @@ export function EnhancedMetricsCard({
                             <div className="rounded-surface border border-primary bg-background p-3">
                                 <div className="flex items-center gap-1.5 mb-1">
                                     <Target className="w-3.5 h-3.5 text-primary" />
-                                    <span className="text-meta text-primary">等效样本量</span>
+                                    <span className="text-meta text-primary">预期完成样本量</span>
                                 </div>
                                 <div className="text-subheading font-bold text-primary">
                                     {Math.ceil(metrics.expectedCompleted).toLocaleString()}
                                 </div>
                                 <div className="text-meta text-primary mt-1">
-                                    预期完成样本量
+                                    m = n × (1−无回答率)
                                 </div>
                             </div>
                         </>
@@ -156,7 +157,7 @@ export function EnhancedMetricsCard({
                                 <div className="text-meta text-primary mb-1">下限</div>
                                 <div className="flex items-center justify-center gap-1 text-success">
                                     <Minus className="w-3 h-3 shrink-0" />
-                                    <span className="font-bold tabular-nums">{formatCI(metrics.confidenceInterval.lower)}</span>
+                                    <span className="font-bold tabular-nums">{formatCI(metrics.confidenceInterval?.lower)}</span>
                                 </div>
                             </div>
                             <div className="min-h-[2.5rem] w-px shrink-0 self-center bg-primary" aria-hidden />
@@ -169,7 +170,7 @@ export function EnhancedMetricsCard({
                                 <div className="text-meta text-primary mb-1">上限</div>
                                 <div className="flex items-center justify-center gap-1 text-success">
                                     <Plus className="w-3 h-3 shrink-0" />
-                                    <span className="font-bold tabular-nums">{formatCI(metrics.confidenceInterval.upper)}</span>
+                                    <span className="font-bold tabular-nums">{formatCI(metrics.confidenceInterval?.upper)}</span>
                                 </div>
                             </div>
                         </div>

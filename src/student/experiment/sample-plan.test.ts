@@ -244,9 +244,9 @@ test("metrics returns valid confidence interval", () => {
         populationSize: 10000,
     });
     expect(metrics).not.toBeNull();
-    expect(metrics!.confidenceInterval.lower).toBeGreaterThanOrEqual(0);
-    expect(metrics!.confidenceInterval.upper).toBeLessThanOrEqual(1);
-    expect(metrics!.confidenceInterval.lower).toBeLessThan(metrics!.confidenceInterval.upper);
+    expect(metrics!.confidenceInterval!.lower).toBeGreaterThanOrEqual(0);
+    expect(metrics!.confidenceInterval!.upper).toBeLessThanOrEqual(1);
+    expect(metrics!.confidenceInterval!.lower).toBeLessThan(metrics!.confidenceInterval!.upper);
 });
 
 test("metrics RSE equals SE / p", () => {
@@ -258,7 +258,7 @@ test("metrics RSE equals SE / p", () => {
     });
     expect(metrics).not.toBeNull();
     const expectedRSE = metrics!.standardError / 0.3;
-    expect(Math.abs(metrics!.relativeStandardError - expectedRSE)).toBeLessThan(1e-10);
+    expect(Math.abs(metrics!.relativeStandardError! - expectedRSE)).toBeLessThan(1e-10);
 });
 
 test("metrics returns null for invalid population", () => {
@@ -539,8 +539,8 @@ test("cost allocation reports missing strata instead of omitting their variance"
     expect(census.totalVariance).toBe(0);
     expect(census.efficiency).toBeNull();
     const zeroVariance = calculateOptimalAllocationWithCost(layers.map(layer => ({ ...layer, stdDev: 0 })), 10)!;
-    expect(zeroVariance.uncoveredLayers).toEqual(["A", "B"]);
-    expect(zeroVariance.totalVariance).toBeNull();
+    expect(zeroVariance.uncoveredLayers).toEqual([]);
+    expect(zeroVariance.totalVariance).toBe(0);
 });
 
 test("cluster planning includes a partial last cluster rather than reducing required precision", () => {
@@ -757,8 +757,8 @@ test("mean metrics: returns valid SE and confidence interval", () => {
     });
     expect(metrics).not.toBeNull();
     expect(metrics!.standardError).toBeGreaterThan(0);
-    expect(metrics!.confidenceInterval.lower).toBeLessThan(50);
-    expect(metrics!.confidenceInterval.upper).toBeGreaterThan(50);
+    expect(metrics!.confidenceInterval!.lower).toBeLessThan(50);
+    expect(metrics!.confidenceInterval!.upper).toBeGreaterThan(50);
 });
 
 test("mean metrics: RSE = SE / |mean|", () => {
@@ -770,7 +770,7 @@ test("mean metrics: RSE = SE / |mean|", () => {
         estimatedMean: 50,
     });
     expect(metrics).not.toBeNull();
-    expect(Math.abs(metrics!.relativeStandardError - metrics!.standardError / 50)).toBeLessThan(1e-10);
+    expect(Math.abs(metrics!.relativeStandardError! - metrics!.standardError / 50)).toBeLessThan(1e-10);
 });
 
 // ========== calculateSizeMeasureAllocation tests ==========

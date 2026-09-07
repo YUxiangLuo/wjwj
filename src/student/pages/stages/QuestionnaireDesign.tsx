@@ -179,7 +179,7 @@ export function QuestionnaireDesign() {
         { num: 1, title: "欢迎语设置" },
         { num: 2, title: "题目设计" },
         { num: 3, title: "结束语设置" },
-        { num: 4, title: "认知预试" },
+        { num: 4, title: "受访者视角试填" },
     ];
 
     // Question management
@@ -631,7 +631,7 @@ export function QuestionnaireDesign() {
                                     <p>• 每题只询问一个明确概念，并说明必要的时间范围。</p>
                                     <p>• 使用目标人群能理解的简短、中性措辞，避免诱导。</p>
                                     <p>• 封闭题选项应尽量互斥、穷尽并按逻辑排序。</p>
-                                    <p>• 题型和题量应由测量目标决定；提交前请完成一次认知预试。预试答案不进入抽样或分析。</p>
+                                    <p>• 题型和题量应由测量目标决定；提交前请完成一次受访者视角试填。预试答案不进入抽样或分析。</p>
                                 </CardContent>
                             </Card>
                         </div>
@@ -691,8 +691,8 @@ export function QuestionnaireDesign() {
                                                 <CheckCircle className="w-5 h-5 text-success" />
                                             </div>
                                             <div>
-                                                <h3 className="text-body font-semibold text-success">认知预试已完成</h3>
-                                                <p className="text-label text-muted-foreground">您已体验了受访者视角的问卷填写过程</p>
+                                                <h3 className="text-body font-semibold text-success">受访者视角试填已完成</h3>
+                                                <p className="text-label text-muted-foreground">已完成交互自检；这不代表已验证题意、信度或效度。正式认知预试还需邀请目标人群代表，记录理解偏差与修订依据。</p>
                                             </div>
                                         </div>
                                         <Button
@@ -715,7 +715,7 @@ export function QuestionnaireDesign() {
                                                 <Play className="w-5 h-5 text-primary" />
                                             </div>
                                             <div>
-                                                <h3 className="text-body font-semibold text-primary">认知预试</h3>
+                                                <h3 className="text-body font-semibold text-primary">受访者视角试填</h3>
                                                 <p className="text-meta text-primary mt-0.5">请以受访者身份完整体验一次问卷填写</p>
                                             </div>
                                         </div>
@@ -735,7 +735,7 @@ export function QuestionnaireDesign() {
                                                 className="bg-primary px-8 text-primary-foreground hover:bg-primary-hover"
                                             >
                                                 <Play className="w-5 h-5 mr-2" />
-                                                开始认知预试
+                                                开始受访者视角试填
                                             </Button>
                                             {!basicValidationPassed && (
                                                 <p className="text-meta text-warning">请先完成下方校验清单中的必填项</p>
@@ -811,7 +811,7 @@ export function QuestionnaireDesign() {
                                         <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
                                     )}
                                     <span className={`text-label ${validation.previewCompleted ? "text-success" : "text-destructive"}`}>
-                                        认知预试：{validation.previewCompleted ? "已完成" : "未完成（必须以受访者身份完整填写一次；答案不进入估计）"}
+                                        受访者视角试填：{validation.previewCompleted ? "已完成" : "未完成（必须以受访者身份完整填写一次；答案不进入估计）"}
                                     </span>
                                 </div>
                                 {requiredMissingCount === 0 ? (
