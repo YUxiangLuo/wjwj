@@ -1,173 +1,45 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const FIELD_LABELS: Record<string, string> = {
-    "gender": "性别",
-    "education": "学历",
-    "age": "年龄段",
-    "age_group": "年龄段",
-    "income": "收入水平",
-    "city": "城市",
-    "city_tier": "城市等级",
-    "monthly_expense": "月支出",
-    "spending": "消费支出",
+    gender: "性别", education: "学历", age: "年龄段", age_group: "年龄段", income: "收入水平",
+    city: "城市", city_tier: "城市等级", monthly_expense: "月支出", spending: "消费支出",
 };
 
-export function SamplePreviewTable({ data, total }: { data: unknown[]; total: number }) {
-    const samples = (data as Array<Record<string, unknown>>) ?? [];
+export function SamplePreviewTable({ data, total, priorityField }: { data: unknown[]; total: number; priorityField?: string }) {
+    const samples = data as Array<Record<string, unknown>>;
     const pageSize = 20;
     const [page, setPage] = useState(1);
-    const [scrollTrackWidth, setScrollTrackWidth] = useState(0);
-    const tableScrollRef = useRef<HTMLDivElement | null>(null);
-    const horizontalScrollRef = useRef<HTMLDivElement | null>(null);
-    const syncingRef = useRef<"table" | "track" | null>(null);
+    useEffect(() => { setPage(1); }, [data]);
 
-    useEffect(() => {
-        setPage(1);
-    }, [data]);
-
-    useEffect(() => {
-        const updateScrollTrackWidth = () => {
-            setScrollTrackWidth(tableScrollRef.current?.scrollWidth ?? 0);
-        };
-
-        updateScrollTrackWidth();
-
-        const tableEl = tableScrollRef.current;
-        if (!tableEl || typeof ResizeObserver === "undefined") {
-            window.addEventListener("resize", updateScrollTrackWidth);
-            return () => window.removeEventListener("resize", updateScrollTrackWidth);
-        }
-
-        const observer = new ResizeObserver(updateScrollTrackWidth);
-        observer.observe(tableEl);
-        const table = tableEl.querySelector("table");
-        if (table) observer.observe(table);
-        window.addEventListener("resize", updateScrollTrackWidth);
-
-        return () => {
-            observer.disconnect();
-            window.removeEventListener("resize", updateScrollTrackWidth);
-        };
-    }, [data, page]);
-
-    const syncHorizontalScroll = useCallback((source: "table" | "track") => {
-        const tableEl = tableScrollRef.current;
-        const trackEl = horizontalScrollRef.current;
-        if (!tableEl || !trackEl) return;
-
-        if (source === "table") {
-            trackEl.scrollLeft = tableEl.scrollLeft;
-        } else {
-            tableEl.scrollLeft = trackEl.scrollLeft;
-        }
-    }, []);
-
-    const handleTableScroll = useCallback(() => {
-        if (syncingRef.current === "track") {
-            syncingRef.current = null;
-            return;
-        }
-        syncingRef.current = "table";
-        syncHorizontalScroll("table");
-    }, [syncHorizontalScroll]);
-
-    const handleTrackScroll = useCallback(() => {
-        if (syncingRef.current === "table") {
-            syncingRef.current = null;
-            return;
-        }
-        syncingRef.current = "track";
-        syncHorizontalScroll("track");
-    }, [syncHorizontalScroll]);
-
-    if (samples.length === 0) {
-        return <div className="h-full flex items-center justify-center text-label text-muted-foreground italic">暂无抽样数据</div>;
-    }
-
-    const keys = Object.keys(samples[0] ?? {});
+    if (samples.length === 0) return <p className="flex h-full items-center justify-center text-label text-muted-foreground">暂无入样记录。</p>;
+    const originalKeys = Object.keys(samples[0] ?? {});
+    const keys = priorityField && originalKeys.includes(priorityField) ? [priorityField, ...originalKeys.filter(key => key !== priorityField)] : originalKeys;
     const totalPages = Math.max(1, Math.ceil(samples.length / pageSize));
     const currentPage = Math.min(page, totalPages);
     const start = (currentPage - 1) * pageSize;
     const end = Math.min(start + pageSize, samples.length);
-    const rows = samples.slice(start, end);
 
-    return (
-        <div className="flex h-full min-h-0 w-full flex-col">
-            <div
-                ref={tableScrollRef}
-                onScroll={handleTableScroll}
-                role="region"
-                tabIndex={0}
-                aria-label={`抽样结果数据表，第 ${currentPage} 页，共 ${totalPages} 页`}
-                className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-surface border border-border [scrollbar-gutter:stable]"
-            >
-                <div className="min-w-max pr-3 [&_[data-slot=table-container]]:w-max [&_[data-slot=table-container]]:overflow-visible">
-                    <Table className="min-w-max">
-                        <TableHeader className="sticky top-0 bg-background">
-                            <TableRow className="border-border hover:bg-transparent">
-                                {keys.map((key) => (
-                                    <TableHead key={key} className="h-8 whitespace-nowrap text-meta text-muted-foreground">
-                                        {FIELD_LABELS[key] || key}
-                                    </TableHead>
-                                ))}
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {rows.map((row, rowIndex) => (
-                                <TableRow key={`${start + rowIndex}`} className="border-border hover:bg-muted">
-                                    {keys.map((key) => (
-                                        <TableCell key={`${start + rowIndex}-${key}`} className="py-2 text-meta text-foreground whitespace-nowrap">
-                                            {String(row[key] ?? "")}
-                                        </TableCell>
-                                    ))}
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-            </div>
-            {scrollTrackWidth > 0 && (
-                <div
-                    ref={horizontalScrollRef}
-                    onScroll={handleTrackScroll}
-                    role="region"
-                    tabIndex={0}
-                    aria-label="横向滚动抽样结果数据表"
-                    className="mt-2 overflow-x-auto overflow-y-hidden"
-                >
-                    <div className="h-1" style={{ width: scrollTrackWidth }} />
-                </div>
-            )}
-            <div className="mt-3 flex items-center justify-between gap-2">
-                <p className="text-meta text-muted-foreground">
-                    {total > samples.length
-                        ? `当前预览第 ${start + 1}-${end} 条（预览前 ${samples.length} 条，共 ${total} 条；完整数据请导出）`
-                        : `显示第 ${start + 1}-${end} 条，共 ${Math.max(total, samples.length)} 条`}
-                </p>
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 px-2 text-meta border-input bg-card text-foreground hover:bg-muted"
-                        onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                        disabled={currentPage <= 1}
-                    >
-                        上一页
-                    </Button>
-                    <span className="text-meta text-muted-foreground">{currentPage}/{totalPages}</span>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 px-2 text-meta border-input bg-card text-foreground hover:bg-muted"
-                        onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-                        disabled={currentPage >= totalPages}
-                    >
-                        下一页
-                    </Button>
-                </div>
+    return <div className="flex h-full min-h-0 min-w-0 flex-col gap-3">
+        <div role="region" tabIndex={0} aria-label={`抽样结果数据表，第 ${currentPage} 页，共 ${totalPages} 页，可横向和纵向滚动`}
+            className="min-h-0 min-w-0 flex-1 overflow-auto rounded-surface border border-border outline-none focus-visible:ring-2 focus-visible:ring-ring [&_[data-slot=table-container]]:overflow-visible">
+            <Table className="min-w-max">
+                <TableHeader className="sticky top-0 z-10 bg-muted">
+                    <TableRow className="border-border hover:bg-transparent">{keys.map(key => <TableHead key={key} scope="col" className={`whitespace-nowrap px-4 py-3 text-meta ${key === priorityField ? "bg-primary-muted text-primary" : "text-muted-foreground"}`}>
+                        {FIELD_LABELS[key] || key}{key === priorityField && " · 研究指标"}
+                    </TableHead>)}</TableRow>
+                </TableHeader>
+                <TableBody>{samples.slice(start, end).map((row, rowIndex) => <TableRow key={start + rowIndex} className="border-border hover:bg-muted">{keys.map(key => <TableCell key={key} className="whitespace-nowrap px-4 py-2.5 text-meta tabular-nums text-foreground">{String(row[key] ?? "")}</TableCell>)}</TableRow>)}</TableBody>
+            </Table>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
+            <p className="text-meta text-muted-foreground">{total > samples.length ? `显示第 ${start + 1}–${end} 条 · 可预览 ${samples.length} 条，共入样 ${total} 条；完整数据可导出` : `显示第 ${start + 1}–${end} 条，共 ${Math.max(total, samples.length)} 条`}</p>
+            <div className="flex shrink-0 items-center gap-3">
+                <Button variant="outline" size="sm" onClick={() => setPage(value => Math.max(1, value - 1))} disabled={currentPage <= 1}>上一页</Button>
+                <span className="text-meta tabular-nums text-muted-foreground" aria-live="polite">{currentPage} / {totalPages}</span>
+                <Button variant="outline" size="sm" onClick={() => setPage(value => Math.min(totalPages, value + 1))} disabled={currentPage >= totalPages}>下一页</Button>
             </div>
         </div>
-    );
+    </div>;
 }

@@ -294,7 +294,7 @@ export function StratifiedSamplingTab({
     };
 
     return (
-        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+        <div className="min-w-0 space-y-4">
             <Card className="rounded-surface border-border bg-card ">
                 <CardHeader>
                     <CardTitle className="text-foreground flex items-center gap-2">
@@ -307,11 +307,11 @@ export function StratifiedSamplingTab({
                 </CardHeader>
                 <CardContent className="space-y-5 pt-4">
                     {/* 参数区：分层变量 + 随机种子 */}
-                    <div className="grid gap-4 rounded-surface border border-border bg-background p-4 grid-cols-[220px_220px_1fr] items-end">
+                    <div className="grid gap-4 rounded-surface border border-border bg-background p-4 grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] items-end">
                         <div className="space-y-2">
                             <Label className="text-meta text-foreground">选择分层变量</Label>
                             <Select value={stratifyBy} onValueChange={setStratifyBy}>
-                                <SelectTrigger aria-label="选择分层字段" data-testid="student-sampling-stratify-by" className="w-48 bg-card border-input text-foreground">
+                                <SelectTrigger aria-label="选择分层字段" data-testid="student-sampling-stratify-by" className="w-full bg-card border-input text-foreground">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border text-foreground">
@@ -342,7 +342,7 @@ export function StratifiedSamplingTab({
                                 onChange={(e) => setStratifiedSeed(e.target.value)}
                                 placeholder="留空则每次随机"
                                 data-testid="student-sampling-stratified-seed"
-                                className="w-48 bg-card border-input text-foreground"
+                                className="w-full bg-card border-input text-foreground"
                             />
                             <p className="text-meta leading-relaxed text-muted-foreground">
                                 留空时每次重新随机；填写后可复现软件结果，但不能据此证明实际调查的随机化质量。
@@ -473,8 +473,8 @@ export function StratifiedSamplingTab({
             </Card>
 
             {/* 底部区：执行按钮 + 预览 */}
-            <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-1 flex items-stretch">
+            <div className="min-w-0 space-y-4">
+                <div className="min-w-0">
                     <Card className="rounded-surface border-border bg-card w-full flex flex-col justify-center">
                         <CardContent className="py-6 px-6">
                             {!result?.completed ? (
@@ -506,22 +506,23 @@ export function StratifiedSamplingTab({
                         </CardContent>
                     </Card>
                 </div>
-                <div className="col-span-2">
+                <div className="min-w-0">
                     <Card className="rounded-surface border-border bg-card h-full">
                         <CardHeader>
                             <div className="flex items-center justify-between">
-                                <CardTitle className="text-body text-foreground">抽样预览</CardTitle>
+                                <CardTitle className="text-body text-foreground">已保存的入样记录</CardTitle>
                                 <Badge variant="outline" className="border-input text-muted-foreground">分页预览</Badge>
                             </div>
-                            <CardDescription className="text-muted-foreground">展示部分抽样结果数据</CardDescription>
+                            <CardDescription className="text-muted-foreground">每页查看 20 条记录，完整数据可在分析阶段导出。</CardDescription>
                         </CardHeader>
-                        <CardContent className="h-[300px] overflow-hidden">
+                        <CardContent className="h-[360px] min-w-0 overflow-hidden">
                             {!result?.completed ? (
                                 <div className="h-full flex items-center justify-center text-label text-muted-foreground italic">
-                                    完成抽样后展示
+                                    确认各层分配并执行后，在这里查看入样记录。
                                 </div>
                             ) : (
                                 <SamplePreviewTable
+                                    priorityField={analysisTarget?.field}
                                     data={result.data ?? []}
                                     total={getSamplingResultCount("stratified", result)}
                                 />

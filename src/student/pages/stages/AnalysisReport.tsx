@@ -14,7 +14,9 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { BarChart3, Download, FileText, Send, Loader2, Sparkles, Maximize2, Ruler, ListTree, AlertCircle, Info } from "lucide-react";
+import { Download, FileText, Send, Loader2, Maximize2, AlertCircle, ArrowRight } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
+import { StageActions } from "../../components/StageActions";
 import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
 import { RichTextEditor } from "../../components/RichTextEditor";
@@ -30,7 +32,7 @@ import {
 } from "./analysis-utils";
 import { downloadChartAsSvg, sanitizeFileName } from "./chart-svg-export";
 import { SamplePlanDecisionPanel, SamplingMethodParamsPanel } from "./analysis-params-panels";
-import { TargetMetricsPanel } from "../../components/TargetMetricsPanel";
+import { TargetMetricsPanel, formatTargetEstimate, formatTargetMargin } from "../../components/TargetMetricsPanel";
 import { chartScale } from "./chart-scale";
 import { formatStatistic } from "@/utils/statistic-format";
 import { notifyAuthExpiredFromResponse } from "@/lib/auth-expired";
@@ -46,6 +48,7 @@ interface AnalysisReportProps {
 }
 
 type ZoomChartType = "mean" | "dist" | "error" | "represent" | null;
+type AnalysisWorkspace = "overview" | "charts" | "records" | "report";
 
 // ---------------------------------------------------------------------------
 // ChartBars — horizontal bar chart component
@@ -145,20 +148,18 @@ function ChartTabPanel({
     fieldSelector?: ReactNode;
 }) {
     return (
-        <div className="mt-6 space-y-4">
-            <div className="flex flex-row items-center justify-between gap-3">
-                <div className="text-label text-muted-foreground">{description}</div>
-                <div className="flex items-center gap-2">
+        <div className="mt-5 space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
                     {fieldSelector}
-                    <Button aria-label="放大图表" title="放大图表" variant="outline" size="icon" className="border-input bg-muted text-foreground hover:bg-muted" onClick={onZoom}>
+                    <Button aria-label="放大图表" title="放大图表" variant="outline" size="icon" disabled={rows.length === 0} onClick={onZoom}>
                         <Maximize2 className="w-4 h-4" />
                     </Button>
-                    <Button aria-label="下载图表 SVG" title="下载图表 SVG" variant="outline" size="icon" className="border-input bg-muted text-foreground hover:bg-muted" onClick={onDownload}>
+                    <Button aria-label="下载图表 SVG" title="下载图表 SVG" variant="outline" size="icon" disabled={rows.length === 0} onClick={onDownload}>
                         <Download className="w-4 h-4" />
                     </Button>
                 </div>
-            </div>
             <ChartBars rows={rows} series={series} unit={unit} emptyMessage={emptyMessage} />
+            <p className="text-meta leading-relaxed text-muted-foreground">{description}</p>
         </div>
     );
 }
@@ -180,7 +181,7 @@ function FieldSelect({
 }) {
     return (
         <Select value={value} onValueChange={onChange}>
-            <SelectTrigger aria-label={placeholder} className="w-[220px] bg-card border-input text-foreground">
+            <SelectTrigger aria-label={placeholder} className="w-64 max-w-full bg-card border-input text-foreground">
                 <SelectValue placeholder={placeholder} />
             </SelectTrigger>
             <SelectContent className="bg-card border-border text-foreground">
@@ -199,7 +200,7 @@ function FieldSelect({
 export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const { experiment, populationSize, completeStage } = useExperiment();
 
-    const restoredDraft = useMemo(() => readExperimentDraft<{ reportContent: string }>({
+    const restoredDraft = useMemo(() => readExperimentDraft<{ reportContent: string; workspace?: AnalysisWorkspace }>({
         experimentId: experiment?.id,
         experimentVersion: experiment?.version,
         stage: 4,
@@ -207,7 +208,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const [reportContent, setReportContent] = useState(
         restoredDraft?.reportContent ?? experiment?.reportContent ?? "",
     );
-    const reportDraft = useMemo(() => ({ reportContent }), [reportContent]);
+    const [workspace, setWorkspace] = useState<AnalysisWorkspace>(restoredDraft?.workspace && ["overview", "charts", "records", "report"].includes(restoredDraft.workspace) ? restoredDraft.workspace : "overview");
+    const reportDraft = useMemo(() => ({ reportContent, workspace }), [reportContent, workspace]);
     const clearDraft = useExperimentDraft({
         experimentId: experiment?.id,
         experimentVersion: experiment?.version,
@@ -217,6 +219,9 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [exportType, setExportType] = useState<MethodKey | "all">("all");
+    const [exportOpen, setExportOpen] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+    const [exportError, setExportError] = useState<string | null>(null);
     const [zoomChart, setZoomChart] = useState<ZoomChartType>(null);
     const [analysisMetrics, setAnalysisMetrics] = useState<AnalysisMetricsData | null>(null);
     const [analysisMetricsError, setAnalysisMetricsError] = useState<string | null>(null);
@@ -484,7 +489,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     }>>(() => ({
         mean: { title: "均值对比", rows: meanRows, series: meanSeries, emptyMessage: "暂无可用于均值分析的数值字段", downloadFileName: `mean_${sanitizeFileName(selectedNumericField)}.svg` },
         dist: { title: "分布对比", rows: distributionRows, series: distributionSeries, unit: "%", emptyMessage: "暂无可用于分布分析的分类字段", downloadFileName: `distribution_${sanitizeFileName(selectedCategoricalField)}.svg` },
-        error: { title: "误差分析", rows: errorRows, series: errorSeries, emptyMessage: "暂无可用于误差分析的数值字段", downloadFileName: `error_${sanitizeFileName(selectedNumericField)}.svg` },
+        error: { title: "设计标准误", rows: errorRows, series: errorSeries, emptyMessage: "暂无可用于标准误分析的数值字段", downloadFileName: `error_${sanitizeFileName(selectedNumericField)}.svg` },
         represent: { title: "与已知总体的描述性偏差", rows: representativenessRows, series: representSeries, unit: "%", emptyMessage: "暂无可用于总体对照偏差分析的数据", downloadFileName: "population-deviation.svg" },
     }), [meanRows, meanSeries, distributionRows, distributionSeries, errorRows, errorSeries, representSeries, representativenessRows, selectedNumericField, selectedCategoricalField]);
 
@@ -493,9 +498,10 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     // ---- Handlers ----
 
     const handleSubmit = async () => {
+        if (!isValidLength || isSubmitting || clearDraft.status === "conflict") return;
         setIsSubmitting(true);
         try {
-            if (clearDraft.save({ reportContent }) === "conflict") return;
+            if (clearDraft.save({ reportContent, workspace }) === "conflict") return;
             const success = await completeStage(4, { reportContent });
             if (!success) return;
             clearDraft.clear();
@@ -506,7 +512,9 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     };
 
     const handleExport = async (type: MethodKey | "all") => {
-        if (!experiment?.taskId) return;
+        if (!experiment?.taskId || isExporting) return;
+        setIsExporting(true);
+        setExportError(null);
         try {
             const res = await fetch(`/api/student/tasks/${experiment.taskId}/export?type=${type}`, {
                 credentials: "include",
@@ -524,6 +532,9 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             window.URL.revokeObjectURL(url);
         } catch (error) {
             console.error("Export failed:", error);
+            setExportError("数据导出失败，请检查网络后重试。报告草稿已保留。");
+        } finally {
+            setIsExporting(false);
         }
     };
 
@@ -540,101 +551,59 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     };
 
     // ---- Render ----
+    const target = analysisMetrics?.target;
+    const switchWorkspace = (value: string) => setWorkspace(value as AnalysisWorkspace);
 
-    return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-analysis-report">
-            <DraftSaveStatus status={clearDraft.status} onRetry={clearDraft.retry} />
-            <div className="grid grid-cols-3 gap-6">
-                <div className="col-span-2 space-y-6">
-                    <Card className="rounded-surface border-border bg-card ">
-                        <CardHeader className="border-b border-border pb-4">
-                            <CardTitle className="flex items-center gap-2 text-foreground">
-                                <BarChart3 className="w-5 h-5 text-primary" />
-                                分析数据
-                            </CardTitle>
-                            <CardDescription className="text-muted-foreground">
-                                {statsLoading
-                                    ? "正在排队或计算分析指标，请稍候…"
-                                    : "在图表分析、样本量规划决策参数与抽样执行参数之间切换查看"}
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="pt-6">
-                            {analysisMetricsError && (
-                                <div
-                                    role="alert"
-                                    className="mb-4 flex items-start gap-2 rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3 text-label text-destructive"
-                                    data-testid="student-analysis-metrics-error"
-                                >
-                                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                                    <span className="flex-1">{analysisMetricsError}</span>
-                                    <Button type="button" variant="outline" disabled={statsLoading}
-                                        data-testid="student-analysis-metrics-retry" onClick={() => setMetricsRetry(value => value + 1)}>
-                                        重试加载
-                                    </Button>
-                                </div>
-                            )}
-                            {(analysisMetrics?.excludedNumericFields?.length ?? 0) > 0 && (
-                                <div className="mb-4 flex items-start gap-2 rounded-surface border border-warning-border bg-warning-muted p-3 text-meta leading-relaxed text-warning" data-testid="student-analysis-invalid-numeric-warning">
-                                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                                    <span>
-                                        历史总体中的数值字段 {analysisMetrics!.excludedNumericFields!.join("、")} 含空值或非数值，已停止该字段的均值与标准误分析，避免混用总体行数和有效值数。请联系教师修正总体数据。
-                                    </span>
-                                </div>
-                            )}
-                            <div className="mb-4 flex items-start gap-2 rounded-surface border border-info-border bg-info-muted p-3 text-meta leading-relaxed text-info" data-testid="student-analysis-oracle-notice">
-                                <Info className="mt-0.5 h-4 w-4 shrink-0" />
-                                <span>
-                                    本实验使用完整虚拟总体演示抽样设计，因此可以对照总体真值并计算设计层面的误差。现实调查通常看不到未入样单位，需使用与抽样设计匹配的权重和方差估计。样本量、设计效应和无回答率计算均是基于页面所列假设的规划近似，不替代预调查、抽样框评估和专业统计设计。
-                                    {analysisMetrics && hasPpsCompleted && ppsStandardErrorMode && <>{ppsStandardErrorNotice}</>}
-                                </span>
-                            </div>
-                            <SamplingObservationNotice nonResponseRate={experiment?.samplePlan?.nonResponseRate} />
-{analysisMetrics?.target && (
-                                <TargetMetricsPanel target={analysisMetrics.target} methods={completedAnalysisMethods} />
-                            )}
-                            <Tabs defaultValue="charts" className="w-full">
-                                <TabsList
-                                    className="mb-6 flex h-auto w-full flex-wrap gap-1 rounded-surface border border-border bg-background p-1"
-                                    data-testid="student-analysis-section-tabs"
-                                >
-                                    <TabsTrigger
-                                        value="charts"
-                                        data-testid="student-analysis-section-tab-charts"
-                                        className="flex-1 min-w-[7rem] rounded-surface py-2.5 text-muted-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground"
-                                    >
-                                        <span className="flex items-center justify-center gap-1.5">
-                                            <BarChart3 className="h-3.5 w-3.5 shrink-0" />
-                                            图表分析
-                                        </span>
-                                    </TabsTrigger>
-                                    <TabsTrigger
-                                        value="plan"
-                                        data-testid="student-analysis-section-tab-plan"
-                                        className="flex-1 min-w-[7rem] rounded-surface py-2.5 text-muted-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground"
-                                    >
-                                        <span className="flex items-center justify-center gap-1.5">
-                                            <Ruler className="h-3.5 w-3.5 shrink-0" />
-                                            样本量规划
-                                        </span>
-                                    </TabsTrigger>
-                                    <TabsTrigger
-                                        value="sampling"
-                                        data-testid="student-analysis-section-tab-sampling"
-                                        className="flex-1 min-w-[7rem] rounded-surface py-2.5 text-muted-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground"
-                                    >
-                                        <span className="flex items-center justify-center gap-1.5">
-                                            <ListTree className="h-3.5 w-3.5 shrink-0" />
-                                            抽样参数
-                                        </span>
-                                    </TabsTrigger>
-                                </TabsList>
+    return <div className="min-w-0 space-y-5" data-testid="student-stage-analysis-report">
+        <Tabs value={workspace} onValueChange={switchWorkspace} className="min-w-0 space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <TabsList aria-label="分析与报告工作区" className="flex h-auto flex-wrap gap-1 rounded-surface border border-border bg-card p-1" data-testid="student-analysis-workspace-tabs">
+                    <TabsTrigger value="overview" className="min-h-11 px-4" data-testid="student-analysis-workspace-overview">研究结果</TabsTrigger>
+                    <TabsTrigger value="charts" className="min-h-11 px-4" data-testid="student-analysis-section-tab-charts">图表探索</TabsTrigger>
+                    <TabsTrigger value="records" className="min-h-11 px-4" data-testid="student-analysis-workspace-records">规划与抽样记录</TabsTrigger>
+                    <TabsTrigger value="report" className="min-h-11 gap-2 px-4" data-testid="student-analysis-workspace-report"><FileText className="h-4 w-4"/>撰写报告</TabsTrigger>
+                </TabsList>
+                <Button type="button" variant="outline" onClick={() => setExportOpen(true)}><Download className="mr-2 h-4 w-4"/>导出数据</Button>
+            </div>
 
-                                <TabsContent value="charts" className="mt-0 focus-visible:outline-none">
-                            <Tabs value={chartTab} onValueChange={setChartTab}>
+            {analysisMetricsError && <div role="alert" className="flex flex-wrap items-center gap-3 rounded-surface border border-destructive-border bg-destructive-muted p-4 text-label text-destructive" data-testid="student-analysis-metrics-error">
+                <AlertCircle className="h-4 w-4 shrink-0"/><span className="min-w-0 flex-1">{analysisMetricsError}。报告草稿仍可继续编辑。</span>
+                <Button type="button" variant="outline" disabled={statsLoading} data-testid="student-analysis-metrics-retry" onClick={() => setMetricsRetry(value => value + 1)}>重试加载</Button>
+            </div>}
+            {statsLoading && <p role="status" className="flex items-center gap-2 text-label text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin"/>正在计算分析指标，你可以先整理报告。</p>}
+            {(analysisMetrics?.excludedNumericFields?.length ?? 0) > 0 && <div className="rounded-surface border border-warning-border bg-warning-muted p-3 text-meta text-warning" data-testid="student-analysis-invalid-numeric-warning">
+                数值字段 {analysisMetrics!.excludedNumericFields!.join("、")} 含空值或非数值，已停止该字段的均值与标准误分析。请联系教师修正总体数据。
+            </div>}
+
+            <TabsContent value="overview" className="min-w-0 space-y-5">
+                <Card className="min-w-0 gap-0 rounded-surface border-border bg-card py-0"><CardContent className="p-5">
+                    {target ? <TargetMetricsPanel target={target} methods={completedAnalysisMethods}/> : <div className="space-y-3 py-6">
+                        <h2 className="text-section-title font-semibold">研究目标结果</h2>
+                        <p className="text-label text-muted-foreground">{statsLoading ? "正在准备目标估计与精度比较…" : "暂时没有研究目标的完整指标。可以查看已有图表和抽样记录。"}</p>
+                        <Button variant="outline" onClick={() => setWorkspace("charts")}>查看图表探索</Button>
+                    </div>}
+                </CardContent></Card>
+                <details className="rounded-surface border border-border bg-card p-4">
+                    <summary className="cursor-pointer text-label font-semibold">这些指标如何计算，解释时要注意什么？</summary>
+                    <div className="mt-3 space-y-3 text-meta leading-relaxed text-muted-foreground">
+                        <p data-testid="student-analysis-oracle-notice">本实验使用完整虚拟总体演示抽样设计，因此可以对照总体真值并计算设计层面的误差。现实调查通常看不到未入样单位，需使用与抽样设计匹配的权重和方差估计。样本量、设计效应和无回答率计算均是基于页面所列假设的规划近似，不替代预调查、抽样框评估和专业统计设计。{analysisMetrics && hasPpsCompleted && ppsStandardErrorMode && ppsStandardErrorNotice}</p>
+                        <SamplingObservationNotice nonResponseRate={experiment?.samplePlan?.nonResponseRate}/>
+                        <p>{isPpsDisabled ? "PPS 已由教师设为不适用，不纳入方法间比较。" : isPpsUnavailable ? "没有合格的 PPS 规模变量，PPS 已按规则跳过。" : isPpsCensus ? "PPS 本次覆盖完整总体，当前结果没有抽样误差；这不代表非普查情形下也具有相同精度。" : hasPpsCompleted ? "PPS 使用可能存在小样本偏差的 Hájek 比估计。" : "本次未选择 PPS，只比较实际完成的方法。"}</p>
+                        <p>分布和总体对照偏差描述的是当前样本与已知虚拟总体的差异，不能单独证明无偏或整体代表性。</p>
+                    </div>
+                </details>
+            </TabsContent>
+
+            <TabsContent value="charts" className="min-w-0">
+                <Card className="min-w-0 rounded-surface border-border bg-card"><CardHeader>
+                    <CardTitle><h2 className="text-section-title font-semibold">从不同角度比较样本</h2></CardTitle>
+                    <CardDescription>选择变量和图表，补充对研究目标的解释。图表只包含本次实际完成的方法。</CardDescription>
+                </CardHeader><CardContent className="min-w-0">
+                    <Tabs value={chartTab} onValueChange={setChartTab}>
                                 <TabsList className="bg-background border border-border p-1 rounded-surface w-full flex h-auto" data-testid="student-analysis-tabs">
                                     <TabsTrigger value="mean" data-testid="student-analysis-tab-mean" className="flex-1 rounded-surface py-2 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">均值对比</TabsTrigger>
                                     <TabsTrigger value="dist" data-testid="student-analysis-tab-dist" className="flex-1 rounded-surface py-2 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">分布对比</TabsTrigger>
-                                    <TabsTrigger value="error" data-testid="student-analysis-tab-error" className="flex-1 rounded-surface py-2 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">误差分析</TabsTrigger>
+                                    <TabsTrigger value="error" data-testid="student-analysis-tab-error" className="flex-1 rounded-surface py-2 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">设计标准误</TabsTrigger>
                                     <TabsTrigger value="represent" data-testid="student-analysis-tab-represent" className="flex-1 rounded-surface py-2 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">总体对照偏差</TabsTrigger>
                                 </TabsList>
 
@@ -702,175 +671,89 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     />
                                 </TabsContent>
                             </Tabs>
-                                </TabsContent>
+                </CardContent></Card>
+            </TabsContent>
 
-                                <TabsContent value="plan" className="mt-0 focus-visible:outline-none">
-                                    <SamplePlanDecisionPanel
-                                        samplePlan={experiment?.samplePlan ?? null}
-                                        populationSize={populationSize}
-                                    />
-                                </TabsContent>
+            <TabsContent value="records" className="min-w-0 space-y-4">
+                <PageHeader><div className="space-y-2"><h2 className="text-section-title font-semibold">回看你的实验依据</h2><p className="text-label text-muted-foreground">这些是已保存的参数，写报告时可用来解释样本量与方法选择。</p></div></PageHeader>
+                <details open className="rounded-surface border border-border bg-card p-5">
+                    <summary className="cursor-pointer text-label font-semibold" data-testid="student-analysis-section-tab-plan">样本量规划</summary>
+                    <div className="mt-4 min-w-0"><SamplePlanDecisionPanel samplePlan={experiment?.samplePlan ?? null} populationSize={populationSize}/></div>
+                </details>
+                <details className="rounded-surface border border-border bg-card p-5">
+                    <summary className="cursor-pointer text-label font-semibold" data-testid="student-analysis-section-tab-sampling">抽样执行记录</summary>
+                    <div className="mt-4 min-w-0"><SamplingMethodParamsPanel samplingResults={experiment?.samplingResults ?? null} targetSampleSize={experiment?.samplePlan?.finalSampleSize ?? null} populationSize={populationSize} samplingPolicy={samplingPolicy}/></div>
+                </details>
+            </TabsContent>
 
-                                <TabsContent value="sampling" className="mt-0 focus-visible:outline-none">
-                                    <SamplingMethodParamsPanel
-                                        samplingResults={experiment?.samplingResults ?? null}
-                                        targetSampleSize={experiment?.samplePlan?.finalSampleSize ?? null}
-                                        populationSize={populationSize}
-                                        samplingPolicy={samplingPolicy}
-                                    />
-                                </TabsContent>
-                            </Tabs>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                <div className="space-y-6">
-                    <Card className="rounded-surface border-border bg-card ">
-                        <CardHeader className="border-b border-border pb-4">
-                            <CardTitle className="flex items-center gap-2 text-foreground">
-                                <Download className="w-5 h-5 text-info" />
-                                数据导出
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-4 space-y-3">
-                            <Select value={exportType} onValueChange={(v) => setExportType(v as MethodKey | "all")}>
-                                <SelectTrigger aria-label="选择报告分析方法" className="w-full bg-card border-input text-foreground">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-card border-border text-foreground">
-                                    <SelectItem value="all">全部抽样数据</SelectItem>
-                                    {completedAnalysisMethods.map((method) => (
-                                        <SelectItem key={method} value={method}>{METHOD_META[method].label}结果</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <Button className="w-full bg-info hover:bg-info-hover text-info-foreground " onClick={() => handleExport(exportType)}>
-                                <Download className="w-4 h-4 mr-2" />
-                                导出 CSV
-                            </Button>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="rounded-surface border-primary-border bg-primary-muted ">
-                        <CardHeader>
-                            <CardTitle className="text-body text-primary flex items-center gap-2">
-                                <Sparkles className="w-4 h-4" />
-                                分析提示
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3 text-label text-primary">
-                            <p>
-                                • 先比较总体均值估计，判断不同抽样方法是否给出接近的结果。
-                                {isPpsDisabled
-                                    ? "PPS 已由教师在实验模板中设为不适用，不应纳入方法间比较。"
-                                    : isPpsUnavailable
-                                        ? "本任务没有合格的 PPS 规模变量，因此 PPS 已按规则跳过，不应纳入方法间比较。"
-                                        : isPpsCensus
-                                            ? "PPS 本次覆盖完整总体，当前结果没有抽样误差；这不代表非普查情形下也具有相同精度。"
-                                            : hasPpsCompleted
-                                                ? "PPS 看的是可能存在小样本偏差的 Hájek 比估计。"
-                                                : "本次未选择 PPS，分析只比较实际完成的方法。"}
-                            </p>
-                            <p>• 再看分类分布与总体对照偏差，描述当前样本对已知虚拟总体的贴近程度；这不能单独证明无偏或整体代表性。</p>
-                            <p>• 最后结合设计标准误说明精度。本页 SE 借助完整虚拟总体；现实调查需使用与设计匹配的样本方差估计。</p>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
-
-            <Card className="rounded-surface border-border bg-card ">
-                <CardHeader className="border-b border-border pb-4">
-                    <CardTitle className="flex items-center gap-2 text-foreground">
-                        <FileText className="w-5 h-5 text-primary" />
-                        撰写报告
-                    </CardTitle>
-                    <CardDescription className="text-muted-foreground">
-                        本实验要求：请根据实验结果撰写 {minLength}-{maxLength} 字的分析报告
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6 pt-6">
-                    <div className="p-4 bg-background border border-border rounded-surface text-label text-muted-foreground">
-                        <p className="font-semibold text-foreground mb-2">建议包含以下内容：</p>
-                        <ul className="list-disc list-inside space-y-1.5 pl-2">
-                            <li>抽样方法选择的理由</li>
-                            <li>各方法执行结果的对比分析</li>
-                            <li>抽样误差的分析</li>
-                            <li>对调查结论可靠性的评估</li>
-                            <li>改进建议（可选）</li>
-                        </ul>
-                    </div>
-
-                    <div className="space-y-3">
-                        <Label htmlFor="report" className="text-foreground">报告内容</Label>
-                        <div className="space-y-2">
-                            <RichTextEditor
-                                dataTestId="student-analysis-report"
-                                editorTestId="student-analysis-report-editor"
-                                id="report"
-                                placeholder="请在此撰写您的分析报告..."
-                                value={reportContent}
-                                onChange={setReportContent}
-                                editorClassName="min-h-[400px]"
-                            />
-                            <div className="text-right text-meta">
-                                <span className={reportTextLength < minLength || reportTextLength > maxLength ? "text-destructive" : "text-success"}>
-                                    {reportTextLength > maxLength
-                                        ? `已超出 ${reportTextLength - maxLength} 字`
-                                        : reportTextLength < minLength
-                                            ? `还需 ${minLength - reportTextLength} 字`
-                                            : "✓ 字数符合要求"}
-                                </span>
-                                <span className="text-muted-foreground ml-2">{reportTextLength}/{maxLength}</span>
+            <TabsContent value="report" forceMount className="min-w-0 data-[state=inactive]:hidden">
+                <div className="flex flex-wrap items-start gap-5">
+                    <Card className="min-w-0 flex-[3_1_36rem] gap-0 rounded-surface border-border bg-card py-0">
+                        <CardHeader className="border-b border-border p-5"><CardTitle><h2 className="text-section-title font-semibold">用数据回答研究问题</h2></CardTitle><CardDescription>报告需 {minLength}–{maxLength} 字。先写结论，再用估计值、误差和抽样设计说明理由。</CardDescription></CardHeader>
+                        <CardContent className="space-y-3 p-5">
+                            <Label htmlFor="report" className="text-label font-medium">报告正文</Label>
+                            <RichTextEditor dataTestId="student-analysis-report" editorTestId="student-analysis-report-editor" id="report" ariaLabel="报告正文" showWordCount={false}
+                                placeholder="这次调查要回答什么问题？各方法得到了什么结果？请引用具体数值，并说明结论的适用范围。"
+                                value={reportContent} onChange={setReportContent} editorClassName="min-h-[420px]"/>
+                            <div className="flex flex-wrap items-center justify-between gap-2 text-meta" aria-live="polite">
+                                <span className={reportTextLength > maxLength ? "text-destructive" : isValidLength ? "text-success" : "text-muted-foreground"}>
+                                    {reportTextLength > maxLength ? "已超出 " + (reportTextLength - maxLength) + " 字，请精简后继续" : reportTextLength < minLength ? "还需至少 " + (minLength - reportTextLength) + " 字" : "字数符合要求，请再检查结论与数据是否一致"}
+                                </span><span className="tabular-nums text-muted-foreground">{reportTextLength} / {maxLength} 字</span>
                             </div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+                        </CardContent>
+                    </Card>
+                    <aside className="min-w-0 flex-[1_1_18rem] space-y-4" aria-label="报告写作参考">
+                        {target && <section className="rounded-surface border border-primary-border bg-primary-muted p-5 space-y-3">
+                            <h3 className="text-subheading font-semibold">随手查结果</h3>
+                            <p className="text-meta text-muted-foreground">{target.contract.contract.researchQuestion}</p>
+                            {completedAnalysisMethods.map(method => <div key={method} className="border-t border-primary-border pt-3 text-label">
+                                <p className="font-medium">{METHOD_META[method].label}</p>
+                                <p className="mt-1 tabular-nums">估计 {formatTargetEstimate(target.methods[method].estimate, target.contract.contract.target.kind)}</p>
+                                <p className="mt-1 text-meta text-muted-foreground">教学半宽 {formatTargetMargin(target.methods[method].marginOfError, target.contract.contract.target.kind)}</p>
+                            </div>)}
+                            <Button type="button" variant="outline" onClick={() => setWorkspace("overview")}>查看完整结果与条件</Button>
+                        </section>}
+                        <section className="rounded-surface border border-border bg-card p-5 space-y-3">
+                            <h3 className="text-subheading font-semibold">写作提纲</h3>
+                            <ol className="list-decimal space-y-3 pl-5 text-label leading-relaxed text-muted-foreground">
+                                <li><strong className="font-medium text-foreground">研究问题与方法。</strong>估计哪个指标？为什么选择这些方法？</li>
+                                <li><strong className="font-medium text-foreground">结果与比较。</strong>引用估计值和误差，说明方法之间的差异。</li>
+                                <li><strong className="font-medium text-foreground">结论与限制。</strong>精度是否满足要求？哪些假设会影响解释？</li>
+                                <li><strong className="font-medium text-foreground">改进方向。</strong>如果再做一次，会调整样本量、抽样设计还是问卷？</li>
+                            </ol>
+                        </section>
+                        <p className="text-meta leading-relaxed text-muted-foreground">下一步先保存并预览整份实验。预览页中确认提交后，教师才能收到报告。</p>
+                    </aside>
+                </div>
+            </TabsContent>
+        </Tabs>
 
-            {/* Navigation */}
-            <div className="flex justify-between items-center pt-6 border-t border-border">
-                <Button variant="outline" onClick={onPrev} data-testid="student-analysis-prev" className="border-input bg-muted text-foreground hover:bg-muted hover:text-foreground">
-                    上一阶段
-                </Button>
-                <Button onClick={handleSubmit} disabled={!isValidLength || isSubmitting || clearDraft.status === "conflict"} data-testid="student-analysis-preview" className="bg-success hover:bg-success-hover text-success-foreground ">
-                    {isSubmitting ? (
-                        <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            进入预览中...
-                        </>
-                    ) : (
-                        <>
-                            <Send className="w-4 h-4 mr-2" />
-                            完成并预览报告
-                        </>
-                    )}
-                </Button>
-            </div>
+        <StageActions>
+            <div className="space-y-2"><DraftSaveStatus status={clearDraft.status} onRetry={clearDraft.retry}/><Button variant="outline" onClick={onPrev} data-testid="student-analysis-prev">查看抽样记录</Button></div>
+            {workspace === "report" ? <Button onClick={handleSubmit} disabled={!isValidLength || isSubmitting || clearDraft.status === "conflict"} data-testid="student-analysis-preview">
+                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>正在保存报告…</> : <><Send className="mr-2 h-4 w-4"/>保存并预览报告</>}
+            </Button> : <Button onClick={() => setWorkspace("report")} data-testid="student-analysis-write">继续：撰写报告<ArrowRight className="ml-2 h-4 w-4"/></Button>}
+        </StageActions>
 
-            {/* Zoom dialog */}
-            <Dialog open={zoomChart !== null} onOpenChange={(open) => { if (!open) setZoomChart(null); }}>
-                <DialogContent className="max-w-[50vw] bg-card border-border text-foreground" data-testid="student-analysis-zoom-dialog">
-                    <DialogHeader>
-                        <DialogTitle className="text-foreground">
-                            {activeZoom?.title}（放大）
-                        </DialogTitle>
-                        <DialogDescription>
-                            放大查看当前统计图表；关闭后可继续编辑实验报告。
-                        </DialogDescription>
-                    </DialogHeader>
-                    {activeZoom && (
-                        <ChartBars
-                            rows={activeZoom.rows}
-                            series={activeZoom.series}
-                            unit={activeZoom.unit}
-                            emptyMessage={activeZoom.emptyMessage}
-                            heightClass="h-[65vh]"
-                        />
-                    )}
-                </DialogContent>
-            </Dialog>
-        </div>
-    );
+        <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+            <DialogContent><DialogHeader><DialogTitle>导出抽样数据</DialogTitle><DialogDescription>下载本次已完成方法的入样记录，供你复核和分析。导出数据不会提交实验报告。</DialogDescription></DialogHeader>
+                <Label>导出范围</Label>
+                <Select value={exportType} onValueChange={value => setExportType(value as MethodKey | "all")} disabled={isExporting}><SelectTrigger aria-label="选择导出范围"><SelectValue/></SelectTrigger><SelectContent>
+                    <SelectItem value="all">全部抽样数据</SelectItem>{completedAnalysisMethods.map(method => <SelectItem key={method} value={method}>{METHOD_META[method].label}结果</SelectItem>)}
+                </SelectContent></Select>
+                {exportError && <p role="alert" className="text-label text-destructive">{exportError}</p>}
+                <Button onClick={() => handleExport(exportType)} disabled={isExporting || completedAnalysisMethods.length === 0}>
+                    {isExporting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>正在导出…</> : <><Download className="mr-2 h-4 w-4"/>导出 CSV</>}
+                </Button>
+            </DialogContent>
+        </Dialog>
+        <Dialog open={zoomChart !== null} onOpenChange={open => {if (!open) setZoomChart(null);}}>
+            <DialogContent className="w-[calc(100vw-3rem)] max-w-6xl max-h-[90vh] overflow-y-auto bg-card" data-testid="student-analysis-zoom-dialog">
+                <DialogHeader><DialogTitle>{activeZoom?.title}（放大）</DialogTitle><DialogDescription>放大查看当前图表，关闭后返回原来的位置。</DialogDescription></DialogHeader>
+                {activeZoom && <ChartBars rows={activeZoom.rows} series={activeZoom.series} unit={activeZoom.unit} emptyMessage={activeZoom.emptyMessage} heightClass="h-[65vh]"/>}
+            </DialogContent>
+        </Dialog>
+    </div>;
 }
 
 export default AnalysisReport;

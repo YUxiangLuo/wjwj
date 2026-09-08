@@ -23,6 +23,8 @@ interface RichTextEditorProps {
     dataTestId?: string;
     editorTestId?: string;
     id?: string;
+    ariaLabel?: string;
+    showWordCount?: boolean;
     value: string;
     onChange: (value: string) => void;
     placeholder?: string;
@@ -52,11 +54,10 @@ function ToolbarButton({
             type="button"
             title={title}
             aria-label={title}
+            aria-pressed={active}
             disabled={disabled}
-            onMouseDown={(e) => {
-                e.preventDefault();
-                onClick();
-            }}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={onClick}
             className={cn(
                 "flex h-9 w-9 items-center justify-center rounded-control transition-none",
                 "text-muted-foreground hover:text-foreground hover:bg-muted",
@@ -81,6 +82,8 @@ export function RichTextEditor({
     dataTestId,
     editorTestId,
     id,
+    ariaLabel = "文本编辑器",
+    showWordCount = true,
     value,
     onChange,
     placeholder = "请输入内容...",
@@ -103,6 +106,9 @@ export function RichTextEditor({
         editorProps: {
             attributes: {
                 "data-testid": editorTestId ?? "",
+                role: "textbox",
+                "aria-label": ariaLabel,
+                "aria-multiline": "true",
                 ...(id ? { id } : {}),
                 class: cn(
                     "min-h-[180px] p-4 text-label text-foreground leading-relaxed outline-none rich-text-content",
@@ -143,7 +149,7 @@ export function RichTextEditor({
     return (
         <div
             className={cn(
-                "rounded-surface border border-border bg-background overflow-hidden",
+                "min-w-0 rounded-surface border border-input bg-background overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
                 className,
             )}
             data-testid={dataTestId}
@@ -243,9 +249,9 @@ export function RichTextEditor({
                     <Redo2 className="h-4 w-4" />
                 </ToolbarButton>
 
-                <div className="ml-auto text-meta text-muted-foreground tabular-nums">
+                {showWordCount && <div className="ml-auto text-meta text-muted-foreground tabular-nums">
                     {plainLength} 字
-                </div>
+                </div>}
             </div>
 
             {/* Editor */}

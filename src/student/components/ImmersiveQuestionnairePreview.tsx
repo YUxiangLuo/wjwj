@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef, useId } from "react";
+import { createPortal } from "react-dom";
 import { X, ChevronLeft, ChevronRight, Check, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -202,7 +203,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
     // Escape：有进度则确认关闭
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key !== "Escape") return;
+            if (e.key !== "Escape" || e.defaultPrevented) return;
             if (exitConfirmOpen) return;
             if (page.type === "complete") return;
             e.preventDefault();
@@ -214,8 +215,16 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
 
     // Prevent body scroll while overlay is open
     useEffect(() => {
+        const previous = document.body.style.overflow;
+        const opener = document.activeElement;
+        const background = Array.from(document.body.children).filter((element): element is HTMLElement => element instanceof HTMLElement && element !== overlayRef.current && !element.contains(overlayRef.current)).map(element => ({ element, inert: element.inert }));
+        background.forEach(({ element }) => { element.inert = true; });
         document.body.style.overflow = "hidden";
-        return () => { document.body.style.overflow = ""; };
+        return () => {
+            document.body.style.overflow = previous;
+            background.forEach(({ element, inert }) => { element.inert = inert; });
+            if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+        };
     }, []);
 
     const focusTrap = useCallback((e: React.KeyboardEvent) => {
@@ -246,8 +255,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
 
     const setSingleAnswer = useCallback((qIndex: number, value: string) => {
         setAnswersByIndex((prev) => ({ ...prev, [qIndex]: value }));
-        goNext();
-    }, [goNext]);
+    }, []);
 
     const toggleMultipleAnswer = (qIndex: number, question: Question, option: string) => {
         setAnswersByIndex((prev) => {
@@ -263,8 +271,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
 
     const setScaleAnswer = useCallback((qIndex: number, value: number) => {
         setAnswersByIndex((prev) => ({ ...prev, [qIndex]: value }));
-        goNext();
-    }, [goNext]);
+    }, []);
 
     const jumpToQuestion = (index: number) => {
         if (index < 0 || index >= totalQuestions) return;
@@ -296,6 +303,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     key={`bool-${i}`}
                                     type="button"
                                     onClick={() => setSingleAnswer(qIndex, option)}
+                                    aria-pressed={selected}
                                     className={`w-full flex items-center gap-4 p-5 rounded-surface border-2 transition-none text-left ${
                                         selected
                                             ? "border-primary bg-primary "
@@ -338,6 +346,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     key={`${question.id}-opt-${i}`}
                                     type="button"
                                     onClick={() => setSingleAnswer(qIndex, option)}
+                                    aria-pressed={selected}
                                     className={`w-full flex items-center gap-4 p-5 rounded-surface border-2 transition-none text-left ${
                                         selected
                                             ? "border-primary bg-primary "
@@ -388,6 +397,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     type="button"
                                     onClick={() => !disabled && toggleMultipleAnswer(qIndex, question, option)}
                                     disabled={disabled}
+                                    aria-pressed={selected}
                                     className={`w-full flex items-center gap-4 p-5 rounded-surface border-2 transition-none text-left ${
                                         selected
                                             ? "border-primary bg-primary "
@@ -439,6 +449,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                         key={val}
                                         type="button"
                                         onClick={() => setScaleAnswer(qIndex, val)}
+                                        aria-pressed={selected}
                                         className={`min-w-0 flex-1 basis-0 rounded-surface text-body font-bold transition-none h-12 ${
                                             selected
                                                 ? "bg-primary text-primary-foreground  ring-2 ring-primary ring-offset-2 z-10"
@@ -472,7 +483,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
         ? "animate-in fade-in slide-in-from-right-4 duration-300"
         : "animate-in fade-in slide-in-from-left-4 duration-300";
 
-    return (
+    return createPortal(
         <>
             <div
                 ref={overlayRef}
@@ -480,12 +491,12 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                 aria-modal="true"
                 aria-labelledby={titleId}
                 data-testid="immersive-questionnaire-preview"
-                className="fixed inset-0 z-50 bg-background outline-none"
+                className="fixed inset-0 z-50 flex flex-col bg-background outline-none"
                 onKeyDown={focusTrap}
                 tabIndex={-1}
             >
                 {duplicateIds && (
-                    <div className="absolute top-12 left-0 right-0 z-20 px-6">
+                    <div className="shrink-0 px-6 pt-3">
                         <div className="mx-auto max-w-lg rounded-surface border border-warning-border bg-warning-muted px-3 py-2 text-meta text-warning">
                             检测到题目 ID 重复，预览按题序区分答案；提交至服务器时仍依赖唯一 ID，请在设计器中修正。
                         </div>
@@ -501,9 +512,9 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                 </div>
 
                 {/* Header */}
-                <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-6 pt-4 z-10">
+                <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-3">
                     <div className="text-label font-medium text-muted-foreground">
-                        {page.type === "question" && totalQuestions > 0 && `${page.index + 1} / ${totalQuestions}`}
+                        问卷试填{page.type === "question" && totalQuestions > 0 && ` · 第 ${page.index + 1} / ${totalQuestions} 题`}
                     </div>
                     {page.type !== "complete" && (
                         <button
@@ -519,8 +530,8 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                 </div>
 
                 {/* Content */}
-                <div className="h-full flex flex-col items-center justify-center overflow-y-auto px-6 pt-14 pb-20">
-                    <div key={pageKey} className={`w-full max-w-lg ${animationClass}`}>
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-8" data-testid="questionnaire-preview-content">
+                    <div key={pageKey} className={`mx-auto my-auto w-full max-w-2xl shrink-0 ${animationClass}`}>
                         {/* Welcome Page */}
                         {page.type === "welcome" && (
                             <div className="text-center space-y-8">
@@ -573,28 +584,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     </h2>
                                 </div>
                                 {renderQuestionBody(currentQuestion, page.index)}
-                                {currentQuestion.type === "multiple" && (
-                                    <div className="space-y-3 pt-2">
-                                        <p className="text-label text-center text-muted-foreground leading-relaxed">
-                                            {isCurrentAnswered
-                                                ? "选择已完成，请点击下方按钮进入下一题"
-                                                : `请至少选择 ${currentQuestion.minSelect ?? 1} 项，完成后点击「下一题」继续`}
-                                        </p>
-                                        <div className="flex justify-center">
-                                            <Button
-                                                type="button"
-                                                onClick={goNext}
-                                                disabled={!isCurrentAnswered}
-                                                size="lg"
-                                                data-testid="immersive-preview-multiple-next"
-                                                className="rounded-surface bg-primary px-8 text-body text-primary-foreground hover:bg-primary-hover disabled:border-border disabled:bg-muted disabled:text-muted-foreground"
-                                            >
-                                                下一题
-                                                <ChevronRight className="w-5 h-5 ml-2" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                )}
+                                <p className="text-label text-muted-foreground">{isCurrentAnswered ? "已记录你的选择，可修改后再继续。" : currentQuestion.type === "multiple" ? "请选择规定数量的选项，再继续下一题。" : "请选择一个答案，再继续下一题。"}</p>
                             </div>
                         )}
 
@@ -610,6 +600,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                         {/* Ending Page */}
                         {page.type === "ending" && (
                             <div className="text-center space-y-8">
+                                <h2 id={titleId} className="text-page-title font-semibold">问卷结束</h2>
                                 <div className="w-16 h-16 mx-auto rounded-surface bg-primary flex items-center justify-center">
                                     <ClipboardList className="w-8 h-8 text-primary-foreground" />
                                 </div>
@@ -633,7 +624,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     data-testid="immersive-preview-submit"
                                     className="bg-primary hover:bg-primary-hover text-primary-foreground text-body px-10 py-6 rounded-surface "
                                 >
-                                    提交问卷
+                                    完成试填
                                 </Button>
                                 {answeredCount !== totalQuestions && (
                                     <div className="space-y-3">
@@ -684,59 +675,19 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                     </div>
                 </div>
 
-                {/* Side navigation buttons for question pages */}
-                {page.type === "question" && totalQuestions > 0 && (
-                    <>
-                        <button
-                            type="button"
-                            onClick={goPrev}
-                            className="fixed top-1/2 -translate-y-1/2 left-[calc(50%-21rem)] z-10 w-12 h-12 rounded-control border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted hover:border-input transition-none"
-                            aria-label="上一题"
-                        >
-                            <ChevronLeft className="w-5 h-5" />
-                        </button>
-                        <div className="fixed bottom-4 left-0 right-0 flex justify-center z-10">
-                            {totalQuestions <= 15 ? (
-                                <div
-                                    className="flex gap-1 bg-background rounded-control px-3 py-2 border border-input"
-                                    role="tablist"
-                                    aria-label="题目进度，可点击跳转"
-                                >
-                                    {questions.map((q, i) => (
-                                        <button
-                                            key={`progress-${i}`}
-                                            type="button"
-                                            onClick={() => jumpToQuestion(i)}
-                                            title={`第 ${i + 1} 题`}
-                                            className={`h-1.5 rounded-control transition-none min-w-[6px] ${
-                                                i === page.index
-                                                    ? "bg-primary w-4"
-                                                    : isQuestionAnswered(q, answersByIndex[i])
-                                                        ? "bg-primary w-1.5"
-                                                        : "bg-input w-1.5"
-                                            }`}
-                                        />
-                                    ))}
-                                </div>
-                            ) : (
-                                <span className="text-label text-muted-foreground font-mono tabular-nums bg-background rounded-control px-3 py-1.5 border border-input">
-                                    {page.index + 1} / {totalQuestions}
-                                </span>
-                            )}
-                        </div>
-                    </>
-                )}
-
-                {page.type === "ending" && (
-                    <button
-                        type="button"
-                        onClick={goPrev}
-                        className="fixed top-1/2 -translate-y-1/2 left-[calc(50%-21rem)] z-10 w-12 h-12 rounded-control border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted hover:border-input transition-none"
-                        aria-label="返回上一题"
-                    >
-                        <ChevronLeft className="w-5 h-5" />
-                    </button>
-                )}
+                {page.type === "question" && totalQuestions > 0 && <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border bg-card px-6 py-4" data-testid="questionnaire-preview-actions">
+                    <Button type="button" variant="outline" onClick={goPrev} aria-label="上一题"><ChevronLeft className="mr-2 h-4 w-4"/>上一题</Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-meta text-muted-foreground">已答 {answeredCount} / {totalQuestions}</span>
+                        {totalQuestions <= 15 ? <nav className="flex flex-wrap gap-1" aria-label="题目进度，可点击跳转">{questions.map((q, i) => <button key={i} type="button" onClick={() => jumpToQuestion(i)} title={"第 " + (i + 1) + " 题"} aria-current={i === page.index ? "step" : undefined}
+                            className={"flex h-9 w-9 items-center justify-center rounded-control border text-meta " + (i === page.index ? "border-primary bg-primary text-primary-foreground" : isQuestionAnswered(q, answersByIndex[i]) ? "border-success-border bg-success-muted text-success" : "border-border bg-background text-muted-foreground")}>{i + 1}</button>)}</nav>
+                        : <select aria-label="跳转到题目" value={page.index} onChange={event => jumpToQuestion(Number(event.target.value))} className="min-h-11 rounded-control border border-input bg-background px-3 text-label">{questions.map((question, i) => <option key={i} value={i}>{"第 " + (i + 1) + " 题 · " + (isQuestionAnswered(question, answersByIndex[i]) ? "已答" : "待答")}</option>)}</select>}
+                    </div>
+                    <Button type="button" onClick={goNext} disabled={!isCurrentAnswered} data-testid={currentQuestion?.type === "multiple" ? "immersive-preview-multiple-next" : "immersive-preview-next"}>
+                        {page.index === totalQuestions - 1 ? "查看结束语" : "下一题"}<ChevronRight className="ml-2 h-4 w-4"/>
+                    </Button>
+                </footer>}
+                {page.type === "ending" && <footer className="shrink-0 border-t border-border px-6 py-4"><Button type="button" variant="outline" onClick={goPrev} aria-label="返回上一题"><ChevronLeft className="mr-2 h-4 w-4"/>返回上一题</Button></footer>}
             </div>
 
             <AlertDialog open={exitConfirmOpen} onOpenChange={setExitConfirmOpen}>
@@ -755,6 +706,6 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </>
+        </>, document.body
     );
 }

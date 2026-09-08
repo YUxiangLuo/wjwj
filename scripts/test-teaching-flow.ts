@@ -78,7 +78,7 @@ async function api<T>(session: string, path: string, method = "GET", body?: unkn
 }
 async function activate(session: string, selector: string) {
     await visible(session, selector);
-    const activated = await evaluate(session, `(() => { const button = document.querySelector(${JSON.stringify(selector)}); if (button.disabled) return false; button.click(); return true; })()`);
+    const activated = await evaluate(session, `(() => { const button = document.querySelector(${JSON.stringify(selector)}); if (button.disabled) return false; button.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0 })); button.click(); return true; })()`);
     assert(activated, `Button unavailable: ${selector}`);
 }
 async function namedButton(session: string, name: string) {
@@ -135,16 +135,36 @@ try {
     const stageUrl = `/student/task/${task.id}/experiment`;
     let experiment = await api<ExperimentData>(student, experimentPath);
     await page(student, stageUrl, '[data-testid="student-stage-questionnaire"]');
-    // These requests use the logged-in browser and real server. The wizard's
-    // teaching animations and cognitive preview interactions have component tests;
-    // this regression checks persisted stage contracts and their rendered pages.
+    // Seed a five-question draft through the real stage API, then complete every
+    // stage through its student-facing controls.
     const questionnaire = {
         title: "学习投入调查", welcomeText: "欢迎参加本次学习投入调查，请根据真实情况回答，所有题目仅用于课堂教学与统计分析。",
         endingText: "感谢您的参与和支持，本次调查已经结束，调查结果将用于理解学习投入的总体特征。",
         questions: Array.from({ length: 5 }, (_, index) => ({ id: `q${index}`, type: "boolean", content: `本周是否完成学习活动 ${index + 1}？` })),
     };
     experiment = await api(student, `${experimentPath}/stages/1/complete`, "POST", { observedVersion: experiment.version, questionnaire });
+    experiment = await api(student, `${experimentPath}/stages/1/reopen`, "POST", { observedVersion: experiment.version });
+    await page(student, stageUrl, '[data-testid="student-questionnaire-title"]');
+    await browser(student, "set", "viewport", "1280", "800");
+    await browser(student, "fill", '[data-testid="student-questionnaire-title"]', "学习投入调查：浏览器试填");
+    await activate(student, '[data-testid="student-questionnaire-step-4"]');
+    await activate(student, '[data-testid="student-questionnaire-start-preview"]');
+    await visible(student, '[data-testid="immersive-questionnaire-preview"]');
+    assert(await evaluate(student, `(() => {const e=document.querySelector('[data-testid="immersive-questionnaire-preview"]');const r=e.getBoundingClientRect();return e.parentElement===document.body && r.top===0 && r.bottom===innerHeight;})()`), "Questionnaire preview must cover the viewport");
+    await activate(student, '[data-testid="immersive-preview-start"]');
+    for (let index = 0; index < 5; index++) {
+        await evaluate(student, `(() => {const button=[...document.querySelectorAll('[data-testid="immersive-questionnaire-preview"] button')].find(e=>e.textContent.trim().endsWith("是"));if(!button)throw Error("Missing answer");button.click();})()`);
+        assert(await evaluate(student, 'Boolean(document.querySelector("[data-testid=immersive-preview-next]"))'), "Selecting an answer must not advance automatically");
+        await activate(student, '[data-testid="immersive-preview-next"]');
+    }
+    await activate(student, '[data-testid="immersive-preview-submit"]');
+    await eventually(() => evaluate(student, '!document.querySelector("[data-testid=immersive-questionnaire-preview]")'), "Trial did not return to the editor");
+    await activate(student, '[data-testid="student-questionnaire-complete"]');
+    await visible(student, '[data-testid="student-stage-sample-plan"]');
+    experiment = await api(student, experimentPath);
     assert(experiment.currentStage === 2 && experiment.stage1CompletedAt, "Stage 1 did not persist");
+    assert(experiment.questionnaire?.title === "学习投入调查：浏览器试填", "Questionnaire save lost the reviewed title");
+    console.log("PASS questionnaire editing, explicit trial navigation and one-step save (real browser)");
     await page(student, stageUrl, '[data-testid="student-stage-sample-plan"]');
     await visible(student, '[data-testid="planning-scroll-content"]');
     const planningLayout = await evaluate<{ viewportHeight: number; top: number; bottom: number; contentBottom: number; footerTop: number }>(student, `(() => {
@@ -160,20 +180,37 @@ try {
         "Planning footer must not overlap scrollable content");
     console.log("PASS planning dialog viewport and content/footer geometry (real browser)");
     const plan = computePpsMeanPlan();
-    experiment = await api(student, `${experimentPath}/stages/2/complete`, "POST", { observedVersion: experiment.version, samplePlan: {
-        estimationType: "mean", confidenceLevel: "95", marginOfError: 2, populationVariance: plan.populationVariance,
-        designEffect: 1, nonResponseRate: 0, recommendedSize: plan.recommendedSize, finalSampleSize: plan.recommendedSize,
-    } });
+    await namedButton(student, "暂不估计，直接查看建议");
+    await namedButton(student, "已了解，直接调整方案");
+    assert(await evaluate(student, `document.querySelector('[data-testid="immersive-sp-final-size"]').value === ${JSON.stringify(String(plan.recommendedSize))}`), "Planning UI recommendation differs from the fixture");
+    await activate(student, '[data-testid="immersive-sp-decision-next"]');
+    await namedButton(student, "跳过，直接去确认");
+    await activate(student, '[data-testid="immersive-sp-confirm"]');
+    await visible(student, '[data-testid="student-stage-sampling"]');
+    experiment = await api(student, experimentPath);
     assert(experiment.currentStage === 3 && experiment.samplePlan?.finalSampleSize === 49, "Stage 2 did not persist");
     await page(student, stageUrl, '[data-testid="student-stage-sampling"]');
-    for (const method of ["simple", "systematic", "pps"] as const) {
+    assert(await evaluate(student, `(() => {const button=document.querySelector('[data-testid="student-sampling-simple-run"]').getBoundingClientRect();const footer=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect();return button.top>0 && button.bottom<=footer.top && button.right<=innerWidth;})()`), "The initial sampling action must be visible above the footer at 1280×800");
+    await browser(student, "screenshot", join(artifacts, "sampling-start.png"));
+    await activate(student, '[data-testid="student-sampling-simple-run"]');
+    await visible(student, '[data-testid="immersive-sampling-animation"]');
+    assert(await evaluate(student, `(() => {const e=document.querySelector('[data-testid="immersive-sampling-animation"]');const r=e.getBoundingClientRect();return e.parentElement===document.body && r.top===0 && r.bottom===innerHeight;})()`), "Sampling animation must cover the viewport");
+    await activate(student, '[data-testid="immersive-sampling-skip"]');
+    await activate(student, '[data-testid="immersive-sampling-return"]');
+    for (const method of ["systematic", "pps"] as const) {
         await api(student, `/api/student/tasks/${task.id}/sampling`, "POST", { method, params: { sampleSize: 49, ...(method === "pps" ? { sizeField: "月生活费" } : {}) } });
     }
+    await page(student, stageUrl, '[data-testid="student-stage-sampling"]');
+    assert(await evaluate(student, `(() => {const table=document.querySelector('[aria-label^="抽样结果数据表"]');const stage=document.querySelector('[data-testid="student-stage-sampling"]');return table && table.getBoundingClientRect().width > stage.getBoundingClientRect().width*0.8 && document.documentElement.scrollWidth<=innerWidth;})()`), "Sampling data table must use the available width without overflowing the page");
+    await activate(student, '[data-testid="student-sampling-next"]');
+    await visible(student, '[data-testid="student-stage-analysis-report"]');
     experiment = await api(student, experimentPath);
-    experiment = await api(student, `${experimentPath}/stages/3/complete`, "POST", { observedVersion: experiment.version });
     assert(experiment.currentStage === 4 && experiment.stage3CompletedAt, "Stage 3 did not persist");
     await page(student, stageUrl, '[data-testid="student-stage-analysis-report"]');
     await eventually(() => evaluate(student, 'document.body.textContent.includes("研究目标结果") && document.body.textContent.includes("PPS")'), "Analysis results missing");
+    assert(await evaluate(student, `(() => {const panel=document.querySelector('[data-testid="student-target-metrics"]');const table=panel?.querySelector('table');return panel && table && table.getBoundingClientRect().width<=panel.getBoundingClientRect().width && document.documentElement.scrollWidth<=innerWidth;})()`), "Target comparison table must fit the full-width result panel");
+    assert(await evaluate(student, `(() => {const rows=document.querySelectorAll('[data-testid="student-target-metrics"] tbody tr');const footer=document.querySelector('[data-testid="student-stage-actions"]');return rows.length>=2 && rows[1].getBoundingClientRect().bottom<=footer.getBoundingClientRect().top;})()`), "The first two comparison results must be fully visible above the footer at 1280×800");
+    await browser(student, "screenshot", join(artifacts, "analysis-results.png"));
     const metrics = await api<AnalysisMetricsResult>(student, `/api/student/tasks/${task.id}/analysis-metrics`);
     assert(metrics.ppsStandardErrorMode === "systematic_exact" && metrics.ppsMonteCarloReplicates === 0,
         "PPS worker did not use exact design integration");
@@ -182,7 +219,11 @@ try {
         "PPS worker returned no valid standard error for the nondegenerate fixture");
     // Recoverable transport and render failures must not erase the local report.
     const draftText = "异常恢复时需要保留的报告草稿";
+    await activate(student, '[data-testid="student-analysis-workspace-report"]');
     await browser(student, "fill", '[data-testid="student-analysis-report-editor"]', draftText);
+    await activate(student, '[data-testid="student-analysis-workspace-overview"]');
+    await activate(student, '[data-testid="student-analysis-workspace-report"]');
+    assert(await evaluate(student, `document.querySelector('[data-testid="student-analysis-report-editor"]').textContent.includes(${JSON.stringify(draftText)})`), "Switching analysis workspaces lost the report draft");
     const draftKey = `wj:experiment-draft:${experiment.id}:stage:4:version:${experiment.version}`;
     await eventually(() => evaluate(student, `localStorage.getItem(${JSON.stringify(draftKey)})?.includes(${JSON.stringify(draftText)})`), "Report draft did not save");
     const experimentRoute = baseUrl + experimentPath;
@@ -205,7 +246,11 @@ try {
     assert(await evaluate(student, `document.querySelector('[data-testid="student-analysis-report-editor"]').textContent.includes(${JSON.stringify(draftText)})`), "Render recovery lost report draft");
     console.log("PASS request retry, page error boundary and draft restoration");
     const report = "本次实验以学生每周学习时长的均值为研究目标。我们比较了简单随机、系统抽样与PPS的实际估计及设计标准误，结合总体真值讨论各设计的精度和代表性。样本量规划采用有限总体校正，本次无回答率假设为零。这里的误差分析依赖完整虚拟总体，不能直接替代现实调查中的设计方差估计。";
-    experiment = await api(student, `${experimentPath}/stages/4/complete`, "POST", { observedVersion: experiment.version, reportContent: `<p>${report}</p>` });
+    await browser(student, "fill", '[data-testid="student-analysis-report-editor"]', report);
+    await browser(student, "screenshot", join(artifacts, "report-editor.png"));
+    await activate(student, '[data-testid="student-analysis-preview"]');
+    await visible(student, '[data-testid="student-preview-submit"]');
+    experiment = await api(student, experimentPath);
     assert(experiment.stage4CompletedAt, "Stage 4 did not persist");
     console.log("PASS four stage transitions, rendered pages and PPS analysis");
 

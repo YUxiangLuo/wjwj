@@ -1,10 +1,13 @@
 import { DraftSaveStatus } from "../../components/DraftSaveStatus";
+import { StageActions } from "../../components/StageActions";
+import { PageHeader } from "@/components/PageHeader";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useControlledOverlayFocusRestore } from "@/components/ui/controlled-overlay-focus";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -17,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, GripVertical, Trash2, Edit2, CheckCircle, AlertCircle, Copy, ArrowUp, ArrowDown, BookOpen, HelpCircle, MessageSquare, List, Play, RotateCcw } from "lucide-react";
+import { Plus, GripVertical, Trash2, Edit2, CheckCircle, AlertCircle, Copy, ArrowUp, ArrowDown, BookOpen, HelpCircle, MessageSquare, List, Play, RotateCcw, Loader2, ArrowRight, ChevronDown } from "lucide-react";
 import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
 import { QuestionEditor } from "../../components/QuestionEditor";
@@ -109,7 +112,8 @@ export function QuestionnaireDesign() {
     const [editingQuestion, setEditingQuestion] = useState<Question | undefined>();
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [questionToDelete, setQuestionToDelete] = useState<string | null>(null);
-    const [confirmNextOpen, setConfirmNextOpen] = useState(false);
+    const [isCompleting, setIsCompleting] = useState(false);
+    const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
     const [pendingTemplate, setPendingTemplate] = useState<QuestionnaireTemplate | null>(null);
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [dragOverId, setDragOverId] = useState<string | null>(null);
@@ -176,10 +180,10 @@ export function QuestionnaireDesign() {
     }, [contentFingerprint]);
 
     const steps = [
-        { num: 1, title: "欢迎语设置" },
-        { num: 2, title: "题目设计" },
-        { num: 3, title: "结束语设置" },
-        { num: 4, title: "受访者视角试填" },
+        { num: 1, title: "问卷开场" },
+        { num: 2, title: "设计题目" },
+        { num: 3, title: "结束语" },
+        { num: 4, title: "检查与试填" },
     ];
 
     // Question management
@@ -313,6 +317,7 @@ export function QuestionnaireDesign() {
     };
 
     const requestTemplate = (template: QuestionnaireTemplate) => {
+        setTemplatePickerOpen(false);
         const hasExistingContent = Boolean(title.trim() || welcomeTextLength > 0 || endingTextLength > 0 || questions.length > 0);
         if (hasExistingContent) setPendingTemplate(template);
         else applyTemplate(template);
@@ -342,6 +347,11 @@ export function QuestionnaireDesign() {
 
     const canProceed = basicValidationPassed && validation.previewCompleted;
     const canAdvanceToNextStep = canAdvanceQuestionnaireStep(step, validation);
+    const stepHint = step === 1
+        ? !validation.title ? "请填写 1–100 字的问卷标题。" : !validation.welcomeText ? "欢迎语需 20–1000 字，说明调查目的与填写方式。" : "开场已就绪，可以继续设计题目。"
+        : step === 2 ? !validation.questionCount ? "本实验需要 5–50 道题，请先补齐题目。" : !validation.optionCount ? "部分题目的选项不完整，请先编辑修正。" : "题目已就绪，可以继续写结束语。"
+            : step === 3 ? !validation.endingText ? "结束语需 20–1000 字，感谢受访者并说明调查结束。" : "结束语已就绪，接下来检查并试填。"
+                : !basicValidationPassed ? "请先修正校验清单中的必填项，再开始试填。" : !isPreviewValid ? "请完整试填当前版本，检查题意和作答方式。" : "检查已完成，可以保存问卷并规划样本量。";
 
     const { scoreItems, structureScore } = useMemo(() => calculateQuestionnaireScoreSummary({
         title,
@@ -363,21 +373,25 @@ export function QuestionnaireDesign() {
     const warningCount = scoreItems.filter((item) => item.status === "warning").length;
 
     const handleConfirmComplete = async () => {
-        if (clearDraft.save(questionnaireDraft) === "conflict") return;
-        const completed = await completeStage(1, { questionnaire: questionnaireData });
-        if (completed) clearDraft.clear();
+        if (!canProceed || isCompleting) return;
+        setIsCompleting(true);
+        try {
+            if (clearDraft.save(questionnaireDraft) === "conflict") return;
+            const completed = await completeStage(1, { questionnaire: questionnaireData });
+            if (completed) clearDraft.clear();
+        } finally { setIsCompleting(false); }
     };
 
     const renderStep = () => {
         switch (step) {
             case 1:
                 return (
-                    <div className="grid grid-cols-3 gap-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                        <Card className="col-span-2 rounded-surface border-border bg-card ">
+                    <div className="flex flex-wrap items-start gap-5">
+                        <Card className="min-w-0 flex-[3_1_36rem] rounded-surface border-border bg-card">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2 text-foreground">
                                     <MessageSquare className="w-5 h-5 text-primary" />
-                                    欢迎语设置
+                                    问卷开场
                                 </CardTitle>
                                 <CardDescription className="text-muted-foreground">设置问卷的标题和欢迎语，让受访者了解调查目的</CardDescription>
                             </CardHeader>
@@ -401,13 +415,15 @@ export function QuestionnaireDesign() {
                                         dataTestId="student-questionnaire-welcome"
                                         editorTestId="student-questionnaire-welcome-editor"
                                         id="welcome"
+                                        ariaLabel="欢迎语"
+                                        showWordCount={false}
                                         placeholder="请输入欢迎语，说明调查目的、预计用时等"
                                         value={welcomeText}
                                         onChange={setWelcomeText}
                                         editorClassName="min-h-[220px]"
                                     />
                                     <div className="flex justify-between text-meta">
-                                        <span className={welcomeTextLength < 20 || welcomeTextLength > 1000 ? "text-destructive" : "text-success"}>
+                                        <span className={welcomeTextLength > 1000 ? "text-destructive" : welcomeTextLength < 20 ? "text-muted-foreground" : "text-success"}>
                                             {welcomeTextLength > 1000
                                                 ? `已超出 ${welcomeTextLength - 1000} 字`
                                                 : welcomeTextLength < 20
@@ -419,13 +435,13 @@ export function QuestionnaireDesign() {
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card className="h-fit rounded-surface border-info-border bg-info-muted ">
+                        <Card className="min-w-0 flex-[1_1_18rem] h-fit rounded-surface border-border bg-card">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2 text-body text-info">
                                     <HelpCircle className="w-4 h-4" />
                                     小贴士
                                 </CardTitle>
-                                <CardDescription className="text-info">好的欢迎语能提高数据质量。</CardDescription>
+                                <CardDescription className="text-info">让受访者知道为什么填写、如何作答。</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4 text-label leading-relaxed text-info">
                                 <p>建议说明调查目的、预计用时与隐私保护方式。</p>
@@ -441,8 +457,8 @@ export function QuestionnaireDesign() {
 
             case 2:
                 return (
-                    <div className="grid grid-cols-3 gap-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                        <div className="col-span-2 space-y-4">
+                    <div className="flex flex-wrap items-start gap-5">
+                        <div className="min-w-0 flex-[3_1_36rem] space-y-4">
                             <Card className="rounded-surface border-border bg-card ">
                                 <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
                                     <div>
@@ -475,7 +491,7 @@ export function QuestionnaireDesign() {
                                                 <div
                                                     key={q.id}
                                                     data-testid={`student-questionnaire-item-${q.id}`}
-                                                    className={`flex items-center gap-3 p-3 rounded-surface border transition-none group hover:bg-muted ${dragOverId === q.id && draggingId !== q.id
+                                                    className={`flex flex-wrap items-start gap-3 p-4 rounded-surface border transition-none group hover:bg-muted ${dragOverId === q.id && draggingId !== q.id
                                                         ? "border-primary ring-1 ring-ring bg-primary-muted"
                                                         : "border-border bg-background"
                                                         } ${draggingId === q.id ? "opacity-50" : ""}`}
@@ -486,22 +502,27 @@ export function QuestionnaireDesign() {
                                                     onDrop={handleDrop(q.id)}
                                                     onDragEnd={handleDragEnd}
                                                 >
-                                                    <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab hover:text-muted-foreground" />
-                                                    <span className="text-label font-bold text-muted-foreground w-8">Q{index + 1}</span>
-                                                    <Badge variant="outline" className={`${questionTypeColors[q.type]} px-2 py-0.5 text-meta whitespace-nowrap`}>
-                                                        {questionTypeLabels[q.type]}
-                                                    </Badge>
-                                                    <Badge variant="outline" className="whitespace-nowrap border-border bg-card px-2 py-0.5 text-meta text-muted-foreground">
-                                                        {QUESTION_SECTION_LABELS[q.section ?? "main"]}
-                                                    </Badge>
-                                                    <span className="flex-1 text-label text-foreground truncate font-medium">{q.content}</span>
-                                                    <div className="flex gap-1">
+                                                    <GripVertical className="mt-1 h-4 w-4 shrink-0 cursor-grab text-muted-foreground" aria-label="拖动可调整题目顺序"/>
+                                                    <span className="mt-0.5 w-8 shrink-0 text-label font-semibold text-muted-foreground">Q{index + 1}</span>
+                                                    <div className="min-w-0 flex-[1_1_24rem] space-y-2">
+                                                        <button type="button" onClick={() => handleEditQuestion(q)} className="w-full break-words text-left text-body font-semibold text-foreground hover:text-primary">{q.content}</button>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            <Badge variant="outline" className={`${questionTypeColors[q.type]} px-2 py-0.5 text-meta whitespace-nowrap`}>
+                                                                {questionTypeLabels[q.type]}
+                                                            </Badge>
+                                                            <Badge variant="outline" className="whitespace-nowrap border-border bg-card px-2 py-0.5 text-meta text-muted-foreground">
+                                                                {QUESTION_SECTION_LABELS[q.section ?? "main"]}
+                                                            </Badge>
+                                                        </div>
+                                                        {q.options && q.options.length > 0 && <p className="text-meta leading-relaxed text-muted-foreground">选项：{q.options.join("；")}</p>}
+                                                    </div>
+                                                    <div className="ml-auto flex shrink-0 flex-wrap gap-1">
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
                                                             aria-label={`上移第 ${index + 1} 题`}
                                                             data-testid={`student-questionnaire-move-up-${q.id}`}
-                                                            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+                                                            className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-muted"
                                                             onClick={() => moveQuestion(index, "up")}
                                                             disabled={index === 0}
                                                         >
@@ -512,7 +533,7 @@ export function QuestionnaireDesign() {
                                                             size="icon"
                                                             aria-label={`下移第 ${index + 1} 题`}
                                                             data-testid={`student-questionnaire-move-down-${q.id}`}
-                                                            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+                                                            className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-muted"
                                                             onClick={() => moveQuestion(index, "down")}
                                                             disabled={index === questions.length - 1}
                                                         >
@@ -523,8 +544,9 @@ export function QuestionnaireDesign() {
                                                             size="icon"
                                                             aria-label={`复制第 ${index + 1} 题`}
                                                             data-testid={`student-questionnaire-duplicate-${q.id}`}
-                                                            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+                                                            className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-muted"
                                                             onClick={() => handleDuplicateQuestion(q)}
+                                                            disabled={questions.length >= 50}
                                                         >
                                                             <Copy className="w-4 h-4" />
                                                         </Button>
@@ -533,7 +555,7 @@ export function QuestionnaireDesign() {
                                                             size="icon"
                                                             aria-label={`编辑第 ${index + 1} 题`}
                                                             data-testid={`student-questionnaire-edit-${q.id}`}
-                                                            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+                                                            className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-muted"
                                                             onClick={() => handleEditQuestion(q)}
                                                         >
                                                             <Edit2 className="w-4 h-4" />
@@ -543,7 +565,7 @@ export function QuestionnaireDesign() {
                                                             size="icon"
                                                             aria-label={`删除第 ${index + 1} 题`}
                                                             data-testid={`student-questionnaire-delete-${q.id}`}
-                                                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive-muted"
+                                                            className="h-9 w-9 text-destructive hover:text-destructive hover:bg-destructive-muted"
                                                             onClick={() => handleDeleteQuestion(q.id)}
                                                         >
                                                             <Trash2 className="w-4 h-4" />
@@ -563,7 +585,7 @@ export function QuestionnaireDesign() {
                                 </div>
                             )}
                         </div>
-                        <div className="space-y-4">
+                        <div className="min-w-0 flex-[1_1_18rem] space-y-4">
                             <Card className="rounded-surface border-border bg-card ">
                                 <CardHeader
                                     role="button"
@@ -581,7 +603,7 @@ export function QuestionnaireDesign() {
                                 >
                                     <div className="flex items-center justify-between">
                                         <CardTitle className="text-body text-foreground">推荐题目</CardTitle>
-                                        <span className={`text-muted-foreground transition-transform duration-200 ${recommendCollapsed ? "" : "rotate-180"}`}>▲</span>
+                                        <ChevronDown className={`h-4 w-4 text-muted-foreground ${recommendCollapsed ? "" : "rotate-180"}`}/>
                                     </div>
                                     <CardDescription className="text-muted-foreground">可直接引用教师提供的推荐题目</CardDescription>
                                 </CardHeader>
@@ -611,7 +633,7 @@ export function QuestionnaireDesign() {
                                                 <Button
                                                     size="sm"
                                                     variant="outline"
-                                                    disabled={recommendAlreadyInQuestionnaire}
+                                                    disabled={recommendAlreadyInQuestionnaire || questions.length >= 50}
                                                     className="w-full mt-1 border-input text-foreground hover:bg-muted hover:text-foreground disabled:bg-muted disabled:text-muted-foreground disabled:border-border"
                                                     onClick={() => handleUseRecommend(rq)}
                                                 >
@@ -640,8 +662,8 @@ export function QuestionnaireDesign() {
 
             case 3:
                 return (
-                    <div className="flex justify-center animate-in fade-in slide-in-from-right-4 duration-300">
-                        <Card className="w-full max-w-2xl rounded-surface border-border bg-card ">
+                    <div className="min-w-0">
+                        <Card className="w-full rounded-surface border-border bg-card ">
                             <CardHeader>
                                 <CardTitle className="text-foreground">结束语设置</CardTitle>
                                 <CardDescription className="text-muted-foreground">设置问卷的结束语，感谢受访者参与</CardDescription>
@@ -653,13 +675,15 @@ export function QuestionnaireDesign() {
                                         dataTestId="student-questionnaire-ending"
                                         editorTestId="student-questionnaire-ending-editor"
                                         id="ending"
+                                        ariaLabel="结束语"
+                                        showWordCount={false}
                                         placeholder="请输入结束语，如致谢词等"
                                         value={endingText}
                                         onChange={setEndingText}
                                         editorClassName="min-h-[220px]"
                                     />
                                     <div className="flex justify-between text-meta">
-                                        <span className={endingTextLength < 20 || endingTextLength > 1000 ? "text-destructive" : "text-success"}>
+                                        <span className={endingTextLength > 1000 ? "text-destructive" : endingTextLength < 20 ? "text-muted-foreground" : "text-success"}>
                                             {endingTextLength > 1000
                                                 ? `已超出 ${endingTextLength - 1000} 字`
                                                 : endingTextLength < 20
@@ -747,7 +771,7 @@ export function QuestionnaireDesign() {
                         </Card>
 
                         {/* Validation checklist and score */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,28rem),1fr))] gap-4">
                         <Card className="rounded-surface border-border bg-card h-fit">
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-label text-foreground">校验清单</CardTitle>
@@ -878,105 +902,53 @@ export function QuestionnaireDesign() {
     };
 
     return (
-        <div className="space-y-8 pb-12" data-testid="student-stage-questionnaire">
-            <DraftSaveStatus status={clearDraft.status} onRetry={clearDraft.retry} />
-            {/* Compact sub-step indicator */}
-            <div className="flex items-center gap-2 px-1" data-testid="student-questionnaire-steps">
-                {steps.map((s, idx) => {
-                    const isCompleted = step > s.num;
-                    const isCurrent = step === s.num;
-
-                    return (
-                        <div key={s.num} className="flex items-center gap-2">
-                            {idx > 0 && (
-                                <div className={`w-6 h-px ${isCompleted || isCurrent ? "bg-primary-muted" : "bg-muted"}`} />
-                            )}
-                            <button
-                                onClick={() => {
-                                    if (s.num <= step) {
-                                        setStep(s.num as 1 | 2 | 3 | 4);
-                                    }
-                                }}
-                                disabled={s.num > step}
-                                data-testid={`student-questionnaire-step-${s.num}`}
-                                aria-label={`第 ${s.num} 步: ${s.title}`}
-                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-surface text-meta font-medium transition-none disabled:cursor-not-allowed ${
-                                    isCurrent
-                                        ? "bg-primary-muted text-primary border border-primary-border"
-                                        : isCompleted
-                                            ? "text-success hover:bg-success-muted cursor-pointer"
-                                            : "text-muted-foreground"
-                                }`}
-                            >
-                                {isCompleted ? (
-                                    <CheckCircle className="w-3.5 h-3.5 text-success flex-shrink-0" />
-                                ) : (
-                                    <span className={`w-4 h-4 rounded-control flex items-center justify-center text-meta font-bold flex-shrink-0 ${
-                                        isCurrent
-                                            ? "bg-primary text-primary-foreground"
-                                            : "bg-muted text-muted-foreground border border-input"
-                                    }`}>
-                                        {s.num}
-                                    </span>
-                                )}
-                                <span className="whitespace-nowrap">{s.title}</span>
-                            </button>
-                        </div>
-                    );
-                })}
-            </div>
-
-            {step === 1 && (
-                <Card className="rounded-surface border-info-border bg-info-muted" data-testid="student-questionnaire-templates">
-                    <CardHeader className="flex flex-row items-start justify-between gap-4 border-b border-info-border pb-4">
-                        <div><CardTitle><h2 className="flex items-center gap-2 text-body text-info"><BookOpen className="h-4 w-4" />从标准问卷骨架开始</h2></CardTitle><CardDescription className="mt-1 text-info">模板包含封面信、甄别题、主体题、背景资料和结束语，套用后仍可逐项修改。</CardDescription></div>
-                        <div className="flex gap-2"><Button asChild variant="outline" size="sm"><a href="/templates/调查问卷设计规范与模板.pdf" target="_blank" rel="noreferrer">预览规范</a></Button><Button asChild variant="outline" size="sm"><a href="/templates/调查问卷设计规范与模板.docx" download>下载 DOCX</a></Button></div>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-3 gap-3 pt-4">
-                        {QUESTIONNAIRE_TEMPLATES.map((template) => (
-                            <div key={template.id} className="rounded-surface border border-info-border bg-card p-4">
-                                <h3 className="text-label font-semibold text-foreground">{template.name}</h3>
-                                <p className="mt-1 min-h-10 text-meta text-muted-foreground">{template.description}</p>
-                                <Button type="button" variant="outline" size="sm" className="mt-3 w-full" onClick={() => requestTemplate(template)}>套用此骨架</Button>
-                            </div>
-                        ))}
-                    </CardContent>
-                </Card>
-            )}
+        <div className="min-w-0 space-y-5" data-testid="student-stage-questionnaire">
+            <PageHeader border={false} className="flex-wrap">
+                <nav aria-label="问卷设计步骤" data-testid="student-questionnaire-steps" className="flex flex-wrap gap-2">
+                    {steps.map(s => {
+                        const isCurrent = step === s.num;
+                        const isCompleted = canAdvanceQuestionnaireStep(s.num as 1 | 2 | 3 | 4, validation);
+                        return <button key={s.num} type="button" onClick={() => setStep(s.num as 1 | 2 | 3 | 4)}
+                            data-testid={`student-questionnaire-step-${s.num}`} aria-current={isCurrent ? "step" : undefined} aria-label={`第 ${s.num} 步: ${s.title}`}
+                            className={`flex min-h-11 items-center gap-2 rounded-control border px-3 text-label font-medium ${isCurrent ? "border-primary-border bg-primary-muted text-primary" : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
+                            {isCompleted ? <CheckCircle className="h-4 w-4 text-success"/> : <span className="tabular-nums">{s.num}</span>}{s.title}
+                        </button>;
+                    })}
+                </nav>
+                <Button type="button" variant="outline" onClick={() => setTemplatePickerOpen(true)}><BookOpen className="mr-2 h-4 w-4"/>使用问卷模板</Button>
+            </PageHeader>
 
             {renderStep()}
 
-            <div className="flex justify-between items-center pt-4 border-t border-border">
-                <Button
-                    variant="outline"
-                    onClick={() => step > 1 && setStep((step - 1) as 1 | 2 | 3 | 4)}
-                    disabled={step === 1}
-                    data-testid="student-questionnaire-prev"
-                    className="border-input bg-muted text-foreground hover:bg-muted hover:text-foreground"
-                >
-                    上一步
-                </Button>
-                {step < 4 ? (
-                    <Button
-                        onClick={() => setStep((step + 1) as 1 | 2 | 3 | 4)}
-                        disabled={!canAdvanceToNextStep}
-                        data-testid="student-questionnaire-next"
-                        className="bg-primary hover:bg-primary-hover text-primary-foreground "
-                    >
-                        下一步
-                    </Button>
-                ) : (
-                    <Button
-                        onClick={() => setConfirmNextOpen(true)}
-                        disabled={!canProceed || clearDraft.status === "conflict"}
-                        data-testid="student-questionnaire-complete"
-                        className="bg-success hover:bg-success-hover text-success-foreground "
-                    >
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        确认完成，进入下一阶段
-                    </Button>
-                )}
-            </div>
+            <StageActions>
+                <div className="min-w-0 space-y-2">
+                    <DraftSaveStatus status={clearDraft.status} onRetry={clearDraft.retry}/>
+                    <p className="text-meta text-muted-foreground" role="status">{stepHint}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                    {step > 1 && <Button type="button" variant="outline" onClick={() => setStep((step - 1) as 1 | 2 | 3 | 4)} disabled={isCompleting} data-testid="student-questionnaire-prev">上一步</Button>}
+                    {step < 4 ? <Button onClick={() => setStep((step + 1) as 1 | 2 | 3 | 4)} disabled={!canAdvanceToNextStep} data-testid="student-questionnaire-next">继续：{steps[step]?.title}<ArrowRight className="ml-2 h-4 w-4"/></Button>
+                        : <Button onClick={() => void handleConfirmComplete()} disabled={!canProceed || isCompleting || clearDraft.status === "conflict"} data-testid="student-questionnaire-complete">
+                            {isCompleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>}保存并规划样本量
+                        </Button>}
+                </div>
+            </StageActions>
+
+            <Dialog open={templatePickerOpen} onOpenChange={setTemplatePickerOpen}>
+                <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto" data-testid="student-questionnaire-templates">
+                    <DialogHeader><DialogTitle>选择一个问卷起点</DialogTitle><DialogDescription>模板提供开场、甄别题、主体题、背景资料和结束语。请按你的研究目标修改，套用模板不等于完成设计。</DialogDescription></DialogHeader>
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-3">
+                        {QUESTIONNAIRE_TEMPLATES.map(template => <section key={template.id} className="flex flex-col rounded-surface border border-border bg-card p-4">
+                            <h3 className="text-subheading font-semibold">{template.name}</h3><p className="my-3 flex-1 text-label leading-relaxed text-muted-foreground">{template.description}</p>
+                            <Button type="button" variant="outline" onClick={() => requestTemplate(template)}>使用此模板</Button>
+                        </section>)}
+                    </div>
+                    <div className="flex flex-wrap gap-3 border-t border-border pt-4">
+                        <Button asChild variant="outline"><a href="/templates/调查问卷设计规范与模板.pdf" target="_blank" rel="noreferrer">查看设计规范</a></Button>
+                        <Button asChild variant="outline"><a href="/templates/调查问卷设计规范与模板.docx" download>下载 DOCX 模板</a></Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             {/* Question Editor Dialog */}
             <QuestionEditor
@@ -1009,24 +981,6 @@ export function QuestionnaireDesign() {
                         <AlertDialogDescription>套用“{pendingTemplate?.name ?? ""}”会替换当前标题、欢迎语、全部题目和结束语。此操作不能自动合并现有内容。</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter><AlertDialogCancel>取消</AlertDialogCancel><AlertDialogAction variant="destructive" onClick={() => pendingTemplate && applyTemplate(pendingTemplate)}>确认替换</AlertDialogAction></AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Confirm Next Stage Dialog */}
-            <AlertDialog open={confirmNextOpen} onOpenChange={setConfirmNextOpen}>
-                <AlertDialogContent className="bg-card border-border text-foreground" data-testid="student-questionnaire-complete-dialog">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-foreground">确认完成问卷预试</AlertDialogTitle>
-                        <AlertDialogDescription className="text-muted-foreground text-body leading-relaxed">
-                            确认后问卷设计将被<strong className="text-primary">锁定</strong>。如需修改，您需要返回本阶段重新设计，届时后续阶段的数据将被<strong className="text-destructive">清空</strong>。
-                            <br /><br />
-                            确定继续吗？
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmComplete} data-testid="student-questionnaire-complete-confirm" variant="success">确认完成</AlertDialogAction>
-                    </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 

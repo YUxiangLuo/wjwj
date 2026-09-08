@@ -224,7 +224,7 @@ test("AnalysisReport omits PPS-only guidance when PPS is unavailable", async () 
 
     await waitFor(() => expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(1));
     expect(view.getByTestId("student-analysis-oracle-notice").textContent).not.toContain("PPS 标准误");
-    expect(view.getByText(/PPS 已按规则跳过，不应纳入方法间比较/)).toBeTruthy();
+    expect(view.getByText(/没有合格的 PPS 规模变量，PPS 已按规则跳过/)).toBeTruthy();
 });
 
 test("AnalysisReport warns when a historical numeric column is excluded for missing values", async () => {
@@ -369,7 +369,7 @@ test("AnalysisReport omits disabled and unselected methods from export and param
     expect(view.container.querySelector('[data-value="pps"]')).toBeNull();
     expect(view.queryByTestId("student-analysis-sampling-params-pps")).toBeNull();
     expect(view.getByTestId("student-analysis-sampling-params-systematic")).toBeTruthy();
-    expect(view.getByText(/PPS 已由教师在实验模板中设为不适用/)).toBeTruthy();
+    expect(view.getByText(/PPS 已由教师设为不适用，不纳入方法间比较/)).toBeTruthy();
     expect(view.container.textContent).not.toContain("本次未选择 PPS");
 });
 

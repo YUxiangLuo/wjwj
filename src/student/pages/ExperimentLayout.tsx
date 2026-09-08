@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { getRemainingDeadlineSummary } from "@/utils/format";
 import { LoadingStatus } from "@/components/LoadingStatus";
+import { PageHeader } from "@/components/PageHeader";
 import { experimentApi, tasksApi } from "../api-client";
 import type { ExperimentData } from "@/domain/experiment/types";
 import { formatStudyContractSummary } from "@/lib/analysis-target";
@@ -31,10 +32,10 @@ import { SamplePlanSnapshot } from "@/components/SamplePlanSnapshot";
 import { SamplingResultsSnapshot } from "@/components/SamplingResultsSnapshot";
 
 const stages = [
-    { name: "问卷预试", description: "设计问卷原型并完成受访者视角试填", icon: FileText },
+    { name: "问卷预试", description: "围绕研究问题设计问卷，再从受访者视角试填一次", icon: FileText },
     { name: "样本量规划", description: "按研究目标变量计算邀请单位数", icon: Ruler },
-    { name: "抽样执行", description: "按实验模板要求完成必做与选做抽样方法", icon: Play },
-    { name: "分析与报告", description: "比较抽样框字段上的设计并撰写报告", icon: BarChart3 },
+    { name: "抽样执行", description: "完成必做方法，查看实际入样记录，再比较不同抽样设计", icon: Play },
+    { name: "分析与报告", description: "围绕研究目标比较结果，用数据支持你的报告结论", icon: BarChart3 },
 ] as const;
 
 interface ExperimentContextValue {
@@ -204,7 +205,7 @@ function ExperimentWorkspace() {
             <div className="pb-12" data-testid="student-experiment-layout">
                 <div className="sticky top-16 z-40 -mt-2 border-b border-border bg-background">
                     <div className="flex items-center justify-between py-2">
-                        <div className="flex items-center gap-2"><Button asChild variant="ghost" size="icon"><Link to="/" aria-label="返回任务大厅"><Home className="h-4 w-4" /></Link></Button><Button asChild variant="ghost" className="gap-2 flex"><Link to={`/task/${numericTaskId}`}><ArrowLeft className="h-4 w-4" />退出实验</Link></Button><h1 className="ml-2 line-clamp-1 border-l border-border pl-4 text-label font-semibold">{taskName}</h1></div>
+                        <div className="flex min-w-0 items-center gap-2"><Button asChild variant="ghost" size="icon"><Link to="/" aria-label="返回任务大厅"><Home className="h-4 w-4" /></Link></Button><Button asChild variant="ghost" className="gap-2 flex shrink-0"><Link to={`/task/${numericTaskId}`}><ArrowLeft className="h-4 w-4" />返回任务</Link></Button><h1 tabIndex={-1} className="ml-2 line-clamp-1 border-l border-border pl-4 text-label font-semibold outline-none">{taskName}</h1></div>
                         {deadlineInfo && <span className={`items-center gap-1 text-meta flex ${deadlineInfo.urgent ? "text-destructive" : "text-muted-foreground"}`}>{deadlineInfo.urgent ? <AlertCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}{deadlineInfo.text}</span>}
                     </div>
                     {saveError && <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-surface border border-destructive-border bg-destructive-muted px-3 py-2 text-label text-destructive"><span>{saveError}</span>{versionConflict && <Button type="button" size="sm" variant="outline" disabled={isSaving} data-testid="student-load-latest-version" onClick={() => void loadLatestVersion()} className="border-destructive-border bg-background text-destructive hover:bg-destructive-muted hover:text-destructive"><RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isSaving ? "animate-spin" : ""}`} />加载最新版本</Button>}</div>}
@@ -218,12 +219,22 @@ function ExperimentWorkspace() {
                         })}
                     </div>
                 </div>
-                <div className="my-6 flex items-center gap-3 rounded-surface border border-border bg-card px-4 py-3"><span className="grid h-8 w-8 place-items-center rounded-surface bg-primary-muted text-primary">{(() => { const Icon = stages[currentStage - 1]!.icon; return <Icon className="h-4 w-4" />; })()}</span><div><p className="text-label font-semibold">阶段 {currentStage}：{stages[currentStage - 1]!.name}</p><p className="text-meta text-muted-foreground">{stages[currentStage - 1]!.description}。编辑草稿自动保存在当前浏览器，退出登录后保留，最后编辑后保留 7 天；抽样结果每次执行即保存，点击阶段完成后正式写入服务器。</p></div></div>
-                <p className="mb-6 rounded-surface border border-info-border bg-info-muted px-4 py-3 text-label text-info" data-testid="student-analysis-target-summary">
+                <PageHeader border={false} className="my-4 flex-wrap items-baseline">
+                    <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-2">
+                        <h2 className="text-page-title font-bold text-foreground">{stages[currentStage - 1]!.name}</h2>
+                        <p className="text-label text-muted-foreground">{stages[currentStage - 1]!.description}。</p>
+                    </div>
+                    <span className="shrink-0 text-meta text-muted-foreground">阶段 {currentStage} / 4</span>
+                </PageHeader>
+                <details className="mb-4 rounded-surface border border-border bg-card px-4 py-2">
+                    <summary className="cursor-pointer text-label text-foreground">研究目标：{experiment.studyContract?.contract.researchQuestion ?? "查看本次实验的目标与约定"}</summary>
+                    <p className="mt-3 text-label leading-relaxed text-muted-foreground" data-testid="student-analysis-target-summary">
                     {formatStudyContractSummary(experiment.studyContract ?? null, experiment.samplePlan
                         ? { marginLabel: formatMarginOfError(experiment.samplePlan.marginOfError, experiment.studyContract?.contract.target.kind ?? experiment.samplePlan.estimationType) }
                         : undefined)}
-                </p>
+                    </p>
+                    <p className="mt-2 text-meta leading-relaxed text-muted-foreground">编辑草稿保存在当前浏览器，最后编辑后保留 7 天。完成阶段时同步到服务器；抽样结果每次执行后立即保存。问卷试填用于检查题目，不进入后续统计分析。</p>
+                </details>
                 {experiment.status === "rejected" && experiment.rejectReason?.trim() && (
                     <div
                         role="alert"

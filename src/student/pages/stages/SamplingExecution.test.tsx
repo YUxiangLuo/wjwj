@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, expect, mock, test } from "bun:test";
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
 import { installDomGlobals } from "@/test-utils/dom";
 import { buildStratifiedNumericStats, buildStratifiedStats } from "@/domain/statistics/population";
 import type { AnalysisTarget } from "@/lib/analysis-target";
+
+const bootstrapDom = installDomGlobals();
+const { cleanup, fireEvent, render, waitFor } = await import("@testing-library/react");
 
 type PopulationStats = NonNullable<Awaited<ReturnType<typeof import("../../api-client").experimentApi.getStats>>["data"]>;
 
@@ -102,6 +104,7 @@ mock.module("../../components/SamplePreviewTable", () => ({
 }));
 
 const { SamplingExecution } = await import("./SamplingExecution");
+bootstrapDom.restore();
 
 let restoreDom: (() => void) | null = null;
 
@@ -164,7 +167,7 @@ test("SamplingExecution restores zero seeds instead of switching to random execu
     for (const method of ["simple", "systematic", "pps"]) {
         expect((view.getByTestId(`student-sampling-${method}-seed`) as HTMLInputElement).value).toBe("0");
     }
-    expect(view.container.textContent).toContain("Seed 0");
+    expect(view.container.textContent).toContain("随机种子 0");
 });
 
 test("SamplingExecution blocks the stage when sample plan is missing", async () => {
@@ -201,9 +204,8 @@ test("SamplingExecution always uses the desktop tabs and navigation", async () =
     expect(view.container.textContent).toContain("相关性弱时未必优于等概率设计");
 
     const next = view.getByTestId("student-sampling-next");
-    expect(next.parentElement?.className).toContain("flex-row");
-    expect(next.className).toContain("w-auto");
-    expect(next.className).not.toContain("w-full");
+    expect((next as HTMLButtonElement).disabled).toBe(true);
+    expect(view.getByTestId("student-stage-actions").textContent).toContain("还需完成必做方法：简单随机抽样");
 });
 
 test("SamplingExecution preserves a persisted completed PPS result while eligible fields load", async () => {
@@ -232,7 +234,7 @@ test("SamplingExecution preserves a persisted completed PPS result while eligibl
     });
 
     await waitFor(() => {
-        expect(view.getByTestId("student-sampling-next").textContent).toContain("完成本阶段");
+        expect((view.getByTestId("student-sampling-next") as HTMLButtonElement).disabled).toBe(false);
     });
     expect(view.queryByTestId("student-sampling-pps-unavailable")).toBeNull();
     expect(view.container.textContent).toContain("本实验执行还要求该字段对总体每个单位均为正数");
@@ -393,7 +395,20 @@ test("SamplingExecution honors disabled methods and allows the required two-meth
     expect(view.queryByTestId("student-sampling-tab-stratified")).toBeNull();
     const complete = view.getByTestId("student-sampling-next") as HTMLButtonElement;
     expect(complete.disabled).toBeFalse();
-    expect(complete.textContent).toContain("完成本阶段");
+    expect(complete.textContent).toContain("进入分析与报告");
+});
+
+test("PPS count editing preserves fractional input and blocks execution until corrected", async () => {
+    mockExperimentApi.getStats.mockResolvedValueOnce({ success: true, data: { stats: {}, numericFields: ["weight"], ppsEligibleFields: ["weight"] } });
+    const view = render(<SamplingExecution onPrev={() => undefined}/>);
+    await waitFor(() => expect(mockExperimentApi.getStats).toHaveBeenCalledTimes(1));
+    const input = view.getByTestId("student-sampling-pps-sample-size") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "13.5" } });
+    expect(input.value).toBe("13.5");
+    expect(input.getAttribute("aria-invalid")).toBe("true");
+    expect((view.getByTestId("student-sampling-pps-run") as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(input, { target: { value: "13" } });
+    expect((view.getByTestId("student-sampling-pps-run") as HTMLButtonElement).disabled).toBe(false);
 });
 
 function prepareNeymanScenario(options: {

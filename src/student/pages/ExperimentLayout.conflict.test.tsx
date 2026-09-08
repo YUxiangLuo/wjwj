@@ -213,6 +213,9 @@ test("version conflict blocks retry until the student explicitly loads the lates
         await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
+    await act(async () => {
+        fireEvent.click(await waitFor(() => view.getByTestId("student-analysis-write")));
+    });
     const submit = await waitFor(() => {
         const button = view.getByTestId("student-analysis-preview") as HTMLButtonElement;
         expect(button.disabled).toBe(false);

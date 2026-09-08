@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef, memo } from "react";
+import { createPortal } from "react-dom";
 import { X, Users, Target, Layers, Shuffle, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { MethodKey as SamplingMethod } from "@/domain/experiment/types";
@@ -248,8 +249,11 @@ export function ImmersiveSamplingAnimation({
 
     // Prevent body scroll
     useEffect(() => {
+        const previous = document.body.style.overflow;
+        const background = Array.from(document.body.children).filter((element): element is HTMLElement => element instanceof HTMLElement && element !== overlayRef.current && !element.contains(overlayRef.current)).map(element => ({ element, inert: element.inert }));
+        background.forEach(({ element }) => { element.inert = true; });
         document.body.style.overflow = "hidden";
-        return () => { document.body.style.overflow = ""; };
+        return () => { document.body.style.overflow = previous; background.forEach(({ element, inert }) => { element.inert = inert; }); };
     }, []);
 
     // ─── Precompute which dots get selected ───────────────
@@ -558,7 +562,7 @@ export function ImmersiveSamplingAnimation({
         }
     };
 
-    return (
+    return createPortal(
         <div
             ref={overlayRef}
             role="dialog"
@@ -790,7 +794,7 @@ export function ImmersiveSamplingAnimation({
                     </div>
                 )}
             </div>
-        </div>
+        </div>, document.body
     );
 }
 

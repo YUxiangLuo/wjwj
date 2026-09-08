@@ -111,7 +111,7 @@ describe("ImmersiveQuestionnairePreview", () => {
         expect(view.getByText(/题目 ID 重复/)).toBeTruthy();
     });
 
-    test("boolean question: selecting advances to ending", () => {
+    test("a selected answer stays editable until the student chooses to continue", () => {
         const onComplete = mock(() => {});
         const view = render(
             <ImmersiveQuestionnairePreview
@@ -121,7 +121,15 @@ describe("ImmersiveQuestionnairePreview", () => {
             />,
         );
         fireEvent.click(view.getByTestId("immersive-preview-start"));
+        expect((view.getByTestId("immersive-preview-next") as HTMLButtonElement).disabled).toBe(true);
         fireEvent.click(view.getByText("是"));
+        expect(view.getByText("是").closest("button")?.getAttribute("aria-pressed")).toBe("true");
+        expect(view.getByText("是否测试？")).toBeTruthy();
+        expect(view.queryByTestId("immersive-preview-submit")).toBeNull();
+        fireEvent.click(view.getByText("否"));
+        expect(view.getByText("是").closest("button")?.getAttribute("aria-pressed")).toBe("false");
+        expect(view.getByText("否").closest("button")?.getAttribute("aria-pressed")).toBe("true");
+        fireEvent.click(view.getByTestId("immersive-preview-next"));
         expect(view.getByTestId("immersive-preview-submit")).toBeTruthy();
         fireEvent.click(view.getByTestId("immersive-preview-submit"));
         expect(onComplete).toHaveBeenCalled();
@@ -136,13 +144,16 @@ describe("ImmersiveQuestionnairePreview", () => {
         fireEvent.click(view.getByTestId("immersive-preview-start"));
         fireEvent.click(view.getByTitle("第 2 题"));
         fireEvent.click(view.getByText("是"));
+        fireEvent.click(view.getByTestId("immersive-preview-next"));
         expect((view.getByTestId("immersive-preview-submit") as HTMLButtonElement).disabled).toBe(true);
         fireEvent.click(view.getByTestId("immersive-preview-submit"));
         expect(onComplete).not.toHaveBeenCalled();
         fireEvent.click(view.getByText("返回未答题"));
         expect(view.getByText("第一题？")).toBeTruthy();
         fireEvent.click(view.getByText("否"));
+        fireEvent.click(view.getByTestId("immersive-preview-next"));
         fireEvent.click(view.getByText("是"));
+        fireEvent.click(view.getByTestId("immersive-preview-next"));
         expect((view.getByTestId("immersive-preview-submit") as HTMLButtonElement).disabled).toBe(false);
         fireEvent.click(view.getByTestId("immersive-preview-submit"));
         expect(onComplete).toHaveBeenCalledTimes(1);

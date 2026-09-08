@@ -36,7 +36,7 @@ test("renders sampling metadata and a paginated preview instead of raw JSON", as
     expect(view.getAllByText("25 条").length).toBeGreaterThan(0);
     expect(view.getByText("随机种子")).toBeTruthy();
     expect(view.getByText("20260723")).toBeTruthy();
-    expect(view.getByText("显示第 1-20 条，共 25 条")).toBeTruthy();
+    expect(view.getByText("显示第 1–20 条，共 25 条")).toBeTruthy();
     expect(view.container.textContent).not.toContain('"sampleCount"');
 });
 

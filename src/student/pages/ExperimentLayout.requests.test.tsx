@@ -71,6 +71,7 @@ async function setup(operation: Operation) {
             <Route path="/task/:taskId/preview" element={<p>提交预览</p>} />
         </Routes>
     </MemoryRouter>);
+    fireEvent.click(await waitFor(() => view.getByTestId("student-analysis-write")));
     await waitFor(() => expect((view.getByTestId("student-analysis-preview") as HTMLButtonElement).disabled).toBe(false));
     if (operation === "reopen") {
         fireEvent.click(view.getByRole("button", { name: /查看已完成阶段 1/ }));
@@ -99,6 +100,7 @@ for (const operation of ["save", "save-conflict", "latest", "reopen"] as const) 
             const { view, finish } = await setup(operation);
             fireEvent.click(view.getByRole("button", { name: "切换实验" }));
             await waitFor(() => expect(view.getByTestId("student-analysis-report-editor").textContent).toContain("任务2的报告"));
+            fireEvent.click(view.getByTestId("student-analysis-write"));
             await finish();
             expect(view.getByTestId("location").textContent).toBe("/task/2/experiment");
             expect(view.getByTestId("student-analysis-report-editor").textContent).toContain("任务2的报告");
@@ -114,7 +116,7 @@ test("exiting through the actual exit link during report save is not undone by i
     const originalFetch = globalThis.fetch;
     try {
         const { view, finish } = await setup("save");
-        fireEvent.click(view.getByRole("link", { name: "退出实验" }));
+        fireEvent.click(view.getByRole("link", { name: "返回任务" }));
         await waitFor(() => expect(view.getByText("已退出实验")).toBeTruthy());
         await finish();
         expect(view.getByTestId("location").textContent).toBe("/task/1");
