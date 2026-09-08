@@ -137,7 +137,7 @@ export function buildTargetAnalysis(params: {
             reliability: { status: "unavailable", reasons: ["该方法没有可用的目标估计或设计标准误"] },
         };
         if (method === "pps" && estimate !== null && standardError === null && !ppsUnavailable) {
-            analysis.reliability.reasons = ["PPS 模拟不足以确认设计标准误；重复结果相同不代表零误差"];
+            analysis.reliability.reasons = ["PPS 设计标准误无法可靠计算，请检查规模变量与数值精度"];
         }
         if (estimate !== null && standardError !== null) {
             if (isCensus) {
@@ -169,7 +169,7 @@ export function buildTargetAnalysis(params: {
                         }
                     }
                     if (method === "systematic") reasons.push("系统抽样的区间覆盖取决于排序与起点分布，尚未验证");
-                    if (method === "pps") reasons.push("PPS 比估计可能有偏，模拟标准误不能保证区间覆盖");
+                    if (method === "pps") reasons.push("PPS 比估计可能有偏，设计标准误不能保证区间覆盖");
                 }
                 if (params.plannedMarginOfError !== null && marginOfError !== null
                     && marginOfError > params.plannedMarginOfError * (1 + 1e-9)) {

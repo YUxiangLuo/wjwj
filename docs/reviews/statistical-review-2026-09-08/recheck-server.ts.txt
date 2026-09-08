@@ -1,0 +1,3 @@
+import page from './recheck-browser.tmp.html';
+const server = Bun.serve({hostname:'127.0.0.1',port:3119,routes:{'/*':page},development:true});
+console.log(server.url.href);

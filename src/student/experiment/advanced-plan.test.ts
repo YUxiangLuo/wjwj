@@ -187,3 +187,30 @@ test("validateAdvancedPlanConsistency checks the applied plan against the final 
         .toContain("推荐样本量与最终样本量不一致");
     expect(validateAdvancedPlanConsistency(snapshot, null, null)).toBe("缺少总体规模，无法复算高级样本量规划");
 });
+
+test("advanced plans reject invalid domains before accepting numerically consistent results", () => {
+    for (const inputs of [
+        { targetMarginOfError: -.05 }, { targetMarginOfError: 0 }, { designEffect: -2 }, { designEffect: 0 },
+        { nonResponseRate: 2 }, { nonResponseRate: -1 }, { fixedCost: -1000 }, { variableCostPerUnit: -5 }, { totalBudget: -500 }, { confidenceLevel: "80" },
+    ]) {
+        const plan = costSnapshot({ inputs });
+        expect(parseAdvancedPlans([plan])).toBeNull();
+        expect(validateAdvancedPlanConsistency(plan, POPULATION_SIZE, null)).not.toBeNull();
+    }
+    for (const plan of [cvSnapshot(), clusterSnapshot(), multivarSnapshot()]) {
+        const invalid = structuredClone(plan);
+        invalid.result.requiredSampleSize = -1;
+        expect(parseAdvancedPlans([invalid])).toBeNull();
+        expect(validateAdvancedPlanConsistency(invalid, POPULATION_SIZE, null)).not.toBeNull();
+    }
+    for (const plan of [cvSnapshot(), clusterSnapshot()]) {
+        for (const input of [{ nonResponseRate: 100 }, { designEffect: 0 }, { confidenceLevel: "80" }]) {
+            const invalid = { ...plan, inputs: { ...plan.inputs, ...input } } as AdvancedPlanSnapshot;
+            expect(parseAdvancedPlans([invalid])).toBeNull();
+            expect(validateAdvancedPlanConsistency(invalid, POPULATION_SIZE, null)).not.toBeNull();
+        }
+    }
+    const multivar = multivarSnapshot() as Extract<AdvancedPlanSnapshot, { kind: "multivar" }>;
+    multivar.inputs.variables[0]!.estimatedValue = 2;
+    expect(parseAdvancedPlans([multivar])).toBeNull();
+});

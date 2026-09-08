@@ -1,0 +1,299 @@
+{
+  "costCapped": {
+    "n0": 384.1599999999999,
+    "nDeff": 385,
+    "nFpc": 80,
+    "n1": 50,
+    "n": 100,
+    "expectedCompleted": 50,
+    "cappedAtPopulation": true,
+    "precisionUnreachable": true,
+    "targetMarginOfError": 0.05,
+    "standardError": 0.050251890762960605,
+    "relativeStandardError": 0.10050378152592121,
+    "marginOfError": 0.09849370589540278,
+    "confidenceInterval": {
+      "lower": 0.4015062941045972,
+      "upper": 0.5984937058954027
+    },
+    "snapshotValidation": null,
+    "submitValidation": null
+  },
+  "unicodeCensus": {
+    "uploadValidation": null,
+    "category": {
+      "population": {
+        "A": 50,
+        "B": 50
+      },
+      "methods": {
+        "simple": {
+          "Ａ": 50,
+          "B": 50
+        },
+        "systematic": {
+          "Ａ": 50,
+          "B": 50
+        },
+        "pps": {
+          "Ａ": 50,
+          "B": 50
+        },
+        "stratified": {
+          "Ａ": 50,
+          "B": 50
+        }
+      },
+      "representativeness": {
+        "simple": 33.333333333333336,
+        "systematic": 33.333333333333336,
+        "pps": 33.333333333333336,
+        "stratified": 33.333333333333336
+      }
+    },
+    "target": {
+      "contract": {
+        "inferred": true,
+        "contract": {
+          "version": 1,
+          "researchQuestion": "总体中category为「A」的单位占比是多少？",
+          "targetPopulation": "上传总体数据中的全部单位",
+          "unitOfAnalysis": "总体数据中的一行记录",
+          "target": {
+            "kind": "proportion",
+            "field": "category",
+            "value": "A"
+          }
+        }
+      },
+      "confidenceLevel": "95",
+      "plannedMarginOfError": null,
+      "populationValue": 0.5,
+      "methods": {
+        "simple": {
+          "estimate": 0.5,
+          "standardError": 0,
+          "marginOfError": 0,
+          "sampleSize": 4,
+          "effectiveSampleSize": 4,
+          "reliability": {
+            "status": "census",
+            "reasons": [
+              "当前方法覆盖完整虚拟总体"
+            ]
+          }
+        },
+        "systematic": {
+          "estimate": 0.5,
+          "standardError": 0,
+          "marginOfError": 0,
+          "sampleSize": 4,
+          "effectiveSampleSize": 4,
+          "reliability": {
+            "status": "census",
+            "reasons": [
+              "当前方法覆盖完整虚拟总体"
+            ]
+          }
+        },
+        "pps": {
+          "estimate": 0.5,
+          "standardError": 0,
+          "marginOfError": 0,
+          "sampleSize": 4,
+          "effectiveSampleSize": 4,
+          "reliability": {
+            "status": "census",
+            "reasons": [
+              "当前方法覆盖完整虚拟总体"
+            ]
+          }
+        },
+        "stratified": {
+          "estimate": 0.5,
+          "standardError": 0,
+          "marginOfError": 0,
+          "sampleSize": 4,
+          "effectiveSampleSize": 4,
+          "reliability": {
+            "status": "census",
+            "reasons": [
+              "当前方法覆盖完整虚拟总体"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "categoryAggregation": {
+    "populationSize": 420,
+    "sampleSize": 210,
+    "unaggregatedMeanAbsolutePercentagePointDifference": 0.45351473922902497,
+    "unaggregatedTotalVariation": 0.047619047619047616,
+    "category": {
+      "population": {
+        "c1": 4.761904761904762,
+        "c2": 4.761904761904762,
+        "c3": 4.761904761904762,
+        "c4": 4.761904761904762,
+        "c5": 4.761904761904762,
+        "c6": 4.761904761904762,
+        "c7": 4.761904761904762,
+        "c8": 4.761904761904762,
+        "c9": 4.761904761904762,
+        "c10": 4.761904761904762,
+        "c11": 4.761904761904762,
+        "c12": 4.761904761904762,
+        "c13": 4.761904761904762,
+        "c14": 4.761904761904762,
+        "c15": 4.761904761904762,
+        "c16": 4.761904761904762,
+        "c17": 4.761904761904762,
+        "c18": 4.761904761904762,
+        "c19": 4.761904761904762,
+        "其他": 9.523809523809524
+      },
+      "methods": {
+        "simple": {
+          "c1": 4.761904761904762,
+          "c2": 4.761904761904762,
+          "c3": 4.761904761904762,
+          "c4": 4.761904761904762,
+          "c5": 4.761904761904762,
+          "c6": 4.761904761904762,
+          "c7": 4.761904761904762,
+          "c8": 4.761904761904762,
+          "c9": 4.761904761904762,
+          "c10": 4.761904761904762,
+          "c11": 4.761904761904762,
+          "c12": 4.761904761904762,
+          "c13": 4.761904761904762,
+          "c14": 4.761904761904762,
+          "c15": 4.761904761904762,
+          "c16": 4.761904761904762,
+          "c17": 4.761904761904762,
+          "c18": 4.761904761904762,
+          "c19": 4.761904761904762,
+          "其他": 9.523809523809524
+        },
+        "systematic": {},
+        "pps": {},
+        "stratified": {}
+      },
+      "representativeness": {
+        "simple": 0,
+        "systematic": null,
+        "pps": null,
+        "stratified": null
+      },
+      "truncated": true,
+      "totalCategoryCount": 21,
+      "aggregatedCategoryLabel": "其他"
+    },
+    "targetPopulationValue": 0.047619047619047616,
+    "targetEstimate": 0
+  },
+  "cvCapped": {
+    "requiredSampleSize": 100,
+    "expectedRespondentSampleSize": 50,
+    "achievedCV": 0.03015113445777636,
+    "cappedAtPopulation": true,
+    "z": 1.96,
+    "formula": "n₀=CV_pop²/CV_target²；先按 deff 调整，再做 FPC，再除以 (1−NRR) 得发放量",
+    "targetCV": 0.01,
+    "snapshotValidation": null
+  },
+  "invalidAdvancedInputs": {
+    "snapshot": {
+      "version": 1,
+      "kind": "cost",
+      "appliedAt": "2026-09-08T00:00:00.000Z",
+      "inputs": {
+        "confidenceLevel": "95",
+        "targetMarginOfError": -0.05,
+        "designEffect": -2,
+        "nonResponseRate": 2,
+        "fixedCost": -1000,
+        "variableCostPerUnit": -5,
+        "totalBudget": -500
+      },
+      "result": {
+        "requiredSampleSize": 80,
+        "totalCost": -1400,
+        "feasible": true
+      }
+    },
+    "validation": null,
+    "submitValidation": null
+  },
+  "fpcTeaching": {
+    "e2": 50,
+    "e1": 80,
+    "eHalf": 94,
+    "onePercent": 99,
+    "twoPercent": 97,
+    "threePercent": 92
+  },
+  "smallScaleDisplay": {
+    "se": 0.0000013423121104280487,
+    "me": 0.0000026309317364389753,
+    "shownSe": "0.0000",
+    "shownMe": "0.0000"
+  },
+  "advancedAnalysisSource": {
+    "appliedConfidence": "99",
+    "appliedMargin": 0.01,
+    "targetPanelConfidence": "90",
+    "targetPanelMargin": 0.1,
+    "submitValidation": null
+  },
+  "systematicIndependentChecks": {
+    "designs": 819,
+    "maxAbsoluteStandardErrorDifference": 3.3306690738754696e-15
+  },
+  "systematicTranslation": [
+    {
+      "offset": 0,
+      "currentSe": 0.0016749792701868124,
+      "centeredSe": 0.0016749792701868163
+    },
+    {
+      "offset": 100000000,
+      "currentSe": 0.0016749785212661818,
+      "centeredSe": 0.001674978824382058
+    },
+    {
+      "offset": 10000000000,
+      "currentSe": 0.0016760454268692204,
+      "centeredSe": 0.0016749341007141845
+    },
+    {
+      "offset": 1000000000000,
+      "currentSe": 0.00164274169978296,
+      "centeredSe": 0.001676614992130357
+    }
+  ],
+  "seedVariance": {
+    "storedVariance": 67.128040201005,
+    "trueSigma2": 66.79239999999999,
+    "currentN": 49,
+    "convertedN": 49
+  },
+  "ppsResidualRisk": {
+    "mcSe": 0.0001803301359330605,
+    "rarePi": 0.00004003999995996,
+    "approximateChanceToMissRareIn512": 0.979707824132427,
+    "rareSampleEstimate": 962.464100096246,
+    "trueMean": 1.0049999999999955,
+    "exactDesignExpectation": 0.04354186232431247,
+    "exactDesignSe": 6.090046666003953,
+    "exactDesignRmse": 6.165474040542897
+  },
+  "sampleInvariants": {
+    "ppsAndSrsCases": 4095
+  },
+  "ppsExactPiChecks": {
+    "designs": 464,
+    "maxAbsoluteInclusionProbabilityDifference": 1.2434497875801753e-14
+  }
+}

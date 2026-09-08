@@ -1,3 +1,4 @@
+import { formatStatistic } from "@/utils/statistic-format";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
@@ -13,7 +14,7 @@ interface Props {
 const BASE_DEMO_SIZES = [30, 100, 300, 500, 1000];
 
 function fmt(n: number, digits = 4): string {
-    return n.toFixed(digits);
+    return formatStatistic(n, digits);
 }
 
 export function PrecisionPhase({ params, onNext }: Props) {
@@ -67,7 +68,7 @@ export function PrecisionPhase({ params, onNext }: Props) {
                         {isMeanEstimation ? "SE(ȳ) = √[σ²/n × (N−n)/(N−1)]" : "SE = √[p(1−p)/n × (N−n)/(N−1)]"}
                     </p>
                     <p className="text-meta text-muted-foreground">
-                        估计值的标准差。这里把有限总体方差定义为分母 N，因此校正因子是 (N−n)/(N−1)；N 很大时它接近 1。SE 越小，估计越精确。
+                        估计值的标准差。这里把有限总体方差定义为分母 N，因此校正因子是 (N−n)/(N−1)；N 较大且抽样比 n/N 很小时它才接近 1。SE 越小，估计越精确。
                     </p>
                 </div>
                 <div className="rounded-surface border border-border bg-background p-4 space-y-2">

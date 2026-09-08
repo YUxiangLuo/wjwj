@@ -1,3 +1,4 @@
+import { AdvancedPlanDetails } from "./AdvancedPlanDetails";
 import {
     formatMarginOfError,
     getAdvancedPlanSourceLabel,
@@ -54,9 +55,11 @@ export function SamplePlanSnapshot({
             {populationSize && populationSize > 0 ? (
                 <p className="text-label text-muted-foreground">总体规模 N = {populationSize.toLocaleString()}</p>
             ) : null}
+            <p className="text-label font-medium">基础规划参数</p>
             <div className="grid gap-3 grid-cols-3">
                 {items.map((item) => <ValueItem key={item.label} {...item} />)}
             </div>
+            <AdvancedPlanDetails value={plan.advancedPlans} source={plan.advancedPlanSource} populationSize={populationSize} />
             {plan.finalSampleSize !== plan.recommendedSize && (
                 <p className="rounded-surface border border-info-border bg-info-muted p-3 text-label text-info">
                     最终采用 {plan.finalSampleSize.toLocaleString()} 个样本；常规公式推荐值为 {plan.recommendedSize.toLocaleString()}。

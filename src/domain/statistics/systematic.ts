@@ -1,5 +1,6 @@
 import { type NumericAccessor, fieldAccessor } from "./values";
 import type { SamplingResultsData } from "../experiment/types";
+import { StableSum } from "./stable-sum";
 
 function computeLegacySystematicValueSe(
     population: Array<Record<string, unknown>>,
@@ -8,13 +9,14 @@ function computeLegacySystematicValueSe(
 ) {
     if (!Number.isInteger(kValue) || kValue < 1 || population.length === 0) return null;
 
+    const origin = population.map(accessor).find(value => value !== null) ?? 0;
     const startMeans: number[] = [];
     for (let startIndex = 0; startIndex < kValue; startIndex += 1) {
         const values: number[] = [];
         for (let index = startIndex; index < population.length; index += kValue) {
             const value = accessor(population[index]!);
             if (value !== null) {
-                values.push(value);
+                values.push(value - origin);
             }
         }
         if (values.length === 0) continue;
@@ -78,12 +80,13 @@ function computeFractionalSystematicValueSe(
         (_, sampleIndex) => Math.floor(initialStart + sampleIndex * interval),
     );
 
-    let valueSum = 0;
+    const origin = population.map(accessor).find(value => value !== null) ?? 0;
+    const valueSum = new StableSum();
     let valueCount = 0;
     for (const selectedIndex of selectedIndices) {
         const value = accessor(population[selectedIndex]!);
         if (value !== null) {
-            valueSum += value;
+            valueSum.add(value - origin);
             valueCount += 1;
         }
     }
@@ -94,7 +97,7 @@ function computeFractionalSystematicValueSe(
     const includeSegment = (width: number) => {
         if (width <= tolerance || valueCount === 0) return;
         const weight = width / interval;
-        const segmentMean = valueSum / valueCount;
+        const segmentMean = valueSum.value / valueCount;
         const nextTotalWeight = totalWeight + weight;
         const delta = segmentMean - weightedMean;
         weightedMean += delta * weight / nextTotalWeight;
@@ -120,12 +123,12 @@ function computeFractionalSystematicValueSe(
 
             const previousValue = accessor(population[previousIndex]!);
             if (previousValue !== null) {
-                valueSum -= previousValue;
+                valueSum.add(-(previousValue - origin));
                 valueCount -= 1;
             }
             const nextValue = accessor(population[nextIndex]!);
             if (nextValue !== null) {
-                valueSum += nextValue;
+                valueSum.add(nextValue - origin);
                 valueCount += 1;
             }
             selectedIndices[sampleIndex] = nextIndex;

@@ -71,6 +71,7 @@ function pickAggregatedCategoryLabel(realCategories: string[]) {
 export function truncateCategoricalDistributions(
     populationDistribution: Record<string, number>,
     methods: Record<MethodKey, Record<string, number>>,
+    preserveCategories: string[] = [],
 ): {
     population: Record<string, number>;
     methods: Record<MethodKey, Record<string, number>>;
@@ -85,6 +86,12 @@ export function truncateCategoricalDistributions(
             .sort((left, right) => (populationDistribution[right] ?? 0) - (populationDistribution[left] ?? 0))
             .slice(0, MAX_ANALYSIS_CATEGORIES - 1),
     );
+    for (const category of preserveCategories) {
+        if (!categories.includes(category) || topCategories.has(category)) continue;
+        const replaceable = [...topCategories].reverse().find(value => !preserveCategories.includes(value));
+        if (replaceable) topCategories.delete(replaceable);
+        topCategories.add(category);
+    }
     const truncate = (distribution: Record<string, number>) => {
         const truncated = createSafeRecord<number>();
         for (const [category, value] of Object.entries(distribution)) {

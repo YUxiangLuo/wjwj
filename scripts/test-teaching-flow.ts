@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 import { computePpsMeanPlan, DOGFOOD_NAMES } from "../src/db/seeds/dogfood-fixtures";
 import type { ExperimentData, StudentTask } from "../src/student/api-client";
+import type { AnalysisMetricsResult } from "../src/domain/experiment/analysis-types";
 
 const root = resolve(import.meta.dir, "..");
 const provisionUrl = process.env.TEST_DATABASE_URL;
@@ -160,8 +161,12 @@ try {
     assert(experiment.currentStage === 4 && experiment.stage3CompletedAt, "Stage 3 did not persist");
     await page(student, stageUrl, '[data-testid="student-stage-analysis-report"]');
     await eventually(() => evaluate(student, 'document.body.textContent.includes("研究目标结果") && document.body.textContent.includes("PPS")'), "Analysis results missing");
-    const metrics = await api<{ ppsMonteCarloReplicates: number }>(student, `/api/student/tasks/${task.id}/analysis-metrics`);
-    assert(metrics.ppsMonteCarloReplicates > 0, "PPS worker analysis missing");
+    const metrics = await api<AnalysisMetricsResult>(student, `/api/student/tasks/${task.id}/analysis-metrics`);
+    assert(metrics.ppsStandardErrorMode === "systematic_exact" && metrics.ppsMonteCarloReplicates === 0,
+        "PPS worker did not use exact design integration");
+    const ppsStandardError = metrics.target?.methods.pps.standardError;
+    assert(typeof ppsStandardError === "number" && Number.isFinite(ppsStandardError) && ppsStandardError > 0,
+        "PPS worker returned no valid standard error for the nondegenerate fixture");
     // Recoverable transport and render failures must not erase the local report.
     const draftText = "异常恢复时需要保留的报告草稿";
     await browser(student, "fill", '[data-testid="student-analysis-report-editor"]', draftText);

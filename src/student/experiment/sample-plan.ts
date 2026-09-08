@@ -1,6 +1,7 @@
 import type { SurveyVariableSpec } from "../../domain/experiment/planning-types";
 export type { SurveyVariableSpec } from "../../domain/experiment/planning-types";
 import { zForConfidenceLevel, isConfidenceLevel, Z_VALUES } from "./confidence-level";
+import { getSurveyVariableParameterError } from "./survey-variable-validation";
 
 /**
  * 将百分比或小数形式的误差限统一为小数比例。
@@ -909,7 +910,7 @@ function calculateOptimalVariance(
 
 /** 计算单个调查变量在有限总体下的所需样本量；输入不合法时返回 0。 */
 export function calculateSurveyVariableRequiredSampleSize(variable: SurveyVariableSpec, populationSize: number) {
-    if (!(populationSize > 0) || !(variable.marginOfError > 0)) return 0;
+    if (!Number.isSafeInteger(populationSize) || populationSize < 1 || getSurveyVariableParameterError(variable)) return 0;
 
     if (variable.type === "proportion") {
         const p = variable.estimatedValue;
@@ -921,7 +922,7 @@ export function calculateSurveyVariableRequiredSampleSize(variable: SurveyVariab
             populationSize,
             designEffect: 1,
             nonResponseRate: 0,
-            // 0、1 或非法值通常表示缺少可靠先验比例，按 p=.5 做保守规划。
+            // 边界值 0、1 视为缺少可靠先验比例，按 p=.5 做保守规划；非法值已拒绝。
             p: p > 0 && p < 1 ? p : 0.5,
         }) ?? 0;
     }

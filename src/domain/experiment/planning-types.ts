@@ -40,6 +40,7 @@ export type AdvancedPlanSnapshot =
             variableCostPerUnit: number;
             totalBudget: number;
         };
+        /** feasible 表示预算足够且按预期完成量计算的目标精度达标。 */
         result: { requiredSampleSize: number; totalCost: number; feasible: boolean };
     })
     | (AdvancedPlanBase & {

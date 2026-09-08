@@ -8,16 +8,16 @@ import { calculateMeanSampleSizeMetrics, calculateOptimalAllocationWithCost } fr
 
 const ppsFrame = () => Array.from({ length: 1000 }, (_, i) => ({ y: i === 0 ? 1000 : 0, size: i === 0 ? 0.001 : 1 }));
 
-test("finite PPS simulation cannot certify a zero SE when it misses a rare influential unit", () => {
+test("exact PPS integrates the rare influential unit instead of missing it in simulation", () => {
     const population = ppsFrame();
     const sample = performPPSSampling(population, "size", 40, () => 0.5);
     const metrics = calculateAnalysisMetrics({ population, fieldMapping: {
         numeric: ["y", "size"], analysisTarget: { kind: "mean", field: "y" },
     }, samplingResults: { pps: { ...sample, completed: true, sizeField: "size", sampleCount: 40 } }, ppsMonteCarloReplicates: 512 });
-    expect(metrics.numeric.y?.methods.pps.standardError).toBeNull();
+    expect(metrics.numeric.y?.methods.pps.standardError).toBeCloseTo(6.090077115014714, 9);
     expect(metrics.target?.methods.pps.estimate).toBe(0);
-    expect(metrics.target?.methods.pps.effectiveSampleSize).toBeNull();
-    expect(metrics.target?.methods.pps.reliability.status).toBe("unavailable");
+    expect(metrics.target?.methods.pps.effectiveSampleSize).toBeGreaterThan(0);
+    expect(metrics.target?.methods.pps.reliability.status).toBe("caution");
     // Independent analytical two-point distribution: positive variance is real.
     const pi = 40 * 0.001 / 999.001;
     const highEstimate = 1000 / (1 + 39 * 0.001);

@@ -1,0 +1,1 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><title>统计专业审查组件复现</title></head><body><div id="root"></div><script type="module" src="./browser.tmp.tsx"></script></body></html>

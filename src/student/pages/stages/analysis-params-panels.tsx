@@ -1,3 +1,4 @@
+import { AdvancedPlanDetails } from "@/components/AdvancedPlanDetails";
 import { SamplingObservationNotice } from "../../components/SamplingObservationNotice";
 import type { ReactNode } from "react";
 import { Info } from "lucide-react";
@@ -212,9 +213,7 @@ export function SamplePlanDecisionPanel({
                     <div className="space-y-1.5 text-meta leading-relaxed text-warning">
                         <p className="font-medium text-warning">关于高级工具（子总体、多变量、成本/CV/整群等）</p>
                         <p className="text-warning">
-                            高级工具的<span className="font-medium">完整中间状态与推演明细不会完整写入实验存档</span>，
-                            但回写到核心决策参数里的结果仍会保存，例如最终样本量或设计效应。
-                            下方展示的是「确认并进入下一阶段」时真正保存下来的核心参数；若最终样本量来自某个非标准工具，页面会直接标出来源。
+                            成本、多变量、CV 和整群工具应用时的输入与结果快照会保存，并在下方展示。基础参数保持独立；后续分析仍采用基础置信水平和目标误差限。
                         </p>
                     </div>
                 </div>
@@ -227,7 +226,8 @@ export function SamplePlanDecisionPanel({
             ) : (
                 <div className="rounded-surface border border-border bg-background p-4">
                     <SamplingObservationNotice nonResponseRate={samplePlan.nonResponseRate} />
-<ParamRow label="总体规模 N" value={populationSize > 0 ? populationSize.toLocaleString() : "—"} />
+<p className="mb-2 text-label font-medium">基础规划参数</p>
+                    <ParamRow label="总体规模 N" value={populationSize > 0 ? populationSize.toLocaleString() : "—"} />
                     <ParamRow
                         label="估计类型"
                         value={
@@ -272,6 +272,7 @@ export function SamplePlanDecisionPanel({
                     )}
                 </div>
             )}
+            {samplePlan && <AdvancedPlanDetails value={samplePlan.advancedPlans} source={samplePlan.advancedPlanSource} populationSize={populationSize} />}
         </div>
     );
 }

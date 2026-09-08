@@ -221,7 +221,7 @@ test("closing the immersive planner restores focus to its trigger", async () => 
 
     await waitFor(() => {
         expect(view.queryByTestId("mock-immersive-planning")).toBeNull();
-        expect(document.activeElement).toBe(view.getByTestId("student-sample-plan-start"));
+        expect(document.activeElement === view.getByTestId("student-sample-plan-start")).toBe(true);
     });
 });
 

@@ -111,6 +111,18 @@ test("比例变量把 UI 中小于 1% 的误差限按百分数换算", () => {
     expect(calculateSurveyVariableRequiredSampleSize(variable, 10_000)).toBe(7935);
 });
 
+test("非法比例、置信水平和误差限不能回退为可应用的样本量", () => {
+    for (const overrides of [
+        { estimatedValue: 2 }, { estimatedValue: -1 }, { estimatedValue: Infinity },
+        { confidenceLevel: "80" }, { marginOfError: 100 }, { marginOfError: Infinity },
+    ]) {
+        expect(calculateSurveyVariableRequiredSampleSize(proportionVar(overrides), 1000)).toBe(0);
+    }
+    for (const p of [0, .5, 1]) {
+        expect(calculateSurveyVariableRequiredSampleSize(proportionVar({ estimatedValue: p }), 1000)).toBe(278);
+    }
+});
+
 test("传入 onApplyToPlan 时不自动调用 onRecommendedSampleSizeChange", async () => {
     const onRecommendedSampleSizeChange = mock((_n: number) => {});
     const onApplyToPlan = mock(() => {});

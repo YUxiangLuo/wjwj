@@ -14,7 +14,7 @@ test("allocateIntegerShares preserves the total with largest remainder", () => {
 test("computePpsMeanPlan matches the mean formula for the PPS population", () => {
     const plan = computePpsMeanPlan();
     expect(plan.recommendedSize).toBe(49);
-    expect(plan.populationVariance).toBeCloseTo(67.128040201005, 6);
+    expect(plan.populationVariance).toBeCloseTo(66.7924, 6);
 });
 
 test("the compatibility populations represent proportion and non-person service research", () => {

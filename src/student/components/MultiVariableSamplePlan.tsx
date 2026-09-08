@@ -19,6 +19,7 @@ import {
     ArrowRight,
 } from "lucide-react";
 import { calculateSurveyVariableRequiredSampleSize as calculateSurveyVariableRequiredSampleSizeImpl } from "../experiment/sample-plan";
+import { getSurveyVariableParameterError } from "../experiment/survey-variable-validation";
 
 export type SurveyVariable = SurveyVariableSpec;
 
@@ -119,7 +120,13 @@ export function MultiVariableSamplePlan({
     const recommendedSampleSize = useMemo(() => (
         variables.length > 0 ? Math.max(...variables.map((variable) => variable.requiredSampleSize)) : 0
     ), [variables]);
-    const hasInvalidVariables = variables.some((variable) => variable.requiredSampleSize <= 0);
+    const variableErrors = variables.map(variable => ({
+        id: variable.id,
+        name: variable.name || "未命名变量",
+        error: !variable.name.trim() ? "请填写变量名称。" : getSurveyVariableParameterError(variable)
+            ?? (!Number.isSafeInteger(variable.requiredSampleSize) || variable.requiredSampleSize <= 0 ? "当前参数无法计算样本量。" : null),
+    })).filter(variable => variable.error !== null);
+    const hasInvalidVariables = variableErrors.length > 0;
 
     const onRecommendedSampleSizeChangeRef = useRef(onRecommendedSampleSizeChange);
     onRecommendedSampleSizeChangeRef.current = onRecommendedSampleSizeChange;
@@ -601,12 +608,13 @@ export function MultiVariableSamplePlan({
                 )}
 
                 {hasInvalidVariables && (
-                    <div className="rounded-surface border border-destructive-border bg-destructive-muted p-3">
+                    <div role="alert" className="rounded-surface border border-destructive-border bg-destructive-muted p-3">
                         <div className="flex items-start gap-2">
                             <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
                             <div className="text-meta text-destructive">
                                 <p className="font-medium mb-1">存在无法计算的变量</p>
-                                <p>均值变量需要非零先验均值、正标准差和正误差限。请修正后再应用样本量。</p>
+                                {variableErrors.map(variable => <p key={variable.id}>{variable.name}：{variable.error}</p>)}
+                                <p>请修正后再应用样本量。</p>
                             </div>
                         </div>
                     </div>

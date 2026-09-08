@@ -256,11 +256,15 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const isPpsCensus = hasPpsCompleted && ppsStandardErrorMode === "census_exact";
     const ppsStandardErrorNotice = ppsStandardErrorMode === "census_exact"
         ? "PPS 本次为全体入样，每个单位的包含概率均为 1，设计标准误精确为 0；该结果未执行 Monte Carlo 重复抽样。"
+        : ppsStandardErrorMode === "systematic_exact"
+            ? "PPS 标准误通过遍历固定包含概率系统抽样的全部随机起点区间计算，不含有限次重复抽样的模拟误差；Hájek 比估计仍可能有偏，标准误不能保证正态区间覆盖。"
         : `PPS 标准误是 ${ppsMonteCarloReplicates} 次重复抽样的 Monte Carlo 估计（按 R−1 计算重复间标准差），仍有模拟误差。`;
     const ppsStandardErrorDescription = isPpsUnavailable
         ? "PPS 本任务按规则跳过，不计算设计标准误。"
         : ppsStandardErrorMode === "census_exact"
             ? "PPS 为全体入样，每个单位的包含概率均为 1，设计标准误精确为 0，未执行 Monte Carlo 重复抽样。"
+            : ppsStandardErrorMode === "systematic_exact"
+                ? "PPS 按全部随机起点区间及其概率计算 Hájek 比估计的设计标准误；比估计可能有偏。"
             : ppsStandardErrorMode === "monte_carlo"
                 ? `PPS 为 ${ppsMonteCarloReplicates} 次重复抽样的 Monte Carlo 估计（重复间标准差使用 R−1），有限重复次数会带来模拟误差。`
                 : analysisMetrics
@@ -646,7 +650,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
                                 <TabsContent value="dist" data-testid="student-analysis-distribution-chart">
                                     <ChartTabPanel
-                                        description="比较各抽样方法在分类变量上的分布占比，并利用已知虚拟总体显示真值对照。"
+                                        description="比较各抽样方法在分类变量上的分布占比，并利用已知虚拟总体显示真值对照。超过 20 类时，图中合并尾部类别，保留主分析目标类别；总体对照偏差始终按完整类别计算，合并后的柱形可能隐藏类别间差异。"
                                         rows={distributionRows}
                                         series={distributionSeries}
                                         unit="%"
@@ -680,7 +684,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
                                 <TabsContent value="represent" data-testid="student-analysis-representativeness-chart">
                                     <ChartTabPanel
-                                        description="描述当前样本与已知虚拟总体的差异：数值行为 |估计−总体均值|/|总体均值|，分类行为各类占比差的平均。两套百分数不可横比，接近总体也不能单独证明样本无偏或具有整体代表性。"
+                                        description="描述当前样本与已知虚拟总体的差异：数值行为 |估计−总体均值|/|总体均值|，分类行为完整类别空间上各类占比绝对差的平均（单位：百分点）。两套百分数不可横比，接近总体也不能单独证明样本无偏或具有整体代表性。"
                                         rows={representativenessRows}
                                         series={representSeries}
                                         unit="%"

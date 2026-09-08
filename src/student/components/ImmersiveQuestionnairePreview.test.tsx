@@ -159,13 +159,13 @@ describe("ImmersiveQuestionnairePreview", () => {
         );
 
         await waitFor(() => {
-            expect(document.activeElement).toBe(view.getByTestId("immersive-questionnaire-preview"));
+            expect(document.activeElement === view.getByTestId("immersive-questionnaire-preview")).toBe(true);
         });
 
         fireEvent.click(view.getByTestId("immersive-preview-start"));
 
         await waitFor(() => {
-            expect(document.activeElement).toBe(view.getByTestId("immersive-questionnaire-preview"));
+            expect(document.activeElement === view.getByTestId("immersive-questionnaire-preview")).toBe(true);
         });
 
         fireEvent.keyDown(view.getByTestId("immersive-questionnaire-preview"), {

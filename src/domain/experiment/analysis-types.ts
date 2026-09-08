@@ -47,7 +47,7 @@ export interface TargetAnalysis {
 
 export interface AnalysisMetricsResult {
     ppsMonteCarloReplicates: number;
-    ppsStandardErrorMode: "monte_carlo" | "census_exact" | null;
+    ppsStandardErrorMode: "systematic_exact" | "monte_carlo" | "census_exact" | null;
     numericFields: string[];
     excludedNumericFields: string[];
     categoricalFields: string[];

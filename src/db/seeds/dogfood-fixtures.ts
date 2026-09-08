@@ -91,7 +91,7 @@ export function allocateIntegerShares(total: number, ratios: readonly number[]):
 export function computePpsMeanPlan(population = createPpsPopulation()) {
     const weeklyHours = population.map((row) => Number(row.每周学习时长));
     const mean = weeklyHours.reduce((sum, value) => sum + value, 0) / weeklyHours.length;
-    const populationVariance = weeklyHours.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (weeklyHours.length - 1);
+    const populationVariance = weeklyHours.reduce((sum, value) => sum + (value - mean) ** 2, 0) / weeklyHours.length;
     const recommendedSize = calculateMeanEstimationSampleSize({
         confidenceLevel: "95",
         marginOfError: 2,

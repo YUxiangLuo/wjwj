@@ -1,0 +1,11 @@
+import { buildStageCompletionUpdates } from '../../../src/student/experiment/update-service';
+const applied = await Bun.file('docs/reviews/statistical-review-2026-09-08/fix-applied-cost-snapshot.json').json();
+const plan = {...applied.params, advancedPlanSource:applied.source, advancedPlans:applied.snapshots};
+const record = {id:1,version:1,status:'in_progress',currentStage:2,stage1CompletedAt:new Date('2026-09-01T00:00:00Z')} as any;
+const mapping = {identifier:'id',stratified:['category'],numeric:['size'],analysisTarget:{kind:'proportion',field:'category',value:'A'}};
+const stage = (samplePlan:any) => buildStageCompletionUpdates({experimentRecord:record,stage:2,payload:{samplePlan},populationSize:100,deadlinePassed:false,fieldMapping:mapping,samplingPolicy:{version:1,methods:{simple:'required',systematic:'required',pps:'required',stratified:'required'}},stratifiedStats:{category:{A:50,B:50}}});
+const valid = stage(plan);
+const invalidPlan = structuredClone(plan);Object.assign(invalidPlan.advancedPlans[0].inputs,{targetMarginOfError:-.05,designEffect:-2,nonResponseRate:2,fixedCost:-1000,variableCostPerUnit:-5,totalBudget:-500});Object.assign(invalidPlan.advancedPlans[0].result,{requiredSampleSize:80,totalCost:-1400,feasible:true});invalidPlan.finalSampleSize=80;
+const invalid=stage(invalidPlan);
+if(!valid.ok || invalid.ok) throw new Error(JSON.stringify({valid,invalid}));
+console.log(JSON.stringify({actualBrowserSnapshotAccepted:valid.ok,retainedFeasible:(valid.updates.samplePlan as any).advancedPlans[0].result.feasible,baseNonResponse:(valid.updates.samplePlan as any).nonResponseRate,invalidDomainsRejected:!invalid.ok,invalidError:invalid},null,2));

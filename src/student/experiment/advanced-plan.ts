@@ -2,10 +2,13 @@ import type { AdvancedPlanBase, AdvancedPlanKind, AdvancedPlanSnapshot, SurveyVa
 export type { AdvancedPlanKind, AdvancedPlanSnapshot } from "../../domain/experiment/planning-types";
 import {
     calculateClusterSamplingSize,
-    calculateFinitePopulationSampleSize,
     calculateSampleSizeByCV,
     calculateSurveyVariableRequiredSampleSize,
 } from "./sample-plan";
+
+import { calculateCostPlan } from "./cost-plan";
+import { isConfidenceLevel } from "./confidence-level";
+import { getSurveyVariableParameterError } from "./survey-variable-validation";
 
 const KINDS = new Set<AdvancedPlanKind>(["cost", "multivar", "cv", "cluster"]);
 const IMPORTANCE = new Set(["primary", "secondary", "tertiary"]);
@@ -17,6 +20,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isFiniteNumber(value: unknown): value is number {
     return typeof value === "number" && Number.isFinite(value);
 }
+
+function positive(value: unknown): value is number { return isFiniteNumber(value) && value > 0; }
+function count(value: unknown): value is number { return positive(value) && Number.isSafeInteger(value); }
+function rate(value: unknown, scale: number): value is number { return isFiniteNumber(value) && value >= 0 && value < scale; }
+function confidence(value: unknown): value is string { return typeof value === "string" && isConfidenceLevel(value); }
+function errorPercent(value: unknown): value is number { return positive(value) && value < 100; }
 
 function isNonEmptyString(value: unknown): value is string {
     return typeof value === "string" && value.trim().length > 0;
@@ -33,9 +42,9 @@ function parseSurveyVariable(value: unknown): SurveyVariableSpec | null {
     if (!isFiniteNumber(value.estimatedValue)) return null;
     if (value.estimatedStdDev !== undefined && !isFiniteNumber(value.estimatedStdDev)) return null;
     if (typeof value.importance !== "string" || !IMPORTANCE.has(value.importance)) return null;
-    if (!isNonEmptyString(value.confidenceLevel)) return null;
-    if (!isFiniteNumber(value.marginOfError) || !isFiniteNumber(value.requiredSampleSize)) return null;
-    return {
+    if (typeof value.confidenceLevel !== "string") return null;
+    if (!isFiniteNumber(value.marginOfError) || !count(value.requiredSampleSize)) return null;
+    const variable: SurveyVariableSpec = {
         id: value.id,
         name: value.name,
         type: value.type,
@@ -46,13 +55,14 @@ function parseSurveyVariable(value: unknown): SurveyVariableSpec | null {
         marginOfError: value.marginOfError,
         requiredSampleSize: value.requiredSampleSize,
     };
+    return getSurveyVariableParameterError(variable) ? null : variable;
 }
 
 function parseBase(value: unknown): (AdvancedPlanBase & Record<string, unknown>) | null {
     if (!isRecord(value)) return null;
     if (value.version !== 1) return null;
     if (typeof value.kind !== "string" || !KINDS.has(value.kind as AdvancedPlanKind)) return null;
-    if (!isNonEmptyString(value.appliedAt)) return null;
+    if (!isNonEmptyString(value.appliedAt) || !Number.isFinite(Date.parse(value.appliedAt))) return null;
     if (!isRecord(value.inputs) || !isRecord(value.result)) return null;
     return value as AdvancedPlanBase & Record<string, unknown>;
 }
@@ -65,10 +75,13 @@ function parseAdvancedPlan(value: unknown): AdvancedPlanSnapshot | null {
 
     switch (base.kind) {
         case "cost": {
-            if (!isNonEmptyString(inputs.confidenceLevel)) return null;
+            if (!confidence(inputs.confidenceLevel)) return null;
             if (!hasNumbers(inputs, ["targetMarginOfError", "designEffect", "nonResponseRate", "fixedCost", "variableCostPerUnit", "totalBudget"])) return null;
             if (!hasNumbers(result, ["requiredSampleSize", "totalCost"])) return null;
             if (typeof result.feasible !== "boolean") return null;
+            if (!errorPercent(inputs.targetMarginOfError) || !positive(inputs.designEffect) || !rate(inputs.nonResponseRate, 1)) return null;
+            if ([inputs.fixedCost, inputs.variableCostPerUnit, inputs.totalBudget, result.totalCost].some(value => !isFiniteNumber(value) || value < 0)) return null;
+            if (!count(result.requiredSampleSize)) return null;
             return {
                 version: 1,
                 kind: "cost",
@@ -90,10 +103,10 @@ function parseAdvancedPlan(value: unknown): AdvancedPlanSnapshot | null {
             };
         }
         case "multivar": {
-            if (!Array.isArray(inputs.variables)) return null;
+            if (!Array.isArray(inputs.variables) || inputs.variables.length === 0) return null;
             const variables = inputs.variables.map(parseSurveyVariable);
-            if (variables.some((variable) => variable === null)) return null;
-            if (!hasNumbers(result, ["requiredSampleSize"])) return null;
+            if (variables.some((variable) => variable === null) || new Set(variables.map(variable => variable!.id)).size !== variables.length) return null;
+            if (!count(result.requiredSampleSize)) return null;
             return {
                 version: 1,
                 kind: "multivar",
@@ -103,9 +116,11 @@ function parseAdvancedPlan(value: unknown): AdvancedPlanSnapshot | null {
             };
         }
         case "cv": {
-            if (!isNonEmptyString(inputs.confidenceLevel)) return null;
+            if (!confidence(inputs.confidenceLevel)) return null;
             if (!hasNumbers(inputs, ["targetCV", "estimatedCV", "designEffect", "nonResponseRate"])) return null;
             if (!hasNumbers(result, ["requiredSampleSize", "expectedRespondentSampleSize", "achievedCV"])) return null;
+            if (!positive(inputs.targetCV) || !positive(inputs.estimatedCV) || !positive(inputs.designEffect) || !rate(inputs.nonResponseRate, 100)) return null;
+            if (!count(result.requiredSampleSize) || !positive(result.expectedRespondentSampleSize) || (result.achievedCV as number) < 0) return null;
             return {
                 version: 1,
                 kind: "cv",
@@ -125,9 +140,14 @@ function parseAdvancedPlan(value: unknown): AdvancedPlanSnapshot | null {
             };
         }
         case "cluster": {
-            if (!isNonEmptyString(inputs.confidenceLevel)) return null;
+            if (!confidence(inputs.confidenceLevel)) return null;
             if (!hasNumbers(inputs, ["marginOfError", "clusterSize", "designEffect", "nonResponseRate"])) return null;
             if (!hasNumbers(result, ["requiredClusters", "requiredSampleSize", "intraClassCorrelation"])) return null;
+            if (!errorPercent(inputs.marginOfError) || !count(inputs.clusterSize) || !positive(inputs.designEffect) || !rate(inputs.nonResponseRate, 100)) return null;
+            const clusterSize = inputs.clusterSize as number;
+            const deff = inputs.designEffect as number;
+            if ((clusterSize === 1 && deff !== 1) || deff > clusterSize) return null;
+            if (!count(result.requiredClusters) || !count(result.requiredSampleSize) || (result.intraClassCorrelation as number) > 1 || (result.intraClassCorrelation as number) < (clusterSize > 1 ? -1 / (clusterSize - 1) : 0)) return null;
             return {
                 version: 1,
                 kind: "cluster",
@@ -174,7 +194,8 @@ export function validateAdvancedPlanConsistency(
     populationSize: number | null,
     appliedFinalSize: number | null,
 ): string | null {
-    if (populationSize === null || !Number.isFinite(populationSize) || populationSize <= 0) {
+    if (!parseAdvancedPlan(plan)) return "高级规划快照包含无效参数，请检查取值范围并重新应用";
+    if (populationSize === null || !Number.isSafeInteger(populationSize) || populationSize <= 0) {
         return "缺少总体规模，无法复算高级样本量规划";
     }
     const kindLabels: Record<AdvancedPlanKind, string> = {
@@ -194,19 +215,13 @@ export function validateAdvancedPlanConsistency(
 
     switch (plan.kind) {
         case "cost": {
-            const requiredSampleSize = calculateFinitePopulationSampleSize({
-                confidenceLevel: plan.inputs.confidenceLevel,
-                marginOfError: plan.inputs.targetMarginOfError,
-                populationSize,
-                designEffect: plan.inputs.designEffect,
-                nonResponseRate: plan.inputs.nonResponseRate,
-            });
-            if (requiredSampleSize === null) return `${label}快照的输入参数无法复算，请重新应用`;
+            const recomputed = calculateCostPlan(plan.inputs, populationSize);
+            if (!recomputed) return `${label}快照的输入参数无法复算，请重新应用`;
+            const { requiredSampleSize, totalCost } = recomputed;
             if (requiredSampleSize !== plan.result.requiredSampleSize) return `${label}快照的结果与输入不一致，请重新应用`;
-            const totalCost = plan.inputs.fixedCost + requiredSampleSize * plan.inputs.variableCostPerUnit;
             const costError = requireEqual(totalCost, plan.result.totalCost, `${label}快照的总成本与输入不一致，请重新应用`, 1e-6);
             if (costError) return costError;
-            if ((totalCost <= plan.inputs.totalBudget) !== plan.result.feasible) return `${label}快照的预算可行性与输入不一致，请重新应用`;
+            if (recomputed.isFeasible !== plan.result.feasible) return `${label}快照的预算或精度达标状态与输入不一致，请重新应用`;
             return appliedError(requiredSampleSize);
         }
         case "multivar": {

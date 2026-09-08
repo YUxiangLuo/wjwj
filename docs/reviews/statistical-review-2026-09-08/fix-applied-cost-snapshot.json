@@ -1,0 +1,34 @@
+{
+  "params": {
+    "populationSize": 100,
+    "estimationType": "proportion",
+    "confidenceLevel": "95",
+    "marginOfError": 5,
+    "designEffect": 1,
+    "nonResponseRate": 0,
+    "recommendedSize": 80,
+    "finalSampleSize": 100
+  },
+  "source": "cost",
+  "snapshots": [
+    {
+      "version": 1,
+      "appliedAt": "2026-09-08T01:21:34.341Z",
+      "kind": "cost",
+      "inputs": {
+        "confidenceLevel": "95",
+        "targetMarginOfError": 5,
+        "designEffect": 1,
+        "nonResponseRate": 0.5,
+        "fixedCost": 5000,
+        "variableCostPerUnit": 15,
+        "totalBudget": 50000
+      },
+      "result": {
+        "requiredSampleSize": 100,
+        "totalCost": 6500,
+        "feasible": false
+      }
+    }
+  ]
+}

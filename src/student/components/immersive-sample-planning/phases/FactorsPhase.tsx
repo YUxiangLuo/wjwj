@@ -588,8 +588,7 @@ function CostBalanceContent({ params }: { params: SampleParams }) {
     return (
         <div className="space-y-6">
             <p className="text-center text-muted-foreground text-label">
-                精度提升的边际收益<strong className="text-foreground">递减</strong>：
-                {isMeanEstimation ? "每减少一部分绝对误差限，所需额外样本量都会更快地增加。" : "每减少一个百分点的误差限，所需额外样本量越来越多。"}
+                误差限越小，所需样本量通常越大；具体增量取决于总体规模与抽样比。接近普查时，有限总体校正会明显改变这一关系。
             </p>
 
             <div className="mx-auto max-w-lg rounded-surface border border-border bg-background overflow-hidden">
@@ -631,8 +630,8 @@ function CostBalanceContent({ params }: { params: SampleParams }) {
                 <p className="text-label text-info">
                     <strong>实践建议：</strong>找到"精度够用、费用可控"的平衡点。
                     {isMeanEstimation
-                        ? " 对均值估计而言，误差限 e 每减半，样本量大约要增加 4 倍。"
-                        : " 超过某个阈值后，增加样本量带来的精度提升已经微乎其微。"}
+                        ? " 在抽样比很小、其余参数固定的近似下，误差限 e 减半，样本量变为原来的约 4 倍。"
+                        : " 在抽样比很小、其余参数固定的近似下，误差限减半，样本量变为原来的约 4 倍；当前有限总体应以图中计算为准。"}
                 </p>
             </div>
         </div>
@@ -641,12 +640,12 @@ function CostBalanceContent({ params }: { params: SampleParams }) {
 
 function SummaryContent() {
     const factors = [
-        { icon: Crosshair, title: "误差限", desc: "容许的最大抽样误差，越小需要的样本越多" },
+        { icon: Crosshair, title: "误差限", desc: "给定置信水平下的区间半宽目标，不是绝对误差保证" },
         { icon: Layers, title: "子总体估计", desc: "需要分域估计时，样本量可能翻数倍" },
         { icon: BarChart3, title: "总体变异", desc: "变异越大，需要更多样本来捕捉总体特征" },
         { icon: Boxes, title: "设计效应", desc: "deff 是方差之比，可以低于 1；样本量还需结合有限总体修正" },
         { icon: UserX, title: "无回答率", desc: "达到目标有效样本数，邀请量按 1/(1−r) 放大" },
-        { icon: DollarSign, title: "精度与费用", desc: "边际递减效应——超过拐点后收益极低" },
+        { icon: DollarSign, title: "精度与费用", desc: "结合抽样比、精度目标与成本比较，无通用拐点" },
     ];
 
     return (

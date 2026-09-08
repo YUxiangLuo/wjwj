@@ -248,12 +248,13 @@ function selectFixedPiSystematicSample(
     for (let position = 0; position < indices.length && thresholdIndex < targetSampleSize; position += 1) {
         const index = indices[position]!;
         const probability = inclusionProbabilities[position]!;
-        const nextCumulativeProbability = cumulativeProbability + probability;
+        const nextCumulativeProbability = position === indices.length - 1
+            ? targetSampleSize : cumulativeProbability + probability;
         const threshold = randomStart + thresholdIndex;
 
         if (
-            threshold + PPS_EPSILON >= cumulativeProbability
-            && threshold < nextCumulativeProbability - PPS_EPSILON
+            threshold >= cumulativeProbability
+            && threshold < nextCumulativeProbability
         ) {
             selectedIndices.push(index);
             selectedProbabilities.push(probability);

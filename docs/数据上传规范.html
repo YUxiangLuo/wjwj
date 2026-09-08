@@ -1,19 +1,27 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>总体数据上传规范</title><style>
-    body { font-family: "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; font-size: 11pt; line-height: 1.7; color: #172033; margin: 2.2cm; }
-    h1 { color: #123d73; text-align: center; font-size: 22pt; margin-bottom: 0.4cm; }
-    h2 { color: #184f8f; font-size: 16pt; border-bottom: 1px solid #9db6d3; padding-bottom: 0.12cm; margin-top: 0.7cm; }
-    h3 { color: #244f7c; font-size: 13pt; margin-top: 0.5cm; }
+    @page { size: A4; margin: 2.2cm; }
+    h1, h2, h3 { break-after: avoid; }
+    tr, li { break-inside: avoid; }
+    thead { display: table-header-group; }
+    p { orphans: 2; widows: 2; }
+    body { font-family: "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; font-size: 11pt; line-height: 1.7; color: #172033; margin: 0; }
+    h1 { color: #000000; text-align: center; font-size: 22pt; margin-bottom: 0.4cm; }
+    h2 { color: #000000; font-size: 16pt; border-bottom: 1px solid #9db6d3; padding-bottom: 0.12cm; margin-top: 0.7cm; }
+    h3 { color: #000000; font-size: 13pt; margin-top: 0.5cm; }
     .note { background: #eef5fc; border: 1px solid #9db6d3; padding: 0.35cm; }
     .placeholder { color: #4f657d; }
-    table { width: 100%; border-collapse: collapse; margin: 0.3cm 0; }
+    table { table-layout: fixed; width: 100%; border-collapse: collapse; margin: 0.3cm 0; }
+    th:first-child { width: 22%; }
+    th:nth-child(2) { width: 46%; }
+    th:nth-child(3) { width: 32%; }
     th, td { border: 1px solid #9db6d3; padding: 0.18cm; vertical-align: top; }
-    th { background: #e4eef9; color: #123d73; }
+    th { background: #e4eef9; color: #000000; }
     ul, ol { margin-top: 0.15cm; }
   </style></head><body>
-<h1>总体数据上传规范</h1><p>教师端 · 2026-09-07</p>
+<h1>总体数据上传规范</h1><p>教师端 · 2026-09-08</p>
 <h2>一、先明确总体和分析单位</h2><p class="note">上传表被视为本实验的完整虚拟总体：每一行是一个分析单位，行数就是总体规模 N。请明确研究问题、目标人群或对象以及时间范围。不能把预先抽出的子样本默认为原总体，否则总体真值、抽样比和有限总体修正都会改变。</p>
 <p>系统当前支持一个主要目标：数值均值，或某个明确类别的单位比例。它不自动处理总量、回归、因果效应或纵向重复测量。</p>
-<h2>二、文件规则</h2><ul><li>支持 .xlsx、.xls、.csv；有效数据 1–100,000 行、2–50 列。</li><li>第一行是表头，名称不能为空或重复；不能使用系统保留前缀 __wj_。</li><li>不允许完全空白的数据行。CSV 应正确处理编码、引号、逗号和换行。</li><li>若超过行数上限，请明确重建一个较小的教学总体，并同步修改研究总体定义。不能通过先抽样、再把样本当完整总体来声称保留原调查设计。</li></ul>
+<h2>二、文件规则</h2><ul><li>支持 .xlsx、.csv；不支持旧版 .xls，请先另存为 .xlsx 或 .csv；有效数据 1–100,000 行、2–50 列。</li><li>第一行是表头，名称不能为空或重复；不能使用系统保留前缀 __wj_。</li><li>不允许完全空白的数据行。CSV 应正确处理编码、引号、逗号和换行。</li><li>若超过行数上限，请明确重建一个较小的教学总体，并同步修改研究总体定义。不能通过先抽样、再把样本当完整总体来声称保留原调查设计。</li></ul>
 <h2>三、根据目标和方法选择字段</h2><ul>
 <li><strong>标识符：必须 1 个。</strong>每个总体单位的标识应非空且唯一。</li>
 <li><strong>均值目标：</strong>选择数值字段作为目标；目标允许负值或零均值，但当前规划要求正且有限的总体方差。单位、评分尺度和均值含义需能解释。</li>

@@ -12,7 +12,7 @@ function toFiniteNumber(value: unknown) {
 
 export function toTrimmedCategory(value: unknown) {
     if (value === undefined || value === null) return null;
-    const text = String(value).trim();
+    const text = String(value).trim().normalize("NFKC");
     return text ? text : null;
 }
 

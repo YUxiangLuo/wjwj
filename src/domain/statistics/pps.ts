@@ -1,11 +1,11 @@
 import { toTrimmedCategory, type NumericAccessor, fieldAccessor } from "./values";
 import { createSafeRecord } from "../../lib/safe-record";
-import { createSeededRandom, drawPreparedPPSSample, preparePPSSampling } from "./sampling";
-import { computeSystematicExactValueSe } from "./systematic";
+import { preparePPSSampling } from "./sampling";
+import { exactPpsStandardErrors } from "./pps-exact";
 
 export const DEFAULT_PPS_MONTE_CARLO_REPLICATES = 512;
 
-/** 教学环境可调整重复次数；设置边界避免误配置导致无意义结果或过量计算。 */
+/** @deprecated 仅供旧调用方解析历史配置；当前精确积分不使用模拟次数。 */
 export function resolvePpsMonteCarloReplicates(rawValue?: string): number {
     if (rawValue == null || rawValue.trim() === "") return DEFAULT_PPS_MONTE_CARLO_REPLICATES;
     const parsed = Number(rawValue);
@@ -16,7 +16,7 @@ export function resolvePpsMonteCarloReplicates(rawValue?: string): number {
 
 export interface PpsStandardErrorContext {
     standardErrors: Record<string, number | null>;
-    mode: "monte_carlo" | "census_exact";
+    mode: "systematic_exact" | "census_exact";
     replicateCount: number;
 }
 
@@ -31,9 +31,8 @@ function ppsContextCacheKey(
     sizeField: string,
     sampleSize: number,
     fieldKeys: string[],
-    replicateCount: number,
 ) {
-    return JSON.stringify([sizeField, sampleSize, fieldKeys, replicateCount]);
+    return JSON.stringify([sizeField, sampleSize, fieldKeys]);
 }
 
 function getCachedPpsStandardErrorContext(
@@ -136,16 +135,19 @@ export function buildPpsStandardErrorContext(
     sizeField: string | undefined,
     sampleSize: number | undefined,
     fields: Array<{ key: string; accessor: NumericAccessor }>,
-    replicateCount: number,
+    _legacyReplicateCount: number,
 ): PpsStandardErrorContext | null {
     const normalizedSampleSize = Number(sampleSize);
     if (!sizeField || !Number.isInteger(normalizedSampleSize) || normalizedSampleSize < 1 || fields.length === 0) {
         return null;
     }
 
-    const cacheKey = ppsContextCacheKey(sizeField, normalizedSampleSize, fields.map((field) => field.key), replicateCount);
+    const cacheKey = ppsContextCacheKey(sizeField, normalizedSampleSize, fields.map((field) => field.key));
     const cached = getCachedPpsStandardErrorContext(population, cacheKey);
     if (cached) return cached;
+
+    const sizeAccessor = fieldAccessor(sizeField);
+    if (population.some(row => { const size = sizeAccessor(row); return size === null || size <= 0; })) return null;
 
     const prepared = preparePPSSampling(population, sizeField, normalizedSampleSize);
     if (!prepared) {
@@ -163,69 +165,10 @@ export function buildPpsStandardErrorContext(
         });
     }
 
-    // Welford accumulators keep memory at O(number of numeric fields) instead
-    // of retaining every complete PPS sample at once.
-    const accumulators = Object.fromEntries(fields.map((field) => [field.key, {
-        count: 0,
-        mean: 0,
-        squaredDeviation: 0,
-    }]));
-
-    let successfulReplicateCount = 0;
-    for (let iteration = 0; iteration < replicateCount; iteration += 1) {
-        const replicate = drawPreparedPPSSample(
-            prepared,
-            createSeededRandom(`analysis-pps-${iteration}`),
-        );
-        if (replicate.data.length !== normalizedSampleSize) continue;
-        successfulReplicateCount += 1;
-
-        for (const field of fields) {
-            const estimate = estimateWeightedValue(
-                replicate.data,
-                field.accessor,
-                replicate.inclusionProbabilities,
-            );
-            if (estimate === null) continue;
-
-            const accumulator = accumulators[field.key]!;
-            accumulator.count += 1;
-            const delta = estimate - accumulator.mean;
-            accumulator.mean += delta / accumulator.count;
-            accumulator.squaredDeviation += delta * (estimate - accumulator.mean);
-        }
-    }
-
-    const standardErrors = Object.fromEntries(fields.map((field) => {
-        const accumulator = accumulators[field.key]!;
-        const firstValue = population[0] ? field.accessor(population[0]) : null;
-        const knownConstant = firstValue !== null && population.every((row) => field.accessor(row) === firstValue);
-        if (knownConstant) return [field.key, 0];
-        // Zero dispersion in a finite simulation is not proof of zero design
-        // variance. Equal positive sizes reduce to fractional systematic sampling,
-        // whose full start distribution can certify a balanced zero-variance design.
-        if (accumulator.count > 1 && accumulator.squaredDeviation === 0) {
-            const size = Number(population[0]?.[sizeField]);
-            const equalSizes = size > 0 && population.every((row) => Number(row[sizeField]) === size);
-            const provenZero = equalSizes && computeSystematicExactValueSe(population, field.accessor, {
-                completed: true,
-                sampleCount: normalizedSampleSize,
-                interval: population.length / normalizedSampleSize,
-            }) === 0;
-            return [field.key, provenZero ? 0 : null];
-        }
-        return [
-            field.key,
-            accumulator.count > 1
-                // 重复抽样结果用于估计设计分布的标准差，采用 Bessel 校正 R−1。
-                ? Math.sqrt(Math.max(0, accumulator.squaredDeviation / (accumulator.count - 1)))
-                : null,
-        ];
-    }));
     return cachePpsStandardErrorContext(population, cacheKey, {
-        standardErrors,
-        mode: "monte_carlo",
-        replicateCount: successfulReplicateCount,
+        standardErrors: exactPpsStandardErrors(prepared, fields),
+        mode: "systematic_exact",
+        replicateCount: 0,
     });
 }
 

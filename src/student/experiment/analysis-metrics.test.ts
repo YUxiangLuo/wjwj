@@ -7,7 +7,6 @@ import {
 } from "./analysis-metrics";
 import {
     createSeededRandom,
-    drawPreparedPPSSample,
     performPPSSampling,
     performSystematicSampling,
     preparePPSSampling,
@@ -277,25 +276,15 @@ test("analysis metrics use PPS inclusion probabilities for weighted mean estimat
 
     const prepared = preparePPSSampling(population, "size", 2);
     if (!prepared) throw new Error("expected a valid PPS design");
-    expect(metrics.ppsStandardErrorMode).toBe("monte_carlo");
-    expect(metrics.ppsMonteCarloReplicates).toBeGreaterThanOrEqual(32);
-    expect(metrics.ppsMonteCarloReplicates).toBeLessThanOrEqual(1024);
-    const replicateEstimates = Array.from({ length: metrics.ppsMonteCarloReplicates }, (_, iteration) => {
-        const replicate = drawPreparedPPSSample(prepared, createSeededRandom(`analysis-pps-${iteration}`));
-        let weightedSum = 0;
-        let totalWeight = 0;
-        for (let index = 0; index < replicate.data.length; index += 1) {
-            const weight = 1 / replicate.inclusionProbabilities[index]!;
-            weightedSum += replicate.data[index]!.value * weight;
-            totalWeight += weight;
-        }
-        return weightedSum / totalWeight;
-    });
-    const replicateMean = replicateEstimates.reduce((sum, value) => sum + value, 0) / replicateEstimates.length;
-    const expectedSe = Math.sqrt(replicateEstimates.reduce(
-        (sum, value) => sum + (value - replicateMean) ** 2,
-        0,
-    ) / (replicateEstimates.length - 1));
+    expect(metrics.ppsStandardErrorMode).toBe("systematic_exact");
+    expect(metrics.ppsMonteCarloReplicates).toBe(0);
+    // Unit 5 is certain. One of units 1..4 is drawn with probabilities size/63.
+    const outcomes = population.slice(0, 4).map(row => ({
+        probability: row.size / 63,
+        estimate: (800 + row.value * 63 / row.size) / (1 + 63 / row.size),
+    }));
+    const mean = outcomes.reduce((sum, outcome) => sum + outcome.probability * outcome.estimate, 0);
+    const expectedSe = Math.sqrt(outcomes.reduce((sum, outcome) => sum + outcome.probability * (outcome.estimate - mean) ** 2, 0));
     expect(numericValue.methods.pps.standardError).toBeCloseTo(expectedSe, 10);
 });
 

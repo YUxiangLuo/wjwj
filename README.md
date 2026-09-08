@@ -64,13 +64,14 @@
 | `DEMO_MODE` | 仅供内部演示；`1` 启用演示凭据预填和随机学生端点。优先使用 `start:demo`，不要在公开部署中设置 |
 | `SEED_ADMIN_PASSWORD` | 可选。覆盖 seed 管理员初始密码 |
 | `SEED_NOW` | 可选。默认 seed 的 ISO 时间锚点；未设置时使用当前时间 |
-| `PPS_MONTE_CARLO_REPLICATES` | 可选，默认 `512`，范围 `32`–`1024`。控制分析页 PPS 设计标准误的重复抽样次数；越高通常模拟误差越小、计算越慢 |
 | `PASSWORD_WORK_CONCURRENCY` | 可选，默认 `4`，范围 `2`–`4`。限制单进程 Argon2 并发量 |
 | `PASSWORD_WORK_QUEUE_LIMIT` | 可选，默认 `32`，范围 `4`–`128`。密码服务等待队列上限，超限返回 429 |
 | `TRUST_PROXY` | 仅当应用只接受可信反向代理流量时设为 `1`；此时才信任转发的主机名和 HTTPS 协议头，用于还原公开访问源 |
 | `BOOTSTRAP_ADMIN_USERNAME` | 生产初始化管理员名，默认 `admin` |
 | `BOOTSTRAP_ADMIN_PASSWORD` | 可选；未设置时 bootstrap 生成并只显示一次随机初始密码，传入值不会写入日志 |
 | `TEST_DATABASE_URL` | 跑 `bun run test:db` 时使用的一次性库 |
+
+PPS 设计标准误按固定包含概率系统抽样的全部随机起点区间及其概率积分计算，无需配置模拟次数。数值精度不足时显示不可用；Hájek 比估计仍可能有偏，精确设计标准误不保证正态区间覆盖率。
 
 开发鉴权开启时，三个登录页会预填演示账号。`bun run start` / 生产构建会把前端的 `DEV_AUTH_MODE` 内联为 `"0"`，不会把开发预填带入普通生产包。不要用未构建的 `NODE_ENV=production bun src/index.ts`。
 

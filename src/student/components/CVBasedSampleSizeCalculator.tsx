@@ -267,6 +267,9 @@ export function CVBasedSampleSizeCalculator({
                                     {(result.achievedCV * 100).toFixed(2)}%
                                 </span>
                             </div>
+                            <p className={result.achievedCV <= targetCV / 100 + 1e-12 ? "text-meta text-success" : "text-meta text-warning"}>
+                                {result.achievedCV <= targetCV / 100 + 1e-12 ? "预期设计 CV 达标" : `预期设计 CV 未达标：目标 ${targetCV}%，请调整目标或改善回答率。`}
+                            </p>
                             {result.cappedAtPopulation && nonResponseRate > 0 && (
                                 <p className="rounded-surface border border-warning-border bg-warning-muted p-2 text-meta leading-relaxed text-warning">
                                     发放量已封顶为总体 N，但仍预期存在无回答，因此不是完整普查，CV 不为 0；增加发放量也不能自动消除非随机无回答偏差。
@@ -337,7 +340,7 @@ export function CVBasedSampleSizeCalculator({
                                         }}
                                         className="w-full bg-primary text-primary-foreground hover:bg-primary-hover"
                                     >
-                                        应用此样本量
+                                        {result.achievedCV <= targetCV / 100 + 1e-12 ? "应用此样本量" : "采用此未达标样本量"}
                                         <ArrowRight className="w-4 h-4 ml-2" />
                                     </Button>
                                 </>

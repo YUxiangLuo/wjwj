@@ -1,0 +1,38 @@
+import { createRoot } from 'react-dom/client';
+import { useState } from 'react';
+import { DecisionPhase } from '../../../src/student/components/immersive-sample-planning/phases/DecisionPhase';
+import { PrecisionPhase } from '../../../src/student/components/immersive-sample-planning/phases/PrecisionPhase';
+import { FactorsPhase } from '../../../src/student/components/immersive-sample-planning/phases/FactorsPhase';
+import { SamplePlanSnapshot } from '../../../src/components/SamplePlanSnapshot';
+import { SamplePlanDecisionPanel } from '../../../src/student/pages/stages/analysis-params-panels';
+import '../../../src/student/student.css';
+
+const starting = {populationSize:100,estimationType:'proportion' as const,confidenceLevel:'95' as const,marginOfError:5,designEffect:1,nonResponseRate:0,recommendedSize:80,finalSampleSize:80};
+const mean = {...starting,estimationType:'mean' as const,populationVariance:100,marginOfError:2,recommendedSize:50,finalSampleSize:50};
+const snapshotPlan = {...starting,confidenceLevel:'90',marginOfError:10,recommendedSize:41,finalSampleSize:100,advancedPlanSource:'cost',advancedPlans:[{
+ version:1,kind:'cost',appliedAt:'2026-09-08T00:00:00Z',inputs:{confidenceLevel:'99',targetMarginOfError:1,designEffect:1,nonResponseRate:0,fixedCost:5000,variableCostPerUnit:15,totalBudget:50000},result:{requiredSampleSize:100,totalCost:6500,feasible:true}
+}]} as any;
+function App() {
+ const [params,setParams]=useState(starting);
+ const [source,setSource]=useState<any>(null);
+ const [snapshots,setSnapshots]=useState<any[]>([]);
+ const mode=new URLSearchParams(location.search).get('case');
+ const rendered=mode==='snapshot' ? <><SamplePlanSnapshot value={snapshotPlan} populationSize={100}/><SamplePlanDecisionPanel samplePlan={snapshotPlan} populationSize={100}/></>
+   : mode==='precision' ? <PrecisionPhase params={{...mean,populationSize:1000,populationVariance:2e-10}} onNext={()=>{}}/>
+   : mode==='fpc' ? <FactorsPhase step="cost_balance" params={mean} onNext={()=>{}}/>
+   : <DecisionPhase params={params}
+       onConfidenceLevelChange={v=>setParams(p=>({...p,confidenceLevel:v as any}))}
+       onMarginOfErrorChange={v=>setParams(p=>({...p,marginOfError:v}))}
+       onDesignEffectChange={v=>setParams(p=>({...p,designEffect:v}))}
+       onNonResponseRateChange={v=>setParams(p=>({...p,nonResponseRate:v}))}
+       onFinalSizeChange={v=>setParams(p=>({...p,finalSampleSize:v}))}
+       onResetFinalSize={()=>setParams(p=>({...p,finalSampleSize:p.recommendedSize}))}
+       onNext={()=>{}} advancedPlanSource={source} onAdvancedApplied={setSource} onClearAdvancedSource={()=>setSource(null)}
+       onAdvancedPlanSnapshot={snapshot=>setSnapshots([snapshot])}/>;
+ return <main className="mx-auto max-w-6xl p-6 bg-background text-foreground">
+   <p className="text-label mb-4">二次复核：实际决策父组件与展示组件，合成合法参数，无数据库</p>
+   {rendered}
+   {!['snapshot','precision','fpc'].includes(mode ?? '') && <pre id="review-output">{JSON.stringify({params,source,snapshots},null,2)}</pre>}
+ </main>;
+}
+createRoot(document.getElementById('root')!).render(<App/>);

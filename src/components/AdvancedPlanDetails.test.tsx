@@ -1,0 +1,33 @@
+import { afterEach, beforeEach, expect, test } from "bun:test";
+import { cleanup, render } from "@testing-library/react";
+import { installDomGlobals } from "@/test-utils/dom";
+import { SamplePlanSnapshot } from "./SamplePlanSnapshot";
+import { AdvancedPlanDetails } from "./AdvancedPlanDetails";
+
+let restore: () => void;
+beforeEach(() => { restore = installDomGlobals().restore; });
+afterEach(() => { cleanup(); restore(); });
+
+test("reviewers can distinguish base assumptions from applied cost assumptions and unmet precision", () => {
+    const cost = { version: 1, kind: "cost", appliedAt: "2026-09-07T23:17:44.279Z",
+        inputs: { confidenceLevel: "99", targetMarginOfError: 1, designEffect: 1, nonResponseRate: .5, fixedCost: 5000, variableCostPerUnit: 15, totalBudget: 50000 },
+        result: { requiredSampleSize: 100, totalCost: 6500, feasible: false } };
+    const view = render(<SamplePlanSnapshot populationSize={100} value={{ confidenceLevel: "90", marginOfError: 10, designEffect: 1, nonResponseRate: 0, recommendedSize: 41, finalSampleSize: 100, advancedPlanSource: "cost", advancedPlans: [cost] }} />);
+    expect(view.getByText("90%")).toBeTruthy();
+    expect(view.getByText("99%")).toBeTruthy();
+    expect(view.getByText("±10%")).toBeTruthy();
+    expect(view.getByText("±1 个百分点")).toBeTruthy();
+    expect(view.getByText("预算充足；预期精度未达标")).toBeTruthy();
+    expect(view.getByTestId("advanced-plan-details").textContent).toContain("应用时间：2026/09/08 07:17；");
+});
+
+test("saved CV plans retain an explicit unmet-target status", () => {
+    const view = render(<AdvancedPlanDetails source="cv" populationSize={100} value={[{
+        version: 1, kind: "cv", appliedAt: "2026-09-08T00:00:00Z",
+        inputs: { confidenceLevel: "95", targetCV: 1, estimatedCV: 30, designEffect: 1, nonResponseRate: 50 },
+        result: { requiredSampleSize: 100, expectedRespondentSampleSize: 50, achievedCV: .0301511344578 },
+    }]} />);
+    expect(view.getByText("预期设计 CV 未达标")).toBeTruthy();
+    expect(view.getByText("1% / 30%")).toBeTruthy();
+    expect(view.getByText("3.01511%")).toBeTruthy();
+});

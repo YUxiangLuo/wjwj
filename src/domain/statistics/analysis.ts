@@ -7,7 +7,6 @@ import {
     computeStratifiedDistributionEstimate,
 } from "./stratified";
 import {
-    resolvePpsMonteCarloReplicates,
     estimateWeightedMean,
     estimateWeightedDistribution,
     buildPpsStandardErrorContext,
@@ -75,17 +74,19 @@ export function buildAnalysisMetrics(params: {
     samplePlan?: { confidenceLevel?: string; marginOfError?: number | null } | null;
     /** 推断研究合同时使用的课题名。 */
     topicName?: string | null;
+    /** @deprecated 当前精确积分不受旧模拟次数配置影响。 */
     ppsMonteCarloReplicates?: number;
 }): AnalysisMetricsResult {
     const numericFields = unique(params.fieldMapping?.numeric ?? []);
     const categoricalFields = getCategoricalFieldsFromTopicMapping(params.fieldMapping);
     const populationSize = params.population.length;
+    const resolvedContract = params.studyContract !== undefined
+        ? params.studyContract
+        : resolveStudyContract(params.fieldMapping, { topicName: params.topicName });
     const completedMethods = new Set(METHODS.filter((method) => (
         isCompletedSamplingResult(params.samplingResults?.[method])
     )));
-    const ppsMonteCarloReplicates = resolvePpsMonteCarloReplicates(
-        params.ppsMonteCarloReplicates === undefined ? undefined : String(params.ppsMonteCarloReplicates),
-    );
+    const ppsMonteCarloReplicates = 0; // Exact integration; retained fields support old API consumers.
 
     const populationNumericStats = buildPopulationNumericStats(params.population, numericFields);
     // 新映射会在服务端拒绝缺失/非数值；历史数据若不完整则整列 fail closed，避免混用总行数 N 和有效值数。
@@ -199,8 +200,11 @@ export function buildAnalysisMetrics(params: {
             );
         }
 
-        // 类别数超限时聚合尾部，各方法共用同一映射后再算代表性。
-        const truncated = truncateCategoricalDistributions(fullPopulationDistribution, fullMethods);
+        // 聚合仅用于展示，完整类别空间的偏差不随图表截断改变。
+        const target = resolvedContract?.contract.target;
+        const preserved = target?.kind === "proportion" && target.field === field
+            ? [target.value.trim().normalize("NFKC")] : [];
+        const truncated = truncateCategoricalDistributions(fullPopulationDistribution, fullMethods, preserved);
         const populationDistribution = truncated?.population ?? fullPopulationDistribution;
         const methods = truncated?.methods ?? fullMethods;
 
@@ -211,8 +215,8 @@ export function buildAnalysisMetrics(params: {
                 continue;
             }
             representativeness[method] = computeDistributionRepresentativeness(
-                populationDistribution,
-                methods[method],
+                fullPopulationDistribution,
+                fullMethods[method],
             );
         }
 
@@ -228,9 +232,6 @@ export function buildAnalysisMetrics(params: {
         };
     }
 
-    const resolvedContract = params.studyContract !== undefined
-        ? params.studyContract
-        : resolveStudyContract(params.fieldMapping, { topicName: params.topicName });
     const confidenceLevel = normalizeConfidenceLevel(String(params.samplePlan?.confidenceLevel ?? "95"));
     const rawMargin = params.samplePlan?.marginOfError;
     const plannedMarginOfError = resolvedContract && typeof rawMargin === "number" && Number.isFinite(rawMargin)
@@ -251,10 +252,11 @@ export function buildAnalysisMetrics(params: {
         : null;
 
     return {
-        ppsMonteCarloReplicates: ppsStandardErrorContext?.mode === "monte_carlo"
-            ? ppsStandardErrorContext.replicateCount
-            : 0,
-        ppsStandardErrorMode: ppsStandardErrorContext?.mode ?? null,
+        ppsMonteCarloReplicates: 0,
+        ppsStandardErrorMode: ppsStandardErrorContext?.mode
+            ?? (target?.methods.pps.standardError != null
+                ? ppsRows.length === populationSize ? "census_exact" : "systematic_exact"
+                : null),
         numericFields: Object.keys(numeric),
         excludedNumericFields: numericFields.filter((field) => !completeNumericFields.includes(field)),
         categoricalFields: Object.keys(categorical),

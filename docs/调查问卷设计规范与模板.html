@@ -4,15 +4,23 @@
   <meta charset="utf-8">
   <title>调查问卷设计规范与模板</title>
   <style>
-    body { font-family: "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; font-size: 11pt; line-height: 1.7; color: #172033; margin: 2.2cm; }
-    h1 { color: #123d73; text-align: center; font-size: 22pt; margin-bottom: 0.4cm; }
-    h2 { color: #184f8f; font-size: 16pt; border-bottom: 1px solid #9db6d3; padding-bottom: 0.12cm; margin-top: 0.7cm; }
-    h3 { color: #244f7c; font-size: 13pt; margin-top: 0.5cm; }
+    @page { size: A4; margin: 2.2cm; }
+    h1, h2, h3 { break-after: avoid; }
+    tr, li { break-inside: avoid; }
+    thead { display: table-header-group; }
+    p { orphans: 2; widows: 2; }
+    body { font-family: "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; font-size: 11pt; line-height: 1.7; color: #172033; margin: 0; }
+    h1 { color: #000000; text-align: center; font-size: 22pt; margin-bottom: 0.4cm; }
+    h2 { color: #000000; font-size: 16pt; border-bottom: 1px solid #9db6d3; padding-bottom: 0.12cm; margin-top: 0.7cm; }
+    h3 { color: #000000; font-size: 13pt; margin-top: 0.5cm; }
     .note { background: #eef5fc; border: 1px solid #9db6d3; padding: 0.35cm; }
     .placeholder { color: #4f657d; }
-    table { width: 100%; border-collapse: collapse; margin: 0.3cm 0; }
+    table { table-layout: fixed; width: 100%; border-collapse: collapse; margin: 0.3cm 0; }
+    th:first-child { width: 22%; }
+    th:nth-child(2) { width: 46%; }
+    th:nth-child(3) { width: 32%; }
     th, td { border: 1px solid #9db6d3; padding: 0.18cm; vertical-align: top; }
-    th { background: #e4eef9; color: #123d73; }
+    th { background: #e4eef9; color: #000000; }
     ul, ol { margin-top: 0.15cm; }
   </style>
 </head>
@@ -37,7 +45,7 @@
   <table>
     <thead><tr><th>测量目的</th><th>示例题目</th><th>推荐题型</th></tr></thead>
     <tbody>
-      <tr><td>行为或频率</td><td>过去 30 天内，您平均每周进行【目标行为】的次数是？</td><td>单选题，选项互斥且覆盖常见范围</td></tr>
+      <tr><td>行为或频率</td><td>过去 7 天内（含今天），您进行【目标行为】共多少次？</td><td>单选题：0 次、1-2 次、3-4 次、5 次及以上</td></tr>
       <tr><td>态度或认同</td><td>请评价您对“【中性陈述】”的认同程度。</td><td>5 点或 7 点 Likert 型评分题</td></tr>
       <tr><td>满意度</td><td>您对【服务/体验】的总体满意程度如何？</td><td>5 点或 7 点评分题</td></tr>
       <tr><td>原因或需求</td><td>哪些因素会影响您【行为/选择】？</td><td>多选题，并明确最少/最多选择数</td></tr>

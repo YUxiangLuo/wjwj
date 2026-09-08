@@ -5,7 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/StatusBadge";
+import { CostPrecisionChart } from "./CostPrecisionChart";
+import { calculateCostPlan } from "../experiment/cost-plan";
+import { buildCostPrecisionCurve } from "../experiment/cost-precision-curve";
 import {
     DollarSign,
     TrendingUp,
@@ -15,7 +18,7 @@ import {
     ChevronRight
 } from "lucide-react";
 import { zForConfidenceLevel } from "../experiment/confidence-level";
-import { calculateFinitePopulationSampleSize, finitePopulationVarianceFactor } from "../experiment/sample-plan";
+import { finitePopulationVarianceFactor } from "../experiment/sample-plan";
 import { primarySliderClassName } from "./sample-planning-styles";
 
 interface CostScenario {
@@ -125,9 +128,10 @@ export function PrecisionCostTradeoff({
     // 计算预算约束下的最大样本量
     const maxFeasibleSampleSize = useMemo(() => {
         const { fixedCost, variableCostPerUnit, totalBudget } = currentScenario;
-        if (variableCostPerUnit <= 0) return populationSize;
+        if (totalBudget < fixedCost) return 0;
+        if (variableCostPerUnit === 0) return populationSize;
         const maxSample = Math.floor((totalBudget - fixedCost) / variableCostPerUnit);
-        return Math.min(maxSample, populationSize);
+        return Math.max(0, Math.min(maxSample, populationSize));
     }, [currentScenario, populationSize]);
 
     // 计算预算约束下的精度
@@ -145,62 +149,33 @@ export function PrecisionCostTradeoff({
         const marginOfError = z * Math.sqrt(safeDeff * p * (1 - p) / expectedRespondents * fpc) * 100;
 
         return {
-            marginOfError: Math.min(marginOfError, 50), // 最大50%
+            marginOfError,
             sampleSize: maxFeasibleSampleSize,
             totalCost: currentScenario.fixedCost + maxFeasibleSampleSize * currentScenario.variableCostPerUnit,
         };
     }, [maxFeasibleSampleSize, confidenceLevelLocal, populationSize, designEffectLocal, nonResponseRateLocal, currentScenario]);
 
-    // 生成精度-成本曲线数据
-    const curveData = useMemo(() => {
-        const points: Array<{ sampleSize: number; marginOfError: number; totalCost: number }> = [];
-
-        const sampleSizes = [30, 50, 100, 200, 300, 500, 800, 1000, 1500, 2000, 3000, 5000];
-        const z = zForConfidenceLevel(confidenceLevelLocal);
-        const p = 0.5;
-
-        const safeDeff = designEffectLocal > 0 ? designEffectLocal : 1;
-
-        sampleSizes.forEach(n => {
-            if (n <= populationSize) {
-                const expectedRespondents = n * (1 - nonResponseRateLocal);
-                const fpc = finitePopulationVarianceFactor(populationSize, expectedRespondents);
-                const marginOfError = z * Math.sqrt(safeDeff * p * (1 - p) / expectedRespondents * fpc) * 100;
-
-                // 计算成本
-                const totalCost = currentScenario.fixedCost + n * currentScenario.variableCostPerUnit;
-
-                points.push({
-                    sampleSize: n,
-                    marginOfError: Math.min(marginOfError, 50),
-                    totalCost,
-                });
-            }
-        });
-
-        return points;
-    }, [populationSize, confidenceLevelLocal, designEffectLocal, nonResponseRateLocal, currentScenario]);
-
     // 计算目标精度所需的样本量和成本
-    const targetAnalysis = useMemo(() => {
-        const requiredSampleSize = calculateFinitePopulationSampleSize({
-            confidenceLevel: confidenceLevelLocal,
-            marginOfError: targetMarginOfError,
-            populationSize,
-            designEffect: designEffectLocal,
-            nonResponseRate: nonResponseRateLocal,
-        }) ?? 0;
+    const targetAnalysis = useMemo(() => calculateCostPlan({
+        confidenceLevel: confidenceLevelLocal,
+        targetMarginOfError,
+        designEffect: designEffectLocal,
+        nonResponseRate: nonResponseRateLocal,
+        fixedCost: currentScenario.fixedCost,
+        variableCostPerUnit: currentScenario.variableCostPerUnit,
+        totalBudget: currentScenario.totalBudget,
+    }, populationSize), [targetMarginOfError, confidenceLevelLocal, populationSize, designEffectLocal, nonResponseRateLocal, currentScenario]);
 
-        const totalCost = currentScenario.fixedCost + requiredSampleSize * currentScenario.variableCostPerUnit;
-        const isFeasible = totalCost <= currentScenario.totalBudget;
-
-        return {
-            requiredSampleSize,
-            totalCost,
-            isFeasible,
-            budgetGap: totalCost - currentScenario.totalBudget,
-        };
-    }, [targetMarginOfError, confidenceLevelLocal, populationSize, designEffectLocal, nonResponseRateLocal, currentScenario]);
+    const curveData = useMemo(() => buildCostPrecisionCurve({
+        populationSize,
+        confidenceLevel: confidenceLevelLocal,
+        designEffect: designEffectLocal,
+        nonResponseRate: nonResponseRateLocal,
+        fixedCost: currentScenario.fixedCost,
+        variableCostPerUnit: currentScenario.variableCostPerUnit,
+        referenceSampleSizes: [maxFeasibleSampleSize, targetAnalysis?.requiredSampleSize ?? 0],
+    }), [populationSize, confidenceLevelLocal, designEffectLocal, nonResponseRateLocal,
+        currentScenario, maxFeasibleSampleSize, targetAnalysis]);
 
     return (
         <Card className="rounded-surface border-primary-border bg-primary-muted ">
@@ -264,10 +239,12 @@ export function PrecisionCostTradeoff({
                             <Input
                                 id="precision-fixed-cost"
                                 type="number"
+                                min={0}
+                                step="any"
                                 value={customScenario.fixedCost}
                                 onChange={(e) => setCustomScenario({
                                     ...customScenario,
-                                    fixedCost: parseInt(e.target.value) || 0
+                                    fixedCost: Math.max(0, Number(e.target.value) || 0)
                                 })}
                                 className="bg-card border-primary text-foreground"
                             />
@@ -278,10 +255,12 @@ export function PrecisionCostTradeoff({
                             <Input
                                 id="precision-variable-cost"
                                 type="number"
+                                min={0}
+                                step="any"
                                 value={customScenario.variableCostPerUnit}
                                 onChange={(e) => setCustomScenario({
                                     ...customScenario,
-                                    variableCostPerUnit: parseInt(e.target.value) || 0
+                                    variableCostPerUnit: Math.max(0, Number(e.target.value) || 0)
                                 })}
                                 className="bg-card border-primary text-foreground"
                             />
@@ -292,10 +271,12 @@ export function PrecisionCostTradeoff({
                             <Input
                                 id="precision-total-budget"
                                 type="number"
+                                min={0}
+                                step="any"
                                 value={customScenario.totalBudget}
                                 onChange={(e) => setCustomScenario({
                                     ...customScenario,
-                                    totalBudget: parseInt(e.target.value) || 0
+                                    totalBudget: Math.max(0, Number(e.target.value) || 0)
                                 })}
                                 className="bg-card border-primary text-foreground"
                             />
@@ -395,7 +376,7 @@ export function PrecisionCostTradeoff({
                         {achievablePrecision && (
                             <>
                                 <div className="flex justify-between items-center">
-                                    <span className="text-label text-foreground">可达到的最佳精度</span>
+                                    <span className="text-label text-foreground">预算内预期误差限</span>
                                     <span className="text-subheading font-bold tabular-nums text-info">
                                         ±{achievablePrecision.marginOfError.toFixed(1)}%
                                     </span>
@@ -414,7 +395,7 @@ export function PrecisionCostTradeoff({
                         <div className="mt-3 rounded-surface border border-warning-border bg-warning-muted p-2">
                             <div className="flex items-center gap-2 text-meta text-warning">
                                 <AlertCircle className="w-4 h-4 shrink-0 text-warning" />
-                                <span>预算已接近上限，无法进一步提高精度</span>
+                                <span>预算已接近上限，继续增加发放量可能需要追加预算</span>
                             </div>
                         </div>
                     )}
@@ -427,7 +408,7 @@ export function PrecisionCostTradeoff({
                             目标精度（工具内试算，1～15%）
                         </Label>
                         <p className="text-meta text-muted-foreground mt-1 leading-relaxed">
-                            左侧决策面板的「允许误差」为可保存的 1～10%；此处滑块仅用于在本工具中估算所需样本量与成本，不会单独写入保存记录。
+                            左侧决策面板的「允许误差」为可保存的 1～10%；应用时会保存本工具的输入和结果快照；基础参数保持原值，后续结果页会分别展示。
                         </p>
                     </div>
                     <p className="text-meta font-medium text-foreground tabular-nums">
@@ -443,7 +424,7 @@ export function PrecisionCostTradeoff({
                         className={primarySliderClassName}
                     />
 
-                    <div className="rounded-surface border border-primary-border bg-background p-3">
+                    {targetAnalysis ? <div className="rounded-surface border border-primary-border bg-background p-3">
                         <div className="space-y-2">
                             <div className="flex justify-between text-label">
                                 <span className="text-foreground">所需样本量</span>
@@ -458,26 +439,23 @@ export function PrecisionCostTradeoff({
                                 </span>
                             </div>
 
-                            {targetAnalysis.isFeasible ? (
-                                <div className="flex items-center gap-2 text-label text-info">
-                                    <Badge className="border-0 bg-info text-info-foreground hover:bg-info-hover">可行</Badge>
-                                    <span>预算充足，可实现目标精度</span>
-                                </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2 text-label text-destructive">
-                                        <Badge variant="destructive">超预算</Badge>
-                                        <span>还需 ¥{targetAnalysis.budgetGap.toLocaleString()}</span>
-                                    </div>
-                                    <p className="text-meta text-destructive">
-                                        建议：放宽误差限至 ±{Math.ceil(achievablePrecision?.marginOfError || targetMarginOfError)}%
-                                        或增加预算
-                                    </p>
-                                </div>
-                            )}
+                            <p className="text-label text-foreground">
+                                预期完成 {targetAnalysis.expectedCompleted.toLocaleString()} 份，预期误差限 ±{(targetAnalysis.marginOfError * 100).toFixed(2)} 个百分点（目标 ±{targetMarginOfError} 个百分点）。
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2 text-label">
+                                <StatusBadge intent={targetAnalysis.budgetFeasible ? "success" : "destructive"}>
+                                    {targetAnalysis.budgetFeasible ? "预算充足" : "超预算"}
+                                </StatusBadge>
+                                <StatusBadge intent={targetAnalysis.precisionReached ? "success" : "warning"}>
+                                    {targetAnalysis.precisionReached ? "预期精度达标" : "预期精度未达标"}
+                                </StatusBadge>
+                            </div>
+                            {!targetAnalysis.budgetFeasible && <p className="text-meta text-destructive">还需 ¥{targetAnalysis.budgetGap.toLocaleString()}，请增加预算或调整目标。</p>}
+                            {!targetAnalysis.precisionReached && <p className="text-meta text-warning">发放量已达到总体上限，按当前无回答率仍无法达到目标精度。请改善回答率或调整目标；增加预算本身不能解决这一限制。</p>}
+
                         </div>
 
-                        {targetAnalysis.isFeasible && (
+                        {targetAnalysis.budgetFeasible && (
                             <>
                                 <p className="text-meta text-muted-foreground leading-relaxed mt-3">
                                     「应用」仅将样本量写入最终样本量。若抽样假设与左侧不一致，理解此 n 时以本工具为准；左侧不会随本工具更新，勿用左侧参数代回验算。
@@ -505,12 +483,12 @@ export function PrecisionCostTradeoff({
                                     className="w-full mt-2 bg-primary text-primary-foreground hover:bg-primary-hover"
                                     size="sm"
                                 >
-                                    应用此样本量
+                                    {targetAnalysis.precisionReached ? "应用此样本量" : "采用此未达标样本量"}
                                     <ChevronRight className="w-4 h-4 ml-1" />
                                 </Button>
                             </>
                         )}
-                    </div>
+                    </div> : <p role="alert" className="text-label text-destructive">参数无效，无法计算成本与精度。</p>}
                 </div>
 
                 {/* 精度-成本曲线图 */}
@@ -522,53 +500,8 @@ export function PrecisionCostTradeoff({
                         </span>
                     </div>
 
-                    {/* 简化的可视化 */}
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-meta text-muted-foreground">
-                            <span>样本量 →</span>
-                            <span>成本 →</span>
-                        </div>
-                        <div className="relative h-32 rounded-surface overflow-hidden border border-primary-border bg-primary-muted">
-                            {/* 网格线 */}
-                            <div className="absolute inset-0 flex flex-col justify-between p-2">
-                                {[0, 1, 2, 3].map(i => (
-                                    <div key={i} className="border-t border-input" />
-                                ))}
-                            </div>
+                    <CostPrecisionChart {...curveData} targetMarginOfError={targetMarginOfError} budget={currentScenario.totalBudget} />
 
-                            {/* 曲线点 */}
-                            <div className="absolute inset-0 p-2 flex items-end justify-between">
-                                {curveData.slice(0, 8).map((point, index) => {
-                                    const maxCost = Math.max(...curveData.map(p => p.totalCost));
-                                    const heightPercent = maxCost > 0
-                                        ? (point.totalCost / maxCost) * 80 + 10
-                                        : 50;
-
-                                    return (
-                                        <div
-                                            key={index}
-                                            className="flex flex-col items-center gap-1"
-                                            style={{ width: `${100 / 8}%` }}
-                                        >
-                                            <div
-                                                className="w-2 bg-primary transition-[height]"
-                                                style={{ height: `${heightPercent}%` }}
-                                            />
-                                            <span className="text-meta text-foreground">
-                                                {point.sampleSize < 1000
-                                                    ? point.sampleSize
-                                                    : (point.sampleSize / 1000).toFixed(1) + 'k'
-                                                }
-                                            </span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                        <p className="text-meta text-muted-foreground text-center">
-                            随着样本量增加，边际精度收益递减
-                        </p>
-                    </div>
                 </div>
 
                 {/* 决策建议（与比例对比卡片的说明区一致：浅青绿提示框） */}
@@ -578,7 +511,7 @@ export function PrecisionCostTradeoff({
                         <div className="text-meta space-y-1 text-info">
                             <p className="font-medium">决策建议</p>
                             <ul className="space-y-1 list-disc list-inside text-info">
-                                <li>在大总体且其他参数固定时，所需样本量近似与误差限平方的倒数成比例</li>
+                                <li>在抽样比很小且其他参数固定时，所需样本量近似与误差限平方的倒数成比例</li>
                                 <li>例如误差限减半，线性单位成本下的样本量和变动成本约为原来的 4 倍</li>
                                 <li>有限总体校正和发放量封顶会改变上述倍数，应以本页当前情景的计算结果为准</li>
                                 <li>最终精度应由研究目标、关键子总体、预算与错误决策代价共同确定，不存在通用最优百分比</li>

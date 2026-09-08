@@ -33,7 +33,8 @@ export function computeFinitePopulationEquivalentSampleSize(
     if (!Number.isFinite(standardError) || standardError < 0) return null;
     if (standardError === 0 || populationVariance === 0) return populationSize;
 
-    const denominator = standardError * standardError + populationVariance / populationSize;
-    if (!(denominator > 0)) return null;
-    return Math.min(populationSize, populationVariance / denominator);
+    // Normalize before squaring so tiny but valid SE² and S²/N do not both
+    // underflow. This is 1 / ((SE/S)² + 1/N), algebraically the same inversion.
+    const relativeSe = standardError / Math.sqrt(populationVariance);
+    return Math.min(populationSize, 1 / (relativeSe * relativeSe + 1 / populationSize));
 }

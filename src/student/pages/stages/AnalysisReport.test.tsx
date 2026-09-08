@@ -285,7 +285,7 @@ test("AnalysisReport shows persisted advanced tool source in the sample plan pan
     });
 
     expect(view.getByText("CV-based计算（高级工具）")).toBeTruthy();
-    expect(view.getByText(/完整中间状态与推演明细不会完整写入实验存档/)).toBeTruthy();
+    expect(view.getByText(/应用时的输入与结果快照会保存/)).toBeTruthy();
     expect(view.getByText(/当前最终样本量由「CV-based计算」回写/)).toBeTruthy();
 });
 
