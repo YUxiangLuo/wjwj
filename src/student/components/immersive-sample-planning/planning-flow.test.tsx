@@ -3,7 +3,7 @@ import type { ComponentProps } from "react";
 import type { SampleParams } from "./types";
 import { installDomGlobals } from "@/test-utils/dom";
 const initialDom = installDomGlobals();
-const { cleanup, render, fireEvent, waitFor } = await import("@testing-library/react");
+const { cleanup, render, fireEvent, waitFor, within } = await import("@testing-library/react");
 const { ImmersiveSamplePlanning } = await import("./index");
 initialDom.restore();
 let restore: () => void;
@@ -38,10 +38,9 @@ test("initial form explains precision before guessing and rejects invalid intege
     expect(screen.queryByText("很接近！你的直觉不错。")).toBeNull();
 });
 
-test("skipped guesses, live final precision, validation, and confirmation survive the complete planning flow", async () => {
+test("the required learning flow preserves final precision, validation, and confirmation", async () => {
     const { onComplete, onDraftChange } = start();
-    fireEvent.click(screen.getByRole("button", { name: "暂不估计，直接查看建议" }));
-    fireEvent.click(screen.getByRole("button", { name: "已了解，直接调整方案" }));
+    openDecision();
     const input = screen.getByRole("spinbutton", { name: "最终样本量" });
     fireEvent.change(input, { target: { value: "40.5" } });
     expect((screen.getByTestId("immersive-sp-decision-next") as HTMLButtonElement).disabled).toBe(true);
@@ -49,9 +48,10 @@ test("skipped guesses, live final precision, validation, and confirmation surviv
     expect(screen.getByTestId("planning-outcome").textContent).toContain("±13.46 个百分点");
     expect(screen.getByTestId("planning-outcome").textContent).toContain("预计未达到目标");
     fireEvent.click(screen.getByTestId("immersive-sp-decision-next"));
-    // The optional quiz has its own answer/skip actions, no generic next bypass.
+    // Neither the footer nor a skip action can bypass the three understanding checks.
     expect(screen.queryByTestId("immersive-sp-next")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "跳过，直接去确认" }));
+    expect(screen.queryByRole("button", { name: /跳过/ })).toBeNull();
+    completeQuiz();
     expect(screen.getByTestId("planning-outcome").textContent).toContain("±13.46 个百分点");
     fireEvent.click(screen.getByTestId("immersive-sp-confirm"));
     await waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1));
@@ -61,8 +61,7 @@ test("skipped guesses, live final precision, validation, and confirmation surviv
 
 test("reopening a saved wizard restores the chosen count and its unmet precision", () => {
     const { onDraftChange, unmount } = start();
-    fireEvent.click(screen.getByRole("button", { name: "暂不估计，直接查看建议" }));
-    fireEvent.click(screen.getByRole("button", { name: "已了解，直接调整方案" }));
+    openDecision();
     fireEvent.change(screen.getByRole("spinbutton", { name: "最终样本量" }), { target: { value: "80" } });
     const saved = onDraftChange.mock.calls.at(-1)![0];
     unmount();
@@ -73,16 +72,119 @@ test("reopening a saved wizard restores the chosen count and its unmet precision
 
 function openDecision() {
     fireEvent.click(screen.getByRole("button", { name: "暂不估计，直接查看建议" }));
-    fireEvent.click(screen.getByRole("button", { name: "已了解，直接调整方案" }));
+    expect(screen.queryByRole("button", { name: "已了解，直接调整方案" })).toBeNull();
+    next();
+    answer("precision", 1);
+    next();
+    for (const [id, choice] of [["error_tolerance", 0], ["subpopulation", 2], ["variability", 1], ["design_effect", 2], ["non_response", 0], ["cost_balance", 1]] as const) {
+        answer(id, choice);
+        next();
+    }
+    next(); // six-factor summary
+    answer("calculation", 2);
+    next();
+}
+
+function next() {
+    const button = screen.getByTestId("immersive-sp-next") as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    fireEvent.click(button);
+}
+
+function answer(id: string, choice: number) {
+    const check = within(screen.getByTestId(`learning-check-${id}`));
+    fireEvent.click(check.getAllByRole("radio")[choice]!);
+    fireEvent.click(check.getByRole("button", { name: "检查答案" }));
+    expect(check.getByRole("status").textContent).toContain("理解正确");
+}
+
+function completeQuiz() {
+    for (const [id, choice] of [["quiz_se", 0], ["quiz_population", 1], ["quiz_design", 0]] as const) {
+        const next = screen.getByTestId("immersive-sp-quiz-next") as HTMLButtonElement;
+        expect(next.disabled).toBe(true);
+        fireEvent.click(next);
+        expect(screen.queryByTestId("immersive-sp-confirm")).toBeNull();
+        answer(id, choice);
+        expect(next.disabled).toBe(false);
+        fireEvent.click(next);
+    }
 }
 
 function openSensitivity() {
     fireEvent.click(screen.getByText("比较其他精度方案（点击即可采用）"));
 }
 
+test("wrong answers cannot unlock lessons, and completed checks survive closing and restoring the draft", () => {
+    const first = start();
+    fireEvent.click(screen.getByRole("button", { name: "暂不估计，直接查看建议" }));
+    next();
+    const check = within(screen.getByTestId("learning-check-precision"));
+    const forward = screen.getByTestId("immersive-sp-next") as HTMLButtonElement;
+    expect(forward.disabled).toBe(true);
+    fireEvent.click(check.getAllByRole("radio")[0]!);
+    fireEvent.click(check.getByRole("button", { name: "检查答案" }));
+    expect(check.getByRole("status").textContent).toContain("再想一想");
+    expect(forward.disabled).toBe(true);
+    fireEvent.click(forward);
+    expect(screen.getByTestId("learning-check-precision")).toBeTruthy();
+    const decision = screen.getByRole("button", { name: /调整方案 选择实际采用/ }) as HTMLButtonElement;
+    expect(decision.disabled).toBe(true);
+    fireEvent.click(decision);
+    expect(screen.queryByTestId("immersive-sp-final-size")).toBeNull();
+    answer("precision", 1);
+    next();
+    expect((screen.getByRole("button", { name: "六因素汇总" }) as HTMLButtonElement).disabled).toBe(true);
+    answer("error_tolerance", 0);
+    next();
+    const saved = first.onDraftChange.mock.calls.at(-1)![0];
+    expect(saved.navigation.learning?.completed).toEqual(["precision", "error_tolerance"]);
+    first.unmount();
+    start({ initialDraft: saved });
+    expect(screen.getByTestId("learning-check-subpopulation")).toBeTruthy();
+    expect((screen.getByTestId("immersive-sp-next") as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "允许多大的误差" }));
+    const restored = within(screen.getByTestId("learning-check-error_tolerance"));
+    expect(restored.getByText("已掌握")).toBeTruthy();
+    expect(restored.queryByRole("button", { name: "检查答案" })).toBeNull();
+    expect((screen.getByTestId("immersive-sp-next") as HTMLButtonElement).disabled).toBe(false);
+});
+
+test("legacy confirmation drafts retain the selected count but require unfinished learning", () => {
+    const first = start({ initialFinalSampleSize: 40 });
+    const saved = first.onDraftChange.mock.calls.at(-1)![0];
+    first.unmount();
+    const resumed = start({ initialDraft: { ...saved, navigation: {
+        phase: { type: "confirm" }, challenge: { guess: 40, revealed: true },
+    } } });
+    expect(screen.getByTestId("learning-check-precision")).toBeTruthy();
+    expect(screen.queryByTestId("immersive-sp-confirm")).toBeNull();
+    expect(resumed.onComplete).not.toHaveBeenCalled();
+    expect(resumed.onDraftChange.mock.calls.at(-1)![0].finalSampleSize).toBe(40);
+});
+
+test("incorrect quiz answers cannot advance or turn into completed answers after reopening", () => {
+    const first = start();
+    openDecision();
+    fireEvent.click(screen.getByTestId("immersive-sp-decision-next"));
+    const check = within(screen.getByTestId("learning-check-quiz_se"));
+    fireEvent.click(check.getAllByRole("radio")[1]!);
+    fireEvent.click(check.getByRole("button", { name: "检查答案" }));
+    expect((screen.getByTestId("immersive-sp-quiz-next") as HTMLButtonElement).disabled).toBe(true);
+    const saved = first.onDraftChange.mock.calls.at(-1)![0];
+    first.unmount();
+    start({ initialDraft: saved });
+    expect((screen.getByTestId("immersive-sp-quiz-next") as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByTestId("immersive-sp-confirm")).toBeNull();
+    answer("quiz_se", 0);
+    fireEvent.click(screen.getByTestId("immersive-sp-quiz-next"));
+    fireEvent.click(screen.getByRole("button", { name: "上一步" }));
+    expect(within(screen.getByTestId("learning-check-quiz_se")).getByText("已掌握")).toBeTruthy();
+    expect((screen.getByTestId("immersive-sp-quiz-next") as HTMLButtonElement).disabled).toBe(false);
+});
+
 async function confirmPlan(onComplete: ReturnType<typeof start>["onComplete"]) {
     fireEvent.click(screen.getByTestId("immersive-sp-decision-next"));
-    fireEvent.click(screen.getByRole("button", { name: "跳过，直接去确认" }));
+    completeQuiz();
     fireEvent.click(screen.getByTestId("immersive-sp-confirm"));
     await waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1));
     return onComplete.mock.calls[0]![0];

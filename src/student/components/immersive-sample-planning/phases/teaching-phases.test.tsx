@@ -138,11 +138,11 @@ test("FactorsPhase 区分初始 n0 的 25 倍与有限总体实际倍数", () =>
 });
 
 test("QuizPhase 基础路径只考已出现的 SE、FPC 与 deff", () => {
-    const first = render(<QuizPhase questionIndex={0} onNext={() => {}} onSkip={() => {}} />);
+    const first = render(<QuizPhase questionIndex={0} completed={false} onComplete={() => {}} onNext={() => {}} />);
     expect(first.container.textContent).toContain("标准误差");
-    const second = render(<QuizPhase questionIndex={1} onNext={() => {}} onSkip={() => {}} />);
+    const second = render(<QuizPhase questionIndex={1} completed={false} onComplete={() => {}} onNext={() => {}} />);
     expect(second.container.textContent).toContain("总体规模从 2,000 增加到 200,000");
-    const third = render(<QuizPhase questionIndex={2} onNext={() => {}} onSkip={() => {}} />);
+    const third = render(<QuizPhase questionIndex={2} completed={false} onComplete={() => {}} onNext={() => {}} />);
     expect(third.container.textContent).toContain("deff = 2");
     expect(third.container.textContent).not.toContain("奈曼");
 });

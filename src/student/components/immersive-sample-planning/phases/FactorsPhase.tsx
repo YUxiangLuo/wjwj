@@ -8,6 +8,7 @@ import type { FactorsStep } from "../types";
 import { PlanningHeading } from "../PlanningShared";
 import { IconTile } from "@/components/IconTile";
 import { StatusBadge } from "@/components/StatusBadge";
+import { FACTOR_ORDER } from "../learning";
 
 interface Props {
     step: FactorsStep;
@@ -15,6 +16,7 @@ interface Props {
     onNext: () => void;
     onStepChange?: (step: FactorsStep) => void;
     hideNext?: boolean;
+    completedFactors?: readonly (typeof FACTOR_ORDER)[number][];
 }
 
 const STEP_META: Record<FactorsStep, { label: string; badge: string; icon: typeof Crosshair; intro: string }> = {
@@ -58,7 +60,7 @@ const STEP_META: Record<FactorsStep, { label: string; badge: string; icon: typeo
         label: "六因素汇总",
         badge: "汇总",
         icon: CheckCircle2,
-        intro: "先看全貌，再选择感兴趣的因素了解详情。准备好后，把当前条件代入计算公式。",
+        intro: "六类因素已经逐项学过。用这张小结整理它们的作用，再把当前条件代入计算公式。",
     },
 };
 
@@ -72,15 +74,19 @@ function buildMeanErrorChoices(current: number) {
     return [...new Set(base)].sort((a, b) => a - b);
 }
 
-export function FactorsPhase({ step, params, onNext, onStepChange, hideNext = false }: Props) {
+export function FactorsPhase({ step, params, onNext, onStepChange, hideNext = false, completedFactors = [] }: Props) {
     const meta = STEP_META[step];
+    const firstIncomplete = FACTOR_ORDER.findIndex(id => !completedFactors.includes(id));
+    const unlockedIndex = firstIncomplete < 0 ? FACTOR_ORDER.length : firstIncomplete;
 
     return (
         <div className="space-y-6">
-            <PlanningHeading title="哪些条件会改变样本量？" description="六类因素可以分别查看。这里的示例只用于理解原理；实际参数在「调整方案」中统一设置。"/>
+            <PlanningHeading title="哪些条件会改变样本量？" description="依次看六类因素，每项完成一个简短判断。这里的示例用于理解原理；实际参数在「调整方案」中统一设置。"/>
+            {onStepChange && <p className="text-label text-muted-foreground">已掌握 {completedFactors.length} / {FACTOR_ORDER.length} 项；已完成的因素可随时回看。</p>}
             {onStepChange && <div className="flex flex-wrap gap-2" role="group" aria-label="选择影响因素">
-                {(Object.keys(STEP_META) as FactorsStep[]).map(key => <Button key={key} type="button" variant={step === key ? "default" : "outline"}
-                    aria-pressed={step === key} onClick={() => onStepChange(key)} className="min-h-11 whitespace-normal text-left">
+                {(Object.keys(STEP_META) as FactorsStep[]).map((key, index) => <Button key={key} type="button" variant={step === key ? "default" : "outline"}
+                    aria-pressed={step === key} disabled={index > unlockedIndex} onClick={() => onStepChange(key)} className="min-h-11 whitespace-normal text-left">
+                    {key !== "summary" && completedFactors.includes(key) && <CheckCircle2 aria-hidden="true" className="mr-2 h-4 w-4 shrink-0"/>}
                     {STEP_META[key].label}
                 </Button>)}
             </div>}

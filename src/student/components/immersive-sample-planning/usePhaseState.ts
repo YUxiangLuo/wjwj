@@ -1,148 +1,160 @@
-import { useState, useCallback, useMemo, useRef } from "react";
-import {
-    PHASE_ORDER,
-    type Phase,
-    type PhaseNavigationSnapshot,
-    type PhaseType,
-    initialPhase,
-    planningStepIndex,
-    PLANNING_STEPS,
-} from "./types";
-import { QUIZ_QUESTION_COUNT } from "./phases/QuizPhase";
+import { useState, useCallback, type SetStateAction } from "react";
+import { type Phase, type PhaseNavigationSnapshot, type PhaseType, initialPhase, planningStepIndex } from "./types";
+import { FACTOR_ORDER, QUIZ_CHECKS, phaseLearningCheck, restoreLearningProgress, type LearningCheckId, type LearningProgress } from "./learning";
 
-function phaseIndex(type: PhaseType): number {
-    return PHASE_ORDER.indexOf(type);
+interface NavigationState extends PhaseNavigationSnapshot {
+    learning: LearningProgress;
 }
 
-/** Percentage progress through the sample planning flow (0–100). */
-function phaseProgress(phase: Phase): number {
-    if (["confirm", "launching", "done"].includes(phase.type)) return 100;
-    const sub = phase.type === "quiz" ? phase.questionIndex / QUIZ_QUESTION_COUNT : phase.type === "challenge" && phase.revealed ? 0.5 : 0;
-    return ((planningStepIndex(phase.type) + sub) / PLANNING_STEPS.length) * 100;
+function reachableStep({ challenge, learning }: NavigationState): number {
+    if (!challenge.revealed) return 0;
+    if (!learning.completed.includes("precision")) return 1;
+    if (!FACTOR_ORDER.every(id => learning.completed.includes(id))) return 2;
+    if (!learning.completed.includes("calculation")) return 3;
+    return learning.decisionReviewed ? 5 : 4;
 }
 
-function defaultPhaseFor(type: PhaseType): Phase {
-    switch (type) {
-        case "challenge": return initialPhase();
-        case "precision": return { type: "precision" };
-        case "factors": return { type: "factors", step: "summary" };
-        case "formula": return { type: "formula", step: "z" };
-        case "fpc": return { type: "fpc" };
-        case "fourstep": return { type: "fourstep", scenario: "summary" };
-        case "decision": return { type: "decision" };
-        case "quiz": return { type: "quiz", questionIndex: 0 };
-        case "confirm": return { type: "confirm" };
-        case "launching": return { type: "launching" };
-        case "done": return { type: "done" };
+function firstFactor(state: NavigationState) {
+    return FACTOR_ORDER.find(id => !state.learning.completed.includes(id)) ?? "summary";
+}
+
+function firstQuiz(state: NavigationState) {
+    const index = QUIZ_CHECKS.findIndex(id => !state.learning.completed.includes(id));
+    return index < 0 ? QUIZ_CHECKS.length - 1 : index;
+}
+
+function hasFinishedLearning(state: NavigationState) {
+    return reachableStep(state) === 5 && QUIZ_CHECKS.every(id => state.learning.completed.includes(id));
+}
+
+function phaseForStep(step: number, state: NavigationState): Phase {
+    if (step === 0) return { type: "challenge", ...state.challenge };
+    if (step === 1) return { type: "precision" };
+    if (step === 2) return { type: "factors", step: firstFactor(state) };
+    if (step === 3) return { type: "fourstep", scenario: "summary" };
+    if (step === 4) return { type: "decision" };
+    return { type: "quiz", questionIndex: firstQuiz(state) };
+}
+
+/** Legacy drafts retain their parameters, but a late page is not evidence of completed learning. */
+function restoreNavigation(initial?: PhaseNavigationSnapshot | null): NavigationState {
+    const state: NavigationState = {
+        phase: initial?.phase ?? initialPhase(),
+        challenge: initial?.phase.type === "challenge"
+            ? { guess: initial.phase.guess, revealed: initial.phase.revealed }
+            : initial?.challenge ?? { guess: null, revealed: false },
+        learning: restoreLearningProgress(initial?.learning),
+    };
+    const limit = reachableStep(state);
+    if (planningStepIndex(state.phase.type) > limit) state.phase = phaseForStep(limit, state);
+    if (state.phase.type === "formula" || state.phase.type === "fpc") state.phase = { type: "fourstep", scenario: "summary" };
+    if (state.phase.type === "factors") {
+        const first = firstFactor(state);
+        if (first !== "summary" && (state.phase.step === "summary" || FACTOR_ORDER.indexOf(state.phase.step) > FACTOR_ORDER.indexOf(first))) {
+            state.phase = { type: "factors", step: first };
+        }
     }
+    if (state.phase.type === "quiz") {
+        state.phase = { type: "quiz", questionIndex: Math.max(0, Math.min(state.phase.questionIndex, firstQuiz(state))) };
+    }
+    if (["confirm", "launching", "done"].includes(state.phase.type)) {
+        state.phase = hasFinishedLearning(state) ? { type: "confirm" } : phaseForStep(limit, state);
+    }
+    return state;
+}
+
+function canAdvance(state: NavigationState) {
+    const { phase, learning } = state;
+    if (phase.type === "challenge") return phase.revealed;
+    const check = phaseLearningCheck(phase);
+    if (check) return learning.completed.includes(check);
+    if (phase.type === "factors") return FACTOR_ORDER.every(id => learning.completed.includes(id));
+    return phase.type === "decision";
 }
 
 export function usePhaseState(initial?: PhaseNavigationSnapshot | null) {
-    const [phase, setPhase] = useState<Phase>(() => initial?.phase ?? initialPhase());
+    const [state, setState] = useState(() => restoreNavigation(initial));
     const [direction, setDirection] = useState<"forward" | "backward">("forward");
+    const { phase, learning } = state;
 
-    /** Last completed challenge state — used when navigating back from formula step "z" so guess is not lost. */
-    const challengeSnapshotRef = useRef<{ guess: number | null; revealed: boolean }>({
-        guess: initial?.challenge.guess ?? (initial?.phase.type === "challenge" ? initial.phase.guess : null),
-        revealed: initial?.challenge.revealed ?? (initial?.phase.type === "challenge" ? initial.phase.revealed : false),
-    });
-    /** Always latest phase — avoids stale `phase.type` in jumpTo after async gaps. */
-    const phaseRef = useRef(phase);
-    phaseRef.current = phase;
+    // Local edits cannot move the wizard into another page or unlock an unfinished factor.
+    const setPhase = useCallback((action: SetStateAction<Phase>) => setState(previous => {
+        const next = typeof action === "function" ? action(previous.phase) : action;
+        if (next.type !== previous.phase.type) return previous;
+        if (next.type === "challenge") return { ...previous, phase: next, challenge: { guess: next.guess, revealed: next.revealed } };
+        if (next.type === "factors") {
+            const first = firstFactor(previous);
+            if (first !== "summary" && (next.step === "summary" || FACTOR_ORDER.indexOf(next.step) > FACTOR_ORDER.indexOf(first))) return previous;
+            return { ...previous, phase: next };
+        }
+        return previous;
+    }), []);
 
-    const progress = useMemo(() => phaseProgress(phase), [phase]);
-    const navigationSnapshot = useMemo<PhaseNavigationSnapshot>(() => ({
-        phase,
-        challenge: phase.type === "challenge"
-            ? { guess: phase.guess, revealed: phase.revealed }
-            : { ...challengeSnapshotRef.current },
-    }), [phase]);
+    const completeCheck = useCallback((id: LearningCheckId) => setState(previous => {
+        if (phaseLearningCheck(previous.phase) !== id || previous.learning.completed.includes(id)) return previous;
+        return { ...previous, learning: { ...previous.learning, completed: [...previous.learning.completed, id] } };
+    }), []);
 
     const goNext = useCallback(() => {
         setDirection("forward");
-        setPhase((prev) => {
-            if (prev.type === "challenge") {
-                if (!prev.revealed) return prev;
-                challengeSnapshotRef.current = { guess: prev.guess, revealed: prev.revealed };
-                return { type: "precision" };
-            }
-            if (prev.type === "precision") {
-                return { type: "factors", step: "summary" };
-            }
-            if (prev.type === "factors") {
-                return { type: "fourstep", scenario: "summary" };
-            }
-            if (prev.type === "formula" || prev.type === "fpc") {
-                return { type: "fourstep", scenario: "summary" };
-            }
-            if (prev.type === "fourstep") {
-                return { type: "decision" };
-            }
-            if (prev.type === "quiz") {
-                if (prev.questionIndex < QUIZ_QUESTION_COUNT - 1) return { type: "quiz", questionIndex: prev.questionIndex + 1 };
-                return { type: "confirm" };
-            }
-            if (prev.type === "confirm" || prev.type === "launching") return prev;
-            const idx = phaseIndex(prev.type);
-            const nextIdx = Math.min(idx + 1, PHASE_ORDER.length - 1);
-            return defaultPhaseFor(PHASE_ORDER[nextIdx]!);
+        setState(previous => {
+            if (!canAdvance(previous)) return previous;
+            const current = previous.phase;
+            let next: Phase;
+            if (current.type === "challenge") next = { type: "precision" };
+            else if (current.type === "precision") next = { type: "factors", step: firstFactor(previous) };
+            else if (current.type === "factors") {
+                if (current.step === "summary") next = { type: "fourstep", scenario: "summary" };
+                else next = { type: "factors", step: FACTOR_ORDER[FACTOR_ORDER.indexOf(current.step) + 1] ?? "summary" };
+            } else if (current.type === "fourstep") next = { type: "decision" };
+            else if (current.type === "decision") {
+                const reviewed = { ...previous, learning: { ...previous.learning, decisionReviewed: true } };
+                return { ...reviewed, phase: hasFinishedLearning(reviewed) ? { type: "confirm" } : { type: "quiz", questionIndex: firstQuiz(reviewed) } };
+            } else if (current.type === "quiz") {
+                next = current.questionIndex < QUIZ_CHECKS.length - 1
+                    ? { type: "quiz", questionIndex: current.questionIndex + 1 }
+                    : { type: "confirm" };
+            } else return previous;
+            return { ...previous, phase: next };
         });
     }, []);
 
     const goPrev = useCallback(() => {
         setDirection("backward");
-        setPhase((prev) => {
-            if (prev.type === "precision") {
-                return {
-                    type: "challenge",
-                    guess: challengeSnapshotRef.current.guess,
-                    revealed: challengeSnapshotRef.current.revealed,
-                };
-            }
-            if (prev.type === "factors") {
-                return { type: "precision" };
-            }
-            if (prev.type === "formula" || prev.type === "fpc") {
-                return { type: "precision" };
-            }
-            if (prev.type === "fourstep") {
-                return { type: "factors", step: "summary" };
-            }
-            if (prev.type === "quiz") {
-                if (prev.questionIndex > 0) return { type: "quiz", questionIndex: prev.questionIndex - 1 };
-                return { type: "decision" };
-            }
-            if (prev.type === "confirm") return { type: "quiz", questionIndex: QUIZ_QUESTION_COUNT - 1 };
-            if (prev.type === "launching") return prev;
-            const idx = phaseIndex(prev.type);
-            if (idx <= 0) return prev;
-            return defaultPhaseFor(PHASE_ORDER[idx - 1]!);
+        setState(previous => {
+            const current = previous.phase;
+            let next: Phase;
+            if (current.type === "precision") next = { type: "challenge", ...previous.challenge };
+            else if (current.type === "factors") {
+                const index = current.step === "summary" ? FACTOR_ORDER.length : FACTOR_ORDER.indexOf(current.step);
+                next = index > 0 ? { type: "factors", step: FACTOR_ORDER[index - 1]! } : { type: "precision" };
+            } else if (current.type === "fourstep") next = { type: "factors", step: "summary" };
+            else if (current.type === "decision") next = { type: "fourstep", scenario: "summary" };
+            else if (current.type === "quiz") next = current.questionIndex > 0 ? { type: "quiz", questionIndex: current.questionIndex - 1 } : { type: "decision" };
+            else if (current.type === "confirm") next = { type: "quiz", questionIndex: QUIZ_CHECKS.length - 1 };
+            else return previous;
+            return { ...previous, phase: next };
         });
     }, []);
 
     const jumpTo = useCallback((type: PhaseType) => {
-        const currentIdx = phaseIndex(phaseRef.current.type);
-        const targetIdx = phaseIndex(type);
-        setDirection(targetIdx >= currentIdx ? "forward" : "backward");
-        const current = phaseRef.current;
-        if (current.type === "challenge") challengeSnapshotRef.current = { guess: current.guess, revealed: current.revealed };
-        setPhase(type === "challenge" ? { type: "challenge", ...challengeSnapshotRef.current } : defaultPhaseFor(type));
+        setState(previous => {
+            if (["confirm", "launching", "done"].includes(type) || planningStepIndex(type) > reachableStep(previous)) return previous;
+            return { ...previous, phase: phaseForStep(planningStepIndex(type), previous) };
+        });
     }, []);
 
-    const skipQuiz = useCallback(() => {
-        setDirection("forward");
-        setPhase({ type: "confirm" });
-    }, []);
+    const finish = useCallback(() => setState(previous => previous.phase.type === "confirm" && hasFinishedLearning(previous)
+        ? { ...previous, phase: { type: "done" } } : previous), []);
 
-    return {
-        phase,
-        navigationSnapshot,
-        setPhase,
-        direction,
-        progress,
-        goNext,
-        goPrev,
-        jumpTo,
-        skipQuiz,
-    };
+    const completed = learning.completed;
+    const progress = ((state.challenge.revealed ? 1 : 0)
+        + Number(completed.includes("precision"))
+        + FACTOR_ORDER.filter(id => completed.includes(id)).length / FACTOR_ORDER.length
+        + Number(completed.includes("calculation"))
+        + Number(learning.decisionReviewed)
+        + QUIZ_CHECKS.filter(id => completed.includes(id)).length / QUIZ_CHECKS.length) / 6 * 100;
+
+    return { phase, navigationSnapshot: state, learning, setPhase, direction, progress,
+        goNext, goPrev, jumpTo, finish, completeCheck, canGoNext: canAdvance(state), reachableStep: reachableStep(state) };
 }

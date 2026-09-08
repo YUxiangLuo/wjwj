@@ -85,6 +85,12 @@ async function namedButton(session: string, name: string) {
     const activated = await evaluate(session, `(() => {const button = [...document.querySelectorAll("button")].find(b => b.textContent.trim() === ${JSON.stringify(name)}); if (!button || button.disabled) return false; button.click(); return true;})()`);
     assert(activated, `Button unavailable: ${name}`);
 }
+async function answerLearningCheck(id: string, option: number) {
+    const selector = `[data-testid="learning-check-${id}"]`;
+    await activate(student, `${selector} input[value="${option}"]`);
+    await activate(student, `${selector} button`);
+    assert(await evaluate(student, `document.querySelector(${JSON.stringify(selector)}).textContent.includes("理解正确")`), `Learning check ${id} did not pass`);
+}
 async function login(session: string, role: "student" | "teacher", account: string) {
     await page(session, `/${role}/login`, "input[type=password]");
     await browser(session, "fill", "input:not([type=password])", account);
@@ -181,10 +187,40 @@ try {
     console.log("PASS planning dialog viewport and content/footer geometry (real browser)");
     const plan = computePpsMeanPlan();
     await namedButton(student, "暂不估计，直接查看建议");
-    await namedButton(student, "已了解，直接调整方案");
+    assert(await evaluate(student, '!document.body.textContent.includes("已了解，直接调整方案")'), "Planning still exposes the learning bypass");
+    await activate(student, '[data-testid="immersive-sp-next"]');
+    assert(await evaluate(student, 'document.querySelector("[data-testid=immersive-sp-next]").disabled'), "Precision lesson should require an understanding check");
+    await activate(student, '[data-testid="learning-check-precision"] input[value="0"]');
+    await activate(student, '[data-testid="learning-check-precision"] button');
+    assert(await evaluate(student, 'document.querySelector("[data-testid=immersive-sp-next]").disabled'), "An incorrect answer unlocked precision");
+    await evaluate(student, 'document.querySelector("[data-testid=learning-check-precision]").scrollIntoView({block:"end"})');
+    await browser(student, "screenshot", join(artifacts, "planning-learning-feedback.png"));
+    await answerLearningCheck("precision", 1);
+    await activate(student, '[data-testid="immersive-sp-next"]');
+    await answerLearningCheck("error_tolerance", 0);
+    await activate(student, '[data-testid="immersive-sp-next"]');
+    // A real reload resumes the first unfinished factor without unlocking later content.
+    await browser(student, "reload");
+    await visible(student, '[data-testid="learning-check-subpopulation"]');
+    assert(await evaluate(student, 'document.querySelector("[data-testid=immersive-sp-next]").disabled && document.body.textContent.includes("已掌握 1 / 6")'), "Learning progress was lost or skipped after reloading");
+    await evaluate(student, 'document.querySelector("[data-testid=learning-check-subpopulation]").scrollIntoView({block:"end"})');
+    assert(await evaluate(student, 'document.documentElement.scrollWidth <= innerWidth && document.querySelector("[data-testid=planning-scroll-content]").scrollWidth <= document.querySelector("[data-testid=planning-scroll-content]").clientWidth'), "Learning content overflows its viewport");
+    await browser(student, "screenshot", join(artifacts, "planning-learning-resumed.png"));
+    for (const [id, answer] of [["subpopulation", 2], ["variability", 1], ["design_effect", 2], ["non_response", 0], ["cost_balance", 1]] as const) {
+        await answerLearningCheck(id, answer);
+        await activate(student, '[data-testid="immersive-sp-next"]');
+    }
+    await activate(student, '[data-testid="immersive-sp-next"]');
+    await answerLearningCheck("calculation", 2);
+    await activate(student, '[data-testid="immersive-sp-next"]');
     assert(await evaluate(student, `document.querySelector('[data-testid="immersive-sp-final-size"]').value === ${JSON.stringify(String(plan.recommendedSize))}`), "Planning UI recommendation differs from the fixture");
     await activate(student, '[data-testid="immersive-sp-decision-next"]');
-    await namedButton(student, "跳过，直接去确认");
+    for (const [id, answer] of [["quiz_se", 0], ["quiz_population", 1], ["quiz_design", 0]] as const) {
+        assert(await evaluate(student, 'document.querySelector("[data-testid=immersive-sp-quiz-next]").disabled && !document.body.textContent.includes("跳过，直接去确认")'), "Quiz can be skipped without understanding");
+        await answerLearningCheck(id, answer);
+        await activate(student, '[data-testid="immersive-sp-quiz-next"]');
+    }
+    console.log("PASS required planning lessons, retry feedback, draft recovery and layout (real browser)");
     await activate(student, '[data-testid="immersive-sp-confirm"]');
     await visible(student, '[data-testid="student-stage-sampling"]');
     experiment = await api(student, experimentPath);

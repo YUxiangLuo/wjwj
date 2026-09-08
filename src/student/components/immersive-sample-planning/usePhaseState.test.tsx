@@ -1,145 +1,113 @@
-import { afterEach, beforeEach, expect, test, describe } from "bun:test";
-import { act, renderHook } from "@testing-library/react";
-import { cleanup } from "@testing-library/react";
+import { afterEach, beforeEach, expect, test } from "bun:test";
+import { act, renderHook, cleanup } from "@testing-library/react";
 import { installDomGlobals } from "@/test-utils/dom";
 import { usePhaseState } from "./usePhaseState";
-import { QUIZ_QUESTION_COUNT } from "./phases/QuizPhase";
+import { FACTOR_ORDER, QUIZ_CHECKS } from "./learning";
+import type { Phase } from "./types";
 
-let restoreDom: (() => void) | null = null;
+let restore: () => void;
+beforeEach(() => { restore = installDomGlobals().restore; });
+afterEach(() => { cleanup(); restore(); });
 
-beforeEach(() => {
-    const dom = installDomGlobals();
-    restoreDom = dom.restore;
-});
+function start() {
+    return renderHook(() => usePhaseState({ phase: { type: "precision" }, challenge: { guess: 40, revealed: true } }));
+}
 
-afterEach(async () => {
-    cleanup();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    restoreDom?.();
-    restoreDom = null;
-});
-
-describe("usePhaseState", () => {
-    test("初始为 challenge，未揭示时 goNext 不前进", () => {
-        const { result } = renderHook(() => usePhaseState());
-        expect(result.current.phase).toEqual({ type: "challenge", guess: null, revealed: false });
-        act(() => {
-            result.current.goNext();
-        });
-        expect(result.current.phase.type).toBe("challenge");
-    });
-
-    test("challenge 揭示后 goNext 进入 precision，goPrev 回到 challenge 并保留猜测", () => {
-        const { result } = renderHook(() => usePhaseState());
-        act(() => {
-            result.current.setPhase({ type: "challenge", guess: 42, revealed: true });
-        });
-        act(() => {
-            result.current.goNext();
-        });
-        expect(result.current.phase).toEqual({ type: "precision" });
-        act(() => {
-            result.current.goPrev();
-        });
-        expect(result.current.phase).toEqual({ type: "challenge", guess: 42, revealed: true });
-    });
-
-    test("precision → factors 概览 → fourstep summary → decision", () => {
-        const { result } = renderHook(() => usePhaseState());
-        act(() => {
-            result.current.setPhase({ type: "precision" });
-        });
-        act(() => {
-            result.current.goNext();
-        });
-        expect(result.current.phase).toEqual({ type: "factors", step: "summary" });
-        act(() => { result.current.goNext(); });
-        expect(result.current.phase).toEqual({ type: "fourstep", scenario: "summary" });
-        act(() => { result.current.goNext(); });
-        expect(result.current.phase).toEqual({ type: "decision" });
-        act(() => { result.current.goPrev(); });
-        expect(result.current.phase).toEqual({ type: "fourstep", scenario: "summary" });
-        act(() => { result.current.goPrev(); });
-        expect(result.current.phase).toEqual({ type: "factors", step: "summary" });
-    });
-
-    test("quiz 0→...→last→confirm，goPrev 从 confirm 回到 last quiz", () => {
-        const { result } = renderHook(() => usePhaseState());
-        act(() => {
-            result.current.setPhase({ type: "quiz", questionIndex: 0 });
-        });
-        for (let i = 0; i < QUIZ_QUESTION_COUNT; i++) {
-            act(() => { result.current.goNext(); });
-        }
-        expect(result.current.phase).toEqual({ type: "confirm" });
-        act(() => {
-            result.current.goPrev();
-        });
-        expect(result.current.phase).toEqual({ type: "quiz", questionIndex: QUIZ_QUESTION_COUNT - 1 });
-    });
-
-    test("skipQuiz 直接进入 confirm", () => {
-        const { result } = renderHook(() => usePhaseState());
-        act(() => {
-            result.current.setPhase({ type: "quiz", questionIndex: 0 });
-        });
-        act(() => {
-            result.current.skipQuiz();
-        });
-        expect(result.current.phase).toEqual({ type: "confirm" });
-    });
-
-    test("jumpTo 重置为目标阶段默认状态", () => {
-        const { result } = renderHook(() => usePhaseState());
-        act(() => {
-            result.current.setPhase({ type: "quiz", questionIndex: 2 });
-        });
-        act(() => {
-            result.current.jumpTo("decision");
-        });
-        expect(result.current.phase).toEqual({ type: "decision" });
-    });
-
-    test("restores both the current phase and the completed challenge snapshot", () => {
-        const { result } = renderHook(() => usePhaseState({
-            phase: { type: "precision" },
-            challenge: { guess: 64, revealed: true },
-        }));
-
-        expect(result.current.phase).toEqual({ type: "precision" });
-        act(() => result.current.goPrev());
-        expect(result.current.phase).toEqual({ type: "challenge", guess: 64, revealed: true });
-    });
-});
-
-test("从任一因素详情都能继续计算，并可返回因素概览", () => {
+test("unrevealed challenge, forward navigation and terminal jumps cannot skip learning", () => {
     const { result } = renderHook(() => usePhaseState());
-    act(() => result.current.setPhase({ type: "factors", step: "non_response" }));
+    act(() => { result.current.goNext(); result.current.jumpTo("decision"); result.current.jumpTo("confirm"); result.current.finish(); });
+    expect(result.current.phase).toEqual({ type: "challenge", guess: null, revealed: false });
+    act(() => result.current.setPhase({ type: "challenge", guess: 42, revealed: true }));
     act(() => result.current.goNext());
-    expect(result.current.phase).toEqual({ type: "fourstep", scenario: "summary" });
+    expect(result.current.phase.type).toBe("precision");
     act(() => result.current.goPrev());
-    expect(result.current.phase).toEqual({ type: "factors", step: "summary" });
+    expect(result.current.phase).toEqual({ type: "challenge", guess: 42, revealed: true });
 });
 
-test("步骤导航保留已提交的猜测，也能保存跳过猜测的进度", () => {
-    const { result } = renderHook(() => usePhaseState());
-    for (const guess of [40, null]) {
-        act(() => result.current.setPhase({ type: "challenge", guess, revealed: true }));
-        act(() => result.current.jumpTo("decision"));
-        act(() => result.current.jumpTo("challenge"));
-        expect(result.current.phase).toEqual({ type: "challenge", guess, revealed: true });
-    }
-});
-
-test("可见六步的进度单调推进，切换因素不虚增进度", () => {
-    const { result } = renderHook(() => usePhaseState());
-    act(() => result.current.setPhase({ type: "challenge", guess: 40, revealed: true }));
-    const progress: number[] = [];
-    for (let i = 0; i < 8; i++) {
-        progress.push(result.current.progress);
+test("all six factors and the calculation must be understood before the decision and quiz unlock", () => {
+    const { result } = start();
+    act(() => { result.current.goNext(); result.current.completeCheck("calculation"); result.current.jumpTo("decision"); });
+    expect(result.current.phase.type).toBe("precision");
+    expect(result.current.learning.completed).toEqual([]);
+    act(() => result.current.completeCheck("precision"));
+    act(() => result.current.goNext());
+    for (const id of FACTOR_ORDER) {
+        expect(result.current.phase).toEqual({ type: "factors", step: id });
+        act(() => {
+            result.current.goNext();
+            result.current.setPhase({ type: "factors", step: "summary" });
+            result.current.jumpTo("fourstep");
+        });
+        expect(result.current.phase).toEqual({ type: "factors", step: id });
+        act(() => result.current.completeCheck(id));
         act(() => result.current.goNext());
     }
-    expect(progress).toEqual([...progress].sort((a,b) => a-b));
+    expect(result.current.phase).toEqual({ type: "factors", step: "summary" });
+    act(() => result.current.goNext());
+    act(() => result.current.goNext());
+    expect(result.current.phase.type).toBe("fourstep");
+    act(() => result.current.completeCheck("calculation"));
+    act(() => result.current.goNext());
+    expect(result.current.phase.type).toBe("decision");
+    act(() => result.current.jumpTo("quiz"));
+    expect(result.current.phase.type).toBe("decision");
+    act(() => result.current.goNext());
+    expect(result.current.phase).toEqual({ type: "quiz", questionIndex: 0 });
+    for (const [index, id] of QUIZ_CHECKS.entries()) {
+        act(() => { result.current.goNext(); result.current.jumpTo("confirm"); result.current.finish(); });
+        expect(result.current.phase).toEqual({ type: "quiz", questionIndex: index });
+        act(() => result.current.completeCheck(id));
+        act(() => result.current.goNext());
+    }
     expect(result.current.phase.type).toBe("confirm");
     expect(result.current.progress).toBe(100);
+    act(() => result.current.jumpTo("decision"));
+    act(() => result.current.goNext());
+    expect(result.current.phase.type).toBe("confirm");
+    act(() => result.current.finish());
+    expect(result.current.phase.type).toBe("done");
+});
+
+test("resuming and revisiting preserve mastered factors and do not reset progress", () => {
+    const { result, unmount } = renderHook(() => usePhaseState({
+        phase: { type: "factors", step: "subpopulation" }, challenge: { guess: null, revealed: true },
+        learning: { version: 1, completed: ["precision", "error_tolerance"], decisionReviewed: false },
+    }));
+    const saved = result.current.navigationSnapshot;
+    unmount();
+    const resumed = renderHook(() => usePhaseState(saved)).result;
+    expect(resumed.current.phase).toEqual({ type: "factors", step: "subpopulation" });
+    expect(resumed.current.canGoNext).toBe(false);
+    const progress = resumed.current.progress;
+    act(() => resumed.current.goPrev());
+    expect(resumed.current.phase).toEqual({ type: "factors", step: "error_tolerance" });
+    expect(resumed.current.canGoNext).toBe(true);
+    expect(resumed.current.progress).toBe(progress);
+    act(() => resumed.current.goNext());
+    expect(resumed.current.phase).toEqual({ type: "factors", step: "subpopulation" });
+    act(() => resumed.current.jumpTo("precision"));
+    act(() => resumed.current.jumpTo("factors"));
+    expect(resumed.current.phase).toEqual({ type: "factors", step: "subpopulation" });
+});
+
+test.each<Phase>([
+    { type: "decision" }, { type: "quiz", questionIndex: 2 }, { type: "confirm" },
+    { type: "launching" }, { type: "done" }, { type: "fpc" },
+])("legacy $type draft resumes the first unfinished lesson rather than implying completion", phase => {
+    const { result } = renderHook(() => usePhaseState({ phase, challenge: { guess: 40, revealed: true } }));
+    expect(result.current.phase.type).toBe("precision");
+    expect(result.current.canGoNext).toBe(false);
+    expect(result.current.navigationSnapshot.challenge.guess).toBe(40);
+    act(() => result.current.finish());
+    expect(result.current.phase.type).toBe("precision");
+});
+
+test("a completed terminal draft restores a review screen and still needs explicit confirmation", () => {
+    const { result } = renderHook(() => usePhaseState({
+        phase: { type: "done" }, challenge: { guess: null, revealed: true },
+        learning: { version: 1, completed: ["precision", ...FACTOR_ORDER, "calculation", ...QUIZ_CHECKS], decisionReviewed: true },
+    }));
+    expect(result.current.phase.type).toBe("confirm");
+    act(() => result.current.finish());
+    expect(result.current.phase.type).toBe("done");
 });

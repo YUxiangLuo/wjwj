@@ -38,7 +38,7 @@ export type PhaseType = (typeof PHASE_ORDER)[number];
 export const PLANNING_STEPS = [
     { type: "challenge", label: "明确目标", description: "试估一个样本量" },
     { type: "precision", label: "认识精度", description: "看看样本量与误差" },
-    { type: "factors", label: "了解影响因素", description: "按需查看六类条件" },
+    { type: "factors", label: "了解影响因素", description: "逐项理解六类条件" },
     { type: "fourstep", label: "理解推荐", description: "用当前数据算一遍" },
     { type: "decision", label: "调整方案", description: "选择实际采用的数量" },
     { type: "quiz", label: "检查与确认", description: "自检后保存规划" },
@@ -80,6 +80,8 @@ export interface PhaseNavigationSnapshot {
         guess: number | null;
         revealed: boolean;
     };
+    /** Missing on legacy drafts; resume at the first unfinished learning check. */
+    learning?: import("./learning").LearningProgress;
 }
 
 /** Serializable state required to resume the immersive planning flow exactly where it stopped. */

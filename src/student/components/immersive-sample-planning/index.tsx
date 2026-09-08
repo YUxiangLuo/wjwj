@@ -26,6 +26,8 @@ import type { Domain } from "../DomainEstimationManager";
 import type { SurveyVariable } from "../MultiVariableSamplePlan";
 import { ImmersiveExperimentLaunch } from "../ImmersiveExperimentLaunch";
 import { usePhaseState } from "./usePhaseState";
+import { LearningCheck } from "./LearningCheck";
+import { FACTOR_ORDER, phaseLearningCheck } from "./learning";
 import {
     PLANNING_STEPS, planningStepIndex,
     type EstimationType,
@@ -214,7 +216,11 @@ export function ImmersiveSamplePlanning({
         goNext,
         goPrev,
         jumpTo,
-        skipQuiz,
+        learning,
+        completeCheck,
+        canGoNext: phaseComplete,
+        reachableStep,
+        finish,
     } = usePhaseState(initialDraft?.navigation);
 
     const onDraftChangeRef = useRef(onDraftChange);
@@ -256,12 +262,13 @@ export function ImmersiveSamplePlanning({
     // Return the exact reviewed parameters; the stage page persists this snapshot.
     const handleConfirm = useCallback(() => {
         const n = paramsRef.current.finalSampleSize;
-        jumpTo(Number.isInteger(n) && n >= minimumSampleSize && n <= populationSize && calculatePlannedPrecision(paramsRef.current, n) ? "done" : "decision");
-    }, [jumpTo, minimumSampleSize, populationSize]);
+        if (Number.isInteger(n) && n >= minimumSampleSize && n <= populationSize && calculatePlannedPrecision(paramsRef.current, n)) finish();
+        else jumpTo("decision");
+    }, [finish, jumpTo, minimumSampleSize, populationSize]);
 
     const handleLaunchComplete = useCallback(() => {
-        jumpTo("done");
-    }, [jumpTo]);
+        finish();
+    }, [finish]);
 
     const onCompleteRef = useRef(onComplete);
     onCompleteRef.current = onComplete;
@@ -302,6 +309,7 @@ export function ImmersiveSamplePlanning({
 
     const pageKey =
         phase.type === "formula" ? `formula-${phase.step}`
+            : phase.type === "factors" ? `factors-${phase.step}`
             : phase.type === "fourstep" ? `fourstep-${phase.scenario}`
                     : phase.type === "quiz" ? `quiz-${phase.questionIndex}`
                         : phase.type === "challenge" ? `challenge-${phase.revealed}` : phase.type;
@@ -361,7 +369,7 @@ export function ImmersiveSamplePlanning({
     );
 
     // --- Can navigate? ---
-    const canGoNext =
+    const showNext =
         phase.type === "challenge" ? phase.revealed
             : phase.type === "quiz" || phase.type === "confirm" || phase.type === "launching" || phase.type === "done" ? false
                 : true;
@@ -372,10 +380,12 @@ export function ImmersiveSamplePlanning({
         && phase.type !== "done";
 
     const stepIndex = planningStepIndex(phase.type);
+    const activeCheck = phaseLearningCheck(phase);
+    const checkComplete = activeCheck != null && learning.completed.includes(activeCheck);
     const isValidPlan = finalSampleSize >= minimumSampleSize && calculatePlannedPrecision(params, finalSampleSize) != null;
     const nextLabel = phase.type === "challenge" ? "继续：认识精度"
         : phase.type === "precision" ? "继续：了解影响因素"
-        : phase.type === "factors" ? "继续：理解推荐"
+        : phase.type === "factors" ? phase.step === "summary" ? "继续：理解推荐" : phase.step === "cost_balance" ? "查看六因素小结" : "继续：下一个因素"
         : phase.type === "decision" ? "继续：检查方案" : "继续：调整方案";
 
     // --- Standard-flow setters: changing params clears any advanced source tag ---
@@ -439,7 +449,6 @@ export function ImmersiveSamplePlanning({
                             setPhase((prev) =>
                                 prev.type === "challenge" ? { ...prev, guess: g, revealed: true } : prev)}
                         onEditGuess={() => setPhase(prev => prev.type === "challenge" ? { ...prev, revealed: false } : prev)}
-                        onAdjust={() => jumpTo("decision")}
                         hideNext
                         onNext={goNext}
                     />
@@ -459,6 +468,7 @@ export function ImmersiveSamplePlanning({
                         step={phase.step}
                         params={params}
                         onStepChange={step => setPhase({ type: "factors", step })}
+                        completedFactors={FACTOR_ORDER.filter(id => learning.completed.includes(id))}
                         hideNext
                         onNext={goNext}
                     />
@@ -521,8 +531,9 @@ export function ImmersiveSamplePlanning({
                 return (
                     <QuizPhase
                         questionIndex={phase.questionIndex}
+                        completed={checkComplete}
+                        onComplete={completeCheck}
                         onNext={goNext}
-                        onSkip={skipQuiz}
                     />
                 );
             case "confirm":
@@ -590,30 +601,32 @@ export function ImmersiveSamplePlanning({
                         <nav aria-label="样本量规划步骤"><ol className="space-y-2">
                             {PLANNING_STEPS.map((step, index) => <li key={step.type}>
                                 <button type="button" aria-current={index === stepIndex ? "step" : undefined}
-                                    disabled={index > stepIndex} onClick={() => jumpTo(step.type)}
+                                    disabled={index > reachableStep} onClick={() => jumpTo(step.type)}
                                     className={"flex w-full items-start gap-3 rounded-control p-3 text-left transition-colors disabled:cursor-not-allowed " + (index === stepIndex ? "bg-primary-muted text-primary" : "text-muted-foreground hover:bg-muted")}>
                                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-control border border-current text-meta font-semibold">{index+1}</span>
                                     <span className="space-y-1"><span className="block text-label font-semibold">{step.label}</span><span className="block text-meta">{step.description}</span></span>
                                 </button>
                             </li>)}
                         </ol></nav>
-                        <p className="border-t border-border pt-4 text-meta text-muted-foreground">总体 {populationSize.toLocaleString()} 个单位<br/>{estimationType === "proportion" ? "比例估计" : "均值估计"} · {confidenceLevel}% 置信</p>
+                        <p className="border-t border-border pt-4 text-meta text-muted-foreground">完成理解检查，逐步解锁。已掌握的内容可以随时回看。<br/>总体 {populationSize.toLocaleString()} 个单位 · {estimationType === "proportion" ? "比例估计" : "均值估计"}</p>
                     </aside>
                     <div ref={contentRef} className="min-w-0 flex-1 overflow-y-auto overscroll-contain" data-testid="planning-scroll-content">
                         <div key={pageKey} className="mx-auto w-full max-w-5xl px-8 py-8">
                             {renderPhase()}
+                            {activeCheck && phase.type !== "quiz" && <LearningCheck id={activeCheck} completed={checkComplete} onComplete={completeCheck}/>}
                         </div>
                     </div>
                 </div>
                 <footer className="shrink-0 border-t border-border bg-card px-6 py-3">
                     {onRetryDraftSave && draftSaveStatus !== "idle" && <div className="mb-3 text-left"><DraftSaveStatus status={draftSaveStatus} onRetry={onRetryDraftSave}/></div>}
+                    {activeCheck && phase.type !== "quiz" && <p className="mb-2 text-meta text-muted-foreground" role="status">{checkComplete ? "本页理解检查已完成，可以继续；回看时无需重复作答。" : "先阅读并试用本页示例，再完成下方的「理解检查」以继续。"}</p>}
                     <div className="flex items-center justify-between gap-3">
                         {canGoPrev ? <Button type="button" variant="outline" onClick={goPrev} className="min-h-11"><ChevronLeft className="mr-1 h-4 w-4"/>上一步</Button> : <p className="text-meta text-muted-foreground">{phase.type === "challenge" && phase.revealed ? "建议值会随规划条件变化" : "先填写数字，或直接查看建议"}</p>}
-                        {canGoNext && <Button type="button" onClick={goNext} disabled={phase.type === "decision" && !isValidPlan}
+                        {showNext && <Button type="button" onClick={goNext} disabled={!phaseComplete || (phase.type === "decision" && !isValidPlan)}
                             data-testid={phase.type === "decision" ? "immersive-sp-decision-next" : "immersive-sp-next"} className="min-h-11 whitespace-normal">
                             {nextLabel}<ChevronRight className="ml-2 h-4 w-4 shrink-0"/>
                         </Button>}
-                        {phase.type === "quiz" && <p className="text-meta text-muted-foreground">自检不计分，也可以跳过</p>}
+                        {phase.type === "quiz" && <p className="text-meta text-muted-foreground">每题答对后继续；不计分，可以重试。</p>}
                         {phase.type === "confirm" && <Button type="button" onClick={handleConfirm} disabled={!isValidPlan || draftSaveStatus === "conflict"} data-testid="immersive-sp-confirm" className="min-h-11">保存规划并进入抽样<ChevronRight className="ml-2 h-4 w-4"/></Button>}
                     </div>
                 </footer>

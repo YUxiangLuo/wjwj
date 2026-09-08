@@ -23,14 +23,13 @@ interface Props {
     revealed: boolean;
     onCommitGuess: (guess: number | null) => void;
     onEditGuess?: () => void;
-    onAdjust?: () => void;
     onNext: () => void;
     hideNext?: boolean;
 }
 
 export function ChallengePhase({ populationSize, confidenceLevel, estimationType, marginOfError,
     populationVariance, designEffect = 1, nonResponseRate = 0, targetDescription,
-    recommendedSize, guess, revealed, onCommitGuess, onEditGuess, onAdjust, onNext, hideNext = false }: Props) {
+    recommendedSize, guess, revealed, onCommitGuess, onEditGuess, onNext, hideNext = false }: Props) {
     const inputId = useId();
     const [inputValue, setInputValue] = useState(guess?.toString() ?? "");
     const [showError, setShowError] = useState(false);
@@ -107,7 +106,6 @@ export function ChallengePhase({ populationSize, confidenceLevel, estimationType
             </div>
             <div className="flex flex-wrap gap-3">
                 {!hideNext && <Button type="button" onClick={onNext} data-testid="immersive-sp-challenge-next">继续：认识精度 <ArrowRight className="ml-2 h-4 w-4"/></Button>}
-                {onAdjust && <Button type="button" variant="outline" onClick={onAdjust}>已了解，直接调整方案</Button>}
             </div>
         </>}
     </div>;
