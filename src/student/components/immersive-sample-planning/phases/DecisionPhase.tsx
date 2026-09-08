@@ -445,12 +445,17 @@ export function DecisionPhase({
             {sensitivity && (
                 <details className="rounded-surface border border-border bg-card p-5 space-y-3">
                     <summary className="cursor-pointer text-label font-semibold text-foreground">比较其他精度方案（点击即可采用）</summary>
-                    <p className="text-meta text-muted-foreground">看看不同置信水平与允许误差组合下，样本量会如何变化。</p>
+                    <p className="text-meta text-muted-foreground">看看不同置信水平与允许误差组合下，样本量会如何变化。{minSize > 1 && `可采用数量已考虑本课题至少 ${minSize} 个样本的分层要求。`}</p>
                     <SensitivityGrid
-                        data={sensitivity}
+                        data={sensitivity.map(plan => ({ ...plan, sampleSize: Math.max(minSize, plan.sampleSize) }))}
                         currentCL={params.confidenceLevel}
                         currentME={params.marginOfError}
-                        onSelect={(cl, me) => { onConfidenceLevelChange(cl); onMarginOfErrorChange(me); }}
+                        onSelect={(cl, me, sampleSize) => {
+                            onConfidenceLevelChange(cl);
+                            onMarginOfErrorChange(me);
+                            // Apply the clicked count; resetting here would read the previous recommendation.
+                            onFinalSizeChange(sampleSize);
+                        }}
                     />
                 </details>
             )}
@@ -703,7 +708,7 @@ export function DecisionPhase({
                                     estimationType={params.estimationType}
                                     confidenceLevel={params.confidenceLevel}
                                     populationVariance={params.populationVariance}
-                                    finalSampleSize={recommendedSize}
+                                    finalSampleSize={finalSampleSize}
                                 />
                                 {!isMeanEstimation && (
                                     <PValueComparisonCard
@@ -777,7 +782,7 @@ function SensitivityGrid({
     data: Array<{ confidenceLabel: string; confidenceLevel: string; marginOfError: number; sampleSize: number }>;
     currentCL: string;
     currentME: number;
-    onSelect: (confidence: string, margin: number) => void;
+    onSelect: (confidence: string, margin: number, sampleSize: number) => void;
 }) {
     // Build a grid: rows = confidence levels, cols = margins of error
     const clLabels = [...new Set(data.map((d) => d.confidenceLevel))];
@@ -818,7 +823,7 @@ function SensitivityGrid({
                                     const isCurrent = cl === currentCL && me === currentME;
                                     return (
                                         <td key={me} className="px-1 py-1">
-                                            <button type="button" onClick={() => onSelect(cl, me)} aria-pressed={isCurrent} aria-label={`采用 ${cl}% 置信、误差 ${me} 个百分点的方案：${n} 个单位`}
+                                            <button type="button" onClick={() => onSelect(cl, me, n)} aria-pressed={isCurrent} aria-label={`采用 ${cl}% 置信、误差 ${me} 个百分点的方案：${n} 个单位`}
                                                 className={`min-h-11 w-full rounded-control px-1.5 py-1 text-center tabular-nums transition-colors ${
                                                     isCurrent
                                                         ? "bg-primary text-primary-foreground font-bold ring-2 ring-primary ring-offset-1"

@@ -41,7 +41,7 @@ export function EnhancedMetricsCard({
                     <div className="flex items-center gap-2">
                         <TrendingUp className="w-5 h-5 text-primary" />
                         <CardTitle className="text-body text-primary">
-                            精度指标分析
+                            常规推荐方案的精度
                         </CardTitle>
                     </div>
                     <Badge variant="outline" className="text-meta bg-primary-muted border-primary-border text-primary">
@@ -49,7 +49,7 @@ export function EnhancedMetricsCard({
                     </Badge>
                 </div>
                 <CardDescription className="text-primary">
-                    基于预期完成样本量（{Math.ceil(metrics.expectedCompleted).toLocaleString()}）与设计效应后的规划精度
+                    按公式推荐邀请数 n = {metrics.n.toLocaleString()} 计算；预期完成约 {Math.ceil(metrics.expectedCompleted).toLocaleString()} 个有效样本，并考虑设计效应。
                 </CardDescription>
                 {metrics.cappedAtPopulation && (
                     <p className="text-meta text-warning mt-1">
@@ -63,7 +63,7 @@ export function EnhancedMetricsCard({
                 )}
                 {sizeDeviation && (
                     <p className="text-meta text-warning mt-1">
-                        您选择的最终样本量 ({finalSampleSize}) 与公式推荐值 ({metrics.n}) 不同，实际精度可能有偏差
+                        您选择的最终样本量 ({finalSampleSize}) 与公式推荐值 ({metrics.n}) 不同；以下指标属于推荐方案，实际选择的预期精度请查看主面板。
                     </p>
                 )}
             </CardHeader>
@@ -140,7 +140,7 @@ export function EnhancedMetricsCard({
                                 <span className="font-mono">ȳ ± Z×SE = ȳ ± {formatStatistic(metrics.marginOfError)}</span>
                             </div>
                             <p className="text-meta leading-relaxed text-primary">
-                                这里展示的是当前样本量下的理论区间半宽。正式区间应以实际样本均值 ȳ 为中心，而不是预先假定一个真值中心。
+                                这里展示的是公式推荐样本量下的理论区间半宽。正式区间应以实际样本均值 ȳ 为中心，而不是预先假定一个真值中心。
                             </p>
                         </div>
                     </div>
@@ -175,7 +175,7 @@ export function EnhancedMetricsCard({
                             </div>
                         </div>
                         <p className="text-meta text-primary mt-3 leading-relaxed">
-                            该范围基于当前规划假设 p 与样本量对应的理论误差限，用于教学说明。正式区间估计需以实际样本比例为中心重新计算。
+                            该范围基于规划假设 p 与公式推荐样本量对应的理论误差限，用于教学说明。正式区间估计需以实际样本比例为中心重新计算。
                         </p>
                     </div>
                 )}
