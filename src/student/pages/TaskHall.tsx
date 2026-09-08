@@ -106,6 +106,10 @@ function TaskCard({ task }: TaskCardProps) {
     const navigate = useNavigate();
     const status = statusConfig[task.status];
     const notOpenYet = isTaskNotOpenYet(task.publishedAt);
+    // A stable multiplicative hash varies nearby IDs without changing a topic's
+    // decorative color across filtering, reloads or classes.
+    const colorSeed = Math.imul(task.topicId, 0x9e3779b1) >>> 0;
+    const colorTone = Math.floor((colorSeed / 0x100000000) * 6);
 
     const getActionButton = () => {
         if (notOpenYet) {
@@ -145,7 +149,11 @@ function TaskCard({ task }: TaskCardProps) {
 
     return (
         <>
-            <Card className="rounded-surface border-border bg-card transition-none hover:border-input" data-testid={`student-task-card-${task.id}`}>
+            <Card
+                className="task-card rounded-surface border-(--task-card-border) border-t-4 border-t-(--task-card-accent) bg-(--task-card-surface) transition-none hover:border-(--task-card-accent)"
+                data-task-tone={colorTone}
+                data-testid={`student-task-card-${task.id}`}
+            >
                 <CardHeader className="pb-3 text-foreground">
                 <div className="flex justify-between items-start gap-2">
                     <CardTitle className="text-subheading line-clamp-1 text-foreground">{task.name}</CardTitle>

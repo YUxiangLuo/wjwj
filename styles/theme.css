@@ -225,6 +225,25 @@
     --chart-6: #8a6a00;
     --chart-7: #147a55;
     --chart-8: #b42318;
+    /* Quiet categorical task identities, independent of progress/status colors. */
+    --task-tone-1-muted: #f4f7fb;
+    --task-tone-1-border: #ccd8e5;
+    --task-tone-1-accent: #8ba5c1;
+    --task-tone-2-muted: #f3f7f3;
+    --task-tone-2-border: #d0ddd0;
+    --task-tone-2-accent: #93ae96;
+    --task-tone-3-muted: #fbf7f0;
+    --task-tone-3-border: #e5dac9;
+    --task-tone-3-accent: #bda680;
+    --task-tone-4-muted: #f6f4fa;
+    --task-tone-4-border: #dcd5e8;
+    --task-tone-4-accent: #a99ac0;
+    --task-tone-5-muted: #f1f8f7;
+    --task-tone-5-border: #cbe0db;
+    --task-tone-5-accent: #8ab3aa;
+    --task-tone-6-muted: #fbf4f3;
+    --task-tone-6-border: #e8d5d1;
+    --task-tone-6-accent: #c29d95;
     --overlay: rgb(7 17 31 / 0.52);
 
     /* Shape roles */
@@ -309,6 +328,42 @@
 }
 
 @layer components {
+    .task-card {
+        --task-card-surface: var(--task-tone-1-muted);
+        --task-card-border: var(--task-tone-1-border);
+        --task-card-accent: var(--task-tone-1-accent);
+    }
+
+    .task-card[data-task-tone="1"] {
+        --task-card-surface: var(--task-tone-2-muted);
+        --task-card-border: var(--task-tone-2-border);
+        --task-card-accent: var(--task-tone-2-accent);
+    }
+
+    .task-card[data-task-tone="2"] {
+        --task-card-surface: var(--task-tone-3-muted);
+        --task-card-border: var(--task-tone-3-border);
+        --task-card-accent: var(--task-tone-3-accent);
+    }
+
+    .task-card[data-task-tone="3"] {
+        --task-card-surface: var(--task-tone-4-muted);
+        --task-card-border: var(--task-tone-4-border);
+        --task-card-accent: var(--task-tone-4-accent);
+    }
+
+    .task-card[data-task-tone="4"] {
+        --task-card-surface: var(--task-tone-5-muted);
+        --task-card-border: var(--task-tone-5-border);
+        --task-card-accent: var(--task-tone-5-accent);
+    }
+
+    .task-card[data-task-tone="5"] {
+        --task-card-surface: var(--task-tone-6-muted);
+        --task-card-border: var(--task-tone-6-border);
+        --task-card-accent: var(--task-tone-6-accent);
+    }
+
     /* Each row owns its entire rectangle, with no gaps or rounded hit-test
      * corners. Solid colors switch immediately; no interrupted hover fades. */
     .workspace-nav-link {
