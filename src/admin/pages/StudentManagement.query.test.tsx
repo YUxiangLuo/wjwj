@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, expect, mock, test } from "bun:test";
-import { cleanup, fireEvent, render, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, useLocation } from "react-router-dom";
+import { act, cleanup, fireEvent, render, waitFor, within } from "@testing-library/react";
+import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import { installDomGlobals } from "@/test-utils/dom";
 import { StudentManagement } from "./StudentManagement";
 
@@ -147,6 +147,55 @@ test("resetting a student password refreshes the list without changing account s
         expect(refreshedRow).not.toBeNull();
         expect(within(refreshedRow!).getByText("正常")).toBeTruthy();
     });
+});
+
+function SwitchClass() {
+    const navigate = useNavigate();
+    return <button onClick={() => navigate("/student?classId=8")}>切换到另一班</button>;
+}
+
+for (const action of ["重置密码", "停用"] as const) {
+    test(`${action} completion refreshes the current class rather than the initiating render's class`, async () => {
+        const pending = Promise.withResolvers<Response>();
+        const listUrls: string[] = [];
+        globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+            const url = String(input);
+            if (init?.method === "POST" || init?.method === "PUT") return pending.promise;
+            if (url.includes("/classes")) return Response.json({ success: true, data: [] });
+            listUrls.push(url);
+            const classId = Number(new URL(url, "http://localhost").searchParams.get("class_id"));
+            return Response.json({ success: true, data: { items: [{ id: classId, studentId: `S${classId}`, name: `班级${classId}学生`, classId, className: `班级${classId}`, status: 1, progress: 0 }], total: 1, page: 1, pageSize: 20 } });
+        }) as typeof fetch;
+        const view = render(<MemoryRouter initialEntries={["/student?classId=7"]}><StudentManagement /><SwitchClass /><LocationProbe /></MemoryRouter>);
+        await waitFor(() => expect(view.getByText("S7")).toBeTruthy());
+        fireEvent.click(view.getByRole("button", { name: action }));
+        fireEvent.click(view.getByRole("button", { name: "切换到另一班" }));
+        await waitFor(() => expect(view.getByText("S8")).toBeTruthy());
+        const beforeRefresh = listUrls.length;
+        await act(async () => { pending.resolve(Response.json({ success: true, data: { success: true } })); await new Promise(resolve => setTimeout(resolve, 0)); });
+        await waitFor(() => expect(listUrls.length).toBeGreaterThan(beforeRefresh));
+        expect(listUrls.at(-1)).toContain("class_id=8");
+        expect(view.getByTestId("location-search").textContent).toBe("?classId=8");
+        await waitFor(() => expect(view.getByText("S8")).toBeTruthy());
+        expect(view.queryByText("S7")).toBeNull();
+    });
+}
+
+test("a password reset finishing after unmount does not start another list request", async () => {
+    const pending = Promise.withResolvers<Response>();
+    let listRequests = 0;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === "POST") return pending.promise;
+        if (String(input).includes("/classes")) return Response.json({ success: true, data: [] });
+        listRequests += 1;
+        return Response.json({ success: true, data: { items: [{ id: 7, studentId: "S7", name: "学生", classId: 7, status: 1, progress: 0 }], total: 1, page: 1, pageSize: 20 } });
+    }) as typeof fetch;
+    const view = render(<MemoryRouter><StudentManagement /></MemoryRouter>);
+    await waitFor(() => expect(view.getByText("S7")).toBeTruthy());
+    fireEvent.click(view.getByRole("button", { name: "重置密码" }));
+    view.unmount();
+    await act(async () => { pending.resolve(Response.json({ success: true, data: { success: true } })); await new Promise(resolve => setTimeout(resolve, 0)); });
+    expect(listRequests).toBe(1);
 });
 
 test("student list ignores stale requests and retries failures instead of showing an empty result", async () => {

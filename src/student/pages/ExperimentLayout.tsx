@@ -1,6 +1,6 @@
 import { RequestError } from "@/components/RequestError";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, ArrowLeft, BarChart3, CheckCircle2, ChevronRight, Clock, FileText, Home, Play, RefreshCw, Ruler } from "lucide-react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -54,6 +54,17 @@ export function useExperiment() {
 
 export function ExperimentLayout() {
     const { taskId } = useParams();
+    // A different task gets its own editor state and async lifecycle.
+    return <ExperimentWorkspace key={taskId} />;
+}
+
+function ExperimentWorkspace() {
+    const { taskId } = useParams();
+    const mounted = useRef(false);
+    useEffect(() => {
+        mounted.current = true;
+        return () => { mounted.current = false; };
+    }, []);
     const navigate = useNavigate();
     const numericTaskId = Number(taskId);
     const [experiment, setExperiment] = useState<ExperimentData | null>(null);
@@ -88,13 +99,16 @@ export function ExperimentLayout() {
     }, [numericTaskId, loadExperiment, cancel]);
 
     const completeStage = useCallback(async (stage: number, data: Record<string, unknown>) => {
-        if (!experiment) return false;
+        if (!mounted.current || !experiment) return false;
         if (versionConflict) {
             setSaveError("检测到其他页面已更新。请先复制需要保留的内容，再加载最新版本。");
             return false;
         }
         setIsSaving(true); setSaveError(null);
         const response = await experimentApi.completeStage(numericTaskId, stage, experiment.version, data);
+        // The server may have saved successfully, but a departed editor must
+        // not update another task, clear its draft, or navigate to old previews.
+        if (!mounted.current) return false;
         setIsSaving(false);
         if (response.success && response.data) {
             setExperiment(response.data);
@@ -110,8 +124,10 @@ export function ExperimentLayout() {
     }, [experiment, numericTaskId, versionConflict]);
 
     const loadLatestVersion = async () => {
+        if (!mounted.current) return;
         setIsSaving(true);
         const latest = await experimentApi.get(numericTaskId);
+        if (!mounted.current) return;
         setIsSaving(false);
         if (!latest.success || !latest.data) {
             setSaveError(latest.error?.message ?? "加载最新版本失败，请重试");
@@ -124,13 +140,14 @@ export function ExperimentLayout() {
     };
 
     const applyReopen = async () => {
-        if (reopenStage === null || !experiment) return;
+        if (!mounted.current || reopenStage === null || !experiment) return;
         if (versionConflict) {
             setSaveError("检测到其他页面已更新。请先加载最新版本，再重新编辑阶段。");
             setReopenStage(null);
             return;
         }
         const response = await experimentApi.reopenStage(numericTaskId, reopenStage, experiment.version);
+        if (!mounted.current) return;
         if (response.success && response.data) {
             setExperiment(response.data);
             setVersionConflict(false);

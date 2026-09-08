@@ -9,7 +9,8 @@ function withId(request: Request, id: string) {
 }
 
 test("student password reset restores the student ID password and clears sessions", async () => {
-    const { db, operations } = createMockDb({ select: [[{ id: 12, studentId: "2024002", status: 1 }]] });
+    const row = { id: 12, studentId: "2024002", status: 1 };
+    const { db, operations } = createMockDb({ select: [[row], [row]] });
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => createTeacherAuthModuleMock());
     const module = await import(`./classroom.ts?reset=${Date.now()}`);

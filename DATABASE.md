@@ -66,8 +66,8 @@ project's Bun SQL connection.
 
 ## Validate
 
-Run the database contract test against a disposable test database, then run
-the normal project checks:
+Run the database contract and concurrency tests against a disposable test
+database, then run the normal project checks:
 
 ```sh
 TEST_DATABASE_URL="$DATABASE_URL" bun run test:db
@@ -76,6 +76,12 @@ bun run typecheck
 bun test
 bun run build
 ```
+
+`test:db` runs its test files in isolation. In addition to schema and persistence
+checks, it exercises class-transfer ownership, session-cleanup locking, and
+both lock orders of current-semester selection/deletion against PostgreSQL.
+Current-semester creation, selection, and deletion share a short transaction
+advisory lock, separate from the storage lock described below.
 
 `bun run db:clean` removes only this project's current and legacy tables plus
 its `drizzle` metadata schema. It does not enumerate or delete unrelated

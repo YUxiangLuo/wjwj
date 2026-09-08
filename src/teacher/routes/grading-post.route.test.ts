@@ -11,8 +11,8 @@ function post(id: string, body: unknown) {
     return request;
 }
 
-async function load(row: Record<string, unknown>, update?: unknown[]) {
-    const { db, operations } = createMockDb({ select: [[row]], update });
+async function load(row: Record<string, unknown>, update?: unknown[], owned = true) {
+    const { db, operations } = createMockDb({ select: [[row], owned ? [{ id: 3 }] : []], update });
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => createTeacherAuthModuleMock());
     const module = await import(`./grading.ts?post=${crypto.randomUUID()}`);
@@ -68,6 +68,18 @@ test("rejecting returns 409 when a concurrent transition wins first", async () =
     expect(response.status).toBe(409);
     expect(await response.json()).toMatchObject({ error: { code: "VERSION_CONFLICT" } });
 });
+
+for (const action of ["grade", "reject"] as const) {
+    test(`${action} refuses a class transferred before the write transaction`, async () => {
+        const { module, operations } = await load(row, undefined, false);
+        const response = action === "grade"
+            ? await module.gradingDetailRoutes.POST!(post("99", { observedVersion: 7, scoreQuestionnaire: 80, scoreProcess: 90, scoreReport: 100 }))
+            : await module.gradingRejectRoutes.POST!(post("99", { observedVersion: 7, reason: "请补充抽样结果分析" }));
+        expect(response.status).toBe(404);
+        expect(await response.json()).toMatchObject({ error: { code: "NOT_FOUND" } });
+        expect(operations.some(op => op.kind === "update" || op.kind === "insert")).toBe(false);
+    });
+}
 
 test("grading rejects a stale page before score validation or update", async () => {
     const { module, operations } = await load(row);

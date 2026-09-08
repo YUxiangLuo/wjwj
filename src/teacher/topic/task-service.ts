@@ -91,7 +91,8 @@ export async function publishTopicTasks(params: {
         const allowedClasses = await tx
             .select({ id: class_.id })
             .from(class_)
-            .where(and(eq(class_.teacherId, params.teacherId), sql`${class_.id} IN (${sql.join(params.classIds, sql`, `)})`));
+            .where(and(eq(class_.teacherId, params.teacherId), sql`${class_.id} IN (${sql.join(params.classIds, sql`, `)})`))
+            .for("share");
         if (allowedClasses.length !== params.classIds.length) {
             return fail("存在无权限的班级", "FORBIDDEN", 403);
         }

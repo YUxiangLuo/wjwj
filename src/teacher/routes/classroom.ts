@@ -24,22 +24,29 @@ function parseRouteId(req: Request, name: string) {
     return getPositiveRouteId(req, name);
 }
 
-async function requireOwnedClass(classId: number, teacherId: number) {
-    const [row] = await db
+// Passing a transaction holds ownership until the mutation commits.
+async function requireOwnedClass(classId: number, teacherId: number, tx?: Pick<typeof db, "select">) {
+    const query = (tx ?? db)
         .select({ id: class_.id })
         .from(class_)
         .where(and(eq(class_.id, classId), eq(class_.teacherId, teacherId)));
+    const [row] = await (tx ? query.for("share") : query);
+    return row ?? null;
+}
+
+async function findOwnedStudent(id: number, teacherId: number, tx?: Pick<typeof db, "select">) {
+    const query = (tx ?? db)
+        .select({ id: student.id, studentId: student.studentId, status: student.status })
+        .from(student)
+        .innerJoin(class_, eq(student.classId, class_.id))
+        .where(and(eq(student.id, id), eq(class_.teacherId, teacherId)));
+    const [row] = await (tx ? query.for("update") : query);
     return row ?? null;
 }
 
 export async function deleteTeacherStudent(params: { teacherId: number; studentId: number }) {
     return db.transaction(async (tx) => {
-        const [owned] = await tx
-            .select({ id: student.id })
-            .from(student)
-            .innerJoin(class_, eq(student.classId, class_.id))
-            .where(and(eq(student.id, params.studentId), eq(class_.teacherId, params.teacherId)))
-            .for("update");
+        const owned = await findOwnedStudent(params.studentId, params.teacherId, tx);
         if (!owned) return false;
         const experimentRows = await tx
             .select({ id: experiment.id })
@@ -129,14 +136,13 @@ const classStudentsRoutes: RouteDefinition = {
         if (!isValidOptionalEmail(email)) return error("邮箱格式无效", "VALIDATION_ERROR");
         const [existing] = await db.select({ id: student.id }).from(student).where(eq(student.studentId, studentId));
         if (existing) return error("学号已存在", "DUPLICATE_ERROR", 409);
-        await db.insert(student).values({
-            studentId,
-            name,
-            email: email || null,
-            classId,
-            password: await hashPassword(studentId),
+        const password = await hashPassword(studentId);
+        const created = await db.transaction(async (tx) => {
+            if (!(await requireOwnedClass(classId, teacherId, tx))) return false;
+            await tx.insert(student).values({ studentId, name, email: email || null, classId, password });
+            return true;
         });
-        return json({ success: true }, 201);
+        return created ? json({ success: true }, 201) : error("无权限访问该班级", "FORBIDDEN", 403);
     },
 };
 
@@ -223,13 +229,18 @@ const classStudentsImportRoutes: RouteDefinition = {
         const inserts = candidates.filter((item) => !existingIds.has(item.normalizedStudentId));
         const hashes = await mapWithConcurrency(inserts, 4, (item) => hashPassword(item.studentId));
         if (inserts.length) {
-            await db.insert(student).values(inserts.map((item, index) => ({
-                studentId: item.studentId,
-                name: item.name,
-                email: item.email,
-                classId,
-                password: hashes[index]!,
-            })));
+            const created = await db.transaction(async (tx) => {
+                if (!(await requireOwnedClass(classId, teacherId, tx))) return false;
+                await tx.insert(student).values(inserts.map((item, index) => ({
+                    studentId: item.studentId,
+                    name: item.name,
+                    email: item.email,
+                    classId,
+                    password: hashes[index]!,
+                })));
+                return true;
+            });
+            if (!created) return error("无权限访问该班级", "FORBIDDEN", 403);
         }
         return json({
             successCount: inserts.length,
@@ -244,29 +255,29 @@ const studentRoutes: RouteDefinition = {
         const id = parseRouteId(req, "id");
         if (!id) return error("无效的学生ID", "INVALID_ID");
         const teacherId = getPrimaryTeacherIdOrThrow(req);
-        const [owned] = await db
-            .select({ id: student.id, studentId: student.studentId, status: student.status })
-            .from(student)
-            .innerJoin(class_, eq(student.classId, class_.id))
-            .where(and(eq(student.id, id), eq(class_.teacherId, teacherId)));
+        const owned = await findOwnedStudent(id, teacherId);
         if (!owned) return error("无权限操作该学生", "FORBIDDEN", 403);
 
         const body = await parseBody<{ action?: "reset_password" | "toggle_status" }>(req);
-        if (body.action === "reset_password") {
-            await db
-                .update(student)
-                .set({ password: await hashPassword(owned.studentId), updatedAt: new Date() })
-                .where(eq(student.id, id));
-            await clearUserSessionsForUser(STUDENT_USER_TYPE, id);
-            return json({ success: true });
-        } else if (body.action === "toggle_status") {
-            const status = owned.status === 1 ? 0 : 1;
-            await db.update(student).set({ status, updatedAt: new Date() }).where(eq(student.id, id));
-            if (status === 0) await clearUserSessionsForUser(STUDENT_USER_TYPE, id);
-        } else {
+        if (body.action !== "reset_password" && body.action !== "toggle_status") {
             return error("无效的操作", "VALIDATION_ERROR");
         }
-        return json({ success: true });
+        // Slow password work stays outside the short ownership/write transaction.
+        const password = body.action === "reset_password" ? await hashPassword(owned.studentId) : null;
+        const changed = await db.transaction(async (tx) => {
+            const current = await findOwnedStudent(id, teacherId, tx);
+            if (!current) return false;
+            if (password !== null) {
+                await tx.update(student).set({ password, updatedAt: new Date() }).where(eq(student.id, id));
+                await clearUserSessionsForUser(STUDENT_USER_TYPE, id, tx);
+            } else {
+                const status = current.status === 1 ? 0 : 1;
+                await tx.update(student).set({ status, updatedAt: new Date() }).where(eq(student.id, id));
+                if (status === 0) await clearUserSessionsForUser(STUDENT_USER_TYPE, id, tx);
+            }
+            return true;
+        });
+        return changed ? json({ success: true }) : error("无权限操作该学生", "FORBIDDEN", 403);
     },
 
     async DELETE(req) {

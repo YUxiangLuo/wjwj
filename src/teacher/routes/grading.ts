@@ -169,6 +169,19 @@ async function findOwnedExperiment(experimentId: number, teacherId: number) {
     return row ?? null;
 }
 
+// The experiment version does not change on class transfer. Hold its class
+// against reassignment until grading/rejection and its audit event commit.
+async function lockGradingClass(tx: Pick<typeof db, "select">, experimentId: number, teacherId: number) {
+    const [owned] = await tx.select({ id: class_.id })
+        .from(experiment)
+        .innerJoin(student, eq(experiment.studentId, student.id))
+        .innerJoin(task, eq(experiment.taskId, task.id))
+        .innerJoin(class_, eq(task.classId, class_.id))
+        .where(and(eq(experiment.id, experimentId), ...baseConditions(teacherId)))
+        .for("share", { of: class_ });
+    return Boolean(owned);
+}
+
 const gradingDetailRoutes: RouteDefinition = {
     async GET(req) {
         const current = getTeacherUser(req);
@@ -280,6 +293,7 @@ const gradingDetailRoutes: RouteDefinition = {
         ) / 100;
         const now = new Date();
         const updated = await db.transaction(async (tx) => {
+            if (!(await lockGradingClass(tx, experimentId, current.id))) return null;
             const rows = await tx.update(experiment).set({
                 status: "graded",
                 version: versionResult.value + 1,
@@ -314,6 +328,7 @@ const gradingDetailRoutes: RouteDefinition = {
             });
             return rows;
         });
+        if (!updated) return error("提交记录不存在", "NOT_FOUND", 404);
         if (!updated.length) return error("提交记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         return json({ success: true, totalScore: Number(total.toFixed(2)) });
     },
@@ -379,6 +394,7 @@ const gradingRejectRoutes: RouteDefinition = {
         }
         const now = new Date();
         const updated = await db.transaction(async (tx) => {
+            if (!(await lockGradingClass(tx, experimentId, current.id))) return null;
             const rows = await tx.update(experiment).set({
                 status: "rejected",
                 version: versionResult.value + 1,
@@ -406,6 +422,7 @@ const gradingRejectRoutes: RouteDefinition = {
             });
             return rows;
         });
+        if (!updated) return error("提交记录不存在", "NOT_FOUND", 404);
         if (!updated.length) return error("提交记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         return json({ success: true });
     },

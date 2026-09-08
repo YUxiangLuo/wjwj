@@ -41,6 +41,7 @@ test("student import preserves Chinese text for utf-8 csv files", async () => {
         select: [
             [{ id: 3 }],
             [],
+            [{ id: 3 }],
         ],
     });
 
@@ -91,6 +92,7 @@ test("student import treats differently-cased student IDs as duplicates", async 
         select: [
             [{ id: 3 }],
             [],
+            [{ id: 3 }],
         ],
     });
     const formData = new FormData();
@@ -165,6 +167,7 @@ test("single student creation stores the student ID password without restore met
         select: [
             [{ id: 3 }],
             [],
+            [{ id: 3 }],
         ],
     });
     const response = await module.classStudentsRoutes.POST!(withRouteParam(new Request(
@@ -211,6 +214,7 @@ test("student import reports and skips malformed optional emails", async () => {
         select: [
             [{ id: 3 }],
             [],
+            [{ id: 3 }],
         ],
     });
     const formData = new FormData();

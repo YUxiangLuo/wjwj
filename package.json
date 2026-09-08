@@ -39,7 +39,7 @@
     "db:reset:demo": "bun run db:clean && bun run db:migrate && bun run db:seed:demo",
     "storage:audit": "bun run scripts/audit-storage.ts",
     "storage:clean": "bun run scripts/audit-storage.ts --delete",
-    "test:db": "REQUIRE_TEST_DATABASE=1 bun test src/db/postgresql.integration.test.ts"
+    "test:db": "REQUIRE_TEST_DATABASE=1 bun test --isolate src/db/postgresql.integration.test.ts src/db/concurrency.integration.test.ts"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",

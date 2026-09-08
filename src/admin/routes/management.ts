@@ -1,4 +1,4 @@
-import { and, count, desc, eq, ilike, inArray, or, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 import { db } from "../../db";
 import { announcement, class_, experiment, semester, student, task, teacher, topic } from "../../db/schema";
 import { experimentProgress } from "../../lib/experiment-progress";
@@ -25,6 +25,12 @@ async function loadCounts<T extends number>(
     return new Map((await loader()).map((row) => [row.key, row.count]));
 }
 
+// All current-semester changes and deletions share this short transaction lock.
+// "WJ" / "SE" is separate from the storage mutation lock.
+async function lockSemesterMutations(tx: Pick<typeof db, "execute">) {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${0x574a}, ${0x5345})`);
+}
+
 const semesterRoutes: RouteDefinition = {
     async GET() {
         const rows = await db.select().from(semester).orderBy(desc(semester.createdAt));
@@ -46,19 +52,18 @@ const semesterRoutes: RouteDefinition = {
         if (body.setAsCurrent !== undefined && typeof body.setAsCurrent !== "boolean") {
             return error("当前学期标记无效", "VALIDATION_ERROR");
         }
-        if ((await db.select({ id: semester.id }).from(semester).where(eq(semester.name, name))).length > 0) {
-            return error("学期名称已存在", "DUPLICATE_NAME", 409);
-        }
-
-        const id = await db.transaction(async (tx) => {
+        return db.transaction(async (tx) => {
+            await lockSemesterMutations(tx);
+            if ((await tx.select({ id: semester.id }).from(semester).where(eq(semester.name, name))).length > 0) {
+                return error("学期名称已存在", "DUPLICATE_NAME", 409);
+            }
             if (body.setAsCurrent) await tx.update(semester).set({ isCurrent: 0, updatedAt: new Date() });
             const [created] = await tx
                 .insert(semester)
                 .values({ name, isCurrent: body.setAsCurrent ? 1 : 0 })
                 .returning({ id: semester.id });
-            return created!.id;
+            return json({ id: created!.id }, 201);
         });
-        return json({ id }, 201);
     },
 };
 
@@ -66,13 +71,16 @@ const semesterCurrentRoutes: RouteDefinition = {
     async PUT(req) {
         const id = parseId(req);
         if (!id) return error("无效的学期ID", "INVALID_ID");
-        const [row] = await db.select({ id: semester.id }).from(semester).where(eq(semester.id, id));
-        if (!row) return error("学期不存在", "NOT_FOUND", 404);
-        await db.transaction(async (tx) => {
+        return db.transaction(async (tx) => {
+            await lockSemesterMutations(tx);
+            const [row] = await tx.select({ id: semester.id }).from(semester).where(eq(semester.id, id)).for("update");
+            if (!row) return error("学期不存在", "NOT_FOUND", 404);
             await tx.update(semester).set({ isCurrent: 0, updatedAt: new Date() });
-            await tx.update(semester).set({ isCurrent: 1, updatedAt: new Date() }).where(eq(semester.id, id));
+            const [updated] = await tx.update(semester).set({ isCurrent: 1, updatedAt: new Date() })
+                .where(eq(semester.id, id)).returning({ id: semester.id });
+            if (!updated) throw new Error("Locked semester disappeared during current-semester update");
+            return json({ success: true });
         });
-        return json({ success: true });
     },
 };
 
@@ -80,13 +88,16 @@ const semesterDeleteRoutes: RouteDefinition = {
     async DELETE(req) {
         const id = parseId(req);
         if (!id) return error("无效的学期ID", "INVALID_ID");
-        const [row] = await db.select().from(semester).where(eq(semester.id, id));
-        if (!row) return error("学期不存在", "NOT_FOUND", 404);
-        if (row.isCurrent === 1) return error("当前学期不能删除", "CURRENT_SEMESTER_PROTECTED");
-        const [classes] = await db.select({ count: count() }).from(class_).where(eq(class_.semesterId, id));
-        if ((classes?.count ?? 0) > 0) return error("该学期下有班级，无法删除", "HAS_CLASSES");
-        await db.delete(semester).where(eq(semester.id, id));
-        return json({ success: true });
+        return db.transaction(async (tx) => {
+            await lockSemesterMutations(tx);
+            const [row] = await tx.select().from(semester).where(eq(semester.id, id)).for("update");
+            if (!row) return error("学期不存在", "NOT_FOUND", 404);
+            if (row.isCurrent === 1) return error("当前学期不能删除", "CURRENT_SEMESTER_PROTECTED");
+            const [classes] = await tx.select({ count: count() }).from(class_).where(eq(class_.semesterId, id));
+            if ((classes?.count ?? 0) > 0) return error("该学期下有班级，无法删除", "HAS_CLASSES");
+            await tx.delete(semester).where(eq(semester.id, id));
+            return json({ success: true });
+        });
     },
 };
 

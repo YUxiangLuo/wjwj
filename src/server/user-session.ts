@@ -1,4 +1,4 @@
-import { and, eq, inArray, lte, ne } from "drizzle-orm";
+import { and, eq, inArray, lte, ne, sql } from "drizzle-orm";
 import { db } from "../db";
 import { userSession } from "../db/schema";
 import { getCookieValue } from "./http";
@@ -53,8 +53,15 @@ export async function createUserSession(userType: number, userId: number, execut
     const token = crypto.randomUUID();
     const expiresAt = new Date(now.getTime() + SESSION_TTL_MS);
 
-    // Fixed sessions need no scheduler. Expired rows are removed opportunistically.
-    await executor.delete(userSession).where(lte(userSession.expiresAt, now));
+    // Opportunistic GC must not wait on another account's password rotation.
+    // Select and delete a small, unlocked batch in one statement; no scheduler needed.
+    await executor.delete(userSession).where(sql`${userSession.id} in (
+        select ${userSession.id} from ${userSession}
+        where ${lte(userSession.expiresAt, now)}
+        order by ${userSession.expiresAt}, ${userSession.id}
+        limit 100
+        for update skip locked
+    )`);
     await executor.insert(userSession).values({ sessionToken: token, userType, userId, expiresAt });
 
     return { token, expiresAt };

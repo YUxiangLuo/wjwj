@@ -70,6 +70,7 @@ export function StudentManagement() {
     useEffect(() => () => { requestIdRef.current += 1; }, []);
     const [selected, setSelected] = useState<Student | null>(null);
     const [experiments, setExperiments] = useState<StudentExperiment[]>([]);
+    const [refreshVersion, setRefreshVersion] = useState(0);
 
     const load = async ({
         nextClassId = classId,
@@ -119,6 +120,12 @@ export function StudentManagement() {
     useEffect(() => {
         void load({ nextClassId: classId, nextPage: 1 });
     }, [classId]);
+
+    // Mutation callbacks only invalidate. This render supplies the current
+    // filters/page, not the stale closure that started the mutation.
+    useEffect(() => {
+        if (refreshVersion > 0) void load();
+    }, [refreshVersion]);
 
     // 状态筛选已下推到服务端，students 即当前页结果。
     const filtered = students;
@@ -273,7 +280,7 @@ export function StudentManagement() {
                                                     const response = await studentApi.resetPassword(item.id);
                                                     if (response.success) {
                                                         toast.success("密码已重置为学号");
-                                                        await load();
+                                                        setRefreshVersion(value => value + 1);
                                                     } else {
                                                         toast.error(response.error?.message);
                                                     }
@@ -287,7 +294,7 @@ export function StudentManagement() {
                                                 className={item.status === 1 ? "text-destructive" : "text-success"}
                                                 onClick={async () => {
                                                     const response = await studentApi.updateStatus(item.id, item.status === 1 ? 0 : 1);
-                                                    if (response.success) void load();
+                                                    if (response.success) setRefreshVersion(value => value + 1);
                                                 }}
                                             >
                                                 {item.status === 1 ? "停用" : "启用"}
