@@ -2,7 +2,8 @@ import { SamplingObservationNotice } from "../SamplingObservationNotice";
 import { DraftSaveStatus } from "../DraftSaveStatus";
 import type { DraftSaveState } from "../../experiment/experiment-draft";
 import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useId } from "react";
-import { X, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
+import { createPortal } from "react-dom";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     AlertDialog,
@@ -17,7 +18,8 @@ import {
 import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize } from "../../experiment/sample-plan";
 import type { ConfidenceLevel } from "../../experiment/confidence-level";
 import { normalizeConfidenceLevel } from "../../experiment/confidence-level";
-import { formatMarginOfError, formatSamplePlanNumber } from "../../experiment/sample-plan-display";
+import { calculatePlannedPrecision } from "../../experiment/planned-precision";
+import { PlanningHeading, PlanningOutcome, PlanningAssumptions } from "./PlanningShared";
 import type { AdvancedNonStandardSampleSource } from "../sample-planning/advancedTabs";
 import type { AdvancedPlanSnapshot } from "../../experiment/advanced-plan";
 import type { Domain } from "../DomainEstimationManager";
@@ -25,7 +27,7 @@ import type { SurveyVariable } from "../MultiVariableSamplePlan";
 import { ImmersiveExperimentLaunch } from "../ImmersiveExperimentLaunch";
 import { usePhaseState } from "./usePhaseState";
 import {
-    PHASE_ORDER,
+    PLANNING_STEPS, planningStepIndex,
     type EstimationType,
     type SampleParams,
     type SamplePlanningWizardDraft,
@@ -40,19 +42,16 @@ import { DecisionPhase } from "./phases/DecisionPhase";
 import { QuizPhase } from "./phases/QuizPhase";
 
 const FOCUSABLE_SELECTOR =
-    'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-
-/** Phases shown as dots in the header — excludes internal/terminal phases. */
-const NAVIGABLE_PHASES = ["challenge", "precision", "factors", "fourstep", "decision", "quiz"] as const;
+    'button:not([disabled]), [href], input:not([disabled]), select, textarea, summary, [tabindex]:not([tabindex="-1"])';
 
 const PHASE_LABELS: Record<string, string> = {
-    challenge: "开始规划",
+    challenge: "明确目标",
     precision: "认识精度",
-    factors: "判断条件",
+    factors: "了解影响因素",
     formula: "进入公式",
     fpc: "总体修正",
-    fourstep: "计算 n",
-    decision: "确认方案",
+    fourstep: "理解推荐",
+    decision: "调整方案",
     quiz: "快速自检",
     confirm: "确认方案",
     launching: "进入抽样",
@@ -61,6 +60,7 @@ const PHASE_LABELS: Record<string, string> = {
 
 interface Props {
     populationSize: number;
+    targetDescription?: string;
     minimumSampleSize?: number;
     initialConfidenceLevel?: string;
     initialMarginOfError?: number;
@@ -83,6 +83,7 @@ interface Props {
 
 export function ImmersiveSamplePlanning({
     populationSize,
+    targetDescription,
     minimumSampleSize = 1,
     initialConfidenceLevel = "95",
     initialMarginOfError,
@@ -208,7 +209,6 @@ export function ImmersiveSamplePlanning({
     const {
         phase,
         setPhase,
-        direction,
         progress,
         navigationSnapshot,
         goNext,
@@ -253,11 +253,10 @@ export function ImmersiveSamplePlanning({
         userTouchedFinal,
     ]);
 
-    // 确认规划结果仅完成规划并返回阶段页；进入抽样执行的启动动画由阶段页的
-    // “确认并进入下一阶段”触发（见 SamplePlanning.tsx）。
+    // Return the exact reviewed parameters; the stage page persists this snapshot.
     const handleConfirm = useCallback(() => {
         const n = paramsRef.current.finalSampleSize;
-        jumpTo(Number.isInteger(n) && n >= minimumSampleSize && n <= populationSize ? "done" : "decision");
+        jumpTo(Number.isInteger(n) && n >= minimumSampleSize && n <= populationSize && calculatePlannedPrecision(paramsRef.current, n) ? "done" : "decision");
     }, [jumpTo, minimumSampleSize, populationSize]);
 
     const handleLaunchComplete = useCallback(() => {
@@ -281,7 +280,7 @@ export function ImmersiveSamplePlanning({
     // --- Exit confirmation ---
     const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
 
-    const hasProgress = phase.type !== "challenge" || phase.guess !== null;
+    const hasProgress = phase.type !== "challenge" || phase.guess !== null || phase.revealed;
 
     const requestClose = useCallback(() => {
         if (hasProgress) {
@@ -298,22 +297,22 @@ export function ImmersiveSamplePlanning({
 
     // --- Focus management ---
     const overlayRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
     const titleId = useId();
 
     const pageKey =
         phase.type === "formula" ? `formula-${phase.step}`
-            : phase.type === "factors" ? `factors-${phase.step}`
-                : phase.type === "fourstep" ? `fourstep-${phase.scenario}`
+            : phase.type === "fourstep" ? `fourstep-${phase.scenario}`
                     : phase.type === "quiz" ? `quiz-${phase.questionIndex}`
-                        : phase.type;
+                        : phase.type === "challenge" ? `challenge-${phase.revealed}` : phase.type;
 
     useEffect(() => {
         if (exitConfirmOpen) return;
-        const root = overlayRef.current;
+        const root = contentRef.current;
         if (!root) return;
         const t = window.setTimeout(() => {
-            const focusables = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
-            focusables[0]?.focus();
+            root.scrollTop = 0;
+            root.querySelector<HTMLElement>("h2")?.focus({ preventScroll: true });
         }, 0);
         return () => window.clearTimeout(t);
     }, [pageKey, exitConfirmOpen]);
@@ -321,7 +320,7 @@ export function ImmersiveSamplePlanning({
     // Escape key
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
-            if (e.key !== "Escape" || exitConfirmOpen || phase.type === "done" || phase.type === "launching") return;
+            if (e.key !== "Escape" || e.defaultPrevented || exitConfirmOpen || phase.type === "done" || phase.type === "launching") return;
             e.preventDefault();
             requestClose();
         };
@@ -331,8 +330,16 @@ export function ImmersiveSamplePlanning({
 
     // Prevent body scroll
     useEffect(() => {
+        const previous = document.body.style.overflow;
+        const background = Array.from(document.body.children).filter((element): element is HTMLElement =>
+            element instanceof HTMLElement && element !== overlayRef.current && !element.contains(overlayRef.current),
+        ).map(element => ({ element, inert: element.inert }));
+        background.forEach(({ element }) => { element.inert = true; });
         document.body.style.overflow = "hidden";
-        return () => { document.body.style.overflow = ""; };
+        return () => {
+            document.body.style.overflow = previous;
+            background.forEach(({ element, inert }) => { element.inert = inert; });
+        };
     }, []);
 
     // Focus trap
@@ -353,24 +360,23 @@ export function ImmersiveSamplePlanning({
         [exitConfirmOpen],
     );
 
-    // --- Animation ---
-    const animationClass = direction === "forward"
-        ? "animate-in fade-in slide-in-from-right-4 duration-300"
-        : "animate-in fade-in slide-in-from-left-4 duration-300";
-
     // --- Can navigate? ---
     const canGoNext =
         phase.type === "challenge" ? phase.revealed
-            : phase.type === "confirm" || phase.type === "launching" || phase.type === "done" ? false
+            : phase.type === "quiz" || phase.type === "confirm" || phase.type === "launching" || phase.type === "done" ? false
                 : true;
 
     const canGoPrev =
         phase.type !== "challenge"
-        && phase.type !== "confirm"
         && phase.type !== "launching"
         && phase.type !== "done";
 
-    const showNav = canGoNext || canGoPrev;
+    const stepIndex = planningStepIndex(phase.type);
+    const isValidPlan = finalSampleSize >= minimumSampleSize && calculatePlannedPrecision(params, finalSampleSize) != null;
+    const nextLabel = phase.type === "challenge" ? "继续：认识精度"
+        : phase.type === "precision" ? "继续：了解影响因素"
+        : phase.type === "factors" ? "继续：理解推荐"
+        : phase.type === "decision" ? "继续：检查方案" : "继续：调整方案";
 
     // --- Standard-flow setters: changing params clears any advanced source tag ---
     const handleConfidenceLevelChange = useCallback((v: string) => {
@@ -422,12 +428,19 @@ export function ImmersiveSamplePlanning({
                         estimationType={estimationType}
                         confidenceLevel={confidenceLevel}
                         marginOfError={marginOfError}
+                        populationVariance={populationVariance}
+                        designEffect={designEffect}
+                        nonResponseRate={nonResponseRate}
+                        targetDescription={targetDescription}
                         recommendedSize={recommendedSize}
                         guess={phase.guess}
                         revealed={phase.revealed}
-                        onCommitGuess={(g: number) =>
+                        onCommitGuess={(g: number | null) =>
                             setPhase((prev) =>
                                 prev.type === "challenge" ? { ...prev, guess: g, revealed: true } : prev)}
+                        onEditGuess={() => setPhase(prev => prev.type === "challenge" ? { ...prev, revealed: false } : prev)}
+                        onAdjust={() => jumpTo("decision")}
+                        hideNext
                         onNext={goNext}
                     />
                 );
@@ -435,6 +448,8 @@ export function ImmersiveSamplePlanning({
                 return (
                     <PrecisionPhase
                         params={params}
+                        initialSampleSize={navigationSnapshot.challenge.guess}
+                        hideNext
                         onNext={goNext}
                     />
                 );
@@ -443,6 +458,8 @@ export function ImmersiveSamplePlanning({
                     <FactorsPhase
                         step={phase.step}
                         params={params}
+                        onStepChange={step => setPhase({ type: "factors", step })}
+                        hideNext
                         onNext={goNext}
                     />
                 );
@@ -468,6 +485,7 @@ export function ImmersiveSamplePlanning({
             case "fourstep":
                 return (
                     <FourStepPhase
+                        hideNext
                         scenario={phase.scenario}
                         params={params}
                         estimationType={estimationType}
@@ -480,6 +498,7 @@ export function ImmersiveSamplePlanning({
             case "decision":
                 return (
                     <DecisionPhase
+                        hideNext
                         params={params}
                         onConfidenceLevelChange={handleConfidenceLevelChange}
                         onMarginOfErrorChange={handleMarginOfErrorChange}
@@ -507,65 +526,24 @@ export function ImmersiveSamplePlanning({
                     />
                 );
             case "confirm":
-                return (
-                    <div className="space-y-8">
-                        <div className="text-center space-y-3">
-                            <div className="mx-auto w-16 h-16 rounded-surface bg-success-muted border border-success-border flex items-center justify-center">
-                                <CheckCircle2 className="w-8 h-8 text-success" />
-                            </div>
-                            <h2 className="text-page-title font-bold text-foreground">确认样本量规划</h2>
-                            <p className="text-muted-foreground">
-                                请确认以下核心参数。这里仅完成规划；返回阶段页并点击“确认并进入下一阶段”后才会保存。
-                            </p>
+                return <div className="space-y-6">
+                    <PlanningHeading title="最后检查一下你的方案" description="确认样本量和预期精度。确认后将保存这份方案，并直接进入抽样执行。"/>
+                    <section className="rounded-surface border border-primary-border bg-card p-6 space-y-5">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div><p className="text-label text-muted-foreground">最终计划邀请</p><p className="mt-1 text-display font-bold text-primary tabular-nums">{finalSampleSize} <span className="text-body font-normal">个单位</span></p></div>
+                            <Button type="button" variant="outline" onClick={() => jumpTo("decision")}>返回调整</Button>
                         </div>
-
-                        <div className="rounded-surface border border-border bg-background p-6 space-y-5">
-                            <div className="text-center">
-                                <p className="text-meta font-medium uppercase tracking-wider text-muted-foreground mb-1">最终样本量</p>
-                                <div className="text-display font-black tabular-nums text-primary">
-                                    {finalSampleSize.toLocaleString()}
-                                </div>
-                                <p className="text-label text-muted-foreground mt-1">建议值 {recommendedSize.toLocaleString()}</p>
-                            </div>
-
-                            <SamplingObservationNotice nonResponseRate={nonResponseRate} />
-<div className="grid grid-cols-2 gap-3">
-                                <ParamSummaryItem label="估计类型" value={estimationType === "proportion" ? "比例" : "均值"} />
-                                <ParamSummaryItem label="置信水平" value={`${confidenceLevel}%`} />
-                                <ParamSummaryItem
-                                    label={estimationType === "mean" ? "绝对误差限" : "允许误差"}
-                                    value={formatMarginOfError(marginOfError, estimationType)}
-                                />
-                                <ParamSummaryItem label="设计效应" value={designEffect.toFixed(1)} />
-                                <ParamSummaryItem label="无回答率" value={`${Math.round(nonResponseRate * 100)}%`} />
-                                {estimationType === "mean" && (
-                                    <ParamSummaryItem label="总体方差" value={formatSamplePlanNumber(populationVariance)} />
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="flex justify-center gap-3">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => jumpTo("decision")}
-                                className="border-input text-muted-foreground"
-                            >
-                                <ChevronLeft className="w-4 h-4 mr-1" />
-                                返回修改
-                            </Button>
-                            <Button
-                                type="button"
-                                onClick={handleConfirm}
-                                data-testid="immersive-sp-confirm"
-                                className="bg-primary hover:bg-primary-hover text-primary-foreground px-8 py-5 rounded-surface "
-                            >
-                                确认规划结果
-                                <ChevronRight className="w-5 h-5 ml-2" />
-                            </Button>
-                        </div>
-                    </div>
-                );
+                        <PlanningOutcome params={params}/>
+                        <SamplingObservationNotice nonResponseRate={nonResponseRate}/>
+                        <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-3">
+                            <ParamSummaryItem label="估计类型" value={estimationType === "proportion" ? "比例估计" : "均值估计"}/>
+                            <ParamSummaryItem label="置信水平" value={confidenceLevel + "%"}/>
+                            <ParamSummaryItem label="设计效应" value={designEffect.toFixed(1)}/>
+                            <ParamSummaryItem label="预期无回答率" value={Math.round(nonResponseRate * 100) + "%"}/>
+                        </dl>
+                        <PlanningAssumptions params={params}/>
+                    </section>
+                </div>;
             case "launching":
             case "done":
                 return null;
@@ -590,105 +568,55 @@ export function ImmersiveSamplePlanning({
         );
     }
 
-    return (
+    return createPortal(
         <>
-            <div
-                ref={overlayRef}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby={titleId}
-                data-testid="immersive-sample-planning"
-                className="fixed inset-0 z-50 bg-background outline-none"
-                onKeyDown={focusTrap}
-                tabIndex={-1}
-            >
-                {/* Progress bar */}
-                <div className="absolute top-0 left-0 right-0 h-1 bg-muted z-10">
-                    <div
-                        className="h-full bg-primary transition-[width] duration-500 ease-out"
-                        style={{ width: `${progress}%` }}
-                    />
-                </div>
-
-                {/* Header */}
-                <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-6 pt-4 z-10">
-                    <div className="flex items-center gap-3">
-                        <span className="text-label font-medium text-muted-foreground">
-                            {PHASE_LABELS[phase.type] ?? ""}
-                        </span>
-                        {/* Phase dots */}
-                        <div className="flex gap-1.5">
-                            {NAVIGABLE_PHASES.map((t) => (
-                                <div
-                                    key={t}
-                                    className={`h-1.5 rounded-control transition-colors ${
-                                        t === phase.type
-                                            ? "bg-primary w-5"
-                                            : PHASE_ORDER.indexOf(t) < PHASE_ORDER.indexOf(phase.type)
-                                                ? "bg-primary w-1.5"
-                                                : "bg-input w-1.5"
-                                    }`}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={requestClose}
-                        className="w-10 h-10 rounded-control flex items-center justify-center text-muted-foreground hover:text-muted-foreground hover:bg-muted transition-none"
-                        aria-label="关闭"
-                        data-testid="immersive-sp-close"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
-                </div>
-
-                {/* Content */}
-                <div className="h-full flex flex-col items-center justify-center overflow-y-auto px-6 pt-16 pb-24">
-                    <div key={pageKey} className={`w-full max-w-2xl ${animationClass}`}>
-                        <h1 id={titleId} className="sr-only">样本量规划</h1>
-                        {onRetryDraftSave && <DraftSaveStatus status={draftSaveStatus} onRetry={onRetryDraftSave} />}
-                        {renderPhase()}
-                    </div>
-                </div>
-
-                {/* Keep the back action isolated from centered teaching content. */}
-                {canGoPrev && (
-                    <div className="pointer-events-none fixed bottom-4 left-6 z-10">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={goPrev}
-                            className="pointer-events-auto bg-card text-muted-foreground hover:text-foreground"
-                        >
-                            <ChevronLeft className="w-4 h-4 mr-1" />
-                            上一步
+            <div ref={overlayRef} role="dialog" aria-modal="true" aria-labelledby={titleId}
+                data-testid="immersive-sample-planning" className="fixed inset-0 z-50 flex flex-col bg-background text-foreground outline-none"
+                onKeyDown={focusTrap} tabIndex={-1}>
+                <header className="shrink-0 border-b border-border bg-card px-6 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                        <div><h1 id={titleId} className="text-subheading font-semibold">样本量规划</h1>
+                            <p className="mt-0.5 text-meta text-muted-foreground">第 {stepIndex + 1} 步，共 {PLANNING_STEPS.length} 步 · {PHASE_LABELS[phase.type]}</p></div>
+                        <Button type="button" variant="ghost" onClick={requestClose} className="min-h-11 shrink-0" aria-label="暂时退出样本量规划" data-testid="immersive-sp-close">
+                            <span className="inline">暂时退出</span><X className="h-5 w-5 ml-2"/>
                         </Button>
                     </div>
-                )}
-
-                {/* Side navigation arrows on desktop */}
-                {showNav && canGoPrev && (
-                    <button
-                        type="button"
-                        onClick={goPrev}
-                        className="flex fixed top-1/2 -translate-y-1/2 left-4 z-10 w-11 h-11 rounded-control border border-border bg-background items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-none"
-                        aria-label="上一步"
-                    >
-                        <ChevronLeft className="w-5 h-5" />
-                    </button>
-                )}
-                {showNav && canGoNext && (
-                    <button
-                        type="button"
-                        onClick={goNext}
-                        data-testid="immersive-sp-next"
-                        className="fixed top-1/2 right-4 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-control bg-primary text-primary-foreground transition-none hover:bg-primary-hover"
-                        aria-label="下一步"
-                    >
-                        <ChevronRight className="w-5 h-5" />
-                    </button>
-                )}
+                    <div className="mt-3 h-1 overflow-hidden rounded-control bg-muted" role="progressbar" aria-label="样本量规划进度" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
+                        <div className="h-full bg-primary transition-[width] duration-200 motion-reduce:transition-none" style={{width: progress + "%"}}/>
+                    </div>
+                </header>
+                <div className="flex min-h-0 flex-1">
+                    <aside className="flex w-56 shrink-0 flex-col justify-between border-r border-border bg-card p-4">
+                        <nav aria-label="样本量规划步骤"><ol className="space-y-2">
+                            {PLANNING_STEPS.map((step, index) => <li key={step.type}>
+                                <button type="button" aria-current={index === stepIndex ? "step" : undefined}
+                                    disabled={index > stepIndex} onClick={() => jumpTo(step.type)}
+                                    className={"flex w-full items-start gap-3 rounded-control p-3 text-left transition-colors disabled:cursor-not-allowed " + (index === stepIndex ? "bg-primary-muted text-primary" : "text-muted-foreground hover:bg-muted")}>
+                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-control border border-current text-meta font-semibold">{index+1}</span>
+                                    <span className="space-y-1"><span className="block text-label font-semibold">{step.label}</span><span className="block text-meta">{step.description}</span></span>
+                                </button>
+                            </li>)}
+                        </ol></nav>
+                        <p className="border-t border-border pt-4 text-meta text-muted-foreground">总体 {populationSize.toLocaleString()} 个单位<br/>{estimationType === "proportion" ? "比例估计" : "均值估计"} · {confidenceLevel}% 置信</p>
+                    </aside>
+                    <div ref={contentRef} className="min-w-0 flex-1 overflow-y-auto overscroll-contain" data-testid="planning-scroll-content">
+                        <div key={pageKey} className="mx-auto w-full max-w-5xl px-8 py-8">
+                            {renderPhase()}
+                        </div>
+                    </div>
+                </div>
+                <footer className="shrink-0 border-t border-border bg-card px-6 py-3">
+                    {onRetryDraftSave && draftSaveStatus !== "idle" && <div className="mb-3 text-left"><DraftSaveStatus status={draftSaveStatus} onRetry={onRetryDraftSave}/></div>}
+                    <div className="flex items-center justify-between gap-3">
+                        {canGoPrev ? <Button type="button" variant="outline" onClick={goPrev} className="min-h-11"><ChevronLeft className="mr-1 h-4 w-4"/>上一步</Button> : <p className="text-meta text-muted-foreground">{phase.type === "challenge" && phase.revealed ? "建议值会随规划条件变化" : "先填写数字，或直接查看建议"}</p>}
+                        {canGoNext && <Button type="button" onClick={goNext} disabled={phase.type === "decision" && !isValidPlan}
+                            data-testid={phase.type === "decision" ? "immersive-sp-decision-next" : "immersive-sp-next"} className="min-h-11 whitespace-normal">
+                            {nextLabel}<ChevronRight className="ml-2 h-4 w-4 shrink-0"/>
+                        </Button>}
+                        {phase.type === "quiz" && <p className="text-meta text-muted-foreground">自检不计分，也可以跳过</p>}
+                        {phase.type === "confirm" && <Button type="button" onClick={handleConfirm} disabled={!isValidPlan || draftSaveStatus === "conflict"} data-testid="immersive-sp-confirm" className="min-h-11">保存规划并进入抽样<ChevronRight className="ml-2 h-4 w-4"/></Button>}
+                    </div>
+                </footer>
             </div>
 
             <AlertDialog open={exitConfirmOpen} onOpenChange={setExitConfirmOpen}>
@@ -707,7 +635,7 @@ export function ImmersiveSamplePlanning({
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </>
+        </>, document.body,
     );
 }
 
@@ -715,9 +643,9 @@ export function ImmersiveSamplePlanning({
 
 function ParamSummaryItem({ label, value }: { label: string; value: string }) {
     return (
-        <div className="rounded-surface bg-card px-3 py-2.5">
-            <p className="text-meta font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-            <p className="text-label font-bold tabular-nums text-foreground mt-0.5">{value}</p>
+        <div className="rounded-surface bg-muted px-3 py-2.5">
+            <dt className="text-meta text-muted-foreground">{label}</dt>
+            <dd className="text-label font-semibold tabular-nums text-foreground mt-0.5">{value}</dd>
         </div>
     );
 }

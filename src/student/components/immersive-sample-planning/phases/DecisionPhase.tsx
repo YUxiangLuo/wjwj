@@ -1,5 +1,4 @@
-import { formatStatistic } from "@/utils/statistic-format";
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useId } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +14,9 @@ import {
 import { ChevronRight, RotateCcw, Info, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { calculatePlannedPrecision, formatPlanningError } from "../../../experiment/planned-precision";
+import { PlanningHeading, PlanningOutcome, PlanningAssumptions } from "../PlanningShared";
+import { primarySliderClassName } from "../../sample-planning-styles";
 import {
     calculateMeanSampleSizeMetrics,
     calculateSampleSizeMetrics,
@@ -22,7 +24,6 @@ import {
     calculateSampleSizeForDifferentP,
 } from "../../../experiment/sample-plan";
 import {
-    formatMarginOfError,
     getMarginOfErrorLabel,
 } from "../../../experiment/sample-plan-display";
 import {
@@ -55,6 +56,7 @@ const TOAST_APPLY_MULTIVAR_DESC =
 
 interface Props {
     params: SampleParams;
+    hideNext?: boolean;
     onConfidenceLevelChange: (v: string) => void;
     onMarginOfErrorChange: (v: number) => void;
     onDesignEffectChange: (v: number) => void;
@@ -78,6 +80,7 @@ interface Props {
 
 export function DecisionPhase({
     params,
+    hideNext = false,
     onConfidenceLevelChange,
     onMarginOfErrorChange,
     onDesignEffectChange,
@@ -95,9 +98,12 @@ export function DecisionPhase({
     onAdvancedPlanSnapshot,
 }: Props) {
     const { populationSize: N, recommendedSize, finalSampleSize } = params;
+    const finalSizeId = useId();
     const isMeanEstimation = params.estimationType === "mean";
     const { min: minSize, max: maxSize } = useMemo(() => getFinalSampleSizeBounds(N, params.minimumSampleSize), [N, params.minimumSampleSize]);
     const isValidSize = Number.isInteger(finalSampleSize) && finalSampleSize >= minSize && finalSampleSize <= maxSize;
+
+    const isValidPlan = isValidSize && calculatePlannedPrecision(params, finalSampleSize) != null;
 
     const hasAdvancedSource = advancedPlanSource != null;
     const sourceLabel =
@@ -184,25 +190,7 @@ export function DecisionPhase({
     );
 
     const currentMarginLabel = getMarginOfErrorLabel(params.estimationType);
-    const currentMarginValue = formatMarginOfError(params.marginOfError, params.estimationType);
-    const formattedMeanMetricMargin = formatMarginOfError(metrics?.marginOfError ?? 0, "mean");
-
-    const metricCards = useMemo(() => {
-        if (!metrics) return [];
-        if (isMeanEstimation) {
-            return [
-                { label: "SE", value: formatStatistic(metrics.standardError) },
-                { label: "预期 ME", value: formattedMeanMetricMargin },
-                { label: "预期完成", value: Math.ceil(metrics.expectedCompleted).toLocaleString() },
-            ];
-        }
-        return [
-            { label: "SE", value: formatStatistic(metrics.standardError) },
-            { label: "预期半宽", value: `±${(metrics.marginOfError * 100).toFixed(2)}%` },
-            { label: "预期完成", value: Math.ceil(metrics.expectedCompleted).toLocaleString() },
-        ];
-    }, [formattedMeanMetricMargin, isMeanEstimation, metrics]);
-
+    const currentMarginValue = formatPlanningError(isMeanEstimation ? params.marginOfError : params.marginOfError / 100, params.estimationType);
     /** 高级工具弹层：仅在点击「应用」后写回父级状态，并关闭弹层 */
     const closeAdvancedDialog = useCallback(() => {
         setActiveAdvancedTab(null);
@@ -268,15 +256,7 @@ export function DecisionPhase({
 
     return (
         <div className="space-y-6">
-            <div className="text-center space-y-2">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-control bg-primary-muted text-meta font-medium text-primary">
-                    决策面板
-                </span>
-                <h2 className="text-page-title font-bold text-foreground">确认会用于抽样执行的最终样本量</h2>
-                <p className="text-label text-muted-foreground max-w-2xl mx-auto">
-                    这里确认的 n 会保存到实验，并直接带入下一阶段的抽样执行与后续分析报告。
-                </p>
-            </div>
+            <PlanningHeading title="把精度要求，变成可执行的方案" description="左侧调整目标和调查假设，右侧决定实际样本量。每次改动都会立即更新预期精度。"/>
 
             {hasAdvancedSource && (
                 <div className="rounded-surface border border-warning-border bg-warning-muted px-4 py-3 flex flex-row items-center justify-between gap-3">
@@ -298,10 +278,10 @@ export function DecisionPhase({
                 </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,24rem),1fr))] items-start gap-5">
                 {/* Left: Parameter controls */}
-                <div className="rounded-surface border border-border bg-background p-5 space-y-5 transition-colors">
-                    <h3 className="text-label font-semibold text-foreground">常规公式参数</h3>
+                <div className="rounded-surface border border-border bg-card p-5 space-y-5 transition-colors">
+                    <h3 className="text-label font-semibold text-foreground">设置目标与假设</h3>
 
                     <div className="space-y-1.5">
                         <Label className="text-meta text-muted-foreground">置信水平</Label>
@@ -309,7 +289,7 @@ export function DecisionPhase({
                             value={params.confidenceLevel}
                             onValueChange={onConfidenceLevelChange}
                         >
-                            <SelectTrigger aria-label="常规公式置信水平" className="h-9 text-label bg-card border-input">
+                            <SelectTrigger aria-label="常规公式置信水平" className="min-h-11 text-label bg-background border-input">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -332,11 +312,11 @@ export function DecisionPhase({
                                 <Input
                                     aria-label="绝对误差限"
                                     type="number"
-                                    value={params.marginOfError}
+                                    value={params.marginOfError || ""}
                                     onChange={(e) => onMarginOfErrorChange(Number.parseFloat(e.target.value) || 0)}
                                     min={0.01}
                                     step={0.1}
-                                    className="h-9 bg-card border-input"
+                                    className="h-11 bg-background border-input"
                                 />
                                 <p className="text-meta text-muted-foreground">
                                     均值估计使用与指标同单位的绝对误差，不使用百分比滑块。
@@ -348,11 +328,12 @@ export function DecisionPhase({
                                 value={[params.marginOfError]}
                                 onValueChange={([v]) => v != null && onMarginOfErrorChange(v)}
                                 min={1} max={10} step={1}
-                                className="py-1 [&>.relative>.absolute]:bg-info"
+                                className={primarySliderClassName}
                             />
                         )}
                     </div>
 
+                    <p className="text-meta text-muted-foreground">{isMeanEstimation ? "误差与研究指标同单位。" : "比例误差以百分点计。1 个百分点更严格，10 个百分点更宽松。"}</p>
                     <div className="space-y-1.5">
                         <div className="flex justify-between">
                             <Label className="text-meta text-muted-foreground">设计效应</Label>
@@ -360,13 +341,14 @@ export function DecisionPhase({
                         </div>
                         <Slider
                             aria-label="设计效应"
-                            value={[params.designEffect * 10]}
-                            onValueChange={([v]) => v != null && onDesignEffectChange(Math.round(v) / 10)}
-                            min={10} max={50} step={1}
-                            className="py-1 [&>.relative>.absolute]:bg-warning"
+                            value={[params.designEffect]}
+                            onValueChange={([v]) => v != null && onDesignEffectChange(Math.round(v * 10) / 10)}
+                            min={0.5} max={5} step={0.1}
+                            className={primarySliderClassName}
                         />
                     </div>
 
+                    <p className="text-meta text-muted-foreground">1 表示简单随机抽样基准。分层、PPS 等方法的实际效率取决于研究变量和设计，可用高级工具辅助判断。</p>
                     <div className="space-y-1.5">
                         <div className="flex justify-between">
                             <Label className="text-meta text-muted-foreground">无回答率</Label>
@@ -377,57 +359,100 @@ export function DecisionPhase({
                             value={[Math.round(params.nonResponseRate * 100)]}
                             onValueChange={([v]) => v != null && onNonResponseRateChange(v / 100)}
                             min={0} max={50} step={5}
-                            className="py-1 [&>.relative>.absolute]:bg-destructive"
+                            className={primarySliderClassName}
                         />
                     </div>
                 </div>
 
-                {/* Right: Metrics gauge */}
-                <div className="rounded-surface border border-border bg-background p-5 flex flex-col items-center justify-center space-y-4 transition-colors">
-                    <h3 className="text-label font-semibold text-foreground">常规公式建议值</h3>
-                    <div className="text-display font-black tabular-nums text-primary">
-                        {recommendedSize.toLocaleString()}
+                <div className="space-y-4">
+            {/* Final sample size */}
+            <div
+                className={cn(
+                    "rounded-surface border p-5 space-y-3 transition-colors",
+                    isValidSize
+                        ? "border-primary-border bg-card"
+                        : "border-destructive bg-destructive-muted",
+                )}
+            >
+                <h3 className="text-label font-semibold text-foreground">你准备采用的样本量</h3>
+                {minSize > 1 && <p className="text-meta text-info">本课题要求完成分层抽样。至少需要 {minSize} 个样本，才能在一个可用分层方案中覆盖每个非空层；分层更细时还需相应增加样本量。</p>}
+                <div className="flex flex-wrap items-end gap-3">
+                    <div className="w-full flex-1 space-y-2">
+                        <div className="flex flex-wrap justify-between gap-2 text-meta">
+                            <Label htmlFor={finalSizeId} className="text-meta text-muted-foreground">最终样本量</Label>
+                            <span className="text-success font-medium">
+                                建议值 {recommendedSize.toLocaleString()}
+                            </span>
+                        </div>
+                        <div className="relative">
+                            <Input
+                                id={finalSizeId}
+                                aria-label="最终样本量"
+                                type="number"
+                                inputMode="numeric" step={1} aria-invalid={!isValidSize}
+                                value={finalSampleSize === 0 ? "" : finalSampleSize}
+                                onChange={(e) => {
+                                    if (hasAdvancedSource) onClearAdvancedSource();
+                                    onFinalSizeChange(Number(e.target.value));
+                                }}
+                                min={minSize}
+                                max={maxSize}
+                                data-testid="immersive-sp-final-size"
+                                className={cn(
+                                    "h-14 pr-24 text-section-title font-semibold bg-background border-input",
+                                    isValidSize ? "text-primary" : "text-destructive",
+                                )}
+                            />
+                            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground text-label">个单位</span>
+                        </div>
                     </div>
-                    {recommendedSize >= N && N > 0 && (
-                        <p className="text-meta text-warning text-center">
-                            已达全体发放上限（邀请 n = N = {N.toLocaleString()}）。
-                            {params.nonResponseRate > 0
-                                ? `最多邀请 ${N.toLocaleString()} 个总体单位，预期完成约 ${Math.ceil(metrics?.expectedCompleted ?? 0).toLocaleString()} 个有效样本；不等于完整普查。`
-                                : "仅在全部单位完成回答时才是完整普查。"}
-                        </p>
-                    )}
-                    {metrics?.precisionUnreachable && (
-                        <p className="text-meta text-destructive text-center">
-                            目标精度不可达。当前预期误差限约 {isMeanEstimation
-                                ? formattedMeanMetricMargin
-                                : `±${(metrics.marginOfError * 100).toFixed(2)}%`}
-                            ，大于目标 {currentMarginValue}。
-                        </p>
-                    )}
-                    <div className="grid grid-cols-3 gap-3 w-full text-center">
-                        {metricCards.map((card) => (
-                            <MetricBadge key={card.label} label={card.label} value={card.value} />
-                        ))}
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                            if (hasAdvancedSource) onClearAdvancedSource();
+                            onResetFinalSize();
+                        }}
+                        className="border-input text-muted-foreground shrink-0"
+                    >
+                        <RotateCcw className="w-4 h-4 mr-1" />
+                        采用建议值
+                    </Button>
+                </div>
+                <p className="text-meta text-muted-foreground">
+                    这里确认的 n 会作为下一阶段抽样执行的目标样本量。
+                </p>
+                {hasAdvancedSource && (
+                    <p className="text-meta text-warning">
+                        当前最终样本量保留了「{sourceLabel}」的结果。手动修改或重置后，将自动切回常规规划。
+                    </p>
+                )}
+                {!isValidSize && (
+                    <div className="flex items-center gap-2 text-label text-destructive">
+                        <Info className="w-4 h-4 shrink-0" />
+                        请输入 {minSize}～{maxSize.toLocaleString()} 之间的整数
                     </div>
-                    {hasAdvancedSource && (
-                        <p className="text-center text-meta text-warning">
-                            当前最终样本量来自「{sourceLabel}」，这里仍展示常规公式建议值。
-                        </p>
-                    )}
+                )}
+                <div className="border-t border-border pt-4"><PlanningOutcome params={params}/></div>
+            </div>
+
+
+                    <PlanningAssumptions params={params}/>
                 </div>
             </div>
 
             {/* Sensitivity heatmap */}
             {sensitivity && (
-                <div className="rounded-surface border border-border bg-background p-5 space-y-3 transition-opacity">
-                    <h3 className="text-label font-semibold text-foreground">常规公式权衡探索</h3>
+                <details className="rounded-surface border border-border bg-card p-5 space-y-3">
+                    <summary className="cursor-pointer text-label font-semibold text-foreground">比较其他精度方案（点击即可采用）</summary>
                     <p className="text-meta text-muted-foreground">看看不同置信水平与允许误差组合下，样本量会如何变化。</p>
                     <SensitivityGrid
                         data={sensitivity}
                         currentCL={params.confidenceLevel}
                         currentME={params.marginOfError}
+                        onSelect={(cl, me) => { onConfidenceLevelChange(cl); onMarginOfErrorChange(me); }}
                     />
-                </div>
+                </details>
             )}
 
             {/* Advanced tools */}
@@ -678,7 +703,7 @@ export function DecisionPhase({
                                     estimationType={params.estimationType}
                                     confidenceLevel={params.confidenceLevel}
                                     populationVariance={params.populationVariance}
-                                    finalSampleSize={finalSampleSize}
+                                    finalSampleSize={recommendedSize}
                                 />
                                 {!isMeanEstimation && (
                                     <PValueComparisonCard
@@ -725,114 +750,38 @@ export function DecisionPhase({
                 </DialogContent>
             </Dialog>
 
-            {/* Final sample size */}
-            <div
-                className={cn(
-                    "rounded-surface border p-5 space-y-3 transition-colors",
-                    isValidSize
-                        ? "border-border bg-background"
-                        : "border-destructive bg-destructive-muted",
-                )}
-            >
-                <h3 className="text-label font-semibold text-foreground">最终样本量（将带入抽样执行）</h3>
-                {minSize > 1 && <p className="text-meta text-info">本课题要求完成分层抽样。至少需要 {minSize} 个样本，才能在一个可用分层方案中覆盖每个非空层；分层更细时还需相应增加样本量。</p>}
-                <div className="flex gap-3 items-end">
-                    <div className="flex-1 space-y-1">
-                        <div className="flex justify-between text-meta">
-                            <span className="text-muted-foreground">这里实际准备纳入多少个单位</span>
-                            <span className="text-success font-medium">
-                                建议值 {recommendedSize.toLocaleString()}
-                            </span>
-                        </div>
-                        <div className="relative">
-                            <Input
-                                aria-label="最终样本量"
-                                type="number"
-                                value={finalSampleSize}
-                                onChange={(e) => {
-                                    if (hasAdvancedSource) onClearAdvancedSource();
-                                    onFinalSizeChange(parseInt(e.target.value, 10) || 0);
-                                }}
-                                min={minSize}
-                                max={maxSize}
-                                data-testid="immersive-sp-final-size"
-                                className={cn(
-                                    "pr-20 text-subheading font-bold bg-card border-input",
-                                    isValidSize ? "text-primary" : "text-destructive",
-                                )}
-                            />
-                            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground text-label">个单位</span>
-                        </div>
-                    </div>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                            if (hasAdvancedSource) onClearAdvancedSource();
-                            onResetFinalSize();
-                        }}
-                        className="border-input text-muted-foreground shrink-0"
-                    >
-                        <RotateCcw className="w-4 h-4 mr-1" />
-                        重置
-                    </Button>
-                </div>
-                <p className="text-meta text-muted-foreground">
-                    这里确认的 n 会作为下一阶段抽样执行的目标样本量。
-                </p>
-                {hasAdvancedSource && (
-                    <p className="text-meta text-warning">
-                        当前最终样本量保留了「{sourceLabel}」的结果。手动修改或重置后，将自动切回常规规划。
-                    </p>
-                )}
-                {!isValidSize && (
-                    <div className="flex items-center gap-2 text-label text-destructive">
-                        <Info className="w-4 h-4 shrink-0" />
-                        样本量需在 {minSize} – {maxSize.toLocaleString()} 之间
-                    </div>
-                )}
-            </div>
-
-            <div className="flex justify-center pt-2">
+            {!hideNext && <div className="flex justify-center pt-2">
                 <Button
                     type="button"
                     onClick={onNext}
-                    disabled={!isValidSize}
+                    disabled={!isValidPlan}
                     data-testid="immersive-sp-decision-next"
                     className="rounded-surface bg-primary px-8 py-5 text-primary-foreground hover:bg-primary-hover disabled:border-border disabled:bg-muted disabled:text-muted-foreground"
                 >
                     继续：完成理解自检
                     <ChevronRight className="w-5 h-5 ml-2" />
                 </Button>
-            </div>
+            </div>}
         </div>
     );
 }
 
 // --- Sub-components ---
 
-function MetricBadge({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="rounded-surface bg-card px-2 py-2">
-            <p className="text-meta font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-            <p className="text-meta font-bold tabular-nums text-foreground mt-0.5">{value}</p>
-        </div>
-    );
-}
-
 function SensitivityGrid({
     data,
     currentCL,
     currentME,
+    onSelect,
 }: {
     data: Array<{ confidenceLabel: string; confidenceLevel: string; marginOfError: number; sampleSize: number }>;
     currentCL: string;
     currentME: number;
+    onSelect: (confidence: string, margin: number) => void;
 }) {
     // Build a grid: rows = confidence levels, cols = margins of error
     const clLabels = [...new Set(data.map((d) => d.confidenceLevel))];
     const meValues = [...new Set(data.map((d) => d.marginOfError))].sort((a, b) => a - b);
-    const maxSample = Math.max(...data.map((d) => d.sampleSize));
 
     const lookup = new Map(data.map((d) => [`${d.confidenceLevel}-${d.marginOfError}`, d.sampleSize]));
 
@@ -867,23 +816,17 @@ function SensitivityGrid({
                                 {meValues.map((me) => {
                                     const n = lookup.get(`${cl}-${me}`) ?? 0;
                                     const isCurrent = cl === currentCL && me === currentME;
-                                    const intensity = Math.round((n / maxSample) * 100);
                                     return (
                                         <td key={me} className="px-1 py-1">
-                                            <div
-                                                className={`rounded-control px-1.5 py-1 text-center tabular-nums transition-colors ${
+                                            <button type="button" onClick={() => onSelect(cl, me)} aria-pressed={isCurrent} aria-label={`采用 ${cl}% 置信、误差 ${me} 个百分点的方案：${n} 个单位`}
+                                                className={`min-h-11 w-full rounded-control px-1.5 py-1 text-center tabular-nums transition-colors ${
                                                     isCurrent
                                                         ? "bg-primary text-primary-foreground font-bold ring-2 ring-primary ring-offset-1"
-                                                        : `text-muted-foreground`
+                                                        : "bg-muted text-foreground hover:bg-primary-muted"
                                                 }`}
-                                                style={
-                                                    !isCurrent
-                                                        ? { backgroundColor: `rgba(99, 102, 241, ${intensity / 400})` }
-                                                        : undefined
-                                                }
                                             >
                                                 {n.toLocaleString()}
-                                            </div>
+                                            </button>
                                         </td>
                                     );
                                 })}

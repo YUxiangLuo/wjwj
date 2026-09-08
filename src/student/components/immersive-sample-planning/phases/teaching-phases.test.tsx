@@ -68,8 +68,9 @@ test("ChallengePhase uses research-neutral unit copy", () => {
         />,
     );
     const text = view.container.textContent ?? "";
-    expect(text).toContain("总体共有 18 个单位");
-    expect(text).toContain("调查多少个单位");
+    expect(text).toContain("18 个单位");
+    expect(view.getByLabelText("你准备调查多少个单位？")).toBeTruthy();
+    expect(text).toContain("目标绝对误差限±2");
     expect(text).not.toContain("18 人");
 });
 
@@ -99,8 +100,8 @@ test("PrecisionPhase 在均值估计下展示均值公式而非比例公式", ()
     const view = render(<PrecisionPhase params={meanParams()} onNext={() => {}} />);
     const text = view.container.textContent ?? "";
 
-    expect(text).toContain("SE(ȳ) = √[σ²/n × (N−n)/(N−1)]");
-    expect(text).toContain("σ²=100");
+    expect(text).toContain("SE(ȳ) = √[deff × σ²/n × (N−n)/(N−1)]");
+    expect(text).toContain("σ² = 100");
     expect(text).not.toContain("CV = SE / p");
     expect(text).not.toContain("p=0.5");
 });

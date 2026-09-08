@@ -5,6 +5,8 @@ import {
     type PhaseNavigationSnapshot,
     type PhaseType,
     initialPhase,
+    planningStepIndex,
+    PLANNING_STEPS,
 } from "./types";
 import { QUIZ_QUESTION_COUNT } from "./phases/QuizPhase";
 
@@ -12,31 +14,18 @@ function phaseIndex(type: PhaseType): number {
     return PHASE_ORDER.indexOf(type);
 }
 
-const FACTORS_STEPS = ["error_tolerance", "subpopulation", "variability", "design_effect", "non_response", "cost_balance", "summary"] as const;
-
 /** Percentage progress through the sample planning flow (0–100). */
 function phaseProgress(phase: Phase): number {
-    const total = PHASE_ORDER.length; // includes "done"
-    const base = phaseIndex(phase.type);
-    let sub = 0;
-    if (phase.type === "formula") {
-        sub = phase.step === "z" ? 0 : phase.step === "e" ? 0.33 : 0.66;
-    } else if (phase.type === "factors") {
-        const idx = FACTORS_STEPS.indexOf(phase.step);
-        sub = idx >= 0 ? idx / FACTORS_STEPS.length : 0;
-    } else if (phase.type === "fourstep") {
-        sub = phase.scenario === "deff" ? 0 : phase.scenario === "nrr" ? 0.33 : 0.66;
-    } else if (phase.type === "quiz") {
-        sub = Math.min(phase.questionIndex / QUIZ_QUESTION_COUNT, 0.99);
-    }
-    return Math.min(100, ((base + sub) / (total - 1)) * 100);
+    if (["confirm", "launching", "done"].includes(phase.type)) return 100;
+    const sub = phase.type === "quiz" ? phase.questionIndex / QUIZ_QUESTION_COUNT : phase.type === "challenge" && phase.revealed ? 0.5 : 0;
+    return ((planningStepIndex(phase.type) + sub) / PLANNING_STEPS.length) * 100;
 }
 
 function defaultPhaseFor(type: PhaseType): Phase {
     switch (type) {
         case "challenge": return initialPhase();
         case "precision": return { type: "precision" };
-        case "factors": return { type: "factors", step: "error_tolerance" };
+        case "factors": return { type: "factors", step: "summary" };
         case "formula": return { type: "formula", step: "z" };
         case "fpc": return { type: "fpc" };
         case "fourstep": return { type: "fourstep", scenario: "summary" };
@@ -78,13 +67,9 @@ export function usePhaseState(initial?: PhaseNavigationSnapshot | null) {
                 return { type: "precision" };
             }
             if (prev.type === "precision") {
-                return { type: "factors", step: "error_tolerance" };
+                return { type: "factors", step: "summary" };
             }
             if (prev.type === "factors") {
-                const idx = FACTORS_STEPS.indexOf(prev.step);
-                if (idx >= 0 && idx < FACTORS_STEPS.length - 1) {
-                    return { type: "factors", step: FACTORS_STEPS[idx + 1]! };
-                }
                 return { type: "fourstep", scenario: "summary" };
             }
             if (prev.type === "formula" || prev.type === "fpc") {
@@ -115,10 +100,6 @@ export function usePhaseState(initial?: PhaseNavigationSnapshot | null) {
                 };
             }
             if (prev.type === "factors") {
-                const idx = FACTORS_STEPS.indexOf(prev.step);
-                if (idx > 0) {
-                    return { type: "factors", step: FACTORS_STEPS[idx - 1]! };
-                }
                 return { type: "precision" };
             }
             if (prev.type === "formula" || prev.type === "fpc") {
@@ -143,7 +124,9 @@ export function usePhaseState(initial?: PhaseNavigationSnapshot | null) {
         const currentIdx = phaseIndex(phaseRef.current.type);
         const targetIdx = phaseIndex(type);
         setDirection(targetIdx >= currentIdx ? "forward" : "backward");
-        setPhase(defaultPhaseFor(type));
+        const current = phaseRef.current;
+        if (current.type === "challenge") challengeSnapshotRef.current = { guess: current.guess, revealed: current.revealed };
+        setPhase(type === "challenge" ? { type: "challenge", ...challengeSnapshotRef.current } : defaultPhaseFor(type));
     }, []);
 
     const skipQuiz = useCallback(() => {

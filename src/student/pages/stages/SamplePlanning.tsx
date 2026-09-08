@@ -158,9 +158,28 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
         } satisfies SamplePlanningStageDraft);
     }, [clearDraft.save, displayData]);
 
+    const saveStage = useCallback(async (plan = displayData) => {
+        if (!plan || experiment == null || !targetVarianceReady || targetVarianceError) {
+            toast.error("实验数据未就绪，请稍后重试");
+            return;
+        }
+        setConfirmNextSaving(true);
+        try {
+            if (clearDraft.save({ samplePlan: plan, wizard: null }) === "conflict") return;
+            const ok = await completeStage(2, { samplePlan: plan });
+            if (!ok) {
+                toast.error("保存失败，请重试");
+            } else {
+                clearDraft.clear();
+            }
+        } finally {
+            setConfirmNextSaving(false);
+        }
+    }, [clearDraft, completeStage, displayData, experiment, targetVarianceReady, targetVarianceError]);
+
     const handleImmersiveComplete = useCallback((result: SampleParams) => {
         const estimationType = lockedEstimationType ?? result.estimationType;
-        setDisplayData({
+        const plan: SamplePlanData = {
             estimationType,
             confidenceLevel: result.confidenceLevel,
             marginOfError: result.marginOfError,
@@ -173,10 +192,12 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             finalSampleSize: result.finalSampleSize,
             ...(result.advancedPlanSource ? { advancedPlanSource: result.advancedPlanSource } : {}),
             ...(result.advancedPlans && result.advancedPlans.length > 0 ? { advancedPlans: result.advancedPlans } : {}),
-        });
+        };
+        setDisplayData(plan);
         setWizardDraft(null);
         closeImmersivePlanning();
-    }, [closeImmersivePlanning, lockedEstimationType]);
+        void saveStage(plan);
+    }, [closeImmersivePlanning, lockedEstimationType, saveStage]);
 
     useEffect(() => {
         setDisplayData(initialData);
@@ -190,25 +211,6 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
         displayData != null
         && displayData.finalSampleSize >= minSampleSize
         && displayData.finalSampleSize <= maxSampleSize;
-
-    const saveStage = useCallback(async () => {
-        if (!displayData || experiment == null || !targetVarianceReady || targetVarianceError) {
-            toast.error("实验数据未就绪，请稍后重试");
-            return;
-        }
-        setConfirmNextSaving(true);
-        try {
-            if (clearDraft.save(samplePlanDraft) === "conflict") return;
-            const ok = await completeStage(2, { samplePlan: displayData });
-            if (!ok) {
-                toast.error("保存失败，请重试");
-            } else {
-                clearDraft.clear();
-            }
-        } finally {
-            setConfirmNextSaving(false);
-        }
-    }, [clearDraft, completeStage, displayData, experiment, samplePlanDraft, targetVarianceReady, targetVarianceError]);
 
     const handleConfirmNext = () => {
         if (!displayData || experiment == null) {
@@ -245,6 +247,9 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             {immersiveOpen && targetVarianceReady && (
                 <ImmersiveSamplePlanning
                     populationSize={N}
+                    targetDescription={experiment?.studyContract?.contract.researchQuestion ?? (experiment?.analysisTarget?.target.kind === "proportion"
+                        ? `研究目标：估计「${experiment.analysisTarget.target.field}」为「${experiment.analysisTarget.target.value}」的单位所占比例。`
+                        : experiment?.analysisTarget?.target.kind === "mean" ? `研究目标：估计「${experiment.analysisTarget.target.field}」的总体均值。` : undefined)}
                     minimumSampleSize={minimumSampleSize}
                     initialConfidenceLevel={displayData?.confidenceLevel}
                     initialMarginOfError={displayData?.marginOfError ?? (lockedEstimationType === "mean" ? 2 : 5)}

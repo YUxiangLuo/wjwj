@@ -44,7 +44,7 @@ describe("usePhaseState", () => {
         expect(result.current.phase).toEqual({ type: "challenge", guess: 42, revealed: true });
     });
 
-    test("precision → factors 六步走 → fourstep summary → decision", () => {
+    test("precision → factors 概览 → fourstep summary → decision", () => {
         const { result } = renderHook(() => usePhaseState());
         act(() => {
             result.current.setPhase({ type: "precision" });
@@ -52,18 +52,6 @@ describe("usePhaseState", () => {
         act(() => {
             result.current.goNext();
         });
-        expect(result.current.phase).toEqual({ type: "factors", step: "error_tolerance" });
-        act(() => { result.current.goNext(); });
-        expect(result.current.phase).toEqual({ type: "factors", step: "subpopulation" });
-        act(() => { result.current.goNext(); });
-        expect(result.current.phase).toEqual({ type: "factors", step: "variability" });
-        act(() => { result.current.goNext(); });
-        expect(result.current.phase).toEqual({ type: "factors", step: "design_effect" });
-        act(() => { result.current.goNext(); });
-        expect(result.current.phase).toEqual({ type: "factors", step: "non_response" });
-        act(() => { result.current.goNext(); });
-        expect(result.current.phase).toEqual({ type: "factors", step: "cost_balance" });
-        act(() => { result.current.goNext(); });
         expect(result.current.phase).toEqual({ type: "factors", step: "summary" });
         act(() => { result.current.goNext(); });
         expect(result.current.phase).toEqual({ type: "fourstep", scenario: "summary" });
@@ -124,16 +112,34 @@ describe("usePhaseState", () => {
     });
 });
 
-    test("factors 阶段按六因素顺序推进：误差限→子总体→变异→设计效应→无回答率→成本→汇总", () => {
-        const { result } = renderHook(() => usePhaseState());
-        act(() => {
-            result.current.setPhase({ type: "factors", step: "error_tolerance" });
-        });
-        const expected = ["subpopulation", "variability", "design_effect", "non_response", "cost_balance", "summary"] as const;
-        for (const step of expected) {
-            act(() => { result.current.goNext(); });
-            expect(result.current.phase).toEqual({ type: "factors", step });
-        }
-        act(() => { result.current.goNext(); });
-        expect(result.current.phase.type).not.toBe("factors");
-    });
+test("从任一因素详情都能继续计算，并可返回因素概览", () => {
+    const { result } = renderHook(() => usePhaseState());
+    act(() => result.current.setPhase({ type: "factors", step: "non_response" }));
+    act(() => result.current.goNext());
+    expect(result.current.phase).toEqual({ type: "fourstep", scenario: "summary" });
+    act(() => result.current.goPrev());
+    expect(result.current.phase).toEqual({ type: "factors", step: "summary" });
+});
+
+test("步骤导航保留已提交的猜测，也能保存跳过猜测的进度", () => {
+    const { result } = renderHook(() => usePhaseState());
+    for (const guess of [40, null]) {
+        act(() => result.current.setPhase({ type: "challenge", guess, revealed: true }));
+        act(() => result.current.jumpTo("decision"));
+        act(() => result.current.jumpTo("challenge"));
+        expect(result.current.phase).toEqual({ type: "challenge", guess, revealed: true });
+    }
+});
+
+test("可见六步的进度单调推进，切换因素不虚增进度", () => {
+    const { result } = renderHook(() => usePhaseState());
+    act(() => result.current.setPhase({ type: "challenge", guess: 40, revealed: true }));
+    const progress: number[] = [];
+    for (let i = 0; i < 8; i++) {
+        progress.push(result.current.progress);
+        act(() => result.current.goNext());
+    }
+    expect(progress).toEqual([...progress].sort((a,b) => a-b));
+    expect(result.current.phase.type).toBe("confirm");
+    expect(result.current.progress).toBe(100);
+});

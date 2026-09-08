@@ -146,6 +146,19 @@ try {
     experiment = await api(student, `${experimentPath}/stages/1/complete`, "POST", { observedVersion: experiment.version, questionnaire });
     assert(experiment.currentStage === 2 && experiment.stage1CompletedAt, "Stage 1 did not persist");
     await page(student, stageUrl, '[data-testid="student-stage-sample-plan"]');
+    await visible(student, '[data-testid="planning-scroll-content"]');
+    const planningLayout = await evaluate<{ viewportHeight: number; top: number; bottom: number; contentBottom: number; footerTop: number }>(student, `(() => {
+        const dialog = document.querySelector('[data-testid="immersive-sample-planning"]');
+        const bounds = dialog.getBoundingClientRect();
+        const content = dialog.querySelector('[data-testid="planning-scroll-content"]').getBoundingClientRect();
+        const footer = dialog.querySelector('footer').getBoundingClientRect();
+        return { viewportHeight: innerHeight, top: bounds.top, bottom: bounds.bottom, contentBottom: content.bottom, footerTop: footer.top };
+    })()`);
+    assert(planningLayout.top === 0 && planningLayout.bottom === planningLayout.viewportHeight,
+        "Planning dialog must cover the viewport independently of page animations");
+    assert(planningLayout.contentBottom <= planningLayout.footerTop,
+        "Planning footer must not overlap scrollable content");
+    console.log("PASS planning dialog viewport and content/footer geometry (real browser)");
     const plan = computePpsMeanPlan();
     experiment = await api(student, `${experimentPath}/stages/2/complete`, "POST", { observedVersion: experiment.version, samplePlan: {
         estimationType: "mean", confidenceLevel: "95", marginOfError: 2, populationVariance: plan.populationVariance,

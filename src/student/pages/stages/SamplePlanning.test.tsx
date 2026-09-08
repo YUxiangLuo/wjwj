@@ -241,6 +241,8 @@ test("closing the immersive planner restores focus to its trigger", async () => 
 });
 
 test("completing the overlay persists the variance used to compute n, not a later parent fetch", async () => {
+    const completeStage = mock(async (_stage: number, _data: Record<string, unknown>) => true);
+    mockExperimentContext.completeStage = completeStage;
     const view = render(<SamplePlanning onPrev={() => undefined} />);
     await waitFor(() => expect(view.getByTestId("mock-immersive-planning")).toBeTruthy());
 
@@ -251,6 +253,9 @@ test("completing the overlay persists the variance used to compute n, not a late
     expect(summary).not.toContain(String(lastPlanningProps?.initialPopulationVariance));
     expect(summary).not.toContain("67.128040201005");
     expect(summary).toContain("49");
+    await waitFor(() => expect(completeStage).toHaveBeenCalledTimes(1));
+    expect(completeStage).toHaveBeenCalledWith(2, { samplePlan: expect.objectContaining({ finalSampleSize: 49 }) });
+    expect((completeStage.mock.calls[0]![1].samplePlan as { populationVariance: number }).populationVariance).toBeCloseTo(66.7924, 10);
 });
 
 test("first-visit immersive progress is flushed and restored before a final plan exists", async () => {

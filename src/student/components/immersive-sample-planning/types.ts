@@ -34,6 +34,22 @@ export const PHASE_ORDER = [
 
 export type PhaseType = (typeof PHASE_ORDER)[number];
 
+/** Visible steps; legacy formula/fpc drafts remain readable within the calculation step. */
+export const PLANNING_STEPS = [
+    { type: "challenge", label: "明确目标", description: "试估一个样本量" },
+    { type: "precision", label: "认识精度", description: "看看样本量与误差" },
+    { type: "factors", label: "了解影响因素", description: "按需查看六类条件" },
+    { type: "fourstep", label: "理解推荐", description: "用当前数据算一遍" },
+    { type: "decision", label: "调整方案", description: "选择实际采用的数量" },
+    { type: "quiz", label: "检查与确认", description: "自检后保存规划" },
+] as const;
+
+export function planningStepIndex(type: PhaseType) {
+    if (type === "formula" || type === "fpc") return 3;
+    if (type === "confirm" || type === "launching" || type === "done") return 5;
+    return Math.max(0, PLANNING_STEPS.findIndex(step => step.type === type));
+}
+
 import type { ConfidenceLevel } from "../../experiment/confidence-level";
 import { Z_VALUES, zForConfidenceLevel } from "../../experiment/confidence-level";
 

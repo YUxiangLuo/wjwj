@@ -37,9 +37,9 @@ test("cost inputs cannot persist negative costs, including the free-survey bound
 });
 
 test("precision teaching preserves small nonzero SE and ME", () => {
-    const view = render(<PrecisionPhase params={{ populationSize: 1000, estimationType: "mean", populationVariance: 2e-10, confidenceLevel: "95", marginOfError: 2, designEffect: 1, nonResponseRate: 0, recommendedSize: 50, finalSampleSize: 50 }} onNext={() => {}} />);
+    const view = render(<PrecisionPhase initialSampleSize={100} params={{ populationSize: 1000, estimationType: "mean", populationVariance: 2e-10, confidenceLevel: "95", marginOfError: 2, designEffect: 1, nonResponseRate: 0, recommendedSize: 50, finalSampleSize: 50 }} onNext={() => {}} />);
     expect(view.getByText("1.342e-6")).toBeTruthy();
-    expect(view.getByText("2.631e-6")).toBeTruthy();
+    expect(view.getByText("±2.631e-6")).toBeTruthy();
     expect(view.queryByText("0.0000")).toBeNull();
 });
 

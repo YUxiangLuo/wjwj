@@ -5,11 +5,16 @@ import { ChevronRight, Crosshair, Layers, BarChart3, DollarSign, CheckCircle2, B
 import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize } from "../../../experiment/sample-plan";
 import type { SampleParams } from "../types";
 import type { FactorsStep } from "../types";
+import { PlanningHeading } from "../PlanningShared";
+import { IconTile } from "@/components/IconTile";
+import { StatusBadge } from "@/components/StatusBadge";
 
 interface Props {
     step: FactorsStep;
     params: SampleParams;
     onNext: () => void;
+    onStepChange?: (step: FactorsStep) => void;
+    hideNext?: boolean;
 }
 
 const STEP_META: Record<FactorsStep, { label: string; badge: string; icon: typeof Crosshair; intro: string }> = {
@@ -53,7 +58,7 @@ const STEP_META: Record<FactorsStep, { label: string; badge: string; icon: typeo
         label: "六因素汇总",
         badge: "汇总",
         icon: CheckCircle2,
-        intro: "六类关键条件已经看完。下一步把它们带入公式，正式计算样本量。",
+        intro: "先看全貌，再选择感兴趣的因素了解详情。准备好后，把当前条件代入计算公式。",
     },
 };
 
@@ -67,19 +72,22 @@ function buildMeanErrorChoices(current: number) {
     return [...new Set(base)].sort((a, b) => a - b);
 }
 
-export function FactorsPhase({ step, params, onNext }: Props) {
+export function FactorsPhase({ step, params, onNext, onStepChange, hideNext = false }: Props) {
     const meta = STEP_META[step];
-    const Icon = meta.icon;
 
     return (
-        <div className="space-y-8">
-            <div className="text-center space-y-3">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-control bg-info-muted text-meta font-medium text-info">
-                    <Icon className="w-3.5 h-3.5" />
-                    {meta.badge}
-                </span>
-                <h2 className="text-page-title font-bold text-foreground">{meta.label}</h2>
-                <p className="text-label text-muted-foreground max-w-2xl mx-auto">{meta.intro}</p>
+        <div className="space-y-6">
+            <PlanningHeading title="哪些条件会改变样本量？" description="六类因素可以分别查看。这里的示例只用于理解原理；实际参数在「调整方案」中统一设置。"/>
+            {onStepChange && <div className="flex flex-wrap gap-2" role="group" aria-label="选择影响因素">
+                {(Object.keys(STEP_META) as FactorsStep[]).map(key => <Button key={key} type="button" variant={step === key ? "default" : "outline"}
+                    aria-pressed={step === key} onClick={() => onStepChange(key)} className="min-h-11 whitespace-normal text-left">
+                    {STEP_META[key].label}
+                </Button>)}
+            </div>}
+            <div className="space-y-2 border-t border-border pt-5">
+                <StatusBadge intent="info">{meta.badge}</StatusBadge>
+                <h3 className="text-section-title font-semibold text-foreground">{meta.label}</h3>
+                <p className="text-label text-muted-foreground">{meta.intro}</p>
             </div>
 
             {step === "error_tolerance" && <ErrorToleranceContent params={params} />}
@@ -90,7 +98,7 @@ export function FactorsPhase({ step, params, onNext }: Props) {
             {step === "cost_balance" && <CostBalanceContent params={params} />}
             {step === "summary" && <SummaryContent />}
 
-            <div className="flex justify-center">
+            {!hideNext && <div className="flex justify-center">
                 <Button
                     type="button"
                     onClick={onNext}
@@ -99,7 +107,7 @@ export function FactorsPhase({ step, params, onNext }: Props) {
                     {step === "summary" ? "继续：进入四步法小结" : "继续：看下一个因素"}
                     <ChevronRight className="w-5 h-5 ml-2" />
                 </Button>
-            </div>
+            </div>}
         </div>
     );
 }
@@ -651,16 +659,15 @@ function SummaryContent() {
     return (
         <div className="space-y-6">
             <p className="text-center text-muted-foreground text-label">
-                到这里，你已经看完决定样本量的六类关键条件。
-                它们会一起决定“多少样本才够”。
+                这六类关键条件一起决定“多少样本才够”。你可以切换上方的因素，查看具体示例。
             </p>
 
             <div className="mx-auto max-w-lg grid grid-cols-2 gap-3">
                 {factors.map(({ icon: FIcon, title, desc }) => (
                     <div key={title} className="rounded-surface border border-border bg-background p-4 space-y-2">
-                        <div className="w-9 h-9 rounded-surface bg-info-muted flex items-center justify-center">
+                        <IconTile intent="info">
                             <FIcon className="w-4 h-4 text-info" />
-                        </div>
+                        </IconTile>
                         <p className="text-label font-semibold text-foreground">{title}</p>
                         <p className="text-meta text-muted-foreground">{desc}</p>
                     </div>

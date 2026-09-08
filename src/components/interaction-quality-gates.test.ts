@@ -37,12 +37,8 @@ test("controlled alerts and immersive sampling preserve keyboard focus", async (
     expect(samplingAnimation).toContain("if (opener?.isConnected) opener.focus()");
 });
 
-test("immersive planning bottom chrome does not cover content actions", async () => {
-    const planner = await Bun.file("src/student/components/immersive-sample-planning/index.tsx").text();
-    expect(planner).toContain('className="pointer-events-none fixed bottom-4 left-6');
-    expect(planner).not.toContain('fixed bottom-0 left-0 right-0');
-    expect(planner).toContain('className="pointer-events-auto bg-card text-muted-foreground');
-});
+// Planner content/footer overlap is checked with real browser geometry in
+// scripts/test-teaching-flow.ts, rather than by prescribing layout class strings.
 
 test("minimum desktop styling protects long values and third-party control text", async () => {
     const adminDashboard = await Bun.file("src/admin/pages/Dashboard.tsx").text();

@@ -1,175 +1,65 @@
-import { formatStatistic } from "@/utils/statistic-format";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronRight } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { ArrowRight } from "lucide-react";
+import { formatStatistic } from "@/utils/statistic-format";
+import { calculatePlannedPrecision } from "../../../experiment/planned-precision";
+import { PlanningAssumptions, PlanningHeading, PlanningOutcome } from "../PlanningShared";
+import { primarySliderClassName } from "../../sample-planning-styles";
 import type { SampleParams } from "../types";
-import { zForConfidenceLevel } from "../types";
-import { finitePopulationVarianceFactor } from "../../../experiment/sample-plan";
 
 interface Props {
     params: SampleParams;
     onNext: () => void;
+    initialSampleSize?: number | null;
+    hideNext?: boolean;
 }
 
-const BASE_DEMO_SIZES = [30, 100, 300, 500, 1000];
-
-function fmt(n: number, digits = 4): string {
-    return formatStatistic(n, digits);
-}
-
-export function PrecisionPhase({ params, onNext }: Props) {
+export function PrecisionPhase({ params, onNext, initialSampleSize, hideNext = false }: Props) {
     const N = params.populationSize;
-    const isMeanEstimation = params.estimationType === "mean";
-    const sigma2 = params.populationVariance ?? 100;
-
-    const demoSizes = useMemo(() => {
-        const valid = BASE_DEMO_SIZES.filter(s => s <= N);
-        if (valid.length > 0) return valid;
-        const half = Math.max(1, Math.floor(N / 2));
-        return half < N ? [half, N] : [N];
-    }, [N]);
-
-    const [demoN, setDemoN] = useState(() => {
-        const valid = BASE_DEMO_SIZES.filter(s => s <= N);
-        if (valid.length > 0) {
-            return valid.includes(100) ? 100 : valid[valid.length - 1]!;
-        }
-        return Math.max(1, Math.floor(N / 2));
-    });
-
-    const z = zForConfidenceLevel(params.confidenceLevel);
-    const fpc = finitePopulationVarianceFactor(N, demoN);
-    const se = isMeanEstimation
-        ? Math.sqrt(sigma2 / demoN * fpc)
-        : Math.sqrt(0.25 / demoN * fpc);
-    const me = z * se;
-    const cv = !isMeanEstimation ? se / 0.5 : null;
-
-    return (
-        <div className="space-y-8">
-            <div className="text-center space-y-3">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-control bg-warning-muted text-meta font-medium text-warning">
-                    精度指标
-                </span>
-                <h2 className="text-page-title font-bold text-foreground">
-                    怎么衡量估计的精度？
-                </h2>
-                <p className="text-muted-foreground">
-                    {isMeanEstimation
-                        ? "正式计算样本量之前，先认识后面会反复出现的精度指标。均值估计主要看标准误差和误差限；若需要比较相对精度，可再计算相对标准误差。"
-                        : "正式计算样本量之前，先认识后面会反复出现的精度指标。它们决定你要求多“准”，也决定样本量会有多大。"}
-                </p>
+    const initial = initialSampleSize ?? params.recommendedSize;
+    const [demoN, setDemoN] = useState(Math.max(1, Math.min(N, initial)));
+    const precision = calculatePlannedPrecision(params, demoN);
+    const choices = [...new Set([initialSampleSize, Math.max(1, Math.floor(N / 4)), Math.max(1, Math.floor(N / 2)), params.recommendedSize, N]
+        .filter((n): n is number => n != null && n >= 1 && n <= N))].sort((a,b) => a-b);
+    const isMean = params.estimationType === "mean";
+    return <div className="space-y-6">
+        <PlanningHeading title="样本多一点，误差会小多少？" description="拖动样本量，观察它与目标精度的关系。这里的试算不会改动你的最终方案。"/>
+        <section className="rounded-surface border border-border bg-card p-6 space-y-5">
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+                <h3 className="text-subheading font-semibold">试算邀请样本量</h3>
+                <p className="text-section-title font-bold tabular-nums text-primary">{demoN} <span className="text-body font-normal text-muted-foreground">/ {N.toLocaleString()} 个单位</span></p>
             </div>
-
-            <div className={`grid gap-4 ${isMeanEstimation ? "grid-cols-2" : "grid-cols-3"}`}>
-                <div className="rounded-surface border border-border bg-background p-4 space-y-2">
-                    <p className="text-meta font-medium uppercase tracking-wider text-muted-foreground">标准误差 SE</p>
-                    <p className="font-mono text-label text-foreground">
-                        {isMeanEstimation ? "SE(ȳ) = √[σ²/n × (N−n)/(N−1)]" : "SE = √[p(1−p)/n × (N−n)/(N−1)]"}
-                    </p>
-                    <p className="text-meta text-muted-foreground">
-                        估计值的标准差。这里把有限总体方差定义为分母 N，因此校正因子是 (N−n)/(N−1)；N 较大且抽样比 n/N 很小时它才接近 1。SE 越小，估计越精确。
-                    </p>
-                </div>
-                <div className="rounded-surface border border-border bg-background p-4 space-y-2">
-                    <p className="text-meta font-medium uppercase tracking-wider text-muted-foreground">误差限 ME</p>
-                    <p className="font-mono text-label text-foreground">
-                        ME = Z × SE
-                    </p>
-                    <p className="text-meta text-muted-foreground">
-                        {isMeanEstimation
-                            ? "置信区间的半宽。如 ME=2，表示正式区间会写成 ȳ ± 2。"
-                            : "置信区间的半宽。如 ME=3%，意为正式区间可写成 p̂ ± 3%。"}
-                    </p>
-                </div>
-                {!isMeanEstimation && (
-                    <div className="rounded-surface border border-border bg-background p-4 space-y-2">
-                        <p className="text-meta font-medium uppercase tracking-wider text-muted-foreground">变异系数 CV</p>
-                        <p className="font-mono text-label text-foreground">
-                            CV = SE / p
-                        </p>
-                        <p className="text-meta text-muted-foreground">
-                            规划阶段用非零的假设总体比例 p，不是样本比例 p̂。它表示比例估计的相对标准误；p 接近 0 时会很不稳定，不存在通用合格阈值。
-                        </p>
-                    </div>
-                )}
+            <Slider aria-label="试算样本量" min={1} max={N} step={1} value={[demoN]} onValueChange={([n]) => n != null && setDemoN(n)} className={primarySliderClassName}/>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="选择样本量">
+                {choices.map(n => <Button key={n} type="button" variant={demoN === n ? "default" : "outline"} aria-pressed={demoN === n} onClick={() => setDemoN(n)}>
+                    {n}{n === params.recommendedSize ? " · 建议" : n === N ? " · 全体" : n === initialSampleSize ? " · 你的估计" : " 个"}
+                </Button>)}
             </div>
-
-            {/* Interactive demo */}
-            <div className="mx-auto max-w-lg rounded-surface border border-border bg-background overflow-hidden">
-                <div className="bg-card px-4 py-2.5 border-b border-border">
-                    <p className="text-label text-center text-muted-foreground">
-                        {isMeanEstimation ? "先直观看一眼：样本量变化时，SE 与 ME 怎么变" : "先直观看一眼：样本量变化时，三个精度指标怎么变"}
-                        <span className="text-meta text-muted-foreground ml-2">
-                            {isMeanEstimation
-                                ? `(σ²=${sigma2}, N=${N.toLocaleString()}, ${params.confidenceLevel}% CI)`
-                                : `(p=0.5, N=${N.toLocaleString()}, ${params.confidenceLevel}% CI)`}
-                        </span>
-                    </p>
-                </div>
-
-                <div className="p-4 space-y-4">
-                    <div className="flex gap-2 flex-wrap justify-center" role="group" aria-label="选择样本量">
-                        {demoSizes.map((n) => (
-                            <button
-                                key={n}
-                                type="button"
-                                onClick={() => setDemoN(n)}
-                                aria-pressed={demoN === n}
-                                className={`px-3 py-1.5 rounded-surface text-label font-medium transition-none ${
-                                    demoN === n
-                                        ? "bg-primary text-primary-foreground "
-                                        : "bg-muted text-muted-foreground hover:bg-input"
-                                }`}
-                            >
-                                n={n}
-                            </button>
-                        ))}
-                    </div>
-
-                    <div className={`grid gap-3 text-center ${isMeanEstimation ? "grid-cols-2" : "grid-cols-3"}`}>
-                        <div className="rounded-surface bg-info-muted p-3">
-                            <p className="text-meta font-medium uppercase tracking-wider text-info">SE</p>
-                            <p className="text-subheading font-bold tabular-nums text-info">{fmt(se)}</p>
-                        </div>
-                        <div className="rounded-surface bg-auxiliary-muted p-3">
-                            <p className="text-meta font-medium uppercase tracking-wider text-auxiliary">ME</p>
-                            <p className="text-subheading font-bold tabular-nums text-auxiliary">{fmt(me)}</p>
-                        </div>
-                        {!isMeanEstimation && cv != null && (
-                            <div className="rounded-surface bg-success-muted p-3">
-                                <p className="text-meta font-medium uppercase tracking-wider text-success">CV</p>
-                                <p className="text-subheading font-bold tabular-nums text-success">{(cv * 100).toFixed(1)}%</p>
-                            </div>
-                        )}
-                    </div>
-                    {isMeanEstimation && (
-                        <p className="text-center text-meta text-muted-foreground">
-                            若要比较不同量纲下的均值精度，可再结合实际均值计算 RSE = SE / |ȳ|。
-                        </p>
-                    )}
-                </div>
-            </div>
-
-            {/* Confidence interval explanation */}
-            <div className="mx-auto max-w-lg rounded-surface border border-warning-border bg-warning-muted p-5 space-y-2">
-                <p className="text-label font-semibold text-warning">置信区间的含义</p>
-                <p className="text-label text-warning">
-                    「{params.confidenceLevel}% 置信区间」的含义是：<strong>如果用相同方法重复抽样 100 次，大约有 {params.confidenceLevel} 次的区间会包含总体真值。</strong>
-                    它不是说真值有 {params.confidenceLevel}% 的概率落在某一次的区间里——真值是固定的，是区间在变。
-                </p>
-            </div>
-
-            <div className="flex justify-center">
-                <Button
-                    type="button"
-                    onClick={onNext}
-                    className="bg-primary hover:bg-primary-hover text-primary-foreground px-8 py-5 rounded-surface "
-                >
-                    继续：判断哪些条件会影响样本量
-                    <ChevronRight className="w-5 h-5 ml-2" />
-                </Button>
-            </div>
+            <PlanningOutcome params={{...params, advancedPlanSource: undefined}} sampleSize={demoN}/>
+            {precision && <p className="text-meta text-muted-foreground">标准误差 SE = <span className="tabular-nums">{formatStatistic(precision.standardError)}</span>；误差限 ME = Z × SE{!isMean && <>；相对标准误差 CV = SE / p = {(precision.standardError / 0.5 * 100).toFixed(2)}%</>}。</p>}
+        </section>
+        <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))]">
+            <section className="rounded-surface border border-border bg-card p-5 space-y-3">
+                <h3 className="text-subheading font-semibold">先看误差限，再看样本量</h3>
+                <p className="text-body text-muted-foreground">误差限是区间的半宽。{isMean ? "例如均值估计的误差限为 2，区间写作 ȳ ± 2，单位与研究指标一致。" : "例如估计比例为 50%，误差限为 5 个百分点，对应 45%～55%。它不是估计值的 5%。"}</p>
+                <p className="text-label text-muted-foreground">样本增加时，抽样误差通常会减小。总体较小且要求很精确时，需要调查很大一部分单位。</p>
+            </section>
+            <section className="rounded-surface border border-border bg-card p-5 space-y-3">
+                <h3 className="text-subheading font-semibold">{params.confidenceLevel}% 置信是什么意思？</h3>
+                <p className="text-body text-muted-foreground">如果重复抽样并构造区间，长期来看，大约 {params.confidenceLevel}% 的区间会覆盖总体真值。</p>
+                <p className="text-label text-muted-foreground">真值是固定的，区间随样本变化。这是近似规划，不能保证每次估计的误差都落在目标以内。</p>
+            </section>
         </div>
-    );
+        <details className="rounded-surface border border-border bg-card p-5">
+            <summary className="cursor-pointer text-label font-semibold text-foreground">查看 SE、ME 与 CV 的公式和假设</summary>
+            <div className="mt-4 space-y-3 text-label text-muted-foreground">
+                <p className="font-mono break-words">{isMean ? "SE(ȳ) = √[deff × σ²/n × (N−n)/(N−1)]" : "SE = √[deff × p(1−p)/n × (N−n)/(N−1)]"}</p>
+                <p>ME = Z × SE；这里的 n 是预期完成量，有限总体方差采用分母 N 的定义。SE 是估计值的标准差。</p>
+                <p>{isMean ? "结合非零均值，可计算相对标准误差 RSE = SE / |均值|。" : "CV = SE / p；规划时使用假设比例 p = 0.5。接近零的比例会使相对标准误差不稳定，没有通用合格阈值。"}</p>
+                <PlanningAssumptions params={params}/>
+            </div>
+        </details>
+        {!hideNext && <Button onClick={onNext}>继续：了解影响因素<ArrowRight className="ml-2 h-4 w-4"/></Button>}
+    </div>;
 }
