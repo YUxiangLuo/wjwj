@@ -40,6 +40,7 @@ async function load(
     fieldMapping: Record<string, unknown> = { numeric: ["weight"], stratified: ["gender"] },
     filePath = populationPath,
     samplingPolicy?: unknown,
+    schedule = { openTime: null as Date | null, deadline: new Date(Date.now() + 60_000) },
 ) {
     const { db, operations } = createMockDb({ select: [[experimentRecord]], update });
     mock.module("../../db", () => ({ db }));
@@ -57,7 +58,7 @@ async function load(
             fieldMapping,
             samplingPolicy,
         }),
-        findStudentTaskSchedule: async () => ({ openTime: null, deadline: new Date(Date.now() + 60_000) }),
+        findStudentTaskSchedule: async () => schedule,
         findStudentTaskSubmitInfo: async () => null,
         findStudentTaskTopicInfo: async () => ({ id: 3, topicId: 4 }),
     }));
@@ -75,6 +76,21 @@ function routeRequest(path: string, body: unknown, params: Record<string, string
     });
     (request as Request & { params?: Record<string, string> }).params = params;
     return request;
+}
+
+for (const boundary of ["not-open", "expired"] as const) {
+    test(`sampling rejects ${boundary} tasks before any results or audit writes`, async () => {
+        const schedule = boundary === "expired"
+            ? { openTime: null, deadline: new Date(Date.now() - 10_000) }
+            : { openTime: new Date(Date.now() + 10_000), deadline: new Date(Date.now() + 60_000) };
+        const { module, operations } = await load(record(), undefined, undefined, undefined, undefined, schedule);
+        const response = await module.samplingActionRoutes.POST!(routeRequest(
+            "/api/student/tasks/3/sampling", { method: "simple", params: { sampleSize: 2 } }, { id: "3" },
+        ));
+        expect(response.status).toBe(400);
+        expect((await response.json() as any).error.code).toBe(boundary === "expired" ? "TASK_DEADLINE" : "TASK_NOT_OPEN");
+        expect(operations.some(op => op.kind === "update" || op.kind === "insert")).toBe(false);
+    });
 }
 
 test("sampling action atomically persists its server-generated method result", async () => {

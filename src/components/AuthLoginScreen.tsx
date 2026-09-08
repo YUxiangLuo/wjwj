@@ -17,6 +17,7 @@ export interface AuthLoginScreenProps {
     username: string;
     password: string;
     loading: boolean;
+    loadingText?: string;
     error: string | null;
     alternateLinks: readonly { href: string; label: string }[];
     onUsernameChange: (value: string) => void;
@@ -40,6 +41,7 @@ export function AuthLoginScreen({
     username,
     password,
     loading,
+    loadingText = "登录中...",
     error,
     alternateLinks,
     onUsernameChange,
@@ -105,6 +107,7 @@ export function AuthLoginScreen({
                                     data-testid={`${portal}-login-username`}
                                     placeholder={accountPlaceholder}
                                     value={username}
+                                    disabled={loading}
                                     onChange={(event) => onUsernameChange(event.target.value)}
                                     aria-invalid={error ? true : undefined}
                                     aria-describedby={error ? errorId : undefined}
@@ -123,6 +126,7 @@ export function AuthLoginScreen({
                                     type="password"
                                     placeholder="请输入密码"
                                     value={password}
+                                    disabled={loading}
                                     onChange={(event) => onPasswordChange(event.target.value)}
                                     aria-invalid={error ? true : undefined}
                                     aria-describedby={error ? errorId : undefined}
@@ -149,7 +153,7 @@ export function AuthLoginScreen({
                                 {loading ? (
                                     <>
                                         <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />
-                                        登录中...
+                                        {loadingText}
                                     </>
                                 ) : "安全登录"}
                             </Button>

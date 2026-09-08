@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, experiment, samplingAttempt, task, topic } from "../../db/schema";
 import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
@@ -158,7 +158,17 @@ export async function extendTopicTaskDeadline(params: {
         return fail("新截止时间必须晚于原截止时间", "VALIDATION_ERROR");
     }
 
-    await db.update(task).set({ deadline: newDeadline, updatedAt: new Date() }).where(eq(task.id, params.taskId));
+    // Keep the deadline monotone across concurrent extensions and include
+    // ownership in the write instead of relying only on the preflight lookup.
+    const [updated] = await db.update(task)
+        .set({ deadline: newDeadline, updatedAt: new Date() })
+        .where(and(
+            eq(task.id, params.taskId),
+            or(isNull(task.deadline), lt(task.deadline, newDeadline)),
+            sql`exists (select 1 from ${class_} where ${class_.id} = ${task.classId} and ${class_.teacherId} = ${params.teacherId})`,
+        ))
+        .returning({ id: task.id });
+    if (!updated) return fail("任务已发生变化，请刷新后重新设置截止时间", "VERSION_CONFLICT", 409);
 
     return { ok: true };
 }

@@ -3,11 +3,11 @@ import { db } from "../../db";
 import { jsonbNullSafeEquals } from "../../db/native-jsonb";
 import { experiment, samplingAttempt } from "../../db/schema";
 import { validateObservedVersion } from "../../lib/observed-version";
-import { error, getPositiveRouteId, getRouteParam, json, parseBody, parsePositiveInteger } from "../../server/http";
+import { error, getPositiveRouteId, getRouteParam, handleServerError, json, parseBody, parsePositiveInteger } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
-import { analysisService, AnalysisServiceError } from "../experiment/analysis-service";
+import { analysisService } from "../experiment/analysis-service";
+import { populationStatsService, populationRevisionKey } from "../experiment/population-stats-service";
 import { readPopulationData } from "../experiment/population-data";
-import { buildPopulationCategoricalStats, buildPopulationNumericStats, buildStratifiedNumericStats, buildStratifiedStats, getCategoricalFieldsFromTopicMapping, getPpsEligibleNumericFields, parseTopicFieldMapping } from "@/domain/statistics/population";
 import { normalizeSamplePlanData } from "../experiment/sample-plan-display";
 import {
     previewSamplingMethodResult,
@@ -215,6 +215,7 @@ function buildSamplingAttemptWrite(result: Record<string, unknown>): SamplingAtt
 async function prepareStoredSamplingResultsForCompletion(params: {
     record: typeof experiment.$inferSelect;
     taskInfo: Awaited<ReturnType<typeof findStudentTaskSamplingInfo>>;
+    signal?: AbortSignal;
 }) {
     let authoritativeRecord = params.record;
     let stored = parseStoredJson<StoredSamplingResults>(authoritativeRecord.samplingResults) ?? {};
@@ -224,14 +225,18 @@ async function prepareStoredSamplingResultsForCompletion(params: {
         if (!params.taskInfo?.excelFilePath) {
             return { ok: false as const, response: error("未找到总体的Excel数据文件", "NO_DATA_FILE", 500) };
         }
-        const population = await readPopulationData(params.taskInfo.excelFilePath, params.taskInfo.fieldMapping);
-        if (!population.length) {
-            return { ok: false as const, response: error("总体数据为空或读取失败", "READ_FAILED", 500) };
+        let ppsEligibleFields: string[];
+        try {
+            const stats = await populationStatsService.run({
+                populationPath: params.taskInfo.excelFilePath, fieldMapping: params.taskInfo.fieldMapping,
+            }, params.signal);
+            ppsEligibleFields = stats.ppsEligibleFields;
+        } catch (cause) {
+            return { ok: false as const, response: handleServerError(cause) };
         }
-        const numericFields = parseTopicFieldMapping(params.taskInfo.fieldMapping)?.numeric ?? [];
         const resolvedTarget = resolveAnalysisTarget(params.taskInfo.fieldMapping);
         const targetField = resolvedTarget?.inferred ? undefined : resolvedTarget?.target.field;
-        const eligibleFields = getPpsEligibleNumericFields(population, numericFields)
+        const eligibleFields = ppsEligibleFields
             .filter((field) => field !== targetField);
         if (eligibleFields.length === 0) {
             const unavailableResult = {
@@ -324,9 +329,11 @@ const stageCompleteRoutes: RouteDefinition = {
         let stratifiedStats: Record<string, Record<string, number>> | undefined;
         if (stage === 2 && resolveSamplingPolicy(stageTaskInfo?.samplingPolicy).methods.stratified === "required") {
             if (!stageTaskInfo?.excelFilePath) return error("必做分层抽样缺少总体数据文件", "NO_DATA_FILE");
-            const population = await readPopulationData(stageTaskInfo.excelFilePath, fieldMapping);
-            if (!population.length) return error("分层总体数据读取失败，请重试", "READ_FAILED", 500);
-            stratifiedStats = buildStratifiedStats(population, fieldMapping);
+            try {
+                stratifiedStats = (await populationStatsService.run({
+                    populationPath: stageTaskInfo.excelFilePath, fieldMapping,
+                }, req.signal)).stats;
+            } catch (cause) { return handleServerError(cause); }
         }
         let payload = clientPayload;
         let completionRecord = record;
@@ -334,6 +341,7 @@ const stageCompleteRoutes: RouteDefinition = {
             const prepared = await prepareStoredSamplingResultsForCompletion({
                 record,
                 taskInfo: stageTaskInfo ?? null,
+                signal: req.signal,
             });
             if (!prepared.ok) return prepared.response;
             completionRecord = prepared.record;
@@ -407,20 +415,11 @@ const statsRoutes: RouteDefinition = {
         if (accessError) return accessError;
         const taskInfo = await findStudentTaskSamplingInfo(taskId, auth.student.classId);
         if (!taskInfo?.excelFilePath) return error("未找到总体的Excel数据文件", "NO_DATA_FILE");
-        const population = await readPopulationData(taskInfo.excelFilePath, taskInfo.fieldMapping);
-        if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
-        const mapping = parseTopicFieldMapping(taskInfo.fieldMapping);
-        const numericFields = mapping?.numeric ?? [];
-        const categoricalFields = getCategoricalFieldsFromTopicMapping(taskInfo.fieldMapping);
-        return json({
-            stats: buildStratifiedStats(population, taskInfo.fieldMapping),
-            numericFields,
-            categoricalFields,
-            categoricalStats: buildPopulationCategoricalStats(population, categoricalFields),
-            populationNumericStats: buildPopulationNumericStats(population, numericFields),
-            ppsEligibleFields: getPpsEligibleNumericFields(population, numericFields),
-            stratumNumericStats: buildStratifiedNumericStats(population, taskInfo.fieldMapping),
-        });
+        try {
+            return json(await populationStatsService.run({ populationPath: taskInfo.excelFilePath, fieldMapping: taskInfo.fieldMapping }, req.signal));
+        } catch (cause) {
+            return handleServerError(cause);
+        }
     },
 };
 
@@ -440,6 +439,13 @@ const samplingActionRoutes: RouteDefinition = {
         if (!record || record.currentStage !== 3 || record.status === ExperimentStatus.SUBMITTED || record.status === ExperimentStatus.GRADED) {
             return error("当前不能执行抽样", "INVALID_STAGE_ORDER", 409);
         }
+        // Match stage saving and submission: admit work only while the task is
+        // open. Work admitted before the deadline may finish afterwards.
+        const schedule = await findStudentTaskSchedule(taskId, auth.student.classId);
+        if (!schedule) return error("任务不存在", "NOT_FOUND", 404);
+        const openError = ensureTaskIsOpen(schedule.openTime);
+        if (openError) return error(openError.message, openError.code, openError.status);
+        if (hasTaskDeadlinePassed(schedule.deadline)) return error("任务已截止，无法执行抽样", "TASK_DEADLINE");
         const taskInfo = await findStudentTaskSamplingInfo(taskId, auth.student.classId);
         if (!taskInfo?.excelFilePath) return error("未找到总体的Excel数据文件", "NO_DATA_FILE");
         const samplingPolicy = resolveSamplingPolicy(taskInfo.samplingPolicy);
@@ -485,16 +491,21 @@ const analysisMetricsRoutes: RouteDefinition = {
         const taskInfo = await findStudentTaskSamplingInfo(taskId, auth.student.classId);
         if (!record || !taskInfo?.excelFilePath) return error("实验或总体数据不存在", "NOT_FOUND", 404);
         try {
-            return json(await analysisService.run({
+            const job = {
                 populationPath: taskInfo.excelFilePath,
                 fieldMapping: taskInfo.fieldMapping,
                 samplingResults: record.samplingResults,
                 samplePlan: record.samplePlan,
                 topicName: taskInfo.topicName,
-            }));
+            };
+            // Sampling writes intentionally keep the stage version. Include the
+            // actual inputs as well as ownership/version in the deduplication key.
+            const key = new Bun.CryptoHasher("sha256").update(JSON.stringify([
+                record.id, record.version, populationRevisionKey(job), job,
+            ])).digest("hex");
+            return json(await analysisService.run(job, { key, signal: req.signal }));
         } catch (cause) {
-            if (cause instanceof AnalysisServiceError) return error(cause.message, cause.code, cause.status);
-            throw cause;
+            return handleServerError(cause);
         }
     },
 };

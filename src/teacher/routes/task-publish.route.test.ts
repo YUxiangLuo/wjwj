@@ -2,6 +2,8 @@ import { expect, mock, test } from "bun:test";
 import { auditEvent, experiment, task } from "../../db/schema";
 import { createMockDb } from "../../test-utils/mock-db";
 import { buildDefaultSamplingPolicy } from "../../lib/sampling-policy";
+import { PgDialect } from "drizzle-orm/pg-core";
+import type { SQL } from "drizzle-orm";
 
 async function load(select: unknown[], update: unknown[] = []) {
     const { db, operations } = createMockDb({ select, update });
@@ -76,14 +78,25 @@ test("task publish skips an existing task instead of reviving state", async () =
     expect(operations.some((item) => item.kind === "update" || item.kind === "insert")).toBe(false);
 });
 
-test("task deadline extension performs one direct update", async () => {
+test("task deadline extension atomically guards monotonicity and ownership", async () => {
     const oldDeadline = new Date(Date.now() + 86_400_000);
     const newDeadline = new Date(Date.now() + 172_800_000);
     const { module, operations } = await load([[{ id: 88, classId: 101, deadline: oldDeadline }]]);
     expect(await module.extendTopicTaskDeadline({ teacherId: 9, taskId: 88, deadline: newDeadline.toISOString() })).toEqual({ ok: true });
     const update = operations.find((item) => item.kind === "update" && item.table === task);
     expect(update?.set).toMatchObject({ deadline: newDeadline, updatedAt: expect.any(Date) });
+    const query = new PgDialect().sqlToQuery(update?.where as SQL);
+    expect(query.sql).toContain('"task"."deadline" <');
+    expect(query.sql).toContain('"task"."deadline" is null');
+    expect(query.sql).toContain('"class"."teacher_id"');
+    expect(query.params).toContain(newDeadline.toISOString());
     expect(operations.some((item) => item.kind === "delete")).toBe(false);
+});
+
+test("deadline extension reports conflict when a concurrent extension already won", async () => {
+    const { module } = await load([[{ id: 88, classId: 101, deadline: new Date() }]], [[]]);
+    expect(await module.extendTopicTaskDeadline({ teacherId: 9, taskId: 88, deadline: new Date(Date.now() + 86400000).toISOString() }))
+        .toMatchObject({ ok: false, code: "VERSION_CONFLICT", status: 409 });
 });
 
 test("task deadline extension rejects non-string runtime values", async () => {

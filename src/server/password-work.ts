@@ -1,5 +1,5 @@
 const DEFAULT_PASSWORD_CONCURRENCY = 4;
-const DEFAULT_PASSWORD_QUEUE_LIMIT = 32;
+export const DEFAULT_PASSWORD_QUEUE_LIMIT = 64;
 
 export class PasswordWorkQueueFullError extends Error {
     constructor() {
@@ -21,13 +21,17 @@ export class BoundedWorkQueue {
         if (this.active >= this.concurrency) {
             if (this.waiters.length >= this.queueLimit) throw new PasswordWorkQueueFullError();
             await new Promise<void>((resolve) => this.waiters.push(resolve));
+        } else {
+            this.active += 1;
         }
-        this.active += 1;
         try {
             return await operation();
         } finally {
-            this.active -= 1;
-            this.waiters.shift()?.();
+            // Transfer the occupied slot directly; new arrivals must not steal
+            // it before the resumed waiter gets its next microtask.
+            const next = this.waiters.shift();
+            if (next) next();
+            else this.active -= 1;
         }
     }
 

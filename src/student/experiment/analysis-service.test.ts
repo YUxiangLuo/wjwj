@@ -34,6 +34,54 @@ function harness(options: { queueLimit?: number; timeoutMs?: number } = {}) {
     return { workers, service };
 }
 
+test("default analysis admission serves all 50 students with one worker", async () => {
+    const { workers, service } = harness();
+    try {
+        const jobs = Array.from({ length: 50 }, () => service.run(emptyJob));
+        expect(workers).toHaveLength(1);
+        for (let index = 0; index < 50; index += 1) workers[0]!.succeed(index);
+        expect(await Promise.all(jobs)).toHaveLength(50);
+    } finally { service.close(); }
+});
+
+test("shared analysis survives one caller cancelling and removes abandoned queued work", async () => {
+    const { workers, service } = harness({ queueLimit: 1 });
+    const firstCaller = new AbortController();
+    const abandoned = new AbortController();
+    try {
+        const first = service.run(emptyJob, { key: "active", signal: firstCaller.signal }).catch(error => error);
+        const shared = service.run(emptyJob, { key: "active" });
+        const queued = service.run(emptyJob, { key: "abandoned", signal: abandoned.signal }).catch(error => error);
+        firstCaller.abort();
+        abandoned.abort();
+        expect(await first).toMatchObject({ name: "AbortError" });
+        expect(await queued).toMatchObject({ name: "AbortError" });
+        const replacement = service.run(emptyJob, { key: "replacement" });
+        expect(workers[0]!.sent).toHaveLength(1);
+        workers[0]!.succeed();
+        expect(await shared).toEqual(emptyResult);
+        expect(workers[0]!.sent).toHaveLength(2);
+        workers[0]!.succeed(1);
+        expect(await replacement).toEqual(emptyResult);
+        // Finished keys cannot retain stale results or callers.
+        const newInput = service.run(emptyJob, { key: "active" });
+        expect(workers[0]!.sent).toHaveLength(3);
+        workers[0]!.succeed(2);
+        await newInput;
+    } finally { service.close(); }
+});
+
+test("expired queued jobs do not start replacement workers after a delayed timer", async () => {
+    const { workers, service } = harness({ timeoutMs: 5 });
+    try {
+        const jobs = [service.run(emptyJob).catch(error => error), service.run(emptyJob).catch(error => error)];
+        const until = Date.now() + 15;
+        while (Date.now() < until) { /* simulate delayed HTTP timers */ }
+        for (const error of await Promise.all(jobs)) expect(error).toMatchObject({ code: "ANALYSIS_TIMEOUT" });
+        expect(workers).toHaveLength(1);
+    } finally { service.close(); }
+});
+
 test("analysis queues are bounded, serialized, and reuse the same worker", async () => {
     const { workers, service } = harness({ queueLimit: 1 });
     try {

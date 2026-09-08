@@ -358,7 +358,7 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
         const [
             { listTeacherTasks },
             { requireTopicOwner },
-            { deleteTeacherTask, publishTopicTasks },
+            { deleteTeacherTask, publishTopicTasks, extendTopicTaskDeadline },
             { deleteTeacherTopic },
             { deleteTeacherStudent },
             applicationDatabase,
@@ -371,6 +371,43 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
             import("./index"),
         ]);
         closeApplicationDatabase = applicationDatabase.closeDatabase;
+        // Both extensions pass their read-side validation before either can
+        // write. Exercise both lock orders, not just a lucky Promise.all race.
+        for (const longerFirst of [true, false]) {
+            const short = new Date(Date.now() + 86_400_000).toISOString();
+            const long = new Date(Date.now() + 172_800_000).toISOString();
+            await database.update(schema.task).set({ deadline: null }).where(eq(schema.task.id, taskId));
+            const ready = Promise.withResolvers<void>();
+            const release = Promise.withResolvers<void>();
+            const lock = sqlClient.begin(async tx => {
+                await tx`select id from task where id = ${taskId} for update`;
+                ready.resolve();
+                await release.promise;
+            });
+            await ready.promise;
+            const requests: Array<ReturnType<typeof extendTopicTaskDeadline>> = [];
+            try {
+                for (const deadline of longerFirst ? [long, short] : [short, long]) {
+                    requests.push(extendTopicTaskDeadline({ teacherId, taskId, deadline }));
+                    const until = Date.now() + 3000;
+                    let waiting = 0;
+                    while (Date.now() < until) {
+                        const [row] = await sqlClient`select count(*)::int as n from pg_stat_activity
+                            where datname = current_database() and wait_event_type = 'Lock' and query like 'update "task"%'`;
+                        waiting = row.n;
+                        if (waiting >= requests.length) break;
+                        await Bun.sleep(5);
+                    }
+                    expect(waiting).toBe(requests.length);
+                }
+            } finally { release.resolve(); await lock; }
+            const results = await Promise.all(requests);
+            expect(results[0]!.ok).toBe(true);
+            if (longerFirst) expect(results[1]).toMatchObject({ ok: false, code: "VERSION_CONFLICT", status: 409 });
+            else expect(results[1]!.ok).toBe(true);
+            const [latest] = await database.select({ deadline: schema.task.deadline }).from(schema.task).where(eq(schema.task.id, taskId));
+            expect(latest!.deadline!.toISOString()).toBe(long);
+        }
         expect((await requireTopicOwner(topicId, teacherId))?.hasTasks).toBe(true);
         expect((await requireTopicOwner(unassignedTopicId, teacherId))?.hasTasks).toBe(false);
         const taskRows = await listTeacherTasks(teacherId);

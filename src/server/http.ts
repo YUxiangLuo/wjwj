@@ -1,3 +1,5 @@
+import { WorkerServiceError } from "./worker-service";
+
 const SECURITY_HEADERS = {
     "Content-Security-Policy": [
         "default-src 'self'",
@@ -92,10 +94,10 @@ export function json<T>(data: T, status = 200, headers?: HeadersInit): Response 
     return Response.json({ success: true, data }, { status, headers: buildResponseHeaders(headers) });
 }
 
-export function error(message: string, code: string, status = 400): Response {
+export function error(message: string, code: string, status = 400, headers?: HeadersInit): Response {
     return Response.json(
         { success: false, error: { code, message } },
-        { status, headers: buildResponseHeaders() },
+        { status, headers: buildResponseHeaders(headers) },
     );
 }
 
@@ -166,7 +168,14 @@ export function handleServerError(cause: unknown): Response {
         return error(cause.message, "INVALID_FORM_DATA", 400);
     }
     if (cause instanceof Error && cause.name === "PasswordWorkQueueFullError") {
-        return error("密码服务繁忙，请稍后重试", "AUTH_BUSY", 429);
+        return error("密码服务繁忙，请稍后重试", "AUTH_BUSY", 429, { "Retry-After": "1" });
+    }
+    if (cause instanceof WorkerServiceError) {
+        return error(cause.message, cause.code, cause.status,
+            cause.status === 503 ? { "Retry-After": "1" } : undefined);
+    }
+    if (cause instanceof Error && cause.name === "AbortError") {
+        return error("请求已取消", "REQUEST_ABORTED", 499);
     }
     if (cause instanceof RequestBodyTooLargeError) {
         return error(cause.message, "PAYLOAD_TOO_LARGE", 413);

@@ -7,7 +7,7 @@ import type { AnalysisMetricsData } from "../../api-client";
 import { writeExperimentDraft } from "../../experiment/experiment-draft";
 
 const mockExperimentApi = {
-    getAnalysisMetrics: mock(async () => ({
+    getAnalysisMetrics: mock(async (_taskId: number, _signal?: AbortSignal) => ({
         success: true,
         data: {
             ppsMonteCarloReplicates: 256,
@@ -258,7 +258,23 @@ test("AnalysisReport shows a visible error when analysis metrics fail to load", 
     });
 
     expect(view.getByTestId("student-analysis-metrics-error").textContent).toContain("分析指标加载失败");
-    expect(mockToastError).toHaveBeenCalledWith("分析指标加载失败，请刷新后重试");
+    expect(mockToastError).toHaveBeenCalledWith("分析指标加载失败，请重试加载");
+});
+
+test("analysis retry preserves the report draft and cancels its obsolete request", async () => {
+    mockExperimentApi.getAnalysisMetrics.mockRejectedValueOnce(new Error("busy"));
+    writeExperimentDraft({ experimentId: 88, stage: 4, experimentVersion: 6 }, { reportContent: "<p>保留这个报告草稿。</p>" });
+    const view = render(<AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />);
+    await waitFor(() => expect(view.getByTestId("student-analysis-metrics-retry")).toBeTruthy());
+    const firstSignal = mockExperimentApi.getAnalysisMetrics.mock.calls[0]![1]!;
+    await act(async () => view.getByTestId("student-analysis-metrics-retry").click());
+    await waitFor(() => expect(view.queryByTestId("student-analysis-metrics-error")).toBeNull());
+    expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(2);
+    expect(firstSignal.aborted).toBe(true);
+    expect(view.getByTestId("student-analysis-report-editor").textContent).toContain("保留这个报告草稿");
+    const currentSignal = mockExperimentApi.getAnalysisMetrics.mock.calls[1]![1]!;
+    view.unmount();
+    expect(currentSignal.aborted).toBe(true);
 });
 
 test("AnalysisReport shows persisted advanced tool source in the sample plan panel", async () => {

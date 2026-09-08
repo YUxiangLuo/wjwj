@@ -10,10 +10,13 @@ const prefilledPassword = DEMO_MODE ? DEMO_STUDENT_PASSWORD : DEV_AUTH_MODE ? DE
 
 export function Login() {
     const [loading, setLoading] = useState(false);
+    const [waiting, setWaiting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [username, setUsername] = useState(prefilledUsername);
     const [password, setPassword] = useState(prefilledPassword);
     const editedRef = useRef(false);
+    const loginController = useRef<AbortController | null>(null);
+    useEffect(() => () => loginController.current?.abort(), []);
 
     useEffect(() => {
         if (!DEMO_MODE) return;
@@ -28,15 +31,22 @@ export function Login() {
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+        if (loginController.current) return;
         setError(null);
         if (!username.trim() || !password) {
             setError("请输入学号和密码");
             return;
         }
 
+        const controller = new AbortController();
+        loginController.current = controller;
         setLoading(true);
+        setWaiting(false);
         try {
-            const response = await authApi.login({ studentId: username.trim(), password });
+            const response = await authApi.login({ studentId: username.trim(), password }, {
+                signal: controller.signal, onRetry: () => setWaiting(true),
+            });
+            if (controller.signal.aborted) return;
             if (response.success && response.data) {
                 window.location.assign("/student");
             } else {
@@ -45,6 +55,7 @@ export function Login() {
         } catch {
             setError("网络错误，请稍后重试");
         } finally {
+            loginController.current = null;
             setLoading(false);
         }
     };
@@ -60,6 +71,7 @@ export function Login() {
             username={username}
             password={password}
             loading={loading}
+            loadingText={waiting ? "登录人数较多，正在等待重试…" : "正在登录，请稍候…"}
             error={error}
             alternateLinks={[
                 { href: "/admin/login", label: "管理员登录" },

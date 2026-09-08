@@ -221,6 +221,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const [analysisMetrics, setAnalysisMetrics] = useState<AnalysisMetricsData | null>(null);
     const [analysisMetricsError, setAnalysisMetricsError] = useState<string | null>(null);
     const [statsLoading, setStatsLoading] = useState(false);
+    const [metricsRetry, setMetricsRetry] = useState(0);
     const [selectedNumericField, setSelectedNumericField] = useState("");
     const [selectedCategoricalField, setSelectedCategoricalField] = useState("");
     const analysisTarget = experiment?.analysisTarget?.target;
@@ -287,6 +288,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     useEffect(() => {
         let cancelled = false;
+        const controller = new AbortController();
 
         async function loadAnalysisMetrics() {
             if (!experiment?.taskId) return;
@@ -295,7 +297,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 setAnalysisMetricsError(null);
             }
             try {
-                const res = await experimentApi.getAnalysisMetrics(experiment.taskId);
+                const res = await experimentApi.getAnalysisMetrics(experiment.taskId, controller.signal);
                 if (cancelled) return;
 
                 if (res.success && res.data) {
@@ -306,7 +308,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
                 const message = res.error?.message
                     ? `分析指标加载失败：${res.error.message}`
-                    : "分析指标加载失败，请刷新后重试";
+                    : "分析指标加载失败，请重试加载";
                 setAnalysisMetrics(null);
                 setAnalysisMetricsError(message);
                 toast.error(message);
@@ -314,7 +316,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 if (cancelled) return;
                 console.error("Failed to load analysis metrics:", error);
                 setAnalysisMetrics(null);
-                const message = "分析指标加载失败，请刷新后重试";
+                const message = "分析指标加载失败，请重试加载";
                 setAnalysisMetricsError(message);
                 toast.error(message);
             } finally {
@@ -328,8 +330,9 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
         return () => {
             cancelled = true;
+            controller.abort();
         };
-    }, [experiment?.taskId, samplingResultsKey]);
+    }, [experiment?.taskId, samplingResultsKey, metricsRetry]);
 
     // ---- Chart data (memoized) ----
 
@@ -551,18 +554,23 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             </CardTitle>
                             <CardDescription className="text-muted-foreground">
                                 {statsLoading
-                                    ? "正在加载总体统计数据…"
+                                    ? "正在排队或计算分析指标，请稍候…"
                                     : "在图表分析、样本量规划决策参数与抽样执行参数之间切换查看"}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="pt-6">
                             {analysisMetricsError && (
                                 <div
+                                    role="alert"
                                     className="mb-4 flex items-start gap-2 rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3 text-label text-destructive"
                                     data-testid="student-analysis-metrics-error"
                                 >
                                     <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                                    <span>{analysisMetricsError}</span>
+                                    <span className="flex-1">{analysisMetricsError}</span>
+                                    <Button type="button" variant="outline" disabled={statsLoading}
+                                        data-testid="student-analysis-metrics-retry" onClick={() => setMetricsRetry(value => value + 1)}>
+                                        重试加载
+                                    </Button>
                                 </div>
                             )}
                             {(analysisMetrics?.excludedNumericFields?.length ?? 0) > 0 && (

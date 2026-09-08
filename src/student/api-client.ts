@@ -6,6 +6,7 @@ export type { CurrentStudent, StudentTask, TopicAttachment, TaskDetail, Announce
 import type { AnalysisMetricsData } from "@/domain/experiment/analysis-types";
 export type { AnalysisNumericFieldMetrics, AnalysisCategoricalFieldMetrics, TargetMethodMetrics, TargetAnalysisMetrics, AnalysisMetricsData } from "@/domain/experiment/analysis-types";
 import { notifyAuthExpired } from "@/lib/auth-expired";
+import { fetchWithBusyRetry, type BusyRetryOptions } from "@/lib/busy-retry";
 
 export interface ApiResponse<T> {
     success: boolean;
@@ -13,13 +14,14 @@ export interface ApiResponse<T> {
     error?: { code: string; message: string };
 }
 
-async function request<T>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
+async function request<T>(url: string, options?: RequestInit, retry?: BusyRetryOptions): Promise<ApiResponse<T>> {
     try {
-        const response = await fetch(url, {
+        const init: RequestInit = {
             credentials: "include",
             ...options,
             headers: { "Content-Type": "application/json", ...options?.headers },
-        });
+        };
+        const response = await (retry ? fetchWithBusyRetry(url, init, retry) : fetch(url, init));
         const payload = await response.json() as ApiResponse<T>;
         notifyAuthExpired(response, payload.error?.code);
         return payload;
@@ -38,10 +40,11 @@ export const authApi = {
         "/api/demo/student-credential",
         { cache: "no-store", signal },
     ),
-    login: (data: { studentId: string; password: string }) => request<{ user: CurrentStudent }>("/api/student/login", {
+    login: (data: { studentId: string; password: string }, options?: { signal?: AbortSignal; onRetry?: () => void }) => request<{ user: CurrentStudent }>("/api/student/login", {
         method: "POST",
         body: JSON.stringify(data),
-    }),
+        signal: options?.signal,
+    }, { codes: ["AUTH_BUSY"], onRetry: options?.onRetry }),
     logout: () => request<{ ok: boolean }>("/api/student/logout", { method: "POST" }),
     changePassword: (data: { currentPassword: string; newPassword: string }) => request<{ success: boolean }>("/api/student/password", {
         method: "PUT",
@@ -80,8 +83,10 @@ export const experimentApi = {
         populationNumericStats?: Record<string, { mean: number; variance: number; stdDev: number; count: number }>;
         ppsEligibleFields?: string[];
         stratumNumericStats?: Record<string, Record<string, Record<string, { mean: number; stdDev: number }>>>;
-    }>(`/api/student/tasks/${taskId}/stats`),
-    getAnalysisMetrics: (taskId: number) => request<AnalysisMetricsData>(`/api/student/tasks/${taskId}/analysis-metrics`),
+    }>(`/api/student/tasks/${taskId}/stats`, undefined, { codes: ["STATS_BUSY", "STATS_TIMEOUT"] }),
+    getAnalysisMetrics: (taskId: number, signal?: AbortSignal) => request<AnalysisMetricsData>(
+        `/api/student/tasks/${taskId}/analysis-metrics`, { signal }, { codes: ["ANALYSIS_BUSY", "ANALYSIS_TIMEOUT"] },
+    ),
 };
 
 export const announcementsApi = { list: () => request<Announcement[]>("/api/student/announcements") };
