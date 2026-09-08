@@ -321,6 +321,10 @@ const stageCompleteRoutes: RouteDefinition = {
         const schedule = await findStudentTaskSchedule(taskId, auth.student.classId);
         const openError = ensureTaskIsOpen(schedule?.openTime);
         if (openError) return error(openError.message, openError.code, openError.status);
+        // Admit once, before worker queueing or the stage-3 PPS marker write.
+        // Work admitted on time may finish after the task deadline.
+        const deadlinePassed = hasTaskDeadlinePassed(schedule?.deadline);
+        if (deadlinePassed) return error("任务已截止，无法完成阶段", "TASK_DEADLINE");
         const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
         const stageTaskInfo = stage === 2 || stage === 3
             ? await findStudentTaskSamplingInfo(taskId, auth.student.classId)
@@ -352,7 +356,7 @@ const stageCompleteRoutes: RouteDefinition = {
             stage,
             payload,
             populationSize,
-            deadlinePassed: hasTaskDeadlinePassed(schedule?.deadline),
+            deadlinePassed,
             fieldMapping,
             samplingPolicy: stageTaskInfo?.samplingPolicy,
             stratifiedStats,

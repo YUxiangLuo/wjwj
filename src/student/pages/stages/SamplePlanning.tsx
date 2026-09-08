@@ -75,9 +75,10 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
         }
         const field = experiment.analysisTarget?.target.field;
         let cancelled = false;
+        const controller = new AbortController();
         setTargetVarianceReady(false);
         setTargetVarianceError("");
-        void experimentApi.getStats(experiment.taskId).then((res) => {
+        void experimentApi.getStats(experiment.taskId, controller.signal).then((res) => {
             if (cancelled) return;
             if (requiresStratification) {
                 const minimum = res.success ? getRequiredStratifiedMinimum(res.data?.stats, experiment.samplingPolicy, N) : null;
@@ -106,6 +107,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
         });
         return () => {
             cancelled = true;
+            controller.abort();
         };
     }, [experiment?.analysisTarget, experiment?.taskId, experiment?.samplingPolicy, needsStats, needsTargetVariance, requiresStratification, N, varianceReloadKey]);
 

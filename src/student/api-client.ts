@@ -75,7 +75,7 @@ export const experimentApi = {
         `/api/student/tasks/${taskId}/sampling`,
         { method: "POST", body: JSON.stringify({ method, params }) },
     ),
-    getStats: (taskId: number) => request<{
+    getStats: (taskId: number, signal?: AbortSignal) => request<{
         stats: Record<string, Record<string, number>>;
         numericFields?: string[];
         categoricalFields?: string[];
@@ -83,7 +83,7 @@ export const experimentApi = {
         populationNumericStats?: Record<string, { mean: number; variance: number; stdDev: number; count: number }>;
         ppsEligibleFields?: string[];
         stratumNumericStats?: Record<string, Record<string, Record<string, { mean: number; stdDev: number }>>>;
-    }>(`/api/student/tasks/${taskId}/stats`, undefined, { codes: ["STATS_BUSY", "STATS_TIMEOUT"] }),
+    }>(`/api/student/tasks/${taskId}/stats`, { signal }, { codes: ["STATS_BUSY", "STATS_TIMEOUT"] }),
     getAnalysisMetrics: (taskId: number, signal?: AbortSignal) => request<AnalysisMetricsData>(
         `/api/student/tasks/${taskId}/analysis-metrics`, { signal }, { codes: ["ANALYSIS_BUSY", "ANALYSIS_TIMEOUT"] },
     ),

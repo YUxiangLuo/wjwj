@@ -1,4 +1,6 @@
-import { expect, mock, test } from "bun:test";
+import { expect, mock, spyOn, test } from "bun:test";
+import type { PopulationStats } from "../experiment/population-stats-job";
+import { PPS_UNAVAILABLE_REASON } from "../experiment/sampling-messages";
 import type { SQL } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { createStudentAuthModuleMock } from "../../test-utils/mock-auth-modules";
@@ -59,8 +61,18 @@ function experimentRecord(overrides: Record<string, unknown> = {}) {
 async function load(record: Record<string, unknown>, options: {
     update?: unknown[];
     submitInfo?: Record<string, unknown> | null;
+    samplingInfo?: Record<string, unknown>;
+    schedule?: { openTime: Date | null; deadline: Date | null };
+    readStats?: () => Promise<PopulationStats>;
 } = {}) {
     const { db, operations } = createMockDb({ select: [[record]], update: options.update ?? [[]] });
+    const readStats = mock(options.readStats ?? (async () => {
+        throw new Error("Unexpected population statistics work");
+    }));
+    mock.module("../experiment/population-stats-service", () => ({
+        populationStatsService: { run: readStats },
+        populationRevisionKey: () => "test-revision",
+    }));
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => createStudentAuthModuleMock({
         requireAuth: async () => ({ student: { id: 2, studentId: "S001", name: "学生一", classId: 7 }, error: null }),
@@ -71,12 +83,94 @@ async function load(record: Record<string, unknown>, options: {
     }));
     mock.module("../experiment/task-info", () => ({
         findStudentTaskPopulationSize: async () => 200,
-        findStudentTaskSamplingInfo: async () => null,
-        findStudentTaskSchedule: async () => ({ openTime: null, deadline: new Date(Date.now() + 60_000) }),
+        findStudentTaskSamplingInfo: async () => options.samplingInfo ?? null,
+        findStudentTaskSchedule: async () => options.schedule ?? { openTime: null, deadline: new Date(Date.now() + 60_000) },
         findStudentTaskSubmitInfo: async () => options.submitInfo ?? null,
         findStudentTaskTopicInfo: async () => ({ id: 3, topicId: 4 }),
     }));
-    return { module: await import(`./experiment.ts?transition=${crypto.randomUUID()}`), operations };
+    return { module: await import(`./experiment.ts?transition=${crypto.randomUUID()}`), operations, readStats };
+}
+
+function statsCompletionFixture(stage: 2 | 3) {
+    const stored = {
+        simple: { completed: true, serverGenerated: true, sampleCount: 50, data: Array.from({ length: 50 }, (_, id) => ({ id })) },
+        systematic: { completed: true, serverGenerated: true, sampleCount: 50, interval: 4, data: Array.from({ length: 50 }, (_, id) => ({ id: id * 4 })) },
+    };
+    const record = experimentRecord({
+        currentStage: stage,
+        ...(stage === 3 ? {
+            stage2CompletedAt: new Date("2026-01-02T00:00:00Z"),
+            samplePlan: { confidenceLevel: "95", marginOfError: 5, finalSampleSize: 50 },
+            samplingResults: stored,
+        } : {}),
+    });
+    const marked = {
+        ...record,
+        samplingResults: { ...stored, pps: { unavailable: true, unavailableReason: PPS_UNAVAILABLE_REASON, serverGenerated: true } },
+    };
+    const updated = { ...(stage === 3 ? marked : record), currentStage: stage + 1, version: 7 };
+    const stats: PopulationStats = {
+        stats: { group: { A: 100, B: 100 } }, numericFields: [], categoricalFields: ["group"],
+        categoricalStats: { group: { A: 100, B: 100 } }, populationNumericStats: {},
+        ppsEligibleFields: [], stratumNumericStats: {},
+    };
+    return {
+        record, stats,
+        options: {
+            update: stage === 3 ? [[marked], [updated]] : [[updated]],
+            samplingInfo: {
+                excelFilePath: "/storage/stage-window.csv", fieldMapping: { stratified: ["group"] },
+                samplingPolicy: { version: 1, methods: {
+                    simple: "required", systematic: "optional",
+                    pps: stage === 3 ? "optional" : "disabled",
+                    stratified: stage === 2 ? "required" : "disabled",
+                } },
+            },
+        },
+    };
+}
+
+for (const stage of [2, 3] as const) {
+    test(`stage ${stage} admitted before the deadline completes after statistics queueing crosses it`, async () => {
+        const now = Date.now();
+        const deadline = new Date(now + 1_000);
+        const clock = spyOn(Date, "now").mockReturnValue(now);
+        const entered = Promise.withResolvers<void>();
+        const release = Promise.withResolvers<void>();
+        try {
+            const fixture = statsCompletionFixture(stage);
+            const { module, operations, readStats } = await load(fixture.record, {
+                ...fixture.options,
+                schedule: { openTime: null, deadline },
+                readStats: async () => { entered.resolve(); await release.promise; return fixture.stats; },
+            });
+            const pending = module.stageCompleteRoutes.POST!(post(stage));
+            await entered.promise;
+            expect(readStats).toHaveBeenCalledTimes(1);
+            expect(operations.some(op => op.kind === "update")).toBe(false);
+            // Queue delay stays well inside the worker's 30-second deadline.
+            clock.mockReturnValue(deadline.getTime() + 1);
+            release.resolve();
+            const response = await pending;
+            expect(response.status).toBe(200);
+            expect(await response.json()).toMatchObject({ data: { currentStage: stage + 1, version: 7 } });
+            expect(operations.filter(op => op.kind === "update")).toHaveLength(stage === 3 ? 2 : 1);
+        } finally { release.resolve(); clock.mockRestore(); }
+    });
+
+    test(`stage ${stage} already past the deadline rejects before statistics work or PPS marker writes`, async () => {
+        const fixture = statsCompletionFixture(stage);
+        const { module, operations, readStats } = await load(fixture.record, {
+            ...fixture.options,
+            schedule: { openTime: null, deadline: new Date(Date.now() - 1_000) },
+            readStats: async () => fixture.stats,
+        });
+        const response = await module.stageCompleteRoutes.POST!(post(stage));
+        expect(response.status).toBe(400);
+        expect(await response.json()).toMatchObject({ error: { code: "TASK_DEADLINE" } });
+        expect(readStats).not.toHaveBeenCalled();
+        expect(operations.some(op => op.kind === "update" || op.kind === "insert")).toBe(false);
+    });
 }
 
 test("stage completion returns 409 when a concurrent update wins after the route read", async () => {

@@ -8,7 +8,7 @@ import type {
 } from "../../components/immersive-sample-planning/types";
 
 const mockExperimentApi = {
-    getStats: mock(async () => ({
+    getStats: mock(async (_taskId: number, _signal?: AbortSignal) => ({
         success: true,
         data: {
             populationNumericStats: {
@@ -164,6 +164,21 @@ afterEach(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     restoreDom?.();
     restoreDom = null;
+});
+
+test("SamplePlanning aborts obsolete stats requests on task changes and unmount", async () => {
+    const view = render(<SamplePlanning onPrev={() => undefined} />);
+    await waitFor(() => expect(mockExperimentApi.getStats).toHaveBeenCalledTimes(1));
+    const firstSignal = mockExperimentApi.getStats.mock.calls[0]![1];
+    mockExperimentContext.experiment = { ...mockExperimentContext.experiment, taskId: 3 };
+    view.rerender(<SamplePlanning onPrev={() => undefined} />);
+    await waitFor(() => expect(mockExperimentApi.getStats).toHaveBeenCalledTimes(2));
+    const currentSignal = mockExperimentApi.getStats.mock.calls[1]![1];
+    expect(firstSignal?.aborted).toBe(true);
+    expect(currentSignal?.aborted).toBe(false);
+    expect(currentSignal).not.toBe(firstSignal);
+    view.unmount();
+    expect(currentSignal?.aborted).toBe(true);
 });
 
 test("zero target variance does not open a wizard with invented variance", async () => {

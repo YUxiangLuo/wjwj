@@ -144,9 +144,10 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
         if (!experiment?.taskId) return;
 
         let active = true;
+        const controller = new AbortController();
         setStatsState("loading");
         setStatsError("");
-        experimentApi.getStats(experiment.taskId).then(res => {
+        experimentApi.getStats(experiment.taskId, controller.signal).then(res => {
             if (!active) return;
             if (!res.success || !res.data) {
                 setStatsState("error");
@@ -170,6 +171,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
         return () => {
             active = false;
+            controller.abort();
         };
     }, [experiment?.analysisTarget?.target.field, experiment?.taskId, statsReloadKey]);
 
