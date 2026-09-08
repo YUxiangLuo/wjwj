@@ -828,6 +828,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                         taskId={taskId}
                         populationStats={populationStats}
                         numericFields={numericFields}
+                        analysisTarget={experiment?.analysisTarget?.target}
                         stratumNumericStats={stratumNumericStats}
                         initialResult={initialResults?.stratified ?? null}
                         executing={executing}

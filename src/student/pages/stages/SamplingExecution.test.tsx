@@ -2,6 +2,10 @@ import { afterEach, beforeEach, expect, mock, test } from "bun:test";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
 import { installDomGlobals } from "@/test-utils/dom";
+import { buildStratifiedNumericStats, buildStratifiedStats } from "@/domain/statistics/population";
+import type { AnalysisTarget } from "@/lib/analysis-target";
+
+type PopulationStats = NonNullable<Awaited<ReturnType<typeof import("../../api-client").experimentApi.getStats>>["data"]>;
 
 const mockExperimentApi = {
     getStats: mock(async () => ({
@@ -10,7 +14,7 @@ const mockExperimentApi = {
             stats: {},
             numericFields: [] as string[],
             ppsEligibleFields: [] as string[],
-        },
+        } as PopulationStats,
     })),
     executeSampling: mock(async () => ({ success: true, data: { result: null as any } })),
 };
@@ -95,10 +99,6 @@ mock.module("../../components/SamplingSuccessState", () => ({
 
 mock.module("../../components/SamplePreviewTable", () => ({
     SamplePreviewTable: () => <div>preview</div>,
-}));
-
-mock.module("../../components/StratifiedSamplingTab", () => ({
-    StratifiedSamplingTab: () => <div>stratified</div>,
 }));
 
 const { SamplingExecution } = await import("./SamplingExecution");
@@ -380,3 +380,87 @@ test("SamplingExecution honors disabled methods and allows the required two-meth
     expect(complete.disabled).toBeFalse();
     expect(complete.textContent).toContain("完成本阶段");
 });
+
+function prepareNeymanScenario(options: {
+    numericFields?: string[];
+    target?: AnalysisTarget | null;
+    targetStdDevs?: [number, number];
+    missingTargetStats?: boolean;
+} = {}) {
+    const numericFields = options.numericFields ?? ["constant", "y"];
+    const targetStdDevs = options.targetStdDevs ?? [1, 10];
+    const population = Array.from({ length: 200 }, (_, i) => ({
+        group: i < 100 ? "A" : "B",
+        constant: 1,
+        auxiliary: (i % 2 ? 1 : -1) * (i < 100 ? 10 : 1),
+        y: (i < 100 ? 10 : 20) + (i % 2 ? 1 : -1) * Math.sqrt(99 / 100) * targetStdDevs[i < 100 ? 0 : 1],
+    }));
+    const fieldMapping = { stratified: ["group"], numeric: numericFields };
+    const stratumNumericStats = buildStratifiedNumericStats(population, fieldMapping);
+    if (options.missingTargetStats) delete stratumNumericStats.group!.B!.y;
+    mockExperimentContext.populationSize = 200;
+    mockExperimentContext.experiment = {
+        ...mockExperimentContext.experiment,
+        analysisTarget: options.target === null ? null : {
+            target: options.target ?? { kind: "mean", field: "y" },
+            inferred: false,
+        },
+        samplePlan: { finalSampleSize: 30, confidenceLevel: "95", marginOfError: 5 },
+    };
+    mockExperimentApi.getStats.mockResolvedValueOnce({ success: true, data: {
+        stats: buildStratifiedStats(population, fieldMapping), numericFields, ppsEligibleFields: [], stratumNumericStats,
+    } });
+}
+
+for (const numericFields of [["constant", "y"], ["y", "constant"], ["auxiliary", "y"]]) {
+    test(`Neyman quick allocation uses the research target with numeric order ${numericFields.join(",")}`, async () => {
+        prepareNeymanScenario({ numericFields });
+        const view = render(<SamplingExecution onPrev={() => undefined} />);
+        const neyman = await waitFor(() => {
+            const button = view.getByRole("button", { name: "奈曼" }) as HTMLButtonElement;
+            expect(button.disabled).toBe(false);
+            return button;
+        });
+        fireEvent.click(neyman);
+        expect((view.getByRole("spinbutton", { name: "A层样本数" }) as HTMLInputElement).value).toBe("3");
+        expect((view.getByRole("spinbutton", { name: "B层样本数" }) as HTMLInputElement).value).toBe("27");
+        expect(neyman.getAttribute("title")).toContain("研究目标「y」");
+    });
+}
+
+test("Neyman retains coverage for a zero-variance target stratum", async () => {
+    prepareNeymanScenario({ targetStdDevs: [0, 10] });
+    const view = render(<SamplingExecution onPrev={() => undefined} />);
+    await waitFor(() => expect((view.getByRole("button", { name: "奈曼" }) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(view.getByRole("button", { name: "奈曼" }));
+    expect((view.getByRole("spinbutton", { name: "A层样本数" }) as HTMLInputElement).value).toBe("1");
+    expect((view.getByRole("spinbutton", { name: "B层样本数" }) as HTMLInputElement).value).toBe("29");
+});
+
+test("Neyman remains available when every target stratum is constant", async () => {
+    prepareNeymanScenario({ targetStdDevs: [0, 0] });
+    const view = render(<SamplingExecution onPrev={() => undefined} />);
+    await waitFor(() => expect((view.getByRole("button", { name: "奈曼" }) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(view.getByRole("button", { name: "奈曼" }));
+    const counts = ["A", "B"].map(name => Number((view.getByRole("spinbutton", { name: `${name}层样本数` }) as HTMLInputElement).value));
+    expect(counts.every(count => count >= 1)).toBe(true);
+    expect(counts[0]! + counts[1]!).toBe(30);
+});
+
+for (const options of [
+    { missingTargetStats: true },
+    { target: null },
+    { target: { kind: "proportion", field: "group", value: "B" } as AnalysisTarget },
+]) {
+    test(`Neyman does not substitute an auxiliary variable when target statistics are unavailable: ${JSON.stringify(options)}`, async () => {
+        prepareNeymanScenario(options);
+        const view = render(<SamplingExecution onPrev={() => undefined} />);
+        const neyman = await waitFor(() => view.getByRole("button", { name: "奈曼" }) as HTMLButtonElement);
+        expect(neyman.disabled).toBe(true);
+        fireEvent.click(neyman);
+        expect((view.getByRole("spinbutton", { name: "A层样本数" }) as HTMLInputElement).value).toBe("15");
+        expect((view.getByRole("spinbutton", { name: "B层样本数" }) as HTMLInputElement).value).toBe("15");
+        expect(neyman.getAttribute("title")).toContain("暂");
+        expect(view.getByRole("button", { name: "对比分析全部方法" })).toBeTruthy();
+    });
+}

@@ -23,6 +23,7 @@ import {
 import { Play, Loader2, Target, BarChart3, Percent, Equal, TrendingUp } from "lucide-react";
 import { experimentApi } from "../api-client";
 import type { MethodKey } from "@/domain/experiment/types";
+import type { AnalysisTarget } from "@/lib/analysis-target";
 import { SamplingSuccessState } from "./SamplingSuccessState";
 import { SamplePreviewTable } from "./SamplePreviewTable";
 import { StratifiedAllocationComparison } from "./StratifiedAllocationComparison";
@@ -74,6 +75,7 @@ export interface StratifiedSamplingTabProps {
     taskId: number | undefined;
     populationStats: Record<string, Record<string, number>>;
     numericFields: string[];
+    analysisTarget: AnalysisTarget | null | undefined;
     stratumNumericStats: Record<string, Record<string, Record<string, { mean: number; stdDev: number }>>>;
     initialResult: StratifiedResult | null;
     executing: MethodKey | null;
@@ -91,6 +93,7 @@ export function StratifiedSamplingTab({
     taskId,
     populationStats,
     numericFields,
+    analysisTarget,
     stratumNumericStats,
     initialResult,
     executing,
@@ -185,46 +188,47 @@ export function StratifiedSamplingTab({
         setLayers((prev) => prev.map((l, i) => i === index ? { ...l, sampleCount: Math.max(0, value) } : l));
     };
 
+    const neymanTargetField = analysisTarget?.kind === "mean" ? analysisTarget.field : null;
     const neymanStdDevs = useMemo(() => {
-        for (const field of numericFields) {
-            const devs = layers.map((layer) => stratumNumericStats[stratifyBy]?.[layer.name]?.[field]?.stdDev);
-            if (devs.every((value): value is number => value !== undefined && Number.isFinite(value) && value >= 0)) {
-                return devs;
-            }
-        }
-        return null;
-    }, [layers, numericFields, stratifyBy, stratumNumericStats]);
+        if (!neymanTargetField || layers.length === 0) return null;
+        // The quick action optimizes the research target. Auxiliary column order
+        // must never select another estimator, even when its variance is zero.
+        const devs = layers.map((layer) => stratumNumericStats[stratifyBy]?.[layer.name]?.[neymanTargetField]?.stdDev);
+        return devs.every((value): value is number => value !== undefined && Number.isFinite(value) && value >= 0)
+            ? devs
+            : null;
+    }, [layers, neymanTargetField, stratifyBy, stratumNumericStats]);
+    const neymanNotice = neymanStdDevs
+        ? `奈曼分配依据研究目标「${neymanTargetField}」的层内标准差。`
+        : analysisTarget?.kind === "proportion"
+            ? "比例目标的奈曼分配需要目标类别的层内标准差，当前快捷分配暂不可用；可使用按比例或等额分配。"
+            : neymanTargetField
+                ? `研究目标「${neymanTargetField}」的层内标准差不完整，暂不能使用奈曼快捷分配。`
+                : "尚未确定研究目标，暂不能使用奈曼快捷分配。";
 
     const applyQuickAllocation = (method: "proportional" | "equal" | "neyman") => {
         if (layers.length === 0) return;
-        const totalPop = layers.reduce((a, l) => a + l.count, 0);
-
-        let rawCounts: number[];
-        if (method === "proportional") {
-            rawCounts = layers.map((l) => n * (totalPop > 0 ? l.count / totalPop : 1 / layers.length));
-        } else if (method === "equal") {
-            rawCounts = layers.map(() => n / layers.length);
-        } else {
+        let nextCounts: number[] | null;
+        if (method === "neyman") {
             if (!neymanStdDevs) {
-                toast.error("奈曼分配需要各层目标变量的标准差，请先上传含数值字段的总体数据，或改用按比例分配");
+                toast.error(neymanNotice);
                 return;
             }
-            const weights = layers.map((layer, index) => layer.count * (neymanStdDevs[index] ?? 0));
-            const totalWeight = weights.reduce((a, b) => a + b, 0);
-            rawCounts = totalWeight > 0
-                ? weights.map((w) => n * w / totalWeight)
-                : layers.map(() => n / layers.length);
+            nextCounts = allocateNeymanSampleCounts({
+                targetSampleSize: n,
+                populationCounts: layers.map((layer) => layer.count),
+                stdDevs: neymanStdDevs,
+            });
+        } else {
+            const totalPop = layers.reduce((sum, layer) => sum + layer.count, 0);
+            nextCounts = allocateStratifiedSampleCounts({
+                targetSampleSize: n,
+                rawCounts: layers.map((layer) => method === "proportional" && totalPop > 0
+                    ? n * layer.count / totalPop
+                    : n / layers.length),
+                caps: layers.map((layer) => layer.count),
+            });
         }
-
-        const nextCounts = method === "neyman" && neymanStdDevs ? allocateNeymanSampleCounts({
-            targetSampleSize: n,
-            populationCounts: layers.map((layer) => layer.count),
-            stdDevs: neymanStdDevs,
-        }) : allocateStratifiedSampleCounts({
-            targetSampleSize: n,
-            rawCounts,
-            caps: layers.map((layer) => layer.count),
-        });
         if (!nextCounts) {
             toast.error("当前样本量无法覆盖每个非空层，请先修改样本量规划");
             return;
@@ -440,7 +444,8 @@ export function StratifiedSamplingTab({
                                 size="sm"
                                 onClick={() => applyQuickAllocation("neyman")}
                                 disabled={!neymanStdDevs}
-                                title={neymanStdDevs ? "按 N_h × S_h 分配" : "需要各层数值变量的标准差"}
+                                title={neymanNotice}
+                                aria-describedby="student-neyman-target-notice"
                                 className="h-7 text-meta border-warning text-warning hover:bg-warning-muted"
                             >
                                 <TrendingUp className="w-3 h-3 mr-1" />
@@ -457,6 +462,12 @@ export function StratifiedSamplingTab({
                                 对比分析全部方法
                             </Button>
                         </div>
+                    )}
+                    {layers.length > 0 && (
+                        <p id="student-neyman-target-notice" className="text-meta text-muted-foreground">
+                            {neymanNotice}
+                            {numericFields.length > 0 && " 如需比较其他数值变量，可在“对比分析全部方法”中选择。"}
+                        </p>
                     )}
                 </CardContent>
             </Card>
