@@ -52,7 +52,8 @@ export function ClassManagement() {
             setSemesters(semesters);
             const active = teachers.filter(teacher => teacher.status === 1);
             setTeachers(active);
-            setNewClass(previous => ({ ...previous, semesterId: previous.semesterId || String(semesters[0]?.id ?? ""), teacherId: previous.teacherId || String(active[0]?.id ?? "") }));
+            const defaultSemester = semesters.find(semester => semester.isCurrent === 1) ?? semesters[0];
+            setNewClass(previous => ({ ...previous, semesterId: previous.semesterId || String(defaultSemester?.id ?? ""), teacherId: previous.teacherId || String(active[0]?.id ?? "") }));
         });
     }
 

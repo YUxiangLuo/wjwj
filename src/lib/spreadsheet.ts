@@ -16,6 +16,8 @@ export interface SpreadsheetUploadFile {
 
 export interface SpreadsheetParseResult {
     rows: Array<Record<string, any>>;
+    /** One-based physical source line/worksheet row for each retained data record. */
+    rowNumbers?: number[];
     columns: string[];
     duplicateColumns: string[];
     blankColumnIndexes: number[];
@@ -82,22 +84,36 @@ function csvColumnKeys(header: string[]) {
 
 function parseUnquotedCsvText(text: string) {
     const source = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
-    const lines = source.split(/\r\n?|\n/, MAX_SPREADSHEET_ROWS + 3);
-    if (lines.at(-1) === "" && lines.length < MAX_SPREADSHEET_ROWS + 3) lines.pop();
-    const rawHeader = (lines.shift() ?? "").split(",", MAX_SPREADSHEET_COLUMNS + 2);
-    const columns = csvColumnKeys(rawHeader.slice(0, MAX_SPREADSHEET_COLUMNS + 1));
+    let rawHeader: string[] | undefined;
+    let columns: string[] = [];
+    const rows: Array<Record<string, string>> = [];
+    const rowNumbers: number[] = [];
+    let lineNumber = 0;
     let malformedRow: number | undefined;
-    let tooManyColumns = rawHeader.length > MAX_SPREADSHEET_COLUMNS;
-    const rows = lines.slice(0, MAX_SPREADSHEET_ROWS + 1).map((line, rowIndex) => {
+    let tooManyColumns = false;
+    // Iterate rather than splitting the whole file: millions of blank lines
+    // must not allocate millions of entries or hide the oversized-row sentinel.
+    for (const match of source.matchAll(/([^\r\n]*)(?:\r\n|\r|\n|$)/g)) {
+        lineNumber += 1;
+        const line = match[1]!;
+        if (!line.trim()) continue;
         const values = line.split(",", MAX_SPREADSHEET_COLUMNS + 2);
         if (values.length > MAX_SPREADSHEET_COLUMNS) tooManyColumns = true;
-        if (values.length !== rawHeader.length && malformedRow === undefined) malformedRow = rowIndex + 2;
-        return Object.fromEntries(columns.map((column, columnIndex) => [column, values[columnIndex] ?? ""]));
-    });
+        if (!rawHeader) {
+            rawHeader = values;
+            columns = csvColumnKeys(rawHeader.slice(0, MAX_SPREADSHEET_COLUMNS + 1));
+            continue;
+        }
+        if (values.length !== rawHeader.length && malformedRow === undefined) malformedRow = lineNumber;
+        rows.push(Object.fromEntries(columns.map((column, columnIndex) => [column, values[columnIndex] ?? ""])));
+        rowNumbers.push(lineNumber);
+        if (rows.length > MAX_SPREADSHEET_ROWS) break;
+    }
     return {
         rows,
+        rowNumbers,
         columns,
-        ...inspectHeaderValues(rawHeader),
+        ...inspectHeaderValues(rawHeader ?? []),
         rowCount: rows.length,
         colCount: tooManyColumns ? MAX_SPREADSHEET_COLUMNS + 1 : columns.length,
         preview: rows.slice(0, 20),
@@ -114,6 +130,9 @@ function parseUnquotedCsvText(text: string) {
 function parseCsvText(text: string) {
     if (!text.includes('"')) return parseUnquotedCsvText(text);
     const parsedRows: string[][] = [];
+    const rowNumbers: number[] = [];
+    let lineNumber = 1;
+    let rowStartLine = 1;
     let row: string[] = [];
     let quoted = false;
     let closedQuote = false;
@@ -122,6 +141,7 @@ function parseCsvText(text: string) {
     let tooManyColumns = false;
     let index = text.charCodeAt(0) === 0xfeff ? 1 : 0;
     let fieldStart = index;
+    let rowStartOffset = index;
 
     const finishField = (end: number, nextStart: number) => {
         let value: string;
@@ -139,13 +159,20 @@ function parseCsvText(text: string) {
     };
     const finishRow = (end: number, nextStart: number) => {
         finishField(end, nextStart);
-        parsedRows.push(row);
+        // Ignore only physically blank records. Explicit fields (,, or "")
+        // and blank lines inside a quoted field remain meaningful data.
+        if (text.slice(rowStartOffset, end).trim()) {
+            parsedRows.push(row);
+            rowNumbers.push(rowStartLine);
+        }
         row = [];
+        rowStartOffset = nextStart;
     };
 
     while (index < text.length && parsedRows.length <= MAX_SPREADSHEET_ROWS + 1) {
         const character = text[index]!;
         if (quoted) {
+            if (character === "\n" || (character === "\r" && text[index + 1] !== "\n")) lineNumber += 1;
             if (character === '"') {
                 if (text[index + 1] === '"') {
                     fieldParts ??= [];
@@ -175,6 +202,8 @@ function parseCsvText(text: string) {
         } else if (character === "\n" || character === "\r") {
             const nextStart = character === "\r" && text[index + 1] === "\n" ? index + 2 : index + 1;
             finishRow(index, nextStart);
+            lineNumber += 1;
+            rowStartLine = lineNumber;
             index = nextStart;
             continue;
         }
@@ -186,6 +215,7 @@ function parseCsvText(text: string) {
     }
 
     const rawHeader = parsedRows.shift() ?? [];
+    rowNumbers.shift();
     const columns = csvColumnKeys(rawHeader);
     const inconsistentRowIndex = parsedRows.findIndex((values) => values.length !== rawHeader.length);
     const rows = parsedRows.slice(0, MAX_SPREADSHEET_ROWS + 1).map((values) => Object.fromEntries(
@@ -193,13 +223,14 @@ function parseCsvText(text: string) {
     ));
     return {
         rows,
+        rowNumbers: rowNumbers.slice(0, rows.length),
         columns,
         ...inspectHeaderValues(rawHeader),
         rowCount: rows.length,
         colCount: tooManyColumns ? MAX_SPREADSHEET_COLUMNS + 1 : columns.length,
         preview: rows.slice(0, 20),
         malformed: malformed || inconsistentRowIndex >= 0,
-        malformedRow: inconsistentRowIndex >= 0 ? inconsistentRowIndex + 2 : undefined,
+        malformedRow: inconsistentRowIndex >= 0 ? rowNumbers[inconsistentRowIndex] : undefined,
     };
 }
 
@@ -272,6 +303,7 @@ export async function parseSpreadsheetFile(
     const headerIssues = inspectHeaderNames(sheet);
     return {
         rows,
+        rowNumbers: displayedRows.map((row, index) => Number(row.__rowNum__ ?? index + 1) + 1),
         columns,
         ...headerIssues,
         rowCount: rows.length,

@@ -53,7 +53,15 @@ export function createApiClient(role: AuthRole) {
             headers.set("X-Expected-User-Id", String(userId));
         }
         if (typeof init.body === "string" && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
-        const response = await fetch(url, { credentials: "include", ...init, headers });
+        let response: Response;
+        try {
+            response = await fetch(url, { credentials: "include", ...init, headers });
+        } catch (cause) {
+            // Localize transport failures only; business/auth errors and explicit
+            // cancellation keep their existing messages and handling.
+            if (init.signal?.aborted || (cause instanceof Error && cause.name === "AbortError")) throw cause;
+            throw new Error("网络连接失败，请检查网络后重试", { cause });
+        }
         ensureActive();
         if (!response.ok) {
             const body = await response.clone().json().catch(() => null);

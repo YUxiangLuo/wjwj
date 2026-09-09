@@ -1,0 +1,263 @@
+{
+  "success": true,
+  "at": "2026-09-09T15:51:35.679Z",
+  "sourceDatabase": "wj_clean_20260909_3a8d8f6",
+  "restoredDatabase": "wj_restore_20260909_r1",
+  "tableChecks": [
+    {
+      "table": "admin",
+      "original": {
+        "count": 1,
+        "digest": "718c030dcd44b1f93f3e48b2f308b8d9"
+      },
+      "restored": {
+        "count": 1,
+        "digest": "718c030dcd44b1f93f3e48b2f308b8d9"
+      },
+      "pass": true
+    },
+    {
+      "table": "teacher",
+      "original": {
+        "count": 2,
+        "digest": "77203831087b7be71011700a1831fb52"
+      },
+      "restored": {
+        "count": 2,
+        "digest": "77203831087b7be71011700a1831fb52"
+      },
+      "pass": true
+    },
+    {
+      "table": "student",
+      "original": {
+        "count": 4,
+        "digest": "bc4667c44e3f6ded0f93f6b3ab6b93e4"
+      },
+      "restored": {
+        "count": 4,
+        "digest": "bc4667c44e3f6ded0f93f6b3ab6b93e4"
+      },
+      "pass": true
+    },
+    {
+      "table": "semester",
+      "original": {
+        "count": 2,
+        "digest": "0336323787b337bf42917b2cba248ed2"
+      },
+      "restored": {
+        "count": 2,
+        "digest": "0336323787b337bf42917b2cba248ed2"
+      },
+      "pass": true
+    },
+    {
+      "table": "class",
+      "original": {
+        "count": 2,
+        "digest": "f6500c86df63d0fe980646980f06314a"
+      },
+      "restored": {
+        "count": 2,
+        "digest": "f6500c86df63d0fe980646980f06314a"
+      },
+      "pass": true
+    },
+    {
+      "table": "topic",
+      "original": {
+        "count": 3,
+        "digest": "d976078f78a1a7367e62489533296655"
+      },
+      "restored": {
+        "count": 3,
+        "digest": "d976078f78a1a7367e62489533296655"
+      },
+      "pass": true
+    },
+    {
+      "table": "topic_attachment",
+      "original": {
+        "count": 3,
+        "digest": "032da4a6ba0f7716c4c65108772459ba"
+      },
+      "restored": {
+        "count": 3,
+        "digest": "032da4a6ba0f7716c4c65108772459ba"
+      },
+      "pass": true
+    },
+    {
+      "table": "task",
+      "original": {
+        "count": 3,
+        "digest": "cb2c35c71e9c3b682df5808cbd4b4119"
+      },
+      "restored": {
+        "count": 3,
+        "digest": "cb2c35c71e9c3b682df5808cbd4b4119"
+      },
+      "pass": true
+    },
+    {
+      "table": "experiment",
+      "original": {
+        "count": 4,
+        "digest": "2329f11e939c97a496440773cf65609d"
+      },
+      "restored": {
+        "count": 4,
+        "digest": "2329f11e939c97a496440773cf65609d"
+      },
+      "pass": true
+    },
+    {
+      "table": "sampling_attempt",
+      "original": {
+        "count": 8,
+        "digest": "6f0ba16bcd3f8db781387cd3fc3f8107"
+      },
+      "restored": {
+        "count": 8,
+        "digest": "6f0ba16bcd3f8db781387cd3fc3f8107"
+      },
+      "pass": true
+    },
+    {
+      "table": "announcement",
+      "original": {
+        "count": 0,
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "restored": {
+        "count": 0,
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "pass": true
+    },
+    {
+      "table": "audit_event",
+      "original": {
+        "count": 4,
+        "digest": "3dc1486384fd7901f4d1e0d069668866"
+      },
+      "restored": {
+        "count": 4,
+        "digest": "3dc1486384fd7901f4d1e0d069668866"
+      },
+      "pass": true
+    },
+    {
+      "table": "user_session",
+      "original": {
+        "count": 8,
+        "digest": "281fae7be7b7edd53bca5c628adbfab7"
+      },
+      "restored": {
+        "count": 8,
+        "digest": "281fae7be7b7edd53bca5c628adbfab7"
+      },
+      "pass": true
+    }
+  ],
+  "files": [
+    {
+      "path": "uploads/1788967228679_246d316e_population-service.csv",
+      "sha256": "9a561445a65a029cb8a26f9b5168880f39772d4caa399d9dcf113d930d05fcaf"
+    },
+    {
+      "path": "uploads/1788967282085_4d6f3d3e_调查问卷设计规范与模板.pdf",
+      "sha256": "76f6b85b16bfb5657cb41d4b2338862fc109a5413f2d5c7d625199b81f9fe79f"
+    },
+    {
+      "path": "uploads/1788967922701_8f9e6ed8_1788967228679_246d316e_population-service.csv",
+      "sha256": "9a561445a65a029cb8a26f9b5168880f39772d4caa399d9dcf113d930d05fcaf"
+    },
+    {
+      "path": "uploads/1788967922702_e584913e_调查问卷设计规范与模板.pdf",
+      "sha256": "76f6b85b16bfb5657cb41d4b2338862fc109a5413f2d5c7d625199b81f9fe79f"
+    },
+    {
+      "path": "uploads/1788968236349_fd1372c8_调查问卷设计规范与模板.pdf",
+      "sha256": "76f6b85b16bfb5657cb41d4b2338862fc109a5413f2d5c7d625199b81f9fe79f"
+    },
+    {
+      "path": "uploads/1788968252728_81d177fd_population-profit.csv",
+      "sha256": "61030b7548f6eba5a3060a56031f12c82066c21fca4b213fc7f8dc1507e59218"
+    }
+  ],
+  "checks": {
+    "analytics": {
+      "funnel": {
+        "graded": 3,
+        "inProgress": 1,
+        "notStarted": 5,
+        "pendingGrading": 0,
+        "rejected": 0,
+        "total": 9
+      },
+      "scores": {
+        "average": 91,
+        "bands": [
+          {
+            "count": 0,
+            "label": "<60"
+          },
+          {
+            "count": 0,
+            "label": "60–69"
+          },
+          {
+            "count": 0,
+            "label": "70–79"
+          },
+          {
+            "count": 1,
+            "label": "80–89"
+          },
+          {
+            "count": 2,
+            "label": "90–100"
+          }
+        ],
+        "componentAverages": {
+          "process": 91.66666666666669,
+          "questionnaire": 85,
+          "report": 95
+        },
+        "count": 3,
+        "median": 90
+      }
+    },
+    "grades": [
+      {
+        "attempts": 4,
+        "id": 1,
+        "report": "<p>本实验研究120个合成服务时段的平均等待时间，分析单位为服务时段。问卷仅进行受访者预试，回答不进入抽样估计。样本量规划采用95%置信水平、绝对误差限2分钟、设计效应1和无回答率0%，建议30个，实际选择36个时段。简单随机、系统和分层抽样各抽36个，PPS使用客流规模抽40个。简单随机估计19.7222分钟，系统抽样19.8889分钟，PPS的Hájek加权估计19.8891分钟，分层估计21.7778分钟。分层使用校区与奈曼分配，每层抽12个。本次结果不能说明某方法永远更好，应结合随机误差、总体排序及客流与等待时间的关系解释。教学误差半宽依赖完整虚拟总体，不能直接替代现实调查中仅凭样本估计的置信区间。补充说明：单次分层估计偏离真值是抽样随机性的表现，设计标准误评价重复抽样分布而不是本次误差的大小。问卷骨架的身份类别仍应按实际受访者细化为学生、教职工、访客，避免占位选项影响可理解性。本实验研究120个合成服务时段的平均等待时间，分析单位为服务时段。问卷仅进行受访者预试，回答不进入抽样估计。样本量规划采用95%置信水平、绝对误差限2分钟、设计效应1和无回答率0%，建议30个，实际选择36个时段。简单随机、系统和分层抽样各抽36个，PPS使用客流规模抽40个。简单随机估计19.7222分钟，系统抽样19.8889分钟，PPS的Hájek加权估计19.8891分钟，分层估计21.7778分钟。分层使用校区与奈曼分配，每层抽12个。本次结果不能说明某方法永远更好，应结合随机误差、总体排序及客流与等待时间的关系解释。教学误差半宽依赖完整虚拟总体，不能直接替代现实调查中仅凭样本估计的置信区间。</p>",
+        "score": 89,
+        "status": 200
+      },
+      {
+        "attempts": 2,
+        "id": 2,
+        "report": "<p>本实验估计120个合成服务时段中满意评价的比例，总体真值为75%。问卷仅用于预试，不进入估计。采用95%置信水平和5个百分点误差限，最终规划92个时段。简单随机抽样估计73.91%，系统抽样估计76.09%，教学误差半宽分别为4.29和2.13个百分点。本实验只完成这两种方法，PPS不适用，分层未选做，不应展示其未计算结果。两种估计的差异体现随机性与总体排列的影响，不能从单次样本认定系统抽样始终更好。教学半宽使用已知完整总体的设计信息，实际研究还需核查无回答、总体覆盖及测量误差。</p>",
+        "score": 90,
+        "status": 200
+      },
+      {
+        "attempts": 2,
+        "id": 3,
+        "report": "<p>本实验以60家合成企业为有限总体，研究季度净利润的平均水平，单位为万元。总体同时包含盈利与亏损企业，均值为零不代表每家企业利润都为零。我们完成5题经营调查预试，但问卷答案不参与总体估计。规划采用均值绝对误差而非以零均值为分母的相对误差，最终邀请全部60家。简单随机和系统抽样均覆盖整个总体，因此估计均值为0万元，抽样标准误与教学误差半宽为0。全体调查只消除了抽样误差，不能保证不存在测量错误或其他非抽样误差。实际教学中应根据成本在普查与抽样间权衡。</p>",
+        "score": 94,
+        "status": 200
+      }
+    ]
+  },
+  "attachment": {
+    "bytes": 164487,
+    "sha256": "76f6b85b16bfb5657cb41d4b2338862fc109a5413f2d5c7d625199b81f9fe79f",
+    "status": 200
+  },
+  "elapsedSinceBackupFinishedMs": 72601
+}

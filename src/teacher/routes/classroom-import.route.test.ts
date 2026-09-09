@@ -87,6 +87,31 @@ test("student import preserves Chinese text for utf-8 csv files", async () => {
     expect(await Bun.password.verify("2099202", inserted[1]!.password)).toBe(true);
 });
 
+for (const quoted of [false, true]) {
+    test(`student import skips CSV blank lines and reports original ${quoted ? "multiline quoted" : "unquoted"} row numbers`, async () => {
+        const { module, operations } = await loadClassroomRoutes({ select: [[{ id: 3 }], [], [{ id: 3 }]] });
+        const formData = new FormData();
+        formData.append("file", new File([
+            `studentId,name,email\r\nS01,${quoted ? '"学生\r\n甲"' : "学生甲"},ok@example.edu\r\n\r\n,缺号,\r\nS01,重复,\r\n \t\r\nS02,学生乙,bad\r\n,,\r\n\r\n\r\n`,
+        ], "students.csv", { type: "text/csv" }));
+        const response = await module.classStudentsImportRoutes.POST!(withRouteParam(new Request(
+            "https://example.com/api/teacher/classes/3/students/import", { method: "POST", body: formData },
+        ), "3"));
+        const payload = await response.json() as any;
+        const offset = quoted ? 1 : 0;
+        expect(response.status).toBe(200);
+        expect(payload.data).toMatchObject({ successCount: 1, failureCount: 4 });
+        expect(payload.data.errors).toEqual([
+            { row: 4 + offset, reason: "缺少学号或姓名" },
+            { row: 5 + offset, reason: "文件中学号重复: S01" },
+            { row: 7 + offset, reason: "邮箱格式无效" },
+            { row: 8 + offset, reason: "缺少学号或姓名" },
+        ]);
+        const insert = operations.find(operation => operation.kind === "insert" && operation.table === student);
+        expect(insert?.values).toEqual([expect.objectContaining({ studentId: "S01", classId: 3 })]);
+    });
+}
+
 test("student import treats differently-cased student IDs as duplicates", async () => {
     const { module, operations } = await loadClassroomRoutes({
         select: [

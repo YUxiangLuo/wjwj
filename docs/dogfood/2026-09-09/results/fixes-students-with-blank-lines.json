@@ -1,0 +1,6 @@
+{
+  "filename": "students-with-blank-lines.csv",
+  "encoding": "utf-8",
+  "sha256": "137d3afd4e63df77bbbbd659ebbf54264406a7ce7372cfb2ff0ddc40855252e4",
+  "content": "studentId,name,email\r\nDFFIXS01,修复验证甲,fix1@example.invalid\r\n \t\r\nDFFIXS02,修复验证乙,fix2@example.invalid\r\n\r\n,缺学号,\r\nDFFIXBAD,邮箱错误,invalid-email\r\n\r\n\r\n"
+}

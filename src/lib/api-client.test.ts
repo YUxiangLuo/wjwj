@@ -104,6 +104,33 @@ for (const [status, code] of [[401, "UNAUTHORIZED"], [401, "ACCOUNT_NOT_FOUND"],
     });
 }
 
+for (const role of ["student", "teacher", "admin"] as const) {
+    test(`${role}: transport failures have a Chinese message and can be retried without losing identity`, async () => {
+        const navigate = setup(role), client = createApiClient(role);
+        globalThis.fetch = (async () => ok({ id: 12 })) as unknown as typeof fetch;
+        await client.request(`/api/${role}/me`);
+        for (const cause of [new TypeError("Failed to fetch"), new Error("Network connection lost"), "offline"]) {
+            globalThis.fetch = (async () => { throw cause; }) as unknown as typeof fetch;
+            expect(await client.request(`/api/${role}/tasks`)).toEqual({
+                success: false, error: { code: "NETWORK_ERROR", message: "网络连接失败，请检查网络后重试" },
+            });
+        }
+        expect(navigate).not.toHaveBeenCalled();
+        globalThis.fetch = (async (_url, init) => {
+            expect(new Headers(init?.headers).get("X-Expected-User-Id")).toBe("12");
+            return ok({ restored: true });
+        }) as typeof fetch;
+        expect((await client.request(`/api/${role}/tasks`)).data).toEqual({ restored: true });
+    });
+}
+
+test("transport cancellation retains its AbortError message instead of claiming a connection failure", async () => {
+    const navigate = setup(), client = createApiClient("student");
+    globalThis.fetch = (async () => { throw new DOMException("请求已取消", "AbortError"); }) as unknown as typeof fetch;
+    expect((await client.request("/api/student/tasks")).error?.message).toBe("请求已取消");
+    expect(navigate).not.toHaveBeenCalled();
+});
+
 test("business errors and wrong passwords are not logout", async () => {
     const navigate = setup(), client = createApiClient("student");
     for (const [status, code] of [[401, "INVALID_CREDENTIALS"], [403, "FORBIDDEN"], [500, "INTERNAL_ERROR"]] as const) {

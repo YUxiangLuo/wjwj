@@ -1,0 +1,356 @@
+{
+  "success": true,
+  "at": "2026-09-09T15:44:41.385Z",
+  "checks": [
+    {
+      "id": "graded-1",
+      "status": "PASS",
+      "actual": 89
+    },
+    {
+      "id": "student-score-privacy-1",
+      "status": "PASS",
+      "actual": "No component score keys"
+    },
+    {
+      "id": "preview-bound-1",
+      "status": "PASS",
+      "actual": "No indices; <=50 preview rows"
+    },
+    {
+      "id": "graded-2",
+      "status": "PASS",
+      "actual": 90
+    },
+    {
+      "id": "student-score-privacy-2",
+      "status": "PASS",
+      "actual": "No component score keys"
+    },
+    {
+      "id": "preview-bound-2",
+      "status": "PASS",
+      "actual": "No indices; <=50 preview rows"
+    },
+    {
+      "id": "proportion-two-methods",
+      "status": "PASS",
+      "actual": {
+        "pps": {
+          "effectiveSampleSize": null,
+          "estimate": null,
+          "marginOfError": null,
+          "reliability": {
+            "reasons": [
+              "该方法没有可用的目标估计或设计标准误"
+            ],
+            "status": "unavailable"
+          },
+          "sampleSize": null,
+          "standardError": null
+        },
+        "simple": {
+          "effectiveSampleSize": 92,
+          "estimate": 0.7391304347826086,
+          "marginOfError": 0.0429208514418231,
+          "reliability": {
+            "reasons": [],
+            "status": "ok"
+          },
+          "sampleSize": 92,
+          "standardError": 0.02189839359276689
+        },
+        "stratified": {
+          "effectiveSampleSize": null,
+          "estimate": null,
+          "marginOfError": null,
+          "reliability": {
+            "reasons": [
+              "该方法没有可用的目标估计或设计标准误"
+            ],
+            "status": "unavailable"
+          },
+          "sampleSize": null,
+          "standardError": null
+        },
+        "systematic": {
+          "effectiveSampleSize": 111.62954279015234,
+          "estimate": 0.7608695652173914,
+          "marginOfError": 0.021304347826087058,
+          "reliability": {
+            "reasons": [
+              "系统抽样的区间覆盖取决于排序与起点分布，尚未验证"
+            ],
+            "status": "caution"
+          },
+          "sampleSize": 92,
+          "standardError": 0.010869565217391356
+        }
+      }
+    },
+    {
+      "id": "graded-3",
+      "status": "PASS",
+      "actual": 94
+    },
+    {
+      "id": "student-score-privacy-3",
+      "status": "PASS",
+      "actual": "No component score keys"
+    },
+    {
+      "id": "preview-bound-3",
+      "status": "PASS",
+      "actual": "No indices; <=50 preview rows"
+    },
+    {
+      "id": "zero-mean-census-simple",
+      "status": "PASS",
+      "actual": {
+        "effectiveSampleSize": 60,
+        "estimate": 0,
+        "marginOfError": 0,
+        "reliability": {
+          "reasons": [
+            "当前方法覆盖完整虚拟总体"
+          ],
+          "status": "census"
+        },
+        "sampleSize": 60,
+        "standardError": 0
+      }
+    },
+    {
+      "id": "zero-mean-census-systematic",
+      "status": "PASS",
+      "actual": {
+        "effectiveSampleSize": 60,
+        "estimate": 0,
+        "marginOfError": 0,
+        "reliability": {
+          "reasons": [
+            "当前方法覆盖完整虚拟总体"
+          ],
+          "status": "census"
+        },
+        "sampleSize": 60,
+        "standardError": 0
+      }
+    },
+    {
+      "id": "funnel",
+      "status": "PASS",
+      "actual": {
+        "graded": 3,
+        "inProgress": 0,
+        "notStarted": 6,
+        "pendingGrading": 0,
+        "rejected": 0,
+        "total": 9
+      }
+    },
+    {
+      "id": "grade-aggregates",
+      "status": "PASS",
+      "actual": {
+        "average": 91,
+        "bands": [
+          {
+            "count": 0,
+            "label": "<60"
+          },
+          {
+            "count": 0,
+            "label": "60–69"
+          },
+          {
+            "count": 0,
+            "label": "70–79"
+          },
+          {
+            "count": 1,
+            "label": "80–89"
+          },
+          {
+            "count": 2,
+            "label": "90–100"
+          }
+        ],
+        "componentAverages": {
+          "process": 91.66666666666669,
+          "questionnaire": 85,
+          "report": 95
+        },
+        "count": 3,
+        "median": 90
+      }
+    },
+    {
+      "id": "excel-three-grades",
+      "status": "PASS",
+      "actual": [
+        {
+          "学号": "DFR1S01",
+          "姓名": "深测学生甲",
+          "班级": "DF-R1-统计甲班",
+          "实验模板名称": "DF-R1-服务时段平均等待时间",
+          "提交时间": "2026/09/09 23:30:36",
+          "问卷设计得分": "80.00",
+          "实验过程得分": "90.00",
+          "实验报告得分": "95.00",
+          "总分": "89.00",
+          "状态": "已批改",
+          "批改人": "深测教师甲",
+          "批改时间": "2026/09/09 23:31:24"
+        },
+        {
+          "学号": "DFR1S02",
+          "姓名": "深测学生乙",
+          "班级": "DF-R1-统计甲班",
+          "实验模板名称": "DF-R1-餐厅满意比例",
+          "提交时间": "2026/09/09 23:36:31",
+          "问卷设计得分": "85.00",
+          "实验过程得分": "95.00",
+          "实验报告得分": "90.00",
+          "总分": "90.00",
+          "状态": "已批改",
+          "批改人": "深测教师甲",
+          "批改时间": "2026/09/09 23:37:04"
+        },
+        {
+          "学号": "DFR1S03",
+          "姓名": "深测学生丙",
+          "班级": "DF-R1-统计甲班",
+          "实验模板名称": "DF-R1-企业平均盈亏",
+          "提交时间": "2026/09/09 23:41:13",
+          "问卷设计得分": "90.00",
+          "实验过程得分": "90.00",
+          "实验报告得分": "100.00",
+          "总分": "94.00",
+          "状态": "已批改",
+          "批改人": "深测教师甲",
+          "批改时间": "2026/09/09 23:41:32"
+        }
+      ]
+    },
+    {
+      "id": "csv-complete-simple",
+      "status": "PASS",
+      "actual": {
+        "count": 92,
+        "unique": 92
+      }
+    },
+    {
+      "id": "csv-complete-systematic",
+      "status": "PASS",
+      "actual": {
+        "count": 92,
+        "unique": 92
+      }
+    },
+    {
+      "id": "csv-selected-only",
+      "status": "PASS",
+      "actual": 184
+    },
+    {
+      "id": "attachment-hash",
+      "status": "PASS",
+      "actual": "76f6b85b16bfb5657cb41d4b2338862fc109a5413f2d5c7d625199b81f9fe79f"
+    },
+    {
+      "id": "ownership outsider /api/student/tasks/1",
+      "status": "PASS",
+      "actual": {
+        "status": 404,
+        "body": "{\"success\":false,\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"任务不存在\"}}"
+      }
+    },
+    {
+      "id": "ownership outsider /api/student/tasks/1/experiment",
+      "status": "PASS",
+      "actual": {
+        "status": 404,
+        "body": "{\"success\":false,\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"任务不存在\"}}"
+      }
+    },
+    {
+      "id": "ownership outsider /api/student/tasks/1/submission",
+      "status": "PASS",
+      "actual": {
+        "status": 404,
+        "body": "{\"success\":false,\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"任务不存在\"}}"
+      }
+    },
+    {
+      "id": "ownership outsider /api/student/tasks/1/export",
+      "status": "PASS",
+      "actual": {
+        "status": 404,
+        "body": "{\"success\":false,\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"任务不存在\"}}"
+      }
+    },
+    {
+      "id": "ownership outsider /api/student/attachments/1/download",
+      "status": "PASS",
+      "actual": {
+        "status": 403,
+        "body": "{\"success\":false,\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"无权限访问该附件\"}}"
+      }
+    },
+    {
+      "id": "ownership teacher2 /api/teacher/topics/1/detail",
+      "status": "PASS",
+      "actual": {
+        "status": 404,
+        "body": "{\"success\":false,\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"实验模板不存在\"}}"
+      }
+    },
+    {
+      "id": "ownership teacher2 /api/teacher/grading/1",
+      "status": "PASS",
+      "actual": {
+        "status": 404,
+        "body": "{\"success\":false,\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"提交记录不存在\"}}"
+      }
+    },
+    {
+      "id": "ownership teacher2 /api/teacher/classes/1/students",
+      "status": "PASS",
+      "actual": {
+        "status": 403,
+        "body": "{\"success\":false,\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"无权限访问该班级\"}}"
+      }
+    },
+    {
+      "id": "ownership teacher2 /api/teacher/tasks/1/progress",
+      "status": "PASS",
+      "actual": {
+        "status": 404,
+        "body": "{\"success\":false,\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"任务不存在\"}}"
+      }
+    },
+    {
+      "id": "ownership student /api/admin/stats",
+      "status": "PASS",
+      "actual": {
+        "status": 401,
+        "body": "{\"success\":false,\"error\":{\"code\":\"UNAUTHORIZED\",\"message\":\"未登录或登录已过期\"}}"
+      }
+    },
+    {
+      "id": "ownership student /api/teacher/grading/1",
+      "status": "PASS",
+      "actual": {
+        "status": 401,
+        "body": "{\"success\":false,\"error\":{\"code\":\"UNAUTHORIZED\",\"message\":\"未登录或登录已过期\"}}"
+      }
+    },
+    {
+      "id": "outside-class-tasks",
+      "status": "PASS",
+      "actual": "No assigned task"
+    }
+  ]
+}

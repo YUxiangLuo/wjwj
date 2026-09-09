@@ -1,0 +1,229 @@
+{
+  "at": "2026-09-09T15:48:26.146Z",
+  "independent": true,
+  "source": "Controlled CSV fixtures plus persisted API outputs. No production calculation imports.",
+  "systematic": {
+    "intervals": 10,
+    "expectation": 19.916666666666664,
+    "se": 0.1595711846260565
+  },
+  "pps": {
+    "intervals": 120,
+    "expectation": 19.91296147748165,
+    "se": 0.8680243097671008
+  },
+  "checks": [
+    {
+      "id": "population mean 等待分钟",
+      "actual": 19.916666666666668,
+      "expected": 19.916666666666668,
+      "tolerance": 1.9916666666666668e-7,
+      "pass": true
+    },
+    {
+      "id": "population variance 等待分钟",
+      "actual": 39.8249299719888,
+      "expected": 39.8249299719888,
+      "tolerance": 3.98249299719888e-7,
+      "pass": true
+    },
+    {
+      "id": "estimate simple 等待分钟",
+      "actual": 19.72222222222222,
+      "expected": 19.72222222222222,
+      "tolerance": 1.9722222222222222e-7,
+      "pass": true
+    },
+    {
+      "id": "estimate systematic 等待分钟",
+      "actual": 19.88888888888889,
+      "expected": 19.88888888888889,
+      "tolerance": 1.988888888888889e-7,
+      "pass": true
+    },
+    {
+      "id": "SRS SE 等待分钟",
+      "actual": 0.8799850216590204,
+      "expected": 0.8799850216590204,
+      "tolerance": 8.799850216590204e-9,
+      "pass": true
+    },
+    {
+      "id": "systematic SE 等待分钟",
+      "actual": 0.1595711846260575,
+      "expected": 0.1595711846260565,
+      "tolerance": 1.5957118462605648e-9,
+      "pass": true
+    },
+    {
+      "id": "PPS design SE 等待分钟",
+      "actual": 0.8680243097671025,
+      "expected": 0.8680243097671008,
+      "tolerance": 8.680243097671007e-9,
+      "pass": true
+    },
+    {
+      "id": "PPS Hajek 等待分钟",
+      "actual": 19.889142341423145,
+      "expected": 19.889142341423142,
+      "tolerance": 1.9889142341423143e-7,
+      "pass": true
+    },
+    {
+      "id": "stratified mean 等待分钟",
+      "actual": 21.77777777777778,
+      "expected": 21.77777777777778,
+      "tolerance": 2.1777777777777778e-7,
+      "pass": true
+    },
+    {
+      "id": "stratified SE 等待分钟",
+      "actual": 0.8872434021737522,
+      "expected": 0.8872434021737522,
+      "tolerance": 8.872434021737522e-9,
+      "pass": true
+    },
+    {
+      "id": "population mean 客流规模",
+      "actual": 186.75,
+      "expected": 186.75,
+      "tolerance": 0.0000018675000000000001,
+      "pass": true
+    },
+    {
+      "id": "population variance 客流规模",
+      "actual": 3091.029411764706,
+      "expected": 3091.029411764706,
+      "tolerance": 0.00003091029411764706,
+      "pass": true
+    },
+    {
+      "id": "estimate simple 客流规模",
+      "actual": 188.05555555555551,
+      "expected": 188.05555555555554,
+      "tolerance": 0.0000018805555555555554,
+      "pass": true
+    },
+    {
+      "id": "estimate systematic 客流规模",
+      "actual": 186.66666666666663,
+      "expected": 186.66666666666666,
+      "tolerance": 0.0000018666666666666667,
+      "pass": true
+    },
+    {
+      "id": "SRS SE 客流规模",
+      "actual": 7.752635014832222,
+      "expected": 7.752635014832222,
+      "tolerance": 7.752635014832222e-8,
+      "pass": true
+    },
+    {
+      "id": "systematic SE 客流规模",
+      "actual": 1.5862546150299248,
+      "expected": 1.5862546150299142,
+      "tolerance": 1.5862546150299143e-8,
+      "pass": true
+    },
+    {
+      "id": "PPS design SE 客流规模",
+      "actual": 2.2602738149917347,
+      "expected": 2.2602738149917574,
+      "tolerance": 2.2602738149917575e-8,
+      "pass": true
+    },
+    {
+      "id": "PPS Hajek 客流规模",
+      "actual": 183.21101911686435,
+      "expected": 183.21101911686435,
+      "tolerance": 0.0000018321101911686434,
+      "pass": true
+    },
+    {
+      "id": "stratified mean 客流规模",
+      "actual": 179.16666666666666,
+      "expected": 179.16666666666666,
+      "tolerance": 0.0000017916666666666665,
+      "pass": true
+    },
+    {
+      "id": "stratified SE 客流规模",
+      "actual": 7.818403514993764,
+      "expected": 7.818403514993764,
+      "tolerance": 7.818403514993764e-8,
+      "pass": true
+    },
+    {
+      "id": "mean recommended size",
+      "actual": 30,
+      "expected": 30,
+      "tolerance": 3e-7,
+      "pass": true
+    },
+    {
+      "id": "proportion final recommended size",
+      "actual": 92,
+      "expected": 92,
+      "tolerance": 9.2e-7,
+      "pass": true
+    },
+    {
+      "id": "proportion estimate simple",
+      "actual": 0.7391304347826086,
+      "expected": 0.7391304347826086,
+      "tolerance": 7.391304347826087e-9,
+      "pass": true
+    },
+    {
+      "id": "proportion SE simple",
+      "actual": 0.02189839359276689,
+      "expected": 0.02189839359276689,
+      "tolerance": 2.189839359276689e-10,
+      "pass": true
+    },
+    {
+      "id": "proportion estimate systematic",
+      "actual": 0.7608695652173914,
+      "expected": 0.7608695652173914,
+      "tolerance": 7.608695652173914e-9,
+      "pass": true
+    },
+    {
+      "id": "proportion SE systematic",
+      "actual": 0.010869565217391356,
+      "expected": 0.01086956521739135,
+      "tolerance": 1.0869565217391349e-10,
+      "pass": true
+    },
+    {
+      "id": "census estimate simple",
+      "actual": 0,
+      "expected": 0,
+      "tolerance": 1e-10,
+      "pass": true
+    },
+    {
+      "id": "census SE simple",
+      "actual": 0,
+      "expected": 0,
+      "tolerance": 1e-10,
+      "pass": true
+    },
+    {
+      "id": "census estimate systematic",
+      "actual": 0,
+      "expected": 0,
+      "tolerance": 1e-10,
+      "pass": true
+    },
+    {
+      "id": "census SE systematic",
+      "actual": 0,
+      "expected": 0,
+      "tolerance": 1e-10,
+      "pass": true
+    }
+  ],
+  "passed": 30,
+  "failed": []
+}

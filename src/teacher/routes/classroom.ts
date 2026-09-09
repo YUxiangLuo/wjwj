@@ -165,11 +165,13 @@ const classStudentsImportRoutes: RouteDefinition = {
         if (fileError) return error(fileError.message, fileError.code, fileError.status);
 
         let rows: Array<Record<string, unknown>>;
+        let rowNumbers: number[] | undefined;
         try {
             const buffer = await file.arrayBuffer();
             const parsedFile = await parseSpreadsheetFile(buffer, file.name, { includeColumnValues: false });
             if (parsedFile.malformed) return error("表格行列结构不一致或引号未闭合", "INVALID_FILE", 400);
             rows = parsedFile.rows;
+            rowNumbers = parsedFile.rowNumbers;
         } catch {
             return error("无法读取表格文件", "INVALID_FILE", 400);
         }
@@ -180,7 +182,7 @@ const classStudentsImportRoutes: RouteDefinition = {
         const errors: Array<{ row: number; reason: string }> = [];
         const seenIds = new Set<string>();
         const parsed = rows.flatMap((row, index) => {
-            const rowNumber = index + 2;
+            const rowNumber = rowNumbers?.[index] ?? index + 2;
             const studentId = String(row.studentId ?? row["学号"] ?? row.id ?? "").trim();
             const name = String(row.name ?? row["姓名"] ?? "").trim();
             const email = String(row.email ?? row["邮箱"] ?? "").trim();

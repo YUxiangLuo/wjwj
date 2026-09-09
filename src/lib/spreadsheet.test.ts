@@ -104,6 +104,58 @@ test("CSV parser supports quoted commas, escaped quotes, embedded newlines, and 
     expect(malformed.malformedRow).toBe(2);
 });
 
+for (const quoted of [false, true]) {
+    test(`CSV ${quoted ? "quoted" : "unquoted"} skips physical blank lines but preserves source row numbers`, async () => {
+        const name = quoted ? '"学生甲"' : "学生甲";
+        const parsed = await parseSpreadsheetFile(new TextEncoder().encode(
+            `\ufeff\r\nstudentId,name,email\r\nS01,${name},\r\n \t\r\n,缺学号,bad@example.invalid\r\n\r\n\r\n`,
+        ).buffer, "students.csv");
+        expect(parsed.malformed).toBe(false);
+        expect(parsed.rowCount).toBe(2);
+        expect(parsed.rowNumbers).toEqual([3, 5]);
+        expect(parsed.rows[0]).toEqual({ studentId: "S01", name: "学生甲", email: "" });
+        expect(parsed.rows[1]?.name).toBe("缺学号");
+    });
+
+    test(`CSV ${quoted ? "quoted" : "unquoted"} still rejects nonblank shape errors after blank lines`, async () => {
+        const value = quoted ? '"ok"' : "ok";
+        const parsed = await parseSpreadsheetFile(new TextEncoder().encode(
+            `id,value\n\n1,${value}\n \n2,bad,extra\n`,
+        ).buffer, "population.csv");
+        expect(parsed.malformed).toBe(true);
+        expect(parsed.malformedRow).toBe(5);
+        expect(parsed.rowNumbers).toEqual([3, 5]);
+    });
+}
+
+test("CSV preserves explicit empty records, quoted blank content and multiline source positions", async () => {
+    const parsed = await parseSpreadsheetFile(new TextEncoder().encode(
+        'id,note\n\n1,"line 1\n\nline 3"\n\n2,""\n,\n\n',
+    ).buffer, "population.csv");
+    expect(parsed.malformed).toBe(false);
+    expect(parsed.rowNumbers).toEqual([3, 7, 8]);
+    expect(parsed.rows).toEqual([{ id: "1", note: "line 1\n\nline 3" }, { id: "2", note: "" }, { id: "", note: "" }]);
+    const broken = await parseSpreadsheetFile(new TextEncoder().encode('id,note\n\n1,"unterminated\n\n').buffer, "population.csv");
+    expect(broken.malformed).toBe(true);
+});
+
+test("CSV blank lines cannot hide an oversized population", async () => {
+    const csv = `id,value\n${"\n".repeat(100_005)}${Array.from({ length: 100_002 }, (_, i) => `${i},x`).join("\n")}\n\n`;
+    const parsed = await parseSpreadsheetFile(new TextEncoder().encode(csv).buffer, "population.csv", { includeColumnValues: false });
+    expect(parsed.rowCount).toBe(100_001);
+    expect(parsed.rowNumbers?.[0]).toBe(100_007);
+    expect(parsed.rows).toHaveLength(100_001);
+});
+
+test("XLSX import row numbers retain physical blank rows", async () => {
+    const sheet = XLSX.utils.aoa_to_sheet([["studentId", "name"], ["S01", "甲"], [], ["", "缺学号"]]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, "Students");
+    const parsed = await parseSpreadsheetFile(XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as ArrayBuffer, "students.xlsx");
+    expect(parsed.rowNumbers).toEqual([2, 4]);
+    expect(parsed.rowCount).toBe(2);
+});
+
 test("XLSX parser uses display text for identifiers and raw values only for mapped numeric fields", async () => {
     const sheet = XLSX.utils.aoa_to_sheet([["id", "score"], [1, 1234.5]]);
     sheet.A2!.z = "000";
