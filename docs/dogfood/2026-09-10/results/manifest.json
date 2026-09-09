@@ -1,0 +1,10 @@
+{
+  "base": "http://127.0.0.1:6467",
+  "database": "wj_boundaries_20260910",
+  "commit": "cc24d18",
+  "topicId": 4,
+  "account": "DFR1S01",
+  "classId": 1,
+  "preparation": "Authenticated API writes on cloned isolated DB; no direct data repairs",
+  "taskId": 4
+}

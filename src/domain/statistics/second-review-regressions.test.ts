@@ -169,11 +169,13 @@ test("PPS reports an unrepresentable positive SE as unavailable when restoring f
     expect(context.standardErrors.y).toBeNull();
 });
 
-test("PPS integration retains certified zero variance for a deterministic prepared frame", () => {
+test("PPS near-certainty remains random and retains its positive design variance", () => {
     const population = [{ size: 1e-12, y: 0 }, { size: 1, y: 4 }];
     const prepared = preparePPSSampling(population, "size", 1)!;
-    expect(prepared.designFrame.systematicSampleSize).toBe(0);
+    expect(prepared.designFrame.systematicSampleSize).toBe(1);
+    expect(prepared.designFrame.certaintyIndices).toEqual([]);
     const context = buildPpsStandardErrorContext(population, "size", 1,
         [{ key: "y", accessor: row => Number(row.y) }], 0)!;
-    expect(context.standardErrors.y).toBe(0);
+    const expected = 4 * Math.sqrt(1e-12) / (1 + 1e-12);
+    expect(Math.abs(context.standardErrors.y! / expected - 1)).toBeLessThan(1e-10);
 });

@@ -1,4 +1,5 @@
 import { createSafeRecord } from "../../lib/safe-record";
+import { StableSum } from "./stable-sum";
 
 export function createSeededRandom(seed?: number | string) {
     if (seed === undefined || seed === null || seed === "") {
@@ -149,7 +150,16 @@ export interface PreparedPPSSampling<T> {
     designFrame: PpsDesignFrame;
 }
 
-const PPS_EPSILON = 1e-9;
+// CSV/JSON sizes use decimal notation. At an ambiguous certainty boundary,
+// compare their canonical decimal values exactly (units of 10^-324), so e.g.
+// 0.3 = 0.1 + 0.2 without also erasing a genuinely positive residual of 1e-20.
+// Only the rare boundary comparison pays for BigInt arithmetic.
+function exactPositiveMass(value: number): bigint {
+    const [coefficient, exponentText] = String(value).split("e");
+    const [integer, fraction = ""] = coefficient!.split(".");
+    const exponent = Number(exponentText ?? 0) - fraction.length + 324;
+    return BigInt(integer! + fraction) * 10n ** BigInt(exponent);
+}
 
 function toPositiveSizeValue(value: unknown) {
     const numericValue = Number(value);
@@ -176,18 +186,45 @@ function buildPpsWithoutReplacementDesign(sizes: number[], sampleSize: number): 
 
     let activeIndices = [...positiveIndices];
     let remainingSampleSize = sampleSize;
-    let remainingTotal = activeIndices.reduce((sum, index) => sum + sizes[index]!, 0);
     const certaintyIndices: number[] = [];
     const certaintyProbabilities: number[] = [];
+    let scaledSizes: number[] = [];
+    let remainingTotal = 0;
+    let scale = 0;
 
     while (remainingSampleSize > 0 && activeIndices.length > 0) {
-        const certaintyThisRound = activeIndices.filter((index) =>
-            remainingTotal > 0 && (remainingSampleSize * sizes[index]! / remainingTotal) >= 1 - PPS_EPSILON
-        );
-
-        if (certaintyThisRound.length === 0) {
+        if (remainingSampleSize === activeIndices.length) {
+            for (const index of activeIndices) {
+                certaintyIndices.push(index);
+                certaintyProbabilities.push(1);
+            }
+            activeIndices = [];
+            remainingSampleSize = 0;
             break;
         }
+        // Recompute from the remaining frame, never subtract a dominant mass
+        // from an inexact total. Re-scaling each round also recovers tiny units
+        // after a certainty unit is removed, and prevents overflowing totals.
+        scale = 0;
+        for (const index of activeIndices) scale = Math.max(scale, sizes[index]!);
+        scaledSizes = activeIndices.map(index => sizes[index]! / scale);
+        const total = new StableSum();
+        for (const size of scaledSizes) total.add(size);
+        remainingTotal = total.value;
+        let exactTotal: bigint | undefined;
+        const certaintyThisRound = activeIndices.filter((index, position) => {
+            // With positive masses and more than one unit, n=1 cannot have
+            // a certainty unit, even if its floating-point probability equals one.
+            if (remainingSampleSize === 1) return false;
+            const scaledTarget = remainingSampleSize * scaledSizes[position]!;
+            const difference = scaledTarget - remainingTotal;
+            const roundingBound = 16 * Number.EPSILON * Math.max(scaledTarget, remainingTotal);
+            if (Math.abs(difference) > roundingBound) return difference > 0;
+            exactTotal ??= activeIndices.reduce((sum, id) => sum + exactPositiveMass(sizes[id]!), 0n);
+            return BigInt(remainingSampleSize) * exactPositiveMass(sizes[index]!) >= exactTotal;
+        });
+
+        if (certaintyThisRound.length === 0) break;
 
         for (const index of certaintyThisRound) {
             certaintyIndices.push(index);
@@ -197,9 +234,8 @@ function buildPpsWithoutReplacementDesign(sizes: number[], sampleSize: number): 
         const certaintySet = new Set(certaintyThisRound);
         activeIndices = activeIndices.filter((index) => !certaintySet.has(index));
         remainingSampleSize -= certaintyThisRound.length;
-        remainingTotal -= certaintyThisRound.reduce((sum, index) => sum + sizes[index]!, 0);
 
-        if (activeIndices.length < remainingSampleSize) {
+        if (activeIndices.length < remainingSampleSize || (remainingSampleSize === 0 && activeIndices.length > 0)) {
             return null;
         }
     }
@@ -219,9 +255,25 @@ function buildPpsWithoutReplacementDesign(sizes: number[], sampleSize: number): 
     }
 
     const systematicIndices = [...activeIndices];
-    const systematicProbabilities = systematicIndices.map((index) =>
-        remainingSampleSize * sizes[index]! / remainingTotal
+    const systematicProbabilities = scaledSizes.map(size =>
+        (remainingSampleSize / remainingTotal) * size
     );
+    // A non-certainty unit must retain a representable probability strictly
+    // between zero and one. Never silently turn an unresolved design into a
+    // deterministic frame (and hence a false zero standard error).
+    if (systematicProbabilities.some(p => !Number.isFinite(p) || p <= 0 || p >= 1)) return null;
+    // A positive subnormal can still have severe relative error. Check both
+    // normalization and probability multiplication, only on the final frame:
+    // tiny masses may legitimately recover after a certainty unit is removed.
+    const probabilityFactor = remainingSampleSize / remainingTotal;
+    for (let position = 0; position < systematicIndices.length; position++) {
+        const size = sizes[systematicIndices[position]!]!;
+        const scaled = scaledSizes[position]!;
+        const recoveredSizeRatio = scaled * scale / size;
+        const recoveredFactorRatio = (systematicProbabilities[position]! / scaled) / probabilityFactor;
+        if (!Number.isFinite(recoveredSizeRatio) || !Number.isFinite(recoveredFactorRatio)
+            || Math.abs(recoveredSizeRatio - 1) > 1e-6 || Math.abs(recoveredFactorRatio - 1) > 1e-6) return null;
+    }
 
     return {
         certaintyIndices,

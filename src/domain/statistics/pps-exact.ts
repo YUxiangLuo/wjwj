@@ -2,6 +2,44 @@ import type { PreparedPPSSampling } from "./sampling";
 import type { NumericAccessor } from "./values";
 import { StableSum } from "./stable-sum";
 
+// With n=1 the Hájek estimate is exactly the selected unit's value. Integrate
+// directly against pi, not differences of CDF boundaries near 1: subtracting
+// those boundaries loses relative accuracy precisely for the rare units.
+function singleUnitStandardErrors(
+    prepared: PreparedPPSSampling<Record<string, unknown>>,
+    fields: Array<{ key: string; accessor: NumericAccessor }>,
+): Record<string, number | null> {
+    const frame = prepared.designFrame;
+    const probabilities = frame.systematicProbabilities;
+    let minProbability = 1;
+    for (const p of probabilities) minProbability = Math.min(minProbability, p);
+    return Object.fromEntries(fields.map(field => {
+        const raw = frame.systematicIndices.map(index => field.accessor(prepared.data[index]!));
+        const origin = raw[0] ?? 0;
+        const values = raw.map(value => value === null ? NaN : value - origin);
+        if (!values.every(Number.isFinite)) return [field.key, null];
+        let scale = 0;
+        for (const value of values) scale = Math.max(scale, Math.abs(value));
+        if (scale === 0) return [field.key, 0];
+        const normalized = values.map(value => value / scale);
+        const mean = new StableSum();
+        for (let i = 0; i < values.length; i++) {
+            // Retain the general integrator's conservative representability
+            // check rather than silently erasing weighted field contributions.
+            const weight = minProbability / probabilities[i]!;
+            const recovered = normalized[i]! * weight / weight * scale;
+            if (!Number.isFinite(recovered) || (values[i] !== 0 && Math.abs(recovered / values[i]! - 1) > 1e-6)) return [field.key, null];
+            mean.add(probabilities[i]! * normalized[i]!);
+        }
+        let rootVariance = 0;
+        for (let i = 0; i < values.length; i++) {
+            rootVariance = Math.hypot(rootVariance, Math.sqrt(probabilities[i]!) * (normalized[i]! - mean.value));
+        }
+        const se = rootVariance * scale;
+        return [field.key, !Number.isFinite(se) || (rootVariance > 0 && se === 0) ? null : se];
+    }));
+}
+
 /**
  * Integrate the Hájek estimator over every random-start interval of the fixed-π
  * systematic design. At a cumulative probability boundary, one selected unit
@@ -43,6 +81,9 @@ export function exactPpsStandardErrors(
     // Match the right-hand limit at start zero, excluding a numerical endpoint
     // just above the integer total probability.
     if (selected.length !== prepared.sampleSize) return unavailable();
+    // Direct integration avoids cancellation in the variance calculation, but
+    // must not bypass the sampling interval representability checks above.
+    if (prepared.sampleSize === 1 && frame.systematicSampleSize === 1) return singleUnitStandardErrors(prepared, fields);
     events.sort((left, right) => left.position - right.position);
 
     const denominator = new StableSum();

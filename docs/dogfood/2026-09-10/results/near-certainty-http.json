@@ -1,0 +1,354 @@
+{
+  "topicId": 4,
+  "taskId": 4,
+  "experimentId": 5,
+  "sampling": {
+    "success": true,
+    "result": {
+      "completed": true,
+      "sizeField": "客流规模",
+      "sampleCount": 1,
+      "seed": 7,
+      "randomStart": 0,
+      "probabilitySummary": {
+        "populationCount": 3,
+        "probabilitySum": 1,
+        "minInclusionProbability": 1,
+        "maxInclusionProbability": 1,
+        "certaintyUnitCount": 1
+      },
+      "data": [
+        {
+          "记录编号": "1",
+          "等待分钟": "0",
+          "客流规模": "10000000000",
+          "校区": "东区"
+        }
+      ],
+      "probabilityPreview": [
+        {
+          "samplePosition": 1,
+          "sizeValue": 10000000000,
+          "inclusionProbability": 1,
+          "designWeight": 1
+        }
+      ]
+    }
+  },
+  "metrics": {
+    "ppsMonteCarloReplicates": 0,
+    "ppsStandardErrorMode": "systematic_exact",
+    "numericFields": [
+      "等待分钟",
+      "客流规模"
+    ],
+    "excludedNumericFields": [],
+    "categoricalFields": [],
+    "numeric": {
+      "等待分钟": {
+        "populationMean": 0,
+        "populationVariance": 100000000000000000000,
+        "methods": {
+          "simple": {
+            "estimate": 10000000000,
+            "standardError": 8164965809.277261
+          },
+          "systematic": {
+            "estimate": null,
+            "standardError": null
+          },
+          "pps": {
+            "estimate": 0,
+            "standardError": 0
+          },
+          "stratified": {
+            "estimate": null,
+            "standardError": null
+          }
+        }
+      },
+      "客流规模": {
+        "populationMean": 3333333334,
+        "populationVariance": 33333333326666666000,
+        "methods": {
+          "simple": {
+            "estimate": 1,
+            "standardError": 4714045207.438912
+          },
+          "systematic": {
+            "estimate": null,
+            "standardError": null
+          },
+          "pps": {
+            "estimate": 10000000000,
+            "standardError": 0
+          },
+          "stratified": {
+            "estimate": null,
+            "standardError": null
+          }
+        }
+      }
+    },
+    "categorical": {},
+    "target": {
+      "contract": {
+        "contract": {
+          "version": 1,
+          "researchQuestion": "校园餐厅服务时段的平均等待时间是多少？",
+          "targetPopulation": "3个合成服务时段",
+          "unitOfAnalysis": "服务时段",
+          "target": {
+            "kind": "mean",
+            "field": "等待分钟"
+          }
+        },
+        "inferred": false
+      },
+      "confidenceLevel": "95",
+      "plannedMarginOfError": 10000000000,
+      "populationValue": 0,
+      "methods": {
+        "simple": {
+          "estimate": 10000000000,
+          "standardError": 8164965809.277261,
+          "marginOfError": 16003332986.183432,
+          "sampleSize": 1,
+          "effectiveSampleSize": 1,
+          "reliability": {
+            "status": "caution",
+            "reasons": [
+              "等效 SRS 样本量低于 30",
+              "实际入样量低于 30，不能仅凭等效样本量判断近似条件",
+              "总体含高影响单位（单个单位占离差平方和超过 10%），需检查区间近似",
+              "教学误差半宽超过规划误差限"
+            ]
+          }
+        },
+        "systematic": {
+          "estimate": null,
+          "standardError": null,
+          "marginOfError": null,
+          "sampleSize": null,
+          "effectiveSampleSize": null,
+          "reliability": {
+            "status": "unavailable",
+            "reasons": [
+              "该方法没有可用的目标估计或设计标准误"
+            ]
+          }
+        },
+        "pps": {
+          "estimate": 0,
+          "standardError": 0,
+          "marginOfError": 0,
+          "sampleSize": 1,
+          "effectiveSampleSize": 3,
+          "reliability": {
+            "status": "ok",
+            "reasons": []
+          }
+        },
+        "stratified": {
+          "estimate": null,
+          "standardError": null,
+          "marginOfError": null,
+          "sampleSize": null,
+          "effectiveSampleSize": null,
+          "reliability": {
+            "status": "unavailable",
+            "reasons": [
+              "该方法没有可用的目标估计或设计标准误"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "experiment": {
+    "id": 5,
+    "taskId": 4,
+    "version": 4,
+    "currentStage": 4,
+    "status": "in_progress",
+    "rejectReason": null,
+    "questionnaire": {
+      "title": "DF-R1-校园餐厅服务体验问卷",
+      "questions": [
+        {
+          "id": "q_1788967398783_xnq8ht8",
+          "type": "boolean",
+          "content": "过去三个月内，您是否使用过本次调查所指的公共服务？",
+          "section": "screening"
+        },
+        {
+          "id": "q_1788967398783_rn44lq0",
+          "type": "single",
+          "content": "过去 30 天内（含今天），您使用该服务共多少次？",
+          "options": [
+            "0 次",
+            "1 次",
+            "2–3 次",
+            "4 次及以上"
+          ],
+          "section": "main"
+        },
+        {
+          "id": "q_1788967398783_gdwfu4t",
+          "type": "scale",
+          "content": "您对该服务整体质量的满意程度如何？",
+          "section": "main",
+          "scaleMax": 5,
+          "scaleMin": 1,
+          "scaleMaxLabel": "非常满意",
+          "scaleMinLabel": "非常不满意"
+        },
+        {
+          "id": "q_1788967398783_immthj4",
+          "type": "multiple",
+          "content": "您认为最需要优先改进哪些方面？",
+          "options": [
+            "可获得性",
+            "办理效率",
+            "信息清晰度",
+            "人员服务",
+            "设施条件",
+            "其他"
+          ],
+          "section": "main",
+          "maxSelect": 3,
+          "minSelect": 1
+        },
+        {
+          "id": "q_1788967398783_dm2h0vz",
+          "type": "scale",
+          "content": "该服务满足您实际需求的程度如何？",
+          "section": "main",
+          "scaleMax": 5,
+          "scaleMin": 1,
+          "scaleMaxLabel": "完全满足",
+          "scaleMinLabel": "完全不满足"
+        },
+        {
+          "id": "q_1788967398783_ua8filf",
+          "type": "single",
+          "content": "您与该服务相关的身份类别是？",
+          "options": [
+            "类别一",
+            "类别二",
+            "类别三",
+            "其他/不便回答"
+          ],
+          "section": "background"
+        },
+        {
+          "id": "q_1788967435685_hicbmpk",
+          "type": "single",
+          "content": "您通常在哪个校区的餐厅用餐？",
+          "options": [
+            "东区",
+            "西区",
+            "北区"
+          ],
+          "section": "main",
+          "recommendSourceId": "q_1788967299931_we086c2"
+        }
+      ],
+      "endingText": "<p>感谢您参与校园餐厅服务体验预试！您的回答仅用于检查问卷表述，不进入后续总体抽样估计。希望本次练习帮助理解统计调查的设计与局限。感谢您的反馈！调查结果将以汇总形式用于教学分析和服务改进讨论。</p>",
+      "welcomeText": "<p>您好！本问卷用于了解目标人群对相关公共服务的使用体验和改进需求。参与完全自愿，不收集与研究无关的身份信息。您好！本问卷用于课堂体验校园餐厅等待时间与满意度调查。参与完全自愿，所有记录仅为虚拟教学预试，不收集姓名、联系方式等身份信息，感谢您的支持。</p>"
+    },
+    "samplePlan": {
+      "designEffect": 1,
+      "marginOfError": 10000000000,
+      "estimationType": "mean",
+      "confidenceLevel": "95",
+      "finalSampleSize": 1,
+      "nonResponseRate": 0,
+      "recommendedSize": 2,
+      "populationVariance": 66666666666666660000,
+      "calculatedSampleSize": 2
+    },
+    "samplingResults": {
+      "simple": {
+        "seed": 7,
+        "completed": true,
+        "sampleCount": 1,
+        "serverGenerated": true,
+        "data": [
+          {
+            "记录编号": "2",
+            "等待分钟": "10000000000",
+            "客流规模": "1",
+            "校区": "东区"
+          }
+        ]
+      },
+      "pps": {
+        "seed": 7,
+        "completed": true,
+        "sizeField": "客流规模",
+        "randomStart": 0,
+        "sampleCount": 1,
+        "serverGenerated": true,
+        "probabilitySummary": {
+          "probabilitySum": 1,
+          "populationCount": 3,
+          "certaintyUnitCount": 1,
+          "maxInclusionProbability": 1,
+          "minInclusionProbability": 1
+        },
+        "data": [
+          {
+            "记录编号": "1",
+            "等待分钟": "0",
+            "客流规模": "10000000000",
+            "校区": "东区"
+          }
+        ],
+        "probabilityPreview": [
+          {
+            "samplePosition": 1,
+            "sizeValue": 10000000000,
+            "inclusionProbability": 1,
+            "designWeight": 1
+          }
+        ]
+      }
+    },
+    "reportContent": null,
+    "stage1CompletedAt": "2026-09-09T17:02:37.775Z",
+    "stage2CompletedAt": "2026-09-09T17:03:15.374Z",
+    "stage3CompletedAt": "2026-09-09T17:03:15.407Z",
+    "stage4CompletedAt": null,
+    "populationSize": 3,
+    "analysisTarget": {
+      "target": {
+        "kind": "mean",
+        "field": "等待分钟"
+      },
+      "inferred": false
+    },
+    "studyContract": {
+      "contract": {
+        "version": 1,
+        "researchQuestion": "校园餐厅服务时段的平均等待时间是多少？",
+        "targetPopulation": "3个合成服务时段",
+        "unitOfAnalysis": "服务时段",
+        "target": {
+          "kind": "mean",
+          "field": "等待分钟"
+        }
+      },
+      "inferred": false
+    },
+    "samplingPolicy": {
+      "version": 1,
+      "methods": {
+        "simple": "required",
+        "systematic": "optional",
+        "pps": "required",
+        "stratified": "disabled"
+      }
+    }
+  }
+}
