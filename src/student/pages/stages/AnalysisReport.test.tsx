@@ -4,6 +4,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { installDomGlobals } from "@/test-utils/dom";
 import { getAccessibilityViolations } from "@/test-utils/accessibility";
 import type { AnalysisMetricsData } from "../../api-client";
+import { createApiClient } from "@/lib/api-client";
 import { writeExperimentDraft } from "../../experiment/experiment-draft";
 
 const mockExperimentApi = {
@@ -34,6 +35,7 @@ mock.module("../ExperimentLayout", () => ({
 
 mock.module("../../api-client", () => ({
     experimentApi: mockExperimentApi,
+    studentFetch: createApiClient("student").fetch,
 }));
 
 mock.module("sonner", () => ({

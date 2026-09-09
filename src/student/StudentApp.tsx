@@ -43,7 +43,7 @@ function LoadingScreen() {
 function StudentAppContent() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { currentUser, isLoading, authError, refreshUser, clearAuthState } = useStudent();
+    const { currentUser, isLoading, authError, retry } = useStudent();
     const [showAccountMenu, setShowAccountMenu] = useState(false);
     useEffect(() => { setShowAccountMenu(false); }, [location.pathname]);
     const [showPassword, setShowPassword] = useState(false);
@@ -55,15 +55,12 @@ function StudentAppContent() {
         policy: STUDENT_PASSWORD_POLICY,
         forbiddenSubstrings: [currentUser?.studentId],
         onSubmit: authApi.changePassword,
-        onSuccess: async () => {
-            await refreshUser();
-            setShowPassword(false);
-        },
+        onSuccess: () => setShowPassword(false),
     });
     if (isLoading) return <LoadingScreen />;
     if (authError) return (
         <main className="min-h-screen bg-background p-8 text-foreground">
-            <RequestError message={authError} onRetry={() => void refreshUser()} />
+            <RequestError message={authError} onRetry={retry} />
         </main>
     );
     if (isLogin) return currentUser ? <Navigate to="/" replace /> : <Login />;
@@ -75,8 +72,6 @@ function StudentAppContent() {
             toast.error("尚未安全退出，请检查网络后重试。不要将设备交给他人。");
             return;
         }
-        clearAuthState();
-        navigate("/login", { replace: true });
     };
 
     return (

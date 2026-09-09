@@ -1,6 +1,6 @@
-import { authenticatedFetch } from "@/lib/authenticated-fetch";
-
-export interface ApiResponse<T> { success: boolean; data?: T; error?: { code: string; message: string } }
+import { createApiClient } from "@/lib/api-client";
+export type { ApiResponse } from "@/lib/api-client";
+const { request } = createApiClient("admin");
 export interface Stats { currentSemester: string; teacherCount: number; classCount: number; studentCount: number; pendingItems: number }
 export interface Semester { id: number; name: string; isCurrent: number; classCount: number; createdAt: string }
 export interface Teacher { id: number; employeeId: string; name: string; status: number; classCount: number; createdAt: string }
@@ -15,23 +15,9 @@ export interface StudentExperiment {
 export interface Announcement { id: number; title: string; content: string; targetScope: "all" | "teacher" | "student"; status: number; createdAt: string; updatedAt: string }
 export interface AdminUser { id: number; username: string }
 
-async function request<T>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
-    try {
-        const response = await authenticatedFetch(url, {
-            credentials: "include",
-            ...options,
-            headers: { "Content-Type": "application/json", ...options?.headers },
-        });
-        const payload = await response.json() as ApiResponse<T>;
-        return payload;
-    } catch (cause) {
-        return { success: false, error: { code: "NETWORK_ERROR", message: cause instanceof Error ? cause.message : "网络请求失败" } };
-    }
-}
-
 export const authApi = {
     login: (data: { username: string; password: string }) => request<{ user: AdminUser }>("/api/admin/login", { method: "POST", body: JSON.stringify(data) }),
-    me: () => request<AdminUser>("/api/admin/me"),
+    me: (signal?: AbortSignal) => request<AdminUser>("/api/admin/me", { signal }),
     logout: () => request<{ ok: boolean }>("/api/admin/logout", { method: "POST" }),
     changePassword: (data: { currentPassword: string; newPassword: string }) => request<{ success: boolean }>("/api/admin/password", { method: "PUT", body: JSON.stringify(data) }),
 };

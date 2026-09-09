@@ -1,9 +1,11 @@
 import type { Question, QuestionnaireData } from "@/lib/questionnaire-types";
 import type { SamplingPolicyV1 } from "@/lib/sampling-policy";
-import { authenticatedFetch } from "@/lib/authenticated-fetch";
+import { createApiClient } from "@/lib/api-client";
+export type { ApiResponse } from "@/lib/api-client";
+const { request, fetch: teacherFetch } = createApiClient("teacher");
+export { teacherFetch };
 import type { SamplePlanData, SamplingResultsData } from "@/domain/experiment/types";
 
-export interface ApiResponse<T> { success: boolean; data?: T; error?: { code: string; message: string } }
 export interface TeacherUser { id: number; employeeId: string; name: string; type: "teacher" }
 export interface TeacherStats {
     stats: Array<{ label: string; value: number }>;
@@ -82,37 +84,15 @@ export interface GradeExportRow {
     totalScore: string | number; status: string; gradedAt: string; gradedBy: string;
 }
 
-async function parseApiResponse<T>(response: Response): Promise<ApiResponse<T>> {
-    const payload = await response.json() as ApiResponse<T>;
-    return payload;
-}
-
-async function request<T>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
-    try {
-        const response = await authenticatedFetch(url, {
-            credentials: "include",
-            ...options,
-            headers: { "Content-Type": "application/json", ...options?.headers },
-        });
-        return await parseApiResponse<T>(response);
-    } catch (cause) {
-        return { success: false, error: { code: "NETWORK_ERROR", message: cause instanceof Error ? cause.message : "网络请求失败" } };
-    }
-}
-
-async function upload<T>(url: string, file: File): Promise<ApiResponse<T>> {
-    try {
-        const formData = new FormData();
-        formData.append("file", file);
-        return await parseApiResponse<T>(await authenticatedFetch(url, { method: "POST", body: formData, credentials: "include" }));
-    } catch (cause) {
-        return { success: false, error: { code: "NETWORK_ERROR", message: cause instanceof Error ? cause.message : "网络请求失败" } };
-    }
+function upload<T>(url: string, file: File) {
+    const body = new FormData();
+    body.append("file", file);
+    return request<T>(url, { method: "POST", body });
 }
 
 export const authApi = {
     login: (data: { employeeId: string; password: string }) => request<{ user: TeacherUser }>("/api/teacher/login", { method: "POST", body: JSON.stringify(data) }),
-    me: () => request<TeacherUser>("/api/teacher/me"),
+    me: (signal?: AbortSignal) => request<TeacherUser>("/api/teacher/me", { signal }),
     logout: () => request<{ ok: boolean }>("/api/teacher/logout", { method: "POST" }),
     changePassword: (data: { currentPassword: string; newPassword: string }) => request<{ success: boolean }>("/api/teacher/password", { method: "PUT", body: JSON.stringify(data) }),
 };

@@ -47,9 +47,7 @@ export function Login() {
                 signal: controller.signal, onRetry: () => setWaiting(true),
             });
             if (controller.signal.aborted) return;
-            if (response.success && response.data) {
-                window.location.assign("/student");
-            } else {
+            if (!response.success) {
                 setError(response.error?.message || "登录失败，请检查账号密码");
             }
         } catch {

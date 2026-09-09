@@ -5,36 +5,12 @@ import type { CurrentStudent, StudentTask, TaskDetail, Announcement, SubmissionD
 export type { CurrentStudent, StudentTask, TopicAttachment, TaskDetail, Announcement, SubmissionDetail } from "@/domain/experiment/student-contracts";
 import type { AnalysisMetricsData } from "@/domain/experiment/analysis-types";
 export type { AnalysisNumericFieldMetrics, AnalysisCategoricalFieldMetrics, TargetMethodMetrics, TargetAnalysisMetrics, AnalysisMetricsData } from "@/domain/experiment/analysis-types";
-import { authenticatedFetch } from "@/lib/authenticated-fetch";
-import { fetchWithBusyRetry, type BusyRetryOptions } from "@/lib/busy-retry";
+import { createApiClient } from "@/lib/api-client";
+export type { ApiResponse } from "@/lib/api-client";
+const { request, fetch: studentFetch } = createApiClient("student");
+export { studentFetch };
 
-export interface ApiResponse<T> {
-    success: boolean;
-    data?: T;
-    error?: { code: string; message: string };
-}
-
-async function request<T>(url: string, options?: RequestInit, retry?: BusyRetryOptions): Promise<ApiResponse<T>> {
-    try {
-        const init: RequestInit = {
-            credentials: "include",
-            ...options,
-            headers: { "Content-Type": "application/json", ...options?.headers },
-        };
-        const response = await authenticatedFetch(url, init, retry
-            ? (url, init, send) => fetchWithBusyRetry(url, init, retry, send)
-            : undefined);
-        const payload = await response.json() as ApiResponse<T>;
-        return payload;
-    } catch (cause) {
-        return {
-            success: false,
-            error: { code: "NETWORK_ERROR", message: cause instanceof Error ? cause.message : "网络请求失败" },
-        };
-    }
-}
-
-export const meApi = { get: () => request<CurrentStudent>("/api/student/me") };
+export const meApi = { get: (signal?: AbortSignal) => request<CurrentStudent>("/api/student/me", { signal }) };
 
 export const authApi = {
     getDemoStudentCredential: (signal?: AbortSignal) => request<{ studentId: string; password: string }>(

@@ -11,7 +11,7 @@ import { useStudent } from "../contexts/StudentContext";
 
 export function Profile() {
     const navigate = useNavigate();
-    const { currentUser, refreshUser } = useStudent();
+    const { currentUser } = useStudent();
     const [passwordForm, setPasswordForm] = useState({
         currentPassword: "",
         newPassword: "",
@@ -74,7 +74,6 @@ export function Profile() {
             if (res.success) {
                 setSuccess(true);
                 setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-                await refreshUser();
             } else {
                 setError(res.error?.message ?? "修改失败");
             }

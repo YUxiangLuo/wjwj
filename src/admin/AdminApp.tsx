@@ -2,7 +2,7 @@ import { toast } from "sonner";
 import { RouteErrorBoundary } from "@/components/PageErrorBoundary";
 import { lazy, Suspense, useState } from "react";
 import { BarChart3, Calendar, GraduationCap, KeyRound, LayoutDashboard, LogOut, Megaphone, School, Users } from "lucide-react";
-import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { IconButton } from "@/components/ui/button";
 import { AppToaster } from "@/components/AppToaster";
@@ -84,8 +84,7 @@ function AdminWorkspace({ user, onLogout }: { user: AdminUser; onLogout: () => P
 
 export function AdminApp() {
     const location = useLocation();
-    const navigate = useNavigate();
-    const { user, checking, error, retry, clearUser } = useWorkspaceAuth(authApi.me, "admin");
+    const { user, checking, error, retry } = useWorkspaceAuth(authApi.me);
     useDocumentTitle(getAdminDocumentTitle(location.pathname));
 
     if (checking) return <LoadingStatus className="min-h-screen bg-background" label="正在验证管理员登录状态" />;
@@ -97,8 +96,6 @@ export function AdminApp() {
         onLogout={async () => {
             const response = await authApi.logout();
             if (!response.success) { toast.error("尚未安全退出，请检查网络后重试。不要将设备交给他人。"); return; }
-            clearUser();
-            navigate("/login", { replace: true });
         }}
     />;
 }

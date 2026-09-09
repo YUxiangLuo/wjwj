@@ -35,7 +35,7 @@ import { SamplePlanDecisionPanel, SamplingMethodParamsPanel } from "./analysis-p
 import { TargetMetricsPanel, formatTargetEstimate, formatTargetMargin } from "../../components/TargetMetricsPanel";
 import { chartScale } from "./chart-scale";
 import { formatStatistic } from "@/utils/statistic-format";
-import { authenticatedFetch } from "@/lib/authenticated-fetch";
+import { studentFetch } from "../../api-client";
 import {
     readExperimentDraft,
     useExperimentDraft,
@@ -516,7 +516,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         setIsExporting(true);
         setExportError(null);
         try {
-            const res = await authenticatedFetch(`/api/student/tasks/${experiment.taskId}/export?type=${type}`, {
+            const res = await studentFetch(`/api/student/tasks/${experiment.taskId}/export?type=${type}`, {
                 credentials: "include",
             });
             if (!res.ok) throw new Error("导出失败");

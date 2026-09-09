@@ -1,40 +1,25 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { subscribeAuthExpired, type AuthRole } from "@/lib/authenticated-fetch";
+import { useEffect, useState } from "react";
+import { isAuthError, reloadPage, type ApiResponse } from "@/lib/api-client";
 
-type AuthResponse<T> = { success: boolean; data?: T; error?: { code: string; message: string } };
-
-/** Shared teacher/admin bootstrap: an unavailable identity service is not logout. */
-export function useWorkspaceAuth<T>(fetchUser: () => Promise<AuthResponse<T>>, role: AuthRole) {
-    const [user, setUser] = useState<T | null>(null);
-    const [checking, setChecking] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const version = useRef(0);
-    const clearUser = useCallback(() => {
-        version.current++;
-        setUser(null);
-        setError(null);
-        setChecking(false);
-    }, []);
-    const retry = useCallback(async () => {
-        const request = ++version.current;
-        setChecking(true);
-        setError(null);
-        try {
-            const response = await fetchUser();
-            if (request !== version.current) return;
-            if (response.success && response.data) setUser(response.data);
-            else if (["UNAUTHORIZED", "SESSION_EXPIRED", "ACCOUNT_NOT_FOUND", "ACCOUNT_DISABLED", "SESSION_CHANGED"].includes(response.error?.code ?? "")) setUser(null);
-            else setError("暂时无法确认登录状态，请检查网络或稍后重试。");
-        } catch {
-            if (request === version.current) setError("暂时无法确认登录状态，请检查网络或稍后重试。");
-        } finally {
-            if (request === version.current) setChecking(false);
-        }
-    }, [fetchUser]);
+/** Bootstrap once per document. Retrying or changing identity starts a new document. */
+export function useWorkspaceAuth<T>(fetchUser: (signal?: AbortSignal) => Promise<ApiResponse<T>>) {
+    const [state, setState] = useState<{ user: T | null; checking: boolean; error: string | null }>({
+        user: null, checking: true, error: null,
+    });
     useEffect(() => {
-        const unsubscribe = subscribeAuthExpired(role, clearUser);
-        void retry();
-        return () => { version.current++; unsubscribe(); };
-    }, [clearUser, retry, role]);
-    return { user, checking, error, retry, clearUser };
+        const controller = new AbortController();
+        void fetchUser(controller.signal).then(response => {
+            if (controller.signal.aborted) return;
+            setState({
+                user: response.success ? response.data ?? null : null,
+                checking: false,
+                error: response.success || isAuthError(response.error?.code) ? null
+                    : "暂时无法确认登录状态，请检查网络或稍后重试。当前页面地址和已保存的本地草稿会保留。",
+            });
+        }).catch(() => {
+            if (!controller.signal.aborted) setState({ user: null, checking: false, error: "暂时无法确认登录状态，请检查网络或稍后重试。" });
+        });
+        return () => controller.abort();
+    }, [fetchUser]);
+    return { ...state, retry: reloadPage };
 }

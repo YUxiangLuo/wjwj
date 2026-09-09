@@ -1,16 +1,17 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, mock, spyOn, test } from "bun:test";
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { installDomGlobals } from "../test-utils/dom";
 
 const originalFetch = globalThis.fetch;
 let dom: ReturnType<typeof installDomGlobals>;
-afterEach(async () => { await act(async () => cleanup()); globalThis.fetch = originalFetch; dom?.restore(); });
+afterEach(async () => { await act(async () => cleanup()); mock.restore(); globalThis.fetch = originalFetch; dom?.restore(); });
 function Location() { return <output data-testid="location">{useLocation().pathname}</output>; }
 
 for (const role of ["student", "teacher", "admin"] as const) {
     test(`${role}: failed logout keeps the workspace and an explicit retry can log out`, async () => {
         dom = installDomGlobals();
+        const navigate = spyOn(window.location, "replace").mockImplementation(() => {});
         let fail = true;
         globalThis.fetch = (async (url: string) => {
             if (url.endsWith("/logout")) {
@@ -37,8 +38,9 @@ for (const role of ["student", "teacher", "admin"] as const) {
         await logout();
         await waitFor(() => expect(view.getByText("尚未安全退出，请检查网络后重试。不要将设备交给他人。")).toBeTruthy());
         expect(view.getByTestId("location").textContent).toBe(initial);
+        expect(navigate).not.toHaveBeenCalled();
         fail = false;
         await logout();
-        await waitFor(() => expect(view.getByTestId("location").textContent).toBe("/login"));
+        await waitFor(() => expect(navigate).toHaveBeenCalledWith(`/${role}/login`));
     });
 }

@@ -1,46 +1,52 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, mock, spyOn, test } from "bun:test";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { installDomGlobals } from "@/test-utils/dom";
 import { useWorkspaceAuth } from "./useWorkspaceAuth";
-import { AUTH_EXPIRED_EVENT } from "@/lib/auth-expired";
+
 let dom: ReturnType<typeof installDomGlobals>;
-afterEach(async () => { await act(async () => cleanup()); dom?.restore(); });
-type Result = { success: boolean; data?: { id: number }; error?: { code: string; message: string } };
-test("role-scoped expiry preserves the other workspace identity", async () => {
+afterEach(async () => { await act(async () => cleanup()); mock.restore(); dom?.restore(); });
+
+test("loads one identity per document; retry reloads rather than mutating it", async () => {
+    dom = installDomGlobals("http://localhost/teacher/task/1");
+    const reload = spyOn(window.location, "reload").mockImplementation(() => {});
+    const fetchUser = mock(async () => ({ success: true, data: { id: 1 } }));
+    const { result } = renderHook(() => useWorkspaceAuth(fetchUser));
+    await waitFor(() => expect(result.current.user?.id).toBe(1));
+    act(() => result.current.retry());
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(fetchUser).toHaveBeenCalledTimes(1);
+    expect(window.location.pathname).toBe("/teacher/task/1");
+});
+
+for (const code of ["UNAUTHORIZED", "ACCOUNT_NOT_FOUND", "ACCOUNT_DISABLED", "SESSION_CHANGED"]) {
+    test(`${code} at startup is logged out, not a network failure`, async () => {
+        dom = installDomGlobals();
+        const fetchUser = async () => ({ success: false, error: { code, message: code } });
+        const { result } = renderHook(() => useWorkspaceAuth(fetchUser));
+        await waitFor(() => expect(result.current.checking).toBe(false));
+        expect(result.current.user).toBeNull();
+        expect(result.current.error).toBeNull();
+    });
+}
+
+test("an unavailable identity service preserves the URL and local drafts", async () => {
+    dom = installDomGlobals("http://localhost/admin/student");
+    localStorage.setItem("draft", "keep");
+    const fetchUser = async () => { throw new TypeError("offline"); };
+    const { result } = renderHook(() => useWorkspaceAuth(fetchUser));
+    await waitFor(() => expect(result.current.error).toContain("暂时无法确认登录状态"));
+    expect(window.location.pathname).toBe("/admin/student");
+    expect(localStorage.getItem("draft")).toBe("keep");
+});
+
+test("unmount cancels bootstrap and ignores its late response", async () => {
     dom = installDomGlobals();
-    const fetchUser = async (): Promise<Result> => ({ success: true, data: { id: 1 } });
-    const teacher = renderHook(() => useWorkspaceAuth(fetchUser, "teacher"));
-    const admin = renderHook(() => useWorkspaceAuth(fetchUser, "admin"));
-    await waitFor(() => { expect(teacher.result.current.user?.id).toBe(1); expect(admin.result.current.user?.id).toBe(1); });
-    act(() => window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT, { detail: { role: "teacher" } })));
-    expect(teacher.result.current.user).toBeNull();
-    expect(teacher.result.current.error).toBeNull();
-    expect(admin.result.current.user?.id).toBe(1);
-});
-function deferred() { let resolve!: (value: Result) => void; const promise = new Promise<Result>(r => { resolve = r; }); return { promise, resolve }; }
-test("clear invalidates a pending identity response", async () => {
-    dom = installDomGlobals(); const pending = deferred(); const fetchUser = () => pending.promise;
-    const { result } = renderHook(() => useWorkspaceAuth(fetchUser, "teacher"));
-    act(() => result.current.clearUser());
-    await act(async () => pending.resolve({ success: true, data: { id: 1 } }));
-    expect(result.current.user).toBeNull(); expect(result.current.checking).toBe(false); expect(result.current.error).toBeNull();
-});
-test("an older failure cannot replace a newer successful retry", async () => {
-    dom = installDomGlobals(); const first = deferred(), second = deferred(); let calls = 0;
-    const fetchUser = () => ++calls === 1 ? first.promise : second.promise;
-    const { result } = renderHook(() => useWorkspaceAuth(fetchUser, "teacher"));
-    act(() => { void result.current.retry(); });
-    await act(async () => second.resolve({ success: true, data: { id: 2 } }));
-    await act(async () => first.resolve({ success: false, error: { code: "NETWORK_ERROR", message: "offline" } }));
-    expect(result.current.user?.id).toBe(2); expect(result.current.error).toBeNull(); expect(result.current.checking).toBe(false);
-});
-test("a failed recheck does not erase a known identity; retry recovers", async () => {
-    dom = installDomGlobals(); let calls = 0;
-    const fetchUser = async (): Promise<Result> => { if (++calls === 2) throw new TypeError("offline"); return { success: true, data: { id: 3 } }; };
-    const { result } = renderHook(() => useWorkspaceAuth(fetchUser, "admin"));
-    await waitFor(() => expect(result.current.user?.id).toBe(3));
-    await act(async () => { await result.current.retry(); });
-    expect(result.current.user?.id).toBe(3); expect(result.current.error).toContain("暂时无法确认登录状态");
-    await act(async () => { await result.current.retry(); });
-    expect(result.current.error).toBeNull(); expect(result.current.checking).toBe(false);
+    let signal: AbortSignal | undefined;
+    let resolve!: (response: { success: boolean; data: { id: number } }) => void;
+    const fetchUser = (input?: AbortSignal) => { signal = input; return new Promise<{ success: boolean; data: { id: number } }>(r => { resolve = r; }); };
+    const { result, unmount } = renderHook(() => useWorkspaceAuth(fetchUser));
+    unmount();
+    expect(signal?.aborted).toBe(true);
+    await act(async () => resolve({ success: true, data: { id: 1 } }));
+    expect(result.current.user).toBeNull();
 });

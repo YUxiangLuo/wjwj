@@ -2,7 +2,7 @@ import { toast } from "sonner";
 import { RouteErrorBoundary } from "@/components/PageErrorBoundary";
 import { lazy, Suspense, useState } from "react";
 import { BarChart3, BookOpen, ClipboardList, Download, KeyRound, LayoutDashboard, LogOut, PenLine, School } from "lucide-react";
-import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { IconButton } from "@/components/ui/button";
 import { AppToaster } from "@/components/AppToaster";
@@ -113,8 +113,7 @@ function TeacherWorkspace({
 
 export function TeacherApp() {
     const location = useLocation();
-    const navigate = useNavigate();
-    const { user, checking, error, retry, clearUser } = useWorkspaceAuth(authApi.me, "teacher");
+    const { user, checking, error, retry } = useWorkspaceAuth(authApi.me);
     useDocumentTitle(getTeacherDocumentTitle(location.pathname));
 
     if (checking) return <LoadingStatus className="min-h-screen bg-background" label="正在验证教师登录状态" />;
@@ -126,8 +125,6 @@ export function TeacherApp() {
         onLogout={async () => {
             const response = await authApi.logout();
             if (!response.success) { toast.error("尚未安全退出，请检查网络后重试。不要将设备交给他人。"); return; }
-            clearUser();
-            navigate("/login", { replace: true });
         }}
     />;
 }

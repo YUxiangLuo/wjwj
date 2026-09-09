@@ -25,9 +25,7 @@ export function Login() {
         setLoading(true);
         try {
             const response = await authApi.login({ username: username.trim(), password });
-            if (response.success) {
-                window.location.assign("/admin");
-            } else {
+            if (!response.success) {
                 setError(response.error?.message ?? "登录失败");
             }
         } catch (cause) {
