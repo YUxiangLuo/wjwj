@@ -623,7 +623,7 @@ export function QuestionnaireDesign() {
                                         {recommendQuestions.map((rq) => {
                                             const recommendAlreadyInQuestionnaire = questions.some((q) => q.recommendSourceId === rq.id);
                                             return (
-                                            <div key={rq.id} className="flex flex-col gap-2 p-3 rounded-surface border border-border bg-background hover:bg-card transition-none">
+                                            <div key={rq.id} className="flex flex-col gap-2 p-3 rounded-surface border border-border bg-background">
                                                 <div className="space-y-1">
                                                     <div className="text-label font-medium text-foreground line-clamp-2">{rq.content}</div>
                                                     <div className="text-meta text-muted-foreground">

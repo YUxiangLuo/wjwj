@@ -354,7 +354,7 @@ export function StratifiedSamplingTab({
                     <div className="rounded-surface border border-border overflow-hidden">
                         <Table>
                             <TableHeader className="bg-background">
-                                <TableRow className="border-border hover:bg-transparent">
+                                <TableRow className="border-border">
                                     <TableHead className="text-muted-foreground">层 (Layer)</TableHead>
                                     <TableHead className="text-muted-foreground">单位数 (N<sub>h</sub>)</TableHead>
                                     <TableHead className="text-muted-foreground">占比（自动）</TableHead>
@@ -390,7 +390,7 @@ export function StratifiedSamplingTab({
                                         </TableCell>
                                     </TableRow>
                                 )}
-                                <TableRow className="bg-background border-t border-input font-medium hover:bg-background">
+                                <TableRow className="bg-background border-t border-input font-medium">
                                     <TableCell colSpan={3} className="text-right text-foreground pr-4">合计 Total</TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
@@ -425,7 +425,7 @@ export function StratifiedSamplingTab({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => applyQuickAllocation("proportional")}
-                                className="h-7 text-meta border-warning text-warning hover:bg-warning-muted"
+                                className="h-7 text-meta border-warning text-warning hover:bg-warning-muted hover:text-warning hover:border-warning"
                             >
                                 <Percent className="w-3 h-3 mr-1" />
                                 按比例
@@ -434,7 +434,7 @@ export function StratifiedSamplingTab({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => applyQuickAllocation("equal")}
-                                className="h-7 text-meta border-warning text-warning hover:bg-warning-muted"
+                                className="h-7 text-meta border-warning text-warning hover:bg-warning-muted hover:text-warning hover:border-warning"
                             >
                                 <Equal className="w-3 h-3 mr-1" />
                                 等额
@@ -446,7 +446,7 @@ export function StratifiedSamplingTab({
                                 disabled={!neymanStdDevs}
                                 title={neymanNotice}
                                 aria-describedby="student-neyman-target-notice"
-                                className="h-7 text-meta border-warning text-warning hover:bg-warning-muted"
+                                className="h-7 text-meta border-warning text-warning hover:bg-warning-muted hover:text-warning hover:border-warning"
                             >
                                 <TrendingUp className="w-3 h-3 mr-1" />
                                 奈曼
@@ -456,7 +456,7 @@ export function StratifiedSamplingTab({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setShowAllocationComparison(true)}
-                                className="h-7 text-meta border-auxiliary-border text-auxiliary-strong hover:bg-auxiliary-muted"
+                                className="h-7 text-meta border-auxiliary-border text-auxiliary-strong hover:bg-auxiliary-muted hover:text-auxiliary-strong hover:border-auxiliary-border"
                             >
                                 <BarChart3 className="w-3 h-3 mr-1" />
                                 对比分析全部方法

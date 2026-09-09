@@ -211,14 +211,14 @@ export function SubmissionPreview() {
                             <TabsTrigger
                                 value="report"
                                 data-testid="student-preview-tab-report"
-                                className="px-6 py-2 rounded-control data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-muted-foreground hover:text-foreground transition-none"
+                                className="px-6 py-2 rounded-control data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-muted-foreground data-[state=inactive]:hover:text-foreground transition-none"
                             >
                                 实验报告预览
                             </TabsTrigger>
                             <TabsTrigger
                                 value="questionnaire"
                                 data-testid="student-preview-tab-questionnaire"
-                                className="px-6 py-2 rounded-control data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-muted-foreground hover:text-foreground transition-none"
+                                className="px-6 py-2 rounded-control data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-muted-foreground data-[state=inactive]:hover:text-foreground transition-none"
                             >
                                 问卷预览
                             </TabsTrigger>

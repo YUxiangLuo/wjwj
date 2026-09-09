@@ -55,7 +55,8 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "hover:bg-muted data-[state=selected]:bg-muted border-b transition-none",
+        // Reading highlights belong to explicit body rows, not headers or empty states.
+        "data-[state=selected]:bg-muted border-b transition-none",
         className
       )}
       {...props}

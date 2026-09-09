@@ -366,7 +366,7 @@ export function TopicManagement() {
             </div>
 
             <div className="grid grid-cols-4 gap-4">
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">模板总数</p>
@@ -377,7 +377,7 @@ export function TopicManagement() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已发布</p>
@@ -388,7 +388,7 @@ export function TopicManagement() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">草稿</p>
@@ -399,7 +399,7 @@ export function TopicManagement() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">数据行数</p>
@@ -446,7 +446,7 @@ export function TopicManagement() {
                 </PageHeader>
                 <CardContent className="space-y-4 pt-4">
                     {loadError ? <RequestError message={loadError} onRetry={() => void loadTopics()} /> : loading ? <div role="status" aria-live="polite" className="text-center py-12 text-muted-foreground">加载中...</div> : filteredTopics.map((topic) => (
-                        <div data-testid={`teacher-topic-row-${topic.id}`} key={topic.id} className="border border-border rounded-surface p-5 bg-background hover:bg-card hover:border-input transition-none">
+                        <div data-testid={`teacher-topic-row-${topic.id}`} key={topic.id} className="border border-border rounded-surface p-5 bg-background">
                             <div className="flex gap-3 flex-row items-start justify-between mb-4">
                                 <div className="flex items-start gap-4">
                                     <div className="w-12 h-12 rounded-surface bg-primary-muted text-primary flex items-center justify-center border border-primary-border">

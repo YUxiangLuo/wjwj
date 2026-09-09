@@ -204,7 +204,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                             key={t}
                                             value={t}
                                             data-testid={`student-question-type-${t}`}
-                                            className="text-meta data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-muted-foreground hover:text-foreground"
+                                            className="text-meta data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-muted-foreground data-[state=inactive]:hover:text-foreground"
                                         >
                                             {questionTypeLabels[t]}
                                         </TabsTrigger>

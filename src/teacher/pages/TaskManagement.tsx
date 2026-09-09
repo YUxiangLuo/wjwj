@@ -174,7 +174,7 @@ export function TaskManagement() {
             </div>
 
             <div className="grid grid-cols-4 gap-4">
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">实验任务总数</p>
@@ -185,7 +185,7 @@ export function TaskManagement() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">待批改</p>
@@ -196,7 +196,7 @@ export function TaskManagement() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已完成</p>
@@ -207,7 +207,7 @@ export function TaskManagement() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">应交人次</p>
@@ -260,7 +260,7 @@ export function TaskManagement() {
                     {loadError ? <RequestError message={loadError} onRetry={() => void loadTasks()} /> : loading ? <div role="status" aria-live="polite" className="text-center py-12 text-muted-foreground">加载中...</div> : (
                         <Table>
                             <TableHeader>
-                                <TableRow className="border-border hover:bg-card">
+                                <TableRow className="border-border">
                                     <TableHead className="text-muted-foreground">实验模板</TableHead>
                                     <TableHead className="text-muted-foreground">班级</TableHead>
                                     <TableHead className="text-muted-foreground">发布时间</TableHead>

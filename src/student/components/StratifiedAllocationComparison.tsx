@@ -218,7 +218,7 @@ export function StratifiedAllocationComparison({
                                                     sampleCount: a.sampleSize,
                                                 })));
                                             }}
-                                            className="text-meta h-7 border-auxiliary-border hover:bg-auxiliary-muted"
+                                            className="text-meta h-7 border-auxiliary-border hover:bg-auxiliary-muted hover:text-foreground hover:border-auxiliary-border"
                                         >
                                             应用此分配
                                         </Button>

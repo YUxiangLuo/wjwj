@@ -26,7 +26,7 @@ export function SamplePreviewTable({ data, total, priorityField }: { data: unkno
             className="min-h-0 min-w-0 flex-1 overflow-auto rounded-surface border border-border outline-none focus-visible:ring-2 focus-visible:ring-ring [&_[data-slot=table-container]]:overflow-visible">
             <Table className="min-w-max">
                 <TableHeader className="sticky top-0 z-10 bg-muted">
-                    <TableRow className="border-border hover:bg-transparent">{keys.map(key => <TableHead key={key} scope="col" className={`whitespace-nowrap px-4 py-3 text-meta ${key === priorityField ? "bg-primary-muted text-primary" : "text-muted-foreground"}`}>
+                    <TableRow className="border-border">{keys.map(key => <TableHead key={key} scope="col" className={`whitespace-nowrap px-4 py-3 text-meta ${key === priorityField ? "bg-primary-muted text-primary" : "text-muted-foreground"}`}>
                         {FIELD_LABELS[key] || key}{key === priorityField && " · 研究指标"}
                     </TableHead>)}</TableRow>
                 </TableHeader>

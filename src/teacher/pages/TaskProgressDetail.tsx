@@ -116,7 +116,7 @@ export function TaskProgressDetail() {
                     const cfg = STATUS_CONFIG[key];
                     const count = data.counts[key];
                     return (
-                        <Card key={key} className={`border-border bg-card ${count > 0 ? "hover:border-input" : ""} transition-none`}>
+                        <Card key={key} className="border-border bg-card">
                             <CardContent className="p-3 text-center">
                                 <p className="text-meta text-muted-foreground mb-1">{cfg.label}</p>
                                 <p className={`text-section-title font-bold ${count > 0 ? cfg.color : "text-muted-foreground"}`}>{count}</p>
@@ -245,7 +245,7 @@ export function TaskProgressDetail() {
                 <CardContent className="pt-0">
                     <Table>
                         <TableHeader>
-                            <TableRow className="border-border hover:bg-card">
+                            <TableRow className="border-border">
                                 <TableHead className="text-muted-foreground">学号</TableHead>
                                 <TableHead className="text-muted-foreground">姓名</TableHead>
                                 <TableHead className="text-muted-foreground">状态</TableHead>

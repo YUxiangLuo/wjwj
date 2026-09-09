@@ -131,7 +131,7 @@ export function GradingDetail() {
                             {data.samplingResults && (
                                 <div className="flex items-center justify-between gap-3 rounded-surface border border-info-border bg-info-muted p-4">
                                     <p className="text-label text-info">页面最多预览每种抽样方法的前 50 行；CSV 包含本次提交的完整样本。</p>
-                                    <Button asChild variant="outline" className="shrink-0 border-info-border text-info hover:bg-info-muted">
+                                    <Button asChild variant="outline" className="shrink-0 border-info-border text-info hover:bg-info-muted hover:text-info hover:border-info-border">
                                         <a
                                             href={`/api/teacher/grading/${id}/sampling-export?type=all`}
                                             download

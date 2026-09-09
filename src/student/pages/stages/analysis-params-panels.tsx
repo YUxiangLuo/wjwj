@@ -160,7 +160,7 @@ function samplingMethodPanelForKey(
                             <div className="overflow-hidden rounded-surface border border-border">
                                 <Table>
                                     <TableHeader className="bg-card">
-                                        <TableRow className="border-border hover:bg-transparent">
+                                        <TableRow className="border-border">
                                             <TableHead className="text-meta">层</TableHead>
                                             <TableHead className="text-meta text-right">Nₕ</TableHead>
                                             <TableHead className="text-meta text-right">占比</TableHead>

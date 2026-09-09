@@ -271,7 +271,7 @@ export function DecisionPhase({
                         variant="outline"
                         size="sm"
                         onClick={onClearAdvancedSource}
-                        className="shrink-0 border-warning bg-background text-warning hover:bg-warning-muted"
+                        className="shrink-0 border-warning bg-background text-warning hover:bg-warning-muted hover:text-warning hover:border-warning"
                     >
                         按常规继续
                     </Button>

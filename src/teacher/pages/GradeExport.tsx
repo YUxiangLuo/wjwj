@@ -186,7 +186,7 @@ export function GradeExport() {
             </div>
 
             <div className="grid grid-cols-4 gap-4">
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">应交人次</p>
@@ -198,7 +198,7 @@ export function GradeExport() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已批改人次</p>
@@ -209,7 +209,7 @@ export function GradeExport() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">总分均值</p>
@@ -221,7 +221,7 @@ export function GradeExport() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">总分中位数</p>
@@ -327,7 +327,7 @@ export function GradeExport() {
                 <CardContent className="pt-0">
                     <Table>
                         <TableHeader>
-                            <TableRow className="border-border hover:bg-card">
+                            <TableRow className="border-border">
                                 <TableHead className="w-12 text-center text-muted-foreground">
                                     <span className="sr-only">选择任务</span>
                                     <input

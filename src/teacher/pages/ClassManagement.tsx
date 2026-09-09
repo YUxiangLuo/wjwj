@@ -55,7 +55,7 @@ export function ClassManagement() {
             </div>
 
             <div className="grid grid-cols-3 gap-4">
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">班级总数</p>
@@ -66,7 +66,7 @@ export function ClassManagement() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">学生总数</p>
@@ -77,7 +77,7 @@ export function ClassManagement() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">学期数量</p>
@@ -128,7 +128,7 @@ export function ClassManagement() {
                     ) : (
                         <Table>
                             <TableHeader>
-                                <TableRow className="border-border hover:bg-card">
+                                <TableRow className="border-border">
                                     <TableHead className="text-muted-foreground">班级名称</TableHead>
                                     <TableHead className="text-muted-foreground">学期</TableHead>
                                     <TableHead className="text-muted-foreground">学生人数</TableHead>

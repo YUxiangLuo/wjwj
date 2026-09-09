@@ -207,7 +207,7 @@ export function StudentManagement() {
             </div>
 
             <div className="grid grid-cols-3 gap-4">
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">学生总数</p>
@@ -218,7 +218,7 @@ export function StudentManagement() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">正常账号</p>
@@ -229,7 +229,7 @@ export function StudentManagement() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已禁用</p>
@@ -272,7 +272,7 @@ export function StudentManagement() {
                 <CardContent className="pt-0">
                     <Table>
                         <TableHeader>
-                            <TableRow className="border-border hover:bg-card">
+                            <TableRow className="border-border">
                                 <TableHead className="text-muted-foreground">学号</TableHead>
                                 <TableHead className="text-muted-foreground">姓名</TableHead>
                                 <TableHead className="text-muted-foreground">邮箱</TableHead>

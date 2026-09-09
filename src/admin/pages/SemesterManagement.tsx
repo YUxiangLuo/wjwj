@@ -196,7 +196,7 @@ export function SemesterManagement() {
             </PageHeader>
 
             <div className="grid grid-cols-4 gap-4">
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">学期总数</p>
@@ -207,7 +207,7 @@ export function SemesterManagement() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">当前学期</p>
@@ -218,7 +218,7 @@ export function SemesterManagement() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">历史学期</p>
@@ -229,7 +229,7 @@ export function SemesterManagement() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已建班学期</p>
@@ -273,7 +273,7 @@ export function SemesterManagement() {
                     ) : (
                         <Table>
                             <TableHeader>
-                                <TableRow className="border-border hover:bg-card">
+                                <TableRow className="border-border">
                                     <TableHead className="text-muted-foreground">学期名称</TableHead>
                                     <TableHead className="text-muted-foreground">状态</TableHead>
                                     <TableHead className="text-muted-foreground">班级数量</TableHead>
@@ -289,7 +289,7 @@ export function SemesterManagement() {
                                             {semester.isCurrent ? (
                                                 <StatusBadge intent="success">当前学期</StatusBadge>
                                             ) : (
-                                                <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted">历史学期</Badge>
+                                                <Badge variant="secondary" className="bg-muted text-muted-foreground">历史学期</Badge>
                                             )}
                                         </TableCell>
                                         <TableCell className="text-foreground">

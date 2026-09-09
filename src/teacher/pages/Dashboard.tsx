@@ -30,7 +30,7 @@ function StatCard({ icon: Icon, label, value, color, loading, to }: {
     const style = colorStyles[color] || colorStyles.slate!;
 
     const card = (
-        <Card className={`border-border bg-card hover:border-input transition-none ${to ? "cursor-pointer" : ""}`}>
+        <Card className={`border-border bg-card transition-none ${to ? "cursor-pointer hover:border-input" : ""}`}>
             <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                     <div>

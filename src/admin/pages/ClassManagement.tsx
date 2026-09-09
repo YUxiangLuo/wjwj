@@ -199,7 +199,7 @@ export function ClassManagement() {
             </PageHeader>
 
             <div className="grid grid-cols-4 gap-4">
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">班级总数</p>
@@ -210,7 +210,7 @@ export function ClassManagement() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">学生总数</p>
@@ -221,7 +221,7 @@ export function ClassManagement() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">当前学期</p>
@@ -232,7 +232,7 @@ export function ClassManagement() {
                         </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="transition-none hover:border-input">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">授课教师</p>
@@ -289,7 +289,7 @@ export function ClassManagement() {
                     ) : (
                         <Table>
                             <TableHeader>
-                                <TableRow className="border-border hover:bg-card">
+                                <TableRow className="border-border">
                                     <TableHead className="text-muted-foreground">班级名称</TableHead>
                                     <TableHead className="text-muted-foreground">学期</TableHead>
                                     <TableHead className="text-muted-foreground">授课教师</TableHead>
