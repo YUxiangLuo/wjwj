@@ -1,7 +1,8 @@
 import { RouteErrorBoundary } from "@/components/PageErrorBoundary";
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { ArrowLeft, BarChart3, KeyRound, LogOut, User } from "lucide-react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { AppToaster } from "@/components/AppToaster";
@@ -43,6 +44,7 @@ function StudentAppContent() {
     const location = useLocation();
     const { currentUser, isLoading, authError, refreshUser, clearAuthState } = useStudent();
     const [showAccountMenu, setShowAccountMenu] = useState(false);
+    useEffect(() => { setShowAccountMenu(false); }, [location.pathname]);
     const [showPassword, setShowPassword] = useState(false);
     const [showLogout, setShowLogout] = useState(false);
     useDocumentTitle(getStudentDocumentTitle(location.pathname));
@@ -94,22 +96,20 @@ function StudentAppContent() {
                         </Link>
                     </div>
 
-                    <div className="relative">
-                        <Button
+                    <Popover open={showAccountMenu} onOpenChange={setShowAccountMenu}>
+                        <PopoverTrigger asChild><Button
                             variant="ghost"
                             className="h-10 rounded-control px-1 text-navigation-foreground hover:bg-navigation-active hover:text-navigation-active-foreground focus-visible:ring-navigation-foreground focus-visible:ring-offset-navigation"
                             aria-label="打开账户菜单"
                             aria-expanded={showAccountMenu}
-                            onClick={() => setShowAccountMenu((value) => !value)}
                         >
                             <Avatar className="h-9 w-9">
                                 <AvatarFallback className="bg-navigation-active text-navigation-active-foreground" data-testid="student-avatar">
                                     {currentUser.name.charAt(0)}
                                 </AvatarFallback>
                             </Avatar>
-                        </Button>
-                        {showAccountMenu && (
-                            <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-overlay border border-border bg-card py-1 text-foreground shadow-floating">
+                        </Button></PopoverTrigger>
+                            <PopoverContent align="end" aria-label="账户操作" className="w-56 overflow-hidden bg-card py-1 text-foreground">
                                 <div className="border-b border-border px-3 py-2.5">
                                     <p className="text-label font-medium">{currentUser.name}</p>
                                     <p className="mt-1 text-meta text-muted-foreground">{currentUser.studentId}</p>
@@ -123,9 +123,8 @@ function StudentAppContent() {
                                 <button className="flex w-full items-center px-3 py-2.5 text-label text-destructive hover:bg-destructive-muted" onClick={() => { setShowAccountMenu(false); setShowLogout(true); }}>
                                     <LogOut className="mr-2 h-4 w-4" />退出登录
                                 </button>
-                            </div>
-                        )}
-                    </div>
+                            </PopoverContent>
+                    </Popover>
                 </div>
             </header>
 

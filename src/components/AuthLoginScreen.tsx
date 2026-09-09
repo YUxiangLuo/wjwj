@@ -1,5 +1,5 @@
 import type { FormEvent } from "react";
-import { BarChart3, HelpCircle, LineChart, Loader2, Lock, PieChart, ShieldCheck } from "lucide-react";
+import { BarChart3, LineChart, Loader2, PieChart, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -174,16 +174,7 @@ export function AuthLoginScreen({
                         </div>
                     </form>
 
-                    <div className="flex justify-center gap-8 text-label text-muted-foreground">
-                        <span className="flex cursor-pointer items-center gap-1.5 transition-none hover:text-foreground">
-                            <HelpCircle className="h-4 w-4" />
-                            使用指南
-                        </span>
-                        <span className="flex cursor-pointer items-center gap-1.5 transition-none hover:text-foreground">
-                            <Lock className="h-4 w-4" />
-                            隐私政策
-                        </span>
-                    </div>
+
                 </div>
             </div>
         </main>

@@ -1,5 +1,5 @@
 import { RouteErrorBoundary } from "@/components/PageErrorBoundary";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { BarChart3, Calendar, GraduationCap, KeyRound, LayoutDashboard, LogOut, Megaphone, School, Users } from "lucide-react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -11,7 +11,8 @@ import { WorkspaceShell } from "@/components/WorkspaceShell";
 import { ADMIN_PASSWORD_POLICY } from "@/lib/password-policy";
 import { usePasswordChange } from "@/hooks/usePasswordChange";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import { AUTH_EXPIRED_EVENT } from "@/lib/auth-expired";
+import { useWorkspaceAuth } from "@/hooks/useWorkspaceAuth";
+import { RequestError } from "@/components/RequestError";
 import { getAdminDocumentTitle } from "@/lib/document-title";
 import { authApi, type AdminUser } from "./api-client";
 import { Login } from "./pages/Login";
@@ -83,26 +84,16 @@ function AdminWorkspace({ user, onLogout }: { user: AdminUser; onLogout: () => P
 export function AdminApp() {
     const location = useLocation();
     const navigate = useNavigate();
-    const [checking, setChecking] = useState(true);
-    const [user, setUser] = useState<AdminUser | null>(null);
+    const { user, checking, error, retry, clearUser } = useWorkspaceAuth(authApi.me);
     useDocumentTitle(getAdminDocumentTitle(location.pathname));
-    useEffect(() => {
-        const clearUser = () => setUser(null);
-        window.addEventListener(AUTH_EXPIRED_EVENT, clearUser);
-        return () => window.removeEventListener(AUTH_EXPIRED_EVENT, clearUser);
-    }, []);
-    useEffect(() => {
-        void authApi.me().then((response) => {
-            setUser(response.success && response.data ? response.data : null);
-            setChecking(false);
-        });
-    }, []);
+
     if (checking) return <LoadingStatus className="min-h-screen bg-background" label="正在验证管理员登录状态" />;
+    if (error) return <main className="min-h-screen bg-background p-8"><RequestError message={error} onRetry={() => void retry()} /></main>;
     if (location.pathname === "/login") return user ? <Navigate to="/" replace /> : <Login />;
     if (!user) return <Navigate to="/login" replace />;
     return <AdminWorkspace
         user={user}
-        onLogout={async () => { await authApi.logout(); setUser(null); navigate("/login", { replace: true }); }}
+        onLogout={async () => { await authApi.logout(); clearUser(); navigate("/login", { replace: true }); }}
     />;
 }
 
