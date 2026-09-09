@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { RouteErrorBoundary } from "@/components/PageErrorBoundary";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { ArrowLeft, BarChart3, KeyRound, LogOut, User } from "lucide-react";
@@ -69,7 +70,11 @@ function StudentAppContent() {
     if (!currentUser) return <Navigate to="/login" replace />;
 
     const logout = async () => {
-        await authApi.logout();
+        const response = await authApi.logout();
+        if (!response.success) {
+            toast.error("尚未安全退出，请检查网络后重试。不要将设备交给他人。");
+            return;
+        }
         clearAuthState();
         navigate("/login", { replace: true });
     };

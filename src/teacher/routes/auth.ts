@@ -2,12 +2,13 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { teacher } from "../../db/schema";
 import { TEACHER_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
-import { buildSessionCookie, clearSessionCookie, error, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
+import { buildSessionCookie, error, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
 import { hashPassword, verifyPassword } from "../../server/password-work";
 import type { RouteDefinition, RouteHandler } from "../../server/route-types";
 import {
     createUserSession,
-    deleteUserSessionByToken,
+    logoutUserSession,
+    sessionChangedError,
     loadActiveUserSession,
     readSessionToken,
     rotateUserSession,
@@ -54,7 +55,7 @@ export async function requireTeacherAuth(req: Request): Promise<TeacherAuthResul
 
     const currentSession = await loadActiveUserSession(req, TEACHER_SESSION_COOKIE, [TEACHER_USER_TYPE]);
     if (!currentSession.session) {
-        const result = { user: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
+        const result = { user: null, error: currentSession.failure === "identity_changed" ? sessionChangedError() : error("未登录或登录已过期", "UNAUTHORIZED", 401) };
         (req as TeacherRequestContext)[TEACHER_AUTH_CACHE] = result;
         return result;
     }
@@ -153,13 +154,7 @@ const teacherMeRoutes: RouteDefinition = {
 
 const teacherLogoutRoutes: RouteDefinition = {
     async POST(req) {
-        const token = readSessionToken(req, TEACHER_SESSION_COOKIE);
-        if (token) await deleteUserSessionByToken(token);
-        return json(
-            { ok: true },
-            200,
-            { "Set-Cookie": clearSessionCookie(TEACHER_SESSION_COOKIE, isSecureRequest(req)) },
-        );
+        return logoutUserSession(req, TEACHER_SESSION_COOKIE, TEACHER_USER_TYPE);
     },
 };
 

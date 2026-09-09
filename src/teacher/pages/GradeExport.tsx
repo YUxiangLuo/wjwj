@@ -11,7 +11,7 @@ import { formatLocalDateStamp } from "@/utils/format";
 import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
-import { notifyAuthExpiredFromResponse } from "@/lib/auth-expired";
+import { authenticatedFetch } from "@/lib/authenticated-fetch";
 
 function MetricBars({
     title,
@@ -149,10 +149,9 @@ export function GradeExport() {
 
         setExporting(true);
         try {
-            const res = await fetch(`/api/teacher/grade-export/excel?${search.toString()}`, {
+            const res = await authenticatedFetch(`/api/teacher/grade-export/excel?${search.toString()}`, {
                 credentials: "include",
             });
-            await notifyAuthExpiredFromResponse(res);
 
             if (!res.ok) {
                 toast.error("导出失败");

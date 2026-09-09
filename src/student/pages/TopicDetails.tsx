@@ -14,7 +14,7 @@ import type { TaskDetail, TopicAttachment } from "@/domain/experiment/student-co
 import type { TaskStatus } from "@/domain/experiment/types";
 import { getTaskPrimaryAction, shouldShowTaskAvailabilityHint } from "./topic-detail-action";
 import { parseDeadline, formatDateTimeDisplay, getRemainingDeadlineSummary } from "@/utils/format";
-import { notifyAuthExpiredFromResponse } from "@/lib/auth-expired";
+import { authenticatedFetch } from "@/lib/authenticated-fetch";
 import { resolveSamplingPolicy, SAMPLING_METHODS } from "@/lib/sampling-policy";
 
 const stageNames = ["问卷预试", "样本量规划", "抽样执行", "分析与报告"];
@@ -147,10 +147,9 @@ export function TopicDetails() {
 
     const handleDownload = async (file: TopicAttachment) => {
         try {
-            const res = await fetch(`/api/student/attachments/${file.id}/download`, {
+            const res = await authenticatedFetch(`/api/student/attachments/${file.id}/download`, {
                 credentials: "include",
             });
-            await notifyAuthExpiredFromResponse(res);
             if (!res.ok) throw new Error("下载失败");
             const blob = await res.blob();
             const url = window.URL.createObjectURL(blob);

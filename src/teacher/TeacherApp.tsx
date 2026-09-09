@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { RouteErrorBoundary } from "@/components/PageErrorBoundary";
 import { lazy, Suspense, useState } from "react";
 import { BarChart3, BookOpen, ClipboardList, Download, KeyRound, LayoutDashboard, LogOut, PenLine, School } from "lucide-react";
@@ -113,7 +114,7 @@ function TeacherWorkspace({
 export function TeacherApp() {
     const location = useLocation();
     const navigate = useNavigate();
-    const { user, checking, error, retry, clearUser } = useWorkspaceAuth(authApi.me);
+    const { user, checking, error, retry, clearUser } = useWorkspaceAuth(authApi.me, "teacher");
     useDocumentTitle(getTeacherDocumentTitle(location.pathname));
 
     if (checking) return <LoadingStatus className="min-h-screen bg-background" label="正在验证教师登录状态" />;
@@ -122,7 +123,12 @@ export function TeacherApp() {
     if (!user) return <Navigate to="/login" replace />;
     return <TeacherWorkspace
         user={user}
-        onLogout={async () => { await authApi.logout(); clearUser(); navigate("/login", { replace: true }); }}
+        onLogout={async () => {
+            const response = await authApi.logout();
+            if (!response.success) { toast.error("尚未安全退出，请检查网络后重试。不要将设备交给他人。"); return; }
+            clearUser();
+            navigate("/login", { replace: true });
+        }}
     />;
 }
 

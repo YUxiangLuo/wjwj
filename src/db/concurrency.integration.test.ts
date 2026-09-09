@@ -234,6 +234,46 @@ pgTest("concurrent creation of current semesters succeeds serially and retains e
     expect(current.map(row => row.name)).toEqual([names[1]!]);
 }, 15000);
 
+for (const role of ["student", "teacher"] as const) {
+    for (const action of ["reset", "disable"] as const) {
+        pgTest(`admin ${role} ${action} rolls back the account update if session deletion fails`, async () => {
+            const { db } = application;
+            const group = await fixture();
+            const account = role === "student" ? group.students[0]! : group.teachers[0]!;
+            const table = role === "student" ? schema.student : schema.teacher;
+            const userType = role === "student" ? 3 : 2;
+            const token = crypto.randomUUID();
+            await db.insert(schema.userSession).values({ userType, userId: account.id, sessionToken: token, expiresAt: new Date(Date.now() + 60000) });
+            await raw.unsafe(`CREATE FUNCTION review_session_delete_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+                IF OLD.user_type = ${userType} AND OLD.user_id = ${account.id} THEN RAISE EXCEPTION 'injected session deletion failure'; END IF;
+                RETURN OLD; END $$`);
+            const invoke = () => {
+                const route = role === "student"
+                    ? action === "reset" ? management.studentResetPasswordRoutes : management.studentStatusRoutes
+                    : action === "reset" ? management.teacherResetPasswordRoutes : management.teacherStatusRoutes;
+                return action === "reset" ? route.POST!(request("POST", { id: String(account.id) }))
+                    : route.PUT!(request("PUT", { id: String(account.id) }, { status: 0 }));
+            };
+            try {
+                await raw.unsafe("CREATE TRIGGER review_session_delete_failure BEFORE DELETE ON user_session FOR EACH ROW EXECUTE FUNCTION review_session_delete_failure()");
+                await expect(Promise.resolve(invoke())).rejects.toThrow();
+                const [unchanged] = await db.select().from(table).where(eq(table.id, account.id));
+                expect(unchanged!.password).toBe(account.password);
+                expect(unchanged!.status).toBe(1);
+                expect(await db.select().from(schema.userSession).where(eq(schema.userSession.sessionToken, token))).toHaveLength(1);
+            } finally {
+                await raw.unsafe("DROP TRIGGER IF EXISTS review_session_delete_failure ON user_session");
+                await raw.unsafe("DROP FUNCTION review_session_delete_failure()");
+            }
+            expect((await invoke()).status).toBe(200);
+            expect(await db.select().from(schema.userSession).where(eq(schema.userSession.sessionToken, token))).toHaveLength(0);
+            const [changed] = await db.select().from(table).where(eq(table.id, account.id));
+            if (action === "disable") expect(changed!.status).toBe(0);
+            else expect(changed!.password).not.toBe(account.password);
+        });
+    }
+}
+
 pgTest("login skips expired sessions locked by another student's password rotation", async () => {
     const { db } = application;
     const password = "OriginalPassword!123";

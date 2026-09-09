@@ -2,11 +2,12 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { admin } from "../../db/schema";
 import { ADMIN_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
-import { buildSessionCookie, clearSessionCookie, error, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
+import { buildSessionCookie, error, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
 import { hashPassword, verifyPassword } from "../../server/password-work";
 import {
     createUserSession,
-    deleteUserSessionByToken,
+    logoutUserSession,
+    sessionChangedError,
     loadActiveUserSession,
     readSessionToken,
     rotateUserSession,
@@ -48,7 +49,7 @@ export async function requireAdminAuth(req: Request): Promise<AdminAuthResult> {
 
     const currentSession = await loadActiveUserSession(req, ADMIN_SESSION_COOKIE, [ADMIN_USER_TYPE]);
     if (!currentSession.session) {
-        const result = { admin: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
+        const result = { admin: null, error: currentSession.failure === "identity_changed" ? sessionChangedError() : error("未登录或登录已过期", "UNAUTHORIZED", 401) };
         (req as AdminRequestContext)[ADMIN_AUTH_CACHE] = result;
         return result;
     }
@@ -118,13 +119,7 @@ const adminMeRoutes: RouteDefinition = {
 
 const adminLogoutRoutes: RouteDefinition = {
     async POST(req) {
-        const token = readSessionToken(req, ADMIN_SESSION_COOKIE);
-        if (token) await deleteUserSessionByToken(token);
-        return json(
-            { ok: true },
-            200,
-            { "Set-Cookie": clearSessionCookie(ADMIN_SESSION_COOKIE, isSecureRequest(req)) },
-        );
+        return logoutUserSession(req, ADMIN_SESSION_COOKIE, ADMIN_USER_TYPE);
     },
 };
 

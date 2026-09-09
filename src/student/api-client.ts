@@ -5,7 +5,7 @@ import type { CurrentStudent, StudentTask, TaskDetail, Announcement, SubmissionD
 export type { CurrentStudent, StudentTask, TopicAttachment, TaskDetail, Announcement, SubmissionDetail } from "@/domain/experiment/student-contracts";
 import type { AnalysisMetricsData } from "@/domain/experiment/analysis-types";
 export type { AnalysisNumericFieldMetrics, AnalysisCategoricalFieldMetrics, TargetMethodMetrics, TargetAnalysisMetrics, AnalysisMetricsData } from "@/domain/experiment/analysis-types";
-import { notifyAuthExpired } from "@/lib/auth-expired";
+import { authenticatedFetch } from "@/lib/authenticated-fetch";
 import { fetchWithBusyRetry, type BusyRetryOptions } from "@/lib/busy-retry";
 
 export interface ApiResponse<T> {
@@ -21,9 +21,10 @@ async function request<T>(url: string, options?: RequestInit, retry?: BusyRetryO
             ...options,
             headers: { "Content-Type": "application/json", ...options?.headers },
         };
-        const response = await (retry ? fetchWithBusyRetry(url, init, retry) : fetch(url, init));
+        const response = await authenticatedFetch(url, init, retry
+            ? (url, init, send) => fetchWithBusyRetry(url, init, retry, send)
+            : undefined);
         const payload = await response.json() as ApiResponse<T>;
-        notifyAuthExpired(response, payload.error?.code);
         return payload;
     } catch (cause) {
         return {

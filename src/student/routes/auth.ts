@@ -2,12 +2,13 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, student } from "../../db/schema";
 import { STUDENT_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
-import { buildSessionCookie, clearSessionCookie, error, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
+import { buildSessionCookie, error, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
 import { hashPassword, verifyPassword } from "../../server/password-work";
 import type { RouteDefinition } from "../../server/route-types";
 import {
     createUserSession,
-    deleteUserSessionByToken,
+    logoutUserSession,
+    sessionChangedError,
     loadActiveUserSession,
     readSessionToken,
     rotateUserSession,
@@ -35,7 +36,7 @@ export async function getCurrentStudent(req: Request): Promise<StudentAuthResult
 
     const currentSession = await loadActiveUserSession(req, STUDENT_SESSION_COOKIE, [STUDENT_USER_TYPE]);
     if (!currentSession.session) {
-        const result = { student: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
+        const result = { student: null, error: currentSession.failure === "identity_changed" ? sessionChangedError() : error("未登录或登录已过期", "UNAUTHORIZED", 401) };
         (req as StudentRequestContext)[STUDENT_AUTH_CACHE] = result;
         return result;
     }
@@ -103,13 +104,7 @@ const loginRoutes: RouteDefinition = {
 
 const logoutRoutes: RouteDefinition = {
     async POST(req) {
-        const token = readSessionToken(req, STUDENT_SESSION_COOKIE);
-        if (token) await deleteUserSessionByToken(token);
-        return json(
-            { ok: true },
-            200,
-            { "Set-Cookie": clearSessionCookie(STUDENT_SESSION_COOKIE, isSecureRequest(req)) },
-        );
+        return logoutUserSession(req, STUDENT_SESSION_COOKIE, STUDENT_USER_TYPE);
     },
 };
 

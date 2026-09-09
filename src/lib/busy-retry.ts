@@ -15,10 +15,13 @@ function pause(ms: number, signal?: AbortSignal | null) {
 /** Retry explicit admission failures only. Never replay an ambiguous failed POST.
  * Three retries, exponential backoff, jitter and AbortSignal bound the work.
  */
-export async function fetchWithBusyRetry(url: string, init: RequestInit, retry: BusyRetryOptions): Promise<Response> {
+export async function fetchWithBusyRetry(
+    url: string, init: RequestInit, retry: BusyRetryOptions,
+    send: (url: string, init: RequestInit) => Promise<Response> = (url, init) => fetch(url, init),
+): Promise<Response> {
     for (let attempt = 0; ; attempt += 1) {
         init.signal?.throwIfAborted();
-        const response = await fetch(url, init);
+        const response = await send(url, init);
         if (attempt >= 3 || (response.status !== 429 && response.status !== 503)) return response;
         const payload = await response.clone().json().catch(() => null) as { error?: { code?: string } } | null;
         if (!retry.codes.includes(payload?.error?.code ?? "")) return response;

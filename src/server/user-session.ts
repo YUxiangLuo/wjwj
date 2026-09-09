@@ -1,7 +1,7 @@
 import { and, eq, inArray, lte, ne, sql } from "drizzle-orm";
 import { db } from "../db";
 import { userSession } from "../db/schema";
-import { getCookieValue } from "./http";
+import { clearSessionCookie, error, getCookieValue, isSecureRequest, json } from "./http";
 
 export const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 
@@ -11,7 +11,7 @@ export interface ActiveUserSessionResult {
     token: string | null;
     session: UserSessionRecord | null;
     userType: number | null;
-    failure: "missing_token" | "missing_session" | "expired" | null;
+    failure: "missing_token" | "missing_session" | "expired" | "identity_changed" | null;
 }
 
 export function readSessionToken(req: Request, cookieName: string) {
@@ -43,7 +43,26 @@ export async function loadActiveUserSession(
         return { token, session: null, userType: session.userType, failure: "expired" };
     }
 
+    // Consistency only: authorization always comes from the role-scoped session.
+    // Optional for non-browser API consumers; all SPA requests bind their loaded identity.
+    const expectedUser = req.headers.get("X-Expected-User-Id");
+    if (expectedUser !== null && expectedUser !== String(session.userId)) {
+        return { token, session: null, userType: session.userType, failure: "identity_changed" };
+    }
     return { token, session, userType: session.userType, failure: null };
+}
+
+export function sessionChangedError() {
+    return error("登录账号已变化，请重新确认身份后重试", "SESSION_CHANGED", 409);
+}
+
+export async function logoutUserSession(req: Request, cookieName: string, userType: number) {
+    const active = await loadActiveUserSession(req, cookieName, [userType]);
+    if (active.failure === "identity_changed") return sessionChangedError();
+    if (active.session && active.token) await deleteUserSessionByToken(active.token);
+    return json({ ok: true }, 200, {
+        "Set-Cookie": clearSessionCookie(cookieName, isSecureRequest(req)),
+    });
 }
 
 type SessionExecutor = Pick<typeof db, "delete" | "insert">;

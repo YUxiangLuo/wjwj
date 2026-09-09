@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { AUTH_EXPIRED_EVENT } from "@/lib/auth-expired";
+import { subscribeAuthExpired } from "@/lib/authenticated-fetch";
 import { meApi } from "../api-client";
 import type { CurrentStudent } from "@/domain/experiment/student-contracts";
 
@@ -36,7 +36,7 @@ export function StudentProvider({ children }: { children: ReactNode }) {
         if (version !== requestVersion.current) return;
         if (response.success && response.data) {
             setCurrentUser(response.data);
-        } else if (response.error?.code === "UNAUTHORIZED" || response.error?.code === "SESSION_EXPIRED") {
+        } else if (["UNAUTHORIZED", "SESSION_EXPIRED", "ACCOUNT_NOT_FOUND", "ACCOUNT_DISABLED", "SESSION_CHANGED"].includes(response.error?.code ?? "")) {
             clearAuthState();
         } else {
             // A service/network failure is not evidence that the session expired.
@@ -45,10 +45,7 @@ export function StudentProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
     }, [clearAuthState]);
 
-    useEffect(() => {
-        window.addEventListener(AUTH_EXPIRED_EVENT, clearAuthState);
-        return () => window.removeEventListener(AUTH_EXPIRED_EVENT, clearAuthState);
-    }, [clearAuthState]);
+    useEffect(() => subscribeAuthExpired("student", clearAuthState), [clearAuthState]);
 
     useEffect(() => {
         void refreshUser();

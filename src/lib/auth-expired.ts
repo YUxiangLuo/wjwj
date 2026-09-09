@@ -1,15 +1,20 @@
 export const AUTH_EXPIRED_EVENT = "wj:auth-expired";
 
-const AUTH_EXPIRY_CODES = new Set(["UNAUTHORIZED", "SESSION_EXPIRED"]);
+export function isAuthTerminalError(status: number, code?: string) {
+    return (status === 401 && ["UNAUTHORIZED", "SESSION_EXPIRED", "ACCOUNT_NOT_FOUND"].includes(code ?? ""))
+        || (status === 403 && code === "ACCOUNT_DISABLED")
+        || (status === 409 && code === "SESSION_CHANGED");
+}
 
-export function notifyAuthExpired(response: Pick<Response, "status">, errorCode?: string) {
-    if (response.status === 401 && errorCode && AUTH_EXPIRY_CODES.has(errorCode) && typeof window !== "undefined") {
-        window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+export function notifyAuthExpired(response: Pick<Response, "status">, errorCode?: string, role?: string, beforeNotify?: () => void) {
+    if (isAuthTerminalError(response.status, errorCode) && typeof window !== "undefined") {
+        beforeNotify?.();
+        window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT, { detail: { role } }));
     }
 }
 
 export async function notifyAuthExpiredFromResponse(response: Response) {
-    if (response.status !== 401) return;
+    if (![401, 403, 409].includes(response.status)) return;
 
     try {
         const payload = await response.clone().json() as { error?: { code?: unknown } };

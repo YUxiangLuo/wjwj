@@ -52,13 +52,13 @@ for (const expire of ["logout", "event"]) {
     });
 }
 
-test("older auth failure cannot overwrite a newer successful refresh", async () => {
+for (const status of [500, 401]) test(`older ${status} cannot overwrite a newer successful refresh`, async () => {
     let resolve!: (response: Response) => void;
     let attempts = 0;
     const { view, state } = setup(() => ++attempts === 1 ? new Promise(r => { resolve = r; }) : Promise.resolve(success()));
     fireEvent.click(view.getByText("刷新"));
     await waitFor(() => expect(state().currentUser).toEqual(user));
-    await act(async () => { resolve(Response.json({ success: false, error: { code: "INTERNAL_ERROR", message: "旧错误" } }, { status: 500 })); });
+    await act(async () => { resolve(Response.json({ success: false, error: { code: status === 401 ? "UNAUTHORIZED" : "INTERNAL_ERROR", message: "旧错误" } }, { status })); });
     expect(state().authError).toBeNull();
     expect(state().currentUser).toEqual(user);
 });

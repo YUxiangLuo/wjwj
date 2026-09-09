@@ -1,6 +1,6 @@
 import type { Question, QuestionnaireData } from "@/lib/questionnaire-types";
 import type { SamplingPolicyV1 } from "@/lib/sampling-policy";
-import { notifyAuthExpired } from "@/lib/auth-expired";
+import { authenticatedFetch } from "@/lib/authenticated-fetch";
 import type { SamplePlanData, SamplingResultsData } from "@/domain/experiment/types";
 
 export interface ApiResponse<T> { success: boolean; data?: T; error?: { code: string; message: string } }
@@ -84,13 +84,12 @@ export interface GradeExportRow {
 
 async function parseApiResponse<T>(response: Response): Promise<ApiResponse<T>> {
     const payload = await response.json() as ApiResponse<T>;
-    notifyAuthExpired(response, payload.error?.code);
     return payload;
 }
 
 async function request<T>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
     try {
-        const response = await fetch(url, {
+        const response = await authenticatedFetch(url, {
             credentials: "include",
             ...options,
             headers: { "Content-Type": "application/json", ...options?.headers },
@@ -105,7 +104,7 @@ async function upload<T>(url: string, file: File): Promise<ApiResponse<T>> {
     try {
         const formData = new FormData();
         formData.append("file", file);
-        return await parseApiResponse<T>(await fetch(url, { method: "POST", body: formData, credentials: "include" }));
+        return await parseApiResponse<T>(await authenticatedFetch(url, { method: "POST", body: formData, credentials: "include" }));
     } catch (cause) {
         return { success: false, error: { code: "NETWORK_ERROR", message: cause instanceof Error ? cause.message : "网络请求失败" } };
     }

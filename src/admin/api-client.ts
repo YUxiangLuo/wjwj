@@ -1,4 +1,4 @@
-import { notifyAuthExpired } from "@/lib/auth-expired";
+import { authenticatedFetch } from "@/lib/authenticated-fetch";
 
 export interface ApiResponse<T> { success: boolean; data?: T; error?: { code: string; message: string } }
 export interface Stats { currentSemester: string; teacherCount: number; classCount: number; studentCount: number; pendingItems: number }
@@ -17,13 +17,12 @@ export interface AdminUser { id: number; username: string }
 
 async function request<T>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
     try {
-        const response = await fetch(url, {
+        const response = await authenticatedFetch(url, {
             credentials: "include",
             ...options,
             headers: { "Content-Type": "application/json", ...options?.headers },
         });
         const payload = await response.json() as ApiResponse<T>;
-        notifyAuthExpired(response, payload.error?.code);
         return payload;
     } catch (cause) {
         return { success: false, error: { code: "NETWORK_ERROR", message: cause instanceof Error ? cause.message : "网络请求失败" } };

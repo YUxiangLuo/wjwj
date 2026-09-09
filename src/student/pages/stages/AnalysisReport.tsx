@@ -35,7 +35,7 @@ import { SamplePlanDecisionPanel, SamplingMethodParamsPanel } from "./analysis-p
 import { TargetMetricsPanel, formatTargetEstimate, formatTargetMargin } from "../../components/TargetMetricsPanel";
 import { chartScale } from "./chart-scale";
 import { formatStatistic } from "@/utils/statistic-format";
-import { notifyAuthExpiredFromResponse } from "@/lib/auth-expired";
+import { authenticatedFetch } from "@/lib/authenticated-fetch";
 import {
     readExperimentDraft,
     useExperimentDraft,
@@ -516,10 +516,9 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         setIsExporting(true);
         setExportError(null);
         try {
-            const res = await fetch(`/api/student/tasks/${experiment.taskId}/export?type=${type}`, {
+            const res = await authenticatedFetch(`/api/student/tasks/${experiment.taskId}/export?type=${type}`, {
                 credentials: "include",
             });
-            await notifyAuthExpiredFromResponse(res);
             if (!res.ok) throw new Error("导出失败");
             const blob = await res.blob();
             const url = window.URL.createObjectURL(blob);

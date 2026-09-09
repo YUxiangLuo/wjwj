@@ -171,13 +171,14 @@ const teacherStatusRoutes: RouteDefinition = {
         const id = parseId(req);
         const body = await parseBody<{ status?: number }>(req);
         if (!id || (body.status !== 0 && body.status !== 1)) return error("无效的教师状态", "VALIDATION_ERROR");
-        const updated = await db
-            .update(teacher)
-            .set({ status: body.status, updatedAt: new Date() })
-            .where(eq(teacher.id, id))
-            .returning({ id: teacher.id });
+        const updated = await db.transaction(async tx => {
+            const rows = await tx.update(teacher)
+                .set({ status: body.status, updatedAt: new Date() })
+                .where(eq(teacher.id, id)).returning({ id: teacher.id });
+            if (rows.length && body.status === 0) await clearUserSessionsForUser(TEACHER_USER_TYPE, id, tx);
+            return rows;
+        });
         if (!updated.length) return error("教师不存在", "NOT_FOUND", 404);
-        if (body.status === 0) await clearUserSessionsForUser(TEACHER_USER_TYPE, id);
         return json({ success: true });
     },
 };
@@ -188,11 +189,14 @@ const teacherResetPasswordRoutes: RouteDefinition = {
         if (!id) return error("无效的教师ID", "INVALID_ID");
         const [row] = await db.select().from(teacher).where(eq(teacher.id, id));
         if (!row) return error("教师不存在", "NOT_FOUND", 404);
-        await db
-            .update(teacher)
-            .set({ password: await hashPassword(row.employeeId), updatedAt: new Date() })
-            .where(eq(teacher.id, id));
-        await clearUserSessionsForUser(TEACHER_USER_TYPE, id);
+        const password = await hashPassword(row.employeeId);
+        const updated = await db.transaction(async tx => {
+            const rows = await tx.update(teacher).set({ password, updatedAt: new Date() })
+                .where(eq(teacher.id, id)).returning({ id: teacher.id });
+            if (rows.length) await clearUserSessionsForUser(TEACHER_USER_TYPE, id, tx);
+            return rows;
+        });
+        if (!updated.length) return error("教师不存在", "NOT_FOUND", 404);
         return json({ success: true });
     },
 };
@@ -408,13 +412,14 @@ const studentStatusRoutes: RouteDefinition = {
         const id = parseId(req);
         const body = await parseBody<{ status?: number }>(req);
         if (!id || (body.status !== 0 && body.status !== 1)) return error("无效的学生状态", "VALIDATION_ERROR");
-        const updated = await db
-            .update(student)
-            .set({ status: body.status, updatedAt: new Date() })
-            .where(eq(student.id, id))
-            .returning({ id: student.id });
+        const updated = await db.transaction(async tx => {
+            const rows = await tx.update(student)
+                .set({ status: body.status, updatedAt: new Date() })
+                .where(eq(student.id, id)).returning({ id: student.id });
+            if (rows.length && body.status === 0) await clearUserSessionsForUser(STUDENT_USER_TYPE, id, tx);
+            return rows;
+        });
         if (!updated.length) return error("学生不存在", "NOT_FOUND", 404);
-        if (body.status === 0) await clearUserSessionsForUser(STUDENT_USER_TYPE, id);
         return json({ success: true });
     },
 };
@@ -425,11 +430,14 @@ const studentResetPasswordRoutes: RouteDefinition = {
         if (!id) return error("无效的学生ID", "INVALID_ID");
         const [row] = await db.select().from(student).where(eq(student.id, id));
         if (!row) return error("学生不存在", "NOT_FOUND", 404);
-        await db
-            .update(student)
-            .set({ password: await hashPassword(row.studentId), updatedAt: new Date() })
-            .where(eq(student.id, id));
-        await clearUserSessionsForUser(STUDENT_USER_TYPE, id);
+        const password = await hashPassword(row.studentId);
+        const updated = await db.transaction(async tx => {
+            const rows = await tx.update(student).set({ password, updatedAt: new Date() })
+                .where(eq(student.id, id)).returning({ id: student.id });
+            if (rows.length) await clearUserSessionsForUser(STUDENT_USER_TYPE, id, tx);
+            return rows;
+        });
+        if (!updated.length) return error("学生不存在", "NOT_FOUND", 404);
         return json({ success: true });
     },
 };
