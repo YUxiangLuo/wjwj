@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDateTimeDisplay } from "@/utils/format";
-import { teacherApi, type SubmissionDetail } from "../api-client";
+import { teacherApi, teacherResourceUrl, type SubmissionDetail } from "../api-client";
 
 export function GradingDetail() {
     const { submissionId } = useParams();
@@ -133,7 +133,7 @@ export function GradingDetail() {
                                     <p className="text-label text-info">页面最多预览每种抽样方法的前 50 行；CSV 包含本次提交的完整样本。</p>
                                     <Button asChild variant="outline" className="shrink-0 border-info-border text-info hover:bg-info-muted hover:text-info hover:border-info-border">
                                         <a
-                                            href={`/api/teacher/grading/${id}/sampling-export?type=all`}
+                                            href={teacherResourceUrl(`/api/teacher/grading/${id}/sampling-export?type=all`)}
                                             download
                                             data-testid="teacher-sampling-export"
                                         >

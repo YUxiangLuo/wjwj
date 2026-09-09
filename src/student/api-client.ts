@@ -7,8 +7,8 @@ import type { AnalysisMetricsData } from "@/domain/experiment/analysis-types";
 export type { AnalysisNumericFieldMetrics, AnalysisCategoricalFieldMetrics, TargetMethodMetrics, TargetAnalysisMetrics, AnalysisMetricsData } from "@/domain/experiment/analysis-types";
 import { createApiClient } from "@/lib/api-client";
 export type { ApiResponse } from "@/lib/api-client";
-const { request, fetch: studentFetch } = createApiClient("student");
-export { studentFetch };
+const { request, download: downloadStudentFile, resourceUrl: studentResourceUrl } = createApiClient("student");
+export { downloadStudentFile, studentResourceUrl };
 
 export const meApi = { get: (signal?: AbortSignal) => request<CurrentStudent>("/api/student/me", { signal }) };
 

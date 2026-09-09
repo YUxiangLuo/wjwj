@@ -2,11 +2,8 @@ import { RouteErrorBoundary } from "@/components/PageErrorBoundary";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import { reloadBfcachePage } from "@/lib/bfcache";
 import "./admin.css";
 import { AdminApp } from "./AdminApp";
-
-window.addEventListener("pageshow", reloadBfcachePage);
 
 const elem = document.getElementById("root")!;
 const app = (

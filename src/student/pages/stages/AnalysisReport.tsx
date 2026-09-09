@@ -35,7 +35,7 @@ import { SamplePlanDecisionPanel, SamplingMethodParamsPanel } from "./analysis-p
 import { TargetMetricsPanel, formatTargetEstimate, formatTargetMargin } from "../../components/TargetMetricsPanel";
 import { chartScale } from "./chart-scale";
 import { formatStatistic } from "@/utils/statistic-format";
-import { studentFetch } from "../../api-client";
+import { downloadStudentFile } from "../../api-client";
 import {
     readExperimentDraft,
     useExperimentDraft,
@@ -516,19 +516,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         setIsExporting(true);
         setExportError(null);
         try {
-            const res = await studentFetch(`/api/student/tasks/${experiment.taskId}/export?type=${type}`, {
-                credentials: "include",
-            });
-            if (!res.ok) throw new Error("导出失败");
-            const blob = await res.blob();
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `sampling_${type}.csv`;
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
+            await downloadStudentFile(`/api/student/tasks/${experiment.taskId}/export?type=${type}`, `sampling_${type}.csv`);
         } catch (error) {
             console.error("Export failed:", error);
             setExportError("数据导出失败，请检查网络后重试。报告草稿已保留。");

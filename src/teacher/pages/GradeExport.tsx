@@ -11,7 +11,7 @@ import { formatLocalDateStamp } from "@/utils/format";
 import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
-import { teacherFetch } from "../api-client";
+import { downloadTeacherFile } from "../api-client";
 
 function MetricBars({
     title,
@@ -149,27 +149,7 @@ export function GradeExport() {
 
         setExporting(true);
         try {
-            const res = await teacherFetch(`/api/teacher/grade-export/excel?${search.toString()}`, {
-                credentials: "include",
-            });
-
-            if (!res.ok) {
-                toast.error("导出失败");
-                return;
-            }
-
-            const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-            try {
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = `grade-export-${formatLocalDateStamp()}.xlsx`;
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-            } finally {
-                URL.revokeObjectURL(url);
-            }
+            await downloadTeacherFile(`/api/teacher/grade-export/excel?${search.toString()}`, `grade-export-${formatLocalDateStamp()}.xlsx`);
         } catch {
             toast.error("导出失败");
         } finally {

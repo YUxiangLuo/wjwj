@@ -9,7 +9,6 @@ import {
     logoutUserSession,
     sessionChangedError,
     loadActiveUserSession,
-    readSessionToken,
     rotateUserSession,
 } from "../../server/user-session";
 import type { RouteDefinition, RouteHandler } from "../../server/route-types";
@@ -145,7 +144,6 @@ const adminPasswordRoutes: RouteDefinition = {
         });
         if (!policy.isPolicyValid) return error(ADMIN_PASSWORD_POLICY.errorMessage, "VALIDATION_ERROR", 400);
 
-        if (!readSessionToken(req, ADMIN_SESSION_COOKIE)) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
         const passwordHash = await hashPassword(newPassword);
         const session = await db.transaction(async (tx) => {
             const changed = await tx.update(admin)

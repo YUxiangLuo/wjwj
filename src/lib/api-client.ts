@@ -76,8 +76,8 @@ export function createApiClient(role: AuthRole) {
                     userId = id!;
                 }
                 if ([`${api}/login`, `${api}/logout`, `${api}/password`].includes(url)) {
-                    // Storage is best-effort. Even without it, the expected-user header prevents cross-account writes.
-                    try { page?.localStorage.setItem(changeKey, crypto.randomUUID()); } catch { /* Private browsing. */ }
+                    // An event marker, not a credential: works on ordinary intranet HTTP too.
+                    try { page?.localStorage.setItem(changeKey, `${Date.now()}:${Math.random()}`); } catch { /* Storage is best-effort. */ }
                     navigate(url === `${api}/logout` ? `${root}/login` : url === `${api}/password` ? page?.location.href ?? root : root);
                 }
             }
@@ -86,5 +86,35 @@ export function createApiClient(role: AuthRole) {
             return { success: false, error: { code: "NETWORK_ERROR", message: cause instanceof Error ? cause.message : "网络请求失败" } };
         }
     }
-    return { request, fetch: send };
+    /** Native links/media keep streaming; the URL binds the same non-secret account ID. */
+    function resourceUrl(path: string): string {
+        initialize();
+        if (!page || userId === null) throw new Error("尚未确认登录身份，不能访问文件");
+        const url = new URL(path, page.location.href);
+        if (url.origin !== page.location.origin || !url.pathname.startsWith(`${api}/`)) {
+            throw new Error("文件地址必须属于当前角色的同源 API");
+        }
+        url.searchParams.set("expected_user_id", String(userId));
+        // Constructing a URL starts no I/O. Keep the bound ID even while navigating away.
+        return `${url.pathname}${url.search}${url.hash}`;
+    }
+    /** Own the whole async read and publish boundary; never expose a raw Response. */
+    async function download(path: string, filename: string): Promise<void> {
+        const response = await send(path);
+        if (!response.ok) throw new Error("下载失败");
+        const blob = await response.blob();
+        ensureActive();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        try {
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+        } finally {
+            link.remove();
+            URL.revokeObjectURL(url);
+        }
+    }
+    return { request, resourceUrl, download };
 }

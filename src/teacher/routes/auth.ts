@@ -10,7 +10,6 @@ import {
     logoutUserSession,
     sessionChangedError,
     loadActiveUserSession,
-    readSessionToken,
     rotateUserSession,
 } from "../../server/user-session";
 
@@ -180,7 +179,6 @@ const teacherPasswordRoutes: RouteDefinition = {
         });
         if (!policy.isPolicyValid) return error(TEACHER_PASSWORD_POLICY.errorMessage, "VALIDATION_ERROR", 400);
 
-        if (!readSessionToken(req, TEACHER_SESSION_COOKIE)) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
         const passwordHash = await hashPassword(newPassword);
         const session = await db.transaction(async (tx) => {
             const changed = await tx.update(teacher)

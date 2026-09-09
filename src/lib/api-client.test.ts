@@ -9,6 +9,9 @@ const ok = (data: unknown) => Response.json({ success: true, data });
 const fail = (status: number, code: string) => Response.json({ success: false, error: { code, message: code } }, { status });
 function setup(role = "student") {
     dom = installDomGlobals(`http://localhost/${role}/task/1`);
+    spyOn(URL, "createObjectURL").mockReturnValue("blob:test-download");
+    spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    spyOn(window.HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
     return spyOn(window.location, "replace").mockImplementation(() => {});
 }
 
@@ -23,7 +26,7 @@ for (const role of ["student", "teacher", "admin"] as const) {
         await client.request(`/api/${role}/save`, { method: "POST", body: "{}" });
         const body = new FormData(); body.append("file", new File(["test"], "test.csv"));
         await client.request(`/api/${role}/upload`, { method: "POST", body });
-        await client.fetch(`/api/${role}/download`);
+        await client.download(`/api/${role}/download`, "data.csv");
         for (const call of calls) {
             expect(new Headers(call.headers).get("X-Expected-User-Id")).toBe("12");
             expect(call.credentials).toBe("include");
@@ -75,7 +78,7 @@ test("only same-role storage notifications replace the page; pending results and
     expect(navigate).toHaveBeenCalledWith("/student");
     release(ok([{ privateData: "old account" }]));
     expect((await pending).success).toBe(false);
-    await expect(client.fetch("/api/student/download")).rejects.toThrow("正在重新加载页面");
+    await expect(client.download("/api/student/download", "data.csv")).rejects.toThrow("正在重新加载页面");
 });
 
 test("old 401 after successful login cannot cause a second navigation", async () => {
@@ -96,7 +99,7 @@ for (const [status, code] of [[401, "UNAUTHORIZED"], [401, "ACCOUNT_NOT_FOUND"],
         globalThis.fetch = (async () => fail(status, code)) as unknown as typeof fetch;
         expect((await client.request("/api/student/me")).error?.code).toBe(code);
         expect(navigate).not.toHaveBeenCalled();
-        await client.fetch("/api/student/download");
+        await expect(client.download("/api/student/download", "data.csv")).rejects.toThrow("下载失败");
         expect(navigate).toHaveBeenCalledWith("/student/login");
     });
 }
@@ -134,7 +137,16 @@ test("back/forward cache restoration reloads identity even after a prior navigat
     Object.defineProperty(event, "persisted", { value: true });
     window.dispatchEvent(event);
     expect(reload).toHaveBeenCalledTimes(1);
-    await expect(client.fetch("/api/student/tasks")).rejects.toThrow("正在重新加载页面");
+    await expect(client.download("/api/student/tasks", "data.csv")).rejects.toThrow("正在重新加载页面");
+});
+
+test("auth notifications work without secure-context randomUUID", async () => {
+    const navigate = setup(), client = createApiClient("student");
+    spyOn(crypto, "randomUUID").mockImplementation(() => { throw new TypeError("randomUUID unavailable on HTTP"); });
+    globalThis.fetch = (async () => ok({ ok: true })) as unknown as typeof fetch;
+    await client.request("/api/student/logout", { method: "POST" });
+    expect(navigate).toHaveBeenCalledWith("/student/login");
+    expect(localStorage.getItem("wj:auth-change:student")).toBeTruthy();
 });
 
 test("queued busy retries cannot send after a same-role auth notification", async () => {

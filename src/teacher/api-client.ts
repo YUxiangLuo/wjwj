@@ -2,8 +2,8 @@ import type { Question, QuestionnaireData } from "@/lib/questionnaire-types";
 import type { SamplingPolicyV1 } from "@/lib/sampling-policy";
 import { createApiClient } from "@/lib/api-client";
 export type { ApiResponse } from "@/lib/api-client";
-const { request, fetch: teacherFetch } = createApiClient("teacher");
-export { teacherFetch };
+const { request, download: downloadTeacherFile, resourceUrl: teacherResourceUrl } = createApiClient("teacher");
+export { downloadTeacherFile, teacherResourceUrl };
 import type { SamplePlanData, SamplingResultsData } from "@/domain/experiment/types";
 
 export interface TeacherUser { id: number; employeeId: string; name: string; type: "teacher" }

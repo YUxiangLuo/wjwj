@@ -76,11 +76,11 @@ test("student me reads the fixed session without extending it", async () => {
     expect(operations.some((item) => item.kind === "update")).toBe(false);
 });
 
-test("student logout removes only the current session and clears the cookie", async () => {
+test("student logout removes only the current session without changing browser cookies", async () => {
     const { module, operations } = await load([[{ sessionToken: "token", userType: 3, userId: 11, expiresAt: new Date(Date.now() + 60_000) }]]);
     const response = await module.logoutRoutes.POST!(request("POST", undefined, "student_session=token"));
     expect(response.status).toBe(200);
-    expect(response.headers.get("Set-Cookie")).toContain("Expires=Thu, 01 Jan 1970 00:00:00 GMT");
+    expect(response.headers.has("Set-Cookie")).toBe(false);
     expect(operations.some((item) => item.kind === "delete")).toBe(true);
 });
 

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { RichTextContent } from "@/components/RichTextContent";
-import { teacherApi, type TopicDetail, type Topic } from "../api-client";
+import { teacherApi, teacherResourceUrl, type TopicDetail, type Topic } from "../api-client";
 import { questionTypeLabels } from "@/lib/questionnaire-labels";
 import type { QuestionType } from "@/lib/questionnaire-types";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -352,7 +352,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                                     </div>
                                                 </div>
                                                 <a
-                                                    href={`/api/teacher/topics/${topic.id}/attachments/${a.id}/download?mode=preview`}
+                                                    href={teacherResourceUrl(`/api/teacher/topics/${topic.id}/attachments/${a.id}/download?mode=preview`)}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="text-meta text-primary hover:text-primary flex items-center gap-1"

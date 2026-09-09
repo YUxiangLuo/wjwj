@@ -35,7 +35,7 @@ mock.module("../ExperimentLayout", () => ({
 
 mock.module("../../api-client", () => ({
     experimentApi: mockExperimentApi,
-    studentFetch: createApiClient("student").fetch,
+    downloadStudentFile: createApiClient("student").download,
 }));
 
 mock.module("sonner", () => ({

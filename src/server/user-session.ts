@@ -1,7 +1,7 @@
-import { and, eq, inArray, lte, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, lte, sql } from "drizzle-orm";
 import { db } from "../db";
 import { userSession } from "../db/schema";
-import { clearSessionCookie, error, getCookieValue, isSecureRequest, json } from "./http";
+import { error, getCookieValue, json } from "./http";
 
 export const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 
@@ -14,16 +14,12 @@ export interface ActiveUserSessionResult {
     failure: "missing_token" | "missing_session" | "expired" | "identity_changed" | null;
 }
 
-export function readSessionToken(req: Request, cookieName: string) {
-    return getCookieValue(req, cookieName);
-}
-
 export async function loadActiveUserSession(
     req: Request,
     cookieName: string,
     userTypes: number[],
 ): Promise<ActiveUserSessionResult> {
-    const token = readSessionToken(req, cookieName);
+    const token = getCookieValue(req, cookieName);
     if (!token) {
         return { token: null, session: null, userType: null, failure: "missing_token" };
     }
@@ -44,9 +40,10 @@ export async function loadActiveUserSession(
     }
 
     // Consistency only: authorization always comes from the role-scoped session.
-    // Optional for non-browser API consumers; all SPA requests bind their loaded identity.
-    const expectedUser = req.headers.get("X-Expected-User-Id");
-    if (expectedUser !== null && expectedUser !== String(session.userId)) {
+    // JSON/Blob requests use the header; native media/links use the URL parameter.
+    // Neither grants access. Missing constraints remain compatible with non-browser callers.
+    const expectedUsers = [req.headers.get("X-Expected-User-Id"), ...new URL(req.url).searchParams.getAll("expected_user_id")];
+    if (expectedUsers.some(expected => expected !== null && expected !== String(session.userId))) {
         return { token, session: null, userType: session.userType, failure: "identity_changed" };
     }
     return { token, session, userType: session.userType, failure: null };
@@ -60,9 +57,9 @@ export async function logoutUserSession(req: Request, cookieName: string, userTy
     const active = await loadActiveUserSession(req, cookieName, [userType]);
     if (active.failure === "identity_changed") return sessionChangedError();
     if (active.session && active.token) await deleteUserSessionByToken(active.token);
-    return json({ ok: true }, 200, {
-        "Set-Cookie": clearSessionCookie(cookieName, isSecureRequest(req)),
-    });
+    // Do not clear the browser cookie: this response may arrive after a newer login.
+    // The revoked token cannot authorize; expiry or the next login replaces the cookie.
+    return json({ ok: true });
 }
 
 type SessionExecutor = Pick<typeof db, "delete" | "insert">;
@@ -92,14 +89,6 @@ export async function deleteUserSessionByToken(token: string) {
 
 export async function clearUserSessionsForUser(userType: number, userId: number, executor: SessionExecutor = db) {
     await executor.delete(userSession).where(and(eq(userSession.userType, userType), eq(userSession.userId, userId)));
-}
-
-export async function clearOtherUserSessionsForUser(userType: number, userId: number, currentToken: string) {
-    await db.delete(userSession).where(and(
-        eq(userSession.userType, userType),
-        eq(userSession.userId, userId),
-        ne(userSession.sessionToken, currentToken),
-    ));
 }
 
 /** Invalidate every copied token and issue a fresh token after a password change. */

@@ -268,8 +268,3 @@ export function buildSessionCookie(cookieName: string, token: string, expiresAt:
     const secureFlag = secure ? " Secure;" : "";
     return `${cookieName}=${token}; Path=/; HttpOnly; SameSite=Lax; Expires=${expiresAt.toUTCString()};${secureFlag}`;
 }
-
-export function clearSessionCookie(cookieName: string, secure: boolean) {
-    const secureFlag = secure ? " Secure;" : "";
-    return `${cookieName}=; Path=/; HttpOnly; SameSite=Lax; Expires=Thu, 01 Jan 1970 00:00:00 GMT;${secureFlag}`;
-}

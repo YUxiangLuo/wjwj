@@ -274,6 +274,33 @@ for (const role of ["student", "teacher"] as const) {
     }
 }
 
+pgTest("a delayed logout revokes A without mutating B's session or browser cookie", async () => {
+    const group = await fixture();
+    const tokens = [crypto.randomUUID(), crypto.randomUUID()];
+    const sessions = await application.db.insert(schema.userSession).values(group.students.map((account, index) => ({
+        userType: 3, userId: account.id, sessionToken: tokens[index]!, expiresAt: new Date(Date.now() + 60_000),
+    }))).returning();
+    const release = await holdRow("user_session", sessions[0]!.id);
+    const oldRequest = request("POST", {}, undefined, `student_session=${tokens[0]}`);
+    oldRequest.headers.set("X-Expected-User-Id", String(group.students[0]!.id));
+    const pending = studentAuth.logoutRoutes.POST!(oldRequest);
+    try {
+        await waitUntil(() => blocked('delete from "user_session"'));
+        const b = await studentAuth.meRoutes.GET!(request("GET", {}, undefined, `student_session=${tokens[1]}`));
+        expect(b.status).toBe(200);
+        expect((await b.json()).data.id).toBe(group.students[1]!.id);
+    } finally {
+        await release();
+    }
+    const response = await pending;
+    expect(response.status).toBe(200);
+    expect(response.headers.has("Set-Cookie")).toBe(false);
+    expect(await application.db.select().from(schema.userSession).where(eq(schema.userSession.sessionToken, tokens[0]!))).toHaveLength(0);
+    expect(await application.db.select().from(schema.userSession).where(eq(schema.userSession.sessionToken, tokens[1]!))).toHaveLength(1);
+    const revoked = await studentAuth.meRoutes.GET!(request("GET", {}, undefined, `student_session=${tokens[0]}`));
+    expect(revoked.status).toBe(401);
+}, 15000);
+
 pgTest("login skips expired sessions locked by another student's password rotation", async () => {
     const { db } = application;
     const password = "OriginalPassword!123";

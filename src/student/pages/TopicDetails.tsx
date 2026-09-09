@@ -14,7 +14,7 @@ import type { TaskDetail, TopicAttachment } from "@/domain/experiment/student-co
 import type { TaskStatus } from "@/domain/experiment/types";
 import { getTaskPrimaryAction, shouldShowTaskAvailabilityHint } from "./topic-detail-action";
 import { parseDeadline, formatDateTimeDisplay, getRemainingDeadlineSummary } from "@/utils/format";
-import { studentFetch } from "../api-client";
+import { downloadStudentFile, studentResourceUrl } from "../api-client";
 import { resolveSamplingPolicy, SAMPLING_METHODS } from "@/lib/sampling-policy";
 
 const stageNames = ["问卷预试", "样本量规划", "抽样执行", "分析与报告"];
@@ -147,26 +147,14 @@ export function TopicDetails() {
 
     const handleDownload = async (file: TopicAttachment) => {
         try {
-            const res = await studentFetch(`/api/student/attachments/${file.id}/download`, {
-                credentials: "include",
-            });
-            if (!res.ok) throw new Error("下载失败");
-            const blob = await res.blob();
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = file.name;
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
+            await downloadStudentFile(`/api/student/attachments/${file.id}/download`, file.name);
         } catch (error) {
             console.error("Failed to download attachment:", error);
         }
     };
 
     const previewType = previewFile ? getAttachmentPreviewType(previewFile) : null;
-    const previewUrl = previewFile ? `/api/student/attachments/${previewFile.id}/download?mode=preview` : "";
+    const previewUrl = previewFile ? studentResourceUrl(`/api/student/attachments/${previewFile.id}/download?mode=preview`) : "";
 
     return (
         <div className="space-y-4 pb-12" data-testid="student-task-detail">
