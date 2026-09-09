@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { AUTH_EXPIRED_EVENT } from "@/lib/auth-expired";
 import { meApi } from "../api-client";
 import type { CurrentStudent } from "@/domain/experiment/student-contracts";
@@ -7,6 +7,7 @@ interface StudentContextValue {
     currentUser: CurrentStudent | null;
     isLoading: boolean;
     isAuthenticated: boolean;
+    authError: string | null;
     refreshUser: () => Promise<void>;
     clearAuthState: () => void;
 }
@@ -17,16 +18,32 @@ export function StudentProvider({ children }: { children: ReactNode }) {
     const [currentUser, setCurrentUser] = useState<CurrentStudent | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    const refreshUser = useCallback(async () => {
-        setIsLoading(true);
-        const response = await meApi.get();
-        setCurrentUser(response.success && response.data ? response.data : null);
+    const [authError, setAuthError] = useState<string | null>(null);
+    const requestVersion = useRef(0);
+
+    const clearAuthState = useCallback(() => {
+        requestVersion.current++;
+        setCurrentUser(null);
+        setAuthError(null);
         setIsLoading(false);
     }, []);
 
-    const clearAuthState = useCallback(() => {
-        setCurrentUser(null);
-    }, []);
+    const refreshUser = useCallback(async () => {
+        const version = ++requestVersion.current;
+        setIsLoading(true);
+        setAuthError(null);
+        const response = await meApi.get();
+        if (version !== requestVersion.current) return;
+        if (response.success && response.data) {
+            setCurrentUser(response.data);
+        } else if (response.error?.code === "UNAUTHORIZED" || response.error?.code === "SESSION_EXPIRED") {
+            clearAuthState();
+        } else {
+            // A service/network failure is not evidence that the session expired.
+            setAuthError("暂时无法确认登录状态，请检查网络或稍后重试。当前页面地址和已保存的本地草稿会保留。");
+        }
+        setIsLoading(false);
+    }, [clearAuthState]);
 
     useEffect(() => {
         window.addEventListener(AUTH_EXPIRED_EVENT, clearAuthState);
@@ -35,6 +52,7 @@ export function StudentProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         void refreshUser();
+        return () => { requestVersion.current++; };
     }, [refreshUser]);
 
     return (
@@ -42,6 +60,7 @@ export function StudentProvider({ children }: { children: ReactNode }) {
             currentUser,
             isLoading,
             isAuthenticated: currentUser !== null,
+            authError,
             refreshUser,
             clearAuthState,
         }}>

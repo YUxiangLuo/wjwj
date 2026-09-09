@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { AppToaster } from "@/components/AppToaster";
 import { LoadingStatus } from "@/components/LoadingStatus";
+import { RequestError } from "@/components/RequestError";
 import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
 import { SkipLink } from "@/components/SkipLink";
 import {
@@ -40,7 +41,7 @@ function LoadingScreen() {
 function StudentAppContent() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { currentUser, isLoading, refreshUser, clearAuthState } = useStudent();
+    const { currentUser, isLoading, authError, refreshUser, clearAuthState } = useStudent();
     const [showAccountMenu, setShowAccountMenu] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showLogout, setShowLogout] = useState(false);
@@ -57,6 +58,11 @@ function StudentAppContent() {
         },
     });
     if (isLoading) return <LoadingScreen />;
+    if (authError) return (
+        <main className="min-h-screen bg-background p-8 text-foreground">
+            <RequestError message={authError} onRetry={() => void refreshUser()} />
+        </main>
+    );
     if (isLogin) return currentUser ? <Navigate to="/" replace /> : <Login />;
     if (!currentUser) return <Navigate to="/login" replace />;
 
