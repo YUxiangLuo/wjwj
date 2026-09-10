@@ -1,0 +1,28 @@
+[
+  {
+    "id": "DG-N-02",
+    "status": "PASS",
+    "checks": [
+      {
+        "name": "比例样本量 matches 独立闭式解 cl=95 e=5% deff=1 r=0",
+        "ok": true,
+        "detail": "oracle=132 accepted=132 "
+      },
+      {
+        "name": "比例样本量 matches 独立闭式解 cl=95 e=3% deff=1 r=0",
+        "ok": true,
+        "detail": "oracle=169 accepted=169 "
+      },
+      {
+        "name": "比例样本量 matches 独立闭式解 cl=90 e=5% deff=1.5 r=0.1",
+        "ok": true,
+        "detail": "oracle=150 accepted=150 "
+      },
+      {
+        "name": "比例样本量 matches 独立闭式解 cl=99 e=2% deff=2 r=0.3",
+        "ok": true,
+        "detail": "oracle=200 accepted=200 "
+      }
+    ]
+  }
+]
