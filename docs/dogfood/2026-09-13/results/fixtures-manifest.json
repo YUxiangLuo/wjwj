@@ -1,0 +1,22 @@
+{
+  "base": "http://127.0.0.1:6500",
+  "run": "r1",
+  "createdAt": "2026-09-10T11:12:27.857Z",
+  "semesterA": 1,
+  "semesterB": 2,
+  "teacher1": 1,
+  "teacher2": 2,
+  "teacher3": 3,
+  "employees": [
+    "DGT1-r1",
+    "DGT2-r1",
+    "DGT3-r1"
+  ],
+  "class1": 1,
+  "class2": 2,
+  "class3": 3,
+  "studentId1": "DGS-r1-001",
+  "class1StudentPrefix": "DGS-r1-",
+  "class2StudentPrefix": "DGP-r1-",
+  "note": "口令不入库；bootstrap 管理员口令为一次性随机值"
+}
