@@ -58,3 +58,34 @@ test("demo student credential reports unavailable when every demo password has c
     expect(response.status).toBe(503);
     expect(await response.json()).toMatchObject({ error: { code: "DEMO_STUDENT_UNAVAILABLE" } });
 });
+
+test("demo student credential skips accounts whose name no longer matches the demo roster", async () => {
+    // 演示班里的账号若被改名（例如回收给他人使用），不应再发放该账号的凭据。
+    const routes = createDemoStudentRoutes(true, {
+        loadCandidates: async () => [
+            { studentId: "S010", name: "已改名学生", passwordHash: "S010" },
+            { studentId: "S012", name: "吴敏", passwordHash: "S012" },
+        ],
+        random: () => 0,
+        verifyPassword: verifyMatchingPassword,
+    });
+
+    const response = await routes["/api/demo/student-credential"]!.GET!(new Request("http://localhost/api/demo/student-credential"));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ data: { studentId: "S012", password: "S012" } });
+});
+
+test("demo student credential reports unavailable when the whole demo roster has been renamed", async () => {
+    const routes = createDemoStudentRoutes(true, {
+        loadCandidates: async () => [
+            { studentId: "S010", name: "已改名学生", passwordHash: "S010" },
+            { studentId: "S012", name: "也已改名", passwordHash: "S012" },
+        ],
+        random: () => 0,
+        verifyPassword: verifyMatchingPassword,
+    });
+
+    const response = await routes["/api/demo/student-credential"]!.GET!(new Request("http://localhost/api/demo/student-credential"));
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ error: { code: "DEMO_STUDENT_UNAVAILABLE" } });
+});
