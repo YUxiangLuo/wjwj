@@ -119,15 +119,24 @@ async function probeRecommendedSize(student: { client: Client; version: number }
 // ---------------------------------------------------------------- N-01 / N-02
 if (process.env.DG_ONLY !== "N02") {
   const s = new Suite("DG-N-01");
-  // task1：N=120，y = ((i*37)%97)+3
+  // 自建 N=120 任务：y = ((i*37)%97)+3
   const y = Array.from({ length: 120 }, (_, i) => ((i * 37) % 97) + 3);
+  const rows120 = y.map((v, i) => ({ 记录编号: String(i + 1), y: String(v) }));
+  const t1 = await teacherClient();
+  const built120 = await publishTask(t1, `DG均值-${Date.now()}`, rows120,
+    { version: 1, methods: { simple: "required", systematic: "required", pps: "disabled", stratified: "disabled" } },
+    manifest.class1,
+    { identifier: "记录编号", numeric: ["y"], others: [], stratified: [], studyContract: {
+      version: 1, researchQuestion: "120 个单位的 y 均值", targetPopulation: "120 个单位", unitOfAnalysis: "单位",
+      target: { kind: "mean", field: "y" } } });
+  const selfTask = built120.taskId;
   const sigma2 = popVar(y);
   const N = 120;
 
   // 先用分析接口核对“我对总体的复现”是否正确，再拿它做 oracle 输入
-  const probeStudent = await studentAtStage2(1, ids.task1, manifest.class1StudentPrefix);
+  const probeStudent = await studentAtStage2(1, selfTask, manifest.class1StudentPrefix);
   const plan0 = { estimationType: "mean", confidenceLevel: "95", marginOfError: 3, populationVariance: sigma2, designEffect: 1, nonResponseRate: 0, finalSampleSize: 20 };
-  const probe0 = await probeRecommendedSize(probeStudent, ids.task1, plan0, [
+  const probe0 = await probeRecommendedSize(probeStudent, selfTask, plan0, [
     oracleMeanSampleSize({ N, sigma2, e: 3, deff: 1, r: 0, cl: "95" }),
   ]);
   s.check("独立复现的总体方差与服务端一致（校验 oracle 输入）", probe0.accepted !== null,
@@ -148,9 +157,9 @@ if (process.env.DG_ONLY !== "N02") {
   for (const c of combos) {
     const expected = oracleMeanSampleSize({ N, sigma2, e: c.e, deff: c.deff, r: c.r, cl: c.cl });
     const plan = { estimationType: "mean", confidenceLevel: c.cl, marginOfError: c.e, populationVariance: sigma2, designEffect: c.deff, nonResponseRate: c.r, finalSampleSize: 20 };
-    const stu = await studentAtStage2(idx, ids.task1, manifest.class1StudentPrefix);
+    const stu = await studentAtStage2(idx, selfTask, manifest.class1StudentPrefix);
     idx += 1;
-    const got = await probeRecommendedSize(stu, ids.task1, plan, [expected, expected + 1, expected - 1, expected + 2]);
+    const got = await probeRecommendedSize(stu, selfTask, plan, [expected, expected + 1, expected - 1, expected + 2]);
     s.check(`均值样本量 matches 独立闭式解 cl=${c.cl} e=${c.e} deff=${c.deff} r=${c.r}`,
       got.accepted === expected, `oracle=${expected} accepted=${got.accepted} ${got.error ?? ""}`);
   }
