@@ -1,0 +1,156 @@
+[
+  {
+    "id": "DG-N-05",
+    "status": "PASS",
+    "checks": [
+      {
+        "name": "oracle 自检：π 之和等于 n",
+        "ok": true,
+        "detail": "Σπ=3"
+      },
+      {
+        "name": "oracle 自检：本例存在必入单位",
+        "ok": true,
+        "detail": "[0,1]"
+      },
+      {
+        "name": "服务端报告的总体单位数正确",
+        "ok": true,
+        "detail": "{\"populationCount\":8,\"probabilitySum\":3,\"minInclusionProbability\":0.037037037037037035,\"maxInclusionProbability\":1,\"certaintyUnitCount\":2}"
+      },
+      {
+        "name": "服务端报告的 π 之和等于 n",
+        "ok": true,
+        "detail": "{\"populationCount\":8,\"probabilitySum\":3,\"minInclusionProbability\":0.037037037037037035,\"maxInclusionProbability\":1,\"certaintyUnitCount\":2}"
+      },
+      {
+        "name": "服务端报告的必入单位数等于 oracle",
+        "ok": true,
+        "detail": "product=2 oracle=2"
+      },
+      {
+        "name": "π 上下界与 oracle 一致",
+        "ok": true,
+        "detail": "product=[0.037037037037037035,1] oracle=[0.037037037037037035,1]"
+      },
+      {
+        "name": "抽样返回的每个 π 与 1/π 权重均与 oracle 一致",
+        "ok": true,
+        "detail": "preview=[{\"samplePosition\":1,\"sizeValue\":50,\"inclusionProbability\":1,\"designWeight\":1},{\"samplePosition\":2,\"sizeValue\":30,\"inclusionProbability\":1,\"designWeight\":1},{\"samplePosition\":3,\"sizeValue\":15,\"inclusionProbability\":0.5555555555555556,\"designWeight\":1.7999999999999998}] oracleπ=[1,1,0.555556,0.185185,0.111111,0.074074,0.037037,0.037037]"
+      }
+    ]
+  },
+  {
+    "id": "DG-N-06",
+    "status": "PASS",
+    "checks": [
+      {
+        "name": "PPS 估计量等于所选样本的 Hájek 估计（独立计算）",
+        "ok": true,
+        "detail": "product=22.105263157894736"
+      },
+      {
+        "name": "PPS 设计标准误等于独立区间积分结果",
+        "ok": true,
+        "detail": "product=14.811619649371726 oracle=14.811619649371723 (Var=219.38407663765452)"
+      },
+      {
+        "name": "标准误为正且有限（不是伪零）",
+        "ok": true,
+        "detail": "14.811619649371726"
+      }
+    ]
+  },
+  {
+    "id": "DG-N-07",
+    "status": "PASS",
+    "checks": [
+      {
+        "name": "比例分配：总和等于 n",
+        "ok": true,
+        "detail": "[9,5,3]"
+      },
+      {
+        "name": "比例分配：与按层规模的独立最大余数解一致",
+        "ok": true,
+        "detail": "product=[9,5,3] oracle=[9,5,3]"
+      },
+      {
+        "name": "比例分配：每层不超过容量",
+        "ok": true,
+        "detail": "[9,5,3]"
+      },
+      {
+        "name": "奈曼分配返回结果",
+        "ok": true,
+        "detail": "[5,3,1]"
+      },
+      {
+        "name": "oracle 自检：穷举找到可行最优解",
+        "ok": true,
+        "detail": "[5,3,1]"
+      },
+      {
+        "name": "奈曼分配：总和等于 n 且每层不超过层容量",
+        "ok": true,
+        "detail": "[5,3,1]"
+      },
+      {
+        "name": "奈曼分配的目标函数等于穷举最优（整数最优性）",
+        "ok": true,
+        "detail": "product=114.1333 exhaustiveBest=114.1333 alloc=[5,3,1] bestAlloc=[5,3,1]"
+      },
+      {
+        "name": "零方差层保留 1 个观测、剩余名额按方差分配",
+        "ok": true,
+        "detail": "[1,4]"
+      },
+      {
+        "name": "标准差不可用时拒绝奈曼分配",
+        "ok": true,
+        "detail": "null"
+      },
+      {
+        "name": "目标超过总容量时拒绝",
+        "ok": true,
+        "detail": "over capacity"
+      }
+    ]
+  },
+  {
+    "id": "DG-N-08",
+    "status": "PASS",
+    "checks": [
+      {
+        "name": "溢出层被识别",
+        "ok": true,
+        "detail": "[\"A\"]"
+      },
+      {
+        "name": "溢出层被锁为总体容量",
+        "ok": true,
+        "detail": "[{\"name\":\"A\",\"count\":2,\"sampleCount\":2},{\"name\":\"B\",\"count\":10,\"sampleCount\":5},{\"name\":\"C\",\"count\":10,\"sampleCount\":3}]"
+      },
+      {
+        "name": "回灌后每层不超过层容量",
+        "ok": true,
+        "detail": "[{\"name\":\"A\",\"count\":2,\"sampleCount\":2},{\"name\":\"B\",\"count\":10,\"sampleCount\":5},{\"name\":\"C\",\"count\":10,\"sampleCount\":3}]"
+      },
+      {
+        "name": "总量能保住时总样本量仍为 10",
+        "ok": true,
+        "detail": "10"
+      },
+      {
+        "name": "各层之和等于 adjustedTotalSampleSize",
+        "ok": true,
+        "detail": "[{\"name\":\"A\",\"count\":2,\"sampleCount\":2},{\"name\":\"B\",\"count\":10,\"sampleCount\":5},{\"name\":\"C\",\"count\":10,\"sampleCount\":3}]"
+      },
+      {
+        "name": "全部层溢出时总量降为容量之和",
+        "ok": true,
+        "detail": "2"
+      }
+    ]
+  }
+]
