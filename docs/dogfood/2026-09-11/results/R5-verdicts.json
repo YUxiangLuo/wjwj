@@ -1,0 +1,105 @@
+{
+  "round": "R5 课堂并发、持久化与恢复（部分执行）",
+  "commit": "1dd70e787905bf9b827db3952cc36cc99b1bb74e",
+  "testedAt": "2026-09-10T10:25:00Z",
+  "environment": {
+    "instance": "http://127.0.0.1:6470（_r4 可弃实例，Wj dogfood 快照同一个 commit）",
+    "host": "2 vCPU / 7.6 GiB；负载发生器与主机同机（见 limitations）",
+    "passwordConcurrency": "默认 4（PASSWORD_WORK_CONCURRENCY 未设置）",
+    "passwordQueueLimit": "默认 64",
+    "fixtures": "50 个新合成学生（class 1 / class 2 各 25，学号 L50001..L50050，密码=学号）；另建 99,000 行总体"
+  },
+  "cases": [
+    {
+      "id": "R5-01",
+      "status": "PASS",
+      "title": "登录并发 1 / 10 / 25 / 50",
+      "method": "独立进程负载发生器；客户端仅在 429/503 且 code=AUTH_BUSY 时重试，最多 3 次，退避 max(1000·2^n, Retry-After)+抖动（与 fetchWithBusyRetry 一致）",
+      "measurements": [
+        { "concurrency": 1, "wallMs": 15410.6, "success": 50, "failure": 0, "busy429": 0, "retries": 0, "p50": 208.2, "p95": 744.5, "p99": 1254.8 },
+        { "concurrency": 10, "wallMs": 6208.1, "success": 50, "failure": 0, "busy429": 0, "retries": 0, "p50": 1173.9, "p95": 1556.4, "p99": 1633.7 },
+        { "concurrency": 25, "wallMs": 5985.5, "success": 50, "failure": 0, "busy429": 0, "retries": 0, "p50": 2785.6, "p95": 3137.2, "p99": 3232.5 },
+        { "concurrency": 50, "wallMs": 6195.9, "success": 50, "failure": 0, "busy429": 0, "retries": 0, "p50": 3239.9, "p95": 6012.8, "p99": 6191.2 }
+      ],
+      "checks": [
+        { "name": "50 人登录含重试 P95 ≤ 15 秒", "ok": true, "detail": "实测 P95 = 6012.8ms，约为目标上限的 40%" },
+        { "name": "全部登录成功且无需重试", "ok": true, "detail": "50/50 成功，0 次 AUTH_BUSY，0 次重试" },
+        { "name": "并发下不发生会话串号", "ok": true, "detail": "每一路都校验 /me 返回的 studentId 等于登录学号；四个并发档位 identityMismatch 均为 0" },
+        { "name": "登录风暴期间主线程与 DB 仍响应", "ok": true, "detail": "静态探针 P95 8.7/4.3/6.1/8.0ms，已鉴权 DB 探针 P95 25.9/8.7/12.2/9.7ms，0 失败" }
+      ],
+      "evidence": "evidence/r5/load-login-c1.json, -c10, -c25, -c50"
+    },
+    {
+      "id": "R5-05",
+      "status": "PASS",
+      "title": "超过接纳上限时的行为（并发 120 > 4 活跃 + 64 排队）",
+      "method": "同上负载发生器；120 路并发登录，复用 50 名学生池",
+      "measurements": { "concurrency": 120, "wallMs": 17533.8, "success": 104, "failure": 16, "busy429": 155, "retries": 139, "p50": 10331.6, "p95": 16877.2, "p99": 17490.1 },
+      "checks": [
+        { "name": "超容量表现为明确的 429 AUTH_BUSY 而不是 5xx", "ok": true, "detail": "155 次 429，全程无 5xx；失败样本均为 status=429、attempts=4" },
+        { "name": "重试预算耗尽后显式失败，不计入成功", "ok": true, "detail": "16/120 显式失败（13.3%），单独统计，未藏入成功率" },
+        { "name": "服务在超容量下不崩溃且仍服务轻量请求", "ok": true, "detail": "探针 P95 19.4ms / 19.5ms，0 失败" },
+        { "name": "超容量下仍不串号", "ok": true, "detail": "identityMismatch = 0" }
+      ],
+      "evidence": "evidence/r5/load-login-c120.json",
+      "note": "P95 16.9s 超过 15s 目标，但该目标仅针对 50 人课堂；120 路是刻意超容量输入，用于验证降级与可恢复性。"
+    },
+    {
+      "id": "R5-03",
+      "status": "PASS",
+      "title": "并发分析（冷缓存 + 同输入在途合并）",
+      "method": "99,000 行总体（文档上限 100,000）阶段 4 实验；先单次冷分析，再 60 路同输入并发",
+      "measurements": {
+        "rows": 99000, "finalSampleSize": 75509,
+        "uploadMs": 171.8, "samplingMs": { "simple": 206.7, "systematic": 143.2 },
+        "coldAnalysisMs": 1258.3,
+        "concurrent": { "requests": 60, "wallMs": 2202.2, "statuses": { "200": 60 }, "perRequestApproxMs": 36.7 }
+      },
+      "checks": [
+        { "name": "接近行数上限的总体可在 10 秒内完成分析", "ok": true, "detail": "冷缓存 1258ms（目标 P95 ≤ 10s）" },
+        { "name": "60 路同输入并发全部成功且无 5xx", "ok": true, "detail": "60/60 返回 200，无 ANALYSIS_BUSY" },
+        { "name": "同输入在途请求被合并而不是重复计算", "ok": true, "detail": "整批 2202ms；若各自独立计算约需 60×1258ms≈75s，实测约 37ms/请求" }
+      ],
+      "evidence": "evidence/r5/analysis-99000.json",
+      "note": "同一总体与同一映射共享缓存与在途合并；本轮未单独验证\"只有去重命中\"这一说法，仅以延迟量级佐证。"
+    },
+    {
+      "id": "R5-04",
+      "status": "PASS",
+      "title": "分析/采样期间主线程与 DB 响应",
+      "method": "同一 99,000 行实验中，采样与分析风暴期间并行运行静态与已鉴权探针",
+      "checks": [
+        { "name": "分析风暴期间静态页面仍可服务", "ok": true, "detail": "P50 4.5ms，最大 549.7ms，0 失败" },
+        { "name": "分析风暴期间已鉴权 DB 读取仍可用", "ok": true, "detail": "P50 97.8ms，最大 1221.6ms，0 失败（分析在独立 worker 线程执行）" },
+        { "name": "99,000 行采样本身不阻塞主线程", "ok": true, "detail": "简单随机 206.7ms、系统抽样 143.2ms，均返回 200" }
+      ],
+      "evidence": "evidence/r5/analysis-99000.json",
+      "note": "探针样本量小（3–6 次），最大值为有效信号；未做 4 类抽样同时并发与教师同时下载的组合。"
+    },
+    {
+      "id": "R5-07",
+      "status": "PASS",
+      "title": "优雅重启与持久化",
+      "method": "对 6470 实例发 SIGTERM，确认端口释放后按原环境重启，比对实验状态哈希与 API 可用性",
+      "checks": [
+        { "name": "SIGTERM 后进程退出且端口释放", "ok": true, "detail": "5 秒内 6470 不再监听" },
+        { "name": "重启后实验状态逐行一致", "ok": true, "detail": "19 条实验的 id/status/total_score/submitted_at 聚合 md5 前后一致（0c7d5710cdb92e2dbe5f7ab47a4d5bb9）" },
+        { "name": "重启后登录、任务列表、分析均可用", "ok": true, "detail": "login=200 tasks=200 analysis=200" }
+      ],
+      "evidence": "evidence/r4/server.log"
+    }
+  ],
+  "notRun": [
+    { "id": "R5-02", "reason": "50 名学生同时读任务并完成阶段写入 + 教师同时看进度：未执行" },
+    { "id": "R5-06", "reason": "60–120 分钟混合读写浸泡与 RSS 增长趋势：未执行" },
+    { "id": "R5-08", "reason": "备份/恢复演练已在第一批完成（R5-08, r5-restore.json）；本轮未重复" },
+    { "id": "R5-09", "reason": "数据库/磁盘写入失败模拟：计划明确不停止主机共享 PostgreSQL，未执行" },
+    { "id": "R5-04-组合", "reason": "四类抽样并发 + 教师同时下载：未执行" }
+  ],
+  "limitations": [
+    "负载发生器与服务同机（2 vCPU），观测到的延迟偏悲观，不能替代独立压测机结论。",
+    "本轮未使用独立客户端机器，主线程延迟以同机探针近似。",
+    "RSS 仅取单点观测（6470 实例约 275 MiB，含 99,000 行总体缓存），未做泄漏趋势判断。"
+  ],
+  "verdictSummary": { "cases": 5, "checks": 15, "failed": 0 }
+}
