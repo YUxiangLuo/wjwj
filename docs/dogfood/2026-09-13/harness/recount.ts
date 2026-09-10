@@ -1,5 +1,5 @@
 /** 由结构化结果重算 CASES.md 的进度总览表，避免手工计数出错。 */
-const files = ["O", "M", "I-P", "N-size", "N-design", "S-validation", "S-lifecycle", "F", "C"];
+const files = ["O", "M", "I-P", "N-size", "N-design", "S-validation", "S-lifecycle", "F", "C", "T-rest"];
 const cases: Array<{ id: string; checks: number; ok: boolean }> = [];
 for (const f of files) {
   const j = JSON.parse(await Bun.file(`docs/dogfood/2026-09-13/results/${f}.json`).text());
