@@ -1,0 +1,522 @@
+[
+  {
+    "id": "B-03",
+    "status": "PASS",
+    "checks": [
+      {
+        "name": "两个学生账号独立建立会话",
+        "ok": true,
+        "detail": "A=8 B=2"
+      },
+      {
+        "name": "身份约束匹配时正常返回",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "name": "身份约束与 Cookie 冲突返回 409 SESSION_CHANGED",
+        "ok": true,
+        "detail": "HTTP 409 {\"code\":\"SESSION_CHANGED\",\"message\":\"登录账号已变化，请重新确认身份后重试\"}"
+      },
+      {
+        "name": "未提供身份约束时仍由 Cookie+归属授权（仍 200）",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "name": "写请求身份冲突被拒绝，未写入",
+        "ok": true,
+        "detail": "HTTP 409 {\"code\":\"SESSION_CHANGED\",\"message\":\"登录账号已变化，请重新确认身份后重试\"}"
+      },
+      {
+        "name": "冲突请求后实验版本未变（无错账号写入）",
+        "ok": true,
+        "detail": "1 -> 1"
+      },
+      {
+        "name": "退出不发送清理 Cookie 的 Set-Cookie（避免迟到响应抹掉新会话）",
+        "ok": true,
+        "detail": "[]"
+      },
+      {
+        "name": "退出后旧 token 不能授权",
+        "ok": true,
+        "detail": "HTTP 401"
+      },
+      {
+        "name": "A 退出不影响 B 的会话",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "name": "同角色换号可成功登录",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "name": "换号后迟到的旧账号请求仍失败",
+        "ok": true,
+        "detail": "HTTP 401"
+      }
+    ]
+  },
+  {
+    "id": "B-06",
+    "status": "PASS",
+    "checks": [
+      {
+        "name": "首次提交成功",
+        "ok": true,
+        "detail": "HTTP 200 undefined"
+      },
+      {
+        "name": "提交只产生一条实验记录",
+        "ok": true,
+        "detail": "1"
+      },
+      {
+        "name": "提交写入快照",
+        "ok": true,
+        "detail": "{\"id\":\"37\",\"submitted_at\":\"2026-09-10T09:34:16.302Z\",\"has_snapshot\":true}"
+      },
+      {
+        "name": "重复提交（同版本重放）幂等成功，不报假失败",
+        "ok": true,
+        "detail": "HTTP 200 {\"success\":true,\"data\":{\"success\":true,\"experimentId\":37}}"
+      },
+      {
+        "name": "重放后仍只有一次提交记录",
+        "ok": true,
+        "detail": "1"
+      },
+      {
+        "name": "重放未改写 submitted_at（未产生第二次提交）",
+        "ok": true,
+        "detail": "2026-09-10T09:34:16.302Z -> 2026-09-10T09:34:16.302Z"
+      },
+      {
+        "name": "提交记录总数始终为 1",
+        "ok": true,
+        "detail": "1"
+      }
+    ]
+  },
+  {
+    "id": "B-09",
+    "status": "PASS",
+    "checks": [
+      {
+        "name": "并发提交恰好一个成功",
+        "ok": true,
+        "detail": "200/201=1 409/400=1 (200,409)"
+      },
+      {
+        "name": "并发提交后只有一条提交记录",
+        "ok": true,
+        "detail": "1"
+      },
+      {
+        "name": "并发阶段保存恰好一个成功，另一个 VERSION_CONFLICT",
+        "ok": true,
+        "detail": "200=1 409=1 (200,409)"
+      },
+      {
+        "name": "版本只前进一次（无半写/重复推进）",
+        "ok": true,
+        "detail": "version=2"
+      },
+      {
+        "name": "并发同方法抽样至少一个成功且无双重写入",
+        "ok": true,
+        "detail": "200=1 409=1 (200,409)"
+      },
+      {
+        "name": "最终只保留一个 simple 结果（不存在两个并存）",
+        "ok": true,
+        "detail": "{\"seed\":\"101\"}"
+      },
+      {
+        "name": "抽样审计记录与实际写入一致（成功几次记几条）",
+        "ok": true,
+        "detail": "attempts=1 success=1"
+      }
+    ]
+  },
+  {
+    "id": "B-10",
+    "status": "PASS",
+    "checks": [
+      {
+        "name": "截止前接纳阶段写入",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "name": "并发延长至少一个成功",
+        "ok": true,
+        "detail": "200=2 (200,200)"
+      },
+      {
+        "name": "并发延长后截止时间不倒退",
+        "ok": true,
+        "detail": "final=2026-09-10T11:34:16.779Z"
+      },
+      {
+        "name": "两个延长都成功时最终为较晚者（单调）",
+        "ok": true,
+        "detail": "final=2026-09-10T11:34:16.779Z expect=2026-09-10T11:34:16.779Z"
+      },
+      {
+        "name": "截止后新发起的写入被拒绝",
+        "ok": true,
+        "detail": "HTTP 400 {\"code\":\"TASK_DEADLINE\",\"message\":\"任务已截止，无法完成阶段\"}"
+      },
+      {
+        "name": "拒绝原因是截止而非其他",
+        "ok": true,
+        "detail": "{\"code\":\"TASK_DEADLINE\",\"message\":\"任务已截止，无法完成阶段\"}"
+      },
+      {
+        "name": "被拒绝的写入未修改实验（只读读取仍可用）",
+        "ok": true,
+        "detail": "1 -> 1"
+      }
+    ]
+  },
+  {
+    "id": "B-05",
+    "status": "PASS",
+    "checks": [
+      {
+        "name": "阶段保存注入 500 后确实返回失败",
+        "ok": true,
+        "detail": "HTTP 500"
+      },
+      {
+        "name": "故障规则命中 1 次",
+        "ok": true,
+        "detail": "{\"stage1-500\":1}"
+      },
+      {
+        "name": "失败后版本未前进（无半写）",
+        "ok": true,
+        "detail": "1 -> 1"
+      },
+      {
+        "name": "失败后阶段 1 未标记完成",
+        "ok": true,
+        "detail": "null"
+      },
+      {
+        "name": "失败后 current_stage 仍为 1",
+        "ok": true,
+        "detail": "1"
+      },
+      {
+        "name": "清除故障后重试成功",
+        "ok": true,
+        "detail": "HTTP 200 undefined"
+      },
+      {
+        "name": "重试后版本只前进一次",
+        "ok": true,
+        "detail": "2"
+      },
+      {
+        "name": "抽样注入 500 后确实返回失败",
+        "ok": true,
+        "detail": "HTTP 500"
+      },
+      {
+        "name": "抽样故障命中 1 次",
+        "ok": true,
+        "detail": "{\"sampling-500\":1}"
+      },
+      {
+        "name": "失败后未写入抽样结果",
+        "ok": true,
+        "detail": "null"
+      },
+      {
+        "name": "失败后未新增抽样审计记录",
+        "ok": true,
+        "detail": "0 -> 0"
+      },
+      {
+        "name": "清除故障后抽样重试成功",
+        "ok": true,
+        "detail": "HTTP 200 undefined"
+      },
+      {
+        "name": "重试后恰好新增一条审计记录",
+        "ok": true,
+        "detail": "0 -> 1"
+      },
+      {
+        "name": "重试后只保留一个 simple 结果",
+        "ok": true,
+        "detail": "5"
+      },
+      {
+        "name": "（准备）抽样阶段链路可达",
+        "ok": true,
+        "detail": "task=41"
+      },
+      {
+        "name": "抽样注入 500 后确实返回失败",
+        "ok": true,
+        "detail": "HTTP 500"
+      },
+      {
+        "name": "抽样故障命中 1 次",
+        "ok": true,
+        "detail": "{\"sampling-500\":1}"
+      },
+      {
+        "name": "失败后未写入抽样结果",
+        "ok": true,
+        "detail": "null"
+      },
+      {
+        "name": "失败后未新增抽样审计记录",
+        "ok": true,
+        "detail": "0 -> 0"
+      },
+      {
+        "name": "清除故障后抽样重试成功",
+        "ok": true,
+        "detail": "HTTP 200 undefined"
+      },
+      {
+        "name": "重试后恰好新增一条审计记录",
+        "ok": true,
+        "detail": "0 -> 1"
+      },
+      {
+        "name": "重试后只保留一个 simple 结果",
+        "ok": true,
+        "detail": "5"
+      },
+      {
+        "name": "提交注入 500 后确实返回失败",
+        "ok": true,
+        "detail": "HTTP 500"
+      },
+      {
+        "name": "提交故障命中 1 次",
+        "ok": true,
+        "detail": "{\"submit-500\":1}"
+      },
+      {
+        "name": "失败后未进入 submitted 状态",
+        "ok": true,
+        "detail": "in_progress"
+      },
+      {
+        "name": "失败后无提交时间与快照",
+        "ok": true,
+        "detail": "null / null"
+      },
+      {
+        "name": "清除故障后提交重试成功",
+        "ok": true,
+        "detail": "HTTP 200 undefined"
+      },
+      {
+        "name": "重试后状态为 submitted 且有快照",
+        "ok": true,
+        "detail": "submitted"
+      },
+      {
+        "name": "全过程只产生一次提交",
+        "ok": true,
+        "detail": "1"
+      },
+      {
+        "name": "评分注入 500 后确实返回失败",
+        "ok": true,
+        "detail": "HTTP 500"
+      },
+      {
+        "name": "评分故障命中 1 次",
+        "ok": true,
+        "detail": "{\"grading-500\":1}"
+      },
+      {
+        "name": "失败后未写入分数",
+        "ok": true,
+        "detail": "null"
+      },
+      {
+        "name": "失败后状态仍为 submitted",
+        "ok": true,
+        "detail": "submitted"
+      },
+      {
+        "name": "失败后版本未前进",
+        "ok": true,
+        "detail": "6 -> 6"
+      },
+      {
+        "name": "清除故障后评分重试成功",
+        "ok": true,
+        "detail": "HTTP 200 undefined"
+      },
+      {
+        "name": "重试后状态为 graded 且分数正确",
+        "ok": true,
+        "detail": "graded total=85.50"
+      },
+      {
+        "name": "延迟注入确实生效（>10s）",
+        "ok": true,
+        "detail": "12025ms"
+      },
+      {
+        "name": "延迟请求最终成功且只写入一次",
+        "ok": true,
+        "detail": "HTTP 200 version=2"
+      },
+      {
+        "name": "延迟规则按 times 只命中一次",
+        "ok": true,
+        "detail": "{\"stage-delay\":1}"
+      },
+      {
+        "name": "慢请求成功后重复提交不会造成重复推进",
+        "ok": true,
+        "detail": "HTTP 409"
+      }
+    ],
+    "method": "故障代理 6469 -> 6468，真实 HTTP 链路"
+  },
+  {
+    "id": "B-05UI",
+    "status": "PASS",
+    "method": "agent-browser + 故障代理断网",
+    "checks": [
+      {
+        "name": "断网时点击重试给出网络失败提示而非假成功",
+        "ok": true,
+        "detail": "“分析指标加载失败：网络连接失败，请检查网络后重试。报告草稿仍可继续编辑。”"
+      },
+      {
+        "name": "断网失败不清除本地草稿",
+        "ok": true,
+        "detail": "wj:experiment-draft:4:stage:4:version:1 仍在"
+      },
+      {
+        "name": "恢复网络并清除故障后重试成功",
+        "ok": true,
+        "detail": "错误提示消失，分析结果与总体对照提示恢复"
+      }
+    ],
+    "evidence": "screenshots/B-05-offline-analysis.png"
+  },
+  {
+    "id": "B-07",
+    "status": "PASS",
+    "method": "agent-browser + 故障代理（真实分析接口降级）",
+    "checks": [
+      {
+        "name": "503 + ANALYSIS_BUSY 自动重试预算为 3（共 4 次请求）",
+        "ok": true,
+        "detail": "stats.analysis503 = 4"
+      },
+      {
+        "name": "503 + ANALYSIS_TIMEOUT 自动重试预算同为 3（共 4 次）",
+        "ok": true,
+        "detail": "stats.timeout503 = 4"
+      },
+      {
+        "name": "500 不自动重试（1 次）",
+        "ok": true,
+        "detail": "stats.e500 = 1"
+      },
+      {
+        "name": "429 + Retry-After:60 不早轮询（1 次）",
+        "ok": true,
+        "detail": "stats.r429 = 1"
+      },
+      {
+        "name": "降级后给出手动重试并声明报告草稿仍可编辑",
+        "ok": true,
+        "detail": "“分析指标加载失败：…。报告草稿仍可继续编辑。重试加载”"
+      },
+      {
+        "name": "清除故障后手动重试可恢复分析",
+        "ok": true,
+        "detail": "错误元素消失，student-analysis-oracle-notice 出现"
+      }
+    ],
+    "evidence": "screenshots/B-07-analysis-degraded.png"
+  },
+  {
+    "id": "B-08a",
+    "status": "PASS",
+    "method": "agent-browser BFCache 前进后退",
+    "checks": [
+      {
+        "name": "后退恢复实验页且渲染正常",
+        "ok": true,
+        "detail": "headings=大学生学习投入与满意度/分析与报告/研究目标结果，无 alert"
+      },
+      {
+        "name": "前进回到任务大厅",
+        "ok": true,
+        "detail": "任务大厅文本存在"
+      },
+      {
+        "name": "恢复后不混入其他账号数据",
+        "ok": true,
+        "detail": "crossAccount=false"
+      }
+    ]
+  },
+  {
+    "id": "B-08b",
+    "status": "PASS",
+    "method": "agent-browser + 代理注入结构异常 JSON",
+    "checks": [
+      {
+        "name": "渲染失败被错误边界接管",
+        "ok": true,
+        "detail": "data-testid=page-error-boundary 出现，文案“此页面暂时无法显示”"
+      },
+      {
+        "name": "边界声明已保存数据不会被清除",
+        "ok": true,
+        "detail": "“已保存的数据不会被清除”"
+      },
+      {
+        "name": "点击“重试显示”后可恢复",
+        "ok": true,
+        "detail": "边界消失，页面正常渲染，草稿键仍在"
+      }
+    ],
+    "evidence": "screenshots/B-08-render-error.png"
+  },
+  {
+    "id": "B-08c",
+    "status": "PASS",
+    "method": "agent-browser + 代理注入加载失败",
+    "checks": [
+      {
+        "name": "加载失败显示 RequestError 与重试按钮",
+        "ok": true,
+        "detail": "alert=“注入加载失败” + “重试加载”"
+      },
+      {
+        "name": "未误判为渲染边界错误",
+        "ok": true,
+        "detail": "boundary=false（走加载错误路径）"
+      },
+      {
+        "name": "清除故障后重试加载恢复页面",
+        "ok": true,
+        "detail": "alert 清空，页面标题恢复"
+      }
+    ],
+    "evidence": "screenshots/B-08-load-error.png"
+  }
+]

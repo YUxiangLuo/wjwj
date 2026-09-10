@@ -41,4 +41,21 @@ const missing = [
 if (missing.length > 0) {
     throw new Error(`文档与默认 seed 不一致：\n${missing.map((item) => `- ${item}`).join("\n")}`);
 }
-console.log("Documentation fixture summary is in sync.");
+
+/**
+ * 语义口径门禁（dogfood 第三批 E-01）：fixture 计数无法拦住行为描述漂移。
+ * 样本量规划的实际行为是「猜测可跳过、理解检查与快速自检必须通过」，
+ * 因此 README 不得再出现「自检可跳过」这类与实现相反的说法。
+ */
+const semanticClaims = [
+    { ok: !/自检可跳过/.test(readme), violation: 'README.md 不得声称「自检可跳过」：快速自检要求每题答对才能继续' },
+    { ok: /猜测可跳过/.test(readme), violation: 'README.md 需说明「猜测可跳过」' },
+    { ok: /快速自检须答对每题/.test(readme), violation: 'README.md 需说明快速自检须答对每题后才能继续' },
+    { ok: /理解检查/.test(readme), violation: 'README.md 需说明各步「理解检查」会解锁下一步' },
+];
+const contradicted = semanticClaims.filter((claim) => !claim.ok).map((claim) => `- ${claim.violation}`);
+if (contradicted.length > 0) {
+    throw new Error(`README 行为描述与实现不一致：\n${contradicted.join("\n")}`);
+}
+
+console.log("Documentation fixture summary and planning-behaviour claims are in sync.");

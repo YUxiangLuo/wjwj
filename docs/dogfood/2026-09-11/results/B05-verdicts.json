@@ -1,0 +1,208 @@
+[
+  {
+    "id": "B-05",
+    "status": "PASS",
+    "checks": [
+      {
+        "name": "阶段保存注入 500 后确实返回失败",
+        "ok": true,
+        "detail": "HTTP 500"
+      },
+      {
+        "name": "故障规则命中 1 次",
+        "ok": true,
+        "detail": "{\"stage1-500\":1}"
+      },
+      {
+        "name": "失败后版本未前进（无半写）",
+        "ok": true,
+        "detail": "1 -> 1"
+      },
+      {
+        "name": "失败后阶段 1 未标记完成",
+        "ok": true,
+        "detail": "null"
+      },
+      {
+        "name": "失败后 current_stage 仍为 1",
+        "ok": true,
+        "detail": "1"
+      },
+      {
+        "name": "清除故障后重试成功",
+        "ok": true,
+        "detail": "HTTP 200 undefined"
+      },
+      {
+        "name": "重试后版本只前进一次",
+        "ok": true,
+        "detail": "2"
+      },
+      {
+        "name": "抽样注入 500 后确实返回失败",
+        "ok": true,
+        "detail": "HTTP 500"
+      },
+      {
+        "name": "抽样故障命中 1 次",
+        "ok": true,
+        "detail": "{\"sampling-500\":1}"
+      },
+      {
+        "name": "失败后未写入抽样结果",
+        "ok": true,
+        "detail": "null"
+      },
+      {
+        "name": "失败后未新增抽样审计记录",
+        "ok": true,
+        "detail": "0 -> 0"
+      },
+      {
+        "name": "清除故障后抽样重试成功",
+        "ok": true,
+        "detail": "HTTP 200 undefined"
+      },
+      {
+        "name": "重试后恰好新增一条审计记录",
+        "ok": true,
+        "detail": "0 -> 1"
+      },
+      {
+        "name": "重试后只保留一个 simple 结果",
+        "ok": true,
+        "detail": "5"
+      },
+      {
+        "name": "（准备）抽样阶段链路可达",
+        "ok": true,
+        "detail": "task=41"
+      },
+      {
+        "name": "抽样注入 500 后确实返回失败",
+        "ok": true,
+        "detail": "HTTP 500"
+      },
+      {
+        "name": "抽样故障命中 1 次",
+        "ok": true,
+        "detail": "{\"sampling-500\":1}"
+      },
+      {
+        "name": "失败后未写入抽样结果",
+        "ok": true,
+        "detail": "null"
+      },
+      {
+        "name": "失败后未新增抽样审计记录",
+        "ok": true,
+        "detail": "0 -> 0"
+      },
+      {
+        "name": "清除故障后抽样重试成功",
+        "ok": true,
+        "detail": "HTTP 200 undefined"
+      },
+      {
+        "name": "重试后恰好新增一条审计记录",
+        "ok": true,
+        "detail": "0 -> 1"
+      },
+      {
+        "name": "重试后只保留一个 simple 结果",
+        "ok": true,
+        "detail": "5"
+      },
+      {
+        "name": "提交注入 500 后确实返回失败",
+        "ok": true,
+        "detail": "HTTP 500"
+      },
+      {
+        "name": "提交故障命中 1 次",
+        "ok": true,
+        "detail": "{\"submit-500\":1}"
+      },
+      {
+        "name": "失败后未进入 submitted 状态",
+        "ok": true,
+        "detail": "in_progress"
+      },
+      {
+        "name": "失败后无提交时间与快照",
+        "ok": true,
+        "detail": "null / null"
+      },
+      {
+        "name": "清除故障后提交重试成功",
+        "ok": true,
+        "detail": "HTTP 200 undefined"
+      },
+      {
+        "name": "重试后状态为 submitted 且有快照",
+        "ok": true,
+        "detail": "submitted"
+      },
+      {
+        "name": "全过程只产生一次提交",
+        "ok": true,
+        "detail": "1"
+      },
+      {
+        "name": "评分注入 500 后确实返回失败",
+        "ok": true,
+        "detail": "HTTP 500"
+      },
+      {
+        "name": "评分故障命中 1 次",
+        "ok": true,
+        "detail": "{\"grading-500\":1}"
+      },
+      {
+        "name": "失败后未写入分数",
+        "ok": true,
+        "detail": "null"
+      },
+      {
+        "name": "失败后状态仍为 submitted",
+        "ok": true,
+        "detail": "submitted"
+      },
+      {
+        "name": "失败后版本未前进",
+        "ok": true,
+        "detail": "6 -> 6"
+      },
+      {
+        "name": "清除故障后评分重试成功",
+        "ok": true,
+        "detail": "HTTP 200 undefined"
+      },
+      {
+        "name": "重试后状态为 graded 且分数正确",
+        "ok": true,
+        "detail": "graded total=85.50"
+      },
+      {
+        "name": "延迟注入确实生效（>10s）",
+        "ok": true,
+        "detail": "12025ms"
+      },
+      {
+        "name": "延迟请求最终成功且只写入一次",
+        "ok": true,
+        "detail": "HTTP 200 version=2"
+      },
+      {
+        "name": "延迟规则按 times 只命中一次",
+        "ok": true,
+        "detail": "{\"stage-delay\":1}"
+      },
+      {
+        "name": "慢请求成功后重复提交不会造成重复推进",
+        "ok": true,
+        "detail": "HTTP 409"
+      }
+    ]
+  }
+]

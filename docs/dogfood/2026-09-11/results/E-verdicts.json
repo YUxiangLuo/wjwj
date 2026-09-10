@@ -1,0 +1,111 @@
+{
+  "batch": "dogfood-2026-09-11 块 E（文档与行为对账）",
+  "commit": "1dd70e787905bf9b827db3952cc36cc99b1bb74e",
+  "testedAt": "2026-09-10T10:05:00Z",
+  "cases": [
+    {
+      "id": "E-01",
+      "status": "FIXED",
+      "severity": "P3",
+      "title": "README「自检可跳过」与实际强制理解检查不一致",
+      "docClaim": "README.md 第 22 行：「…自检可跳过，最后点击『保存规划并进入抽样』一次完成阶段保存；失败时保留方案供重试。」",
+      "actual": "样本量规划的沉浸式流程严格按 1→6 步推进，第 6 步「检查与确认」在完成前序步骤前 disabled=true；到达自检页后，QuizPhase 的推进按钮为 disabled={!completed}，必须先答对每个问题；每一步还有必须完成的「理解检查」。全流程不存在任何「跳过/略过」控件。",
+      "evidence": [
+        "src/student/components/immersive-sample-planning/phases/QuizPhase.tsx:23 — <Button ... disabled={!completed} data-testid=\"immersive-sp-quiz-next\">",
+        "src/student/components/immersive-sample-planning/phases/QuizPhase.tsx:20 — 「用三个问题串起精度、总体规模与抽样设计。每题理解正确后继续，不计分，可以重试。」",
+        "src/student/components/immersive-sample-planning/index.tsx:629 — 「每题答对后继续；不计分，可以重试。」",
+        "src/student/components/immersive-sample-planning/index.tsx:622 — 每页「理解检查」未完成时提示「先阅读并试用本页示例，再完成下方的「理解检查」以继续。」",
+        "浏览器实证（experiment 2 / task 1 / S012，步骤 1 状态）：steps 2..6 全部 disabled=true；skipLike=[]（DOM 中无任何跳过控件）",
+        "screenshots/E-01-sample-planning-steps.png"
+      ],
+      "note": "同句中的「可跳过猜测」是正确的：步骤 1 确实提供「暂不估计，直接查看建议」。差异仅在于把「猜测可跳过」与「自检可跳过」混为一谈。",
+      "recommendedFix": "将 README 该句改为例如：「…猜测可跳过；自检须答对每题后才能继续，最后点击『保存规划并进入抽样』一次完成阶段保存…」，或（若产品决定允许跳过）修改实现使自检可跳过。二者只能选一，需产品决定。",
+      "closedBy": "docs/dogfood/2026-09-11/FIX-REPORT.md",
+      "resolution": "按产品决定保留强制自检实现，修正 README 口径，并为其新增 check:docs 语义门禁",
+      "fixedFiles": [
+        "README.md",
+        "scripts/check-docs.ts"
+      ],
+      "verifiedBy": [
+        "bun run check:docs 通过",
+        "反向验证：回退措辞会让 check:docs exit 1",
+        "bun test --isolate src scripts → 1052 pass / 15 skip / 0 fail"
+      ],
+      "closedAt": "2026-09-10T10:08:24.477Z"
+    },
+    {
+      "id": "E-02",
+      "status": "PASS",
+      "title": "其余文档承诺与实测/常量一致",
+      "checks": [
+        {
+          "name": "抽样结果每种方法预览 50 行",
+          "ok": true,
+          "detail": "C-01 实测 data.length=50 而 sampleCount=60（截断而非丢样本）"
+        },
+        {
+          "name": "PPS 页面最多 10 行包含概率与设计权重",
+          "ok": true,
+          "detail": "C-01 实测 probabilityPreview.length=10，designWeight=1/π"
+        },
+        {
+          "name": "不向 SPA 返回服务端重放索引",
+          "ok": true,
+          "detail": "C-01 实测响应文本不含 \"indices\" / \"inclusionProbabilities\"，完整 60 行仅经 CSV 导出"
+        },
+        {
+          "name": "草稿保留 7 天",
+          "ok": true,
+          "detail": "experiment-draft.ts:5 DRAFT_MAX_AGE_MS = 7*24*3600*1000；超期草稿在读取时删除（常量与文档一致；过期行为未做时钟实验）"
+        },
+        {
+          "name": "教师可查看每个实验最近 100 次抽样记录",
+          "ok": true,
+          "detail": "sampling-attempt-retention.ts MAX_SAMPLING_ATTEMPTS_PER_EXPERIMENT = 100，并在新抽样成功时按 created_at 裁剪；grading.ts 查询 limit(100)"
+        },
+        {
+          "name": "附件容量：图片 10 MiB / 文档 50 MiB / 视频 120 MiB",
+          "ok": true,
+          "detail": "src/teacher/topic/validation.ts:280-284 与 README 表一致"
+        },
+        {
+          "name": "总体表 ≤20 MiB、JSON 请求体 ≤256 KiB",
+          "ok": true,
+          "detail": "D-02 实测 21 MiB 总体 → 413；300 KiB JSON → 413"
+        },
+        {
+          "name": "DEMO_MODE 语义",
+          "ok": true,
+          "detail": "6468（DEMO_MODE=0）实测 /api/demo/student-credential = 404；6363（DEMO_MODE=1）同端点 = 200"
+        },
+        {
+          "name": "DEV_AUTH_MODE 语义",
+          "ok": true,
+          "detail": "6468（DEV_AUTH_MODE=0）登录页无预填（#username.value 为空）；3100（未设置→本地开发开启）预填"
+        },
+        {
+          "name": "「可跳过猜测」",
+          "ok": true,
+          "detail": "步骤 1 存在「暂不估计，直接查看建议」"
+        }
+      ]
+    },
+    {
+      "id": "E-03",
+      "status": "PASS",
+      "title": "check:docs 门禁通过（但覆盖范围有限）",
+      "checks": [
+        {
+          "name": "bun run check:docs 通过",
+          "ok": true,
+          "detail": "Documentation fixture summary is in sync"
+        },
+        {
+          "name": "门禁只校验 seed fixture 数量与任务名，不覆盖语义承诺",
+          "ok": true,
+          "detail": "check-docs.ts 仅比对 README/DATABASE 中的 fixture 计数与任务名，因此 E-01 这类语义漂移不会被门禁拦住"
+        }
+      ]
+    }
+  ]
+}
