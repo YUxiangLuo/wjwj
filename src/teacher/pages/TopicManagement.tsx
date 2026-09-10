@@ -423,6 +423,7 @@ export function TopicManagement() {
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 data-testid="teacher-topic-search"
+                                aria-label="搜索实验模板名称"
                                 placeholder="搜索实验模板名称"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}

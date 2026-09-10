@@ -352,7 +352,7 @@ export function StratifiedSamplingTab({
 
                     {/* 层表 */}
                     <div className="rounded-surface border border-border overflow-hidden">
-                        <Table>
+                        <Table aria-label="分层抽样结果">
                             <TableHeader className="bg-background">
                                 <TableRow className="border-border">
                                     <TableHead className="text-muted-foreground">层 (Layer)</TableHead>

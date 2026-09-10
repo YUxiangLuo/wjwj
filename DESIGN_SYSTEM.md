@@ -48,7 +48,7 @@ Default controls are 40px high, compact controls are 36px, and prominent control
 
 ## Local shadcn fork policy
 
-The primitives are not disposable generated files. Dialog and AlertDialog restore focus for controlled use; Button exports `IconButton`; Select mirrors Radix's hidden background state to native `inert` and enforces accessible names; Slider and Progress enforce accessible names. `DatetimePicker24` is a shared composite outside the registry directory and owns application timezone behavior.
+The primitives are not disposable generated files. Dialog and AlertDialog restore focus for controlled use, and AlertDialog accepts a `fallbackFocusRef` for openers that unmount before it closes (for example a logout item inside an account menu); Button exports `IconButton`; `TableHead` declares `scope="col"` by default so every table associates its headers with cells; Select mirrors Radix's hidden background state to native `inert` and enforces accessible names; Slider and Progress enforce accessible names. `DatetimePicker24` is a shared composite outside the registry directory and owns application timezone behavior.
 
 - Inspect all upstream changes with `bun run audit:shadcn`, or a focused subset with `bun run audit:shadcn button select`. The audit pins CLI behavior while still exposing upstream registry changes; update the pin deliberately in `scripts/audit-shadcn.ts`.
 - Never run shadcn with `--overwrite` against this repository.

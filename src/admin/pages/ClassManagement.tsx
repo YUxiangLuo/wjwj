@@ -255,6 +255,7 @@ export function ClassManagement() {
                     <div className="flex gap-3 flex-row w-auto">
                         <Input
                             placeholder="搜索班级 / 学期 / 教师"
+                            aria-label="搜索班级、学期或教师"
                             data-testid="class-search-input"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -288,7 +289,7 @@ export function ClassManagement() {
                     {loadError ? <RequestError message={loadError} onRetry={() => void loadClasses()} /> : loading ? (
                         <LoadingStatus className="py-12" iconClassName="text-muted-foreground" label="正在加载班级列表" />
                     ) : (
-                        <Table>
+                        <Table aria-label="班级列表">
                             <TableHeader>
                                 <TableRow className="border-border">
                                     <TableHead className="text-muted-foreground">班级名称</TableHead>

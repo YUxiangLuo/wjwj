@@ -158,7 +158,7 @@ function samplingMethodPanelForKey(
                         </div>
                         {r.layers && r.layers.length > 0 && (
                             <div className="overflow-hidden rounded-surface border border-border">
-                                <Table>
+                                <Table aria-label="分层抽样各层样本量">
                                     <TableHeader className="bg-card">
                                         <TableRow className="border-border">
                                             <TableHead className="text-meta">层</TableHead>

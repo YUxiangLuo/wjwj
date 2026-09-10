@@ -10,11 +10,18 @@ function AlertDialog({
   open,
   defaultOpen,
   onOpenChange,
+  fallbackFocusRef,
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
+}: React.ComponentProps<typeof AlertDialogPrimitive.Root> & {
+  /**
+   * 受控弹窗的开启元素可能在关闭前被卸载（例如开启它的是会随菜单关闭的菜单项）。
+   * 此时焦点回退到该引用，而不是落到 body。
+   */
+  fallbackFocusRef?: React.RefObject<HTMLElement | null>
+}) {
   const [internalOpen, setInternalOpen] = React.useState(defaultOpen ?? false)
   const actualOpen = open ?? internalOpen
-  useControlledOverlayFocusRestore(actualOpen)
+  useControlledOverlayFocusRestore(actualOpen, fallbackFocusRef)
   useModalBackgroundInert(actualOpen)
 
   return <AlertDialogPrimitive.Root data-slot="alert-dialog" open={open} defaultOpen={defaultOpen} onOpenChange={(nextOpen) => {

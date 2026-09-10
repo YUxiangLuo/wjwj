@@ -101,6 +101,7 @@ export function ClassManagement() {
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 data-testid="teacher-class-search"
+                                aria-label="搜索班级名称"
                                 placeholder="搜索班级名称"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -126,7 +127,7 @@ export function ClassManagement() {
                     {loadError ? <RequestError message={loadError} onRetry={() => void loadClasses()} /> : loading ? (
                         <div role="status" aria-live="polite" className="flex items-center justify-center py-12 text-muted-foreground">加载中...</div>
                     ) : (
-                        <Table>
+                        <Table aria-label="班级列表">
                             <TableHeader>
                                 <TableRow className="border-border">
                                     <TableHead className="text-muted-foreground">班级名称</TableHead>

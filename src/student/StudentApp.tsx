@@ -1,6 +1,6 @@
 import { toast } from "sonner";
 import { RouteErrorBoundary } from "@/components/PageErrorBoundary";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { ArrowLeft, BarChart3, KeyRound, LogOut, User } from "lucide-react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -48,6 +48,7 @@ function StudentAppContent() {
     useEffect(() => { setShowAccountMenu(false); }, [location.pathname]);
     const [showPassword, setShowPassword] = useState(false);
     const [showLogout, setShowLogout] = useState(false);
+    const accountMenuTriggerRef = useRef<HTMLButtonElement>(null);
     useDocumentTitle(getStudentDocumentTitle(location.pathname));
     const isLogin = location.pathname === "/login";
     const isTaskHall = location.pathname === "/";
@@ -98,6 +99,7 @@ function StudentAppContent() {
 
                     <Popover open={showAccountMenu} onOpenChange={setShowAccountMenu}>
                         <PopoverTrigger asChild><Button
+                            ref={accountMenuTriggerRef}
                             variant="ghost"
                             className="h-10 rounded-control px-1 text-navigation-foreground hover:bg-navigation-active hover:text-navigation-active-foreground focus-visible:ring-navigation-foreground focus-visible:ring-offset-navigation"
                             aria-label="打开账户菜单"
@@ -153,7 +155,7 @@ function StudentAppContent() {
                 submitLabel="保存"
             />
 
-            <AlertDialog open={showLogout} onOpenChange={setShowLogout}>
+            <AlertDialog open={showLogout} onOpenChange={setShowLogout} fallbackFocusRef={accountMenuTriggerRef}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>确认退出登录？</AlertDialogTitle>

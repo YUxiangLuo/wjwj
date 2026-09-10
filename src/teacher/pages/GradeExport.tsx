@@ -304,7 +304,7 @@ export function GradeExport() {
                     </div>
                 </PageHeader>
                 <CardContent className="pt-0">
-                    <Table>
+                    <Table aria-label="导出列表">
                         <TableHeader>
                             <TableRow className="border-border">
                                 <TableHead className="w-12 text-center text-muted-foreground">

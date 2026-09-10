@@ -253,6 +253,7 @@ export function StudentManagement() {
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 data-testid="teacher-student-search"
+                                aria-label="搜索学生"
                                 placeholder="搜索学生"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -270,7 +271,7 @@ export function StudentManagement() {
                     </div>
                 </PageHeader>
                 <CardContent className="pt-0">
-                    <Table>
+                    <Table aria-label="学生列表">
                         <TableHeader>
                             <TableRow className="border-border">
                                 <TableHead className="text-muted-foreground">学号</TableHead>

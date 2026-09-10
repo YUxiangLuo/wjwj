@@ -240,7 +240,7 @@ export function StudentManagement() {
                         {hasFilters && <Button variant="outline" onClick={clearFilters}>查看全部学生</Button>}
                     </div>
                 ) : (
-                    <Table>
+                    <Table aria-label="学生列表">
                         <TableHeader>
                             <TableRow>
                                 <TableHead>学号</TableHead>
@@ -343,7 +343,7 @@ export function StudentManagement() {
                         <DialogTitle>{selected?.name} 的实验记录</DialogTitle>
                         <DialogDescription>查看该学生各项实验的阶段、进度、状态与成绩。</DialogDescription>
                     </DialogHeader>
-                    <Table>
+                    <Table aria-label="该学生的实验记录">
                         <TableHeader>
                             <TableRow>
                                 <TableHead>任务</TableHead>

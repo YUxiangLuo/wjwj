@@ -25,7 +25,9 @@ test("controlled alerts and immersive sampling preserve keyboard focus", async (
     const dialog = await Bun.file("src/components/ui/dialog.tsx").text();
     const overlayFocus = await Bun.file("src/components/ui/controlled-overlay-focus.ts").text();
     const samplingAnimation = await Bun.file("src/student/components/ImmersiveSamplingAnimation.tsx").text();
-    expect(alertDialog).toContain("useControlledOverlayFocusRestore(actualOpen)");
+    // AlertDialog 还接收可选的 fallback：开启元素（如菜单项）在关闭前被卸载时，
+    // 焦点回退到常驻触发元素，而不是落到 body（dogfood R6 / O-5）。
+    expect(alertDialog).toContain("useControlledOverlayFocusRestore(actualOpen, fallbackFocusRef)");
     expect(dialog).toContain("useControlledOverlayFocusRestore(actualOpen)");
     expect(alertDialog).toContain("useModalBackgroundInert(actualOpen)");
     expect(dialog).toContain("useModalBackgroundInert(actualOpen)");

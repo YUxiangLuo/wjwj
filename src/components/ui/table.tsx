@@ -64,10 +64,12 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   )
 }
 
-function TableHead({ className, ...props }: React.ComponentProps<"th">) {
+function TableHead({ className, scope = "col", ...props }: React.ComponentProps<"th">) {
   return (
     <th
       data-slot="table-head"
+      // 所有内置表格都是列头；显式 scope 让屏幕阅读器可靠地关联表头与单元格。
+      scope={scope}
       className={cn(
         "h-11 px-4 text-left align-middle text-meta font-semibold text-foreground whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className

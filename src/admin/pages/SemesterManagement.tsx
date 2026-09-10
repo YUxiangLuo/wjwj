@@ -251,6 +251,7 @@ export function SemesterManagement() {
                     <div className="flex gap-3 flex-row w-auto">
                         <Input
                             placeholder="搜索学期名称..."
+                            aria-label="搜索学期名称"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="bg-card border-input text-foreground placeholder:text-muted-foreground w-64 focus:border-ring focus:ring-ring"
@@ -271,7 +272,7 @@ export function SemesterManagement() {
                     {loadError ? <RequestError message={loadError} onRetry={() => void loadSemesters()} /> : loading ? (
                         <LoadingStatus className="py-12" iconClassName="text-muted-foreground" label="正在加载学期列表" />
                     ) : (
-                        <Table>
+                        <Table aria-label="学期列表">
                             <TableHeader>
                                 <TableRow className="border-border">
                                     <TableHead className="text-muted-foreground">学期名称</TableHead>

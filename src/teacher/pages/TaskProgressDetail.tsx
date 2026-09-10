@@ -243,7 +243,7 @@ export function TaskProgressDetail() {
                     </div>
                 </div>
                 <CardContent className="pt-0">
-                    <Table>
+                    <Table aria-label="任务学生进度">
                         <TableHeader>
                             <TableRow className="border-border">
                                 <TableHead className="text-muted-foreground">学号</TableHead>
