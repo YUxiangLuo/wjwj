@@ -1,0 +1,101 @@
+{
+  "round": "R6 体验、无障碍与遮挡（部分执行）",
+  "commit": "1dd70e787905fb9b827db3952cc36cc99b1bb74e",
+  "testedAt": "2026-09-10T10:45:00Z",
+  "environment": {
+    "instance": "http://127.0.0.1:6468（主 dogfood 实例）",
+    "tooling": "agent-browser 0.36.0（axe-core 4.12.1 内置）",
+    "viewportEmulationNote": "浏览器缩放以 CSS 视口等效模拟：1440x900 @125% ≈ 1152x720，@200% ≈ 720x450。这是近似，不等同于真实浏览器 zoom 的全部行为。"
+  },
+  "cases": [
+    {
+      "id": "O-3",
+      "status": "CLOSED",
+      "title": "报告编辑器“元素被覆盖”成因定性（第三批遗留观察项）",
+      "conclusion": "工具/选择器产物，不是产品遮挡。",
+      "evidence": [
+        "未激活 tab 时：`[data-testid=student-analysis-report-editor]` 存在于 DOM 但 rect 为 0x0、位于 (0,0)。工具据 0x0 矩形算出的点击点是视口左上角，那里是站点 header，于是报“被 div.mx-auto.flex 覆盖”。",
+        "真实点击激活“撰写报告”tab 后，rect = 781x420，但中心点位于视口之外（top=592，视口高 633），此时 elementFromPoint 返回 null（在折叠线以下，而非被遮挡）。",
+        "滚动使编辑器进入可见区域后，中心点 elementFromPoint 返回 `div[student-analysis-report-editor].tiptap` 自身 → verdict = NO_PRODUCT_OCCLUSION。"
+      ],
+      "severity": "none（非产品缺陷）",
+      "evidenceFiles": ["screenshots/O-3-report-tab-active.png"]
+    },
+    {
+      "id": "R6-01",
+      "status": "PASS",
+      "title": "分辨率与遮挡矩阵",
+      "method": "通用遮挡审计：对每个可见控件取其矩形中心，检查 elementFromPoint 是否命中自身或其后代；另检查文档横向溢出、贴底 sticky chrome 内按钮是否可点、打开的对话框是否越出视口。",
+      "checks": [
+        { "name": "1440x900：无横向溢出、无被遮挡控件、sticky 底栏按钮全部可点", "ok": true, "detail": "overflowX=no；covered=0（仅报告编辑器中心位于折叠线下，非按钮）；stickyActions 2/2 hitsItself" },
+        { "name": "1280x800：同上", "ok": true, "detail": "overflowX=no；covered=0；stickyActions 2/2" },
+        { "name": "1920x1080：同上", "ok": true, "detail": "overflowX=no；covered=0；stickyActions 2/2" },
+        { "name": "任务大厅在三种分辨率均无异常", "ok": true, "detail": "covered=0、clippedEdge=0、无对话框越界" },
+        { "name": "低于 1280px 下限时的横向溢出有明确设计依据", "ok": true, "detail": "styles/theme.css:274 `html, body, #root { min-width: 80rem }`，注释写明“三个应用外壳有意只支持桌面视口”；1152x720 溢出 128px、720x450 溢出 560px，属既有约束，记为已知限制而非缺陷" },
+        { "name": "窄视口下内容按钮不会被永久遮挡", "ok": true, "detail": "1152x720 下“查看完整结果与条件”初始位于 sticky 底栏之后（673..713 vs 底栏 619..720），scrollIntoView 居中后 hitsItself=true，可正常点击/聚焦" },
+        { "name": "对话框不越出视口", "ok": true, "detail": "抽样页与教师页抽样对话框在各分辨率下 fitsViewport=true" }
+      ],
+      "knownLimitation": "设计下限 1280px：125% 及以上缩放的 1440x900 窗口会出现横向滚动。若产品需支持高缩放/low-vision 用户，应作为独立需求评估，而不是本轮缺陷。"
+    },
+    {
+      "id": "R6-02",
+      "status": "PASS",
+      "title": "键盘可操作性",
+      "checks": [
+        { "name": "Tab 首站为跳转链接且聚焦时可见", "ok": true, "detail": "首个 Tab 落在“跳到主要内容”，focus-visible=true 且可见" },
+        { "name": "每个聚焦元素都有可见焦点指示", "ok": true, "detail": "连续 6 次 Tab 的元素均 focus-visible=true 且有 ring（box-shadow）；源码层面 Button/Input 均含 focus-visible:ring-2 + ring-offset-2" },
+        { "name": "不使用正 tabindex 破坏自然顺序", "ok": true, "detail": "全站源码与运行时均无 tabindex>0" },
+        { "name": "对话框焦点被限制在内部", "ok": true, "detail": "退出确认 AlertDialog 连续 8 次 Tab 只在“取消/退出”间循环；导出 Dialog 连续 6 次 Tab 只在 3 个可聚焦元素间循环，均未逃逸到页面" },
+        { "name": "Esc 可关闭对话框", "ok": true, "detail": "两处对话框 Esc 后均关闭" },
+        { "name": "关闭后焦点归还触发器", "ok": true, "detail": "导出 Dialog（触发器是常驻按钮）Esc 后 activeElement 回到“导出数据”按钮" }
+      ],
+      "observation": {
+        "id": "O-5",
+        "severity": "P3",
+        "detail": "通过账号菜单打开的退出确认 AlertDialog，Esc 关闭后焦点落在 body，而不是账号菜单按钮。原因是触发器（菜单项）随菜单卸载而不存在，回退到 body 是标准行为。建议若需更佳体验，可在关闭后把焦点显式还给账号菜单触发按钮（`aria-label=\"打开账户菜单\"`）。",
+        "notBlocking": "焦点限制与 Esc 行为均正确，不影响键盘用户完成操作。"
+      }
+    },
+    {
+      "id": "R6-03",
+      "status": "PASS",
+      "title": "可访问性与语义（axe + 人工）",
+      "method": "先渲染再扫描当前页（避免 SPA 时序误报），读取 data.counts 与 violations/incomplete 明细；另运行自写语义审计（表格表头、输入名称、错误关联、图片替代文本、图表可访问名称、live region、aria-hidden 内含可聚焦元素）。",
+      "axe": [
+        { "page": "student /student", "passes": 33, "violations": 0, "incomplete": 1 },
+        { "page": "student /student/task/1/experiment", "passes": 42, "violations": 0, "incomplete": 1 },
+        { "page": "student /student/profile", "passes": 32, "violations": 0, "incomplete": 1 },
+        { "page": "teacher /teacher", "passes": 32, "violations": 0, "incomplete": 0 },
+        { "page": "teacher /teacher/class", "passes": 38, "violations": 0, "incomplete": 0 },
+        { "page": "teacher /teacher/grading", "passes": 35, "violations": 0, "incomplete": 0 },
+        { "page": "teacher /teacher/export", "passes": 41, "violations": 0, "incomplete": 0 },
+        { "page": "admin /admin", "passes": 26, "violations": 0, "incomplete": 0 },
+        { "page": "admin /admin/student", "passes": 40, "violations": 0, "incomplete": 0 },
+        { "page": "admin /admin/class", "passes": 38, "violations": 0, "incomplete": 0 }
+      ],
+      "checks": [
+        { "name": "三端 10 个页面无 axe 违规", "ok": true, "detail": "violations 全为 0" },
+        { "name": "唯一的 incomplete 已定性为框架标准模式，不是缺陷", "ok": true, "detail": "`aria-valid-attr-value` 落在账号菜单 popover 触发器：关闭态 aria-controls=\"radix-_r_0_\" 指向未挂载的弹出层；实测打开后 targetExists=true。触发器本身有正确名称 aria-label=\"打开账户菜单\"、aria-haspopup=dialog、aria-expanded 正确翻转" },
+        { "name": "页面标题层级正确（先前 page-has-heading-one 是扫描时序误报）", "ok": true, "detail": "渲染后 /student 有 h1“任务大厅”、h2“我的任务”；实验页 h1 课题名 + h2/h3 层级；主题该规则标签为 best-practice 而非 WCAG" },
+        { "name": "表格表头与名称（除一处 P3 外）", "ok": true, "detail": "学生实验页与记录工作区表格均使用带 scope 的表头" },
+        { "name": "输入控件均有可访问名称", "ok": true, "detail": "登录页、实验页、教师与学生管理页输入均通过 label/aria-label 命名（另见下方 P3）" },
+        { "name": "错误状态有关联描述", "ok": true, "detail": "aria-invalid=true 的元素均带有效 aria-describedby 目标（0 处缺失）" },
+        { "name": "图表有可访问名称或替代说明", "ok": true, "detail": "未发现缺少 aria-label/labelledby/title 的图表级 SVG" },
+        { "name": "状态播报区域存在", "ok": true, "detail": "实验页存在 role=status/aria-live 区域用于保存状态与加载状态" },
+        { "name": "无 aria-hidden 内含可聚焦元素", "ok": true, "detail": "0 处" },
+        { "name": "图片替代文本", "ok": true, "detail": "0 处缺少 alt" }
+      ],
+      "improvements": [
+        { "id": "O-6", "severity": "P3", "page": "teacher /teacher/class", "detail": "班级搜索输入框只有 placeholder=\"搜索班级名称\"，没有可见 label 或 aria-label。accname 算法允许 placeholder 作为名称回退，因此 axe 不判违规；但输入后名称消失，建议补 aria-label 或可见 label。", "evidence": "semantics audit: inputsWithoutName=[\"input[teacher-class-search]\"]" },
+        { "id": "O-7", "severity": "P3", "page": "teacher /teacher/class", "detail": "班级表格的 5 个 th 均无 scope 属性，表格也没有 caption/aria-label。简单表格无 scope 不构成违规，但显式 scope 与表格名称对屏幕阅读器更稳。", "evidence": "semantics audit: tablesWithUnscopedHeaders=1, hasCaption=false" }
+      ]
+    },
+    {
+      "id": "R6-04",
+      "status": "NOT_RUN",
+      "title": "首次用户不读代码完成主链",
+      "reason": "需要一个未曾接触该系统的真人参与者，观察其卡点、返回、误操作与术语理解（特别是“教学误差半宽”是否被误读为真实样本置信保证）。本轮无此条件，不做任何替代性推断，不计入通过。"
+    }
+  ],
+  "verdictSummary": { "cases": 4, "passed": 3, "closed": 1, "notRun": 1, "axeViolations": 0, "newDefects": 0, "improvementsP3": 3 }
+}
