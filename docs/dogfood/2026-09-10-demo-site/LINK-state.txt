@@ -1,0 +1,6 @@
+=== 联动测试中期状态（2026-09-10T14:49:20Z）===
+topic | 18 | 联动测试-政务等候时长 | 1 | 40 | /storage/uploads/1789051426526_99db096c_link-population.csv
+task | 27 | 18 | 2 | 2024级公共管理调查班
+experiment | 22 | P101 | 27 | in_progress | 1 | 1
+counts | 18 | 27 | 19 | 21
+storage_files 17
