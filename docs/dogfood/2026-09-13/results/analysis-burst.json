@@ -1,0 +1,2 @@
+{ "coldMs": 27, "requests": 60, "wallMs": 388, "statuses": { "200": 60 }, "perRequestApproxMs": 6.5,
+  "note": "学生 DGS-r1-010 / 任务 49 / 总体 30 行；同输入 60 路并发，全部 200" }
