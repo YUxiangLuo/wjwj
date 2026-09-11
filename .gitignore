@@ -37,7 +37,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 *.csv
 *.xlsx
 !public/templates/*.csv
-!docs/dogfood/2026-09-10/results/near-certainty.csv
 
 backups/
 storage/

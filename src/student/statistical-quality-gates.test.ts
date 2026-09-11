@@ -8,8 +8,8 @@ import {
     finitePopulationVarianceFactor,
 } from "./experiment/sample-plan";
 
-// Authority anchors used by TEACHING_REVIEW.md: Statistics Canada / UN for SRS and FPC,
-// Penn State STAT 506 for stratified allocation, and NIST for normal-approximation planning.
+// Authority anchors: Statistics Canada / UN for SRS and FPC, Penn State STAT 506
+// for stratified allocation, and NIST for normal-approximation planning.
 test("authority benchmark: SRS proportion and mean formulas match documented finite-population values", () => {
     expect(calculateFinitePopulationSampleSize({
         confidenceLevel: 95,
