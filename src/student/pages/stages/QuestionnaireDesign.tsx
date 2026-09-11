@@ -115,6 +115,7 @@ export function QuestionnaireDesign() {
     const [isCompleting, setIsCompleting] = useState(false);
     const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
     const [pendingTemplate, setPendingTemplate] = useState<QuestionnaireTemplate | null>(null);
+    const [templateHintOpen, setTemplateHintOpen] = useState(false);
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [dragOverId, setDragOverId] = useState<string | null>(null);
     const [recommendQuestions, setRecommendQuestions] = useState<Question[]>([]);
@@ -313,6 +314,7 @@ export function QuestionnaireDesign() {
         setPreviewCompleted(false);
         setPreviewContentHash("");
         setPendingTemplate(null);
+        setTemplateHintOpen(true);
         toast.success(`已套用“${template.name}”问卷骨架，可继续修改`);
     };
 
@@ -705,8 +707,8 @@ export function QuestionnaireDesign() {
             case 4:
                 return (
                     <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                        {/* Immersive preview CTA */}
-                        <Card className="rounded-surface border-border bg-card overflow-hidden">
+                        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))] gap-4">
+                        <Card className="rounded-surface border-border bg-card overflow-hidden h-fit">
                             {isPreviewValid ? (
                                 <CardContent className="py-5">
                                     <div className="flex items-center justify-between gap-4">
@@ -744,9 +746,9 @@ export function QuestionnaireDesign() {
                                             </div>
                                         </div>
                                     </div>
-                                    <CardContent className="py-8">
-                                        <div className="flex flex-col items-center gap-5">
-                                            <p className="text-label text-muted-foreground text-center max-w-md leading-relaxed">
+                                    <CardContent className="py-5">
+                                        <div className="flex flex-col items-start gap-4">
+                                            <p className="text-label text-muted-foreground leading-relaxed">
                                                 在进入下一阶段之前，您需要以受访者的视角完整填写一次自己设计的问卷。
                                                 这将帮助您发现问卷中可能存在的问题，提升问卷质量。
                                             </p>
@@ -762,7 +764,7 @@ export function QuestionnaireDesign() {
                                                 开始受访者视角试填
                                             </Button>
                                             {!basicValidationPassed && (
-                                                <p className="text-meta text-warning">请先完成下方校验清单中的必填项</p>
+                                                <p className="text-meta text-warning">请先完成校验清单中的必填项</p>
                                             )}
                                         </div>
                                     </CardContent>
@@ -770,8 +772,6 @@ export function QuestionnaireDesign() {
                             )}
                         </Card>
 
-                        {/* Validation checklist and score */}
-                        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,28rem),1fr))] gap-4">
                         <Card className="rounded-surface border-border bg-card h-fit">
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-label text-foreground">校验清单</CardTitle>
@@ -844,12 +844,13 @@ export function QuestionnaireDesign() {
                                         {warningCount > 0 ? ` 另有 ${warningCount} 项建议优化。` : ""}
                                     </div>
                                 ) : (
-                                    <div className="rounded-surface border border-destructive-border bg-destructive-muted px-3 py-2 text-label text-destructive">
+                                    <div className="rounded-surface border border-destructive-border bg-destructive-muted px-3 py-2 text-label text-destructive" data-testid="student-questionnaire-blocking-summary">
                                         仍有 {requiredMissingCount} 项必填检测未通过，需修复后才能继续。
                                     </div>
                                 )}
                             </CardContent>
                         </Card>
+                        </div>
 
                         <Card className="rounded-surface border-border bg-card h-fit">
                             <CardHeader className="pb-2">
@@ -895,11 +896,12 @@ export function QuestionnaireDesign() {
                                 </div>
                             </CardContent>
                         </Card>
-                        </div>
                     </div>
                 );
         }
     };
+
+    const templateResearchQuestion = experiment?.studyContract?.contract.researchQuestion?.trim() ?? "";
 
     return (
         <div className="min-w-0 space-y-5" data-testid="student-stage-questionnaire">
@@ -917,6 +919,15 @@ export function QuestionnaireDesign() {
                 </nav>
                 <Button type="button" variant="outline" onClick={() => setTemplatePickerOpen(true)}><BookOpen className="mr-2 h-4 w-4"/>使用问卷模板</Button>
             </PageHeader>
+
+            {templateHintOpen && (
+                <div role="status" className="flex flex-wrap items-start justify-between gap-3 rounded-surface border border-info-border bg-info-muted p-3 text-label text-info" data-testid="student-questionnaire-template-hint">
+                    <p>{templateResearchQuestion
+                        ? `已套用通用骨架。「目标行为」「类别一」等是占位措辞，请改成研究目标中的具体对象：${templateResearchQuestion}`
+                        : "已套用通用骨架。「目标行为」「类别一」等是占位措辞，请对照页面上方的研究目标修改。"}</p>
+                    <Button type="button" variant="ghost" size="sm" className="shrink-0 text-info hover:bg-info-muted hover:text-info" onClick={() => setTemplateHintOpen(false)}>知道了</Button>
+                </div>
+            )}
 
             {renderStep()}
 

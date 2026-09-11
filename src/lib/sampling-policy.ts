@@ -118,12 +118,14 @@ export function evaluateSamplingPolicy(
     const required = requiredSamplingMethods(policy);
     const completedEnabled = enabled.filter((method) => completed.has(method));
     const missingRequired = required.filter((method) => !completed.has(method));
+    const minimumCompleted = Math.max(2, required.length);
     return {
         policy,
         enabled,
         required,
         completed: completedEnabled,
         missingRequired,
-        canComplete: missingRequired.length === 0 && completedEnabled.length >= 2,
+        minimumCompleted,
+        canComplete: missingRequired.length === 0 && completedEnabled.length >= minimumCompleted,
     };
 }

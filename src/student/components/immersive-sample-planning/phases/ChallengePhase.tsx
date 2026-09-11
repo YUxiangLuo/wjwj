@@ -72,7 +72,7 @@ export function ChallengePhase({ populationSize, confidenceLevel, estimationType
                 <Button type="submit" data-testid="immersive-sp-guess-submit" className="w-full min-h-12 whitespace-normal">
                     查看我的估计对应的精度 <ArrowRight className="ml-2 h-4 w-4 shrink-0"/>
                 </Button>
-                <p className="text-meta text-muted-foreground">这只是一次尝试，不计分，也不会直接设为最终样本量。</p>
+                <p className="text-meta text-muted-foreground">这只是一次尝试，不计分，也不会直接设为最终样本量。也可以先不填，点「暂不估计，直接查看建议」。</p>
             </form>
             <div className="space-y-4 py-2">
                 <h3 className="text-subheading font-semibold text-foreground">“够准”取决于什么？</h3>

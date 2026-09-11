@@ -72,7 +72,7 @@ test("sample plan snapshot presents mean error in the measured unit", () => {
             estimationType: "mean",
             confidenceLevel: "99",
             marginOfError: 2.5,
-            populationVariance: 100,
+            populationVariance: 66.79239999999999,
             designEffect: 1,
             nonResponseRate: 0,
             recommendedSize: 80,
@@ -84,6 +84,8 @@ test("sample plan snapshot presents mean error in the measured unit", () => {
     expect(view.getByText("绝对误差限")).toBeTruthy();
     expect(view.getByText("±2.5（与均值同单位）")).toBeTruthy();
     expect(view.getByText("总体方差 σ²")).toBeTruthy();
+    expect(view.getByText("66.7924")).toBeTruthy();
+    expect(view.queryByText("66.79239999999999")).toBeNull();
 });
 
 test("sample plan snapshot supports legacy plans and handles invalid values", () => {

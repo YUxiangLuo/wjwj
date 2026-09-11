@@ -202,7 +202,7 @@ function ExperimentWorkspace() {
 
     return (
         <ExperimentContext.Provider value={{ experiment, populationSize: experiment.populationSize, isSaving, completeStage }}>
-            <div className="pb-12" data-testid="student-experiment-layout">
+            <div className="pb-4" data-testid="student-experiment-layout">
                 <div className="sticky top-16 z-40 -mt-2 border-b border-border bg-background">
                     <div className="flex items-center justify-between py-2">
                         <div className="flex min-w-0 items-center gap-2"><Button asChild variant="ghost" size="icon"><Link to="/" aria-label="返回任务大厅"><Home className="h-4 w-4" /></Link></Button><Button asChild variant="ghost" className="gap-2 flex shrink-0"><Link to={`/task/${numericTaskId}`}><ArrowLeft className="h-4 w-4" />返回任务</Link></Button><h1 tabIndex={-1} className="ml-2 line-clamp-1 border-l border-border pl-4 text-label font-semibold outline-none">{taskName}</h1></div>

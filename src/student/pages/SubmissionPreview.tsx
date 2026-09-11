@@ -24,6 +24,7 @@ import type { TaskDetail } from "@/domain/experiment/student-contracts";
 import type { Question } from "@/lib/questionnaire-types";
 import {
     formatMarginOfError,
+    formatSamplePlanNumber,
     getAdvancedPlanSourceLabel,
     getEstimationTypeLabel,
     getMarginOfErrorLabel,
@@ -231,6 +232,12 @@ export function SubmissionPreview() {
                                     <div className="text-label text-foreground space-y-1">
                                         <p>问卷标题：{questionnaire?.title || "未填写"}</p>
                                         <p>题目数量：{questionnaireQuestions.length} 题</p>
+                                        {questionnaireQuestions.slice(0, 3).map((question, index) => (
+                                            <p key={question.id ?? index} className="text-muted-foreground">第 {index + 1} 题：{question.content}</p>
+                                        ))}
+                                        {questionnaireQuestions.length > 3 && (
+                                            <p className="text-meta text-muted-foreground">其余题目见「问卷预览」。</p>
+                                        )}
                                     </div>
                                 </div>
 
@@ -248,7 +255,7 @@ export function SubmissionPreview() {
                                                 {formatMarginOfError(samplePlan.marginOfError, samplePlan.estimationType)}
                                             </p>
                                             {samplePlan.estimationType === "mean" && samplePlan.populationVariance != null && (
-                                                <p>总体方差 σ²：{samplePlan.populationVariance}</p>
+                                                <p>总体方差 σ²：{formatSamplePlanNumber(samplePlan.populationVariance)}</p>
                                             )}
                                             <p>建议样本量：{samplePlan.recommendedSize}</p>
                                             <p>最终样本量：{samplePlan.finalSampleSize}</p>

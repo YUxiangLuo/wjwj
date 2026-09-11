@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import type { DraftSaveState } from "../experiment/experiment-draft";
 
-export function DraftSaveStatus({ status, onRetry }: { status: DraftSaveState; onRetry: () => void }) {
+export function DraftSaveStatus({ status, onRetry, savedLabel }: { status: DraftSaveState; onRetry: () => void; savedLabel?: string }) {
     if (status === "idle") return null;
     if (status === "conflict") return (
         <div role="alert" className="rounded-surface border border-warning-border bg-warning-muted p-3 text-label text-warning">
@@ -14,5 +14,5 @@ export function DraftSaveStatus({ status, onRetry }: { status: DraftSaveState; o
             <Button type="button" variant="outline" size="sm" onClick={onRetry}>重试保存</Button>
         </div>
     );
-    return <p role="status" className="text-meta text-muted-foreground">{status === "saving" ? "正在保存草稿…" : "草稿已保存到当前浏览器，尚未同步到服务器"}</p>;
+    return <p role="status" className="text-meta text-muted-foreground">{status === "saving" ? "正在保存草稿…" : savedLabel ?? "草稿已保存到当前浏览器，尚未同步到服务器"}</p>;
 }

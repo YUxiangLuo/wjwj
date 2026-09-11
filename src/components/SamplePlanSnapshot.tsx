@@ -1,6 +1,7 @@
 import { AdvancedPlanDetails } from "./AdvancedPlanDetails";
 import {
     formatMarginOfError,
+    formatSamplePlanNumber,
     getAdvancedPlanSourceLabel,
     getEstimationTypeLabel,
     getMarginOfErrorLabel,
@@ -41,7 +42,7 @@ export function SamplePlanSnapshot({
                 : formatMarginOfError(plan.marginOfError, plan.estimationType),
         },
         ...(plan.estimationType === "mean" && plan.populationVariance != null
-            ? [{ label: "总体方差 σ²", value: String(plan.populationVariance) }]
+            ? [{ label: "总体方差 σ²", value: formatSamplePlanNumber(plan.populationVariance) }]
             : []),
         { label: "设计效应 deff", value: plan.designEffect.toFixed(2) },
         { label: "预期无回答率", value: `${Math.round(plan.nonResponseRate * 100)}%` },

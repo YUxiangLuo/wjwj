@@ -229,3 +229,50 @@ test("TaskHall rejected task continues the same experiment", async () => {
         expect(view.getByTestId("location-probe").textContent).toBe("/task/7/experiment");
     });
 });
+
+test("TaskHall continues in-progress experiments without stopping at topic details", async () => {
+    const tasks: StudentTask[] = [
+        buildTask({ id: 9, status: "in_progress", name: "进行中任务", progress: 75, currentStage: 4 }),
+        buildTask({
+            id: 8,
+            name: "尚未开放任务",
+            publishedAt: new Date(Date.now() + 86_400_000).toISOString(),
+        }),
+    ];
+
+    globalThis.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith("/api/student/tasks")) {
+            return new Response(JSON.stringify({ success: true, data: tasks }), {
+                headers: { "Content-Type": "application/json" },
+            });
+        }
+        if (url.endsWith("/api/student/announcements")) {
+            return new Response(JSON.stringify({ success: true, data: [] }), {
+                headers: { "Content-Type": "application/json" },
+            });
+        }
+        throw new Error(`Unhandled fetch: ${url} ${init?.method ?? "GET"}`);
+    }) as unknown as typeof fetch;
+
+    const view = render(
+        <MemoryRouter>
+            <LocationProbe />
+            <TaskHall />
+        </MemoryRouter>
+    );
+
+    await waitFor(() => {
+        expect(view.getByTestId("student-task-grid").querySelector("[data-testid^='student-task-card-']")?.getAttribute("data-testid")).toBe("student-task-card-9");
+    });
+
+    fireEvent.click(view.getByTestId("student-task-title-8"));
+    await waitFor(() => {
+        expect(view.getByTestId("location-probe").textContent).toBe("/task/8");
+    });
+
+    fireEvent.click(view.getByTestId("student-task-primary-9"));
+    await waitFor(() => {
+        expect(view.getByTestId("location-probe").textContent).toBe("/task/9/experiment");
+    });
+});

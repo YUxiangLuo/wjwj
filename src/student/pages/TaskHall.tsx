@@ -61,7 +61,38 @@ export function isTaskOngoing(task: Pick<StudentTask, "status" | "deadline" | "p
 }
 
 export function getNextActionableTask(tasks: StudentTask[]) {
-    return tasks.find(isTaskActionable) ?? null;
+    return sortStudentHallTasks(tasks).find(isTaskActionable) ?? null;
+}
+
+function hallRank(task: Pick<StudentTask, "status" | "deadline" | "publishedAt">) {
+    if (isTaskActionable(task)) {
+        if (task.status === "in_progress" || task.status === "rejected") return 0;
+        if (task.status === "not_started") return 1;
+    }
+    if (task.status === "submitted") return 2;
+    if (task.status === "graded") return 3;
+    if (isTaskNotOpenYet(task.publishedAt)) return 4;
+    if (isDeadlinePassed(task.deadline)) return 5;
+    return 6;
+}
+
+function deadlineSortKey(deadline: string | null) {
+    if (!deadline) return Number.POSITIVE_INFINITY;
+    const parsed = new Date(deadline).getTime();
+    return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
+}
+
+export function compareStudentHallTasks(a: StudentTask, b: StudentTask) {
+    const rankDiff = hallRank(a) - hallRank(b);
+    if (rankDiff !== 0) return rankDiff;
+    const aDeadline = deadlineSortKey(a.deadline);
+    const bDeadline = deadlineSortKey(b.deadline);
+    if (aDeadline !== bDeadline) return aDeadline < bDeadline ? -1 : 1;
+    return a.id - b.id;
+}
+
+export function sortStudentHallTasks(tasks: StudentTask[]) {
+    return [...tasks].sort(compareStudentHallTasks);
 }
 
 function DeadlineDisplay({ deadline, status, notOpenYet }: { deadline: string | null; status: TaskStatus; notOpenYet: boolean }) {
@@ -140,7 +171,7 @@ function TaskCard({ task }: TaskCardProps) {
         if (disabled) return;
         if (task.status === "submitted" || task.status === "graded") {
             navigate(`/task/${task.id}/result`);
-        } else if (task.status === "rejected") {
+        } else if (task.status === "in_progress" || task.status === "rejected") {
             navigate(`/task/${task.id}/experiment`);
         } else {
             navigate(`/task/${task.id}`);
@@ -156,7 +187,11 @@ function TaskCard({ task }: TaskCardProps) {
             >
                 <CardHeader className="pb-3 text-foreground">
                 <div className="flex justify-between items-start gap-2">
-                    <CardTitle className="text-subheading line-clamp-1 text-foreground">{task.name}</CardTitle>
+                    <CardTitle className="text-subheading line-clamp-1 text-foreground">
+                        <Link to={`/task/${task.id}`} className="rounded-control outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring" data-testid={`student-task-title-${task.id}`}>
+                            {task.name}
+                        </Link>
+                    </CardTitle>
                     <StatusBadge intent={status.intent} className="whitespace-nowrap">{status.label}</StatusBadge>
                 </div>
                 <CardDescription className="line-clamp-2 text-muted-foreground">
@@ -301,7 +336,7 @@ export function TaskHall() {
         setSelectedAnnouncement(announcement);
     };
 
-    const filteredTasks = tasks.filter(task => {
+    const filteredTasks = sortStudentHallTasks(tasks.filter(task => {
         if (filter === "all") return true;
         if (filter === "in_progress") {
             return isTaskOngoing(task);
@@ -309,7 +344,7 @@ export function TaskHall() {
         if (filter === "submitted") return task.status === "submitted";
         if (filter === "graded") return task.status === "graded";
         return true;
-    });
+    }));
 
     if (loading) {
         return <LoadingStatus className="py-24" iconClassName="h-10 w-10" label="正在加载实验任务" />;

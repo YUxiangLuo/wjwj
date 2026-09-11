@@ -716,7 +716,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         </Tabs>
 
         <StageActions>
-            <div className="space-y-2"><DraftSaveStatus status={clearDraft.status} onRetry={clearDraft.retry}/><Button variant="outline" onClick={onPrev} data-testid="student-analysis-prev">查看抽样记录</Button></div>
+            <div className="space-y-2"><DraftSaveStatus status={clearDraft.status === "saved" && workspace !== "report" ? "idle" : clearDraft.status} onRetry={clearDraft.retry} savedLabel="报告草稿保存在当前浏览器，提交预览时才写入服务器"/><Button variant="outline" onClick={onPrev} data-testid="student-analysis-prev">查看抽样记录</Button></div>
             {workspace === "report" ? <Button onClick={handleSubmit} disabled={!isValidLength || isSubmitting || clearDraft.status === "conflict"} data-testid="student-analysis-preview">
                 {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>正在保存报告…</> : <><Send className="mr-2 h-4 w-4"/>保存并预览报告</>}
             </Button> : <Button onClick={() => setWorkspace("report")} data-testid="student-analysis-write">继续：撰写报告<ArrowRight className="ml-2 h-4 w-4"/></Button>}

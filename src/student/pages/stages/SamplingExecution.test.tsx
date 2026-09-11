@@ -206,6 +206,7 @@ test("SamplingExecution always uses the desktop tabs and navigation", async () =
     const next = view.getByTestId("student-sampling-next");
     expect((next as HTMLButtonElement).disabled).toBe(true);
     expect(view.getByTestId("student-stage-actions").textContent).toContain("还需完成必做方法：简单随机抽样");
+    expect(view.getByTestId("student-sampling-policy-summary").textContent).toContain("已保存 0 种，至少需 2 种");
 });
 
 test("SamplingExecution preserves a persisted completed PPS result while eligible fields load", async () => {

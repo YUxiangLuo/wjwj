@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import type { ExperimentData, MethodKey } from "@/domain/experiment/types";
 import {
     formatMarginOfError,
+    formatSamplePlanNumber,
     getAdvancedPlanSourceLabel,
     getEstimationTypeLabel,
     getMarginOfErrorLabel,
@@ -169,7 +170,7 @@ function OverviewSection({
                 : `${formatMarginOfError(samplePlan.marginOfError, samplePlan.estimationType)}（允许误差）`,
         },
         ...(samplePlan.estimationType === "mean" && samplePlan.populationVariance != null
-            ? [{ label: "总体方差 σ²", value: String(samplePlan.populationVariance) }]
+            ? [{ label: "总体方差 σ²", value: formatSamplePlanNumber(samplePlan.populationVariance) }]
             : []),
         { label: "设计效应 deff", value: samplePlan.designEffect?.toFixed(2) ?? "—" },
         {

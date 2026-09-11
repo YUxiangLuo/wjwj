@@ -345,7 +345,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const nextMethod = samplingProgress.missingRequired[0] ?? (!allCompleted ? enabledMethods.find(method => !completedMethods.includes(method)) : undefined);
     const completionHint = allCompleted ? "已满足本阶段要求。可以进入分析，也可以继续尝试选做方法。"
         : samplingProgress.missingRequired.length > 0 ? "还需完成必做方法：" + samplingProgress.missingRequired.map(method => METHOD_LABELS[method]).join("、")
-            : "至少实际完成两种方法，才能比较抽样结果。";
+            : `还需再完成 ${samplingProgress.minimumCompleted - completedMethodCount} 种启用方法，才能比较抽样结果。`;
 
     const handleConfirmNext = async () => {
         if (!allCompleted || isCompleting || executing) return;
@@ -420,7 +420,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-surface border border-border bg-card p-3" data-testid="student-sampling-policy-summary">
                 <div className="min-w-0 space-y-1 text-label">
-                    <p className="font-medium">必做：{samplingProgress.required.map(method => METHOD_LABELS[method]).join("、")}。至少完成两种方法。</p>
+                    <p className="font-medium">必做：{samplingProgress.required.map(method => METHOD_LABELS[method]).join("、")}。须完成全部必做，且至少完成 {samplingProgress.minimumCompleted} 种启用方法。已保存 {completedMethodCount} 种，至少需 {samplingProgress.minimumCompleted} 种。</p>
                     <p className="text-meta text-muted-foreground">{enabledMethods.some(method => samplingPolicy.methods[method] === "optional") ? "其他标为“选做”的方法可按需尝试。" : "本任务没有选做方法。"}每次抽样后结果会立即保存。</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
@@ -432,37 +432,29 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
             <Tabs value={activeMethod} onValueChange={value => setActiveMethod(value as PolicySamplingMethod)} className="min-w-0 space-y-5">
                 <TabsList className="scroll-mt-48 bg-card border border-border p-1 rounded-surface w-full min-w-0 flex flex-wrap h-auto gap-1" data-testid="student-sampling-tabs">
                     <TabsTrigger value="simple" data-testid="student-sampling-tab-simple" className="scroll-mt-48 min-w-0 flex-1 basis-48 rounded-surface py-2.5 px-3 text-label data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
-                        <div className="min-w-0 flex items-center justify-center gap-2">
-                            <span>简单随机抽样</span>
-                            <RequirementLabel value={samplingPolicy.methods.simple} />
-                            {simpleResult?.completed && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
-                        </div>
+                        <span>简单随机抽样</span>
+                        <RequirementLabel value={samplingPolicy.methods.simple} />
+                        {simpleResult?.completed && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
                     </TabsTrigger>
                     {samplingPolicy.methods.systematic !== "disabled" && (
                     <TabsTrigger value="systematic" data-testid="student-sampling-tab-systematic" className="scroll-mt-48 min-w-0 flex-1 basis-48 rounded-surface py-2.5 px-3 text-label data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
-                        <div className="min-w-0 flex items-center justify-center gap-2">
-                            <span>系统抽样</span>
-                            <RequirementLabel value={samplingPolicy.methods.systematic} />
-                            {systematicCompletedForCurrentPlan && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
-                        </div>
+                        <span>系统抽样</span>
+                        <RequirementLabel value={samplingPolicy.methods.systematic} />
+                        {systematicCompletedForCurrentPlan && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
                     </TabsTrigger>
                     )}
                     {samplingPolicy.methods.pps !== "disabled" && (
                     <TabsTrigger value="pps" data-testid="student-sampling-tab-pps" className="scroll-mt-48 min-w-0 flex-1 basis-48 rounded-surface py-2.5 px-3 text-label data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
-                        <div className="min-w-0 flex items-center justify-center gap-2">
-                            <span>PPS抽样</span>
-                            <RequirementLabel value={samplingPolicy.methods.pps} />
-                            {ppsResult?.completed && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
-                        </div>
+                        <span>PPS抽样</span>
+                        <RequirementLabel value={samplingPolicy.methods.pps} />
+                        {ppsResult?.completed && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
                     </TabsTrigger>
                     )}
                     {samplingPolicy.methods.stratified !== "disabled" && (
                     <TabsTrigger value="stratified" data-testid="student-sampling-tab-stratified" className="scroll-mt-48 min-w-0 flex-1 basis-48 rounded-surface py-2.5 px-3 text-label data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
-                        <div className="min-w-0 flex items-center justify-center gap-2">
-                            <span>分层抽样</span>
-                            <RequirementLabel value={samplingPolicy.methods.stratified} />
-                            {stratifiedResult?.completed && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
-                        </div>
+                        <span>分层抽样</span>
+                        <RequirementLabel value={samplingPolicy.methods.stratified} />
+                        {stratifiedResult?.completed && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
                     </TabsTrigger>
                     )}
                 </TabsList>
@@ -488,7 +480,9 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                     </Button>}
                                 </CardHeader>
                                 <CardContent className="space-y-4 px-5 pb-5">
-                                    <details className="rounded-surface border border-border bg-background p-4"><summary className="cursor-pointer text-label font-medium">复现同一组结果（可选）</summary><div className="mt-4 max-w-xl">
+                                    <details className="max-w-xl">
+                                        <summary className="cursor-pointer text-meta font-medium text-muted-foreground">复现同一组结果（可选）</summary>
+                                        <div className="mt-3">
                                         <Label htmlFor="simpleSeed" className="text-foreground text-meta">随机种子（可选）</Label>
                                         <Input
                                             id="simpleSeed"
@@ -500,7 +494,8 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                             className="mt-2 bg-card border-input text-foreground focus:border-ring"
                                         />
                                         <p className="text-meta text-muted-foreground mt-2">设置后可复现同一组软件抽样结果，但这只是复现实验，不足以证明实际调查的随机化质量。</p>
-                                    </div></details>
+                                        </div>
+                                    </details>
                                     {simpleResult?.completed && (
                                         <SamplingSuccessState
                                             summary={`共成功抽取 ${simpleResult.sampleCount} 个样本${executionTimes.simple !== null ? `，耗时 ${executionTimes.simple} ms` : ""}${simpleResult.seed != null ? `，随机种子 ${simpleResult.seed}` : ""}`}

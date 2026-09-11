@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { getNextActionableTask, isTaskActionable, isTaskOngoing, type StudentTask } from "./TaskHall";
+import { getNextActionableTask, isTaskActionable, isTaskOngoing, sortStudentHallTasks, type StudentTask } from "./TaskHall";
 
 function buildTask(overrides: Partial<StudentTask> = {}): StudentTask {
     return {
@@ -71,5 +71,30 @@ describe("TaskHall task selection", () => {
         expect(isTaskOngoing(buildTask({ status: "in_progress", deadline: new Date(Date.now() - 60_000).toISOString() }))).toBe(false);
         expect(isTaskOngoing(buildTask({ status: "rejected", deadline: new Date(Date.now() - 60_000).toISOString() }))).toBe(false);
         expect(isTaskOngoing(buildTask({ status: "rejected", publishedAt: new Date(Date.now() + 60_000).toISOString() }))).toBe(false);
+    });
+
+    test("hall sort puts actionable work before unopened tasks even if those were created later", () => {
+        const laterOpen = new Date(Date.now() + 86_400_000).toISOString();
+        const soonDeadline = new Date(Date.now() + 3_600_000).toISOString();
+        const laterDeadline = new Date(Date.now() + 86_400_000).toISOString();
+        const sorted = sortStudentHallTasks([
+            buildTask({ id: 4, name: "即将开放", publishedAt: laterOpen }),
+            buildTask({ id: 5, name: "已截止", deadline: new Date(Date.now() - 60_000).toISOString() }),
+            buildTask({ id: 1, name: "未开始较晚截止", deadline: laterDeadline }),
+            buildTask({ id: 2, status: "in_progress", name: "进行中较早截止", deadline: soonDeadline, progress: 50, currentStage: 2 }),
+            buildTask({ id: 3, status: "submitted", name: "已提交", progress: 100, currentStage: 4 }),
+            buildTask({ id: 6, status: "graded", name: "已批改", progress: 100, currentStage: 4, score: 90 }),
+            buildTask({ id: 7, status: "rejected", name: "被驳回", progress: 90, currentStage: 4, rejectReason: "请补充" }),
+        ]);
+        expect(sorted.map((task) => task.id)).toEqual([7, 2, 1, 3, 6, 4, 5]);
+    });
+
+    test("hall sort tie-breaks by id when two same-rank tasks have no deadline", () => {
+        const sorted = sortStudentHallTasks([
+            buildTask({ id: 12, name: "后创建无截止", deadline: null }),
+            buildTask({ id: 11, name: "先创建无截止", deadline: null }),
+            buildTask({ id: 13, name: "无效截止", deadline: "not-a-date" }),
+        ]);
+        expect(sorted.map((task) => task.id)).toEqual([11, 12, 13]);
     });
 });

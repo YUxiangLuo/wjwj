@@ -21,12 +21,21 @@ export function TargetMetricsPanel({ target, methods = Object.keys(METHOD_META) 
     const kind = contract.target.kind;
     const formatEstimate = (value: number | null) => formatTargetEstimate(value, kind);
     const formatMargin = (value: number | null) => formatTargetMargin(value, kind);
+    const simpleMargin = target.methods.simple?.marginOfError;
+    const systematicMargin = target.methods.systematic?.marginOfError;
+    const systematicMuchTighter = simpleMargin != null && systematicMargin != null
+        && simpleMargin > 0
+        && systematicMargin * 3 < simpleMargin
+        && methods.includes("simple")
+        && methods.includes("systematic");
 
     return <section className="min-w-0 space-y-5" data-testid="student-target-metrics">
         <PageHeader border={false} className="flex-wrap items-center">
             <div className="min-w-0 space-y-2">
                 <h2 className="text-section-title font-semibold text-foreground">研究目标结果</h2>
                 <p className="text-label text-muted-foreground">{target.plannedMarginOfError !== null ? <>本次规划误差半宽：<strong className="font-semibold text-foreground">{formatMargin(target.plannedMarginOfError)}</strong></> : "本次尚未设置可比较的规划误差半宽"}</p>
+                <p className="text-meta leading-relaxed text-muted-foreground" data-testid="student-target-margin-caveat">教学误差半宽 = z × 设计标准误。半宽达标只说明这次结果达到规划精度，不能单独证明某种方法更好。</p>
+                {systematicMuchTighter && <p className="text-meta leading-relaxed text-muted-foreground" data-testid="student-target-systematic-caveat">系统抽样的教学半宽明显更小，通常来自总体当前排序，不能推广成「系统抽样总是更准」。</p>}
             </div>
             <div className="shrink-0 rounded-surface border border-primary-border bg-primary-muted px-4 py-3">
                 <p className="text-meta text-muted-foreground">虚拟总体真值 · 用于教学对照</p>
@@ -61,7 +70,7 @@ export function TargetMetricsPanel({ target, methods = Object.keys(METHOD_META) 
                 </tbody>
             </table>
         </div>
-        <p className="text-meta leading-relaxed text-muted-foreground">先比较估计值，再看误差半宽是否满足规划要求。教学误差半宽 = z × 设计标准误；半宽达标不保证区间达到标称覆盖率，一次结果更接近真值也不能单独证明某种方法更好。{target.contract.inferred && "当前研究目标由对照变量推断：" + contract.researchQuestion}请结合下面的近似条件解释结果。</p>
+        {target.contract.inferred && <p className="text-meta leading-relaxed text-muted-foreground">当前研究目标由对照变量推断：{contract.researchQuestion}</p>}
         <details className="rounded-surface border border-border bg-background p-4">
             <summary className="cursor-pointer text-label font-semibold text-foreground">查看标准误、等效样本量与近似条件</summary>
             <p className="mt-3 text-meta leading-relaxed text-muted-foreground">下列提示用于筛查，样本数 30、事件数 5 等经验阈值不是充分条件。等效 SRS 样本量用于表达设计精度，不是实际调查人数。</p>

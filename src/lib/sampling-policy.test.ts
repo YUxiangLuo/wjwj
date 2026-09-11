@@ -19,6 +19,17 @@ describe("sampling policy", () => {
         policy.methods.pps = "required";
         expect(evaluateSamplingPolicy(policy, ["simple", "systematic"]).missingRequired).toEqual(["pps"]);
         expect(evaluateSamplingPolicy(policy, ["simple", "pps"]).canComplete).toBeTrue();
+        expect(evaluateSamplingPolicy(policy, ["simple", "pps"]).minimumCompleted).toBe(2);
+    });
+
+    test("minimum completed count follows teacher required methods, never below two enabled methods", () => {
+        const policy = buildDefaultSamplingPolicy();
+        expect(evaluateSamplingPolicy(policy, []).minimumCompleted).toBe(2);
+        policy.methods.systematic = "required";
+        policy.methods.pps = "required";
+        expect(evaluateSamplingPolicy(policy, ["simple", "systematic"]).minimumCompleted).toBe(3);
+        expect(evaluateSamplingPolicy(policy, ["simple", "systematic"]).canComplete).toBeFalse();
+        expect(evaluateSamplingPolicy(policy, ["simple", "systematic", "pps"]).canComplete).toBeTrue();
     });
 
     test("disabled methods do not count and policies keep at least two methods", () => {
