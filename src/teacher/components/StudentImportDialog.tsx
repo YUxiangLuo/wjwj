@@ -54,6 +54,7 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                             type="file"
                             data-testid="teacher-student-import-file"
                             accept=".xlsx,.csv"
+                            disabled={importing}
                             className="mt-6 bg-card border-input text-foreground text-label file:bg-muted file:text-foreground file:border-0 file:rounded-control file:mr-4 file:px-3 file:py-1 cursor-pointer"
                             onChange={(e) => onImportFileChange(e.target.files?.[0] ?? null)}
                         />

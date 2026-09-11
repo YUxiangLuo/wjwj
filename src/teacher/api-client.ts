@@ -134,7 +134,14 @@ export const teacherApi = {
     submitGrade: (id: number, observedVersion: number, data: { scoreQuestionnaire: number; scoreProcess: number; scoreReport: number; comment: string }) => request<{ success: boolean; totalScore: number }>(`/api/teacher/grading/${id}`, { method: "POST", body: JSON.stringify({ ...data, observedVersion }) }),
     rejectSubmission: (id: number, observedVersion: number, reason: string) => request<{ success: boolean }>(`/api/teacher/grading/${id}/reject`, { method: "POST", body: JSON.stringify({ reason, observedVersion }) }),
 
-    getStudents: (classId: number) => request<Student[]>(`/api/teacher/classes/${classId}/students`),
+    getStudents: (classId: number, params?: { search?: string; page?: number; pageSize?: number }) => {
+        const search = new URLSearchParams();
+        if (params?.search) search.set("search", params.search);
+        if (params?.page) search.set("page", String(params.page));
+        if (params?.pageSize) search.set("pageSize", String(params.pageSize));
+        const suffix = search.size ? `?${search}` : "";
+        return request<Student[] | { items: Student[]; total: number; page: number; pageSize: number }>(`/api/teacher/classes/${classId}/students${suffix}`);
+    },
     addStudent: (classId: number, data: { studentId: string; name: string; email?: string }) => request<{ success: boolean }>(`/api/teacher/classes/${classId}/students`, { method: "POST", body: JSON.stringify(data) }),
     updateStudent: (id: number, data: { action: "reset_password" }) => request<{ success: boolean }>(`/api/teacher/students/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     deleteStudent: (id: number, options?: { confirm?: boolean }) => request<{ success: boolean }>(

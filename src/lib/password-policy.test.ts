@@ -1,11 +1,5 @@
 import { expect, test } from "bun:test";
-import {
-    ADMIN_PASSWORD_POLICY,
-    STUDENT_PASSWORD_POLICY,
-    TEACHER_PASSWORD_POLICY,
-    evaluatePasswordRules,
-    validatePasswordChange,
-} from "./password-policy";
+import { ADMIN_PASSWORD_POLICY, STUDENT_PASSWORD_POLICY, TEACHER_PASSWORD_POLICY, evaluatePasswordRules, passwordFieldsForMessage, validatePasswordChange } from "./password-policy";
 
 test("admin password policy rejects username and short passwords", () => {
     const result = evaluatePasswordRules({
@@ -93,4 +87,24 @@ test("validatePasswordChange returns forbidden label specific error messages", (
         policy: STUDENT_PASSWORD_POLICY,
         forbiddenSubstrings: ["2024006"],
     }).errorMessage).toBe("新密码不能包含学号");
+});
+
+test("password change errors name the field they belong to", () => {
+    const policy = { minLength: 8, forbiddenLabel: "学号", errorMessage: "x" };
+    const base = { policy, forbiddenSubstrings: ["S2601"] };
+
+    expect(validatePasswordChange({ ...base, currentPassword: "", newPassword: "", confirmPassword: "" }).errorFields)
+        .toEqual(["currentPassword", "newPassword", "confirmPassword"]);
+    expect(validatePasswordChange({ ...base, currentPassword: "old", newPassword: "short", confirmPassword: "short" }).errorFields)
+        .toEqual(["newPassword"]);
+    expect(validatePasswordChange({ ...base, currentPassword: "OldPass!1", newPassword: "OldPass!1", confirmPassword: "OldPass!1" }).errorFields)
+        .toEqual(["currentPassword", "newPassword"]);
+    expect(validatePasswordChange({ ...base, currentPassword: "old", newPassword: "NewPass!123", confirmPassword: "NewPass!124" }).errorFields)
+        .toEqual(["confirmPassword"]);
+    expect(validatePasswordChange({ ...base, currentPassword: "old", newPassword: "NewPass!123", confirmPassword: "NewPass!123" }).errorFields)
+        .toEqual([]);
+
+    expect(passwordFieldsForMessage("当前密码不正确")).toEqual(["currentPassword"]);
+    expect(passwordFieldsForMessage("新密码需包含字母、数字和特殊字符")).toEqual(["newPassword", "confirmPassword"]);
+    expect(passwordFieldsForMessage("网络错误")).toEqual([]);
 });

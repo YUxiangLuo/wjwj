@@ -76,7 +76,9 @@ function AdminWorkspace({ user, onLogout }: { user: AdminUser; onLogout: () => P
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes></Suspense></RouteErrorBoundary>
             </WorkspaceShell>
-            <PasswordChangeDialog open={passwordOpen} onOpenChange={setPasswordOpen} title="修改密码" description="输入当前密码并设置新密码。" form={passwordChange.form} onFieldChange={passwordChange.setField} error={passwordChange.error} saving={passwordChange.saving} onSubmit={passwordChange.submit} submitLabel="保存" />
+            <PasswordChangeDialog open={passwordOpen} onOpenChange={setPasswordOpen} title="修改密码" description="输入当前密码并设置新密码。" form={passwordChange.form} onFieldChange={passwordChange.setField} error={passwordChange.error}
+                errorFields={passwordChange.errorFields}
+                saving={passwordChange.saving} onSubmit={passwordChange.submit} submitLabel="保存" />
             <AppToaster />
         </>
     );

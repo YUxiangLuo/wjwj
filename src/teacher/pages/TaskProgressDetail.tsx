@@ -147,7 +147,7 @@ export function TaskProgressDetail() {
 
                                     return (
                                         <>
-                                            <circle cx={CHART_CENTER} cy={CHART_CENTER} r={RING_RADIUS} fill="none" stroke="rgb(30,41,59)" strokeWidth={RING_STROKE} />
+                                            <circle cx={CHART_CENTER} cy={CHART_CENTER} r={RING_RADIUS} fill="none" className="stroke-border" strokeWidth={RING_STROKE} />
                                             {segments}
                                             <text x={CHART_CENTER} y={CHART_CENTER - 8} textAnchor="middle" className="fill-foreground text-page-title font-bold" fontSize="28">{total}</text>
                                             <text x={CHART_CENTER} y={CHART_CENTER + 14} textAnchor="middle" className="fill-muted-foreground text-meta" fontSize="12">总人数</text>

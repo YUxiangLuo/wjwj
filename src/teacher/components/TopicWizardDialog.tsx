@@ -35,6 +35,7 @@ interface TopicWizardDialogProps {
     /** create 期间标题保持“创建”，不会因第 1 步已建草稿而变成“编辑”。 */
     mode?: "create" | "edit";
     /** 已发布课题：总体数据、字段映射和评分权重只读 */
+    saveError?: string | null;
     isPublishedTopic?: boolean;
     currentStep: number;
     setCurrentStep: (value: number | ((prev: number) => number)) => void;
@@ -91,6 +92,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
         fieldMapping,
         setFieldMapping,
         attachments,
+        saveError,
         uploadingAttachment,
         onAttachmentUpload,
         onRefreshTopicDetail,
@@ -267,6 +269,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         id="topicName"
                                         data-testid="teacher-topic-name"
                                         placeholder="请输入实验模板名称"
+                                        maxLength={200}
                                         value={newTopicName}
                                         onChange={e => setNewTopicName(e.target.value)}
                                         className="bg-card border-input text-foreground placeholder:text-muted-foreground"
@@ -571,6 +574,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="rounded-surface border border-info-border bg-info-muted px-4 py-3 text-label text-info">
                                     简单随机抽样作为比较基准固定必做。学生还需完成至少一种启用的方法；设为“必做”的方法必须全部完成。
+                                    {isPublishedTopic ? "该实验模板已发布，抽样策略不可修改，仅可查看当前配置。" : null}
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     {SAMPLING_METHODS.map((method) => {
@@ -782,6 +786,11 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
                         {!loadingDetail && currentStep === 7 && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                                {isPublishedTopic ? (
+                                    <div className="rounded-surface border border-info-border bg-info-muted px-4 py-3 text-label text-info">
+                                        该实验模板已发布，评分规则不可修改，仅可查看当前权重。
+                                    </div>
+                                ) : null}
                                 <div className="grid grid-cols-3 gap-6">
                                     <div className="bg-background border border-border rounded-surface p-6 space-y-4">
                                         <Label htmlFor="teacher-topic-weight-questionnaire" className="text-foreground text-subheading">问卷设计权重</Label>
@@ -846,6 +855,15 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                     </div>
                 </div>
                 <DialogFooter className="border-t border-border pt-4 flex-shrink-0">
+                    {saveError ? (
+                        <div
+                            role="alert"
+                            data-testid="teacher-topic-save-error"
+                            className="mb-3 w-full rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3 text-label text-destructive"
+                        >
+                            {saveError}
+                        </div>
+                    ) : null}
                     <div className="flex items-center justify-between w-full">
                         <div className="text-meta text-muted-foreground">步骤 {currentStep} / 7</div>
                         <div className="flex gap-2">

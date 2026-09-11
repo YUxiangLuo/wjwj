@@ -2,7 +2,7 @@ import { RequestError } from "@/components/RequestError";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Search, Upload, UserPlus, RotateCcw, Trash2, Users } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Search, Upload, UserPlus, RotateCcw, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,8 @@ import { isValidOptionalEmail } from "@/lib/email";
 import { rowsToCsv } from "@/lib/csv";
 import { describeCascadeImpact } from "@/lib/deletion-impact-copy";
 
+const PAGE_SIZE = 20;
+
 export function StudentManagement() {
     const { classId } = useParams();
     const [classInfo, setClassInfo] = useState<TeacherClass | null>(null);
@@ -26,6 +28,9 @@ export function StudentManagement() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [appliedSearch, setAppliedSearch] = useState("");
+    const [page, setPage] = useState(1);
+    const [totalStudents, setTotalStudents] = useState(0);
     const [importFile, setImportFile] = useState<File | null>(null);
     const [importing, setImporting] = useState(false);
     const [importResult, setImportResult] = useState<{ successCount: number; skippedCount?: number; failureCount: number; errors: Array<{ row: number; reason: string }>; skipped?: Array<{ row: number; reason: string }> } | null>(null);
@@ -52,16 +57,28 @@ export function StudentManagement() {
         return cancel;
     }, [classId]);
 
-    async function loadData(_showLoading = true) {
+    async function loadData(_showLoading = true, overrides?: { search?: string; page?: number }) {
         return run(async () => {
-            const [resClasses, resStudents] = await Promise.all([teacherApi.getClasses(), teacherApi.getStudents(Number(classId))]);
+            const nextSearch = overrides?.search ?? appliedSearch;
+            const nextPage = overrides?.page ?? page;
+            const [resClasses, resStudents] = await Promise.all([
+                teacherApi.getClasses(),
+                teacherApi.getStudents(Number(classId), { search: nextSearch || undefined, page: nextPage, pageSize: PAGE_SIZE }),
+            ]);
             return {
                 classes: requireApiData(resClasses, "班级加载失败"),
                 students: requireApiData(resStudents, "学生列表加载失败"),
             };
         }, (data) => {
             setClassInfo(data.classes.find(cls => cls.id === Number(classId)) ?? null);
-            setStudents(data.students);
+            const payload = data.students;
+            if (Array.isArray(payload)) {
+                setStudents(payload);
+                setTotalStudents(payload.length);
+            } else {
+                setStudents(payload.items);
+                setTotalStudents(payload.total);
+            }
         });
     }
 
@@ -201,20 +218,18 @@ export function StudentManagement() {
         setDeleteImpact(null);
     }
 
-    const filteredStudents = students.filter(s =>
-        s.name.includes(searchQuery) || s.studentId.includes(searchQuery) || (s.email && s.email.includes(searchQuery))
-    );
-
-    const totalStudents = students.length;
+    // Search and paging run on the server so a 500-row roster stays responsive.
+    const filteredStudents = students;
+    const totalPages = Math.max(1, Math.ceil(totalStudents / PAGE_SIZE));
 
     if (!Number.isInteger(Number(classId)) || Number(classId) <= 0) return <p>无效的班级编号</p>;
-    if (!classInfo && loadError) return <RequestError message={loadError} onRetry={() => void loadData()} />;
+    if (!classInfo && loadError) return <RequestError message={loadError} onRetry={() => void loadData()} backTo="/class" backLabel="返回班级列表" />;
     if (loading && !classInfo) return <div role="status" aria-live="polite" className="p-12 text-center text-muted-foreground">加载中...</div>;
     if (!classInfo && !loading) return <div className="p-12 text-center text-muted-foreground">未找到班级</div>;
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            {loadError && <RequestError message={loadError} onRetry={() => void loadData()} retrying={loading} />}
+            {loadError && <RequestError message={loadError} onRetry={() => void loadData()} retrying={loading} backTo="/class" backLabel="返回班级列表" />}
             <div className="flex items-center gap-3">
                 <Button asChild variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-muted">
                     <Link to="/class">
@@ -250,7 +265,9 @@ export function StudentManagement() {
                 <PageHeader as={CardHeader}>
                     <div>
                         <CardTitle className="text-body text-foreground">学生列表</CardTitle>
-                        <p className="text-meta text-muted-foreground mt-1">共 {filteredStudents.length} 人</p>
+                        <p className="text-meta text-muted-foreground mt-1">
+                            {loading || loadError ? "共 - 人" : `共 ${totalStudents} 人${appliedSearch ? `（筛选：${appliedSearch}）` : ""}`}
+                        </p>
                     </div>
                     <div className="flex gap-3 flex-row w-auto">
                         <div className="relative w-52">
@@ -258,9 +275,16 @@ export function StudentManagement() {
                             <Input
                                 data-testid="teacher-student-search"
                                 aria-label="搜索学生"
-                                placeholder="搜索学生"
+                                placeholder="搜索学号、姓名或邮箱"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
+                                onKeyDown={(event) => {
+                                    if (event.key !== "Enter") return;
+                                    const next = searchQuery.trim();
+                                    setAppliedSearch(next);
+                                    setPage(1);
+                                    void loadData(true, { search: next, page: 1 });
+                                }}
                                 className="pl-9 bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
                             />
                         </div>
@@ -315,6 +339,35 @@ export function StudentManagement() {
                             ))}
                         </TableBody>
                     </Table>
+                    {!loading && !loadError && totalStudents > 0 && (
+                        <div className="flex items-center justify-between pt-4" data-testid="teacher-student-pagination">
+                            <p className="text-label text-muted-foreground">
+                                共 {totalStudents} 人，第 {page} / {totalPages} 页
+                            </p>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={page <= 1}
+                                    aria-label="上一页"
+                                    data-testid="teacher-student-prev-page"
+                                    onClick={() => { const next = page - 1; setPage(next); void loadData(false, { page: next }); }}
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={page >= totalPages}
+                                    aria-label="下一页"
+                                    data-testid="teacher-student-next-page"
+                                    onClick={() => { const next = page + 1; setPage(next); void loadData(false, { page: next }); }}
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
@@ -331,7 +384,11 @@ export function StudentManagement() {
                 open={showImportModal}
                 onOpenChange={setShowImportModal}
                 importFile={importFile}
-                onImportFileChange={setImportFile}
+                onImportFileChange={(file) => {
+                    setImportFile(file);
+                    // A new file makes the previous run's report meaningless.
+                    setImportResult(null);
+                }}
                 importing={importing}
                 importResult={importResult}
                 onDownloadTemplate={handleDownloadTemplate}

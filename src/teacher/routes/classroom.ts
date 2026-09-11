@@ -1,11 +1,11 @@
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, ilike, inArray, or } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, experiment, samplingAttempt, semester, student, userSession } from "../../db/schema";
 import { isValidOptionalEmail } from "../../lib/email";
 import { parseSpreadsheetFile, spreadsheetRequestExceedsLimit, validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
 import { hashPassword, mapWithConcurrency } from "../../server/password-work";
 import { deleteAuditEventsForActor, deleteAuditEventsForEntities, hashEntityIdentifier, writeAuditEvent } from "../../server/audit-event";
-import { error, getPositiveRouteId, getSearchParams, json, parseBody, parseFormData, stringValue } from "../../server/http";
+import { error, getPositiveRouteId, getSearchParams, json, parseBody, parseFormData, parsePagination, stringValue } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { clearUserSessionsForUser } from "../../server/user-session";
 import { STUDENT_USER_TYPE } from "../../student/routes/auth";
@@ -20,6 +20,11 @@ const MAX_IMPORT_ROWS = 500;
 const MAX_STUDENT_ID_LENGTH = 50;
 const MAX_STUDENT_NAME_LENGTH = 100;
 const MAX_STUDENT_EMAIL_LENGTH = 120;
+
+/** Escape LIKE wildcards so a roster search cannot turn into a pattern. */
+function escapeLike(value: string) {
+    return value.replace(/[\\%_]/g, (match) => `\\${match}`);
+}
 
 function normalizeStudentId(value: string) {
     return value.toLocaleLowerCase("en-US");
@@ -194,18 +199,39 @@ const classStudentsRoutes: RouteDefinition = {
         if (!(await requireOwnedClass(classId, getPrimaryTeacherIdOrThrow(req)))) {
             return error("无权限访问该班级", "FORBIDDEN", 403);
         }
-        return json(
-            await db
-                .select({
-                    id: student.id,
-                    studentId: student.studentId,
-                    name: student.name,
-                    email: student.email,
-                })
-                .from(student)
-                .where(eq(student.classId, classId))
-                .orderBy(student.studentId),
-        );
+        const params = getSearchParams(req);
+        const search = (params.get("search") ?? "").trim().slice(0, 100);
+        const conditions = [eq(student.classId, classId)];
+        if (search) {
+            conditions.push(or(
+                ilike(student.studentId, `%${escapeLike(search)}%`),
+                ilike(student.name, `%${escapeLike(search)}%`),
+                ilike(student.email, `%${escapeLike(search)}%`),
+            )!);
+        }
+        const baseQuery = db
+            .select({
+                id: student.id,
+                studentId: student.studentId,
+                name: student.name,
+                email: student.email,
+            })
+            .from(student)
+            .where(and(...conditions))
+            .orderBy(student.studentId);
+        // Roster pages paginate once the caller asks for it; the legacy array
+        // response stays for small classes and existing callers.
+        if (!params.has("page") && !params.has("pageSize")) {
+            return json(await baseQuery);
+        }
+        const pagination = parsePagination(params);
+        if (!pagination) return error("分页参数无效", "INVALID_PARAM", 400);
+        const { page, pageSize, offset } = pagination;
+        const [items, [totalRow]] = await Promise.all([
+            baseQuery.limit(pageSize).offset(offset),
+            db.select({ count: count() }).from(student).where(and(...conditions)),
+        ]);
+        return json({ items, total: Number(totalRow?.count ?? 0), page, pageSize });
     },
 
     async POST(req) {

@@ -102,6 +102,7 @@ function TeacherWorkspace({
                 form={passwordChange.form}
                 onFieldChange={passwordChange.setField}
                 error={passwordChange.error}
+                errorFields={passwordChange.errorFields}
                 saving={passwordChange.saving}
                 onSubmit={passwordChange.submit}
                 submitLabel="保存"

@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { BookOpen, Search, Layers, FileText } from "lucide-react";
 import { getRichTextPlainText } from "@/utils/rich-text";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -35,6 +35,7 @@ export function TopicManagement() {
     const [viewingTopic, setViewingTopic] = useState<Topic | null>(null);
     const { loading, error: loadError, run } = useAsyncLoad("模板列表加载失败");
     const [currentStep, setCurrentStep] = useState(1);
+    const [saveError, setSaveError] = useState<string | null>(null);
     const [excelInfo, setExcelInfo] = useState<{
         rowCount: number;
         colCount: number;
@@ -158,11 +159,15 @@ export function TopicManagement() {
             }
             loadTopics();
         } else {
+            // Keep the precise server message (for example a row-level data error)
+            // visible inside the wizard instead of only flashing a toast.
+            setSaveError(res.error?.message || "保存失败，请重试");
             toast.error((editingTopicId ? "更新" : "创建") + "失败: " + (res.error?.message || "未知错误"));
         }
     }
 
     function openCreateModal() {
+        setSaveError(null);
         setEditingTopicId(null);
         setTopicWizardMode("create");
         setEditingTopicPublished(false);
@@ -180,6 +185,7 @@ export function TopicManagement() {
     }
 
     function openEditModal(topic: Topic) {
+        setSaveError(null);
         setEditingTopicId(topic.id);
         setTopicWizardMode("edit");
         setEditingTopicPublished(topic.status === 1);
@@ -247,6 +253,7 @@ export function TopicManagement() {
     async function handleSaveFieldMapping() {
         if (!editingTopicId) return;
         if (editingTopicPublished) {
+            setSaveError(null);
             setCurrentStep(4);
             return;
         }
@@ -267,6 +274,7 @@ export function TopicManagement() {
         const res = await teacherApi.updateFieldMapping(editingTopicId, fieldMapping);
         if (res.success) {
             await loadTopicDetail(editingTopicId);
+            setSaveError(null);
             setCurrentStep(4);
         } else {
             toast.error("保存失败: " + res.error?.message);
@@ -276,11 +284,13 @@ export function TopicManagement() {
     async function handleSaveSamplingPolicy() {
         if (!editingTopicId) return;
         if (editingTopicPublished) {
+            setSaveError(null);
             setCurrentStep(5);
             return;
         }
         const res = await teacherApi.updateSamplingPolicy(editingTopicId, samplingPolicy);
         if (res.success) {
+            setSaveError(null);
             setCurrentStep(5);
         } else {
             toast.error("保存失败: " + res.error?.message);
@@ -303,6 +313,7 @@ export function TopicManagement() {
         if (!editingTopicId) return;
         const res = await teacherApi.updateRecommendQuestions(editingTopicId, recommendQuestions);
         if (res.success) {
+            setSaveError(null);
             setCurrentStep(7);
         } else {
             toast.error("保存失败: " + res.error?.message);
@@ -423,7 +434,7 @@ export function TopicManagement() {
             <Card>
                 <PageHeader as={CardHeader}>
                     <div>
-                        <CardTitle className="text-body text-foreground">实验模板列表</CardTitle>
+                        <h2 className="text-body font-semibold text-foreground">实验模板列表</h2>
                         <p className="text-meta text-muted-foreground mt-1">
                             {loading || loadError ? "共 - 条数据" : `共 ${filteredTopics.length} 条数据`}
                         </p>
@@ -456,7 +467,7 @@ export function TopicManagement() {
                     </div>
                 </PageHeader>
                 <CardContent className="space-y-4 pt-4">
-                    {loadError ? <RequestError message={loadError} onRetry={() => void loadTopics()} /> : loading ? <div role="status" aria-live="polite" className="text-center py-12 text-muted-foreground">加载中...</div> : topics.length === 0 ? (
+                    {loadError ? <RequestError message={loadError} onRetry={() => void loadTopics()} backTo="/" backLabel="返回教学概览" /> : loading ? <div role="status" aria-live="polite" className="text-center py-12 text-muted-foreground">加载中...</div> : topics.length === 0 ? (
                         <div className="rounded-surface border border-dashed border-border py-16 text-center">
                             <p className="text-subheading font-medium text-foreground">还没有实验模板</p>
                             <p className="mt-2 text-label text-muted-foreground">点击「创建实验模板」，配置总体数据、研究目标和抽样策略。</p>
@@ -584,8 +595,10 @@ export function TopicManagement() {
                         setRecommendQuestions([]);
                         setWeightConfig({ questionnaire: 30, process: 30, report: 40 });
                         setSamplingPolicy(buildDefaultSamplingPolicy());
+                        setSaveError(null);
                     }
                 }}
+                saveError={saveError}
                 editingTopicId={editingTopicId}
                 isPublishedTopic={editingTopicPublished}
                 currentStep={currentStep}

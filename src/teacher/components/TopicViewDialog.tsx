@@ -43,6 +43,11 @@ interface TopicViewDialogProps {
     topic: Topic | null;
 }
 
+/** The server only inlines pdf, image and video; everything else downloads. */
+function canPreviewInline(fileName: string) {
+    return /\.(pdf|png|jpe?g|gif|webp|bmp|svg|mp4|webm|ogg|mov)$/i.test(fileName);
+}
+
 export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogProps) {
     const [detail, setDetail] = useState<TopicDetail | null>(null);
     const [loading, setLoading] = useState(false);
@@ -352,15 +357,25 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <a
-                                                    href={teacherResourceUrl(`/api/teacher/topics/${topic.id}/attachments/${a.id}/download?mode=preview`)}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-meta text-primary hover:text-primary flex items-center gap-1"
-                                                >
-                                                    <ExternalLink className="w-3 h-3" />
-                                                    查看
-                                                </a>
+                                                {canPreviewInline(a.fileName) ? (
+                                                    <a
+                                                        href={teacherResourceUrl(`/api/teacher/topics/${topic.id}/attachments/${a.id}/download?mode=preview`)}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-meta text-primary hover:text-primary flex items-center gap-1"
+                                                    >
+                                                        <ExternalLink className="w-3 h-3" />
+                                                        查看
+                                                    </a>
+                                                ) : (
+                                                    <a
+                                                        href={teacherResourceUrl(`/api/teacher/topics/${topic.id}/attachments/${a.id}/download`)}
+                                                        className="text-meta text-primary hover:text-primary flex items-center gap-1"
+                                                    >
+                                                        <ExternalLink className="w-3 h-3" />
+                                                        下载
+                                                    </a>
+                                                )}
                                             </div>
                                         ))
                                     ) : (

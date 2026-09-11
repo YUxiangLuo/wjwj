@@ -202,7 +202,67 @@ test("grade export excel keeps the header row when the filter matches nothing", 
     expect(grid[0]).toEqual([
         "学号", "姓名", "班级", "实验模板名称", "提交时间",
         "问卷设计得分", "实验过程得分", "实验报告得分", "总分",
-        "状态", "批改人", "批改时间",
+        "状态", "处理人", "处理时间",
     ]);
     expect(grid).toHaveLength(1);
+});
+
+test("grade export writes score columns as numbers so Excel can aggregate them", async () => {
+    const { module } = await loadExportRoutes({
+        select: [[{
+            studentId: "S2606",
+            studentName: "陈晨",
+            className: "2026级统计学1班",
+            topicName: "本科生每周学习时长",
+            submittedAt: new Date("2026-09-10T04:25:06+08:00"),
+            scoreQuestionnaire: "92.00",
+            scoreProcess: "88.00",
+            scoreReport: "90.00",
+            totalScore: "90.00",
+            status: "graded",
+            gradedByType: 2,
+            gradedById: 1,
+            gradedByName: "张岚",
+            gradedAt: new Date("2026-09-10T05:00:00+08:00"),
+            submissionSnapshot: null,
+        }, {
+            studentId: "S2605",
+            studentName: "马丽",
+            className: "2026级统计学1班",
+            topicName: "本科生每周学习时长",
+            submittedAt: new Date("2026-09-10T04:00:00+08:00"),
+            scoreQuestionnaire: null,
+            scoreProcess: null,
+            scoreReport: null,
+            totalScore: null,
+            status: "submitted",
+            gradedByType: null,
+            gradedById: null,
+            gradedByName: null,
+            gradedAt: null,
+            submissionSnapshot: null,
+        }]],
+    });
+
+    const response = await module.gradeExportExcelRoutes.GET!(
+        new Request("https://example.com/api/teacher/grade-export/excel?taskId=12")
+    );
+
+    const workbook = XLSX.read(Buffer.from(await response.arrayBuffer()), { type: "buffer" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]!]!;
+    const cells = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" });
+    const header = cells[0] as string[];
+    // Row keys and the header list must not drift, or SheetJS appends extra columns.
+    expect(header).toEqual([
+        "学号", "姓名", "班级", "实验模板名称", "提交时间",
+        "问卷设计得分", "实验过程得分", "实验报告得分", "总分",
+        "状态", "处理人", "处理时间",
+    ]);
+    const totalColumn = header.indexOf("总分");
+    const graded = cells.find((row) => row[0] === "S2606")!;
+    const pending = cells.find((row) => row[0] === "S2605")!;
+    expect(Number(graded[totalColumn])).toBe(90);
+    // The cell must be numeric, not text ("数字以文本形式存储" in Excel).
+    expect((sheet[XLSX.utils.encode_cell({ r: cells.indexOf(graded), c: totalColumn })] as { t?: string }).t).toBe("n");
+    expect(pending[totalColumn]).toBe("");
 });

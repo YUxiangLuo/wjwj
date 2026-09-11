@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { PasswordFormState } from "@/hooks/usePasswordChange";
+import type { PasswordChangeField, PasswordFormState } from "@/hooks/usePasswordChange";
 import type { PasswordRuleResult } from "@/lib/password-policy";
 
 interface PasswordChangeDialogProps {
@@ -15,6 +15,8 @@ interface PasswordChangeDialogProps {
     form: PasswordFormState;
     onFieldChange: (field: keyof PasswordFormState, value: string) => void;
     error: string | null;
+    /** Fields the current error belongs to; defaults to all three for legacy callers. */
+    errorFields?: PasswordChangeField[];
     saving: boolean;
     onSubmit: () => void | Promise<unknown>;
     submitLabel: string;
@@ -46,6 +48,7 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
         form,
         onFieldChange,
         error,
+        errorFields,
         saving,
         onSubmit,
         submitLabel,
@@ -56,6 +59,9 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
         rules,
         forbiddenHintLabel,
     } = props;
+
+    const fields = errorFields ?? ["currentPassword", "newPassword", "confirmPassword"];
+    const invalidFields = new Set(error ? fields : []);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -73,7 +79,7 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                             type="password"
                             value={form.currentPassword}
                             onChange={(event) => onFieldChange("currentPassword", event.target.value)}
-                            aria-invalid={error ? true : undefined}
+                            aria-invalid={invalidFields.has("currentPassword") ? true : undefined}
                             aria-describedby={error ? errorId : undefined}
                             autoComplete="current-password"
                             data-testid={fieldTestIds?.currentPassword}
@@ -87,7 +93,7 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                             type="password"
                             value={form.newPassword}
                             onChange={(event) => onFieldChange("newPassword", event.target.value)}
-                            aria-invalid={error ? true : undefined}
+                            aria-invalid={invalidFields.has("newPassword") ? true : undefined}
                             aria-describedby={error ? errorId : undefined}
                             autoComplete="new-password"
                             data-testid={fieldTestIds?.newPassword}
@@ -101,7 +107,7 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                             type="password"
                             value={form.confirmPassword}
                             onChange={(event) => onFieldChange("confirmPassword", event.target.value)}
-                            aria-invalid={error ? true : undefined}
+                            aria-invalid={invalidFields.has("confirmPassword") ? true : undefined}
                             aria-describedby={error ? errorId : undefined}
                             autoComplete="new-password"
                             data-testid={fieldTestIds?.confirmPassword}

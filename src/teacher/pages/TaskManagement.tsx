@@ -316,7 +316,7 @@ export function TaskManagement() {
                     </div>
                 </PageHeader>
                 <CardContent className="pt-0">
-                    {loadError ? <RequestError message={loadError} onRetry={() => void loadTasks()} /> : loading ? <div role="status" aria-live="polite" className="text-center py-12 text-muted-foreground">加载中...</div> : (
+                    {loadError ? <RequestError message={loadError} onRetry={() => void loadTasks()} backTo="/" backLabel="返回教学概览" /> : loading ? <div role="status" aria-live="polite" className="text-center py-12 text-muted-foreground">加载中...</div> : (
                         <Table aria-label="实验任务列表">
                             <TableHeader>
                                 <TableRow className="border-border">

@@ -1,9 +1,13 @@
 import { useCallback, useMemo, useState } from "react";
 import {
+    type PasswordChangeField,
     type PasswordChangeValidationResult,
     type PasswordPolicySpec,
+    passwordFieldsForMessage,
     validatePasswordChange,
 } from "@/lib/password-policy";
+
+export type { PasswordChangeField };
 
 export interface PasswordFormState {
     currentPassword: string;
@@ -43,6 +47,7 @@ export function usePasswordChange(options: UsePasswordChangeOptions) {
     const [form, setForm] = useState<PasswordFormState>(EMPTY_PASSWORD_FORM);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [errorFields, setErrorFields] = useState<PasswordChangeField[]>([]);
 
     const validation = useMemo<PasswordChangeValidationResult>(() => validatePasswordChange({
         currentPassword: form.currentPassword,
@@ -58,11 +63,13 @@ export function usePasswordChange(options: UsePasswordChangeOptions) {
 
     const clearError = useCallback(() => {
         setError(null);
+        setErrorFields([]);
     }, []);
 
     const reset = useCallback(() => {
         setForm(EMPTY_PASSWORD_FORM);
         setError(null);
+        setErrorFields([]);
     }, []);
 
     const submit = useCallback(async () => {
@@ -70,6 +77,7 @@ export function usePasswordChange(options: UsePasswordChangeOptions) {
 
         if (validation.errorMessage) {
             setError(validation.errorMessage);
+            setErrorFields(validation.errorFields);
             return false;
         }
 
@@ -80,7 +88,9 @@ export function usePasswordChange(options: UsePasswordChangeOptions) {
                 newPassword: form.newPassword,
             });
             if (!result.success) {
-                setError(result.error?.message ?? fallbackErrorMessage);
+                const message = result.error?.message ?? fallbackErrorMessage;
+                setError(message);
+                setErrorFields(passwordFieldsForMessage(message));
                 return false;
             }
 
@@ -88,7 +98,9 @@ export function usePasswordChange(options: UsePasswordChangeOptions) {
             await onSuccess();
             return true;
         } catch (error) {
-            setError(error instanceof Error ? error.message : fallbackErrorMessage);
+            const message = error instanceof Error ? error.message : fallbackErrorMessage;
+        setError(message);
+        setErrorFields(passwordFieldsForMessage(message));
             return false;
         } finally {
             setSaving(false);
@@ -99,6 +111,7 @@ export function usePasswordChange(options: UsePasswordChangeOptions) {
         form,
         saving,
         error,
+        errorFields,
         rules: validation.rules,
         setField,
         clearError,

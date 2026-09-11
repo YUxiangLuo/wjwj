@@ -34,9 +34,13 @@ export interface PasswordChangeValidationOptions {
     forbiddenSubstrings?: Array<string | null | undefined>;
 }
 
+export type PasswordChangeField = "currentPassword" | "newPassword" | "confirmPassword";
+
 export interface PasswordChangeValidationResult {
     rules: PasswordRuleResult;
     errorMessage: string | null;
+    /** Fields the message belongs to, so only they are marked invalid. */
+    errorFields: PasswordChangeField[];
 }
 
 export const ADMIN_PASSWORD_POLICY: PasswordPolicySpec = {
@@ -112,29 +116,38 @@ export function validatePasswordChange(options: PasswordChangeValidationOptions)
         forbiddenSubstrings: options.forbiddenSubstrings,
     });
 
-    if (!options.currentPassword || !options.newPassword || !options.confirmPassword) {
-        return { rules, errorMessage: "请填写完整信息" };
+    const emptyFields = (["currentPassword", "newPassword", "confirmPassword"] as const)
+        .filter((field) => !options[field]);
+    if (emptyFields.length > 0) {
+        return { rules, errorMessage: "请填写完整信息", errorFields: [...emptyFields] };
     }
 
     if (options.newPassword === options.currentPassword) {
-        return { rules, errorMessage: "新密码不能与当前密码相同" };
+        return { rules, errorMessage: "新密码不能与当前密码相同", errorFields: ["currentPassword", "newPassword"] };
     }
 
     if (!rules.minLength) {
-        return { rules, errorMessage: `新密码长度至少为${options.policy.minLength}位` };
+        return { rules, errorMessage: `新密码长度至少为${options.policy.minLength}位`, errorFields: ["newPassword"] };
     }
 
     if (!rules.hasLetter || !rules.hasNumber || !rules.hasSpecial) {
-        return { rules, errorMessage: "新密码需包含字母、数字和特殊字符" };
+        return { rules, errorMessage: "新密码需包含字母、数字和特殊字符", errorFields: ["newPassword"] };
     }
 
     if (!rules.noForbiddenSubstring) {
-        return { rules, errorMessage: `新密码不能包含${options.policy.forbiddenLabel}` };
+        return { rules, errorMessage: `新密码不能包含${options.policy.forbiddenLabel}`, errorFields: ["newPassword"] };
     }
 
     if (!rules.matched) {
-        return { rules, errorMessage: "两次输入的新密码不一致" };
+        return { rules, errorMessage: "两次输入的新密码不一致", errorFields: ["confirmPassword"] };
     }
 
-    return { rules, errorMessage: null };
+    return { rules, errorMessage: null, errorFields: [] };
+}
+
+/** Server rejections only name the field in their message; map the common cases. */
+export function passwordFieldsForMessage(message: string): PasswordChangeField[] {
+    if (message.includes("当前密码")) return ["currentPassword"];
+    if (message.includes("新密码") || message.includes("两次")) return ["newPassword", "confirmPassword"];
+    return [];
 }

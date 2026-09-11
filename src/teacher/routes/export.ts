@@ -242,8 +242,19 @@ const gradeAnalyticsRoutes: RouteDefinition = {
 const GRADE_EXPORT_HEADERS = [
     "学号", "姓名", "班级", "实验模板名称", "提交时间",
     "问卷设计得分", "实验过程得分", "实验报告得分", "总分",
-    "状态", "批改人", "批改时间",
+    "状态", "处理人", "处理时间",
 ] as const;
+
+/**
+ * Postgres returns numeric columns as strings. Writing them straight into the
+ * sheet stores text cells, so Excel refuses to SUM/AVERAGE them; convert the
+ * score columns back to numbers and keep "no score" as an empty cell.
+ */
+function numericCell(value: unknown): number | null {
+    if (value === null || value === undefined || value === "") return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+}
 
 const gradeExportExcelRoutes: RouteDefinition = {
     async GET(req) {
@@ -255,13 +266,13 @@ const gradeExportExcelRoutes: RouteDefinition = {
             班级: row.className,
             实验模板名称: row.topicName,
             提交时间: row.submittedAt,
-            问卷设计得分: row.scoreQuestionnaire,
-            实验过程得分: row.scoreProcess,
-            实验报告得分: row.scoreReport,
-            总分: row.totalScore,
+            问卷设计得分: numericCell(row.scoreQuestionnaire),
+            实验过程得分: numericCell(row.scoreProcess),
+            实验报告得分: numericCell(row.scoreReport),
+            总分: numericCell(row.totalScore),
             状态: row.status,
-            批改人: row.gradedBy,
-            批改时间: row.gradedAt,
+            处理人: row.gradedBy,
+            处理时间: row.gradedAt,
         })), { header: [...GRADE_EXPORT_HEADERS] });
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "成绩导出");
