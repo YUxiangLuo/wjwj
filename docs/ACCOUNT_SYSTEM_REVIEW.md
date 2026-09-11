@@ -53,14 +53,14 @@
 ## 5. 测试覆盖
 
 - 单元/路由：1061 条（1052 pass / 9 skip / 0 fail）。含新增的导入分类（跳过、跨班提示、跨教师不泄露班级名）、班级列表计数、班级删除原因。
-- 真实数据库：`bun run test:db` 16 条，含 `re-importing an active roster row neither duplicates nor rewrites the account`（真实"新增→重导入"只保留一行、不改名改密）。
-- 浏览器实测：教师端学生名单无启停用入口、管理员教师列表无状态列、班级编辑对话框教师只读。
+- 真实数据库：`bun run test:db` 11 条，含 `re-importing an active roster row neither duplicates nor rewrites the account`（真实"新增→重导入"只保留一行、不改名改密）、`hard deleting a student requires confirming the cascaded submissions`、`a class keeps its teacher: reassignment is not a supported write path`。
+- 浏览器实测：教师端学生名单无启停用入口、管理员教师列表无状态列、班级编辑对话框教师只读、删除确认框列出将被级联的实验与成绩条数。
 
 ## 6. 剩余风险与待决策
 
 | # | 事项 | 说明 |
 | --- | --- | --- |
-| R1 | 硬删除静默级联 | 删除学生/任务会清除实验、成绩、抽样记录与相关审计事件；UI 已明确告知，服务端无二次确认参数。 |
+| R1 | ~~硬删除静默级联~~ | ✅ 已加固：删除前 `deletion-preview` 给出影响面，存在已提交/已批改实验时必须带 `?confirm=1`，否则 409 `SUBMISSIONS_EXIST`。 |
 | R2 | 无转班能力 | 学生换班只能"删除+重建"，历史丢失（本轮已确认这是期望行为）。 |
 | R3 | 学号跨教师不可复用 | 学号被其他教师班级占用时无法导入，只能由对方教师删除后重导。 |
 | R4 | 教师无删除接口 | 教师离职后其班级与课题长期保留，仅能改名/重置密码；如需清理需直接操作数据库。 |

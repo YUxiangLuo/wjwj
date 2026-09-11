@@ -66,6 +66,7 @@ export interface SubmissionDetail extends GradingItem {
     weights?: { questionnaire: number; process: number; report: number };
 }
 export interface Student { id: number; studentId: string; name: string; email: string | null }
+export interface DeletionImpact { experiments: number; submitted: number; graded: number }
 export interface TeacherAnnouncement { id: number; title: string; content: string; createdAt: string }
 export interface GradeExportPreviewItem { taskId: number; topicId: number; topic: string; classId: number; className: string; graded: number; total: number; avgScore: number }
 export interface GradeAnalytics {
@@ -117,7 +118,11 @@ export const teacherApi = {
     getTasks: () => request<Task[]>("/api/teacher/tasks"),
     createTask: (data: { topicId: number; classIds: number[]; deadline?: string }) => request<{ success: boolean }>("/api/teacher/tasks", { method: "POST", body: JSON.stringify(data) }),
     extendTaskDeadline: (id: number, deadline: string) => request<{ success: boolean }>(`/api/teacher/tasks/${id}/extend`, { method: "PUT", body: JSON.stringify({ deadline }) }),
-    deleteTask: (id: number) => request<{ success: boolean }>(`/api/teacher/tasks/${id}`, { method: "DELETE" }),
+    deleteTask: (id: number, options?: { confirm?: boolean }) => request<{ success: boolean }>(
+        `/api/teacher/tasks/${id}${options?.confirm ? "?confirm=1" : ""}`,
+        { method: "DELETE" },
+    ),
+    getTaskDeletionImpact: (id: number) => request<{ impact: DeletionImpact; requiresConfirmation: boolean }>(`/api/teacher/tasks/${id}/deletion-preview`),
     getTaskProgress: (id: number) => request<TaskProgressData>(`/api/teacher/tasks/${id}/progress`),
 
     getGradingList: (params: GradingListParams = {}) => {
@@ -132,7 +137,11 @@ export const teacherApi = {
     getStudents: (classId: number) => request<Student[]>(`/api/teacher/classes/${classId}/students`),
     addStudent: (classId: number, data: { studentId: string; name: string; email?: string }) => request<{ success: boolean }>(`/api/teacher/classes/${classId}/students`, { method: "POST", body: JSON.stringify(data) }),
     updateStudent: (id: number, data: { action: "reset_password" }) => request<{ success: boolean }>(`/api/teacher/students/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-    deleteStudent: (id: number) => request<{ success: boolean }>(`/api/teacher/students/${id}`, { method: "DELETE" }),
+    deleteStudent: (id: number, options?: { confirm?: boolean }) => request<{ success: boolean }>(
+        `/api/teacher/students/${id}${options?.confirm ? "?confirm=1" : ""}`,
+        { method: "DELETE" },
+    ),
+    getStudentDeletionImpact: (id: number) => request<{ impact: DeletionImpact; requiresConfirmation: boolean }>(`/api/teacher/students/${id}/deletion-preview`),
     importStudents: (classId: number, file: File) => upload<{
         successCount: number;
         skippedCount?: number;

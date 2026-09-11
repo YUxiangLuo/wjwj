@@ -5,7 +5,7 @@ import {
     teacherPasswordRoutes,
     withTeacherAuth,
 } from "./routes/auth";
-import { classRoutes, classStudentsImportRoutes, classStudentsRoutes, studentRoutes } from "./routes/classroom";
+import { classRoutes, classStudentsImportRoutes, classStudentsRoutes, studentDeletionPreviewRoutes, studentRoutes } from "./routes/classroom";
 import { dashboardRoutes } from "./routes/dashboard";
 import { gradeAnalyticsRoutes, gradeExportDataRoutes, gradeExportExcelRoutes, gradeExportPreviewRoutes } from "./routes/export";
 import {
@@ -16,6 +16,7 @@ import {
 } from "./routes/grading";
 import { teacherAnnouncementsRoutes } from "./routes/announcements";
 import {
+    taskDeletionPreviewRoutes,
     taskExtendRoutes,
     taskItemRoutes,
     taskProgressRoutes,
@@ -45,6 +46,7 @@ export const teacherApiRoutes = {
     "/api/teacher/classes/:classId/students": withTeacherAuth(classStudentsRoutes),
     "/api/teacher/classes/:classId/students/import": withTeacherAuth(classStudentsImportRoutes),
     "/api/teacher/students/:id": withTeacherAuth(studentRoutes),
+    "/api/teacher/students/:id/deletion-preview": withTeacherAuth(studentDeletionPreviewRoutes),
     "/api/teacher/topics": withTeacherAuth(topicRoutes),
     "/api/teacher/topics/:id": withTeacherAuth(topicItemRoutes),
     "/api/teacher/topics/:id/detail": withTeacherAuth(topicDetailRoutes),
@@ -59,6 +61,7 @@ export const teacherApiRoutes = {
     "/api/teacher/topics/:id/copy": withTeacherAuth(topicCopyRoutes),
     "/api/teacher/tasks": withTeacherAuth(taskRoutes),
     "/api/teacher/tasks/:id": withTeacherAuth(taskItemRoutes),
+    "/api/teacher/tasks/:id/deletion-preview": withTeacherAuth(taskDeletionPreviewRoutes),
     "/api/teacher/tasks/:id/extend": withTeacherAuth(taskExtendRoutes),
     "/api/teacher/tasks/:id/progress": withTeacherAuth(taskProgressRoutes),
 

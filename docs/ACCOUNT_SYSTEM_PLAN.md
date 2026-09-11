@@ -11,26 +11,29 @@
 | 学号全局唯一 + 硬删除释放 + 重导入幂等（真实库覆盖） | ✅ |
 | 移除学生/教师账号停用启用、管理员更换授课教师（迁移 `0001`） | ✅ |
 | 种子/文档/SECURITY/客户端错误码同步，`check:docs`、`db:seed:check` 通过 | ✅ |
-| 单元 1061、DB 集成 16、浏览器实测（教师名单、管理员教师列表、班级编辑） | ✅ |
+| P0 全部完成：删除影响面预览 + 显式确认、导入并发逐行定位、归属不变量固化 | ✅ |
+| 单元 1074（1063 pass / 11 skip / 0 fail）、DB 集成 11、浏览器实测删除确认与名单 | ✅ |
 
-## 1. P0：正确性与数据安全（建议优先）
+## 1. P0：正确性与数据安全 —— ✅ 已完成
 
-### P0-1 硬删除的后果可见化与二次确认
+### P0-1 硬删除的后果可见化与二次确认 ✅
 - 问题：`DELETE /teacher/students/:id` 与任务删除会**静默级联**清空实验、提交、成绩、抽样记录与相关审计事件；当前只有 UI 文案提示，服务端无任何护栏，误删不可恢复。
-- 方案（二选一，推荐 A）：
-  - A. 删除前返回影响面（`GET .../deletion-preview` → 实验数/已批改数），UI 在确认框列出具体数字后再允许删除；
-  - B. 存在 `submitted|graded` 实验时要求显式 `force=true`，否则 409 `HAS_SUBMISSIONS`。
-- 验收：删有成绩的学生必须经过显式确认；无成绩的学生保持一步删除；新增 2 条路由测试 + 1 条 DB 集成测试（级联后行数归零）。
+- 已实现（A + B 的组合，覆盖 UI 与脚本两条路径）：
+  - `GET /api/teacher/students/:id/deletion-preview`、`GET /api/teacher/tasks/:id/deletion-preview` 返回 `{ impact: { experiments, submitted, graded }, requiresConfirmation }`；
+  - 学生与任务的 `DELETE` 在**同一把行锁事务内**统计影响面；存在 `submitted|graded` 且未带 `?confirm=1` 时返回 409 `SUBMISSIONS_EXIST`（消息含具体条数），否则级联删除；
+  - 教师端确认框在删除前拉取影响面，列出「N 条实验记录、已提交 X 条、已批改 Y 条」，确认时按需带上 `confirm=1`；预览失败或收到 409 时保持对话框打开，把下一次点击变成显式确认。
+- 验收证据：路由测试 4 条（预览 / 无确认拒绝 / 带确认通过 / 无提交一步删除）+ 任务侧 3 条 + DB 集成测试 `hard deleting a student requires confirming the cascaded submissions`（真实 409 → confirm 后实验行归零）；浏览器实测对话框与 API 行为一致。
 
-### P0-2 导入的原子性与逐行冲突定位
+### P0-2 导入的原子性与逐行冲突定位 ✅
 - 问题：查重分类在事务外，并发导入同一学号时靠唯一约束兜底（409 `CONFLICT`，实测无 500），但**错误不定位到具体行**，批量名单里哪一行冲突无法从响应看出。
-- 方案：把"查重 → 插入"合并进同一事务（或插入后用 `ON CONFLICT DO NOTHING ... RETURNING` 反查冲突行），把唯一约束冲突映射为该行的 `errors[]` 条目。
-- 验收：并发导入同一学号，两个请求都返回 200，其中一个 `successCount=1`，另一个 `failureCount=1` 且 `errors[0].row` 指向该行。
+- 已实现：插入改为 `ON CONFLICT (student_id) DO NOTHING … RETURNING student_id`，批量插入不再因并发冲突整体失败；未插入的行在事务后重新分类，分别落到 `skippedCount`（本班已存在）或 `errors[]`（指名班级 / 其他教师）。
+- 验收证据：路由测试 `student import reports a lost insert race per row instead of failing the file`（插入 0 行 → 1 skipped + 1 命名错误，且插入语句带 `ON CONFLICT DO NOTHING`）；`mock-db` 新增记录该冲突策略以支持断言。
 
-### P0-3 归属不变量固化
+### P0-3 归属不变量固化 ✅
 - 问题：班级归属不可变更后，`requireOwnedClass` / 评分的班级锁仍承担"写请求必须属于当前教师"的职责，但缺少一条明确的不变量测试。
-- 方案：新增 DB 级不变量测试：把班级 `teacher_id` 直接改到另一个教师（模拟数据修复），断言原教师的评分/导入/发布写请求全部 403；同时断言不存在任何 API 能修改 `class.teacher_id`。
-- 验收：不变量测试通过；`grep` 断言 `class_.teacherId` 无 update 写入点（可用现有 `check:styles` 之外的静态检查或测试内断言）。
+- 已实现：
+  - 路由测试 `admin class update renames the class and ignores any teacher reassignment`：`PUT /api/admin/classes/:id` 带 `teacherId` 时只写 `name`，且不产生教师查询；
+  - DB 集成测试 `a class keeps its teacher: reassignment is not a supported write path`：直接把 `class.teacher_id` 改到另一教师（模拟库外修复）后，原教师的评分返回 404、导入返回 403，新教师的评分返回 200。
 
 ## 2. P1：运维与健壮性
 
@@ -78,9 +81,9 @@
 - **真实数据库**：账号生命周期、唯一约束、并发冲突、级联删除等只能用 `test:db` 验证的不变量必须落集成测试（现有 16 条）。
 - **浏览器**：只验证跨页面真实链路（导入→名单→登录）与关键 UI 状态，不重复覆盖已有自动化断言。
 
-## 5. 建议执行顺序
+## 5. 执行顺序
 
-1. P0-1（数据安全）→ P0-3（不变量）→ P0-2（导入定位）
+1. ✅ P0-1（数据安全）→ P0-3（不变量）→ P0-2（导入定位）
 2. P1-2（跨教师学号，最容易卡住教师）→ P1-3 → P1-1 → P1-4
 3. P2-1 → P2-3 → P2-2
 

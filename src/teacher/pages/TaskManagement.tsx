@@ -18,7 +18,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ClipboardList, CalendarDays, CheckCircle2, AlertTriangle, Search, Clock, Plus, BarChart3, Trash2 } from "lucide-react";
-import { teacherApi, type Task, type Topic, type TeacherClass } from "../api-client";
+import { teacherApi, type DeletionImpact, type Task, type Topic, type TeacherClass } from "../api-client";
 import { TaskExtendDialog } from "../components/TaskExtendDialog";
 import { TaskPublishDialog } from "../components/TaskPublishDialog";
 import { Link } from "react-router-dom";
@@ -66,6 +66,11 @@ export function TaskManagement() {
     const [extendDeadline, setExtendDeadline] = useState("");
     const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
     const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+    const [deleteImpact, setDeleteImpact] = useState<{
+        loading: boolean;
+        requiresConfirmation: boolean;
+        summary: string | null;
+    } | null>(null);
 
     // Data for modal
     const [availableTopics, setAvailableTopics] = useState<Topic[]>([]);
@@ -154,15 +159,49 @@ export function TaskManagement() {
         }
     }
 
+    function describeDeletionImpact(impact: DeletionImpact) {
+        if (impact.experiments === 0) return "该任务还没有学生实验记录。";
+        const details = [`${impact.experiments} 条学生实验`];
+        if (impact.submitted > 0) details.push(`已提交 ${impact.submitted} 条`);
+        if (impact.graded > 0) details.push(`已批改 ${impact.graded} 条`);
+        return `将同时永久删除 ${details.join("、")}及对应成绩与抽样记录。`;
+    }
+
+    async function openDeleteDialog(task: Task) {
+        setTaskToDelete(task);
+        setDeleteImpact({ loading: true, requiresConfirmation: false, summary: null });
+        const res = await teacherApi.getTaskDeletionImpact(task.id);
+        if (res.success && res.data) {
+            setDeleteImpact({
+                loading: false,
+                requiresConfirmation: res.data.requiresConfirmation,
+                summary: describeDeletionImpact(res.data.impact),
+            });
+        } else {
+            // Unknown impact: let the server decide and report on confirm.
+            setDeleteImpact({ loading: false, requiresConfirmation: false, summary: null });
+        }
+    }
+
     async function confirmDeleteTask() {
         if (!taskToDelete) return;
         setDeleteSubmitting(true);
         try {
-            const res = await teacherApi.deleteTask(taskToDelete.id);
+            const res = await teacherApi.deleteTask(taskToDelete.id, {
+                confirm: deleteImpact?.requiresConfirmation === true,
+            });
             if (res.success) {
                 toast.success("任务已删除");
                 setTaskToDelete(null);
+                setDeleteImpact(null);
                 await loadTasks();
+            } else if (res.error?.code === "SUBMISSIONS_EXIST") {
+                // Keep the dialog open so the next click is an explicit confirmation.
+                setDeleteImpact({
+                    loading: false,
+                    requiresConfirmation: true,
+                    summary: res.error.message,
+                });
             } else {
                 toast.error("删除失败: " + (res.error?.message ?? ""));
             }
@@ -354,7 +393,7 @@ export function TaskManagement() {
                                                     size="sm"
                                                     type="button"
                                                     aria-label={`删除任务：${task.topic}`}
-                                                    onClick={() => setTaskToDelete(task)}
+                                                    onClick={() => void openDeleteDialog(task)}
                                                     className="h-8 text-muted-foreground hover:text-destructive hover:bg-destructive-muted"
                                                     title="删除任务"
                                                 >
@@ -406,7 +445,7 @@ export function TaskManagement() {
                 onConfirm={handleExtendDeadline}
             />
 
-            <AlertDialog open={taskToDelete !== null} onOpenChange={(open) => { if (!open) setTaskToDelete(null); }}>
+            <AlertDialog open={taskToDelete !== null} onOpenChange={(open) => { if (!open) { setTaskToDelete(null); setDeleteImpact(null); } }}>
                 <AlertDialogContent className="bg-card border-border text-foreground">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-foreground">删除任务？</AlertDialogTitle>
@@ -414,6 +453,14 @@ export function TaskManagement() {
                             {taskToDelete
                                 ? `将永久删除「${taskToDelete.topic}」在「${taskToDelete.className}」的任务，以及全部学生实验进度、提交、成绩和抽样记录。此操作不可恢复；再次发布会创建全新的空任务。`
                                 : null}
+                            {taskToDelete && deleteImpact?.loading && (
+                                <span className="mt-2 block">正在统计将被删除的实验与成绩…</span>
+                            )}
+                            {taskToDelete && !deleteImpact?.loading && deleteImpact?.summary && (
+                                <span data-testid="teacher-task-delete-impact" className="mt-2 block font-medium text-destructive">
+                                    {deleteImpact.summary}
+                                </span>
+                            )}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

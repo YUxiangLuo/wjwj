@@ -3,7 +3,7 @@ import { db } from "../../db";
 import { topic, topicAttachment } from "../../db/schema";
 import { spreadsheetRequestExceedsLimit } from "../../lib/spreadsheet";
 import { buildAttachmentDownloadResponse } from "../../server/attachment-download";
-import { error, getPositiveRouteId, json, parseBody, parseFormData } from "../../server/http";
+import { error, getPositiveRouteId, getSearchParams, json, parseBody, parseFormData } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { requireTopicOwner } from "../topic/access";
 import {
@@ -27,7 +27,7 @@ import {
     listTeacherTasks,
     listTeacherTopics,
 } from "../topic/query-service";
-import { deleteTeacherTask, extendTopicTaskDeadline, publishTopicTasks } from "../topic/task-service";
+import { deleteTeacherTask, extendTopicTaskDeadline, getTaskDeletionImpact, publishTopicTasks } from "../topic/task-service";
 import { getPrimaryTeacherIdOrThrow } from "./auth";
 
 function assignedTopicContentError() {
@@ -345,12 +345,24 @@ const taskItemRoutes: RouteDefinition = {
         const taskId = parsePositiveRouteId(req);
         if (!taskId) return error("Invalid ID", "INVALID_ID");
 
-        const result = await deleteTeacherTask({ teacherId: currentTeacherId, taskId });
+        const confirm = getSearchParams(req).get("confirm") === "1";
+        const result = await deleteTeacherTask({ teacherId: currentTeacherId, taskId, confirm });
         if (!result.ok) {
             return error(result.message, result.code, result.status);
         }
 
         return json({ success: true });
+    },
+};
+
+const taskDeletionPreviewRoutes: RouteDefinition = {
+    async GET(req) {
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
+        const taskId = parsePositiveRouteId(req);
+        if (!taskId) return error("Invalid ID", "INVALID_ID");
+        const impact = await getTaskDeletionImpact({ teacherId: currentTeacherId, taskId });
+        if (!impact) return error("任务不存在", "NOT_FOUND", 404);
+        return json({ impact, requiresConfirmation: impact.submitted > 0 || impact.graded > 0 });
     },
 };
 
@@ -387,6 +399,7 @@ const taskProgressRoutes: RouteDefinition = {
 };
 
 export {
+    taskDeletionPreviewRoutes,
     taskExtendRoutes,
     taskItemRoutes,
     taskProgressRoutes,

@@ -455,7 +455,7 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
             { actorType: "teacher", actorId: teacherId, action: "test.attempt", entityType: "sampling_attempt", entityId: studentDeleteAttempt!.id },
             { actorType: "student", actorId: studentId, action: "test.actor", entityType: "session", entityId: 1 },
         ]);
-        expect(await deleteTeacherStudent({ teacherId, studentId })).toBe(true);
+        expect(await deleteTeacherStudent({ teacherId, studentId })).toMatchObject({ ok: true });
         expect(await database.select().from(schema.student).where(eq(schema.student.id, studentId))).toHaveLength(0);
         expect(await database.select().from(schema.experiment).where(eq(schema.experiment.id, createdExperiment!.id))).toHaveLength(0);
         expect(await database.select().from(schema.samplingAttempt).where(eq(schema.samplingAttempt.experimentId, createdExperiment!.id))).toHaveLength(0);

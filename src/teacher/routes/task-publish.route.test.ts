@@ -119,3 +119,35 @@ test("task hard deletion removes related audit events and the task row", async (
     expect(operations.some((item) => item.kind === "select" && item.table === experiment)).toBe(true);
     expect(operations.some((item) => item.kind === "update")).toBe(false);
 });
+
+test("task deletion impact is exposed before the cascade", async () => {
+    const { module } = await load([
+        [{ id: 88, classId: 101, deadline: null }],
+        [{ status: "submitted", count: 2 }, { status: "graded", count: 1 }],
+    ]);
+    expect(await module.getTaskDeletionImpact({ teacherId: 9, taskId: 88 }))
+        .toMatchObject({ experiments: 3, submitted: 2, graded: 1 });
+});
+
+test("task deletion refuses to cascade hand-in work without confirmation", async () => {
+    const { module, operations } = await load([
+        [{ id: 88, classId: 101, deadline: null }],
+        [{ status: "graded", count: 1 }],
+    ]);
+    expect(await module.deleteTeacherTask({ teacherId: 9, taskId: 88 })).toMatchObject({
+        ok: false,
+        code: "SUBMISSIONS_EXIST",
+        status: 409,
+    });
+    expect(operations.some((item) => item.kind === "delete")).toBe(false);
+});
+
+test("task deletion with confirmation removes the graded submissions", async () => {
+    const { module, operations } = await load([
+        [{ id: 88, classId: 101, deadline: null }],
+        [{ status: "graded", count: 1 }],
+        [{ id: 91 }],
+    ]);
+    expect(await module.deleteTeacherTask({ teacherId: 9, taskId: 88, confirm: true })).toEqual({ ok: true });
+    expect(operations.some((item) => item.kind === "delete" && item.table === task)).toBe(true);
+});

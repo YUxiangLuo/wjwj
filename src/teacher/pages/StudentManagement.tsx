@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StudentAddDialog } from "../components/StudentAddDialog";
 import { StudentConfirmDialog } from "../components/StudentConfirmDialog";
 import { StudentImportDialog } from "../components/StudentImportDialog";
-import { teacherApi, type Student, type TeacherClass } from "../api-client";
+import { teacherApi, type DeletionImpact, type Student, type TeacherClass } from "../api-client";
 import { toast } from "sonner";
 import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
@@ -31,6 +31,11 @@ export function StudentManagement() {
     // Add Form State
     const [newStudent, setNewStudent] = useState({ id: "", name: "", email: "" });
     const [submitting, setSubmitting] = useState(false);
+    const [deleteImpact, setDeleteImpact] = useState<{
+        loading: boolean;
+        requiresConfirmation: boolean;
+        summary: string | null;
+    } | null>(null);
 
     // Confirmation State
     const [confirmDialog, setConfirmDialog] = useState<{
@@ -129,8 +134,28 @@ export function StudentManagement() {
         setConfirmDialog({ open: true, type: "reset", student });
     }
 
-    function handleDelete(student: Student) {
+    function describeDeletionImpact(impact: DeletionImpact) {
+        if (impact.experiments === 0) return "该学生没有实验记录，删除后学号可以重新导入。";
+        const details = [`${impact.experiments} 条实验记录`];
+        if (impact.submitted > 0) details.push(`已提交 ${impact.submitted} 条`);
+        if (impact.graded > 0) details.push(`已批改 ${impact.graded} 条`);
+        return `将同时永久删除 ${details.join("、")}及其成绩与抽样记录。`;
+    }
+
+    async function handleDelete(student: Student) {
         setConfirmDialog({ open: true, type: "delete", student });
+        setDeleteImpact({ loading: true, requiresConfirmation: false, summary: null });
+        const res = await teacherApi.getStudentDeletionImpact(student.id);
+        if (res.success && res.data) {
+            setDeleteImpact({
+                loading: false,
+                requiresConfirmation: res.data.requiresConfirmation,
+                summary: describeDeletionImpact(res.data.impact),
+            });
+        } else {
+            // Unknown impact: let the server decide and report on confirm.
+            setDeleteImpact({ loading: false, requiresConfirmation: false, summary: null });
+        }
     }
 
     async function executeConfirmAction() {
@@ -143,17 +168,31 @@ export function StudentManagement() {
                 res = await teacherApi.updateStudent(student.id, { action: "reset_password" });
                 break;
             case "delete":
-                res = await teacherApi.deleteStudent(student.id);
+                res = await teacherApi.deleteStudent(student.id, {
+                    confirm: deleteImpact?.requiresConfirmation === true,
+                });
                 break;
         }
 
         if (res?.success) {
             if (type === "reset") toast.success("密码已重置为学号");
+            setConfirmDialog({ open: false, type: null, student: null });
+            setDeleteImpact(null);
             void loadData(false);
-        } else {
-            toast.error("操作失败: " + res?.error?.message);
+            return;
         }
+        if (type === "delete" && res?.error?.code === "SUBMISSIONS_EXIST") {
+            // Keep the dialog open so the next click is an explicit confirmation.
+            setDeleteImpact({
+                loading: false,
+                requiresConfirmation: true,
+                summary: res.error.message,
+            });
+            return;
+        }
+        toast.error("操作失败: " + res?.error?.message);
         setConfirmDialog({ open: false, type: null, student: null });
+        setDeleteImpact(null);
     }
 
     const filteredStudents = students.filter(s =>
@@ -295,9 +334,18 @@ export function StudentManagement() {
 
             <StudentConfirmDialog
                 state={confirmDialog}
-                onOpenChange={(open) => !open && setConfirmDialog((prev) => ({ ...prev, open: false }))}
-                onCancel={() => setConfirmDialog({ open: false, type: null, student: null })}
+                onOpenChange={(open) => {
+                    if (open) return;
+                    setConfirmDialog((prev) => ({ ...prev, open: false }));
+                    setDeleteImpact(null);
+                }}
+                onCancel={() => {
+                    setConfirmDialog({ open: false, type: null, student: null });
+                    setDeleteImpact(null);
+                }}
                 onConfirm={executeConfirmAction}
+                impactSummary={deleteImpact?.summary ?? null}
+                impactPending={deleteImpact?.loading ?? false}
             />
         </div>
     );

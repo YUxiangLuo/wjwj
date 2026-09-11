@@ -43,6 +43,7 @@ test("student import preserves Chinese text for utf-8 csv files", async () => {
             [],
             [{ id: 3 }],
         ],
+        insert: [[{ studentId: "2099201" }, { studentId: "2099202" }]],
     });
 
     const formData = new FormData();
@@ -89,7 +90,7 @@ test("student import preserves Chinese text for utf-8 csv files", async () => {
 
 for (const quoted of [false, true]) {
     test(`student import skips CSV blank lines and reports original ${quoted ? "multiline quoted" : "unquoted"} row numbers`, async () => {
-        const { module, operations } = await loadClassroomRoutes({ select: [[{ id: 3 }], [], [{ id: 3 }]] });
+        const { module, operations } = await loadClassroomRoutes({ select: [[{ id: 3 }], [], [{ id: 3 }]], insert: [[{ studentId: "S01" }]] });
         const formData = new FormData();
         formData.append("file", new File([
             `studentId,name,email\r\nS01,${quoted ? '"学生\r\n甲"' : "学生甲"},ok@example.edu\r\n\r\n,缺号,\r\nS01,重复,\r\n \t\r\nS02,学生乙,bad\r\n,,\r\n\r\n\r\n`,
@@ -119,6 +120,7 @@ test("student import treats differently-cased student IDs as duplicates", async 
             [],
             [{ id: 3 }],
         ],
+        insert: [[{ studentId: "S001" }]],
     });
     const formData = new FormData();
     formData.append(
@@ -332,6 +334,7 @@ test("student import reports and skips malformed optional emails", async () => {
             [],
             [{ id: 3 }],
         ],
+        insert: [[{ studentId: "S010" }]],
     });
     const formData = new FormData();
     formData.append(
@@ -378,4 +381,116 @@ test("student hard deletion removes sessions, audit events, and the student row"
     expect(deletedTables).toContain(student);
     expect(operations.some((operation) => operation.kind === "select" && operation.table === experiment)).toBe(true);
     expect(operations.some((operation) => operation.kind === "update" && operation.table === student)).toBe(false);
+});
+
+test("student import reports a lost insert race per row instead of failing the file", async () => {
+    const { module, operations } = await loadClassroomRoutes({
+        select: [
+            [{ id: 3 }],
+            [],
+            [{ id: 3 }],
+            // Re-read after the insert lost the race for both rows.
+            [
+                { id: 42, studentId: "S042", classId: 3, className: "统计一班", teacherId: 9 },
+                { id: 43, studentId: "S043", classId: 7, className: "数据分析班", teacherId: 9 },
+            ],
+        ],
+        insert: [[]],
+    });
+    const formData = new FormData();
+    formData.append("file", new File(["studentId,name\nS042,甲\nS043,乙\n"], "students.csv", { type: "text/csv" }));
+
+    const response = await module.classStudentsImportRoutes.POST!(withRouteParam(
+        new Request("https://example.com/api/teacher/classes/3/students/import", { method: "POST", body: formData }),
+        "3",
+    ));
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toMatchObject({ successCount: 0, skippedCount: 1, failureCount: 1 });
+    expect(payload.data.skipped).toEqual([{ row: 2, reason: "学号已存在，未做变更: S042" }]);
+    expect(payload.data.errors).toEqual([{ row: 3, reason: "学号已存在于班级「数据分析班」，如需变更班级请先在该班级删除该学生" }]);
+    // The batch must not abort on the unique constraint.
+    const insert = operations.find((operation) => operation.kind === "insert" && operation.table === student);
+    expect(insert?.onConflictDoNothing).toBe(true);
+    // Only the skipped row was re-read; the conflicting class came from the same probe.
+    expect(operations.filter((operation) => operation.kind === "select")).toHaveLength(4);
+});
+
+test("student deletion preview reports the cascade and whether confirmation is required", async () => {
+    const { module } = await loadClassroomRoutes({
+        teacherId: 9,
+        select: [
+            [{ id: 44 }],
+            [{ status: "submitted", count: 1 }, { status: "graded", count: 2 }, { status: "in_progress", count: 4 }],
+        ],
+    });
+    const response = await module.studentDeletionPreviewRoutes.GET!(withStudentParam(new Request(
+        "https://example.com/api/teacher/students/44/deletion-preview",
+    ), "44"));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+        data: {
+            impact: { experiments: 7, submitted: 1, graded: 2 },
+            requiresConfirmation: true,
+        },
+    });
+});
+
+test("student deletion refuses to cascade graded work without an explicit confirmation", async () => {
+    const { module, operations } = await loadClassroomRoutes({
+        teacherId: 9,
+        select: [
+            [{ id: 44 }],
+            [{ status: "graded", count: 2 }],
+        ],
+    });
+    const response = await module.studentRoutes.DELETE!(withStudentParam(new Request(
+        "https://example.com/api/teacher/students/44",
+        { method: "DELETE" },
+    ), "44"));
+
+    expect(response.status).toBe(409);
+    const payload = await response.json() as any;
+    expect(payload.error.code).toBe("SUBMISSIONS_EXIST");
+    expect(payload.error.message).toContain("2 条");
+    expect(operations.some((operation) => operation.kind === "delete")).toBe(false);
+});
+
+test("student deletion with confirmation removes the graded work", async () => {
+    const { module, operations } = await loadClassroomRoutes({
+        teacherId: 9,
+        select: [
+            [{ id: 44 }],
+            [{ status: "graded", count: 1 }],
+            [{ id: 91 }],
+        ],
+    });
+    const response = await module.studentRoutes.DELETE!(withStudentParam(new Request(
+        "https://example.com/api/teacher/students/44?confirm=1",
+        { method: "DELETE" },
+    ), "44"));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ data: { success: true } });
+    expect(operations.some((operation) => operation.kind === "delete" && operation.table === student)).toBe(true);
+});
+
+test("student deletion of an unsubmitted roster entry stays a one-step delete", async () => {
+    const { module, operations } = await loadClassroomRoutes({
+        teacherId: 9,
+        select: [
+            [{ id: 44 }],
+            [{ status: "in_progress", count: 1 }],
+            [],
+        ],
+    });
+    const response = await module.studentRoutes.DELETE!(withStudentParam(new Request(
+        "https://example.com/api/teacher/students/44",
+        { method: "DELETE" },
+    ), "44"));
+
+    expect(response.status).toBe(200);
+    expect(operations.some((operation) => operation.kind === "delete" && operation.table === student)).toBe(true);
 });

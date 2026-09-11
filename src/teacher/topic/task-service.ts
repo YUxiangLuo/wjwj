@@ -4,6 +4,7 @@ import { class_, experiment, samplingAttempt, task, topic } from "../../db/schem
 import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
 import { deleteAuditEventsForEntities } from "../../server/audit-event";
 import { validateTopicPublishReadiness } from "./validation";
+import { deletionRequiresConfirmation, loadDeletionImpact } from "../deletion-impact";
 
 interface TaskServiceFailure {
     ok: false;
@@ -19,6 +20,13 @@ interface TaskPublishSuccess {
 
 interface TaskServiceSuccess {
     ok: true;
+}
+
+interface TaskDeletionConfirmationRequired {
+    ok: false;
+    code: "SUBMISSIONS_EXIST";
+    message: string;
+    status: 409;
 }
 
 function fail(message: string, code: string, status = 400): TaskServiceFailure {
@@ -175,10 +183,24 @@ export async function extendTopicTaskDeadline(params: {
 }
 
 /** 永久删除任务及其学生实验；仅可删除本人班级下的任务。 */
+/** Counts what deleting the task would cascade away, before anything is removed. */
+export async function getTaskDeletionImpact(params: { teacherId: number; taskId: number }) {
+    return db.transaction(async (tx) => {
+        const [row] = await tx
+            .select({ id: task.id })
+            .from(task)
+            .innerJoin(class_, eq(task.classId, class_.id))
+            .where(and(eq(task.id, params.taskId), eq(class_.teacherId, params.teacherId)));
+        if (!row) return null;
+        return loadDeletionImpact(tx, eq(experiment.taskId, params.taskId));
+    });
+}
+
 export async function deleteTeacherTask(params: {
     teacherId: number;
     taskId: number;
-}): Promise<TaskServiceSuccess | TaskServiceFailure> {
+    confirm?: boolean;
+}): Promise<TaskServiceSuccess | TaskServiceFailure | TaskDeletionConfirmationRequired> {
     return db.transaction(async (tx) => {
         await acquireStorageMutationLock(tx);
         const [row] = await tx
@@ -188,6 +210,17 @@ export async function deleteTeacherTask(params: {
             .where(and(eq(task.id, params.taskId), eq(class_.teacherId, params.teacherId)))
             .for("update");
         if (!row) return fail("任务不存在", "NOT_FOUND", 404);
+
+        // Guarded in the same locked transaction as the cascade below.
+        const impact = await loadDeletionImpact(tx, eq(experiment.taskId, params.taskId));
+        if (!params.confirm && deletionRequiresConfirmation(impact)) {
+            return {
+                ok: false,
+                code: "SUBMISSIONS_EXIST",
+                message: `该任务存在 ${impact.submitted + impact.graded} 条已提交或已批改的实验记录，永久删除会一并清除；确认后请重试`,
+                status: 409,
+            };
+        }
 
         const experimentRows = await tx
             .select({ id: experiment.id })

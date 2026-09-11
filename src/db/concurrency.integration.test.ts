@@ -11,6 +11,7 @@ let application: typeof import("./index");
 let raw: SQL;
 let management: typeof import("../admin/routes/management");
 let classroom: typeof import("../teacher/routes/classroom");
+let grading: typeof import("../teacher/routes/grading");
 let teacherAuth: typeof import("../teacher/routes/auth");
 let studentAuth: typeof import("../student/routes/auth");
 const ids = { semesters: [] as number[], teachers: [] as number[], classes: [] as number[], students: [] as number[], topics: [] as number[] };
@@ -20,8 +21,8 @@ beforeAll(async () => {
     process.env.DATABASE_URL = url!;
     application = await import("./index");
     raw = new SQL(url!);
-    [management, classroom, teacherAuth, studentAuth] = await Promise.all([
-        import("../admin/routes/management"), import("../teacher/routes/classroom"),
+    [management, classroom, grading, teacherAuth, studentAuth] = await Promise.all([
+        import("../admin/routes/management"), import("../teacher/routes/classroom"), import("../teacher/routes/grading"),
         import("../teacher/routes/auth"), import("../student/routes/auth"),
     ]);
 });
@@ -48,8 +49,8 @@ afterEach(async () => {
 });
 afterAll(async () => { if (required) { await application?.closeDatabase(); await raw?.close(); } });
 
-function request(method: string, params: Record<string, string>, body?: unknown, cookie?: string) {
-    const req = new Request("http://localhost", {
+function request(method: string, params: Record<string, string>, body?: unknown, cookie?: string, query = "") {
+    const req = new Request(`http://localhost${query}`, {
         method, headers: { "Content-Type": "application/json", ...(cookie ? { cookie } : {}) },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
@@ -96,6 +97,17 @@ async function fixture(password = "unchanged-password") {
     ids.students.push(...students.map(row => row.id));
     return { teachers, cls: cls!, students };
 }
+async function addSubmission(group: Awaited<ReturnType<typeof fixture>>) {
+    const { db } = application;
+    const [topic] = await db.insert(schema.topic).values({ teacherId: group.teachers[0]!.id, name: "归属校验模板", status: 1 }).returning();
+    ids.topics.push(topic!.id);
+    const [task] = await db.insert(schema.task).values({ topicId: topic!.id, classId: group.cls.id }).returning();
+    const [experiment] = await db.insert(schema.experiment).values({
+        studentId: group.students[0]!.id, taskId: task!.id, status: "submitted", currentStage: 4, submittedAt: new Date(),
+    }).returning();
+    return { experiment: experiment!, taskId: task!.id, topicId: topic!.id };
+}
+
 async function session(userType: number, userId: number) {
     const token = crypto.randomUUID();
     await application.db.insert(schema.userSession).values({ userType, userId, sessionToken: token, expiresAt: new Date(Date.now() + 60000) });
@@ -275,4 +287,51 @@ pgTest("re-importing an active roster row neither duplicates nor rewrites the ac
     expect(rows.length).toBe(1);
     expect(rows[0]!.name).toBe("原名");
     expect(rows[0]!.password).toBe(row!.password);
+});
+
+pgTest("a class keeps its teacher: reassignment is not a supported write path", async () => {
+    const { db } = application;
+    const group = await fixture();
+    const { experiment } = await addSubmission(group);
+    const oldTeacherToken = await session(2, group.teachers[0]!.id);
+    const newTeacherToken = await session(2, group.teachers[1]!.id);
+    const gradeBody = { observedVersion: experiment.version, scoreQuestionnaire: 80, scoreProcess: 80, scoreReport: 80 };
+
+    // Simulate an out-of-band repair: point the class at the other teacher.
+    await db.update(schema.class_).set({ teacherId: group.teachers[1]!.id }).where(eq(schema.class_.id, group.cls.id));
+
+    // Grading is experiment-scoped and hides foreign work behind 404.
+    const staleGrade = await teacherAuth.withTeacherAuth(grading.gradingDetailRoutes).POST!(
+        request("POST", { id: String(experiment.id) }, gradeBody, `teacher_session=${oldTeacherToken}`),
+    );
+    expect(staleGrade.status).toBe(404);
+
+    const staleImport = await teacherAuth.withTeacherAuth(classroom.classStudentsImportRoutes).POST!(
+        importRequest(group.cls.id, `studentId,name\nRQ-${crypto.randomUUID().slice(0, 6)},学生\n`, oldTeacherToken),
+    );
+    expect(staleImport.status).toBe(403);
+
+    const currentGrade = await teacherAuth.withTeacherAuth(grading.gradingDetailRoutes).POST!(
+        request("POST", { id: String(experiment.id) }, gradeBody, `teacher_session=${newTeacherToken}`),
+    );
+    expect(currentGrade.status).toBe(200);
+});
+
+pgTest("hard deleting a student requires confirming the cascaded submissions", async () => {
+    const group = await fixture();
+    const { experiment } = await addSubmission(group);
+    const token = await session(2, group.teachers[0]!.id);
+
+    const refused = await teacherAuth.withTeacherAuth(classroom.studentRoutes).DELETE!(
+        request("DELETE", { id: String(group.students[0]!.id) }, undefined, `teacher_session=${token}`),
+    );
+    expect(refused.status).toBe(409);
+    expect(await refused.json()).toMatchObject({ error: { code: "SUBMISSIONS_EXIST" } });
+    expect(await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, experiment.id))).toHaveLength(1);
+
+    const confirmed = await teacherAuth.withTeacherAuth(classroom.studentRoutes).DELETE!(
+        request("DELETE", { id: String(group.students[0]!.id) }, undefined, `teacher_session=${token}`, "?confirm=1"),
+    );
+    expect(confirmed.status).toBe(200);
+    expect(await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, experiment.id))).toHaveLength(0);
 });

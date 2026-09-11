@@ -11,6 +11,7 @@ export interface MockDbOperation {
     kind: QueryKind | "execute" | "transaction";
     table?: unknown;
     values?: unknown;
+    onConflictDoNothing?: boolean;
     set?: unknown;
     where?: unknown;
     joins?: Array<{ type: string; table: unknown; condition?: unknown }>;
@@ -92,6 +93,7 @@ function createBuilder(kind: QueryKind, operation: MockDbOperation, queues: Requ
             return builder;
         },
         onConflictDoNothing() {
+            operation.onConflictDoNothing = true;
             return builder;
         },
         returning(selection?: unknown) {

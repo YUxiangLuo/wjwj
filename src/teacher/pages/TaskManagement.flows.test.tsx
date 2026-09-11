@@ -12,7 +12,11 @@ mock.module("sonner", () => ({ toast: { error: toastError, success: toastSuccess
 
 const getTasks = mock(async () => ({ success: true, data: [] as Task[] }));
 const createTask = mock(async (_body: unknown) => ({ success: true }));
-const deleteTask = mock(async (_id: number) => ({ success: true }));
+const deleteTask = mock(async (_id: number, _options?: { confirm?: boolean }) => ({ success: true }));
+const getTaskDeletionImpact = mock(async (_id: number) => ({
+    success: true,
+    data: { impact: { experiments: 2, submitted: 1, graded: 1 }, requiresConfirmation: true },
+}));
 const extendTaskDeadline = mock(async (_id: number, _deadline: string) => ({ success: true }));
 
 const realClient = await import("../api-client");
@@ -23,6 +27,7 @@ mock.module("../api-client", () => ({
         getTasks,
         createTask,
         deleteTask,
+        getTaskDeletionImpact,
         extendTaskDeadline,
         getTopics: async () => ({ success: true, data: [] }),
         getClasses: async () => ({ success: true, data: [] }),
@@ -44,6 +49,7 @@ beforeEach(() => {
     getTasks.mockClear();
     createTask.mockClear();
     deleteTask.mockClear();
+    getTaskDeletionImpact.mockClear();
     extendTaskDeadline.mockClear();
     toastError.mockClear();
     toastSuccess.mockClear();
@@ -109,10 +115,29 @@ test("deleting a task requires irreversible confirmation then reloads", async ()
 
     fireEvent.click(view.getByTestId("teacher-task-delete-open-1"));
     expect(view.getByText(/此操作不可恢复；再次发布会创建全新的空任务。/)).toBeTruthy();
+    // The dialog lists the cascade before the teacher confirms it.
+    await waitFor(() => expect(view.getByTestId("teacher-task-delete-impact").textContent).toContain("2 条学生实验"));
+    expect(view.getByTestId("teacher-task-delete-impact").textContent).toContain("已批改 1 条");
 
     fireEvent.click(view.getByTestId("teacher-task-delete-confirm"));
-    await waitFor(() => expect(deleteTask).toHaveBeenCalledWith(1));
+    await waitFor(() => expect(deleteTask).toHaveBeenCalledWith(1, { confirm: true }));
     await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("任务已删除"));
+});
+
+test("deleting a task without hand-in work needs no extra confirmation flag", async () => {
+    getTaskDeletionImpact.mockResolvedValueOnce({
+        success: true,
+        data: { impact: { experiments: 0, submitted: 0, graded: 0 }, requiresConfirmation: false },
+    });
+    getTasks.mockResolvedValue({ success: true, data: [openTask] });
+    const view = renderPage();
+    await waitFor(() => expect(view.getByTestId("teacher-task-delete-open-1")).toBeTruthy());
+
+    fireEvent.click(view.getByTestId("teacher-task-delete-open-1"));
+    await waitFor(() => expect(view.getByTestId("teacher-task-delete-impact").textContent).toContain("还没有学生实验记录"));
+
+    fireEvent.click(view.getByTestId("teacher-task-delete-confirm"));
+    await waitFor(() => expect(deleteTask).toHaveBeenCalledWith(1, { confirm: false }));
 });
 
 test("publishing without a template or class is rejected before the API call", async () => {

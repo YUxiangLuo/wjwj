@@ -5,11 +5,16 @@ import { isValidOptionalEmail } from "../../lib/email";
 import { parseSpreadsheetFile, spreadsheetRequestExceedsLimit, validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
 import { hashPassword, mapWithConcurrency } from "../../server/password-work";
 import { deleteAuditEventsForActor, deleteAuditEventsForEntities } from "../../server/audit-event";
-import { error, getPositiveRouteId, json, parseBody, parseFormData, stringValue } from "../../server/http";
+import { error, getPositiveRouteId, getSearchParams, json, parseBody, parseFormData, stringValue } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { clearUserSessionsForUser } from "../../server/user-session";
 import { STUDENT_USER_TYPE } from "../../student/routes/auth";
 import { getPrimaryTeacherIdOrThrow } from "./auth";
+import {
+    deletionRequiresConfirmation,
+    loadDeletionImpact,
+    type DeletionImpact,
+} from "../deletion-impact";
 
 const MAX_IMPORT_ROWS = 500;
 const MAX_STUDENT_ID_LENGTH = 50;
@@ -93,10 +98,34 @@ function describeStudentConflict(
     return `学号已存在于班级「${account.className}」，如需变更班级请先在该班级删除该学生`;
 }
 
-export async function deleteTeacherStudent(params: { teacherId: number; studentId: number }) {
+export type StudentDeletionResult =
+    | { ok: true }
+    | { ok: false; code: "NOT_FOUND" }
+    | { ok: false; code: "SUBMISSIONS_EXIST"; impact: DeletionImpact };
+
+/** Counts what a hard delete would cascade away, before anything is removed. */
+export async function getStudentDeletionImpact(params: { teacherId: number; studentId: number }) {
     return db.transaction(async (tx) => {
         const owned = await findOwnedStudent(params.studentId, params.teacherId, tx);
-        if (!owned) return false;
+        if (!owned) return null;
+        return loadDeletionImpact(tx, eq(experiment.studentId, params.studentId));
+    });
+}
+
+export async function deleteTeacherStudent(params: {
+    teacherId: number;
+    studentId: number;
+    confirm?: boolean;
+}): Promise<StudentDeletionResult> {
+    return db.transaction(async (tx) => {
+        const owned = await findOwnedStudent(params.studentId, params.teacherId, tx);
+        if (!owned) return { ok: false, code: "NOT_FOUND" };
+        // The guard runs against the same locked row set as the delete, so a
+        // submission cannot land between the check and the cascade.
+        const impact = await loadDeletionImpact(tx, eq(experiment.studentId, params.studentId));
+        if (!params.confirm && deletionRequiresConfirmation(impact)) {
+            return { ok: false, code: "SUBMISSIONS_EXIST", impact };
+        }
         const experimentRows = await tx
             .select({ id: experiment.id })
             .from(experiment)
@@ -117,7 +146,7 @@ export async function deleteTeacherStudent(params: { teacherId: number; studentI
             eq(userSession.userType, STUDENT_USER_TYPE),
             eq(userSession.userId, params.studentId),
         ));
-        return true;
+        return { ok: true };
     });
 }
 
@@ -270,9 +299,9 @@ const classStudentsImportRoutes: RouteDefinition = {
         });
 
         const candidates = parsed;
-        const existingAccounts = await loadExistingStudentAccounts(candidates.map((item) => item.studentId));
-        const inserts: ImportCandidate[] = [];
         const skipped: Array<{ row: number; reason: string }> = [];
+        const inserts: ImportCandidate[] = [];
+        const existingAccounts = await loadExistingStudentAccounts(candidates.map((item) => item.studentId));
         for (const item of candidates) {
             const account = existingAccounts.get(item.normalizedStudentId);
             if (!account) {
@@ -287,23 +316,53 @@ const classStudentsImportRoutes: RouteDefinition = {
             skipped.push({ row: item.row, reason: `学号已存在，未做变更: ${item.studentId}` });
         }
         errors.sort((a, b) => a.row - b.row);
+        // Slow password work stays outside the transaction.
         const hashes = await mapWithConcurrency(inserts, 4, (item) => hashPassword(item.studentId));
+
+        let insertedIds = new Set<string>();
         if (inserts.length) {
             const applied = await db.transaction(async (tx) => {
-                if (!(await requireOwnedClass(classId, teacherId, tx))) return false;
-                await tx.insert(student).values(inserts.map((item, index) => ({
-                    studentId: item.studentId,
-                    name: item.name,
-                    email: item.email,
-                    classId,
-                    password: hashes[index]!,
-                })));
-                return true;
+                if (!(await requireOwnedClass(classId, teacherId, tx))) return null;
+                // A concurrent import may claim a student ID first; DO NOTHING keeps
+                // the batch atomic and reports those rows per row below instead of
+                // aborting the whole file with a unique-constraint error.
+                const created = await tx
+                    .insert(student)
+                    .values(inserts.map((item, index) => ({
+                        studentId: item.studentId,
+                        name: item.name,
+                        email: item.email,
+                        classId,
+                        password: hashes[index]!,
+                    })))
+                    .onConflictDoNothing({ target: student.studentId })
+                    .returning({ studentId: student.studentId });
+                return new Set(created.map((row) => normalizeStudentId(row.studentId)));
             });
             if (!applied) return error("无权限访问该班级", "FORBIDDEN", 403);
+            insertedIds = applied;
+
+            const lost = inserts.filter((item) => !insertedIds.has(item.normalizedStudentId));
+            if (lost.length) {
+                const accounts = await loadExistingStudentAccounts(lost.map((item) => item.studentId));
+                for (const item of lost) {
+                    const account = accounts.get(item.normalizedStudentId);
+                    if (!account) {
+                        errors.push({ row: item.row, reason: `学号已存在: ${item.studentId}` });
+                        continue;
+                    }
+                    const conflict = describeStudentConflict(account, classId, teacherId);
+                    if (conflict) {
+                        errors.push({ row: item.row, reason: conflict });
+                        continue;
+                    }
+                    skipped.push({ row: item.row, reason: `学号已存在，未做变更: ${item.studentId}` });
+                }
+                errors.sort((a, b) => a.row - b.row);
+            }
         }
         return json({
-            successCount: inserts.length,
+            successCount: insertedIds.size,
             skippedCount: skipped.length,
             failureCount: errors.length,
             errors,
@@ -338,10 +397,33 @@ const studentRoutes: RouteDefinition = {
         const id = parseRouteId(req, "id");
         if (!id) return error("无效的学生ID", "INVALID_ID");
         const teacherId = getPrimaryTeacherIdOrThrow(req);
-        const removed = await deleteTeacherStudent({ teacherId, studentId: id });
-        if (!removed) return error("无权限操作该学生", "FORBIDDEN", 403);
+        const confirm = getSearchParams(req).get("confirm") === "1";
+        const removed = await deleteTeacherStudent({ teacherId, studentId: id, confirm });
+        if (!removed.ok) {
+            if (removed.code === "SUBMISSIONS_EXIST") {
+                return error(
+                    `该学生存在 ${removed.impact.submitted + removed.impact.graded} 条已提交或已批改的实验记录，永久删除会一并清除；确认后请重试`,
+                    "SUBMISSIONS_EXIST",
+                    409,
+                );
+            }
+            return error("无权限操作该学生", "FORBIDDEN", 403);
+        }
         return json({ success: true });
     },
 };
 
-export { classRoutes, classStudentsImportRoutes, classStudentsRoutes, studentRoutes };
+const studentDeletionPreviewRoutes: RouteDefinition = {
+    async GET(req) {
+        const id = parseRouteId(req, "id");
+        if (!id) return error("无效的学生ID", "INVALID_ID");
+        const impact = await getStudentDeletionImpact({
+            teacherId: getPrimaryTeacherIdOrThrow(req),
+            studentId: id,
+        });
+        if (!impact) return error("无权限操作该学生", "FORBIDDEN", 403);
+        return json({ impact, requiresConfirmation: deletionRequiresConfirmation(impact) });
+    },
+};
+
+export { classRoutes, classStudentsImportRoutes, classStudentsRoutes, studentDeletionPreviewRoutes, studentRoutes };
