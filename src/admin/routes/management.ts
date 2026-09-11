@@ -139,8 +139,18 @@ const teacherRoutes: RouteDefinition = {
         if (!employeeId || !name || employeeId.length > 50 || name.length > 100) {
             return error("教师工号或姓名无效", "VALIDATION_ERROR");
         }
-        if ((await db.select({ id: teacher.id }).from(teacher).where(eq(teacher.employeeId, employeeId))).length > 0) {
-            return error("教师工号已存在", "DUPLICATE_ID", 409);
+        const [duplicateTeacher] = await db
+            .select({ id: teacher.id, status: teacher.status })
+            .from(teacher)
+            .where(eq(teacher.employeeId, employeeId));
+        if (duplicateTeacher) {
+            return error(
+                duplicateTeacher.status === 0
+                    ? "工号已存在且账号已停用，请在教师列表中重新启用该账号"
+                    : "教师工号已存在",
+                "DUPLICATE_ID",
+                409,
+            );
         }
         const [created] = await db
             .insert(teacher)
@@ -285,13 +295,25 @@ const classUpdateRoutes: RouteDefinition = {
     async DELETE(req) {
         const id = parseId(req);
         if (!id) return error("无效的班级ID", "INVALID_ID");
-        const [students] = await db
-            .select({ count: count() })
+        const roster = await db
+            .select({ status: student.status, count: count() })
             .from(student)
-            .where(eq(student.classId, id));
+            .where(eq(student.classId, id))
+            .groupBy(student.status);
+        const studentTotal = roster.reduce((sum, row) => sum + Number(row.count), 0);
+        const disabledTotal = Number(roster.find((row) => row.status === 0)?.count ?? 0);
         const [tasks] = await db.select({ count: count() }).from(task).where(eq(task.classId, id));
-        if ((students?.count ?? 0) > 0 || (tasks?.count ?? 0) > 0) {
-            return error("班级已有学生或任务，无法删除", "CLASS_IN_USE", 409);
+        if (studentTotal > 0 || (tasks?.count ?? 0) > 0) {
+            const blockers: string[] = [];
+            if (studentTotal > 0) {
+                blockers.push(
+                    disabledTotal > 0
+                        ? `${studentTotal} 名学生（其中 ${disabledTotal} 名已停用，需先从名单中删除）`
+                        : `${studentTotal} 名学生`,
+                );
+            }
+            if ((tasks?.count ?? 0) > 0) blockers.push(`${tasks!.count} 个任务`);
+            return error(`班级已有 ${blockers.join("、")}，无法删除`, "CLASS_IN_USE", 409);
         }
         const removed = await db.delete(class_).where(eq(class_.id, id)).returning({ id: class_.id });
         return removed.length ? json({ success: true }) : error("班级不存在", "NOT_FOUND", 404);

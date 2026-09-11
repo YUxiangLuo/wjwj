@@ -143,6 +143,9 @@ export function ClassManagement() {
                                             <span className="inline-flex items-center px-2 py-0.5 rounded-control text-meta font-medium bg-muted text-foreground">
                                                 {cls.studentCount} 人
                                             </span>
+                                            {(cls.disabledStudentCount ?? 0) > 0 && (
+                                                <span className="ml-2 text-meta text-muted-foreground">另 {cls.disabledStudentCount} 名已停用</span>
+                                            )}
                                         </TableCell>
                                         <TableCell className="text-muted-foreground text-meta">{new Date(cls.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}</TableCell>
                                         <TableCell className="text-right">

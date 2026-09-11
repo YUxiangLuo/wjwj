@@ -11,7 +11,7 @@ export interface TeacherStats {
     stats: Array<{ label: string; value: number }>;
     activeTasks: Array<{ id: number; templateName: string; className: string; deadline: string | null; total: number; completed: number; pending: number; rejected: number }>;
 }
-export interface TeacherClass { id: number; name: string; semester: string | null; studentCount: number; createdAt: string }
+export interface TeacherClass { id: number; name: string; semester: string | null; studentCount: number; disabledStudentCount?: number; createdAt: string }
 export interface Topic { id: number; name: string; description: string | null; status: number; dataRows: number; hasTasks?: boolean; createdAt: string }
 export interface TopicAttachment { id: number; topicId: number; fileName: string; fileType: string; fileSize: number; createdAt: string }
 export interface TopicExcelInfo {
@@ -130,10 +130,18 @@ export const teacherApi = {
     rejectSubmission: (id: number, observedVersion: number, reason: string) => request<{ success: boolean }>(`/api/teacher/grading/${id}/reject`, { method: "POST", body: JSON.stringify({ reason, observedVersion }) }),
 
     getStudents: (classId: number) => request<Student[]>(`/api/teacher/classes/${classId}/students`),
-    addStudent: (classId: number, data: { studentId: string; name: string; email?: string }) => request<{ success: boolean }>(`/api/teacher/classes/${classId}/students`, { method: "POST", body: JSON.stringify(data) }),
+    addStudent: (classId: number, data: { studentId: string; name: string; email?: string }) => request<{ success: boolean; restored?: boolean }>(`/api/teacher/classes/${classId}/students`, { method: "POST", body: JSON.stringify(data) }),
     updateStudent: (id: number, data: { action: "reset_password" | "toggle_status" }) => request<{ success: boolean }>(`/api/teacher/students/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     deleteStudent: (id: number) => request<{ success: boolean }>(`/api/teacher/students/${id}`, { method: "DELETE" }),
-    importStudents: (classId: number, file: File) => upload<{ successCount: number; failureCount: number; errors: Array<{ row: number; reason: string }> }>(`/api/teacher/classes/${classId}/students/import`, file),
+    importStudents: (classId: number, file: File) => upload<{
+        successCount: number;
+        restoredCount?: number;
+        skippedCount?: number;
+        failureCount: number;
+        errors: Array<{ row: number; reason: string }>;
+        restored?: Array<{ row: number; reason: string }>;
+        skipped?: Array<{ row: number; reason: string }>;
+    }>(`/api/teacher/classes/${classId}/students/import`, file),
 
     getAnnouncements: () => request<TeacherAnnouncement[]>("/api/teacher/announcements"),
     getGradeExportPreview: (params: { semester?: string; classId?: number | string; topicId?: number | string }) => {

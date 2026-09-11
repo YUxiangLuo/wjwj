@@ -132,6 +132,17 @@ async function transfer(group: Awaited<ReturnType<typeof fixture>>) {
     return management.classUpdateRoutes.PUT!(request("PUT", { id: String(group.cls.id) }, { teacherId: group.teachers[1]!.id }));
 }
 
+
+function importRequest(classId: number, csv: string, token: string) {
+    const formData = new FormData();
+    formData.append("file", new File([csv], "roster.csv", { type: "text/csv" }));
+    const req = new Request("http://localhost", {
+        method: "POST", headers: { cookie: `teacher_session=${token}` }, body: formData,
+    });
+    (req as Request & { params: Record<string, string> }).params = { classId: String(classId) };
+    return req;
+}
+
 for (const action of ["grade", "reject", "reset_password", "toggle_status"] as const) {
     pgTest(`class transfer revokes an admitted ${action} before its write`, async () => {
         const { db } = application;
@@ -331,3 +342,68 @@ pgTest("login skips expired sessions locked by another student's password rotati
     expect(sessions.every(row => row.expiresAt > new Date())).toBe(true);
     expect(sessions.some(row => row.sessionToken === validToken)).toBe(false);
 }, 15000);
+
+// A student ID owns a single global account row. Disabling a student used to keep
+// that row alive while the import path kept rejecting the ID, so the teacher could
+// never put the student back on the roster without destroying their history.
+pgTest("a disabled student can be re-imported and is reactivated in place", async () => {
+    const group = await fixture();
+    const token = await session(2, group.teachers[0]!.id);
+    const studentId = `RBTEST-${crypto.randomUUID().slice(0, 8)}`;
+
+    const created = await teacherAuth.withTeacherAuth(classroom.classStudentsRoutes).POST!(request(
+        "POST", { classId: String(group.cls.id) }, { studentId, name: "甲" }, `teacher_session=${token}`,
+    ));
+    expect(created.status).toBe(201);
+    const [row] = await application.db.select().from(schema.student).where(eq(schema.student.studentId, studentId));
+    ids.students.push(row!.id);
+    const originalPassword = row!.password;
+
+    const disabled = await teacherAuth.withTeacherAuth(classroom.studentRoutes).PUT!(request(
+        "PUT", { id: String(row!.id) }, { action: "toggle_status" }, `teacher_session=${token}`,
+    ));
+    expect(disabled.status).toBe(200);
+
+    const imported = await teacherAuth.withTeacherAuth(classroom.classStudentsImportRoutes).POST!(
+        importRequest(group.cls.id, `studentId,name\n${studentId},乙\n`, token),
+    );
+    const payload = await imported.json() as any;
+
+    expect(imported.status).toBe(200);
+    expect(payload.data).toMatchObject({ successCount: 0, restoredCount: 1, skippedCount: 0, failureCount: 0 });
+    const rows = await application.db.select().from(schema.student).where(eq(schema.student.studentId, studentId));
+    expect(rows.length).toBe(1);
+    expect(rows[0]!.id).toBe(row!.id);
+    expect(rows[0]!.status).toBe(1);
+    expect(rows[0]!.name).toBe("乙");
+    // Reactivating keeps the existing credential; only the teacher may reset it.
+    expect(rows[0]!.password).toBe(originalPassword);
+
+    // The reactivated account is usable again with the credential it kept.
+    const login = await studentAuth.loginRoutes.POST!(request("POST", {}, { studentId, password: studentId }));
+    expect(login.status).toBe(200);
+});
+
+pgTest("re-importing an active roster row neither duplicates nor rewrites the account", async () => {
+    const group = await fixture();
+    const token = await session(2, group.teachers[0]!.id);
+    const studentId = `RBTEST-${crypto.randomUUID().slice(0, 8)}`;
+
+    await teacherAuth.withTeacherAuth(classroom.classStudentsRoutes).POST!(request(
+        "POST", { classId: String(group.cls.id) }, { studentId, name: "原名" }, `teacher_session=${token}`,
+    ));
+    const [row] = await application.db.select().from(schema.student).where(eq(schema.student.studentId, studentId));
+    ids.students.push(row!.id);
+
+    const imported = await teacherAuth.withTeacherAuth(classroom.classStudentsImportRoutes).POST!(
+        importRequest(group.cls.id, `studentId,name\n${studentId},改名\n`, token),
+    );
+    const payload = await imported.json() as any;
+
+    expect(imported.status).toBe(200);
+    expect(payload.data).toMatchObject({ successCount: 0, restoredCount: 0, skippedCount: 1, failureCount: 0 });
+    const rows = await application.db.select().from(schema.student).where(eq(schema.student.studentId, studentId));
+    expect(rows.length).toBe(1);
+    expect(rows[0]!.name).toBe("原名");
+    expect(rows[0]!.password).toBe(row!.password);
+});

@@ -93,7 +93,7 @@ export function StudentManagement() {
         if (res.success) {
             setShowAddModal(false);
             setNewStudent({ id: "", name: "", email: "" });
-            toast.success("学生已创建，登录密码与学号相同");
+            toast.success(res.data?.restored ? "已重新启用该学生的原有账号" : "学生已创建，登录密码与学号相同");
             void loadData(false);
         } else {
             toast.error("添加失败: " + res.error?.message);
@@ -124,7 +124,11 @@ export function StudentManagement() {
 
         if (res.success && res.data) {
             setImportResult(res.data);
-            toast.success(`导入完成：成功 ${res.data.successCount} 条，学生密码与学号相同`);
+            const parts = [`新建 ${res.data.successCount} 条`];
+            if (res.data.restoredCount) parts.push(`重新启用 ${res.data.restoredCount} 条`);
+            if (res.data.skippedCount) parts.push(`已存在跳过 ${res.data.skippedCount} 条`);
+            if (res.data.failureCount) parts.push(`失败 ${res.data.failureCount} 条`);
+            toast.success(`导入完成：${parts.join("，")}`);
             void loadData(false);
         } else {
             toast.error("导入失败: " + res.error?.message);

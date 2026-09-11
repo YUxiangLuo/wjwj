@@ -216,7 +216,7 @@ test("single student creation still rejects an active duplicate", async () => {
     const { module, operations } = await loadClassroomRoutes({
         select: [
             [{ id: 3 }],
-            [{ id: 42 }],
+            [{ id: 42, studentId: "S042", status: 1, classId: 3, className: "统计一班", teacherId: 9 }],
         ],
     });
     const response = await module.classStudentsRoutes.POST!(withRouteParam(new Request(
@@ -232,6 +232,173 @@ test("single student creation still rejects an active duplicate", async () => {
     expect(await response.json()).toMatchObject({ error: { code: "DUPLICATE_ERROR" } });
     expect(operations.some((operation) => operation.kind === "update")).toBe(false);
     expect(operations.some((operation) => operation.kind === "insert")).toBe(false);
+});
+
+test("single student creation reactivates a disabled account in the same class", async () => {
+    const { module, operations } = await loadClassroomRoutes({
+        select: [
+            [{ id: 3 }],
+            [{ id: 42, studentId: "S042", status: 0, classId: 3, className: "统计一班", teacherId: 9 }],
+            [{ id: 3 }],
+        ],
+        update: [[{ id: 42 }]],
+    });
+    const response = await module.classStudentsRoutes.POST!(withRouteParam(new Request(
+        "https://example.com/api/teacher/classes/3/students",
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ studentId: "S042", name: "张三" }),
+        },
+    ), "3"));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ data: { success: true, restored: true } });
+    const update = operations.find((operation) => operation.kind === "update" && operation.table === student);
+    expect(update?.set).toMatchObject({ status: 1, name: "张三" });
+    expect(operations.some((operation) => operation.kind === "insert")).toBe(false);
+});
+
+test("single student creation names the class that already owns the student ID", async () => {
+    const { module } = await loadClassroomRoutes({
+        select: [
+            [{ id: 3 }],
+            [{ id: 42, studentId: "S042", status: 1, classId: 7, className: "数据分析班", teacherId: 9 }],
+        ],
+    });
+    const response = await module.classStudentsRoutes.POST!(withRouteParam(new Request(
+        "https://example.com/api/teacher/classes/3/students",
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ studentId: "S042", name: "张三" }),
+        },
+    ), "3"));
+
+    expect(response.status).toBe(409);
+    const payload = await response.json() as any;
+    expect(payload.error.code).toBe("DUPLICATE_ERROR");
+    expect(payload.error.message).toContain("数据分析班");
+});
+
+test("single student creation does not leak another teacher's class name", async () => {
+    const { module } = await loadClassroomRoutes({
+        select: [
+            [{ id: 3 }],
+            [{ id: 42, studentId: "S042", status: 1, classId: 7, className: "他人班级", teacherId: 5 }],
+        ],
+    });
+    const response = await module.classStudentsRoutes.POST!(withRouteParam(new Request(
+        "https://example.com/api/teacher/classes/3/students",
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ studentId: "S042", name: "张三" }),
+        },
+    ), "3"));
+
+    expect(response.status).toBe(409);
+    const payload = await response.json() as any;
+    expect(payload.error.message).toContain("其他教师");
+    expect(payload.error.message).not.toContain("他人班级");
+});
+
+test("student import reactivates a disabled account instead of failing the row", async () => {
+    const { module, operations } = await loadClassroomRoutes({
+        select: [
+            [{ id: 3 }],
+            [{ id: 42, studentId: "S042", status: 0, classId: 3, className: "统计一班", teacherId: 9 }],
+            [{ id: 3 }],
+        ],
+        update: [[]],
+    });
+    const formData = new FormData();
+    formData.append(
+        "file",
+        new File(["studentId,name,email\nS042,张三,z@example.com\n"], "students.csv", { type: "text/csv" }),
+    );
+
+    const response = await module.classStudentsImportRoutes.POST!(withRouteParam(
+        new Request("https://example.com/api/teacher/classes/3/students/import", { method: "POST", body: formData }),
+        "3",
+    ));
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toMatchObject({ successCount: 0, restoredCount: 1, skippedCount: 0, failureCount: 0 });
+    expect(payload.data.restored).toEqual([{ row: 2, reason: "已重新启用: 张三" }]);
+    const update = operations.find((operation) => operation.kind === "update" && operation.table === student);
+    expect(update?.set).toMatchObject({ status: 1, name: "张三", email: "z@example.com" });
+    expect(operations.some((operation) => operation.kind === "insert")).toBe(false);
+});
+
+test("student import keeps a disabled account's email when the file omits one", async () => {
+    const { module, operations } = await loadClassroomRoutes({
+        select: [
+            [{ id: 3 }],
+            [{ id: 42, studentId: "S042", status: 0, classId: 3, className: "统计一班", teacherId: 9 }],
+            [{ id: 3 }],
+        ],
+        update: [[]],
+    });
+    const formData = new FormData();
+    formData.append("file", new File(["studentId,name\nS042,张三\n"], "students.csv", { type: "text/csv" }));
+
+    await module.classStudentsImportRoutes.POST!(withRouteParam(
+        new Request("https://example.com/api/teacher/classes/3/students/import", { method: "POST", body: formData }),
+        "3",
+    ));
+
+    const update = operations.find((operation) => operation.kind === "update" && operation.table === student);
+    expect(update?.set).toMatchObject({ status: 1, name: "张三" });
+    expect(update?.set).not.toHaveProperty("email");
+});
+
+test("student import skips an active duplicate without counting it as a failure", async () => {
+    const { module, operations } = await loadClassroomRoutes({
+        select: [
+            [{ id: 3 }],
+            [{ id: 42, studentId: "S042", status: 1, classId: 3, className: "统计一班", teacherId: 9 }],
+        ],
+    });
+    const formData = new FormData();
+    formData.append("file", new File(["studentId,name\nS042,张三\n"], "students.csv", { type: "text/csv" }));
+
+    const response = await module.classStudentsImportRoutes.POST!(withRouteParam(
+        new Request("https://example.com/api/teacher/classes/3/students/import", { method: "POST", body: formData }),
+        "3",
+    ));
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toMatchObject({ successCount: 0, restoredCount: 0, skippedCount: 1, failureCount: 0, errors: [] });
+    expect(payload.data.skipped).toEqual([{ row: 2, reason: "学号已存在，未做变更: S042" }]);
+    expect(operations.some((operation) => operation.kind === "update")).toBe(false);
+});
+
+test("student import tells the teacher which class blocks the row", async () => {
+    const { module } = await loadClassroomRoutes({
+        select: [
+            [{ id: 3 }],
+            [
+                { id: 42, studentId: "S042", status: 1, classId: 7, className: "数据分析班", teacherId: 9 },
+                { id: 43, studentId: "S043", status: 0, classId: 8, className: "停用班", teacherId: 5 },
+            ],
+        ],
+    });
+    const formData = new FormData();
+    formData.append("file", new File(["studentId,name\nS042,甲\nS043,乙\n"], "students.csv", { type: "text/csv" }));
+
+    const response = await module.classStudentsImportRoutes.POST!(withRouteParam(
+        new Request("https://example.com/api/teacher/classes/3/students/import", { method: "POST", body: formData }),
+        "3",
+    ));
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toMatchObject({ successCount: 0, failureCount: 2 });
+    expect(payload.data.errors[0]).toEqual({ row: 2, reason: "学号已存在于班级「数据分析班」，如需变更班级请先在该班级删除该学生" });
+    expect(payload.data.errors[1]).toEqual({ row: 3, reason: "学号已被其他教师使用" });
 });
 
 test("student import reports and skips malformed optional emails", async () => {

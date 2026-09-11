@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, experiment, samplingAttempt, semester, student, userSession } from "../../db/schema";
 import { isValidOptionalEmail } from "../../lib/email";
@@ -42,6 +42,60 @@ async function findOwnedStudent(id: number, teacherId: number, tx?: Pick<typeof 
         .where(and(eq(student.id, id), eq(class_.teacherId, teacherId)));
     const [row] = await (tx ? query.for("update") : query);
     return row ?? null;
+}
+
+type ImportCandidate = {
+    studentId: string;
+    normalizedStudentId: string;
+    name: string;
+    email: string | null;
+    row: number;
+};
+
+/**
+ * A student ID is unique across the whole table, so an account that already owns
+ * the ID decides whether an import inserts, skips, reactivates or rejects the row.
+ */
+type ExistingStudentAccount = {
+    id: number;
+    studentId: string;
+    status: number;
+    classId: number;
+    className: string;
+    teacherId: number;
+};
+
+async function loadExistingStudentAccounts(studentIds: string[]) {
+    const accounts = new Map<string, ExistingStudentAccount>();
+    if (!studentIds.length) return accounts;
+    const rows = await db
+        .select({
+            id: student.id,
+            studentId: student.studentId,
+            status: student.status,
+            classId: student.classId,
+            className: class_.name,
+            teacherId: class_.teacherId,
+        })
+        .from(student)
+        .innerJoin(class_, eq(student.classId, class_.id))
+        .where(inArray(student.studentId, studentIds));
+    for (const row of rows) accounts.set(normalizeStudentId(row.studentId), row);
+    return accounts;
+}
+
+/** Reason to reject a student ID, or null when it belongs to this class already. */
+function describeStudentConflict(
+    account: ExistingStudentAccount,
+    classId: number,
+    teacherId: number,
+): string | null {
+    if (account.teacherId !== teacherId) return "学号已被其他教师使用";
+    if (account.classId === classId) return null;
+    if (account.status === 1) {
+        return `学号已存在于班级「${account.className}」，如需变更班级请先在该班级删除该学生`;
+    }
+    return `学号在班级「${account.className}」中已停用，请先在该班级启用或删除该学生`;
 }
 
 export async function deleteTeacherStudent(params: { teacherId: number; studentId: number }) {
@@ -91,7 +145,22 @@ const classRoutes: RouteDefinition = {
             .where(eq(class_.teacherId, teacherId))
             .groupBy(class_.id, semester.id)
             .orderBy(desc(class_.createdAt));
-        return json(rows);
+        // studentCount counts active students; disabled ones are still on the
+        // roster (and still block class deletion), so surface them separately.
+        const classIds = rows.map((row) => row.id);
+        const disabledRows = classIds.length
+            ? await db
+                .select({ classId: student.classId, count: count(student.id) })
+                .from(student)
+                .where(and(inArray(student.classId, classIds), eq(student.status, 0)))
+                .groupBy(student.classId)
+            : [];
+        const disabledCounts = new Map(disabledRows.map((row) => [row.classId, Number(row.count)]));
+        return json(rows.map((row) => ({
+            ...row,
+            studentCount: Number(row.studentCount),
+            disabledStudentCount: disabledCounts.get(row.id) ?? 0,
+        })));
     },
 };
 
@@ -136,8 +205,26 @@ const classStudentsRoutes: RouteDefinition = {
         if (name.length > MAX_STUDENT_NAME_LENGTH) return error("姓名不能超过100个字符", "VALIDATION_ERROR");
         if (email.length > MAX_STUDENT_EMAIL_LENGTH) return error("邮箱不能超过120个字符", "VALIDATION_ERROR");
         if (!isValidOptionalEmail(email)) return error("邮箱格式无效", "VALIDATION_ERROR");
-        const [existing] = await db.select({ id: student.id }).from(student).where(eq(student.studentId, studentId));
-        if (existing) return error("学号已存在", "DUPLICATE_ERROR", 409);
+        const account = (await loadExistingStudentAccounts([studentId])).get(normalizeStudentId(studentId));
+        if (account) {
+            const conflict = describeStudentConflict(account, classId, teacherId);
+            if (conflict) return error(conflict, "DUPLICATE_ERROR", 409);
+            if (account.status === 1) return error("学号已存在", "DUPLICATE_ERROR", 409);
+            // A disabled account keeps its globally unique student ID: reactivate it
+            // in place instead of inserting a row that can never be created.
+            const restored = await db.transaction(async (tx) => {
+                if (!(await requireOwnedClass(classId, teacherId, tx))) return false;
+                const rows = await tx
+                    .update(student)
+                    .set({ status: 1, name, ...(email ? { email } : {}), updatedAt: new Date() })
+                    .where(and(eq(student.id, account.id), eq(student.classId, classId), eq(student.status, 0)))
+                    .returning({ id: student.id });
+                return rows.length > 0;
+            });
+            return restored
+                ? json({ success: true, restored: true })
+                : error("学生账号状态已变化，请刷新后重试", "CONFLICT", 409);
+        }
         const password = await hashPassword(studentId);
         const created = await db.transaction(async (tx) => {
             if (!(await requireOwnedClass(classId, teacherId, tx))) return false;
@@ -183,7 +270,7 @@ const classStudentsImportRoutes: RouteDefinition = {
 
         const errors: Array<{ row: number; reason: string }> = [];
         const seenIds = new Set<string>();
-        const parsed = rows.flatMap((row, index) => {
+        const parsed: ImportCandidate[] = rows.flatMap((row, index) => {
             const rowNumber = rowNumbers?.[index] ?? index + 2;
             const studentId = String(row.studentId ?? row["学号"] ?? row.id ?? "").trim();
             const name = String(row.name ?? row["姓名"] ?? "").trim();
@@ -218,38 +305,61 @@ const classStudentsImportRoutes: RouteDefinition = {
         });
 
         const candidates = parsed;
-        const existing = candidates.length
-            ? await db
-                  .select({ studentId: student.studentId })
-                  .from(student)
-                  .where(sql`${student.studentId} IN (${sql.join(candidates.map((item) => item.studentId), sql`, `)})`)
-            : [];
-        const existingIds = new Set(existing.map((item) => normalizeStudentId(item.studentId)));
+        const existingAccounts = await loadExistingStudentAccounts(candidates.map((item) => item.studentId));
+        const inserts: ImportCandidate[] = [];
+        const skipped: Array<{ row: number; reason: string }> = [];
+        const reactivations: Array<{ id: number; name: string; email: string | null; row: number }> = [];
         for (const item of candidates) {
-            if (existingIds.has(item.normalizedStudentId)) {
-                errors.push({ row: item.row, reason: `学号已存在: ${item.studentId}` });
+            const account = existingAccounts.get(item.normalizedStudentId);
+            if (!account) {
+                inserts.push(item);
+                continue;
             }
+            const conflict = describeStudentConflict(account, classId, teacherId);
+            if (conflict) {
+                errors.push({ row: item.row, reason: conflict });
+                continue;
+            }
+            if (account.status === 1) {
+                skipped.push({ row: item.row, reason: `学号已存在，未做变更: ${item.studentId}` });
+                continue;
+            }
+            reactivations.push({ id: account.id, name: item.name, email: item.email, row: item.row });
         }
-        const inserts = candidates.filter((item) => !existingIds.has(item.normalizedStudentId));
+        errors.sort((a, b) => a.row - b.row);
         const hashes = await mapWithConcurrency(inserts, 4, (item) => hashPassword(item.studentId));
-        if (inserts.length) {
-            const created = await db.transaction(async (tx) => {
+        if (inserts.length || reactivations.length) {
+            const applied = await db.transaction(async (tx) => {
                 if (!(await requireOwnedClass(classId, teacherId, tx))) return false;
-                await tx.insert(student).values(inserts.map((item, index) => ({
-                    studentId: item.studentId,
-                    name: item.name,
-                    email: item.email,
-                    classId,
-                    password: hashes[index]!,
-                })));
+                if (inserts.length) {
+                    await tx.insert(student).values(inserts.map((item, index) => ({
+                        studentId: item.studentId,
+                        name: item.name,
+                        email: item.email,
+                        classId,
+                        password: hashes[index]!,
+                    })));
+                }
+                for (const item of reactivations) {
+                    // Still-disabled guard: a concurrent enable or delete must win
+                    // instead of being overwritten by a stale roster file.
+                    await tx
+                        .update(student)
+                        .set({ status: 1, name: item.name, ...(item.email ? { email: item.email } : {}), updatedAt: new Date() })
+                        .where(and(eq(student.id, item.id), eq(student.classId, classId), eq(student.status, 0)));
+                }
                 return true;
             });
-            if (!created) return error("无权限访问该班级", "FORBIDDEN", 403);
+            if (!applied) return error("无权限访问该班级", "FORBIDDEN", 403);
         }
         return json({
             successCount: inserts.length,
+            restoredCount: reactivations.length,
+            skippedCount: skipped.length,
             failureCount: errors.length,
             errors,
+            restored: reactivations.map((item) => ({ row: item.row, reason: `已重新启用: ${item.name}` })),
+            skipped,
         });
     },
 };

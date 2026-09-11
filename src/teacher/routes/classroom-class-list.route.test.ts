@@ -21,7 +21,7 @@ test("teacher class list joins semester and active students, scoped to the teach
     const payload = await response.json() as { success: boolean; data: typeof rows };
 
     expect(response.status).toBe(200);
-    expect(payload).toEqual({ success: true, data: rows });
+    expect(payload).toEqual({ success: true, data: rows.map((row) => ({ ...row, disabledStudentCount: 0 })) });
 
     const select = operations.find((operation) => operation.kind === "select");
     expect(select).toBeTruthy();
@@ -40,4 +40,19 @@ test("teacher class list joins semester and active students, scoped to the teach
     const where = new PgDialect().sqlToQuery(select!.where as SQL);
     expect(where.sql).toContain('"class"."teacher_id"');
     expect(where.params).toEqual(expect.arrayContaining([9]));
+});
+
+test("teacher class list reports disabled students separately from the active roster", async () => {
+    const rows = [{ id: 1, name: "统计一班", semester: "2026 秋", studentCount: 9, createdAt: "2026-09-01T00:00:00.000Z" }];
+    const { module, operations } = await loadClassRoutes([rows, [{ classId: 1, count: 1 }]]);
+
+    const response = await module.classRoutes.GET!(new Request("https://example.com/api/teacher/classes"));
+    const payload = await response.json() as { data: Array<Record<string, unknown>> };
+
+    expect(response.status).toBe(200);
+    expect(payload.data[0]).toMatchObject({ studentCount: 9, disabledStudentCount: 1 });
+    // The disabled count must not be folded into the active-student denominator.
+    expect(payload.data[0]!.studentCount).toBe(9);
+    const selects = operations.filter((operation) => operation.kind === "select");
+    expect(selects.length).toBe(2);
 });
