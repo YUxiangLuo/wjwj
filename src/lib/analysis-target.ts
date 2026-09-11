@@ -26,19 +26,50 @@ export interface ResolvedStudyContract {
     inferred: boolean;
 }
 
-export function buildDefaultResearchQuestion(topicName: string, target: AnalysisTarget) {
-    const subject = topicName.trim() || "本课题";
-    return target.kind === "mean"
-        ? `${subject}中${target.field}的平均水平是多少？`
-        : `${subject}中${target.field}为「${target.value || "目标类别"}」的单位占比是多少？`;
+// 常见英文列名 → 中文显示名。默认研究问题用可读名称，避免直接暴露 monthly_spending
+// 这类列名；任意分词未知时回退原始列名，不猜测教师的数据字典。
+const FIELD_TOKEN_LABELS: Record<string, string> = {
+    monthly: "每月", annual: "每年", yearly: "每年", weekly: "每周", daily: "每日",
+    spending: "消费支出", spend: "消费", expenditure: "支出", expense: "花费", consumption: "消费",
+    income: "收入", salary: "工资", wage: "薪酬", revenue: "收入", profit: "利润", earnings: "收益",
+    amount: "金额", sales: "销售额", turnover: "成交额", price: "价格",
+    score: "评分", scores: "评分", rating: "评分", satisfaction: "满意度", nps: "净推荐值",
+    time: "时长", duration: "时长", wait: "等待", waiting: "等待", latency: "延迟",
+    minutes: "分钟", hours: "小时",
+    temperature: "温度", concentration: "浓度", energy: "能耗", power: "功率", deviation: "偏差",
+    age: "年龄", height: "身高",
+    frequency: "频次", count: "数量", times: "次数", rate: "比率",
+};
+
+/** 默认研究问题里给字段一个可读显示名；中文或含未知英文词时直接返回原始列名。 */
+export function fieldDisplayName(field: string) {
+    const raw = field.trim();
+    if (!raw || /[\u4e00-\u9fff]/.test(raw)) return raw;
+    const tokens = raw.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+    if (tokens.length === 0) return raw;
+    const labels = tokens.map((token) => FIELD_TOKEN_LABELS[token]);
+    return labels.every(Boolean) ? labels.join("") : raw;
 }
 
-/** 兼容旧合同：识别由系统模板生成、但因课题改名而不再等于当前默认值的问题。 */
+export function buildDefaultResearchQuestion(topicName: string, target: AnalysisTarget) {
+    const subject = topicName.trim() || "本课题";
+    const label = fieldDisplayName(target.field);
+    return target.kind === "mean"
+        ? `${subject}中${label}的平均水平是多少？`
+        : `${subject}中${label}为「${target.value || "目标类别"}」的单位占比是多少？`;
+}
+
+/**
+ * 兼容旧合同：识别由系统模板生成、但因课题改名而不再等于当前默认值的问题。
+ * 同时接受新的可读显示名与旧的原始列名，保证既有课题重命名/复制时仍会被重新生成。
+ */
 export function resemblesGeneratedResearchQuestion(question: string, target: AnalysisTarget) {
-    const suffix = target.kind === "mean"
-        ? `中${target.field}的平均水平是多少？`
-        : `中${target.field}为「${target.value || "目标类别"}」的单位占比是多少？`;
-    return question.trim().endsWith(suffix);
+    const suffix = (label: string) => target.kind === "mean"
+        ? `中${label}的平均水平是多少？`
+        : `中${label}为「${target.value || "目标类别"}」的单位占比是多少？`;
+    const labels = new Set([fieldDisplayName(target.field), target.field]);
+    const trimmed = question.trim();
+    return [...labels].some((label) => label.length > 0 && trimmed.endsWith(suffix(label)));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -110,7 +141,11 @@ export function retitleGeneratedStudyContract(
     const contract = parseStudyContract(parsed);
     if (!contract) return fieldMapping;
     const previousDefault = buildDefaultResearchQuestion(previousTopicName, contract.target);
-    if (contract.researchQuestion !== previousDefault) return fieldMapping;
+    // Also upgrade questions generated before the readable display name existed
+    // (they carry the raw column name but share the same generated suffix).
+    if (contract.researchQuestion !== previousDefault && !resemblesGeneratedResearchQuestion(contract.researchQuestion, contract.target)) {
+        return fieldMapping;
+    }
     return {
         ...parsed,
         studyContract: {
@@ -146,9 +181,10 @@ export function resolveAnalysisTarget(fieldMapping: unknown): ResolvedAnalysisTa
 }
 
 function defaultResearchQuestion(target: AnalysisTarget) {
+    const label = fieldDisplayName(target.field);
     return target.kind === "mean"
-        ? `总体中${target.field}的平均水平是多少？`
-        : `总体中${target.field}为「${target.value}」的单位占比是多少？`;
+        ? `总体中${label}的平均水平是多少？`
+        : `总体中${label}为「${target.value}」的单位占比是多少？`;
 }
 
 /**

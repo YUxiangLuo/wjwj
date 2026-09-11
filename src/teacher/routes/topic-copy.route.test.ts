@@ -103,7 +103,7 @@ test("topic copy duplicates the topic and related resources under the current te
                 analysisTarget,
                 studyContract: {
                     version: 1,
-                    researchQuestion: "抽样设计课题 (副本)中score的平均水平是多少？",
+                    researchQuestion: "抽样设计课题 (副本)中评分的平均水平是多少？",
                     targetPopulation: "测试总体",
                     unitOfAnalysis: "一行",
                     target: analysisTarget,

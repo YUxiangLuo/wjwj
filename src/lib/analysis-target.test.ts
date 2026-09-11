@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import {
     analysisTargetConflictsWithSizeField,
     buildDefaultResearchQuestion,
+    fieldDisplayName,
     formatAnalysisTargetSummary,
     formatStudyContractSummary,
     parseAnalysisTarget,
@@ -94,6 +95,7 @@ test("retitleGeneratedStudyContract updates only system-generated research quest
         studyContract: {
             version: 1 as const,
             researchQuestion: buildDefaultResearchQuestion("学习调查", target),
+
             targetPopulation: "全体学生",
             unitOfAnalysis: "一名学生",
             target,
@@ -176,4 +178,25 @@ test("formatStudyContractSummary renders explicit and inferred contracts", () =>
     expect(inferred).toContain("兼容目标：");
     expect(inferred).toContain("估计量：性别 中「女」的比例");
     expect(formatStudyContractSummary(null)).toBe("课题未指定研究目标。问卷是预试，不进入估计。");
+});
+
+test("fieldDisplayName gives readable Chinese for common English target columns", () => {
+    expect(fieldDisplayName("monthly_spending")).toBe("每月消费支出");
+    expect(fieldDisplayName("age")).toBe("年龄");
+    expect(fieldDisplayName("wait_time")).toBe("等待时长");
+});
+
+test("fieldDisplayName keeps Chinese names and falls back for unknown columns", () => {
+    expect(fieldDisplayName("每周学习时长")).toBe("每周学习时长");
+    expect(fieldDisplayName("mystery_col")).toBe("mystery_col");
+    expect(fieldDisplayName("  ")).toBe("");
+});
+
+test("default research questions use the readable name instead of the raw column", () => {
+    const question = buildDefaultResearchQuestion("月消费调查", { kind: "mean", field: "monthly_spending" });
+    expect(question).toBe("月消费调查中每月消费支出的平均水平是多少？");
+    expect(question).not.toContain("monthly_spending");
+
+    // Unknown columns still fall back to the raw field rather than guessing.
+    expect(buildDefaultResearchQuestion("未知调查", { kind: "mean", field: "mystery_col" })).toContain("mystery_col");
 });

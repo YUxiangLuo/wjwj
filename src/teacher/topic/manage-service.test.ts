@@ -182,7 +182,7 @@ test("renaming a topic retitles only its generated study-contract question", asy
     expect(update?.set).toMatchObject({
         name: "新课题",
         fieldMapping: {
-            studyContract: { researchQuestion: "新课题中score的平均水平是多少？" },
+            studyContract: { researchQuestion: "新课题中评分的平均水平是多少？" },
         },
     });
 });
