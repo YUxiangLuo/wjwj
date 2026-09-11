@@ -28,7 +28,7 @@ test("table headers declare a column scope by default", () => {
             </TableHeader>
             <TableBody>
                 <TableRow>
-                    <TableCell>2024级统计学实验班</TableCell>
+                    <TableCell>2026级统计学1班</TableCell>
                     <TableCell>2024-2025-1</TableCell>
                 </TableRow>
             </TableBody>

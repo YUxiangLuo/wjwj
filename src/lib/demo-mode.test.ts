@@ -28,9 +28,9 @@ test("DEMO_MODE constant stays off in the test environment", () => {
 });
 
 test("demo accounts match the default seed", () => {
-    // S010 is the static fallback; demo refresh normally replaces it from the seeded class.
-    expect(DEMO_STUDENT_ID).toBe("S010");
-    expect(DEMO_STUDENT_PASSWORD).toBe("S010");
+    // S2601 is the static fallback; demo refresh normally replaces it from the seeded class.
+    expect(DEMO_STUDENT_ID).toBe("S2601");
+    expect(DEMO_STUDENT_PASSWORD).toBe("S2601");
     expect(DEMO_TEACHER_ID).toBe("T001");
     expect(DEMO_TEACHER_PASSWORD).toBe("T001");
     expect(DEMO_ADMIN_USERNAME).toBe("admin");

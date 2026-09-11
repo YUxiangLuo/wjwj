@@ -31,7 +31,7 @@ async function main() {
     try {
         if (!cookie) throw new Error("Login did not issue a session cookie.");
         const classes = await request<Array<{ id: number; name: string }>>("/api/teacher/classes");
-        const classNames = ["2024级统计学实验班", "2024级公共管理调查班"];
+        const classNames = ["2026级统计学1班", "2026级公共管理班"];
         const classIds = classNames.map(name => { const row = classes.find(row => row.name === name); if (!row) throw new Error(`Demo class not found or not owned: ${name}`); return row.id; });
         const manifestFile = Bun.file(manifestPath);
         const manifest: Manifest = await manifestFile.exists() ? await manifestFile.json() : { version: 1, baseUrl: base, teacherId: login.user.id, entries: {} };

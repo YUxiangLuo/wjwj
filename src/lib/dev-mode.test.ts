@@ -27,9 +27,9 @@ test("DEV_AUTH_MODE only overrides non-production defaults", () => {
 });
 
 test("dev demo accounts and passwords match the default seed", () => {
-    // src/db/seeds/default.ts：S010、T001 的密码固定；管理员密码在开发鉴权开启时为 DEV_ADMIN_PASSWORD。
-    expect(DEV_STUDENT_ID).toBe("S010");
-    expect(DEV_STUDENT_PASSWORD).toBe("S010");
+    // src/db/seeds/default.ts：S2601、T001 的密码固定；管理员密码在开发鉴权开启时为 DEV_ADMIN_PASSWORD。
+    expect(DEV_STUDENT_ID).toBe("S2601");
+    expect(DEV_STUDENT_PASSWORD).toBe("S2601");
     expect(DEV_TEACHER_ID).toBe("T001");
     expect(DEV_TEACHER_PASSWORD).toBe("T001");
     expect(DEV_ADMIN_USERNAME).toBe("admin");

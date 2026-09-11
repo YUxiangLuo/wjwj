@@ -35,23 +35,26 @@ import {
     createMeanPopulation,
     createPpsPopulation,
     DINING_POPULATION_PATH,
+    DOGFOOD_ANCHORS,
     DOGFOOD_COUNTS,
     DOGFOOD_NAMES,
+    DOGFOOD_ROSTER,
+    DOGFOOD_TEACHERS,
+    EMPLOYMENT_POPULATION_PATH,
     GUIDE_ATTACHMENT_PATH,
     QUESTIONNAIRE_TEMPLATE_ATTACHMENT_PATH,
-    MEAN_POPULATION_PATH,
-    PPS_POPULATION_PATH,
-    PROPORTION_POPULATION_PATH,
+    READING_POPULATION_PATH,
     resolveSeedAnchor,
     shiftDays,
+    STUDY_HOURS_POPULATION_PATH,
 } from "./dogfood-fixtures";
 import { DEMO_STUDENT_ACCOUNTS } from "./demo-accounts";
 import { buildDefaultSamplingPolicy, type SamplingPolicyV1 } from "../../lib/sampling-policy";
 
-const questionnaire = {
-    title: "校园学习体验调查（受访者视角试填）",
-    welcomeText: "您好！本问卷用于课堂受访者视角试填，帮助练习问卷设计。预试答案不进入抽样或统计分析。请根据真实情况作答。",
-    endingText: "感谢您的认真作答，您的反馈将帮助我们更好地理解抽样调查与统计推断。",
+const studyQuestionnaire = {
+    title: "本科生学习投入调查（受访者视角试填）",
+    welcomeText: "您好！本问卷属于「2026 校园学习与生活状况调查」的学习投入子课题，用于课堂受访者视角试填。预试答案不进入抽样或统计分析，请按真实情况体验作答。",
+    endingText: "感谢您的认真作答。正式研究将以总体数据估计每周学习时长均值，本问卷只用于检查措辞与选项设置。",
     questions: [
         { id: "q1", type: "single", content: "您每天用于自主学习的时间？", options: ["1小时以内", "1-2小时", "2-3小时", "3小时以上"] },
         { id: "q2", type: "scale", content: "您对目前学习状态的满意程度？", scaleMin: 1, scaleMax: 5, scaleMinLabel: "非常不满意", scaleMaxLabel: "非常满意" },
@@ -61,6 +64,19 @@ const questionnaire = {
         { id: "q6", type: "scale", content: "课程作业负担是否合适？", scaleMin: 1, scaleMax: 5, scaleMinLabel: "过轻", scaleMaxLabel: "过重" },
         { id: "q7", type: "single", content: "您通常在哪里上自习？", options: ["图书馆", "教室", "宿舍", "其他"] },
         { id: "q8", type: "boolean", content: "您是否参加过统计调查实习？" },
+    ],
+};
+
+const readingQuestionnaire = {
+    title: "学生课外阅读调查（受访者视角试填）",
+    welcomeText: "您好！本问卷属于「2026 校园学习与生活状况调查」的阅读行为子课题，用于课堂受访者视角试填。",
+    endingText: "感谢您的参与。正式研究将估计每周课外阅读时长均值，并说明总体中零值较多的处理方式。",
+    questions: [
+        { id: "rq1", type: "single", content: "您平均每周课外阅读时长？", options: ["几乎不阅读", "1小时以内", "1-3小时", "3-5小时", "5小时以上"] },
+        { id: "rq2", type: "multiple", content: "您主要阅读哪类材料？", options: ["专业教材", "学术论文", "文学读物", "新闻资讯", "其他"], minSelect: 1, maxSelect: 3 },
+        { id: "rq3", type: "scale", content: "您对自己阅读量的满意程度？", scaleMin: 1, scaleMax: 5, scaleMinLabel: "很不满意", scaleMaxLabel: "很满意" },
+        { id: "rq4", type: "boolean", content: "您是否使用图书馆纸质藏书？" },
+        { id: "rq5", type: "single", content: "您更常在哪里阅读？", options: ["图书馆", "宿舍", "教室", "通勤途中", "其他"] },
     ],
 };
 
@@ -79,15 +95,27 @@ const graduateQuestionnaire = {
 };
 
 const diningQuestionnaire = {
-    title: "校园餐厅午间服务体验调查（受访者视角试填）",
-    welcomeText: "您好！本问卷用于课堂演练校园餐厅服务调查。预试回答只帮助检查问卷可理解性，不会进入等待时间估计。",
-    endingText: "感谢您完成体验。正式研究将以服务时段观测记录估计等待时间，并结合客流和开放窗口数解释结果。",
+    title: "食堂午间服务体验调查（受访者视角试填）",
+    welcomeText: "您好！本问卷用于课堂演练食堂午间服务调查。预试回答只帮助检查问卷可理解性，不会进入等待时间估计。",
+    endingText: "感谢您完成体验。正式研究将以服务时段观测记录估计等待时间，并结合客流量和开放窗口数解释结果。",
     questions: [
-        { id: "dq1", type: "single", content: "您最常在哪个校区就餐？", options: ["东校区", "西校区"] },
-        { id: "dq2", type: "single", content: "您通常到达餐厅的时间？", options: ["11:30前", "11:30-12:00", "12:00-12:30", "12:30后"] },
+        { id: "dq1", type: "single", content: "您最常在哪个校区的食堂就餐？", options: ["东校区", "西校区"] },
+        { id: "dq2", type: "single", content: "您通常到达食堂的时间？", options: ["11:30前", "11:30-12:00", "12:00-12:30", "12:30后"] },
         { id: "dq3", type: "scale", content: "您对午间排队秩序的满意程度？", scaleMin: 1, scaleMax: 5, scaleMinLabel: "很不满意", scaleMaxLabel: "很满意" },
-        { id: "dq4", type: "multiple", content: "哪些因素最影响您的餐厅选择？", options: ["等待时间", "价格", "口味", "距离", "座位"], minSelect: 1, maxSelect: 3 },
+        { id: "dq4", type: "multiple", content: "哪些因素最影响您的食堂选择？", options: ["等待时间", "价格", "口味", "距离", "座位"], minSelect: 1, maxSelect: 3 },
         { id: "dq5", type: "boolean", content: "您是否愿意错峰就餐以减少等待？" },
+    ],
+};
+
+const digitalLiteracyQuestionnaire = {
+    title: "新生数字素养调查（设计阶段）",
+    welcomeText: "您好！本问卷仍在设计中，用于课堂讨论问题措辞与选项设置。",
+    endingText: "感谢您的参与。本模板尚未上传总体数据，因此不会发布为实验任务。",
+    questions: [
+        { id: "lq1", type: "scale", content: "您对常用学习平台的熟练程度？", scaleMin: 1, scaleMax: 5, scaleMinLabel: "不熟练", scaleMaxLabel: "非常熟练" },
+        { id: "lq2", type: "multiple", content: "您使用过哪些数据工具？", options: ["电子表格", "统计软件", "在线问卷", "数据可视化工具"], minSelect: 1, maxSelect: 3 },
+        { id: "lq3", type: "boolean", content: "您是否了解学术引用规范？" },
+        { id: "lq4", type: "single", content: "您获取信息的主要渠道？", options: ["图书馆资源", "搜索引擎", "社交媒体", "课程平台", "同学交流"] },
     ],
 };
 
@@ -123,16 +151,16 @@ const calculatedMeanSize = calculateMeanEstimationSampleSize({
     nonResponseRate: 0,
 });
 if (calculatedMeanSize === null) throw new Error("Dogfood mean sample plan could not be calculated");
-const meanRecommendedSize: number = calculatedMeanSize;
-const meanPlan = {
+const readingRecommendedSize: number = calculatedMeanSize;
+const readingPlan = {
     estimationType: "mean" as const,
     confidenceLevel: "95",
     marginOfError: 2,
     populationVariance: 36,
     designEffect: 1,
     nonResponseRate: 0,
-    recommendedSize: meanRecommendedSize,
-    finalSampleSize: meanRecommendedSize,
+    recommendedSize: readingRecommendedSize,
+    finalSampleSize: readingRecommendedSize,
 };
 
 const calculatedGraduateSize = calculateFinitePopulationSampleSize({
@@ -179,12 +207,12 @@ const diningPlan = {
     finalSampleSize: diningRecommendedSize,
 };
 
-const reportContent = `<h2>实验目的</h2><p>本实验对照虚拟总体中每周学习时长的均值，比较四种抽样设计。问卷阶段是受访者视角试填，答案不进入估计。</p><h2>方法与结果</h2><p>在百分之九十五置信水平和绝对误差限 2 下确定样本量，分别使用简单随机、系统、PPS 和分层抽样。PPS 使用月生活费作为规模变量，避免与对照变量循环。对不同方法的样本构成、每周学习时长与总体分布进行了比较，并记录随机种子以保证结果可复现。</p><h2>结论</h2><p>分层抽样能够稳定保持各层比例，简单随机抽样实现方便。实际调查中应结合总体结构、抽样框质量和执行成本选择方法，同时完整说明误差限和无回答率假设。</p>`;
-const meanReportContent = `<h2>实验目的</h2><p>本实验以每周阅读时长的均值为估计目标，使用总体方差估计、绝对误差限和有限总体校正确定样本量，并比较可执行抽样方法的结果。</p><h2>方法与结果</h2><p>总体中每周阅读时长包含零值，且没有其他对每个单位都为正数的数值字段，因此不存在合格的 PPS 规模变量。实验模板按规则将 PPS 设为不适用，随后完成简单随机、系统和按学院分层抽样。</p><h2>结论</h2><p>均值估计流程使用样本量 15。三种启用方法均保留随机种子和完整样本行；PPS 未启用是由总体数据条件决定的有效策略，而不是执行失败。分析时应明确记录这一限制，避免为完成形式而选用不满足正值条件的规模变量。</p>`;
+const reportContent = `<h2>实验目的</h2><p>本实验属于「2026 校园学习与生活状况调查」，对照虚拟总体中每周学习时长的均值，比较四种抽样设计。问卷阶段是受访者视角试填，答案不进入估计。</p><h2>方法与结果</h2><p>在百分之九十五置信水平和绝对误差限 2 下确定样本量，分别使用简单随机、系统、PPS 和分层抽样。PPS 使用月生活费作为规模变量，避免与对照变量循环。对不同方法的样本构成、每周学习时长与总体分布进行了比较，并记录随机种子以保证结果可复现。</p><h2>结论</h2><p>分层抽样能够稳定保持各层比例，简单随机抽样实现方便。实际调查中应结合总体结构、抽样框质量和执行成本选择方法，同时完整说明误差限和无回答率假设。</p>`;
+const readingReportContent = `<h2>实验目的</h2><p>本实验以每周阅读时长的均值为估计目标，使用总体方差估计、绝对误差限和有限总体校正确定样本量，并比较可执行抽样方法的结果。</p><h2>方法与结果</h2><p>总体中每周阅读时长包含零值，且没有其他对每个单位都为正数的数值字段，因此不存在合格的 PPS 规模变量。实验模板按规则将 PPS 设为不适用，随后完成简单随机、系统和按学院分层抽样。</p><h2>结论</h2><p>均值估计流程使用样本量 15。三种启用方法均保留随机种子和完整样本行；PPS 未启用是由总体数据条件决定的有效策略，而不是执行失败。分析时应明确记录这一限制，避免为完成形式而选用不满足正值条件的规模变量。</p>`;
 const graduateReportContent = `<h2>研究问题</h2><p>本研究估计某综合大学本届毕业生中计划直接就业的学生比例，分析单位为一名毕业生。</p><h2>抽样设计</h2><p>以学院进行分层，并使用求职准备度作为 PPS 规模变量。目标类别属于分类变量，因此样本量规划采用最保守比例方差，误差限按百分点解释。</p><h2>结果解释</h2><p>比较四种抽样方法的直接就业比例、设计标准误与总体已知比例。结果仅代表该虚拟总体和当前抽样设计，不应外推到其他学校或毕业年份。</p>`;
-const diningReportContent = `<h2>研究问题</h2><p>本研究估计校园餐厅工作日午间高峰服务时段的平均等待分钟数，分析单位是一个十五分钟服务时段，而不是一名学生。</p><h2>抽样设计</h2><p>按校区分层，并以客流量作为 PPS 规模变量，比较简单随机、系统、PPS 与分层抽样。</p><h2>结果解释</h2><p>等待时间会同时受到时段、客流量和开放窗口数影响。单次样本的均值差异不能直接解释为餐厅服务质量的因果差异。</p>`;
+const diningReportContent = `<h2>研究问题</h2><p>本研究估计校园食堂工作日午间高峰服务时段的平均等待分钟数，分析单位是一个十五分钟服务时段，而不是一名学生。</p><h2>抽样设计</h2><p>按校区分层，并以客流量作为 PPS 规模变量，比较简单随机、系统、PPS 与分层抽样。</p><h2>结果解释</h2><p>等待时间会同时受到时段、客流量和开放窗口数影响。单次样本的均值差异不能直接解释为食堂服务质量的因果差异。</p>`;
 
-const ppsFieldMapping = {
+const studyFieldMapping = {
     identifier: "编号",
     numeric: ["每周学习时长", "月生活费", "学习满意度"],
     stratified: ["年级", "性别"],
@@ -198,7 +226,7 @@ const ppsFieldMapping = {
         target: { kind: "mean" as const, field: "每周学习时长" },
     },
 };
-const meanFieldMapping = {
+const readingFieldMapping = {
     identifier: "编号",
     numeric: ["每周阅读时长"],
     stratified: ["学院", "是否住宿"],
@@ -231,14 +259,14 @@ const graduateFieldMapping = {
 const diningFieldMapping = {
     identifier: "记录编号",
     numeric: ["等待分钟", "客流量", "开放窗口数"],
-    stratified: ["校区", "餐厅"],
+    stratified: ["校区", "食堂"],
     others: ["观测时段", "星期"],
     analysisTarget: { kind: "mean" as const, field: "等待分钟" },
     studyContract: {
         version: 1 as const,
-        researchQuestion: "本学期工作日午间高峰时段的平均排队等待时间是多少？",
-        targetPopulation: "本学期两校区餐厅工作日午间高峰的全部服务时段",
-        unitOfAnalysis: "一个15分钟餐厅服务时段",
+        researchQuestion: "本学期工作日午间高峰时段食堂的平均排队等待时间是多少？",
+        targetPopulation: "本学期两校区食堂工作日午间高峰的全部服务时段",
+        unitOfAnalysis: "一个15分钟食堂服务时段",
         target: { kind: "mean" as const, field: "等待分钟" },
     },
 };
@@ -249,9 +277,9 @@ async function writePopulationFixtures(
     graduatePopulation: Array<Record<string, unknown>>,
     diningPopulation: Array<Record<string, unknown>>,
 ) {
-    const ppsTarget = resolve(process.cwd(), PPS_POPULATION_PATH.slice(1));
-    const meanTarget = resolve(process.cwd(), MEAN_POPULATION_PATH.slice(1));
-    const graduateTarget = resolve(process.cwd(), PROPORTION_POPULATION_PATH.slice(1));
+    const ppsTarget = resolve(process.cwd(), STUDY_HOURS_POPULATION_PATH.slice(1));
+    const meanTarget = resolve(process.cwd(), READING_POPULATION_PATH.slice(1));
+    const graduateTarget = resolve(process.cwd(), EMPLOYMENT_POPULATION_PATH.slice(1));
     const diningTarget = resolve(process.cwd(), DINING_POPULATION_PATH.slice(1));
     await mkdir(dirname(ppsTarget), { recursive: true });
 
@@ -349,13 +377,13 @@ async function buildSamplingFixtures(
 ) {
     const n = ppsMeanRecommendedSize;
     const [grade1 = 0, grade2 = 0, grade3 = 0, grade4 = 0] = allocateIntegerShares(n, [0.4, 0.3, 0.2, 0.1]);
-    const [college1 = 0, college2 = 0, college3 = 0] = allocateIntegerShares(meanRecommendedSize, [1 / 3, 1 / 3, 1 / 3]);
+    const [college1 = 0, college2 = 0, college3 = 0] = allocateIntegerShares(readingRecommendedSize, [1 / 3, 1 / 3, 1 / 3]);
     const graduateCollegeCounts = allocateIntegerShares(graduateRecommendedSize, [0.25, 0.25, 0.25, 0.25]);
     const diningCampusCounts = allocateIntegerShares(diningRecommendedSize, [0.5, 0.5]);
     const learningResults = {
-        simple: await runSampling({ method: "simple", rawParams: { sampleSize: n, seed: 202601 }, targetSampleSize: n, population: ppsPopulation, fieldMapping: ppsFieldMapping }),
-        systematic: await runSampling({ method: "systematic", rawParams: { seed: 202602 }, targetSampleSize: n, population: ppsPopulation, fieldMapping: ppsFieldMapping }),
-        pps: await runSampling({ method: "pps", rawParams: { sampleSize: n, sizeField: "月生活费", seed: 202603 }, targetSampleSize: n, population: ppsPopulation, fieldMapping: ppsFieldMapping }),
+        simple: await runSampling({ method: "simple", rawParams: { sampleSize: n, seed: 202601 }, targetSampleSize: n, population: ppsPopulation, fieldMapping: studyFieldMapping }),
+        systematic: await runSampling({ method: "systematic", rawParams: { seed: 202602 }, targetSampleSize: n, population: ppsPopulation, fieldMapping: studyFieldMapping }),
+        pps: await runSampling({ method: "pps", rawParams: { sampleSize: n, sizeField: "月生活费", seed: 202603 }, targetSampleSize: n, population: ppsPopulation, fieldMapping: studyFieldMapping }),
         stratified: await runSampling({
             method: "stratified",
             rawParams: {
@@ -370,13 +398,13 @@ async function buildSamplingFixtures(
             },
             targetSampleSize: n,
             population: ppsPopulation,
-            fieldMapping: ppsFieldMapping,
+            fieldMapping: studyFieldMapping,
         }),
     };
 
     const meanResults = {
-        simple: await runSampling({ method: "simple", rawParams: { sampleSize: meanRecommendedSize, seed: 202611 }, targetSampleSize: meanRecommendedSize, population: meanPopulation, fieldMapping: meanFieldMapping }),
-        systematic: await runSampling({ method: "systematic", rawParams: { seed: 202612 }, targetSampleSize: meanRecommendedSize, population: meanPopulation, fieldMapping: meanFieldMapping }),
+        simple: await runSampling({ method: "simple", rawParams: { sampleSize: readingRecommendedSize, seed: 202611 }, targetSampleSize: readingRecommendedSize, population: meanPopulation, fieldMapping: readingFieldMapping }),
+        systematic: await runSampling({ method: "systematic", rawParams: { seed: 202612 }, targetSampleSize: readingRecommendedSize, population: meanPopulation, fieldMapping: readingFieldMapping }),
         stratified: await runSampling({
             method: "stratified",
             rawParams: {
@@ -388,9 +416,9 @@ async function buildSamplingFixtures(
                     { name: "商学院", ratio: 1 / 3, sampleCount: college3 },
                 ],
             },
-            targetSampleSize: meanRecommendedSize,
+            targetSampleSize: readingRecommendedSize,
             population: meanPopulation,
-            fieldMapping: meanFieldMapping,
+            fieldMapping: readingFieldMapping,
         }),
     };
 
@@ -515,8 +543,8 @@ async function seed() {
         graduatePopulation,
         diningPopulation,
     );
-    assertCompleteSubmission(questionnaire, learningPlan, learningResults, ppsPopulation.length, reportContent, defaultSamplingPolicy);
-    assertCompleteSubmission(questionnaire, meanPlan, meanResults, meanPopulation.length, meanReportContent, noPpsSamplingPolicy);
+    assertCompleteSubmission(studyQuestionnaire, learningPlan, learningResults, ppsPopulation.length, reportContent, defaultSamplingPolicy);
+    assertCompleteSubmission(readingQuestionnaire, readingPlan, meanResults, meanPopulation.length, readingReportContent, noPpsSamplingPolicy);
     assertCompleteSubmission(graduateQuestionnaire, graduatePlan, graduateResults, graduatePopulation.length, graduateReportContent, stratifiedRequiredPolicy);
     assertCompleteSubmission(diningQuestionnaire, diningPlan, diningResults, diningPopulation.length, diningReportContent, ppsRequiredPolicy);
     const compactLearningResults = compactSamplingResults(learningResults);
@@ -538,12 +566,7 @@ async function seed() {
         updatedAt: anchor,
     });
 
-    const teacherSeeds = [
-        { employeeId: "T001", name: "张岚" },
-        { employeeId: "T002", name: "李文博" },
-        { employeeId: "T003", name: "周妍" },
-    ];
-    const teacherRows = await db.insert(teacher).values(await Promise.all(teacherSeeds.map(async (item) => ({
+    const teacherRows = await db.insert(teacher).values(await Promise.all(DOGFOOD_TEACHERS.map(async (item) => ({
         employeeId: item.employeeId,
         name: item.name,
         password: await Bun.password.hash(item.employeeId),
@@ -558,63 +581,80 @@ async function seed() {
         { name: DOGFOOD_NAMES.oldSemester, isCurrent: 0, createdAt: day(-600), updatedAt: day(-240) },
     ]).returning();
     const semesterByName = Object.fromEntries(semesterRows.map((row) => [row.name, row]));
+
+    // 主班承载主任务；副班承载服务时段课题；数据科学班用于演示"新建空班级"；
+    // 历史班保留上学期已截止任务与归档成绩。
     const classRows = await db.insert(class_).values([
         { name: DOGFOOD_NAMES.mainClass, semesterId: semesterByName[DOGFOOD_NAMES.currentSemester]!.id, teacherId: teachersById.T001!.id, createdAt: day(-45), updatedAt: day(-45) },
         { name: DOGFOOD_NAMES.secondaryClass, semesterId: semesterByName[DOGFOOD_NAMES.currentSemester]!.id, teacherId: teachersById.T001!.id, createdAt: day(-42), updatedAt: day(-42) },
         { name: DOGFOOD_NAMES.dataScienceClass, semesterId: semesterByName[DOGFOOD_NAMES.currentSemester]!.id, teacherId: teachersById.T002!.id, createdAt: day(-35), updatedAt: day(-35) },
-        { name: DOGFOOD_NAMES.oldClass, semesterId: semesterByName[DOGFOOD_NAMES.previousSemester]!.id, teacherId: teachersById.T003!.id, createdAt: day(-220), updatedAt: day(-220) },
+        { name: DOGFOOD_NAMES.historyClass, semesterId: semesterByName[DOGFOOD_NAMES.previousSemester]!.id, teacherId: teachersById.T003!.id, createdAt: day(-220), updatedAt: day(-220) },
     ]).returning();
     const classByName = Object.fromEntries(classRows.map((row) => [row.name, row]));
 
-    const studentSeeds = [
-        ...DEMO_STUDENT_ACCOUNTS.map((account) => ({
-            ...account,
-            className: DOGFOOD_NAMES.mainClass,
-        })),
-        { studentId: "S011", name: "周宁", className: DOGFOOD_NAMES.mainClass },
-        { studentId: "S018", name: "备用学生", className: DOGFOOD_NAMES.mainClass },
-        { studentId: "P101", name: "赵一凡", className: DOGFOOD_NAMES.secondaryClass },
-        { studentId: "P102", name: "钱思远", className: DOGFOOD_NAMES.secondaryClass },
-        { studentId: "P103", name: "孙若溪", className: DOGFOOD_NAMES.secondaryClass },
-        { studentId: "P104", name: "李安然", className: DOGFOOD_NAMES.secondaryClass },
-        { studentId: "P105", name: "周嘉禾", className: DOGFOOD_NAMES.secondaryClass },
-        { studentId: "P106", name: "吴书宁", className: DOGFOOD_NAMES.secondaryClass },
-    ];
-    const studentRows = await db.insert(student).values(await Promise.all(studentSeeds.map(async (item) => ({
-        studentId: item.studentId,
-        name: item.name,
-        email: `${item.studentId.toLowerCase()}@example.edu`,
-        password: await Bun.password.hash(item.studentId),
-        classId: classByName[item.className]!.id,
-        createdAt: day(-40),
-        updatedAt: anchor,
-    })))).returning();
+    const rosterByClass = [
+        { className: DOGFOOD_NAMES.mainClass, members: DOGFOOD_ROSTER.main },
+        { className: DOGFOOD_NAMES.secondaryClass, members: DOGFOOD_ROSTER.secondary },
+        { className: DOGFOOD_NAMES.historyClass, members: DOGFOOD_ROSTER.history },
+    ] as const;
+    const studentRows = await db.insert(student).values(await Promise.all(rosterByClass.flatMap((group) => (
+        group.members.map(async (member) => ({
+            studentId: member.studentId,
+            name: member.name,
+            email: `${member.studentId.toLowerCase()}@example.edu`,
+            password: await Bun.password.hash(member.studentId),
+            classId: classByName[group.className]!.id,
+            createdAt: day(-40),
+            updatedAt: anchor,
+        }))
+    )))).returning();
     const studentsById = Object.fromEntries(studentRows.map((row) => [row.studentId, row]));
 
     const validTopicValues = {
         teacherId: teachersById.T001!.id,
-        excelFilePath: PPS_POPULATION_PATH,
-        excelRowCount: 200,
-        fieldMapping: ppsFieldMapping,
+        excelFilePath: STUDY_HOURS_POPULATION_PATH,
+        excelRowCount: ppsPopulation.length,
+        fieldMapping: studyFieldMapping,
         weightConfig,
-        recommendQuestions: questionnaire.questions,
+        recommendQuestions: studyQuestionnaire.questions,
         samplingPolicy: defaultSamplingPolicy,
         status: 1,
         createdAt: day(-20),
         updatedAt: day(-7),
     };
     const topicRows = await db.insert(topic).values([
-        { ...validTopicValues, name: DOGFOOD_NAMES.topicA, description: "估计本科生每周学习时长均值，并用月生活费演示 PPS 规模变量选择。" },
-        { ...validTopicValues, name: DOGFOOD_NAMES.topicB, description: "估计学生每周阅读时长均值；总体包含零值且没有合格的正值 PPS 规模变量。", excelFilePath: MEAN_POPULATION_PATH, excelRowCount: 24, fieldMapping: meanFieldMapping, samplingPolicy: noPpsSamplingPolicy },
-        { teacherId: teachersById.T001!.id, name: DOGFOOD_NAMES.topicC, description: "正在设计图书馆座位与空间使用调查，尚未上传总体数据。", status: 0, createdAt: day(-3), updatedAt: day(-3) },
-        { ...validTopicValues, name: DOGFOOD_NAMES.topicD, description: "上一轮校内通勤调查，保留用于演示已截止任务。" },
-        { ...validTopicValues, name: DOGFOOD_NAMES.topicE, description: "面向新生的数字素养调查，演示尚未开放任务。" },
+        { ...validTopicValues, name: DOGFOOD_NAMES.topicA, description: "「2026 校园学习与生活状况调查」主课题：估计本科生每周学习时长均值，并用月生活费演示 PPS 规模变量选择。" },
         {
             teacherId: teachersById.T001!.id,
-            name: DOGFOOD_NAMES.topicH,
-            description: "估计2026届毕业生中计划直接就业的比例，覆盖分类目标、比例样本量和 PPS 可用流程。",
-            excelFilePath: PROPORTION_POPULATION_PATH,
-            excelRowCount: 160,
+            name: DOGFOOD_NAMES.topicB,
+            description: "子课题：估计学生每周课外阅读时长均值。总体含零值且没有合格的正值规模变量，用于演示 PPS 不适用与小总体普查提示。",
+            excelFilePath: READING_POPULATION_PATH,
+            excelRowCount: meanPopulation.length,
+            fieldMapping: readingFieldMapping,
+            weightConfig,
+            recommendQuestions: readingQuestionnaire.questions,
+            samplingPolicy: noPpsSamplingPolicy,
+            status: 1,
+            createdAt: day(-18),
+            updatedAt: day(-6),
+        },
+        {
+            teacherId: teachersById.T001!.id,
+            name: DOGFOOD_NAMES.topicE,
+            description: "面向新生的数字素养调查，仍在设计阶段：问卷已就绪但尚未上传总体数据，因此不能发布。",
+            weightConfig,
+            recommendQuestions: digitalLiteracyQuestionnaire.questions,
+            samplingPolicy: defaultSamplingPolicy,
+            status: 0,
+            createdAt: day(-3),
+            updatedAt: day(-3),
+        },
+        {
+            teacherId: teachersById.T001!.id,
+            name: DOGFOOD_NAMES.topicC,
+            description: "子课题：估计2026届毕业生中计划直接就业的比例，覆盖分类目标、比例样本量和分层必做流程。",
+            excelFilePath: EMPLOYMENT_POPULATION_PATH,
+            excelRowCount: graduatePopulation.length,
             fieldMapping: graduateFieldMapping,
             weightConfig,
             recommendQuestions: graduateQuestionnaire.questions,
@@ -625,10 +665,10 @@ async function seed() {
         },
         {
             teacherId: teachersById.T001!.id,
-            name: DOGFOOD_NAMES.topicI,
-            description: "以15分钟服务时段为分析单位估计午间等待时间，展示非人员总体与连续变量均值流程。",
+            name: DOGFOOD_NAMES.topicD,
+            description: "子课题：以十五分钟服务时段为分析单位估计食堂午间平均等待时间，演示非人员总体与 PPS 必做流程。",
             excelFilePath: DINING_POPULATION_PATH,
-            excelRowCount: 96,
+            excelRowCount: diningPopulation.length,
             fieldMapping: diningFieldMapping,
             weightConfig,
             recommendQuestions: diningQuestionnaire.questions,
@@ -641,23 +681,28 @@ async function seed() {
     const topicsByName = Object.fromEntries(topicRows.map((row) => [row.name, row]));
     await copyGuideAttachment(topicsByName[DOGFOOD_NAMES.topicA]!.id);
 
-    const mainClassId = classByName[DOGFOOD_NAMES.mainClass]!.id;
-    const secondaryClassId = classByName[DOGFOOD_NAMES.secondaryClass]!.id;
+    // 一个课题可以分派到多个班级：主班是进行中的主任务，历史班保留上学期已截止任务，
+    // 副班拿到一份尚未开放的比例任务。
     const taskRows = await db.insert(task).values([
-        { topicId: topicsByName[DOGFOOD_NAMES.topicA]!.id, classId: mainClassId, openTime: day(-7), deadline: day(30), createdAt: day(-7), updatedAt: day(-7) },
-        { topicId: topicsByName[DOGFOOD_NAMES.topicB]!.id, classId: mainClassId, openTime: null, deadline: null, createdAt: day(-6), updatedAt: day(-6) },
-        { topicId: topicsByName[DOGFOOD_NAMES.topicD]!.id, classId: mainClassId, openTime: day(-14), deadline: day(-1), createdAt: day(-14), updatedAt: day(-1) },
-        { topicId: topicsByName[DOGFOOD_NAMES.topicE]!.id, classId: mainClassId, openTime: day(7), deadline: day(30), createdAt: day(-1), updatedAt: day(-1) },
-        { topicId: topicsByName[DOGFOOD_NAMES.topicH]!.id, classId: mainClassId, openTime: day(-5), deadline: day(35), createdAt: day(-5), updatedAt: day(-5) },
-        { topicId: topicsByName[DOGFOOD_NAMES.topicI]!.id, classId: secondaryClassId, openTime: day(-4), deadline: day(21), createdAt: day(-4), updatedAt: day(-4) },
+        { topicId: topicsByName[DOGFOOD_NAMES.topicA]!.id, classId: classByName[DOGFOOD_NAMES.mainClass]!.id, openTime: day(-7), deadline: day(30), createdAt: day(-7), updatedAt: day(-7) },
+        { topicId: topicsByName[DOGFOOD_NAMES.topicA]!.id, classId: classByName[DOGFOOD_NAMES.historyClass]!.id, openTime: day(-200), deadline: day(-190), createdAt: day(-200), updatedAt: day(-190) },
+        { topicId: topicsByName[DOGFOOD_NAMES.topicB]!.id, classId: classByName[DOGFOOD_NAMES.mainClass]!.id, openTime: null, deadline: null, createdAt: day(-6), updatedAt: day(-6) },
+        { topicId: topicsByName[DOGFOOD_NAMES.topicC]!.id, classId: classByName[DOGFOOD_NAMES.mainClass]!.id, openTime: day(-5), deadline: day(35), createdAt: day(-5), updatedAt: day(-5) },
+        { topicId: topicsByName[DOGFOOD_NAMES.topicC]!.id, classId: classByName[DOGFOOD_NAMES.secondaryClass]!.id, openTime: day(7), deadline: day(35), createdAt: day(-2), updatedAt: day(-2) },
+        { topicId: topicsByName[DOGFOOD_NAMES.topicD]!.id, classId: classByName[DOGFOOD_NAMES.secondaryClass]!.id, openTime: day(-4), deadline: day(21), createdAt: day(-4), updatedAt: day(-4) },
     ]).returning();
-    const tasksByTopicId = Object.fromEntries(taskRows.map((row) => [row.topicId, row]));
-    const taskFor = (topicName: string) => tasksByTopicId[topicsByName[topicName]!.id]!;
-    const aTask = taskFor(DOGFOOD_NAMES.topicA);
+    const taskFor = (topicName: string, className: string) => {
+        const row = taskRows.find((item) => (
+            item.topicId === topicsByName[topicName]!.id && item.classId === classByName[className]!.id
+        ));
+        if (!row) throw new Error(`Seed task is missing: ${topicName} / ${className}`);
+        return row;
+    };
+    const aTask = taskFor(DOGFOOD_NAMES.topicA, DOGFOOD_NAMES.mainClass);
 
     const learningCompletedBase = {
         currentStage: 4,
-        questionnaire,
+        questionnaire: studyQuestionnaire,
         samplePlan: learningPlan,
         samplingResults: compactLearningResults,
         reportContent,
@@ -670,7 +715,7 @@ async function seed() {
         topicName,
         studentName: studentsById[studentId]!.name,
         populationSize: 200,
-        questionnaire,
+        questionnaire: studyQuestionnaire,
         samplePlan: learningPlan,
         samplingResults: compactLearningResults,
         reportContent,
@@ -687,7 +732,7 @@ async function seed() {
         stage4CompletedAt: day(-1),
     } as const;
     const graduateSnapshot = (studentId: string) => snapshot({
-        topicName: DOGFOOD_NAMES.topicH,
+        topicName: DOGFOOD_NAMES.topicC,
         studentName: studentsById[studentId]!.name,
         populationSize: 160,
         questionnaire: graduateQuestionnaire,
@@ -708,7 +753,7 @@ async function seed() {
         stage4CompletedAt: day(-1),
     } as const;
     const diningSnapshot = (studentId: string) => snapshot({
-        topicName: DOGFOOD_NAMES.topicI,
+        topicName: DOGFOOD_NAMES.topicD,
         studentName: studentsById[studentId]!.name,
         populationSize: 96,
         questionnaire: diningQuestionnaire,
@@ -719,50 +764,59 @@ async function seed() {
     });
 
     const experimentRows = await db.insert(experiment).values([
-        { studentId: studentsById.S011!.id, taskId: aTask.id, currentStage: 1, status: "in_progress", questionnaire, createdAt: day(-2), updatedAt: day(-2) },
-        { studentId: studentsById.S012!.id, taskId: aTask.id, currentStage: 2, status: "in_progress", questionnaire, stage1CompletedAt: day(-2), createdAt: day(-3), updatedAt: day(-2) },
-        { studentId: studentsById.S013!.id, taskId: aTask.id, currentStage: 3, status: "in_progress", questionnaire, samplePlan: learningPlan, stage1CompletedAt: day(-3), stage2CompletedAt: day(-2), createdAt: day(-4), updatedAt: day(-2) },
-        { ...learningCompletedBase, samplingResults: compactLearningChoiceResults, studentId: studentsById.S014!.id, taskId: aTask.id, status: "in_progress", reportContent: "<p>已按模板要求完成简单随机与系统抽样，正在比较所选方法并撰写实验报告。</p>", stage4CompletedAt: null, createdAt: day(-6), updatedAt: day(-1) },
-        { ...learningCompletedBase, studentId: studentsById.S015!.id, taskId: aTask.id, status: "submitted", submissionSnapshot: learningSnapshot("S015"), submittedAt: day(-1), createdAt: day(-7), updatedAt: day(-1) },
-        { ...learningCompletedBase, studentId: studentsById.S016!.id, taskId: aTask.id, status: "graded", submissionSnapshot: learningSnapshot("S016"), submittedAt: day(-2), scoreQuestionnaire: "92", scoreProcess: "88", scoreReport: "90", totalScore: "90.00", teacherComment: "结构完整，抽样方法比较清楚。", gradedByTeacherId: teachersById.T001!.id, gradedAt: day(-1), createdAt: day(-7), updatedAt: day(-1) },
-        { ...learningCompletedBase, studentId: studentsById.S017!.id, taskId: aTask.id, version: 2, status: "rejected", submissionSnapshot: learningSnapshot("S017"), submittedAt: day(-2), rejectReason: "请补充已选抽样方法的比较，并说明方法选择依据。", gradedByTeacherId: teachersById.T001!.id, gradedAt: day(-1), createdAt: day(-7), updatedAt: day(-1) },
+        // 主任务：10 名主班学生精确覆盖 8 个进度桶（3 人未开始）。
+        { studentId: studentsById[DOGFOOD_ANCHORS.stage1]!.id, taskId: aTask.id, currentStage: 1, status: "in_progress", questionnaire: studyQuestionnaire, createdAt: day(-2), updatedAt: day(-2) },
+        { studentId: studentsById.S2602!.id, taskId: aTask.id, currentStage: 2, status: "in_progress", questionnaire: studyQuestionnaire, stage1CompletedAt: day(-2), createdAt: day(-3), updatedAt: day(-2) },
+        { studentId: studentsById.S2603!.id, taskId: aTask.id, currentStage: 3, status: "in_progress", questionnaire: studyQuestionnaire, samplePlan: learningPlan, stage1CompletedAt: day(-3), stage2CompletedAt: day(-2), createdAt: day(-4), updatedAt: day(-2) },
+        { ...learningCompletedBase, samplingResults: compactLearningChoiceResults, studentId: studentsById[DOGFOOD_ANCHORS.choicePair]!.id, taskId: aTask.id, status: "in_progress", reportContent: "<p>已按模板要求完成简单随机与系统抽样，正在比较所选方法并撰写实验报告。</p>", stage4CompletedAt: null, createdAt: day(-6), updatedAt: day(-1) },
+        { ...learningCompletedBase, studentId: studentsById[DOGFOOD_ANCHORS.submitted]!.id, taskId: aTask.id, status: "submitted", submissionSnapshot: learningSnapshot(DOGFOOD_ANCHORS.submitted), submittedAt: day(-1), createdAt: day(-7), updatedAt: day(-1) },
+        { ...learningCompletedBase, studentId: studentsById[DOGFOOD_ANCHORS.graded]!.id, taskId: aTask.id, status: "graded", submissionSnapshot: learningSnapshot(DOGFOOD_ANCHORS.graded), submittedAt: day(-2), scoreQuestionnaire: "92", scoreProcess: "88", scoreReport: "90", totalScore: "90.00", teacherComment: "结构完整，抽样方法比较清楚。", gradedByTeacherId: teachersById.T001!.id, gradedAt: day(-1), createdAt: day(-7), updatedAt: day(-1) },
+        { ...learningCompletedBase, studentId: studentsById[DOGFOOD_ANCHORS.rejected]!.id, taskId: aTask.id, version: 2, status: "rejected", submissionSnapshot: learningSnapshot(DOGFOOD_ANCHORS.rejected), submittedAt: day(-2), rejectReason: "请补充已选抽样方法的比较，并说明方法选择依据。", gradedByTeacherId: teachersById.T001!.id, gradedAt: day(-1), createdAt: day(-7), updatedAt: day(-1) },
+        // 阅读子课题：PPS 不适用的终态样本（需要说明策略而不是执行失败）。
         {
-            studentId: studentsById.S015!.id,
-            taskId: taskFor(DOGFOOD_NAMES.topicB).id,
+            studentId: studentsById[DOGFOOD_ANCHORS.submitted]!.id,
+            taskId: taskFor(DOGFOOD_NAMES.topicB, DOGFOOD_NAMES.mainClass).id,
             currentStage: 4,
             status: "submitted",
-            questionnaire,
-            samplePlan: meanPlan,
+            questionnaire: readingQuestionnaire,
+            samplePlan: readingPlan,
             samplingResults: compactMeanResults,
-            reportContent: meanReportContent,
+            reportContent: readingReportContent,
             stage1CompletedAt: day(-5),
             stage2CompletedAt: day(-4),
             stage3CompletedAt: day(-3),
             stage4CompletedAt: day(-2),
-            submissionSnapshot: snapshot({ topicName: DOGFOOD_NAMES.topicB, studentName: studentsById.S015!.name, populationSize: 24, questionnaire, samplePlan: meanPlan, samplingResults: compactMeanResults, reportContent: meanReportContent, samplingPolicy: noPpsSamplingPolicy }),
+            submissionSnapshot: snapshot({ topicName: DOGFOOD_NAMES.topicB, studentName: studentsById[DOGFOOD_ANCHORS.submitted]!.name, populationSize: 24, questionnaire: readingQuestionnaire, samplePlan: readingPlan, samplingResults: compactMeanResults, reportContent: readingReportContent, samplingPolicy: noPpsSamplingPolicy }),
             submittedAt: day(-1),
             createdAt: day(-6),
             updatedAt: day(-1),
         },
-        { studentId: studentsById.S010!.id, taskId: taskFor(DOGFOOD_NAMES.topicH).id, currentStage: 2, status: "in_progress", questionnaire: graduateQuestionnaire, stage1CompletedAt: day(-2), createdAt: day(-4), updatedAt: day(-2) },
-        { ...graduateCompletedBase, studentId: studentsById.S012!.id, taskId: taskFor(DOGFOOD_NAMES.topicH).id, status: "in_progress", reportContent: "<p>已完成毕业去向比例的四种抽样，正在比较结果。</p>", stage4CompletedAt: null, createdAt: day(-5), updatedAt: day(-1) },
-        { ...graduateCompletedBase, studentId: studentsById.S015!.id, taskId: taskFor(DOGFOOD_NAMES.topicH).id, status: "submitted", submissionSnapshot: graduateSnapshot("S015"), submittedAt: day(-1), createdAt: day(-5), updatedAt: day(-1) },
-        { ...graduateCompletedBase, studentId: studentsById.S016!.id, taskId: taskFor(DOGFOOD_NAMES.topicH).id, status: "graded", submissionSnapshot: graduateSnapshot("S016"), submittedAt: day(-2), scoreQuestionnaire: "88", scoreProcess: "90", scoreReport: "86", totalScore: "87.80", teacherComment: "比例目标和百分点误差解释准确，建议补充目标总体边界。", gradedByTeacherId: teachersById.T001!.id, gradedAt: day(-1), createdAt: day(-5), updatedAt: day(-1) },
-        { studentId: studentsById.P101!.id, taskId: taskFor(DOGFOOD_NAMES.topicI).id, currentStage: 1, status: "in_progress", questionnaire: diningQuestionnaire, createdAt: day(-2), updatedAt: day(-2) },
-        { ...diningCompletedBase, studentId: studentsById.P102!.id, taskId: taskFor(DOGFOOD_NAMES.topicI).id, status: "submitted", submissionSnapshot: diningSnapshot("P102"), submittedAt: day(-1), createdAt: day(-4), updatedAt: day(-1) },
-        { ...diningCompletedBase, studentId: studentsById.P103!.id, taskId: taskFor(DOGFOOD_NAMES.topicI).id, version: 2, status: "rejected", submissionSnapshot: diningSnapshot("P103"), submittedAt: day(-2), rejectReason: "请区分服务时段与就餐学生两个分析单位，并补充客流量作为规模变量的理由。", gradedByTeacherId: teachersById.T001!.id, gradedAt: day(-1), createdAt: day(-4), updatedAt: day(-1) },
+        // 就业比例子课题：进行中、待批改、已批改各一份。
+        { studentId: studentsById[DOGFOOD_ANCHORS.stage1]!.id, taskId: taskFor(DOGFOOD_NAMES.topicC, DOGFOOD_NAMES.mainClass).id, currentStage: 2, status: "in_progress", questionnaire: graduateQuestionnaire, stage1CompletedAt: day(-2), createdAt: day(-4), updatedAt: day(-2) },
+        { ...graduateCompletedBase, studentId: studentsById[DOGFOOD_ANCHORS.submitted]!.id, taskId: taskFor(DOGFOOD_NAMES.topicC, DOGFOOD_NAMES.mainClass).id, status: "submitted", submissionSnapshot: graduateSnapshot(DOGFOOD_ANCHORS.submitted), submittedAt: day(-1), createdAt: day(-5), updatedAt: day(-1) },
+        { ...graduateCompletedBase, studentId: studentsById[DOGFOOD_ANCHORS.graded]!.id, taskId: taskFor(DOGFOOD_NAMES.topicC, DOGFOOD_NAMES.mainClass).id, status: "graded", submissionSnapshot: graduateSnapshot(DOGFOOD_ANCHORS.graded), submittedAt: day(-2), scoreQuestionnaire: "88", scoreProcess: "90", scoreReport: "86", totalScore: "87.80", teacherComment: "比例目标和百分点误差解释准确，建议补充目标总体边界。", gradedByTeacherId: teachersById.T001!.id, gradedAt: day(-1), createdAt: day(-5), updatedAt: day(-1) },
+        // 服务时段子课题（副班）：覆盖进行中、待批改、已批改、已驳回。
+        { studentId: studentsById.P2601!.id, taskId: taskFor(DOGFOOD_NAMES.topicD, DOGFOOD_NAMES.secondaryClass).id, currentStage: 1, status: "in_progress", questionnaire: diningQuestionnaire, createdAt: day(-2), updatedAt: day(-2) },
+        { ...diningCompletedBase, studentId: studentsById[DOGFOOD_ANCHORS.auditedSecondary]!.id, taskId: taskFor(DOGFOOD_NAMES.topicD, DOGFOOD_NAMES.secondaryClass).id, status: "submitted", submissionSnapshot: diningSnapshot(DOGFOOD_ANCHORS.auditedSecondary), submittedAt: day(-1), createdAt: day(-4), updatedAt: day(-1) },
+        { ...diningCompletedBase, studentId: studentsById.P2603!.id, taskId: taskFor(DOGFOOD_NAMES.topicD, DOGFOOD_NAMES.secondaryClass).id, status: "graded", submissionSnapshot: diningSnapshot("P2603"), submittedAt: day(-1), scoreQuestionnaire: "86", scoreProcess: "92", scoreReport: "88", totalScore: "88.60", teacherComment: "分析单位界定清楚，建议补充时段代表性说明。", gradedByTeacherId: teachersById.T001!.id, gradedAt: day(-1), createdAt: day(-4), updatedAt: day(-1) },
+        { ...diningCompletedBase, studentId: studentsById.P2604!.id, taskId: taskFor(DOGFOOD_NAMES.topicD, DOGFOOD_NAMES.secondaryClass).id, version: 2, status: "rejected", submissionSnapshot: diningSnapshot("P2604"), submittedAt: day(-2), rejectReason: "请区分服务时段与就餐学生两个分析单位，并补充客流量作为规模变量的理由。", gradedByTeacherId: teachersById.T001!.id, gradedAt: day(-1), createdAt: day(-4), updatedAt: day(-1) },
+        // 历史班：上学期同一主课题的归档成绩。
+        { ...learningCompletedBase, studentId: studentsById.H2501!.id, taskId: taskFor(DOGFOOD_NAMES.topicA, DOGFOOD_NAMES.historyClass).id, status: "graded", submissionSnapshot: learningSnapshot("H2501"), submittedAt: day(-192), scoreQuestionnaire: "90", scoreProcess: "85", scoreReport: "88", totalScore: "87.70", teacherComment: "上学期归档样本，作为历史班级的对照数据。", gradedByTeacherId: teachersById.T003!.id, gradedAt: day(-191), createdAt: day(-198), updatedAt: day(-191) },
+        { ...learningCompletedBase, studentId: studentsById.H2502!.id, taskId: taskFor(DOGFOOD_NAMES.topicA, DOGFOOD_NAMES.historyClass).id, status: "graded", submissionSnapshot: learningSnapshot("H2502"), submittedAt: day(-192), scoreQuestionnaire: "84", scoreProcess: "88", scoreReport: "86", totalScore: "86.00", teacherComment: "上学期归档样本，抽样方法比较略显简略。", gradedByTeacherId: teachersById.T003!.id, gradedAt: day(-191), createdAt: day(-198), updatedAt: day(-191) },
     ]).returning({ id: experiment.id, studentId: experiment.studentId, taskId: experiment.taskId });
 
+    // 三组服务端抽样审计记录：主课题、比例子课题、服务时段子课题各四次方法执行。
     const auditedRuns = [
-        { studentId: "S015", taskId: aTask.id, results: learningResults },
-        { studentId: "S015", taskId: taskFor(DOGFOOD_NAMES.topicH).id, results: graduateResults },
-        { studentId: "P102", taskId: taskFor(DOGFOOD_NAMES.topicI).id, results: diningResults },
+        { studentId: DOGFOOD_ANCHORS.submitted, topicName: DOGFOOD_NAMES.topicA, className: DOGFOOD_NAMES.mainClass, results: learningResults },
+        { studentId: DOGFOOD_ANCHORS.submitted, topicName: DOGFOOD_NAMES.topicC, className: DOGFOOD_NAMES.mainClass, results: graduateResults },
+        { studentId: DOGFOOD_ANCHORS.auditedSecondary, topicName: DOGFOOD_NAMES.topicD, className: DOGFOOD_NAMES.secondaryClass, results: diningResults },
     ];
     const auditedMethods = auditedRuns.flatMap((auditedRun, runIndex) => {
         const auditedExperiment = experimentRows.find((row) => (
-            row.studentId === studentsById[auditedRun.studentId]!.id && row.taskId === auditedRun.taskId
+            row.studentId === studentsById[auditedRun.studentId]!.id
+            && row.taskId === taskFor(auditedRun.topicName, auditedRun.className).id
         ));
-        if (!auditedExperiment) throw new Error(`Dogfood audited experiment is missing: ${auditedRun.studentId}`);
+        if (!auditedExperiment) throw new Error(`Seed audited experiment is missing: ${auditedRun.studentId}/${auditedRun.topicName}`);
         return (["simple", "systematic", "pps", "stratified"] as const).map((method, methodIndex) => {
             const result = auditedRun.results[method] as Record<string, unknown>;
             return {
@@ -778,9 +832,9 @@ async function seed() {
     await db.insert(samplingAttempt).values(auditedMethods);
 
     await db.insert(announcement).values([
-        { title: "2026-2027-1 学期实验平台开放", content: "本学期实验包含学习投入、毕业去向和餐厅服务三类研究场景。请先核对研究问题、目标总体和分析单位，再选择抽样设计。", targetScope: "all", status: 1, createdAt: day(-8), updatedAt: day(-8) },
-        { title: "学生端：完成实验前请检查估计目标", content: `学习投入课题推荐样本量为 ${ppsMeanRecommendedSize}；毕业去向课题使用比例估计，误差限按百分点解释。问卷均为受访者视角试填，不直接进入估计。`, targetScope: "student", status: 1, createdAt: day(-6), updatedAt: day(-6) },
-        { title: "教师端：本周批改与课堂演示安排", content: "批改列表已准备待批改、已批改和已驳回示例。课堂演示可比较人员总体与服务时段总体，以及均值和比例两类估计目标。", targetScope: "teacher", status: 1, createdAt: day(-5), updatedAt: day(-5) },
+        { title: "2026-2027-1 学期实验平台开放", content: "本学期「2026 校园学习与生活状况调查」包含学习投入、阅读行为、毕业去向和食堂服务四个子课题。请先核对研究问题、目标总体和分析单位，再选择抽样设计。", targetScope: "all", status: 1, createdAt: day(-8), updatedAt: day(-8) },
+        { title: "学生端：主任务截止时间提醒", content: `学习投入课题推荐样本量为 ${ppsMeanRecommendedSize}，按绝对误差限 2 小时规划。阅读行为课题总体只有 24 个单位，属于小总体，规划结果会提示接近普查。`, targetScope: "student", status: 1, createdAt: day(-6), updatedAt: day(-6) },
+        { title: "教师端：本周批改与课堂演示安排", content: "批改列表已准备待批改、已批改和已驳回示例。课堂演示可比较人员总体与服务时段总体，以及均值、比例两类估计目标，并观察未开放任务与历史归档班级。", targetScope: "teacher", status: 1, createdAt: day(-5), updatedAt: day(-5) },
         { title: "数据使用说明", content: "演示总体均为合成数据，不包含真实学生或个人信息。导出样本仅用于课堂练习。", targetScope: "all", status: 1, createdAt: day(-4), updatedAt: day(-4) },
         { title: "公告草稿", content: "未发布公告不应出现在学生或教师首页。", targetScope: "all", status: 0, createdAt: day(-1), updatedAt: day(-1) },
     ]);

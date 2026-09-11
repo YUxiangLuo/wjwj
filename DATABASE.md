@@ -32,8 +32,8 @@ existing application data is discarded.
 `db:seed` is a guarded alias for the deterministic dogfood fixture and refuses
 to run unless `DEMO_MODE=1`; normal production bootstrap must use
 `db:bootstrap-admin`. `db:seed:demo` writes the fixture in
-`src/db/seeds/default.ts`: 1 admin, 4 teachers, 3 semesters, 4 classes,
-16 students, 7 topics, 6 tasks, 15 experiments, 12 bounded sampling-attempt
+`src/db/seeds/default.ts`: 1 admin, 3 teachers, 3 semesters, 4 classes,
+20 students, 5 topics, 6 tasks, 17 experiments, 12 bounded sampling-attempt
 audit rows, 5 announcements, 2 attachments, and four generated population
 files. The stage-4 and terminal fixtures use production-style compact replay
 indices. The main mean/PPS task covers all eight teacher progress buckets. The

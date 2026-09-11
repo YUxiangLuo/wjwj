@@ -21,14 +21,15 @@ import { buildTaskProgressSnapshot } from "../../teacher/topic/task-progress";
 import {
     computePpsMeanPlan,
     DINING_POPULATION_PATH,
+    DOGFOOD_ANCHORS,
     DOGFOOD_COUNTS,
     DOGFOOD_MAIN_TASK_PROGRESS,
     DOGFOOD_NAMES,
+    EMPLOYMENT_POPULATION_PATH,
     GUIDE_ATTACHMENT_PATH,
     QUESTIONNAIRE_TEMPLATE_ATTACHMENT_PATH,
-    MEAN_POPULATION_PATH,
-    PPS_POPULATION_PATH,
-    PROPORTION_POPULATION_PATH,
+    READING_POPULATION_PATH,
+    STUDY_HOURS_POPULATION_PATH,
 } from "./dogfood-fixtures";
 import { DEMO_STUDENT_ACCOUNTS } from "./demo-accounts";
 import { parseSamplingPolicy } from "../../lib/sampling-policy";
@@ -129,7 +130,8 @@ async function verify() {
         .innerJoin(task, eq(experiment.taskId, task.id))
         .innerJoin(topic, eq(task.topicId, topic.id))
         .where(eq(experiment.currentStage, 4));
-    check(authoritative.length === 10, `Expected 10 stage4/terminal authoritative fixtures, got ${authoritative.length}`);
+    // 12 份完成全部四阶段的实验：主任务 4、阅读 1、比例 2、服务时段 3、历史归档 2。
+    check(authoritative.length === 12, `Expected 12 stage4/terminal authoritative fixtures, got ${authoritative.length}`);
 
     function checkAuthoritativeMethods(label: string, value: unknown, ppsDisabled: boolean, allowChoicePair = false) {
         const results = value as Record<string, Record<string, unknown> | undefined> | null;
@@ -164,7 +166,7 @@ async function verify() {
     for (const row of authoritative) {
         const label = `${row.studentId}/${row.topicName}`;
         const hasDisabledPps = row.topicName === DOGFOOD_NAMES.topicB;
-        const hasChoicePair = row.studentId === "S014" && row.topicName === DOGFOOD_NAMES.topicA;
+        const hasChoicePair = row.studentId === DOGFOOD_ANCHORS.choicePair && row.topicName === DOGFOOD_NAMES.topicA;
         const liveResults = checkAuthoritativeMethods(label, row.results, hasDisabledPps, hasChoicePair);
         if (row.status !== "in_progress") {
             const storedSnapshot = row.snapshot as Record<string, unknown> | null;
@@ -181,7 +183,10 @@ async function verify() {
             check(typeof snapshotReport === "string" && snapshotReport.includes("PPS") && snapshotReport.includes("不适用"), "Mean snapshot report does not explain disabled PPS");
         }
     }
-    check(authoritative.filter((row) => row.studentId === "S015" && row.topicName === DOGFOOD_NAMES.topicB).length === 1, "Expected exactly one mean PPS-disabled fixture");
+    check(
+        authoritative.filter((row) => row.studentId === DOGFOOD_ANCHORS.submitted && row.topicName === DOGFOOD_NAMES.topicB).length === 1,
+        "Expected exactly one mean PPS-disabled fixture",
+    );
 
     const auditRows = await db
         .select({ method: samplingAttempt.method, seed: samplingAttempt.seed, sampleCount: samplingAttempt.sampleCount })
@@ -190,7 +195,7 @@ async function verify() {
         .innerJoin(student, eq(experiment.studentId, student.id))
         .innerJoin(task, eq(experiment.taskId, task.id))
         .innerJoin(topic, eq(task.topicId, topic.id))
-        .where(and(eq(student.studentId, "S015"), eq(topic.name, DOGFOOD_NAMES.topicA)))
+        .where(and(eq(student.studentId, DOGFOOD_ANCHORS.submitted), eq(topic.name, DOGFOOD_NAMES.topicA)))
         .orderBy(asc(samplingAttempt.createdAt));
     const { recommendedSize: expectedPpsSampleCount } = computePpsMeanPlan();
     check(JSON.stringify(auditRows) === JSON.stringify([
@@ -229,26 +234,27 @@ async function verify() {
         ));
     const visibleKeys = visible.map((row) => `${row.studentId}|${row.topicName}`).sort();
     const expectedVisible = [
-        `S015|${DOGFOOD_NAMES.topicA}`,
-        `S015|${DOGFOOD_NAMES.topicB}`,
-        `S015|${DOGFOOD_NAMES.topicH}`,
-        `S016|${DOGFOOD_NAMES.topicA}`,
-        `S016|${DOGFOOD_NAMES.topicH}`,
-        `S017|${DOGFOOD_NAMES.topicA}`,
-        `P102|${DOGFOOD_NAMES.topicI}`,
-        `P103|${DOGFOOD_NAMES.topicI}`,
+        `${DOGFOOD_ANCHORS.submitted}|${DOGFOOD_NAMES.topicA}`,
+        `${DOGFOOD_ANCHORS.submitted}|${DOGFOOD_NAMES.topicB}`,
+        `${DOGFOOD_ANCHORS.submitted}|${DOGFOOD_NAMES.topicC}`,
+        `${DOGFOOD_ANCHORS.graded}|${DOGFOOD_NAMES.topicA}`,
+        `${DOGFOOD_ANCHORS.graded}|${DOGFOOD_NAMES.topicC}`,
+        `${DOGFOOD_ANCHORS.rejected}|${DOGFOOD_NAMES.topicA}`,
+        `${DOGFOOD_ANCHORS.auditedSecondary}|${DOGFOOD_NAMES.topicD}`,
+        `P2603|${DOGFOOD_NAMES.topicD}`,
+        `P2604|${DOGFOOD_NAMES.topicD}`,
     ].sort();
     check(JSON.stringify(visibleKeys) === JSON.stringify(expectedVisible), `Visible grading fixtures differ: ${JSON.stringify(visibleKeys)}`);
 
     const storedTopics = await db
         .select({ name: topic.name, path: topic.excelFilePath, rowCount: topic.excelRowCount, fieldMapping: topic.fieldMapping, samplingPolicy: topic.samplingPolicy })
         .from(topic)
-        .where(inArray(topic.name, [DOGFOOD_NAMES.topicA, DOGFOOD_NAMES.topicB, DOGFOOD_NAMES.topicH, DOGFOOD_NAMES.topicI]));
+        .where(inArray(topic.name, [DOGFOOD_NAMES.topicA, DOGFOOD_NAMES.topicB, DOGFOOD_NAMES.topicC, DOGFOOD_NAMES.topicD]));
     check(storedTopics.length === 4, `Expected stored population metadata for four research scenarios, got ${storedTopics.length}`);
 
     const expectedTopicFiles = {
         [DOGFOOD_NAMES.topicA]: {
-            path: PPS_POPULATION_PATH,
+            path: STUDY_HOURS_POPULATION_PATH,
             rowCount: 200,
             columns: ["编号", "年级", "专业", "性别", "每周学习时长", "月生活费", "学习满意度"],
             ppsFields: ["每周学习时长", "月生活费", "学习满意度"],
@@ -257,7 +263,7 @@ async function verify() {
             policy: { pps: "optional", stratified: "optional" },
         },
         [DOGFOOD_NAMES.topicB]: {
-            path: MEAN_POPULATION_PATH,
+            path: READING_POPULATION_PATH,
             rowCount: 24,
             columns: ["编号", "学院", "年级", "每周阅读时长", "是否住宿"],
             ppsFields: [],
@@ -265,8 +271,8 @@ async function verify() {
             targetValue: undefined,
             policy: { pps: "disabled", stratified: "optional" },
         },
-        [DOGFOOD_NAMES.topicH]: {
-            path: PROPORTION_POPULATION_PATH,
+        [DOGFOOD_NAMES.topicC]: {
+            path: EMPLOYMENT_POPULATION_PATH,
             rowCount: 160,
             columns: ["样本编号", "学院", "培养层次", "毕业去向意向", "是否有实习经历", "每周职业准备时长", "求职准备度"],
             ppsFields: ["每周职业准备时长", "求职准备度"],
@@ -274,10 +280,10 @@ async function verify() {
             targetValue: "直接就业",
             policy: { pps: "optional", stratified: "required" },
         },
-        [DOGFOOD_NAMES.topicI]: {
+        [DOGFOOD_NAMES.topicD]: {
             path: DINING_POPULATION_PATH,
             rowCount: 96,
-            columns: ["记录编号", "校区", "餐厅", "观测时段", "星期", "等待分钟", "客流量", "开放窗口数"],
+            columns: ["记录编号", "校区", "食堂", "观测时段", "星期", "等待分钟", "客流量", "开放窗口数"],
             ppsFields: ["等待分钟", "客流量", "开放窗口数"],
             targetKind: "mean",
             targetValue: undefined,

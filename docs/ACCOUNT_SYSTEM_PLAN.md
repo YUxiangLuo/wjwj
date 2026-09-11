@@ -69,7 +69,7 @@
 
 ### P2-1 账号数量/状态纳入文档门禁 ✅
 - 问题：本轮移除演示账号后，README 的"3 教师 / 15 学生"与 A 任务分桶只能靠人工同步（`check:docs` 只校验课题/任务/实验计数）。
-- 已实现：`check-docs.ts` 新增必需片段「${admin} 管理员、${teacher} 教师、${semester} 学期、${class} 班级、${student} 学生、…」与主任务分桶句；分桶数字抽到 `DOGFOOD_MAIN_TASK_PROGRESS`，由 seed 校验与文档门禁共用同一来源。另加语义断言：README 不得再出现 `T004`/`S019`/停用教师/停用学生。
+- 已实现：`check-docs.ts` 新增必需片段「${admin} 管理员、${teacher} 教师、${semester} 学期、${class} 班级、${student} 学生、…」与主任务分桶句；分桶数字抽到 `DOGFOOD_MAIN_TASK_PROGRESS`，由 seed 校验与文档门禁共用同一来源（seed 改版后自动跟随）。另加语义断言：README 不得再描述账号停用。
 - 验收证据：把 README 的教师/学生数改成旧值 → `check:docs` 失败；改回后通过。
 
 ### P2-2 删除审计留痕 ✅

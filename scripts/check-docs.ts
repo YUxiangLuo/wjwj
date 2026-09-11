@@ -27,7 +27,7 @@ const requiredReadmeFragments = [
     `主任务推荐样本量为 ${mainTaskRecommendedSize}`,
     `「${DOGFOOD_NAMES.topicB}」任务样本量由生产计算函数得到 ${meanTaskSize}`,
     `160 名毕业生的直接就业比例/PPS`,
-    `96 个餐厅服务时段的平均等待时间/PPS`,
+    `96 个食堂服务时段的平均等待时间/PPS`,
 ];
 const requiredDatabaseFragments = [
     `${DOGFOOD_COUNTS.topic} topics, ${DOGFOOD_COUNTS.task} tasks, ${DOGFOOD_COUNTS.experiment} experiments`,

@@ -128,12 +128,12 @@ try {
     const name = "浏览器回归：完整教学流程";
     await api(teacher, `/api/teacher/topics/${copied.id}`, "PUT", { name, status: 1 });
     const classes = await api<Array<{ id: number; name: string }>>(teacher, "/api/teacher/classes");
-    const targetClass = classes.find(item => item.name === "2024级统计学实验班");
+    const targetClass = classes.find(item => item.name === "2026级统计学1班");
     assert(targetClass, "Seed class missing");
     await api(teacher, "/api/teacher/tasks", "POST", { topicId: copied.id, classIds: [targetClass.id], deadline: new Date(Date.now() + 86400_000).toISOString() });
     console.log("PASS template copy and task publication (real API)");
 
-    await login(student, "student", "S018");
+    await login(student, "student", "S2610");
     const tasks = await api<StudentTask[]>(student, "/api/student/tasks");
     const task = tasks.find(item => item.name === name);
     assert(task, "Published task did not reach student");

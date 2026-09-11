@@ -1,17 +1,6 @@
-export const DEMO_CLASS_NAME = "2024级统计学实验班";
+import { DEMO_STUDENT_ACCOUNTS_SOURCE } from "./seed-identity";
 
-export interface DemoStudentAccount {
-    studentId: string;
-    name: string;
-}
+export { DEMO_CLASS_NAME, DOGFOOD_ANCHORS, DOGFOOD_ROSTER, DOGFOOD_TEACHERS, type DemoStudentAccount } from "./seed-identity";
 
-/** Returning, enabled students eligible for random demo-login prefill. */
-export const DEMO_STUDENT_ACCOUNTS: readonly DemoStudentAccount[] = [
-    { studentId: "S010", name: "林清" },
-    { studentId: "S012", name: "吴敏" },
-    { studentId: "S013", name: "郑华" },
-    { studentId: "S014", name: "孙琪" },
-    { studentId: "S015", name: "马丽" },
-    { studentId: "S016", name: "陈晨" },
-    { studentId: "S017", name: "何静" },
-];
+/** Every main-class student is eligible for the random demo-login prefill. */
+export const DEMO_STUDENT_ACCOUNTS = DEMO_STUDENT_ACCOUNTS_SOURCE;

@@ -1,23 +1,23 @@
 import { calculateMeanEstimationSampleSize } from "../../student/experiment/sample-plan";
-import { DEMO_CLASS_NAME } from "./demo-accounts";
+import { DEMO_CLASS_NAME } from "./seed-identity";
+
+export { DOGFOOD_ANCHORS, DOGFOOD_ROSTER, DOGFOOD_TEACHERS } from "./seed-identity";
 
 export const DAY_MS = 24 * 60 * 60 * 1_000;
 
 export const DOGFOOD_NAMES = {
     currentSemester: "2026-2027-1",
     previousSemester: "2025-2026-2",
-    oldSemester: "2024-2025-2",
+    oldSemester: "2025-2026-1",
     mainClass: DEMO_CLASS_NAME,
-    secondaryClass: "2024级公共管理调查班",
-    dataScienceClass: "2025级数据科学导论班",
-    oldClass: "2023级统计学2班",
-    topicA: "大学生学习投入与满意度",
-    topicB: "校园阅读行为与阅读时长",
-    topicC: "图书馆空间使用调查（草稿）",
-    topicD: "校内通勤方式调查（已截止）",
-    topicE: "新生数字素养调查（即将开放）",
-    topicH: "毕业生直接就业意向比例",
-    topicI: "校园餐厅午间等待时间",
+    secondaryClass: "2026级公共管理班",
+    dataScienceClass: "2026级数据科学班",
+    historyClass: "2025级统计学2班",
+    topicA: "本科生每周学习时长",
+    topicB: "学生每周阅读时长",
+    topicC: "毕业生直接就业意向比例",
+    topicD: "食堂午间等待时间",
+    topicE: "新生数字素养调查（设计阶段）",
 } as const;
 
 export const DOGFOOD_COUNTS = {
@@ -25,18 +25,17 @@ export const DOGFOOD_COUNTS = {
     teacher: 3,
     semester: 3,
     class: 4,
-    student: 15,
-    topic: 7,
+    student: 20,
+    topic: 5,
     task: 6,
-    experiment: 15,
+    experiment: 17,
     samplingAttempt: 12,
     announcement: 5,
     topicAttachment: 2,
 } as const;
 
-/** Progress buckets the main task must cover exactly, shared by seed check and docs gate. */
 export const DOGFOOD_MAIN_TASK_PROGRESS = {
-    not_started: 2,
+    not_started: 3,
     stage1: 1,
     stage2: 1,
     stage3: 1,
@@ -46,10 +45,15 @@ export const DOGFOOD_MAIN_TASK_PROGRESS = {
     rejected: 1,
 } as const;
 
-export const PPS_POPULATION_PATH = "/storage/topics/seed-population-pps.xlsx";
-export const MEAN_POPULATION_PATH = "/storage/topics/seed-population-mean.csv";
-export const PROPORTION_POPULATION_PATH = "/storage/topics/seed-population-graduate-intentions.csv";
-export const DINING_POPULATION_PATH = "/storage/topics/seed-population-dining-service.csv";
+export const STUDY_HOURS_POPULATION_PATH = "/storage/topics/seed-population-study-hours.xlsx";
+export const READING_POPULATION_PATH = "/storage/topics/seed-population-reading-hours.csv";
+export const EMPLOYMENT_POPULATION_PATH = "/storage/topics/seed-population-employment-intent.csv";
+export const DINING_POPULATION_PATH = "/storage/topics/seed-population-dining-wait.csv";
+
+/** Aliases kept for the population helpers below. */
+export const PPS_POPULATION_PATH = STUDY_HOURS_POPULATION_PATH;
+export const MEAN_POPULATION_PATH = READING_POPULATION_PATH;
+export const PROPORTION_POPULATION_PATH = EMPLOYMENT_POPULATION_PATH;
 export const GUIDE_ATTACHMENT_PATH = "/storage/uploads/seed-topic-guide.pdf";
 export const QUESTIONNAIRE_TEMPLATE_ATTACHMENT_PATH = "/storage/uploads/seed-questionnaire-template.docx";
 
@@ -164,13 +168,13 @@ export function createGraduateIntentionPopulation() {
 
 export function createDiningServicePopulation() {
     const campuses = ["东校区", "西校区"];
-    const diningHalls = ["学苑餐厅", "湖畔餐厅", "风味餐厅", "清真餐厅"];
+    const diningHalls = ["学苑食堂", "湖畔食堂", "风味食堂", "清真食堂"];
     const periods = ["11:30-11:45", "11:45-12:00", "12:00-12:15", "12:15-12:30"];
     const weekdays = ["周一", "周二", "周三", "周四", "周五"];
     return Array.from({ length: 96 }, (_, index) => ({
         记录编号: `D${String(index + 1).padStart(3, "0")}`,
         校区: campuses[index % campuses.length]!,
-        餐厅: diningHalls[index % diningHalls.length]!,
+        食堂: diningHalls[index % diningHalls.length]!,
         观测时段: periods[index % periods.length]!,
         星期: weekdays[index % weekdays.length]!,
         等待分钟: 3 + (index * 5) % 18,
