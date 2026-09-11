@@ -424,7 +424,9 @@ export function TopicManagement() {
                 <PageHeader as={CardHeader}>
                     <div>
                         <CardTitle className="text-body text-foreground">实验模板列表</CardTitle>
-                        <p className="text-meta text-muted-foreground mt-1">共 {filteredTopics.length} 条数据</p>
+                        <p className="text-meta text-muted-foreground mt-1">
+                            {loading || loadError ? "共 - 条数据" : `共 ${filteredTopics.length} 条数据`}
+                        </p>
                     </div>
                     <div className="flex gap-3 flex-row w-auto">
                         <div className="relative w-56">

@@ -238,6 +238,13 @@ const gradeAnalyticsRoutes: RouteDefinition = {
     },
 };
 
+/** Single source for the sheet columns so an empty export still carries the header row. */
+const GRADE_EXPORT_HEADERS = [
+    "学号", "姓名", "班级", "实验模板名称", "提交时间",
+    "问卷设计得分", "实验过程得分", "实验报告得分", "总分",
+    "状态", "批改人", "批改时间",
+] as const;
+
 const gradeExportExcelRoutes: RouteDefinition = {
     async GET(req) {
         const rows = await getGradeExportRows(getPrimaryTeacherIdOrThrow(req), getSearchParams(req));
@@ -255,7 +262,7 @@ const gradeExportExcelRoutes: RouteDefinition = {
             状态: row.status,
             批改人: row.gradedBy,
             批改时间: row.gradedAt,
-        })));
+        })), { header: [...GRADE_EXPORT_HEADERS] });
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "成绩导出");
         const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });

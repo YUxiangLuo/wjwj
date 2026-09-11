@@ -282,7 +282,9 @@ export function TaskManagement() {
                 <PageHeader as={CardHeader}>
                     <div>
                         <CardTitle className="text-body text-foreground">实验任务列表</CardTitle>
-                        <p className="text-meta text-muted-foreground mt-1">共 {filteredTasks.length} 条数据</p>
+                        <p className="text-meta text-muted-foreground mt-1">
+                            {loading || loadError ? "共 - 条数据" : `共 ${filteredTasks.length} 条数据`}
+                        </p>
                     </div>
                     <div className="flex gap-3 flex-row w-auto">
                         <div className="relative w-56">

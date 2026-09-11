@@ -1,4 +1,5 @@
 import { expect, mock, test } from "bun:test";
+import * as XLSX from "xlsx";
 import type { SQL } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { semester } from "../../db/schema";
@@ -184,4 +185,24 @@ test("grade export rejects fractional, negative, and exponent-form identifiers",
         expect(response.status).toBe(400);
     }
     expect(operations.filter((operation) => operation.kind === "select")).toHaveLength(0);
+});
+
+test("grade export excel keeps the header row when the filter matches nothing", async () => {
+    const { module } = await loadExportRoutes({ select: [[]] });
+
+    const response = await module.gradeExportExcelRoutes.GET!(
+        new Request("https://example.com/api/teacher/grade-export/excel?taskId=12")
+    );
+
+    expect(response.status).toBe(200);
+    const workbook = XLSX.read(Buffer.from(await response.arrayBuffer()), { type: "buffer" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]!]!;
+    const grid = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1, defval: "" });
+    // An empty result must still describe its columns instead of shipping a blank sheet.
+    expect(grid[0]).toEqual([
+        "学号", "姓名", "班级", "实验模板名称", "提交时间",
+        "问卷设计得分", "实验过程得分", "实验报告得分", "总分",
+        "状态", "批改人", "批改时间",
+    ]);
+    expect(grid).toHaveLength(1);
 });
