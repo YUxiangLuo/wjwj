@@ -122,8 +122,12 @@ export async function replaceTopicRecommendQuestions(params: {
     topicId: number;
     items: unknown;
 }) {
-    const arr = Array.isArray(params.items) ? params.items : [];
-    const parsed = parseRecommendQuestionsPayload(arr);
+    // A malformed payload must not silently clear the list: only an explicit
+    // array (including []) is a valid replace request.
+    if (!Array.isArray(params.items)) {
+        return fail("题目列表格式无效");
+    }
+    const parsed = parseRecommendQuestionsPayload(params.items);
     if (!parsed.ok) {
         return fail(parsed.error);
     }

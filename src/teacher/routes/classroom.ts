@@ -85,7 +85,9 @@ const classRoutes: RouteDefinition = {
             })
             .from(class_)
             .leftJoin(semester, eq(class_.semesterId, semester.id))
-            .leftJoin(student, eq(student.classId, class_.id))
+            // Count only enabled students so the roster matches the active-student
+            // denominator used by task progress and the dashboard.
+            .leftJoin(student, and(eq(student.classId, class_.id), eq(student.status, 1)))
             .where(eq(class_.teacherId, teacherId))
             .groupBy(class_.id, semester.id)
             .orderBy(desc(class_.createdAt));

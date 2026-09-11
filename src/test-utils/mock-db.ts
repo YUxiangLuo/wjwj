@@ -13,7 +13,7 @@ export interface MockDbOperation {
     values?: unknown;
     set?: unknown;
     where?: unknown;
-    joins?: Array<{ type: string; table: unknown }>;
+    joins?: Array<{ type: string; table: unknown; condition?: unknown }>;
     selection?: unknown;
     query?: unknown;
 }
@@ -51,14 +51,14 @@ function createBuilder(kind: QueryKind, operation: MockDbOperation, queues: Requ
             operation.table = table;
             return builder;
         },
-        innerJoin(table: unknown) {
+        innerJoin(table: unknown, condition?: unknown) {
             operation.joins ??= [];
-            operation.joins.push({ type: "innerJoin", table });
+            operation.joins.push({ type: "innerJoin", table, condition });
             return builder;
         },
-        leftJoin(table: unknown) {
+        leftJoin(table: unknown, condition?: unknown) {
             operation.joins ??= [];
-            operation.joins.push({ type: "leftJoin", table });
+            operation.joins.push({ type: "leftJoin", table, condition });
             return builder;
         },
         where(where: unknown) {
