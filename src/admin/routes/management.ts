@@ -8,7 +8,6 @@ import type { RouteDefinition } from "../../server/route-types";
 import { clearUserSessionsForUser } from "../../server/user-session";
 import { deleteAuditEventsForActor, deleteAuditEventsForEntities, hashEntityIdentifier, writeAuditEvent } from "../../server/audit-event";
 import { getAdminUser } from "./auth";
-import { loadDeletionImpact } from "../../teacher/deletion-impact";
 import { STUDENT_USER_TYPE } from "../../student/routes/auth";
 import { TEACHER_USER_TYPE } from "../../teacher/routes/auth";
 
@@ -425,82 +424,6 @@ const studentRoutes: RouteDefinition = {
     },
 };
 
-const studentLookupRoutes: RouteDefinition = {
-    async GET(req) {
-        const studentId = (getSearchParams(req).get("studentId") ?? "").trim();
-        if (!studentId || studentId.length > 50) return error("请输入有效的学号", "VALIDATION_ERROR", 400);
-        // citext keeps this case-insensitive, matching the import duplicate check.
-        const [row] = await db
-            .select({
-                id: student.id,
-                studentId: student.studentId,
-                name: student.name,
-                email: student.email,
-                classId: student.classId,
-                className: class_.name,
-                teacherId: class_.teacherId,
-                teacherName: teacher.name,
-                createdAt: student.createdAt,
-            })
-            .from(student)
-            .innerJoin(class_, eq(student.classId, class_.id))
-            .leftJoin(teacher, eq(class_.teacherId, teacher.id))
-            .where(eq(student.studentId, studentId));
-        if (!row) return error("未找到该学号", "NOT_FOUND", 404);
-        const impact = await loadDeletionImpact(db, eq(experiment.studentId, row.id));
-        return json({ student: row, impact });
-    },
-};
-
-const studentClassRoutes: RouteDefinition = {
-    async PUT(req) {
-        const id = parseId(req);
-        const body = await parseBody<{ classId?: number }>(req);
-        if (!id) return error("无效的学生ID", "INVALID_ID");
-        if (!Number.isInteger(body.classId) || (body.classId ?? 0) <= 0) return error("请选择有效的班级", "VALIDATION_ERROR", 400);
-        const targetClassId = body.classId!;
-
-        const adminId = getAdminUser(req)?.id ?? 0;
-        const result = await db.transaction(async (tx) => {
-            const [current] = await tx
-                .select({ id: student.id, classId: student.classId, studentId: student.studentId })
-                .from(student)
-                .where(eq(student.id, id))
-                .for("update");
-            if (!current) return { ok: false as const, message: "学生不存在", code: "NOT_FOUND", status: 404 };
-            const [target] = await tx
-                .select({ id: class_.id, name: class_.name, teacherId: class_.teacherId })
-                .from(class_)
-                .where(eq(class_.id, targetClassId))
-                .for("share");
-            if (!target) return { ok: false as const, message: "班级不存在", code: "NOT_FOUND", status: 404 };
-            if (current.classId === target.id) {
-                return { ok: true as const, moved: false, classId: target.id };
-            }
-            await tx.update(student).set({ classId: target.id, updatedAt: new Date() }).where(eq(student.id, id));
-            // The class is part of the student's identity: force a fresh login so a
-            // stale session cannot keep reading the previous class.
-            await clearUserSessionsForUser(STUDENT_USER_TYPE, id, tx);
-            await writeAuditEvent(tx, {
-                actorType: "admin",
-                actorId: adminId,
-                action: "student.class_changed",
-                entityType: "student",
-                entityId: id,
-                details: { previousClassId: current.classId, classId: target.id },
-            });
-            return { ok: true as const, moved: true, classId: target.id, previousClassId: current.classId };
-        });
-        if (!result.ok) return error(result.message, result.code, result.status);
-        return json({
-            success: true,
-            moved: result.moved,
-            classId: result.classId,
-            ...(result.moved ? { previousClassId: result.previousClassId } : {}),
-        });
-    },
-};
-
 const studentExperimentsRoutes: RouteDefinition = {
     async GET(req) {
         const id = parseId(req);
@@ -652,9 +575,7 @@ export {
     semesterCurrentRoutes,
     semesterDeleteRoutes,
     semesterRoutes,
-    studentClassRoutes,
     studentExperimentsRoutes,
-    studentLookupRoutes,
     studentResetPasswordRoutes,
     studentRoutes,
     teacherResetPasswordRoutes,

@@ -12,19 +12,18 @@ let raw: SQL;
 let management: typeof import("../admin/routes/management");
 let classroom: typeof import("../teacher/routes/classroom");
 let grading: typeof import("../teacher/routes/grading");
-let adminAuth: typeof import("../admin/routes/auth");
 let teacherAuth: typeof import("../teacher/routes/auth");
 let studentAuth: typeof import("../student/routes/auth");
-const ids = { semesters: [] as number[], teachers: [] as number[], classes: [] as number[], students: [] as number[], topics: [] as number[], admins: [] as number[] };
+const ids = { semesters: [] as number[], teachers: [] as number[], classes: [] as number[], students: [] as number[], topics: [] as number[] };
 
 beforeAll(async () => {
     if (!required) return;
     process.env.DATABASE_URL = url!;
     application = await import("./index");
     raw = new SQL(url!);
-    [management, classroom, grading, teacherAuth, studentAuth, adminAuth] = await Promise.all([
+    [management, classroom, grading, teacherAuth, studentAuth] = await Promise.all([
         import("../admin/routes/management"), import("../teacher/routes/classroom"), import("../teacher/routes/grading"),
-        import("../teacher/routes/auth"), import("../student/routes/auth"), import("../admin/routes/auth"),
+        import("../teacher/routes/auth"), import("../student/routes/auth"),
     ]);
 });
 
@@ -38,10 +37,6 @@ afterEach(async () => {
     if (ids.classes.length) {
         await db.delete(schema.task).where(inArray(schema.task.classId, ids.classes));
         await db.delete(schema.class_).where(inArray(schema.class_.id, ids.classes));
-    }
-    if (ids.admins.length) {
-        await db.delete(schema.userSession).where(and(eq(schema.userSession.userType, 1), inArray(schema.userSession.userId, ids.admins)));
-        await db.delete(schema.admin).where(inArray(schema.admin.id, ids.admins));
     }
     if (ids.topics.length) await db.delete(schema.topic).where(inArray(schema.topic.id, ids.topics));
     if (ids.semesters.length) await db.delete(schema.semester).where(inArray(schema.semester.id, ids.semesters));
@@ -339,37 +334,4 @@ pgTest("hard deleting a student requires confirming the cascaded submissions", a
     );
     expect(confirmed.status).toBe(200);
     expect(await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, experiment.id))).toHaveLength(0);
-});
-
-pgTest("moving a student to another class keeps the history and revokes the old session", async () => {
-    const { db } = application;
-    const group = await fixture();
-    const { experiment } = await addSubmission(group);
-    const studentToken = await session(3, group.students[0]!.id);
-    const semester = await addSemester();
-    const [admin] = await db.insert(schema.admin).values({
-        username: `admin-${crypto.randomUUID().slice(0, 8)}`, password: "unused",
-    }).returning();
-    ids.admins.push(admin!.id);
-    const adminToken = await session(1, admin!.id);
-    const [targetClass] = await db.insert(schema.class_).values({
-        name: "目标班级", semesterId: semester.id, teacherId: group.teachers[1]!.id,
-    }).returning();
-    ids.classes.push(targetClass!.id);
-
-    const response = await adminAuth.withAdminAuth(management.studentClassRoutes).PUT!(request(
-        "PUT", { id: String(group.students[0]!.id) }, { classId: targetClass!.id }, `admin_session=${adminToken}`,
-    ));
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ data: { moved: true, previousClassId: group.cls.id, classId: targetClass!.id } });
-
-    const [moved] = await db.select().from(schema.student).where(eq(schema.student.id, group.students[0]!.id));
-    expect(moved!.classId).toBe(targetClass!.id);
-    // The experiment follows the student; nothing is cascaded by a class change.
-    expect(await db.select().from(schema.experiment).where(eq(schema.experiment.id, experiment.id))).toHaveLength(1);
-    // The class is part of the identity, so the previous session is gone.
-    expect(await db.select().from(schema.userSession).where(eq(schema.userSession.sessionToken, studentToken))).toHaveLength(0);
-
-    const staleSession = await studentAuth.meRoutes.GET!(request("GET", {}, undefined, `student_session=${studentToken}`));
-    expect(staleSession.status).toBe(401);
 });

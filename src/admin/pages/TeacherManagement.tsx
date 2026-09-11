@@ -47,7 +47,7 @@ export function TeacherManagement() {
         }
         const shouldDelete = await confirm({
             title: `删除教师「${row.name}」`,
-            description: `将永久删除工号 ${row.employeeId} 的账号与全部登录会话。此操作不可恢复；如需重新启用请重新创建账号。`,
+            description: `将永久删除工号 ${row.employeeId} 的账号与全部登录会话，并清理该教师作为操作者的审计记录。此操作不可恢复。`,
             confirmLabel: "永久删除",
             tone: "destructive",
         });
