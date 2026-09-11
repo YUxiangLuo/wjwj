@@ -18,7 +18,8 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ClipboardList, CalendarDays, CheckCircle2, AlertTriangle, Search, Clock, Plus, BarChart3, Trash2 } from "lucide-react";
-import { teacherApi, type DeletionImpact, type Task, type Topic, type TeacherClass } from "../api-client";
+import { teacherApi, type Task, type Topic, type TeacherClass } from "../api-client";
+import { describeCascadeImpact } from "@/lib/deletion-impact-copy";
 import { TaskExtendDialog } from "../components/TaskExtendDialog";
 import { TaskPublishDialog } from "../components/TaskPublishDialog";
 import { Link } from "react-router-dom";
@@ -159,14 +160,6 @@ export function TaskManagement() {
         }
     }
 
-    function describeDeletionImpact(impact: DeletionImpact) {
-        if (impact.experiments === 0) return "该任务还没有学生实验记录。";
-        const details = [`${impact.experiments} 条学生实验`];
-        if (impact.submitted > 0) details.push(`已提交 ${impact.submitted} 条`);
-        if (impact.graded > 0) details.push(`已批改 ${impact.graded} 条`);
-        return `将同时永久删除 ${details.join("、")}及对应成绩与抽样记录。`;
-    }
-
     async function openDeleteDialog(task: Task) {
         setTaskToDelete(task);
         setDeleteImpact({ loading: true, requiresConfirmation: false, summary: null });
@@ -175,7 +168,7 @@ export function TaskManagement() {
             setDeleteImpact({
                 loading: false,
                 requiresConfirmation: res.data.requiresConfirmation,
-                summary: describeDeletionImpact(res.data.impact),
+                summary: describeCascadeImpact(res.data.impact, "task"),
             });
         } else {
             // Unknown impact: let the server decide and report on confirm.

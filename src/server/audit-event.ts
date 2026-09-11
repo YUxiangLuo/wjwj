@@ -11,6 +11,14 @@ export interface AuditEventInput {
     details?: Record<string, unknown>;
 }
 
+/**
+ * Non-reversible fingerprint kept after a deletion clears the entity's own audit
+ * trail: the row can be matched again only by hashing a candidate identifier.
+ */
+export function hashEntityIdentifier(value: string) {
+    return new Bun.CryptoHasher("sha256").update(value).digest("hex").slice(0, 16);
+}
+
 export function writeAuditEvent(client: Pick<typeof db, "insert">, input: AuditEventInput) {
     return client.insert(auditEvent).values({ ...input, details: input.details ?? {} });
 }

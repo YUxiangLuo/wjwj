@@ -10,12 +10,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StudentAddDialog } from "../components/StudentAddDialog";
 import { StudentConfirmDialog } from "../components/StudentConfirmDialog";
 import { StudentImportDialog } from "../components/StudentImportDialog";
-import { teacherApi, type DeletionImpact, type Student, type TeacherClass } from "../api-client";
+import { teacherApi, type Student, type TeacherClass } from "../api-client";
 import { toast } from "sonner";
 import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { isValidOptionalEmail } from "@/lib/email";
 import { rowsToCsv } from "@/lib/csv";
+import { describeCascadeImpact } from "@/lib/deletion-impact-copy";
 
 export function StudentManagement() {
     const { classId } = useParams();
@@ -147,14 +148,6 @@ export function StudentManagement() {
         setConfirmDialog({ open: true, type: "reset", student });
     }
 
-    function describeDeletionImpact(impact: DeletionImpact) {
-        if (impact.experiments === 0) return "该学生没有实验记录，删除后学号可以重新导入。";
-        const details = [`${impact.experiments} 条实验记录`];
-        if (impact.submitted > 0) details.push(`已提交 ${impact.submitted} 条`);
-        if (impact.graded > 0) details.push(`已批改 ${impact.graded} 条`);
-        return `将同时永久删除 ${details.join("、")}及其成绩与抽样记录。`;
-    }
-
     async function handleDelete(student: Student) {
         setConfirmDialog({ open: true, type: "delete", student });
         setDeleteImpact({ loading: true, requiresConfirmation: false, summary: null });
@@ -163,7 +156,7 @@ export function StudentManagement() {
             setDeleteImpact({
                 loading: false,
                 requiresConfirmation: res.data.requiresConfirmation,
-                summary: describeDeletionImpact(res.data.impact),
+                summary: describeCascadeImpact(res.data.impact, "student"),
             });
         } else {
             // Unknown impact: let the server decide and report on confirm.

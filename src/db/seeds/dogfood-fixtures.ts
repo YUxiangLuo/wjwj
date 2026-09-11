@@ -34,6 +34,18 @@ export const DOGFOOD_COUNTS = {
     topicAttachment: 2,
 } as const;
 
+/** Progress buckets the main task must cover exactly, shared by seed check and docs gate. */
+export const DOGFOOD_MAIN_TASK_PROGRESS = {
+    not_started: 2,
+    stage1: 1,
+    stage2: 1,
+    stage3: 1,
+    stage4: 1,
+    submitted: 1,
+    graded: 1,
+    rejected: 1,
+} as const;
+
 export const PPS_POPULATION_PATH = "/storage/topics/seed-population-pps.xlsx";
 export const MEAN_POPULATION_PATH = "/storage/topics/seed-population-mean.csv";
 export const PROPORTION_POPULATION_PATH = "/storage/topics/seed-population-graduate-intentions.csv";

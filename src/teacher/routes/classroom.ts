@@ -4,7 +4,7 @@ import { class_, experiment, samplingAttempt, semester, student, userSession } f
 import { isValidOptionalEmail } from "../../lib/email";
 import { parseSpreadsheetFile, spreadsheetRequestExceedsLimit, validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
 import { hashPassword, mapWithConcurrency } from "../../server/password-work";
-import { deleteAuditEventsForActor, deleteAuditEventsForEntities } from "../../server/audit-event";
+import { deleteAuditEventsForActor, deleteAuditEventsForEntities, hashEntityIdentifier, writeAuditEvent } from "../../server/audit-event";
 import { error, getPositiveRouteId, getSearchParams, json, parseBody, parseFormData, stringValue } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { clearUserSessionsForUser } from "../../server/user-session";
@@ -41,7 +41,7 @@ async function requireOwnedClass(classId: number, teacherId: number, tx?: Pick<t
 
 async function findOwnedStudent(id: number, teacherId: number, tx?: Pick<typeof db, "select">) {
     const query = (tx ?? db)
-        .select({ id: student.id, studentId: student.studentId })
+        .select({ id: student.id, studentId: student.studentId, classId: student.classId })
         .from(student)
         .innerJoin(class_, eq(student.classId, class_.id))
         .where(and(eq(student.id, id), eq(class_.teacherId, teacherId)));
@@ -146,6 +146,22 @@ export async function deleteTeacherStudent(params: {
             eq(userSession.userType, STUDENT_USER_TYPE),
             eq(userSession.userId, params.studentId),
         ));
+        // The student's own trail is gone by now; keep one de-identified record of
+        // the deletion itself so the action is still accountable.
+        await writeAuditEvent(tx, {
+            actorType: "teacher",
+            actorId: params.teacherId,
+            action: "student.deleted",
+            entityType: "student",
+            entityId: params.studentId,
+            details: {
+                classId: owned.classId,
+                studentIdHash: hashEntityIdentifier(owned.studentId),
+                experiments: impact.experiments,
+                submitted: impact.submitted,
+                graded: impact.graded,
+            },
+        });
         return { ok: true };
     });
 }

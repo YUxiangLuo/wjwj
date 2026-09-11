@@ -364,7 +364,7 @@ test("student hard deletion removes sessions, audit events, and the student row"
     const { module, operations } = await loadClassroomRoutes({
         teacherId: 9,
         select: [
-            [{ id: 44 }],
+            [{ id: 44, studentId: "S044", classId: 3 }],
             [{ id: 91 }, { id: 92 }],
         ],
     });
@@ -381,6 +381,13 @@ test("student hard deletion removes sessions, audit events, and the student row"
     expect(deletedTables).toContain(student);
     expect(operations.some((operation) => operation.kind === "select" && operation.table === experiment)).toBe(true);
     expect(operations.some((operation) => operation.kind === "update" && operation.table === student)).toBe(false);
+    // The student's own trail is cleared, but the deletion itself is accountable.
+    const audit = operations.find((operation) => operation.kind === "insert" && operation.table === auditEvent);
+    expect(audit?.values).toMatchObject({ action: "student.deleted", actorType: "teacher", actorId: 9, entityType: "student", entityId: 44 });
+    const details = (audit?.values as { details?: Record<string, unknown> })?.details ?? {};
+    expect(Object.keys(details)).toEqual(expect.arrayContaining(["classId", "studentIdHash", "experiments"]));
+    expect(JSON.stringify(details)).not.toContain("S044");
+    expect(audit?.values).not.toHaveProperty("studentId");
 });
 
 test("student import reports a lost insert race per row instead of failing the file", async () => {
@@ -442,7 +449,7 @@ test("student deletion refuses to cascade graded work without an explicit confir
     const { module, operations } = await loadClassroomRoutes({
         teacherId: 9,
         select: [
-            [{ id: 44 }],
+            [{ id: 44, studentId: "S044", classId: 3 }],
             [{ status: "graded", count: 2 }],
         ],
     });
@@ -462,7 +469,7 @@ test("student deletion with confirmation removes the graded work", async () => {
     const { module, operations } = await loadClassroomRoutes({
         teacherId: 9,
         select: [
-            [{ id: 44 }],
+            [{ id: 44, studentId: "S044", classId: 3 }],
             [{ status: "graded", count: 1 }],
             [{ id: 91 }],
         ],
@@ -481,7 +488,7 @@ test("student deletion of an unsubmitted roster entry stays a one-step delete", 
     const { module, operations } = await loadClassroomRoutes({
         teacherId: 9,
         select: [
-            [{ id: 44 }],
+            [{ id: 44, studentId: "S044", classId: 3 }],
             [{ status: "in_progress", count: 1 }],
             [],
         ],

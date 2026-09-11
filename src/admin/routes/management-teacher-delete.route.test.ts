@@ -5,6 +5,7 @@ import { createMockDb } from "../../test-utils/mock-db";
 async function load(select: unknown[]) {
     const { db, operations } = createMockDb({ select });
     mock.module("../../db", () => ({ db }));
+    mock.module("./auth", () => ({ getAdminUser: () => ({ id: 1, username: "admin" }) }));
     const module = await import(`./management.ts?teacher-delete=${crypto.randomUUID()}`);
     return { module, operations };
 }
@@ -18,7 +19,7 @@ function deleteRequest(id: string) {
 
 test("teacher removal is blocked while classes or templates still reference the account", async () => {
     const { module, operations } = await load([
-        [{ id: 6 }],
+        [{ id: 6, employeeId: "T006" }],
         [{ count: 2 }],
         [{ count: 3 }],
     ]);
@@ -35,7 +36,7 @@ test("teacher removal is blocked while classes or templates still reference the 
 
 test("teacher removal drops the account, its sessions and actor audit events", async () => {
     const { module, operations } = await load([
-        [{ id: 6 }],
+        [{ id: 6, employeeId: "T006" }],
         [{ count: 0 }],
         [{ count: 0 }],
     ]);
@@ -48,6 +49,12 @@ test("teacher removal drops the account, its sessions and actor audit events", a
     expect(deletedTables).toContain(userSession);
     expect(deletedTables).toContain(teacher);
     expect(deletedTables).toContain(auditEvent);
+    // One de-identified record survives the cleanup of the teacher's own events.
+    const audit = operations.find((operation) => operation.kind === "insert" && operation.table === auditEvent);
+    expect(audit?.values).toMatchObject({ action: "teacher.deleted", actorType: "admin", entityType: "teacher", entityId: 6 });
+    const details = (audit?.values as { details?: Record<string, unknown> })?.details ?? {};
+    expect(Object.keys(details)).toEqual(["employeeIdHash"]);
+    expect(JSON.stringify(details)).not.toContain("T006");
 });
 
 test("teacher removal answers 404 for an unknown account", async () => {

@@ -118,6 +118,8 @@ test("task hard deletion removes related audit events and the task row", async (
     expect(deletedTables).toContain(task);
     expect(operations.some((item) => item.kind === "select" && item.table === experiment)).toBe(true);
     expect(operations.some((item) => item.kind === "update")).toBe(false);
+    const audit = operations.find((item) => item.kind === "insert" && item.table === auditEvent);
+    expect(audit?.values).toMatchObject({ action: "task.deleted", actorType: "teacher", actorId: 9, entityType: "task", entityId: 88 });
 });
 
 test("task deletion impact is exposed before the cascade", async () => {

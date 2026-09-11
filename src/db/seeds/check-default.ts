@@ -22,6 +22,7 @@ import {
     computePpsMeanPlan,
     DINING_POPULATION_PATH,
     DOGFOOD_COUNTS,
+    DOGFOOD_MAIN_TASK_PROGRESS,
     DOGFOOD_NAMES,
     GUIDE_ATTACHMENT_PATH,
     QUESTIONNAIRE_TEMPLATE_ATTACHMENT_PATH,
@@ -80,7 +81,7 @@ async function verify() {
         .where(eq(student.classId, aTask.classId))
         .orderBy(asc(student.studentId));
     const progress = buildTaskProgressSnapshot(progressRows);
-    const expectedProgress = { not_started: 2, stage1: 1, stage2: 1, stage3: 1, stage4: 1, submitted: 1, graded: 1, rejected: 1 };
+    const expectedProgress = DOGFOOD_MAIN_TASK_PROGRESS;
     check(JSON.stringify(progress.counts) === JSON.stringify(expectedProgress), `A progress buckets differ: ${JSON.stringify(progress.counts)}`);
 
     const teacherCredentialRows = await db.select({

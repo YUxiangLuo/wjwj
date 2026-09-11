@@ -6,7 +6,7 @@ import { error, getPositiveRouteId, getSearchParams, json, parseBody, parsePagin
 import { hashPassword } from "../../server/password-work";
 import type { RouteDefinition } from "../../server/route-types";
 import { clearUserSessionsForUser } from "../../server/user-session";
-import { deleteAuditEventsForActor, deleteAuditEventsForEntities, writeAuditEvent } from "../../server/audit-event";
+import { deleteAuditEventsForActor, deleteAuditEventsForEntities, hashEntityIdentifier, writeAuditEvent } from "../../server/audit-event";
 import { getAdminUser } from "./auth";
 import { loadDeletionImpact } from "../../teacher/deletion-impact";
 import { STUDENT_USER_TYPE } from "../../student/routes/auth";
@@ -194,8 +194,9 @@ const teacherItemRoutes: RouteDefinition = {
     async DELETE(req) {
         const id = parseId(req);
         if (!id) return error("无效的教师ID", "INVALID_ID");
+        const adminId = getAdminUser(req)?.id ?? 0;
         const result = await db.transaction(async (tx) => {
-            const [row] = await tx.select({ id: teacher.id }).from(teacher).where(eq(teacher.id, id)).for("update");
+            const [row] = await tx.select({ id: teacher.id, employeeId: teacher.employeeId }).from(teacher).where(eq(teacher.id, id)).for("update");
             if (!row) return { ok: false as const, message: "教师不存在", code: "NOT_FOUND", status: 404 };
             const [classes] = await tx.select({ count: count() }).from(class_).where(eq(class_.teacherId, id));
             const [topics] = await tx.select({ count: count() }).from(topic).where(eq(topic.teacherId, id));
@@ -218,6 +219,14 @@ const teacherItemRoutes: RouteDefinition = {
             await deleteAuditEventsForEntities(tx, "teacher", [id]);
             await deleteAuditEventsForActor(tx, "teacher", id);
             await tx.delete(teacher).where(eq(teacher.id, id));
+            await writeAuditEvent(tx, {
+                actorType: "admin",
+                actorId: adminId,
+                action: "teacher.deleted",
+                entityType: "teacher",
+                entityId: id,
+                details: { employeeIdHash: hashEntityIdentifier(row.employeeId) },
+            });
             return { ok: true as const };
         });
         if (!result.ok) return error(result.message, result.code, result.status);

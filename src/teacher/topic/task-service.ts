@@ -2,7 +2,7 @@ import { and, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, experiment, samplingAttempt, task, topic } from "../../db/schema";
 import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
-import { deleteAuditEventsForEntities } from "../../server/audit-event";
+import { deleteAuditEventsForEntities, writeAuditEvent } from "../../server/audit-event";
 import { validateTopicPublishReadiness } from "./validation";
 import { deletionRequiresConfirmation, loadDeletionImpact } from "../deletion-impact";
 
@@ -204,7 +204,7 @@ export async function deleteTeacherTask(params: {
     return db.transaction(async (tx) => {
         await acquireStorageMutationLock(tx);
         const [row] = await tx
-            .select({ id: task.id })
+            .select({ id: task.id, classId: task.classId })
             .from(task)
             .innerJoin(class_, eq(task.classId, class_.id))
             .where(and(eq(task.id, params.taskId), eq(class_.teacherId, params.teacherId)))
@@ -237,6 +237,14 @@ export async function deleteTeacherTask(params: {
         await deleteAuditEventsForEntities(tx, "sampling_attempt", attemptRows.map((item) => item.id));
         await deleteAuditEventsForEntities(tx, "experiment", experimentIds);
         await deleteAuditEventsForEntities(tx, "task", [params.taskId]);
+        await writeAuditEvent(tx, {
+            actorType: "teacher",
+            actorId: params.teacherId,
+            action: "task.deleted",
+            entityType: "task",
+            entityId: params.taskId,
+            details: { classId: row.classId, experiments: impact.experiments },
+        });
         return { ok: true };
     });
 }
