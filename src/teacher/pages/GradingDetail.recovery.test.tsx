@@ -15,6 +15,14 @@ function record(version = 1) {
 }
 function page() { return render(<MemoryRouter initialEntries={["/grading/7"]}><Routes><Route path="/grading/:submissionId" element={<GradingDetail />} /></Routes></MemoryRouter>); }
 
+test("ungraded submissions keep score fields empty until the teacher enters them", async () => {
+    globalThis.fetch = (async () => Response.json({ success: true, data: { ...record(), scoreQuestionnaire: null, scoreProcess: null, scoreReport: null } })) as unknown as typeof fetch;
+    const view = page();
+    await waitFor(() => expect(view.getByLabelText("教师评语")).toBeTruthy());
+    expect((view.getByLabelText("问卷设计（30%）") as HTMLInputElement).value).toBe("");
+    expect((view.getByRole("button", { name: "提交评分" }) as HTMLButtonElement).disabled).toBe(true);
+});
+
 test("initial request failure is retryable rather than a missing submission", async () => {
     let requests = 0;
     globalThis.fetch = (async () => ++requests === 1
@@ -37,6 +45,8 @@ test("version conflict keeps scoring inputs until an explicit refresh", async ()
     const view = page();
     await waitFor(() => expect(view.getByLabelText("教师评语")).toBeTruthy());
     fireEvent.click(view.getByText("提交评分"));
+    await waitFor(() => expect(view.getByTestId("teacher-grade-confirm")).toBeTruthy());
+    fireEvent.click(view.getByTestId("teacher-grade-confirm"));
     await waitFor(() => expect(view.getByText("加载最新记录并保留输入")).toBeTruthy());
     expect(reads).toBe(1);
     expect((view.getByLabelText("教师评语") as HTMLTextAreaElement).value).toBe("保留当前输入");
@@ -59,6 +69,8 @@ test("a completed save cannot navigate away from the page the teacher opened nex
     </MemoryRouter>);
     await waitFor(() => expect(view.getByText("提交评分")).toBeTruthy());
     fireEvent.click(view.getByText("提交评分"));
+    await waitFor(() => expect(view.getByTestId("teacher-grade-confirm")).toBeTruthy());
+    fireEvent.click(view.getByTestId("teacher-grade-confirm"));
     fireEvent.click(view.getByText("切换页面"));
     expect(view.getByText("其他页面")).toBeTruthy();
     await act(async () => { finish(Response.json({ success: true, data: { totalScore: 90 } })); });

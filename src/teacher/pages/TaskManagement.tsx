@@ -29,6 +29,34 @@ import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 
+function isTaskNotOpenYet(publishedAt: string | null) {
+    if (!publishedAt) return false;
+    const openAt = new Date(publishedAt).getTime();
+    return Number.isFinite(openAt) && openAt > Date.now();
+}
+
+function isTaskDeadlinePassed(deadline: string | null) {
+    if (!deadline) return false;
+    const due = new Date(deadline).getTime();
+    return Number.isFinite(due) && due <= Date.now();
+}
+
+export function compareTeacherTasks(a: Task, b: Task) {
+    const rank = (task: Task) => {
+        const hasPending = (task.pending ?? 0) > 0;
+        if (hasPending && !isTaskNotOpenYet(task.publishedAt)) return 0;
+        if (isTaskNotOpenYet(task.publishedAt)) return 2;
+        if (isTaskDeadlinePassed(task.deadline)) return 3;
+        return 1;
+    };
+    const rankDiff = rank(a) - rank(b);
+    if (rankDiff !== 0) return rankDiff;
+    const aDue = a.deadline ? new Date(a.deadline).getTime() : Number.POSITIVE_INFINITY;
+    const bDue = b.deadline ? new Date(b.deadline).getTime() : Number.POSITIVE_INFINITY;
+    if (aDue !== bDue) return aDue < bDue ? -1 : 1;
+    return a.id - b.id;
+}
+
 export function TaskManagement() {
     const [tasks, setTasks] = useState<Task[]>([]);
     const { loading, error: loadError, run } = useAsyncLoad("任务列表加载失败");
@@ -163,15 +191,12 @@ export function TaskManagement() {
             const matchesClass = classFilter === "all" || task.className === classFilter;
             const matchesKeyword = !keyword || task.topic.toLowerCase().includes(keyword);
             return matchesClass && matchesKeyword;
-        });
+        }).sort(compareTeacherTasks);
     }, [tasks, classFilter, searchTerm]);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            <div>
-                <h2 className="text-subheading font-semibold text-foreground">实验任务管理</h2>
-                <p className="text-label text-muted-foreground mt-1">将实验模板分配到班级，并跟踪提交与批改进度。</p>
-            </div>
+            <p className="text-label text-muted-foreground">将实验模板分配到班级，并跟踪提交与批改进度。</p>
 
             <div className="grid grid-cols-4 gap-4">
                 <Card>
@@ -263,23 +288,29 @@ export function TaskManagement() {
                                 <TableRow className="border-border">
                                     <TableHead className="text-muted-foreground">实验模板</TableHead>
                                     <TableHead className="text-muted-foreground">班级</TableHead>
-                                    <TableHead className="text-muted-foreground">发布时间</TableHead>
+                                    <TableHead className="text-muted-foreground">开放时间</TableHead>
                                     <TableHead className="text-muted-foreground">截止时间</TableHead>
                                     <TableHead className="text-muted-foreground">完成进度</TableHead>
                                     <TableHead className="text-muted-foreground">待批改</TableHead>
-                                    <TableHead className="text-muted-foreground text-right">操作</TableHead>
+                                    <TableHead className="sticky right-0 z-10 bg-secondary text-right text-muted-foreground">操作</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {filteredTasks.map((task) => (
-                                    <TableRow data-testid={`teacher-task-row-${task.id}`} key={task.id} className="border-border hover:bg-muted transition-none">
-                                        <TableCell className="font-medium text-foreground">{task.topic}</TableCell>
+                                    <TableRow data-testid={`teacher-task-row-${task.id}`} key={task.id} className="group border-border hover:bg-muted transition-none">
+                                        <TableCell className="font-medium text-foreground">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span>{task.topic}</span>
+                                                {isTaskNotOpenYet(task.publishedAt) && <StatusBadge intent="info">尚未开放</StatusBadge>}
+                                                {isTaskDeadlinePassed(task.deadline) && <StatusBadge intent="neutral">已截止</StatusBadge>}
+                                            </div>
+                                        </TableCell>
                                         <TableCell className="text-foreground">{task.className}</TableCell>
                                         <TableCell className="text-muted-foreground text-meta">{formatDateTimeDisplay(task.publishedAt, "-")}</TableCell>
                                         <TableCell className="text-muted-foreground text-meta">{task.deadline ? `${formatDateTimeDisplay(task.deadline)}（UTC+8）` : "无"}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <Progress aria-label={`${task.topic}完成进度`} value={task.total > 0 ? (task.completed / task.total) * 100 : 0} className="w-20 h-1.5 bg-muted [&>div]:bg-success" />
+                                                <Progress aria-label={`${task.topic}完成进度`} value={task.total > 0 ? Math.round((task.completed / task.total) * 100) : 0} className="w-20 h-1.5 bg-muted [&>div]:bg-success" />
                                                 <span className="text-meta text-muted-foreground">{task.completed}/{task.total}</span>
                                             </div>
                                         </TableCell>
@@ -292,8 +323,8 @@ export function TaskManagement() {
                                                 <span className="text-muted-foreground text-meta">-</span>
                                             )}
                                         </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex items-center justify-end gap-2">
+                                        <TableCell className="sticky right-0 z-10 bg-card text-right group-hover:bg-muted">
+                                            <div className="flex flex-wrap items-center justify-end gap-2">
                                                 <Button variant="ghost" size="sm" asChild className="h-8 text-muted-foreground hover:text-success hover:bg-success-muted">
                                                     <Link to={`/task/${task.id}/progress`}>
                                                         <BarChart3 className="w-3.5 h-3.5 mr-1" />

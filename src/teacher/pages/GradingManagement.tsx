@@ -24,7 +24,7 @@ export function GradingManagement() {
     const [items, setItems] = useState<GradingItem[]>([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
-    const [status, setStatus] = useState("all");
+    const [status, setStatus] = useState("pending");
     const [keyword, setKeyword] = useState("");
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
@@ -68,10 +68,7 @@ export function GradingManagement() {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h2 className="text-subheading font-semibold">作业批改</h2>
-                <p className="mt-1 text-label text-muted-foreground">评分直接写入学生当前实验；驳回后学生可修改并覆盖重交。</p>
-            </div>
+            <p className="text-label text-muted-foreground">评分直接写入学生当前实验；驳回后学生可修改并覆盖重交。</p>
             <Card>
                 <CardHeader className="flex gap-4 flex-row items-center justify-between">
                     <CardTitle className="text-body">批改列表（{total}）</CardTitle>
@@ -135,7 +132,7 @@ export function GradingManagement() {
                     {!loading && !loadError && !items.length && (
                         <div className="grid place-items-center gap-2 py-12 text-muted-foreground">
                             <ClipboardList className="h-8 w-8" />
-                            <p className="text-label">暂无记录</p>
+                            <p className="text-label">{status === "pending" ? "当前没有待批改作业" : "暂无记录"}</p>
                         </div>
                     )}
                     {pages > 1 && (

@@ -34,8 +34,7 @@ export function TargetMetricsPanel({ target, methods = Object.keys(METHOD_META) 
             <div className="min-w-0 space-y-2">
                 <h2 className="text-section-title font-semibold text-foreground">研究目标结果</h2>
                 <p className="text-label text-muted-foreground">{target.plannedMarginOfError !== null ? <>本次规划误差半宽：<strong className="font-semibold text-foreground">{formatMargin(target.plannedMarginOfError)}</strong></> : "本次尚未设置可比较的规划误差半宽"}</p>
-                <p className="text-meta leading-relaxed text-muted-foreground" data-testid="student-target-margin-caveat">教学误差半宽 = z × 设计标准误。半宽达标只说明这次结果达到规划精度，不能单独证明某种方法更好。</p>
-                {systematicMuchTighter && <p className="text-meta leading-relaxed text-muted-foreground" data-testid="student-target-systematic-caveat">系统抽样的教学半宽明显更小，通常来自总体当前排序，不能推广成「系统抽样总是更准」。</p>}
+                <p className="text-meta text-muted-foreground" data-testid="student-target-margin-caveat">教学误差半宽 = z × 设计标准误。半宽达标只说明这次达到规划精度，不能单独证明某种方法更好。{systematicMuchTighter ? <span data-testid="student-target-systematic-caveat"> 系统抽样半宽更小通常来自总体当前排序，不能推广成「系统抽样总是更准」。</span> : null}</p>
             </div>
             <div className="shrink-0 rounded-surface border border-primary-border bg-primary-muted px-4 py-3">
                 <p className="text-meta text-muted-foreground">虚拟总体真值 · 用于教学对照</p>
@@ -60,11 +59,11 @@ export function TargetMetricsPanel({ target, methods = Object.keys(METHOD_META) 
                         const comparable = metrics.marginOfError !== null && target.plannedMarginOfError !== null;
                         const meetsTarget = comparable && metrics.marginOfError! <= target.plannedMarginOfError! * (1 + 1e-9);
                         return <tr key={method} data-testid={`student-target-method-${method}`}>
-                            <th scope="row" className="px-4 py-4 font-medium text-foreground">{METHOD_META[method].label}</th>
-                            <td className="px-4 py-4 tabular-nums">{metrics.sampleSize?.toLocaleString() ?? "—"}</td>
-                            <td className="px-4 py-4 font-semibold tabular-nums">{formatEstimate(metrics.estimate)}</td>
-                            <td className="px-4 py-4 tabular-nums">{formatMargin(metrics.marginOfError)}</td>
-                            <td className="px-4 py-4"><StatusBadge intent={!comparable ? "neutral" : meetsTarget ? "success" : "warning"}>{!comparable ? "暂不可比较" : meetsTarget ? "半宽达标" : "半宽未达标"}</StatusBadge></td>
+                            <th scope="row" className="px-4 py-3 font-medium text-foreground">{METHOD_META[method].label}</th>
+                            <td className="px-4 py-3 tabular-nums">{metrics.sampleSize?.toLocaleString() ?? "—"}</td>
+                            <td className="px-4 py-3 font-semibold tabular-nums">{formatEstimate(metrics.estimate)}</td>
+                            <td className="px-4 py-3 tabular-nums">{formatMargin(metrics.marginOfError)}</td>
+                            <td className="px-4 py-3"><StatusBadge intent={!comparable ? "neutral" : meetsTarget ? "success" : "warning"}>{!comparable ? "暂不可比较" : meetsTarget ? "半宽达标" : "半宽未达标"}</StatusBadge></td>
                         </tr>;
                     })}
                 </tbody>

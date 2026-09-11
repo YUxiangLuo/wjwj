@@ -14,10 +14,10 @@ import { teacherApi, type TaskProgressData } from "../api-client";
 
 const STATUS_CONFIG = {
     not_started: { label: "未开始", color: "text-muted-foreground", intent: "neutral" },
-    stage1: { label: "问卷设计", color: "text-info", intent: "info" },
-    stage2: { label: "样本规划", color: "text-info", intent: "info" },
+    stage1: { label: "问卷预试", color: "text-info", intent: "info" },
+    stage2: { label: "样本量规划", color: "text-info", intent: "info" },
     stage3: { label: "抽样执行", color: "text-auxiliary", intent: "auxiliary" },
-    stage4: { label: "分析报告", color: "text-warning", intent: "warning" },
+    stage4: { label: "分析与报告", color: "text-warning", intent: "warning" },
     submitted: { label: "已提交", color: "text-warning", intent: "warning" },
     graded: { label: "已批改", color: "text-success", intent: "success" },
     rejected: { label: "已驳回", color: "text-destructive", intent: "destructive" },
@@ -108,22 +108,6 @@ export function TaskProgressDetail() {
                         <span>{total} 名学生</span>
                     </div>
                 </div>
-            </div>
-
-            {/* Status count cards */}
-            <div className="grid grid-cols-8 gap-3">
-                {STATUS_KEYS.map((key) => {
-                    const cfg = STATUS_CONFIG[key];
-                    const count = data.counts[key];
-                    return (
-                        <Card key={key} className="border-border bg-card">
-                            <CardContent className="p-3 text-center">
-                                <p className="text-meta text-muted-foreground mb-1">{cfg.label}</p>
-                                <p className={`text-section-title font-bold ${count > 0 ? cfg.color : "text-muted-foreground"}`}>{count}</p>
-                            </CardContent>
-                        </Card>
-                    );
-                })}
             </div>
 
             {/* Ring chart + Progress bar */}
@@ -286,8 +270,10 @@ export function TaskProgressDetail() {
                                                         <><Eye className="w-3 h-3 mr-1" />查看详情</>
                                                     )}
                                                 </Button>
-                                            ) : (
+                                            ) : s.status === "not_started" ? (
                                                 <span className="text-meta text-muted-foreground">-</span>
+                                            ) : (
+                                                <span className="text-meta text-muted-foreground">进行中，提交后可批改</span>
                                             )}
                                         </TableCell>
                                     </TableRow>

@@ -19,6 +19,20 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { formatDateTimeDisplay } from "@/utils/format";
 import { teacherApi, teacherResourceUrl, type SubmissionDetail } from "../api-client";
 
+function parseScoreField(value: string) {
+    if (value.trim() === "") return null;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) return null;
+    return parsed;
+}
+
+function scoreFieldMessage(scores: { questionnaire: string; process: string; report: string }) {
+    const values = [scores.questionnaire, scores.process, scores.report];
+    if (values.some((value) => value.trim() === "")) return "请填写三项分数后再提交。";
+    if (values.some((value) => parseScoreField(value) === null)) return "分项分数需在 0–100 之间。";
+    return null;
+}
+
 export function GradingDetail() {
     const { submissionId } = useParams();
     const navigate = useNavigate();
@@ -28,8 +42,9 @@ export function GradingDetail() {
     const [saving, setSaving] = useState(false);
     const [rejectOpen, setRejectOpen] = useState(false);
     const [rejectReason, setRejectReason] = useState("");
-    const [scores, setScores] = useState({ questionnaire: "0", process: "0", report: "0" });
+    const [scores, setScores] = useState({ questionnaire: "", process: "", report: "" });
     const [comment, setComment] = useState("");
+    const [gradeConfirmOpen, setGradeConfirmOpen] = useState(false);
     const id = Number(submissionId);
     const currentId = useRef(id);
     currentId.current = id;
@@ -37,7 +52,11 @@ export function GradingDetail() {
         setData(loaded);
         setConflict(false);
         if (!preserveInput) {
-            setScores({ questionnaire: String(loaded.scoreQuestionnaire ?? 0), process: String(loaded.scoreProcess ?? 0), report: String(loaded.scoreReport ?? 0) });
+            setScores({
+                questionnaire: loaded.scoreQuestionnaire == null ? "" : String(loaded.scoreQuestionnaire),
+                process: loaded.scoreProcess == null ? "" : String(loaded.scoreProcess),
+                report: loaded.scoreReport == null ? "" : String(loaded.scoreReport),
+            });
             setComment(loaded.teacherComment ?? "");
             setRejectReason(loaded.rejectReason ?? "");
         }
@@ -48,22 +67,33 @@ export function GradingDetail() {
         setConflict(false);
         setSaving(false);
         setRejectOpen(false);
+        setGradeConfirmOpen(false);
         if (Number.isInteger(id) && id > 0) void load();
         return () => { currentId.current = Number.NaN; cancel(); };
     }, [id, cancel]);
     const weights = data?.weights ?? { questionnaire: 30, process: 30, report: 40 };
-    const total = useMemo(() => (
-        (Number(scores.questionnaire) || 0) * weights.questionnaire
-        + (Number(scores.process) || 0) * weights.process
-        + (Number(scores.report) || 0) * weights.report
-    ) / 100, [scores, weights]);
+    const parsedScores = useMemo(() => ({
+        questionnaire: parseScoreField(scores.questionnaire),
+        process: parseScoreField(scores.process),
+        report: parseScoreField(scores.report),
+    }), [scores]);
+    const scoresReady = parsedScores.questionnaire !== null && parsedScores.process !== null && parsedScores.report !== null;
+    const total = useMemo(() => {
+        if (!scoresReady) return null;
+        return (
+            parsedScores.questionnaire! * weights.questionnaire
+            + parsedScores.process! * weights.process
+            + parsedScores.report! * weights.report
+        ) / 100;
+    }, [parsedScores, scoresReady, weights]);
     const grade = async () => {
-        if (!data) return;
+        if (!data || !scoresReady) return;
+        setGradeConfirmOpen(false);
         setSaving(true);
         const response = await teacherApi.submitGrade(id, data.version, {
-            scoreQuestionnaire: Number(scores.questionnaire),
-            scoreProcess: Number(scores.process),
-            scoreReport: Number(scores.report),
+            scoreQuestionnaire: parsedScores.questionnaire!,
+            scoreProcess: parsedScores.process!,
+            scoreReport: parsedScores.report!,
             comment,
         });
         if (currentId.current !== id) return;
@@ -204,10 +234,23 @@ export function GradingDetail() {
                             <Textarea id="grading-comment" rows={4} value={comment} disabled={!canGrade} onChange={(event) => setComment(event.target.value)} />
                         </div>
                         <div className="flex flex-wrap items-center justify-between gap-3 rounded-surface bg-muted p-4">
-                            <p>加权总分：<span className="text-page-title font-bold text-primary">{total.toFixed(2)}</span></p>
-                            <div className="flex gap-2">
+                            <p>加权总分：<span className="text-page-title font-bold text-primary">{total === null ? "—" : total.toFixed(2)}</span></p>
+                            <div className="flex flex-wrap gap-2">
                                 {data.status === "submitted" && <Button variant="destructive" disabled={!canGrade || saving} onClick={() => setRejectOpen(true)}>驳回修改</Button>}
-                                <Button disabled={!canGrade || saving} onClick={() => void grade()}>{saving ? "保存中..." : data.status === "graded" ? "更新评分" : "提交评分"}</Button>
+                                {gradeConfirmOpen ? (
+                                    <>
+                                        <p className="w-full text-label text-muted-foreground" role="status">
+                                            {scoreFieldMessage(scores)
+                                                ?? (total === 0
+                                                    ? "三项得分都是 0，加权总分为 0.00。确认记为 0 分吗？"
+                                                    : `确认提交评分？加权总分为 ${total?.toFixed(2) ?? "—"}。`)}
+                                        </p>
+                                        <Button variant="outline" disabled={saving} onClick={() => setGradeConfirmOpen(false)}>取消</Button>
+                                        <Button data-testid="teacher-grade-confirm" disabled={saving || !scoresReady} onClick={() => void grade()}>确认提交</Button>
+                                    </>
+                                ) : (
+                                    <Button disabled={!canGrade || saving || !scoresReady} onClick={() => setGradeConfirmOpen(true)}>{saving ? "保存中..." : data.status === "graded" ? "更新评分" : "提交评分"}</Button>
+                                )}
                             </div>
                         </div>
                     </CardContent>

@@ -49,10 +49,7 @@ export function ClassManagement() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            <div>
-                <h2 className="text-subheading font-semibold text-foreground">班级管理</h2>
-                <p className="text-label text-muted-foreground mt-1">查看班级名单与学期分布。</p>
-            </div>
+            <p className="text-label text-muted-foreground">查看班级名单与学期分布。</p>
 
             <div className="grid grid-cols-3 gap-4">
                 <Card>

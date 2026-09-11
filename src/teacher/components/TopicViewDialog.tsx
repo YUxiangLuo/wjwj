@@ -97,6 +97,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
                 className="max-w-5xl h-[80vh] flex flex-col bg-card border-border text-foreground"
+                showCloseButton={false}
                 onInteractOutside={(e) => e.preventDefault()}
             >
                 <DialogHeader>

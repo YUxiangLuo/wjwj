@@ -159,10 +159,7 @@ export function GradeExport() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            <div>
-                <h2 className="text-subheading font-semibold text-foreground">成绩分析与导出</h2>
-                <p className="text-label text-muted-foreground mt-1">按学期、班级和实验模板分析学生任务人次，并支持单项与批量导出。</p>
-            </div>
+            <p className="text-label text-muted-foreground">按学期、班级和实验模板分析学生任务人次，并支持单项与批量导出。</p>
 
             <div className="grid grid-cols-4 gap-4">
                 <Card>
@@ -367,7 +364,7 @@ export function GradeExport() {
                                     <TableCell className="text-foreground">{task.className}</TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
-                                            <Progress aria-label={`${task.topic}批改进度`} value={task.total > 0 ? (task.graded / task.total) * 100 : 0} className="w-20 h-1.5 bg-muted [&>div]:bg-success" />
+                                            <Progress aria-label={`${task.topic}批改进度`} value={task.total > 0 ? Math.round((task.graded / task.total) * 100) : 0} className="w-20 h-1.5 bg-muted [&>div]:bg-success" />
                                             <span className="text-meta text-muted-foreground">{task.graded}/{task.total}</span>
                                             {task.graded === task.total && task.total > 0 && (
                                                 <StatusBadge intent="success" className="text-meta h-5">已完成</StatusBadge>

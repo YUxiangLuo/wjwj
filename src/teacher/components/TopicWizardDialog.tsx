@@ -840,7 +840,6 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                     <div className="flex items-center justify-between w-full">
                         <div className="text-meta text-muted-foreground">步骤 {currentStep} / 7</div>
                         <div className="flex gap-2">
-                            <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground hover:bg-muted">关闭</Button>
                             {currentStep > 1 && (
                                 <Button data-testid="teacher-topic-prev" variant="outline" onClick={() => setCurrentStep(prev => prev - 1)} className="border-input bg-muted text-foreground hover:text-foreground hover:bg-muted">上一步</Button>
                             )}

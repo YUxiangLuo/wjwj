@@ -192,6 +192,14 @@ export function TopicManagement() {
         setShowViewModal(true);
     }
 
+    function requestPublish(topic: Topic) {
+        if (topic.dataRows <= 0) {
+            toast.error("实验模板需先上传总体数据后才能发布");
+            return;
+        }
+        setConfirmDialog({ open: true, type: "publish", topic });
+    }
+
     async function executeConfirmAction() {
         const { type, topic } = confirmDialog;
         if (!topic || !type) return;
@@ -360,10 +368,7 @@ export function TopicManagement() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            <div>
-                <h2 className="text-subheading font-semibold text-foreground">实验模板管理</h2>
-                <p className="text-label text-muted-foreground mt-1">配置总体数据、研究目标、抽样策略、教学资料与评分规则。</p>
-            </div>
+            <p className="text-label text-muted-foreground">配置总体数据、研究目标、抽样策略、教学资料与评分规则。</p>
 
             <div className="grid grid-cols-4 gap-4">
                 <Card>
@@ -446,7 +451,17 @@ export function TopicManagement() {
                     </div>
                 </PageHeader>
                 <CardContent className="space-y-4 pt-4">
-                    {loadError ? <RequestError message={loadError} onRetry={() => void loadTopics()} /> : loading ? <div role="status" aria-live="polite" className="text-center py-12 text-muted-foreground">加载中...</div> : filteredTopics.map((topic) => (
+                    {loadError ? <RequestError message={loadError} onRetry={() => void loadTopics()} /> : loading ? <div role="status" aria-live="polite" className="text-center py-12 text-muted-foreground">加载中...</div> : topics.length === 0 ? (
+                        <div className="rounded-surface border border-dashed border-border py-16 text-center">
+                            <p className="text-subheading font-medium text-foreground">还没有实验模板</p>
+                            <p className="mt-2 text-label text-muted-foreground">点击「创建实验模板」，配置总体数据、研究目标和抽样策略。</p>
+                        </div>
+                    ) : filteredTopics.length === 0 ? (
+                        <div className="rounded-surface border border-dashed border-border py-16 text-center">
+                            <p className="text-subheading font-medium text-foreground">没有符合条件的实验模板</p>
+                            <p className="mt-2 text-label text-muted-foreground">试试清空搜索或切换状态筛选。</p>
+                        </div>
+                    ) : filteredTopics.map((topic) => (
                         <div data-testid={`teacher-topic-row-${topic.id}`} key={topic.id} className="border border-border rounded-surface p-5 bg-background">
                             <div className="flex gap-3 flex-row items-start justify-between mb-4">
                                 <div className="flex items-start gap-4">
@@ -506,7 +521,7 @@ export function TopicManagement() {
                                         <>
                                             <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-info hover:bg-info-muted" onClick={() => openViewModal(topic)}>查看</Button>
                                             <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary-muted" onClick={() => openEditModal(topic)}>编辑</Button>
-                                            <Button data-testid={`teacher-topic-publish-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-success hover:bg-success-muted" onClick={() => setConfirmDialog({ open: true, type: "publish", topic })}>发布</Button>
+                                            <Button data-testid={`teacher-topic-publish-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-success hover:bg-success-muted" onClick={() => requestPublish(topic)}>发布</Button>
                                             <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive hover:bg-destructive-muted" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
                                         </>
                                     ) : (

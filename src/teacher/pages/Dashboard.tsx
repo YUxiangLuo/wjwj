@@ -109,10 +109,7 @@ export function Dashboard() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            <div>
-                <h2 className="text-subheading font-semibold text-foreground">教学概览</h2>
-                <p className="text-label text-muted-foreground mt-1">关注班级、实验模板、活动任务与待批改作业。</p>
-            </div>
+            <p className="text-label text-muted-foreground">关注班级、实验模板、活动任务与待批改作业。</p>
 
             {loadError && (
                 <div role="alert" className="flex items-center justify-between gap-4 rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3 text-label text-destructive">
@@ -180,11 +177,11 @@ export function Dashboard() {
                     ) : activeTasks.length === 0 ? (
                         <div className="py-10 text-center"><p className="text-label text-muted-foreground">当前没有已开放且未截止的实验任务</p><Button asChild variant="outline" size="sm" className="mt-3"><Link to="/task">进入实验任务管理</Link></Button></div>
                     ) : activeTasks.map((item) => {
-                        const progress = item.total > 0 ? item.completed / item.total * 100 : 0;
+                        const progress = item.total > 0 ? Math.round(item.completed / item.total * 100) : 0;
                         return (
                             <Link key={item.id} to={`/task/${item.id}/progress`} className="grid grid-cols-[minmax(0,1.4fr)_minmax(12rem,1fr)_auto] items-center gap-5 rounded-surface border border-border bg-background p-4 transition-none hover:border-input hover:bg-muted">
                                 <div className="min-w-0"><p className="truncate text-label font-semibold text-foreground">{item.templateName}</p><p className="mt-1 text-meta text-muted-foreground">{item.className}</p></div>
-                                <div><div className="flex justify-between text-meta text-muted-foreground"><span>已提交 {item.completed}/{item.total}</span><span>{Math.round(progress)}%</span></div><Progress aria-label={`${item.templateName}提交进度`} value={progress} className="mt-2 h-1.5" /></div>
+                                <div><div className="flex justify-between text-meta text-muted-foreground"><span>已提交 {item.completed}/{item.total}</span><span>{progress}%</span></div><Progress aria-label={`${item.templateName}提交进度`} value={progress} className="mt-2 h-1.5" /></div>
                                 <div className="flex items-center gap-2 whitespace-nowrap"><StatusBadge intent={item.pending > 0 ? "warning" : "neutral"}>待批改 {item.pending}</StatusBadge>{item.rejected > 0 && <StatusBadge intent="destructive">需重做 {item.rejected}</StatusBadge>}<span className="flex items-center gap-1 text-meta text-muted-foreground"><Clock className="h-3.5 w-3.5" />{item.deadline ? formatDateTimeDisplay(item.deadline, "-") : "无截止时间"}</span><ChevronRight className="h-4 w-4 text-muted-foreground" /></div>
                             </Link>
                         );
