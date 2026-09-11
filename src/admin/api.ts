@@ -22,10 +22,8 @@ import {
     studentExperimentsRoutes,
     studentResetPasswordRoutes,
     studentRoutes,
-    studentStatusRoutes,
     teacherResetPasswordRoutes,
     teacherRoutes,
-    teacherStatusRoutes,
     teacherUpdateRoutes,
 } from "./routes/management";
 import { semesterUpdateRoutes } from "./routes/semester";
@@ -72,14 +70,12 @@ export const adminApiRoutes = {
 
     "/api/admin/teachers": withAdminAuth(teacherRoutes),
     "/api/admin/teachers/:id": withAdminAuth(teacherUpdateRoutes),
-    "/api/admin/teachers/:id/status": withAdminAuth(teacherStatusRoutes),
     "/api/admin/teachers/:id/reset-password": withAdminAuth(teacherResetPasswordRoutes),
 
     "/api/admin/classes": withAdminAuth(classRoutes),
     "/api/admin/classes/:id": withAdminAuth(classUpdateRoutes),
 
     "/api/admin/students": withAdminAuth(studentRoutes),
-    "/api/admin/students/:id/status": withAdminAuth(studentStatusRoutes),
     "/api/admin/students/:id/reset-password": withAdminAuth(studentResetPasswordRoutes),
     "/api/admin/students/:id/experiments": withAdminAuth(studentExperimentsRoutes),
 

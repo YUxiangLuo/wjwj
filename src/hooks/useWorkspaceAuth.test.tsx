@@ -18,7 +18,7 @@ test("loads one identity per document; retry reloads rather than mutating it", a
     expect(window.location.pathname).toBe("/teacher/task/1");
 });
 
-for (const code of ["UNAUTHORIZED", "ACCOUNT_NOT_FOUND", "ACCOUNT_DISABLED", "SESSION_CHANGED"]) {
+for (const code of ["UNAUTHORIZED", "ACCOUNT_NOT_FOUND", "SESSION_CHANGED"]) {
     test(`${code} at startup is logged out, not a network failure`, async () => {
         dom = installDomGlobals();
         const fetchUser = async () => ({ success: false, error: { code, message: code } });

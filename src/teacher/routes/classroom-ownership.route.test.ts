@@ -19,15 +19,13 @@ async function load(select: unknown[]) {
     return { routes, operations };
 }
 
-for (const action of ["reset_password", "toggle_status"] as const) {
-    test(`${action} refuses a class transferred after the initial ownership check`, async () => {
-        const { routes, operations } = await load([[{ id: 12, studentId: "S012", status: 1 }], []]);
-        const response = await routes.studentRoutes.PUT!(request({ id: "12" }, { action }));
-        expect(response.status).toBe(403);
-        expect(await response.json()).toMatchObject({ error: { code: "FORBIDDEN" } });
-        expect(operations.some(op => op.kind === "update" || op.kind === "delete")).toBe(false);
-    });
-}
+test("password reset refuses a student that left the teacher's ownership after the initial check", async () => {
+    const { routes, operations } = await load([[{ id: 12, studentId: "S012" }], []]);
+    const response = await routes.studentRoutes.PUT!(request({ id: "12" }, { action: "reset_password" }));
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ error: { code: "FORBIDDEN" } });
+    expect(operations.some(op => op.kind === "update" || op.kind === "delete")).toBe(false);
+});
 
 test("student creation rechecks class ownership after password work", async () => {
     const { routes, operations } = await load([[{ id: 3 }], [], []]);
@@ -46,16 +44,15 @@ test("student import rechecks class ownership before inserting the batch", async
     expect(operations.some(op => op.kind === "insert")).toBe(false);
 });
 
-test("status toggle uses the locked student's latest status and clears sessions in the same transaction", async () => {
+test("password reset rotates inside the ownership transaction and clears sessions after the update", async () => {
     const { routes, operations } = await load([
-        [{ id: 12, studentId: "S012", status: 0 }],
-        [{ id: 12, studentId: "S012", status: 1 }],
+        [{ id: 12, studentId: "S012" }],
+        [{ id: 12, studentId: "S012" }],
     ]);
-    expect((await routes.studentRoutes.PUT!(request({ id: "12" }, { action: "toggle_status" }))).status).toBe(200);
-    expect(operations.find(op => op.kind === "update" && op.table === student)?.set).toMatchObject({ status: 0 });
-    const transaction = operations.findIndex(op => op.kind === "transaction");
-    const update = operations.findIndex(op => op.kind === "update");
+    expect((await routes.studentRoutes.PUT!(request({ id: "12" }, { action: "reset_password" }))).status).toBe(200);
+    const update = operations.findIndex(op => op.kind === "update" && op.table === student);
     const clear = operations.findIndex(op => op.kind === "delete" && op.table === userSession);
+    const transaction = operations.findIndex(op => op.kind === "transaction");
     expect(transaction).toBeGreaterThanOrEqual(0);
     expect(update).toBeGreaterThan(transaction);
     expect(clear).toBeGreaterThan(update);

@@ -22,10 +22,10 @@ export const DOGFOOD_NAMES = {
 
 export const DOGFOOD_COUNTS = {
     admin: 1,
-    teacher: 4,
+    teacher: 3,
     semester: 3,
     class: 4,
-    student: 16,
+    student: 15,
     topic: 7,
     task: 6,
     experiment: 15,

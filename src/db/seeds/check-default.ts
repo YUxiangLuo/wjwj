@@ -80,7 +80,7 @@ async function verify() {
         .where(eq(student.classId, aTask.classId))
         .orderBy(asc(student.studentId));
     const progress = buildTaskProgressSnapshot(progressRows);
-    const expectedProgress = { not_started: 3, stage1: 1, stage2: 1, stage3: 1, stage4: 1, submitted: 1, graded: 1, rejected: 1 };
+    const expectedProgress = { not_started: 2, stage1: 1, stage2: 1, stage3: 1, stage4: 1, submitted: 1, graded: 1, rejected: 1 };
     check(JSON.stringify(progress.counts) === JSON.stringify(expectedProgress), `A progress buckets differ: ${JSON.stringify(progress.counts)}`);
 
     const teacherCredentialRows = await db.select({
@@ -96,7 +96,6 @@ async function verify() {
             studentId: student.studentId,
             name: student.name,
             password: student.password,
-            status: student.status,
             className: class_.name,
         })
         .from(student)
@@ -112,7 +111,6 @@ async function verify() {
         const row = demoStudentRows.find((candidate) => candidate.studentId === account.studentId);
         check(row?.name === account.name, `${account.studentId} demo name differs`);
         check(row.className === DOGFOOD_NAMES.mainClass, `${account.studentId} is outside the demo class`);
-        check(row.status === 1, `${account.studentId} is not demo-login eligible`);
     }
 
     const authoritative = await db

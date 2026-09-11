@@ -19,7 +19,7 @@
 
 1. `test-utils/teacher-harness.ts`：页面渲染统一封装（`MemoryRouter` + mock `teacherApi` + 可选 `useWorkspaceAuth` + DOM 安装/清理 + toast mock）。
 2. `test-utils/mock-db` 增强：断言 `for("update")`/`for("share")`、事务内操作顺序、`acquireStorageMutationLock` 调用。
-3. `test-utils/teacher-fixtures.ts`：教师（T001 启用 / T002 多班 / T003 历史班级 / T004 停用）、班级、学生（启用/停用/重名/跨班）、模板（草稿/已发布/已锁定/零方差/缺 PPS 规模）、任务（未开放/进行中/已截止）、实验（四阶段/已提交/已批改/已驳回）。
+3. `test-utils/teacher-fixtures.ts`：教师（T001 / T002 多班 / T003 历史班级）、班级、学生（重名/跨班）、模板（草稿/已发布/已锁定/零方差/缺 PPS 规模）、任务（未开放/进行中/已截止）、实验（四阶段/已提交/已批改/已驳回）。
 4. 总体文件构造器：N/方差/缺失值/重复 ID/负值与零均值/全常量/类别>20/微小数(1e-6)/超大数。
 5. 确定性工具：固定时钟、固定种子、请求 ID 递增器。
 6. dogfood 骨架：复用 `scripts/test-teaching-flow.ts` 的会话/临时库/证据目录模式，抽公共部分为 `scripts/dogfood-teacher.ts`。
@@ -43,7 +43,7 @@
 - `listTeacherTopics`：仅本人；含 `description`/`dataRows`；排序稳定；空列表。
 - `getTeacherTopicDetail`：`fieldMapping/samplingPolicy/weightConfig/recommendQuestions` 的字符串/对象两种存储；损坏 JSON 回退。
 - `listTeacherTasks`：本人班级；开放/截止派生状态。
-- `getTeacherTaskProgress`：分桶与 `buildTaskProgressSnapshot` 一致；无学生班级；停用学生是否计入（明确并锁定语义）。
+- `getTeacherTaskProgress`：分桶与 `buildTaskProgressSnapshot` 一致；无学生班级；全员计入分母（账号无启停用状态）。
 
 ### 2.5 `topic/validation.ts`（已有，补边界）
 - 映射：目标非空、比例目标必须有类别、PPS 规模≠目标且全正、分层 2–20 类。
@@ -71,7 +71,7 @@
 - `GradingManagement`：迟到响应忽略、失败重试、分页/总数。
 - `GradingDetail`：版本冲突保留输入、重试、驳回、非法 ID 终态、切换学生不串数据。
 - `GradeExport`：筛选联动、预览与导出、空结果、analytics 与预览独立错误态。
-- `ClassManagement`/`StudentManagement`：班级下拉、分页搜索、启停用、重置密码后刷新、删除确认、导入对话框（文件校验/部分失败/重复学号）。
+- `ClassManagement`/`StudentManagement`：班级下拉、分页搜索、重置密码后刷新、删除确认、导入对话框（文件校验/部分失败/重复学号）。
 - `api-client`：`X-Expected-User-Id` 注入、409 SESSION_CHANGED、下载鉴权、超时与重试边界。
 
 ### 2.9 共享纯逻辑
@@ -91,8 +91,8 @@
 5. 多班发布（跳过已存在）；三态排序；延期成功；**两窗口并发延期**不倒退；截止后新写入被拒、已通过检查的请求可完成。
 
 **D3 班级与学生**
-6. 导入含空行/重复学号/非法列/超限 → 明确报错、不半途写入；重置密码后会话失效；停用后无法登录；删除学生级联；删除班级影响确认。
-7. 管理员移交班级后旧教师写请求被拒（与 admin 侧联合）。
+6. 导入含空行/重复学号/非法列/超限 → 明确报错、不半途写入；重置密码后会话失效；删除学生级联；删除班级影响确认。
+7. 班级归属不可变更（管理员只能改名），旧教师写请求仍受班级归属校验保护。
 
 **D4 批改**
 8. 评分（加权总分 2 位、写入时间/批改人）→ 学生端即时可见。
@@ -110,7 +110,7 @@
 **D7 对抗与恢复**
 15. 会话：跨角色 cookie 隔离、标签页切换账号、退出后回退。
 16. 网络：断网/500/超时提示与重试（不伪装空态）。
-17. 并发：同模板并发发布不同班；同学生并发重置密码；删除任务与移交竞争。
+17. 并发：同模板并发发布不同班；同学生并发重置密码；删除任务与归属校验竞争。
 18. 脏输入：20 MiB 边界、xlsx 公式、CSV 注入、超长名称、中文/emoji 文件名。
 19. 视口/键盘：sticky 操作条不遮挡（含换行）、Tab 顺序、弹窗焦点返回。
 

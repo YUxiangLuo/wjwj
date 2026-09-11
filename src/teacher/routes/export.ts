@@ -116,7 +116,6 @@ const gradeExportPreviewRoutes: RouteDefinition = {
                 WHERE e.task_id = ${task.id}
                   AND e.status = 'graded'
                   AND counted_student.class_id = ${task.classId}
-                  AND counted_student.status = 1
             )`,
             avgScore: sql<number>`(
                 SELECT COALESCE(AVG(e.total_score), 0)::double precision FROM experiment e
@@ -124,14 +123,13 @@ const gradeExportPreviewRoutes: RouteDefinition = {
                 WHERE e.task_id = ${task.id}
                   AND e.status = 'graded'
                   AND counted_student.class_id = ${task.classId}
-                  AND counted_student.status = 1
             )`,
         })
             .from(task)
             .innerJoin(topic, eq(task.topicId, topic.id))
             .innerJoin(class_, eq(task.classId, class_.id))
             .innerJoin(semester, eq(class_.semesterId, semester.id))
-            .leftJoin(student, and(eq(student.classId, class_.id), eq(student.status, 1)))
+            .leftJoin(student, eq(student.classId, class_.id))
             .where(and(...conditions))
             .groupBy(task.id, topic.id, class_.id);
         return json(rows.map((row) => ({
@@ -174,7 +172,7 @@ const gradeAnalyticsRoutes: RouteDefinition = {
                 .innerJoin(topic, eq(task.topicId, topic.id))
                 .innerJoin(class_, eq(task.classId, class_.id))
                 .innerJoin(semester, eq(class_.semesterId, semester.id))
-                .leftJoin(student, and(eq(student.classId, class_.id), eq(student.status, 1)))
+                .leftJoin(student, eq(student.classId, class_.id))
                 .leftJoin(experiment, and(eq(experiment.studentId, student.id), eq(experiment.taskId, task.id)))
                 .where(and(...conditions))
                 .groupBy(experiment.status),

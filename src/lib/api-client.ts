@@ -6,7 +6,7 @@ export interface ApiResponse<T> {
     data?: T;
     error?: { code: string; message: string };
 }
-const AUTH_ERRORS = new Set(["UNAUTHORIZED", "SESSION_EXPIRED", "ACCOUNT_NOT_FOUND", "ACCOUNT_DISABLED", "SESSION_CHANGED"]);
+const AUTH_ERRORS = new Set(["UNAUTHORIZED", "SESSION_EXPIRED", "ACCOUNT_NOT_FOUND", "SESSION_CHANGED"]);
 export function isAuthError(code?: string) { return AUTH_ERRORS.has(code ?? ""); }
 export function reloadPage() { window.location.reload(); }
 

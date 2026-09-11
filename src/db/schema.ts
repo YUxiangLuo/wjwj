@@ -45,14 +45,11 @@ export const teacher = pgTable(
         employeeId: citext("employee_id").notNull().unique(),
         name: varchar("name", { length: 100 }).notNull(),
         password: varchar("password", { length: 255 }).notNull(),
-        status: smallint("status").notNull().default(1),
         createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
         updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     },
     (table) => ({
-        statusIdx: index("teacher_idx_status").on(table.status),
         employeeIdLength: check("teacher_ck_employee_id_length", sql`char_length(${table.employeeId}) <= 50`),
-        statusCheck: check("teacher_ck_status_value", sql`${table.status} in (0, 1)`),
     }),
 );
 
@@ -65,15 +62,12 @@ export const student = pgTable(
         email: varchar("email", { length: 120 }),
         password: varchar("password", { length: 255 }).notNull(),
         classId: bigint("class_id", { mode: "number" }).notNull().references(() => class_.id),
-        status: smallint("status").notNull().default(1),
         createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
         updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     },
     (table) => ({
         classIdIdx: index("student_idx_class_id").on(table.classId),
-        statusIdx: index("student_idx_status").on(table.status),
         studentIdLength: check("student_ck_student_id_length", sql`char_length(${table.studentId}) <= 50`),
-        statusCheck: check("student_ck_status_value", sql`${table.status} in (0, 1)`),
     }),
 );
 

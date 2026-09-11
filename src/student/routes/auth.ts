@@ -23,7 +23,6 @@ export interface CurrentStudent {
     studentId: string;
     name: string;
     classId: number;
-    status: number;
 }
 
 type StudentAuthResult = { student: CurrentStudent | null; error: Response | null };
@@ -46,16 +45,13 @@ export async function getCurrentStudent(req: Request): Promise<StudentAuthResult
             studentId: student.studentId,
             name: student.name,
             classId: student.classId,
-            status: student.status,
         })
         .from(student)
         .where(eq(student.id, currentSession.session.userId));
 
-    const result: StudentAuthResult = !row
-        ? { student: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) }
-        : row.status !== 1
-          ? { student: null, error: error("账号已被禁用", "ACCOUNT_DISABLED", 403) }
-          : { student: row, error: null };
+    const result: StudentAuthResult = row
+        ? { student: row, error: null }
+        : { student: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) };
     (req as StudentRequestContext)[STUDENT_AUTH_CACHE] = result;
     return result;
 }
@@ -71,7 +67,7 @@ const loginRoutes: RouteDefinition = {
         const password = stringValue(body.password);
         if (!studentId || !password) return error("请输入学号和密码", "VALIDATION_ERROR", 400);
         const [row] = await db.select().from(student).where(eq(student.studentId, studentId));
-        if (!row || row.status !== 1) {
+        if (!row) {
             return error("账号或密码错误", "INVALID_CREDENTIALS", 401);
         }
         if (!(await verifyPassword(password, row.password))) {
@@ -79,9 +75,9 @@ const loginRoutes: RouteDefinition = {
         }
 
         const session = await db.transaction(async (tx) => {
-            // Serialize issuance with disable/reset/delete and recheck the verified hash.
+            // Serialize issuance with reset/delete and recheck the verified hash.
             const [active] = await tx.select({ id: student.id }).from(student)
-                .where(and(eq(student.id, row.id), eq(student.password, row.password), eq(student.status, 1))).for("update");
+                .where(and(eq(student.id, row.id), eq(student.password, row.password))).for("update");
             return active ? createUserSession(STUDENT_USER_TYPE, row.id, tx) : null;
         });
         if (!session) return error("账号或密码错误", "INVALID_CREDENTIALS", 401);
@@ -135,7 +131,7 @@ const passwordRoutes: RouteDefinition = {
         const session = await db.transaction(async (tx) => {
             const changed = await tx.update(student)
                 .set({ password: passwordHash, updatedAt: new Date() })
-                .where(and(eq(student.id, row.id), eq(student.password, row.password), eq(student.status, 1)))
+                .where(and(eq(student.id, row.id), eq(student.password, row.password)))
                 .returning({ id: student.id });
             return changed.length ? rotateUserSession(STUDENT_USER_TYPE, row.id, tx) : null;
         });

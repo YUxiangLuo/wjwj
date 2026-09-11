@@ -5,11 +5,9 @@ import { Input } from "@/components/ui/input";
 
 interface StudentImportResult {
     successCount: number;
-    restoredCount?: number;
     skippedCount?: number;
     failureCount: number;
     errors: Array<{ row: number; reason: string }>;
-    restored?: Array<{ row: number; reason: string }>;
     skipped?: Array<{ row: number; reason: string }>;
 }
 
@@ -69,9 +67,6 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                         <div className="bg-background border border-border rounded-surface p-3 text-label text-muted-foreground space-y-2">
                             <div className="flex flex-wrap gap-4">
                                 <span className="text-success">新建：{importResult.successCount} 条</span>
-                                {(importResult.restoredCount ?? 0) > 0 && (
-                                    <span className="text-info">重新启用：{importResult.restoredCount} 条</span>
-                                )}
                                 {(importResult.skippedCount ?? 0) > 0 && (
                                     <span>已存在跳过：{importResult.skippedCount} 条</span>
                                 )}
@@ -80,20 +75,10 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                             {importResult.successCount > 0 && (
                                 <p className="text-meta text-info">新建学生的登录密码与学号相同。</p>
                             )}
-                            {(importResult.restoredCount ?? 0) > 0 && (
-                                <p className="text-meta text-info">重新启用的账号保留原密码，如需重置请使用「重置密码」。</p>
-                            )}
                             {importResult.errors.length > 0 && (
                                 <div className="max-h-32 overflow-y-auto text-meta space-y-1 bg-card p-2 rounded-control border border-border">
                                     {importResult.errors.map((err, idx) => (
                                         <div key={idx} className="text-destructive">行 {err.row === -1 ? "-" : err.row}：{err.reason}</div>
-                                    ))}
-                                </div>
-                            )}
-                            {(importResult.restored?.length ?? 0) > 0 && (
-                                <div className="max-h-32 overflow-y-auto text-meta space-y-1 bg-card p-2 rounded-control border border-border">
-                                    {importResult.restored!.map((entry, idx) => (
-                                        <div key={idx} className="text-info">行 {entry.row}：{entry.reason}</div>
                                     ))}
                                 </div>
                             )}

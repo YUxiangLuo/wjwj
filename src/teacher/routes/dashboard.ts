@@ -16,7 +16,7 @@ const dashboardRoutes: RouteDefinition = {
             db.select({ count: count() }).from(topic).where(eq(topic.teacherId, teacherId)),
             db.select({ count: count() })
                 .from(experiment)
-                .innerJoin(student, and(eq(experiment.studentId, student.id), eq(student.status, 1)))
+                .innerJoin(student, eq(experiment.studentId, student.id))
                 .innerJoin(task, eq(experiment.taskId, task.id))
                 .innerJoin(topic, eq(task.topicId, topic.id))
                 .innerJoin(class_, eq(task.classId, class_.id))
@@ -50,7 +50,7 @@ const dashboardRoutes: RouteDefinition = {
             .from(task)
             .innerJoin(topic, eq(task.topicId, topic.id))
             .innerJoin(class_, eq(task.classId, class_.id))
-            .leftJoin(student, and(eq(student.classId, class_.id), eq(student.status, 1)))
+            .leftJoin(student, eq(student.classId, class_.id))
             .leftJoin(experiment, and(eq(experiment.studentId, student.id), eq(experiment.taskId, task.id)))
             .where(and(
                 ...teacherScope,

@@ -94,7 +94,7 @@ export async function listTeacherTasks(teacherId: number) {
         .from(task)
         .innerJoin(topic, eq(task.topicId, topic.id))
         .innerJoin(class_, eq(task.classId, class_.id))
-        .leftJoin(student, and(eq(student.classId, class_.id), eq(student.status, 1)))
+        .leftJoin(student, eq(student.classId, class_.id))
         .leftJoin(experiment, and(eq(experiment.studentId, student.id), eq(experiment.taskId, task.id)))
         .where(eq(class_.teacherId, teacherId))
         .groupBy(task.id, topic.id, class_.id)
@@ -131,7 +131,7 @@ export async function getTeacherTaskProgress(taskId: number, teacherId: number) 
         })
         .from(student)
         .leftJoin(experiment, and(eq(experiment.studentId, student.id), eq(experiment.taskId, taskId)))
-        .where(and(eq(student.classId, taskRow.classId), eq(student.status, 1)))
+        .where(eq(student.classId, taskRow.classId))
         .orderBy(asc(student.studentId));
 
     const snapshot = buildTaskProgressSnapshot(students);

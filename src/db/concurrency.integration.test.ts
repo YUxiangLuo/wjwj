@@ -11,7 +11,6 @@ let application: typeof import("./index");
 let raw: SQL;
 let management: typeof import("../admin/routes/management");
 let classroom: typeof import("../teacher/routes/classroom");
-let grading: typeof import("../teacher/routes/grading");
 let teacherAuth: typeof import("../teacher/routes/auth");
 let studentAuth: typeof import("../student/routes/auth");
 const ids = { semesters: [] as number[], teachers: [] as number[], classes: [] as number[], students: [] as number[], topics: [] as number[] };
@@ -21,8 +20,8 @@ beforeAll(async () => {
     process.env.DATABASE_URL = url!;
     application = await import("./index");
     raw = new SQL(url!);
-    [management, classroom, grading, teacherAuth, studentAuth] = await Promise.all([
-        import("../admin/routes/management"), import("../teacher/routes/classroom"), import("../teacher/routes/grading"),
+    [management, classroom, teacherAuth, studentAuth] = await Promise.all([
+        import("../admin/routes/management"), import("../teacher/routes/classroom"),
         import("../teacher/routes/auth"), import("../student/routes/auth"),
     ]);
 });
@@ -56,24 +55,6 @@ function request(method: string, params: Record<string, string>, body?: unknown,
     });
     (req as Request & { params: Record<string, string> }).params = params;
     return req;
-}
-
-// Pause exactly where the application starts reading a request body, after
-// the initial ownership check. This does not mock any database operation.
-function delayedRequest(method: string, id: number, body: unknown, token: string) {
-    const ready = Promise.withResolvers<void>();
-    let feed!: () => void;
-    const req = new Request("http://localhost", {
-        method, headers: { cookie: `teacher_session=${token}` },
-        body: new ReadableStream<Uint8Array>({ start(controller) {
-            feed = () => { controller.enqueue(new TextEncoder().encode(JSON.stringify(body))); controller.close(); };
-        } }),
-    });
-    (req as Request & { params: Record<string, string> }).params = { id: String(id) };
-    const stream = req.body!;
-    const getReader = stream.getReader.bind(stream);
-    stream.getReader = (() => { ready.resolve(); return getReader(); }) as typeof stream.getReader;
-    return { req, ready: ready.promise, feed };
 }
 
 async function waitUntil(check: () => Promise<boolean>) {
@@ -115,21 +96,10 @@ async function fixture(password = "unchanged-password") {
     ids.students.push(...students.map(row => row.id));
     return { teachers, cls: cls!, students };
 }
-async function addSubmission(group: Awaited<ReturnType<typeof fixture>>) {
-    const { db } = application;
-    const [topic] = await db.insert(schema.topic).values({ teacherId: group.teachers[0]!.id, name: "并发模板", status: 1 }).returning();
-    ids.topics.push(topic!.id);
-    const [task] = await db.insert(schema.task).values({ topicId: topic!.id, classId: group.cls.id }).returning();
-    const [experiment] = await db.insert(schema.experiment).values({ studentId: group.students[0]!.id, taskId: task!.id, status: "submitted", currentStage: 4, submittedAt: new Date() }).returning();
-    return experiment!;
-}
 async function session(userType: number, userId: number) {
     const token = crypto.randomUUID();
     await application.db.insert(schema.userSession).values({ userType, userId, sessionToken: token, expiresAt: new Date(Date.now() + 60000) });
     return token;
-}
-async function transfer(group: Awaited<ReturnType<typeof fixture>>) {
-    return management.classUpdateRoutes.PUT!(request("PUT", { id: String(group.cls.id) }, { teacherId: group.teachers[1]!.id }));
 }
 
 
@@ -142,59 +112,6 @@ function importRequest(classId: number, csv: string, token: string) {
     (req as Request & { params: Record<string, string> }).params = { classId: String(classId) };
     return req;
 }
-
-for (const action of ["grade", "reject", "reset_password", "toggle_status"] as const) {
-    pgTest(`class transfer revokes an admitted ${action} before its write`, async () => {
-        const { db } = application;
-        const group = await fixture();
-        const experiment = await addSubmission(group);
-        const teacherToken = await session(2, group.teachers[0]!.id);
-        const studentToken = await session(3, group.students[0]!.id);
-        const isGrade = action === "grade" || action === "reject";
-        const body = action === "grade" ? { observedVersion: experiment.version, scoreQuestionnaire: 80, scoreProcess: 80, scoreReport: 80 }
-            : action === "reject" ? { observedVersion: experiment.version, reason: "请补充抽样方法的比较" } : { action };
-        const route = action === "grade" ? grading.gradingDetailRoutes : action === "reject" ? grading.gradingRejectRoutes : classroom.studentRoutes;
-        const pending = delayedRequest(isGrade ? "POST" : "PUT", isGrade ? experiment.id : group.students[0]!.id, body, teacherToken);
-        const handler = teacherAuth.withTeacherAuth(route)[isGrade ? "POST" : "PUT"]!;
-        const response = handler(pending.req);
-        try {
-            await pending.ready;
-            expect((await transfer(group)).status).toBe(200);
-        } finally { pending.feed(); }
-        expect((await response).status).toBe(isGrade ? 404 : 403);
-        const [unchanged] = await db.select().from(schema.student).where(eq(schema.student.id, group.students[0]!.id));
-        expect(unchanged!.password).toBe("unchanged-password");
-        expect(unchanged!.status).toBe(1);
-        const [ungraded] = await db.select().from(schema.experiment).where(eq(schema.experiment.id, experiment.id));
-        expect(ungraded!.version).toBe(experiment.version);
-        expect(ungraded!.status).toBe("submitted");
-        expect(await db.select().from(schema.auditEvent).where(and(eq(schema.auditEvent.actorType, "teacher"), eq(schema.auditEvent.actorId, group.teachers[0]!.id)))).toHaveLength(0);
-        expect(await db.select().from(schema.userSession).where(eq(schema.userSession.sessionToken, studentToken))).toHaveLength(1);
-    }, 15000);
-}
-
-pgTest("a class transfer waits for an authorized grading transaction to finish", async () => {
-    const group = await fixture();
-    const experiment = await addSubmission(group);
-    const token = await session(2, group.teachers[0]!.id);
-    const release = await holdRow("experiment", experiment.id);
-    const gradingResponse = teacherAuth.withTeacherAuth(grading.gradingDetailRoutes).POST!(request("POST", { id: String(experiment.id) }, {
-        observedVersion: experiment.version, scoreQuestionnaire: 80, scoreProcess: 80, scoreReport: 80,
-    }, `teacher_session=${token}`));
-    let transferring: Promise<Response> | undefined;
-    let observedOwner: number | undefined;
-    try {
-        await waitUntil(() => blocked('update "experiment"'));
-        let finished = false;
-        transferring = transfer(group).then(response => { finished = true; return response; });
-        await waitUntil(async () => finished || await blocked('update "class"'));
-        const [cls] = await application.db.select().from(schema.class_).where(eq(schema.class_.id, group.cls.id));
-        observedOwner = cls!.teacherId;
-    } finally { await release(); await Promise.allSettled([gradingResponse, transferring]); }
-    expect(observedOwner).toBe(group.teachers[0]!.id);
-    expect((await gradingResponse).status).toBe(200);
-    expect((await transferring!).status).toBe(200);
-}, 15000);
 
 for (const first of ["select", "delete"] as const) {
     pgTest(`${first}-first semester selection/deletion preserves the current semester`, async () => {
@@ -246,8 +163,8 @@ pgTest("concurrent creation of current semesters succeeds serially and retains e
 }, 15000);
 
 for (const role of ["student", "teacher"] as const) {
-    for (const action of ["reset", "disable"] as const) {
-        pgTest(`admin ${role} ${action} rolls back the account update if session deletion fails`, async () => {
+    {
+        pgTest(`admin ${role} reset rolls back the account update if session deletion fails`, async () => {
             const { db } = application;
             const group = await fixture();
             const account = role === "student" ? group.students[0]! : group.teachers[0]!;
@@ -258,19 +175,13 @@ for (const role of ["student", "teacher"] as const) {
             await raw.unsafe(`CREATE FUNCTION review_session_delete_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
                 IF OLD.user_type = ${userType} AND OLD.user_id = ${account.id} THEN RAISE EXCEPTION 'injected session deletion failure'; END IF;
                 RETURN OLD; END $$`);
-            const invoke = () => {
-                const route = role === "student"
-                    ? action === "reset" ? management.studentResetPasswordRoutes : management.studentStatusRoutes
-                    : action === "reset" ? management.teacherResetPasswordRoutes : management.teacherStatusRoutes;
-                return action === "reset" ? route.POST!(request("POST", { id: String(account.id) }))
-                    : route.PUT!(request("PUT", { id: String(account.id) }, { status: 0 }));
-            };
+            const route = role === "student" ? management.studentResetPasswordRoutes : management.teacherResetPasswordRoutes;
+            const invoke = () => route.POST!(request("POST", { id: String(account.id) }));
             try {
                 await raw.unsafe("CREATE TRIGGER review_session_delete_failure BEFORE DELETE ON user_session FOR EACH ROW EXECUTE FUNCTION review_session_delete_failure()");
                 await expect(Promise.resolve(invoke())).rejects.toThrow();
                 const [unchanged] = await db.select().from(table).where(eq(table.id, account.id));
                 expect(unchanged!.password).toBe(account.password);
-                expect(unchanged!.status).toBe(1);
                 expect(await db.select().from(schema.userSession).where(eq(schema.userSession.sessionToken, token))).toHaveLength(1);
             } finally {
                 await raw.unsafe("DROP TRIGGER IF EXISTS review_session_delete_failure ON user_session");
@@ -279,8 +190,7 @@ for (const role of ["student", "teacher"] as const) {
             expect((await invoke()).status).toBe(200);
             expect(await db.select().from(schema.userSession).where(eq(schema.userSession.sessionToken, token))).toHaveLength(0);
             const [changed] = await db.select().from(table).where(eq(table.id, account.id));
-            if (action === "disable") expect(changed!.status).toBe(0);
-            else expect(changed!.password).not.toBe(account.password);
+            expect(changed!.password).not.toBe(account.password);
         });
     }
 }
@@ -343,47 +253,6 @@ pgTest("login skips expired sessions locked by another student's password rotati
     expect(sessions.some(row => row.sessionToken === validToken)).toBe(false);
 }, 15000);
 
-// A student ID owns a single global account row. Disabling a student used to keep
-// that row alive while the import path kept rejecting the ID, so the teacher could
-// never put the student back on the roster without destroying their history.
-pgTest("a disabled student can be re-imported and is reactivated in place", async () => {
-    const group = await fixture();
-    const token = await session(2, group.teachers[0]!.id);
-    const studentId = `RBTEST-${crypto.randomUUID().slice(0, 8)}`;
-
-    const created = await teacherAuth.withTeacherAuth(classroom.classStudentsRoutes).POST!(request(
-        "POST", { classId: String(group.cls.id) }, { studentId, name: "甲" }, `teacher_session=${token}`,
-    ));
-    expect(created.status).toBe(201);
-    const [row] = await application.db.select().from(schema.student).where(eq(schema.student.studentId, studentId));
-    ids.students.push(row!.id);
-    const originalPassword = row!.password;
-
-    const disabled = await teacherAuth.withTeacherAuth(classroom.studentRoutes).PUT!(request(
-        "PUT", { id: String(row!.id) }, { action: "toggle_status" }, `teacher_session=${token}`,
-    ));
-    expect(disabled.status).toBe(200);
-
-    const imported = await teacherAuth.withTeacherAuth(classroom.classStudentsImportRoutes).POST!(
-        importRequest(group.cls.id, `studentId,name\n${studentId},乙\n`, token),
-    );
-    const payload = await imported.json() as any;
-
-    expect(imported.status).toBe(200);
-    expect(payload.data).toMatchObject({ successCount: 0, restoredCount: 1, skippedCount: 0, failureCount: 0 });
-    const rows = await application.db.select().from(schema.student).where(eq(schema.student.studentId, studentId));
-    expect(rows.length).toBe(1);
-    expect(rows[0]!.id).toBe(row!.id);
-    expect(rows[0]!.status).toBe(1);
-    expect(rows[0]!.name).toBe("乙");
-    // Reactivating keeps the existing credential; only the teacher may reset it.
-    expect(rows[0]!.password).toBe(originalPassword);
-
-    // The reactivated account is usable again with the credential it kept.
-    const login = await studentAuth.loginRoutes.POST!(request("POST", {}, { studentId, password: studentId }));
-    expect(login.status).toBe(200);
-});
-
 pgTest("re-importing an active roster row neither duplicates nor rewrites the account", async () => {
     const group = await fixture();
     const token = await session(2, group.teachers[0]!.id);
@@ -401,7 +270,7 @@ pgTest("re-importing an active roster row neither duplicates nor rewrites the ac
     const payload = await imported.json() as any;
 
     expect(imported.status).toBe(200);
-    expect(payload.data).toMatchObject({ successCount: 0, restoredCount: 0, skippedCount: 1, failureCount: 0 });
+    expect(payload.data).toMatchObject({ successCount: 0, skippedCount: 1, failureCount: 0 });
     const rows = await application.db.select().from(schema.student).where(eq(schema.student.studentId, studentId));
     expect(rows.length).toBe(1);
     expect(rows[0]!.name).toBe("原名");

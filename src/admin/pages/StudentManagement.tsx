@@ -21,7 +21,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { StatusBadge } from "@/components/StatusBadge";
 import {
     Table,
     TableBody,
@@ -38,16 +37,7 @@ import {
     type StudentExperiment,
 } from "../api-client";
 
-function renderAccountStatus(item: Student) {
-    return (
-        <StatusBadge intent={item.status === 1 ? "success" : "neutral"}>
-            {item.status === 1 ? "正常" : "停用"}
-        </StatusBadge>
-    );
-}
-
 const PAGE_SIZE = 20;
-type AccountStatusFilter = "all" | "normal" | "disabled";
 
 export function StudentManagement() {
     const location = useLocation();
@@ -61,7 +51,6 @@ export function StudentManagement() {
     const [classId, setClassId] = useState(requestedClassId);
     const [search, setSearch] = useState("");
     const [appliedSearch, setAppliedSearch] = useState("");
-    const [status, setStatus] = useState<AccountStatusFilter>("all");
     const [page, setPage] = useState(1);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -75,12 +64,10 @@ export function StudentManagement() {
     const load = async ({
         nextClassId = classId,
         nextSearch = appliedSearch,
-        nextStatus = status,
         nextPage = page,
     }: {
         nextClassId?: string;
         nextSearch?: string;
-        nextStatus?: AccountStatusFilter;
         nextPage?: number;
     } = {}) => {
         const requestId = ++requestIdRef.current;
@@ -90,7 +77,6 @@ export function StudentManagement() {
         const response = await studentApi.listPaged({
             classId: nextClassId,
             search: nextSearch || undefined,
-            status: nextStatus === "all" ? undefined : nextStatus,
             page: nextPage,
             pageSize: PAGE_SIZE,
         });
@@ -127,10 +113,9 @@ export function StudentManagement() {
         if (refreshVersion > 0) void load();
     }, [refreshVersion]);
 
-    // 状态筛选已下推到服务端，students 即当前页结果。
     const filtered = students;
     const selectedClassName = classes.find((item) => String(item.id) === classId)?.name;
-    const hasFilters = classId !== "all" || status !== "all" || Boolean(appliedSearch);
+    const hasFilters = classId !== "all" || Boolean(appliedSearch);
 
     const applySearch = () => {
         const nextSearch = search.trim();
@@ -149,9 +134,8 @@ export function StudentManagement() {
     const clearFilters = () => {
         setSearch("");
         setAppliedSearch("");
-        setStatus("all");
         setClassFilter("all");
-        void load({ nextClassId: "all", nextSearch: "", nextStatus: "all", nextPage: 1 });
+        void load({ nextClassId: "all", nextSearch: "", nextPage: 1 });
     };
 
     const openExperiments = async (item: Student) => {
@@ -165,7 +149,7 @@ export function StudentManagement() {
         <Card>
             <CardHeader>
                 <CardTitle>学生管理</CardTitle>
-                <p className="text-label text-muted-foreground">查看学生状态与实验进度，支持停用账号和重置密码。</p>
+                <p className="text-label text-muted-foreground">查看学生实验进度，支持重置密码。</p>
             </CardHeader>
             <CardContent>
                 <div className="mb-4 flex flex-wrap items-end gap-2">
@@ -194,20 +178,6 @@ export function StudentManagement() {
                             ))}
                         </SelectContent>
                     </Select>
-                    <Select value={status} onValueChange={(value) => {
-                        const nextStatus = value as AccountStatusFilter;
-                        setStatus(nextStatus);
-                        void load({ nextStatus, nextPage: 1 });
-                    }}>
-                        <SelectTrigger aria-label="按账号状态筛选学生" className="w-36">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">全部状态</SelectItem>
-                            <SelectItem value="normal">正常</SelectItem>
-                            <SelectItem value="disabled">已停用</SelectItem>
-                        </SelectContent>
-                    </Select>
                     {hasFilters && (
                         <Button variant="ghost" onClick={clearFilters}>清除筛选</Button>
                     )}
@@ -225,7 +195,7 @@ export function StudentManagement() {
                         </span>
                         <div>
                             <p className="font-medium">
-                                {selectedClassName && !appliedSearch && status === "all"
+                                {selectedClassName && !appliedSearch
                                     ? `${selectedClassName}暂无学生`
                                     : hasFilters
                                         ? "没有符合当前条件的学生"
@@ -233,7 +203,7 @@ export function StudentManagement() {
                             </p>
                             <p className="mt-1 text-label text-muted-foreground">
                                 {hasFilters
-                                    ? "可调整搜索、班级或状态条件后重试。"
+                                    ? "可调整搜索或班级条件后重试。"
                                     : "学生加入班级后会显示在这里。"}
                             </p>
                         </div>
@@ -246,7 +216,6 @@ export function StudentManagement() {
                                 <TableHead>学号</TableHead>
                                 <TableHead>姓名</TableHead>
                                 <TableHead>班级</TableHead>
-                                <TableHead>状态</TableHead>
                                 <TableHead>实验进度</TableHead>
                                 <TableHead className="text-right">操作</TableHead>
                             </TableRow>
@@ -257,7 +226,6 @@ export function StudentManagement() {
                                     <TableCell className="font-mono">{item.studentId}</TableCell>
                                     <TableCell>{item.name}</TableCell>
                                     <TableCell>{item.className ?? "-"}</TableCell>
-                                    <TableCell>{renderAccountStatus(item)}</TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
                                             <Progress
@@ -287,17 +255,6 @@ export function StudentManagement() {
                                                 }}
                                             >
                                                 <RotateCcw className="mr-1 h-4 w-4" />重置密码
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className={item.status === 1 ? "text-destructive" : "text-success"}
-                                                onClick={async () => {
-                                                    const response = await studentApi.updateStatus(item.id, item.status === 1 ? 0 : 1);
-                                                    if (response.success) setRefreshVersion(value => value + 1);
-                                                }}
-                                            >
-                                                {item.status === 1 ? "停用" : "启用"}
                                             </Button>
                                         </div>
                                     </TableCell>
@@ -348,7 +305,6 @@ export function StudentManagement() {
                             <TableRow>
                                 <TableHead>任务</TableHead>
                                 <TableHead>阶段</TableHead>
-                                <TableHead>状态</TableHead>
                                 <TableHead>进度</TableHead>
                                 <TableHead>成绩</TableHead>
                             </TableRow>
@@ -365,7 +321,7 @@ export function StudentManagement() {
                             ))}
                             {!experiments.length && (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                                    <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
                                         暂无实验记录
                                     </TableCell>
                                 </TableRow>

@@ -4,8 +4,8 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 import { installDomGlobals } from "@/test-utils/dom";
 import { StudentManagement } from "./StudentManagement";
 
-// Smoke coverage for admin student management: query initialization, account
-// status display, and list refresh after a password reset.
+// Smoke coverage for admin student management: query initialization, roster
+// rendering, and list refresh after a password reset.
 
 let restoreDom: (() => void) | null = null;
 const originalFetch = globalThis.fetch;
@@ -61,32 +61,6 @@ test("student management initializes its request from the classId query", async 
     });
 });
 
-test("student management distinguishes active and disabled accounts", async () => {
-    const students = [
-        { id: 1, studentId: "SNORMAL", name: "正常学生", classId: 7, className: "统计一班", status: 1, progress: 0, createdAt: new Date().toISOString() },
-        { id: 3, studentId: "SDISABLED", name: "停用学生", classId: 7, className: "统计一班", status: 0, progress: 0, createdAt: new Date().toISOString() },
-    ];
-    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        const data = url.includes("/api/admin/classes")
-            ? []
-            : { items: students, total: students.length, page: 1, pageSize: 20 };
-        return Response.json({ success: true, data });
-    }) as unknown as typeof fetch;
-
-    const view = render(
-        <MemoryRouter initialEntries={["/student"]}>
-            <StudentManagement />
-        </MemoryRouter>,
-    );
-
-    await waitFor(() => expect(view.getByText("SNORMAL")).toBeTruthy());
-    const normalRow = view.getByText("SNORMAL").closest("tr")!;
-    const disabledRow = view.getByText("SDISABLED").closest("tr")!;
-    expect(within(normalRow).getByText("正常")).toBeTruthy();
-    expect(within(disabledRow).getByText("停用")).toBeTruthy();
-});
-
 test("resetting a student password refreshes the list without changing account status", async () => {
     let listRequests = 0;
     globalThis.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -101,7 +75,6 @@ test("resetting a student password refreshes the list without changing account s
                 name: "正常学生",
                 classId: 7,
                 className: "统计一班",
-                status: 1,
                 progress: 0,
                 createdAt: new Date().toISOString(),
             }],
@@ -125,6 +98,6 @@ test("resetting a student password refreshes the list without changing account s
 
     await waitFor(() => {
         expect(listRequests).toBeGreaterThanOrEqual(2);
-        expect(within(view.getByText("SACTIVE").closest("tr")!).getByText("正常")).toBeTruthy();
+        expect(within(view.getByText("SACTIVE").closest("tr")!).getByRole("button", { name: "重置密码" })).toBeTruthy();
     });
 });

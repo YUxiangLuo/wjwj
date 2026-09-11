@@ -93,7 +93,7 @@ test("old 401 after successful login cannot cause a second navigation", async ()
     expect(navigate.mock.calls).toEqual([["/student"]]);
 });
 
-for (const [status, code] of [[401, "UNAUTHORIZED"], [401, "ACCOUNT_NOT_FOUND"], [403, "ACCOUNT_DISABLED"], [409, "SESSION_CHANGED"]] as const) {
+for (const [status, code] of [[401, "UNAUTHORIZED"], [401, "ACCOUNT_NOT_FOUND"], [409, "SESSION_CHANGED"]] as const) {
     test(`${code}: bootstrap does not loop; protected API errors replace with login`, async () => {
         const navigate = setup(), client = createApiClient("student");
         globalThis.fetch = (async () => fail(status, code)) as unknown as typeof fetch;

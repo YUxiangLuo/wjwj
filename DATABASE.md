@@ -78,7 +78,7 @@ bun run build
 ```
 
 `test:db` runs its test files in isolation. In addition to schema and persistence
-checks, it exercises class-transfer ownership, session-cleanup locking, and
+checks, it exercises ownership locking, session-cleanup locking, and
 both lock orders of current-semester selection/deletion against PostgreSQL.
 Current-semester creation, selection, and deletion share a short transaction
 advisory lock, separate from the storage lock described below.

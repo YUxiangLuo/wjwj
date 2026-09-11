@@ -56,7 +56,6 @@ async function loadDemoStudentCandidates(): Promise<DemoStudentRow[]> {
         .innerJoin(class_, eq(student.classId, class_.id))
         .where(and(
             eq(class_.name, DEMO_CLASS_NAME),
-            eq(student.status, 1),
         ));
 }
 

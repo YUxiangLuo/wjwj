@@ -32,7 +32,7 @@ export function ClassManagement() {
     const [filterTeacher, setFilterTeacher] = useState("all");
     const [newClass, setNewClass] = useState({ name: "", semesterId: "", teacherId: "" });
     const [editingClass, setEditingClass] = useState<Class | null>(null);
-    const [editForm, setEditForm] = useState({ name: "", teacherId: "" });
+    const [editForm, setEditForm] = useState({ name: "" });
     const [submitting, setSubmitting] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
 
@@ -50,10 +50,9 @@ export function ClassManagement() {
             return { semesters: requireApiData(semestersRes, "学期选项加载失败"), teachers: requireApiData(teachersRes, "教师选项加载失败") };
         }, ({ semesters, teachers }) => {
             setSemesters(semesters);
-            const active = teachers.filter(teacher => teacher.status === 1);
-            setTeachers(active);
+            setTeachers(teachers);
             const defaultSemester = semesters.find(semester => semester.isCurrent === 1) ?? semesters[0];
-            setNewClass(previous => ({ ...previous, semesterId: previous.semesterId || String(defaultSemester?.id ?? ""), teacherId: previous.teacherId || String(active[0]?.id ?? "") }));
+            setNewClass(previous => ({ ...previous, semesterId: previous.semesterId || String(defaultSemester?.id ?? ""), teacherId: previous.teacherId || String(teachers[0]?.id ?? "") }));
         });
     }
 
@@ -89,33 +88,16 @@ export function ClassManagement() {
 
     function openEditModal(cls: Class) {
         setEditingClass(cls);
-        setEditForm({ name: cls.name, teacherId: String(cls.teacherId) });
+        setEditForm({ name: cls.name });
         setShowEditModal(true);
     }
 
     async function handleEditClass() {
         if (!editingClass || !editForm.name.trim()) return;
 
-        const teacherChanged = editForm.teacherId !== String(editingClass.teacherId);
-
-        if (teacherChanged) {
-            const newTeacher = teachers.find((t) => t.id === parseInt(editForm.teacherId));
-            const shouldReassign = await confirm({
-                title: `更换班级「${editingClass.name}」的授课教师`,
-                description: `将授课教师调整为「${newTeacher?.name ?? "未选择"}」后：\n- 原教师将无法管理该班级\n- 新教师将获得该班级的管理权限`,
-                confirmLabel: "确认更换",
-            });
-            if (!shouldReassign) {
-                return;
-            }
-        }
-
         setSubmitting(true);
         try {
-            const res = await classApi.update(editingClass.id, {
-                name: editForm.name.trim(),
-                teacherId: parseInt(editForm.teacherId),
-            });
+            const res = await classApi.update(editingClass.id, { name: editForm.name.trim() });
 
             if (res.success) {
                 setShowEditModal(false);
@@ -432,7 +414,7 @@ export function ClassManagement() {
                 <DialogContent className="bg-card border-border text-foreground max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle className="text-foreground">编辑班级</DialogTitle>
-                        <DialogDescription className="text-muted-foreground">更新班级名称或重新分配授课教师。</DialogDescription>
+                        <DialogDescription className="text-muted-foreground">更新班级名称。学期与授课教师创建后不可变更。</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
@@ -454,16 +436,8 @@ export function ClassManagement() {
                         </div>
                         <div className="space-y-2">
                             <Label className="text-foreground">授课教师</Label>
-                            <Select value={editForm.teacherId} onValueChange={(v) => setEditForm({ ...editForm, teacherId: v })}>
-                                <SelectTrigger aria-label="编辑班级授课教师" data-testid="class-edit-teacher" className="bg-card border-input text-foreground">
-                                    <SelectValue placeholder="选择教师" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-card border-border text-foreground">
-                                    {teachers.map((t) => (
-                                        <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Input value={editingClass?.teacherName ?? ""} disabled className="bg-card border-input text-muted-foreground" />
+                            <p className="text-meta text-muted-foreground">授课教师不可更改</p>
                         </div>
                     </div>
                     <DialogFooter>

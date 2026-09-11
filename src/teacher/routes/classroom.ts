@@ -36,7 +36,7 @@ async function requireOwnedClass(classId: number, teacherId: number, tx?: Pick<t
 
 async function findOwnedStudent(id: number, teacherId: number, tx?: Pick<typeof db, "select">) {
     const query = (tx ?? db)
-        .select({ id: student.id, studentId: student.studentId, status: student.status })
+        .select({ id: student.id, studentId: student.studentId })
         .from(student)
         .innerJoin(class_, eq(student.classId, class_.id))
         .where(and(eq(student.id, id), eq(class_.teacherId, teacherId)));
@@ -54,12 +54,11 @@ type ImportCandidate = {
 
 /**
  * A student ID is unique across the whole table, so an account that already owns
- * the ID decides whether an import inserts, skips, reactivates or rejects the row.
+ * the ID decides whether an import inserts, skips or rejects the row.
  */
 type ExistingStudentAccount = {
     id: number;
     studentId: string;
-    status: number;
     classId: number;
     className: string;
     teacherId: number;
@@ -72,7 +71,6 @@ async function loadExistingStudentAccounts(studentIds: string[]) {
         .select({
             id: student.id,
             studentId: student.studentId,
-            status: student.status,
             classId: student.classId,
             className: class_.name,
             teacherId: class_.teacherId,
@@ -92,10 +90,7 @@ function describeStudentConflict(
 ): string | null {
     if (account.teacherId !== teacherId) return "学号已被其他教师使用";
     if (account.classId === classId) return null;
-    if (account.status === 1) {
-        return `学号已存在于班级「${account.className}」，如需变更班级请先在该班级删除该学生`;
-    }
-    return `学号在班级「${account.className}」中已停用，请先在该班级启用或删除该学生`;
+    return `学号已存在于班级「${account.className}」，如需变更班级请先在该班级删除该学生`;
 }
 
 export async function deleteTeacherStudent(params: { teacherId: number; studentId: number }) {
@@ -139,28 +134,11 @@ const classRoutes: RouteDefinition = {
             })
             .from(class_)
             .leftJoin(semester, eq(class_.semesterId, semester.id))
-            // Count only enabled students so the roster matches the active-student
-            // denominator used by task progress and the dashboard.
-            .leftJoin(student, and(eq(student.classId, class_.id), eq(student.status, 1)))
+            .leftJoin(student, eq(student.classId, class_.id))
             .where(eq(class_.teacherId, teacherId))
             .groupBy(class_.id, semester.id)
             .orderBy(desc(class_.createdAt));
-        // studentCount counts active students; disabled ones are still on the
-        // roster (and still block class deletion), so surface them separately.
-        const classIds = rows.map((row) => row.id);
-        const disabledRows = classIds.length
-            ? await db
-                .select({ classId: student.classId, count: count(student.id) })
-                .from(student)
-                .where(and(inArray(student.classId, classIds), eq(student.status, 0)))
-                .groupBy(student.classId)
-            : [];
-        const disabledCounts = new Map(disabledRows.map((row) => [row.classId, Number(row.count)]));
-        return json(rows.map((row) => ({
-            ...row,
-            studentCount: Number(row.studentCount),
-            disabledStudentCount: disabledCounts.get(row.id) ?? 0,
-        })));
+        return json(rows.map((row) => ({ ...row, studentCount: Number(row.studentCount) })));
     },
 };
 
@@ -178,7 +156,6 @@ const classStudentsRoutes: RouteDefinition = {
                     studentId: student.studentId,
                     name: student.name,
                     email: student.email,
-                    status: student.status,
                 })
                 .from(student)
                 .where(eq(student.classId, classId))
@@ -207,23 +184,11 @@ const classStudentsRoutes: RouteDefinition = {
         if (!isValidOptionalEmail(email)) return error("邮箱格式无效", "VALIDATION_ERROR");
         const account = (await loadExistingStudentAccounts([studentId])).get(normalizeStudentId(studentId));
         if (account) {
-            const conflict = describeStudentConflict(account, classId, teacherId);
-            if (conflict) return error(conflict, "DUPLICATE_ERROR", 409);
-            if (account.status === 1) return error("学号已存在", "DUPLICATE_ERROR", 409);
-            // A disabled account keeps its globally unique student ID: reactivate it
-            // in place instead of inserting a row that can never be created.
-            const restored = await db.transaction(async (tx) => {
-                if (!(await requireOwnedClass(classId, teacherId, tx))) return false;
-                const rows = await tx
-                    .update(student)
-                    .set({ status: 1, name, ...(email ? { email } : {}), updatedAt: new Date() })
-                    .where(and(eq(student.id, account.id), eq(student.classId, classId), eq(student.status, 0)))
-                    .returning({ id: student.id });
-                return rows.length > 0;
-            });
-            return restored
-                ? json({ success: true, restored: true })
-                : error("学生账号状态已变化，请刷新后重试", "CONFLICT", 409);
+            return error(
+                describeStudentConflict(account, classId, teacherId) ?? "学号已存在",
+                "DUPLICATE_ERROR",
+                409,
+            );
         }
         const password = await hashPassword(studentId);
         const created = await db.transaction(async (tx) => {
@@ -308,7 +273,6 @@ const classStudentsImportRoutes: RouteDefinition = {
         const existingAccounts = await loadExistingStudentAccounts(candidates.map((item) => item.studentId));
         const inserts: ImportCandidate[] = [];
         const skipped: Array<{ row: number; reason: string }> = [];
-        const reactivations: Array<{ id: number; name: string; email: string | null; row: number }> = [];
         for (const item of candidates) {
             const account = existingAccounts.get(item.normalizedStudentId);
             if (!account) {
@@ -320,45 +284,29 @@ const classStudentsImportRoutes: RouteDefinition = {
                 errors.push({ row: item.row, reason: conflict });
                 continue;
             }
-            if (account.status === 1) {
-                skipped.push({ row: item.row, reason: `学号已存在，未做变更: ${item.studentId}` });
-                continue;
-            }
-            reactivations.push({ id: account.id, name: item.name, email: item.email, row: item.row });
+            skipped.push({ row: item.row, reason: `学号已存在，未做变更: ${item.studentId}` });
         }
         errors.sort((a, b) => a.row - b.row);
         const hashes = await mapWithConcurrency(inserts, 4, (item) => hashPassword(item.studentId));
-        if (inserts.length || reactivations.length) {
+        if (inserts.length) {
             const applied = await db.transaction(async (tx) => {
                 if (!(await requireOwnedClass(classId, teacherId, tx))) return false;
-                if (inserts.length) {
-                    await tx.insert(student).values(inserts.map((item, index) => ({
-                        studentId: item.studentId,
-                        name: item.name,
-                        email: item.email,
-                        classId,
-                        password: hashes[index]!,
-                    })));
-                }
-                for (const item of reactivations) {
-                    // Still-disabled guard: a concurrent enable or delete must win
-                    // instead of being overwritten by a stale roster file.
-                    await tx
-                        .update(student)
-                        .set({ status: 1, name: item.name, ...(item.email ? { email: item.email } : {}), updatedAt: new Date() })
-                        .where(and(eq(student.id, item.id), eq(student.classId, classId), eq(student.status, 0)));
-                }
+                await tx.insert(student).values(inserts.map((item, index) => ({
+                    studentId: item.studentId,
+                    name: item.name,
+                    email: item.email,
+                    classId,
+                    password: hashes[index]!,
+                })));
                 return true;
             });
             if (!applied) return error("无权限访问该班级", "FORBIDDEN", 403);
         }
         return json({
             successCount: inserts.length,
-            restoredCount: reactivations.length,
             skippedCount: skipped.length,
             failureCount: errors.length,
             errors,
-            restored: reactivations.map((item) => ({ row: item.row, reason: `已重新启用: ${item.name}` })),
             skipped,
         });
     },
@@ -372,23 +320,15 @@ const studentRoutes: RouteDefinition = {
         const owned = await findOwnedStudent(id, teacherId);
         if (!owned) return error("无权限操作该学生", "FORBIDDEN", 403);
 
-        const body = await parseBody<{ action?: "reset_password" | "toggle_status" }>(req);
-        if (body.action !== "reset_password" && body.action !== "toggle_status") {
-            return error("无效的操作", "VALIDATION_ERROR");
-        }
+        const body = await parseBody<{ action?: "reset_password" }>(req);
+        if (body.action !== "reset_password") return error("无效的操作", "VALIDATION_ERROR");
         // Slow password work stays outside the short ownership/write transaction.
-        const password = body.action === "reset_password" ? await hashPassword(owned.studentId) : null;
+        const password = await hashPassword(owned.studentId);
         const changed = await db.transaction(async (tx) => {
             const current = await findOwnedStudent(id, teacherId, tx);
             if (!current) return false;
-            if (password !== null) {
-                await tx.update(student).set({ password, updatedAt: new Date() }).where(eq(student.id, id));
-                await clearUserSessionsForUser(STUDENT_USER_TYPE, id, tx);
-            } else {
-                const status = current.status === 1 ? 0 : 1;
-                await tx.update(student).set({ status, updatedAt: new Date() }).where(eq(student.id, id));
-                if (status === 0) await clearUserSessionsForUser(STUDENT_USER_TYPE, id, tx);
-            }
+            await tx.update(student).set({ password, updatedAt: new Date() }).where(eq(student.id, id));
+            await clearUserSessionsForUser(STUDENT_USER_TYPE, id, tx);
             return true;
         });
         return changed ? json({ success: true }) : error("无权限操作该学生", "FORBIDDEN", 403);

@@ -1,8 +1,8 @@
 import { RequestError } from "@/components/RequestError";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Search, Upload, UserPlus, RotateCcw, UserX, Trash2, Users, CheckCircle2, PauseCircle } from "lucide-react";
+import { ArrowLeft, Search, Upload, UserPlus, RotateCcw, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,16 +14,7 @@ import { teacherApi, type Student, type TeacherClass } from "../api-client";
 import { toast } from "sonner";
 import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
-import { StatusBadge } from "@/components/StatusBadge";
 import { isValidOptionalEmail } from "@/lib/email";
-
-function renderAccountStatus(student: Student) {
-    return (
-        <StatusBadge intent={student.status === 1 ? "success" : "neutral"}>
-            {student.status === 1 ? "正常" : "已禁用"}
-        </StatusBadge>
-    );
-}
 
 export function StudentManagement() {
     const { classId } = useParams();
@@ -35,7 +26,7 @@ export function StudentManagement() {
     const [searchQuery, setSearchQuery] = useState("");
     const [importFile, setImportFile] = useState<File | null>(null);
     const [importing, setImporting] = useState(false);
-    const [importResult, setImportResult] = useState<{ successCount: number; failureCount: number; errors: Array<{ row: number; reason: string }> } | null>(null);
+    const [importResult, setImportResult] = useState<{ successCount: number; skippedCount?: number; failureCount: number; errors: Array<{ row: number; reason: string }>; skipped?: Array<{ row: number; reason: string }> } | null>(null);
 
     // Add Form State
     const [newStudent, setNewStudent] = useState({ id: "", name: "", email: "" });
@@ -44,7 +35,7 @@ export function StudentManagement() {
     // Confirmation State
     const [confirmDialog, setConfirmDialog] = useState<{
         open: boolean;
-        type: "delete" | "reset" | "toggle" | null;
+        type: "delete" | "reset" | null;
         student: Student | null;
     }>({ open: false, type: null, student: null });
 
@@ -93,7 +84,7 @@ export function StudentManagement() {
         if (res.success) {
             setShowAddModal(false);
             setNewStudent({ id: "", name: "", email: "" });
-            toast.success(res.data?.restored ? "已重新启用该学生的原有账号" : "学生已创建，登录密码与学号相同");
+            toast.success("学生已创建，登录密码与学号相同");
             void loadData(false);
         } else {
             toast.error("添加失败: " + res.error?.message);
@@ -125,7 +116,6 @@ export function StudentManagement() {
         if (res.success && res.data) {
             setImportResult(res.data);
             const parts = [`新建 ${res.data.successCount} 条`];
-            if (res.data.restoredCount) parts.push(`重新启用 ${res.data.restoredCount} 条`);
             if (res.data.skippedCount) parts.push(`已存在跳过 ${res.data.skippedCount} 条`);
             if (res.data.failureCount) parts.push(`失败 ${res.data.failureCount} 条`);
             toast.success(`导入完成：${parts.join("，")}`);
@@ -134,10 +124,6 @@ export function StudentManagement() {
             toast.error("导入失败: " + res.error?.message);
         }
     };
-
-    function handleToggleStatus(student: Student) {
-        setConfirmDialog({ open: true, type: "toggle", student });
-    }
 
     function handleResetPassword(student: Student) {
         setConfirmDialog({ open: true, type: "reset", student });
@@ -153,9 +139,6 @@ export function StudentManagement() {
 
         let res;
         switch (type) {
-            case "toggle":
-                res = await teacherApi.updateStudent(student.id, { action: "toggle_status" });
-                break;
             case "reset":
                 res = await teacherApi.updateStudent(student.id, { action: "reset_password" });
                 break;
@@ -177,13 +160,7 @@ export function StudentManagement() {
         s.name.includes(searchQuery) || s.studentId.includes(searchQuery) || (s.email && s.email.includes(searchQuery))
     );
 
-    const summary = useMemo(() => {
-        return {
-            total: students.length,
-            active: students.filter((student) => student.status === 1).length,
-            disabled: students.filter((student) => student.status !== 1).length,
-        };
-    }, [students]);
+    const totalStudents = students.length;
 
     if (!Number.isInteger(Number(classId)) || Number(classId) <= 0) return <p>无效的班级编号</p>;
     if (!classInfo && loadError) return <RequestError message={loadError} onRetry={() => void loadData()} />;
@@ -207,7 +184,7 @@ export function StudentManagement() {
 
             <div>
                 <h2 className="text-subheading font-semibold text-foreground">学生管理</h2>
-                <p className="text-label text-muted-foreground mt-1">维护班级学生名单与账号状态。</p>
+                <p className="text-label text-muted-foreground mt-1">维护班级学生名单。</p>
             </div>
 
             <div className="grid grid-cols-3 gap-4">
@@ -215,32 +192,10 @@ export function StudentManagement() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">学生总数</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{summary.total}</p>
+                            <p className="text-page-title font-bold text-foreground mt-1">{totalStudents}</p>
                         </div>
                         <IconTile intent="info">
                             <Users className="w-5 h-5" />
-                        </IconTile>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">正常账号</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{summary.active}</p>
-                        </div>
-                        <IconTile intent="success">
-                            <CheckCircle2 className="w-5 h-5" />
-                        </IconTile>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已禁用</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{summary.disabled}</p>
-                        </div>
-                        <IconTile intent="neutral">
-                            <PauseCircle className="w-5 h-5" />
                         </IconTile>
                     </CardContent>
                 </Card>
@@ -281,7 +236,6 @@ export function StudentManagement() {
                                 <TableHead className="text-muted-foreground">学号</TableHead>
                                 <TableHead className="text-muted-foreground">姓名</TableHead>
                                 <TableHead className="text-muted-foreground">邮箱</TableHead>
-                                <TableHead className="text-muted-foreground">账号状态</TableHead>
                                 <TableHead className="text-muted-foreground text-right">操作</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -302,14 +256,10 @@ export function StudentManagement() {
                                     <TableCell className="font-mono text-primary">{student.studentId}</TableCell>
                                     <TableCell className="font-medium text-foreground">{student.name}</TableCell>
                                     <TableCell className="text-muted-foreground">{student.email || "-"}</TableCell>
-                                    <TableCell>{renderAccountStatus(student)}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
                                             <Button data-testid={`teacher-student-reset-${student.id}`} variant="ghost" size="sm" aria-label={`重置${student.name}的密码`} title="重置密码" onClick={() => handleResetPassword(student)} className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary-muted">
                                                 <RotateCcw className="w-4 h-4" />
-                                            </Button>
-                                            <Button data-testid={`teacher-student-toggle-${student.id}`} variant="ghost" size="sm" aria-label={`${student.status === 1 ? "禁用" : "启用"}学生${student.name}`} title={student.status === 1 ? "禁用" : "启用"} onClick={() => handleToggleStatus(student)} className={`h-8 w-8 p-0 ${student.status === 1 ? "text-success hover:text-success hover:bg-success-muted" : "text-muted-foreground hover:text-foreground"}`}>
-                                                <UserX className={`w-4 h-4 ${student.status === 0 ? "text-muted-foreground" : ""}`} />
                                             </Button>
                                             <Button data-testid={`teacher-student-delete-${student.id}`} variant="ghost" size="sm" aria-label={`删除学生${student.name}`} className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive-muted" title="删除" onClick={() => handleDelete(student)}>
                                                 <Trash2 className="w-4 h-4" />

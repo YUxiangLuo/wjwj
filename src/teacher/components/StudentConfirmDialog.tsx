@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { Student } from "../api-client";
 
-type ConfirmType = "delete" | "reset" | "toggle" | null;
+type ConfirmType = "delete" | "reset" | null;
 
 interface ConfirmState {
     open: boolean;
@@ -36,7 +36,6 @@ export function StudentConfirmDialog(props: StudentConfirmDialogProps) {
                     <AlertDialogDescription className="text-muted-foreground">
                         {state.type === "delete" && "将永久删除该学生账号、全部实验进度、提交、成绩和抽样记录。此操作不可恢复；之后再次导入同一学号会创建全新账号。"}
                         {state.type === "reset" && "确认重置该学生的密码为学号吗？"}
-                        {state.type === "toggle" && `确认${state.student?.status === 1 ? "禁用" : "启用"}该学生账号吗？`}
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

@@ -64,18 +64,12 @@ export async function requireTeacherAuth(req: Request): Promise<TeacherAuthResul
             id: teacher.id,
             employeeId: teacher.employeeId,
             name: teacher.name,
-            status: teacher.status,
         })
         .from(teacher)
         .where(eq(teacher.id, currentSession.session.userId));
 
-    let result: TeacherAuthResult;
-    if (!row) {
-        result = { user: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) };
-    } else if (row.status !== 1) {
-        result = { user: null, error: error("账号已停用，请联系管理员", "ACCOUNT_DISABLED", 403) };
-    } else {
-        result = {
+    const result: TeacherAuthResult = row
+        ? {
             user: {
                 id: row.id,
                 type: "teacher",
@@ -83,8 +77,8 @@ export async function requireTeacherAuth(req: Request): Promise<TeacherAuthResul
                 employeeId: row.employeeId,
             },
             error: null,
-        };
-    }
+        }
+        : { user: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) };
 
     (req as TeacherRequestContext)[TEACHER_AUTH_CACHE] = result;
     return result;
@@ -115,7 +109,7 @@ const teacherLoginRoutes: RouteDefinition = {
         const password = stringValue(body.password);
         if (!employeeId || !password) return error("请输入工号和密码", "VALIDATION_ERROR", 400);
         const [row] = await db.select().from(teacher).where(eq(teacher.employeeId, employeeId));
-        if (!row || row.status !== 1) {
+        if (!row) {
             return error("工号或密码错误", "INVALID_CREDENTIALS", 401);
         }
         if (!(await verifyPassword(password, row.password))) {
@@ -123,9 +117,9 @@ const teacherLoginRoutes: RouteDefinition = {
         }
 
         const session = await db.transaction(async (tx) => {
-            // Serialize issuance with disable/reset/delete and recheck the verified hash.
+            // Serialize issuance with reset/delete and recheck the verified hash.
             const [active] = await tx.select({ id: teacher.id }).from(teacher)
-                .where(and(eq(teacher.id, row.id), eq(teacher.password, row.password), eq(teacher.status, 1))).for("update");
+                .where(and(eq(teacher.id, row.id), eq(teacher.password, row.password))).for("update");
             return active ? createUserSession(TEACHER_USER_TYPE, row.id, tx) : null;
         });
         if (!session) return error("账号或密码错误", "INVALID_CREDENTIALS", 401);
@@ -183,7 +177,7 @@ const teacherPasswordRoutes: RouteDefinition = {
         const session = await db.transaction(async (tx) => {
             const changed = await tx.update(teacher)
                 .set({ password: passwordHash, updatedAt: new Date() })
-                .where(and(eq(teacher.id, current.id), eq(teacher.password, row.password), eq(teacher.status, 1)))
+                .where(and(eq(teacher.id, current.id), eq(teacher.password, row.password)))
                 .returning({ id: teacher.id });
             return changed.length ? rotateUserSession(TEACHER_USER_TYPE, current.id, tx) : null;
         });

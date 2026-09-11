@@ -3,9 +3,9 @@ export type { ApiResponse } from "@/lib/api-client";
 const { request } = createApiClient("admin");
 export interface Stats { currentSemester: string; teacherCount: number; classCount: number; studentCount: number; pendingItems: number }
 export interface Semester { id: number; name: string; isCurrent: number; classCount: number; createdAt: string }
-export interface Teacher { id: number; employeeId: string; name: string; status: number; classCount: number; createdAt: string }
+export interface Teacher { id: number; employeeId: string; name: string; classCount: number; createdAt: string }
 export interface Class { id: number; name: string; semesterId: number; semesterName: string | null; teacherId: number; teacherName: string | null; studentCount: number; createdAt: string }
-export interface Student { id: number; studentId: string; name: string; classId: number; className: string | null; status: number; progress: number; createdAt: string }
+export interface Student { id: number; studentId: string; name: string; classId: number; className: string | null; progress: number; createdAt: string }
 export interface StudentListPage { items: Student[]; total: number; page: number; pageSize: number }
 export interface StudentExperiment {
     id: number; taskName: string | null; currentStage: number;
@@ -34,7 +34,6 @@ export const teacherApi = {
     list: (search?: string) => request<Teacher[]>(`/api/admin/teachers${search ? `?search=${encodeURIComponent(search)}` : ""}`),
     create: (data: { employeeId: string; name: string }) => request<{ id: number }>("/api/admin/teachers", { method: "POST", body: JSON.stringify(data) }),
     update: (id: number, data: { name: string }) => request<{ success: boolean }>(`/api/admin/teachers/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-    updateStatus: (id: number, status: number) => request<{ success: boolean }>(`/api/admin/teachers/${id}/status`, { method: "PUT", body: JSON.stringify({ status }) }),
     resetPassword: (id: number) => request<{ success: boolean }>(`/api/admin/teachers/${id}/reset-password`, { method: "POST" }),
 };
 export const classApi = {
@@ -45,7 +44,7 @@ export const classApi = {
         return request<Class[]>(`/api/admin/classes${search.size ? `?${search}` : ""}`);
     },
     create: (data: { name: string; semesterId: number; teacherId: number }) => request<{ id: number }>("/api/admin/classes", { method: "POST", body: JSON.stringify(data) }),
-    update: (id: number, data: { name?: string; teacherId?: number }) => request<{ success: boolean }>(`/api/admin/classes/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    update: (id: number, data: { name?: string }) => request<{ success: boolean }>(`/api/admin/classes/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     delete: (id: number) => request<{ success: boolean }>(`/api/admin/classes/${id}`, { method: "DELETE" }),
 };
 export const studentApi = {
@@ -55,16 +54,14 @@ export const studentApi = {
         if (params?.search) search.set("search", params.search);
         return request<Student[]>(`/api/admin/students${search.size ? `?${search}` : ""}`);
     },
-    listPaged: (params: { classId?: string; search?: string; status?: string; page: number; pageSize: number }) => {
+    listPaged: (params: { classId?: string; search?: string; page: number; pageSize: number }) => {
         const search = new URLSearchParams();
         if (params.classId && params.classId !== "all") search.set("class_id", params.classId);
         if (params.search) search.set("search", params.search);
-        if (params.status && params.status !== "all") search.set("status", params.status);
         search.set("page", String(params.page));
         search.set("pageSize", String(params.pageSize));
         return request<StudentListPage>(`/api/admin/students?${search}`);
     },
-    updateStatus: (id: number, status: number) => request<{ success: boolean }>(`/api/admin/students/${id}/status`, { method: "PUT", body: JSON.stringify({ status }) }),
     resetPassword: (id: number) => request<{ success: boolean }>(`/api/admin/students/${id}/reset-password`, { method: "POST" }),
     getExperiments: (id: number) => request<StudentExperiment[]>(`/api/admin/students/${id}/experiments`),
 };

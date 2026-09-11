@@ -115,7 +115,6 @@ const teacherRoutes: RouteDefinition = {
                 id: teacher.id,
                 employeeId: teacher.employeeId,
                 name: teacher.name,
-                status: teacher.status,
                 createdAt: teacher.createdAt,
             })
             .from(teacher)
@@ -140,18 +139,10 @@ const teacherRoutes: RouteDefinition = {
             return error("教师工号或姓名无效", "VALIDATION_ERROR");
         }
         const [duplicateTeacher] = await db
-            .select({ id: teacher.id, status: teacher.status })
+            .select({ id: teacher.id })
             .from(teacher)
             .where(eq(teacher.employeeId, employeeId));
-        if (duplicateTeacher) {
-            return error(
-                duplicateTeacher.status === 0
-                    ? "工号已存在且账号已停用，请在教师列表中重新启用该账号"
-                    : "教师工号已存在",
-                "DUPLICATE_ID",
-                409,
-            );
-        }
+        if (duplicateTeacher) return error("教师工号已存在", "DUPLICATE_ID", 409);
         const [created] = await db
             .insert(teacher)
             .values({ employeeId, name, password: await hashPassword(employeeId) })
@@ -173,23 +164,6 @@ const teacherUpdateRoutes: RouteDefinition = {
             .where(eq(teacher.id, id))
             .returning({ id: teacher.id });
         return updated.length ? json({ success: true }) : error("教师不存在", "NOT_FOUND", 404);
-    },
-};
-
-const teacherStatusRoutes: RouteDefinition = {
-    async PUT(req) {
-        const id = parseId(req);
-        const body = await parseBody<{ status?: number }>(req);
-        if (!id || (body.status !== 0 && body.status !== 1)) return error("无效的教师状态", "VALIDATION_ERROR");
-        const updated = await db.transaction(async tx => {
-            const rows = await tx.update(teacher)
-                .set({ status: body.status, updatedAt: new Date() })
-                .where(eq(teacher.id, id)).returning({ id: teacher.id });
-            if (rows.length && body.status === 0) await clearUserSessionsForUser(TEACHER_USER_TYPE, id, tx);
-            return rows;
-        });
-        if (!updated.length) return error("教师不存在", "NOT_FOUND", 404);
-        return json({ success: true });
     },
 };
 
@@ -261,7 +235,7 @@ const classRoutes: RouteDefinition = {
             return error("班级名称须为1-100个字符，且必须选择有效的学期和教师", "VALIDATION_ERROR");
         }
         const [validSemester] = await db.select({ id: semester.id }).from(semester).where(eq(semester.id, body.semesterId));
-        const [validTeacher] = await db.select({ id: teacher.id }).from(teacher).where(and(eq(teacher.id, body.teacherId), eq(teacher.status, 1)));
+        const [validTeacher] = await db.select({ id: teacher.id }).from(teacher).where(eq(teacher.id, body.teacherId));
         if (!validSemester || !validTeacher) return error("学期或教师不存在", "NOT_FOUND", 404);
         const [created] = await db
             .insert(class_)
@@ -274,44 +248,26 @@ const classRoutes: RouteDefinition = {
 const classUpdateRoutes: RouteDefinition = {
     async PUT(req) {
         const id = parseId(req);
-        const body = await parseBody<{ name?: string; teacherId?: number }>(req);
+        const body = await parseBody<{ name?: string }>(req);
         if (!id) return error("无效的班级ID", "INVALID_ID");
-        const updates: { name?: string; teacherId?: number; updatedAt: Date } = { updatedAt: new Date() };
-        if (body.name !== undefined) {
-            const name = stringValue(body.name).trim();
-            if (!name || name.length > 100) return error("班级名称须为1-100个字符", "VALIDATION_ERROR");
-            updates.name = name;
-        }
-        if (body.teacherId !== undefined) {
-            if (!Number.isInteger(body.teacherId) || body.teacherId <= 0) return error("教师ID无效", "VALIDATION_ERROR");
-            const [validTeacher] = await db.select({ id: teacher.id }).from(teacher).where(and(eq(teacher.id, body.teacherId), eq(teacher.status, 1)));
-            if (!validTeacher) return error("教师不存在", "NOT_FOUND", 404);
-            updates.teacherId = body.teacherId;
-        }
-        const updated = await db.update(class_).set(updates).where(eq(class_.id, id)).returning({ id: class_.id });
+        const name = stringValue(body.name).trim();
+        if (!name || name.length > 100) return error("班级名称须为1-100个字符", "VALIDATION_ERROR");
+        const updated = await db
+            .update(class_)
+            .set({ name, updatedAt: new Date() })
+            .where(eq(class_.id, id))
+            .returning({ id: class_.id });
         return updated.length ? json({ success: true }) : error("班级不存在", "NOT_FOUND", 404);
     },
 
     async DELETE(req) {
         const id = parseId(req);
         if (!id) return error("无效的班级ID", "INVALID_ID");
-        const roster = await db
-            .select({ status: student.status, count: count() })
-            .from(student)
-            .where(eq(student.classId, id))
-            .groupBy(student.status);
-        const studentTotal = roster.reduce((sum, row) => sum + Number(row.count), 0);
-        const disabledTotal = Number(roster.find((row) => row.status === 0)?.count ?? 0);
+        const [students] = await db.select({ count: count() }).from(student).where(eq(student.classId, id));
         const [tasks] = await db.select({ count: count() }).from(task).where(eq(task.classId, id));
-        if (studentTotal > 0 || (tasks?.count ?? 0) > 0) {
+        if ((students?.count ?? 0) > 0 || (tasks?.count ?? 0) > 0) {
             const blockers: string[] = [];
-            if (studentTotal > 0) {
-                blockers.push(
-                    disabledTotal > 0
-                        ? `${studentTotal} 名学生（其中 ${disabledTotal} 名已停用，需先从名单中删除）`
-                        : `${studentTotal} 名学生`,
-                );
-            }
+            if ((students?.count ?? 0) > 0) blockers.push(`${students!.count} 名学生`);
             if ((tasks?.count ?? 0) > 0) blockers.push(`${tasks!.count} 个任务`);
             return error(`班级已有 ${blockers.join("、")}，无法删除`, "CLASS_IN_USE", 409);
         }
@@ -327,10 +283,6 @@ const studentRoutes: RouteDefinition = {
         const classId = rawClassId ? parsePositiveInteger(rawClassId) : null;
         if (rawClassId && !classId) return error("班级筛选无效", "INVALID_PARAM", 400);
         const search = (params.get("search") ?? "").trim().slice(0, 100);
-        const accountStatus = params.get("status") ?? "all";
-        if (!(["all", "normal", "disabled"] as const).includes(accountStatus as "all" | "normal" | "disabled")) {
-            return error("学生状态筛选无效", "INVALID_PARAM", 400);
-        }
         // 兼容：未传分页参数时保持旧版全量数组响应。
         const paged = params.has("page") || params.has("pageSize");
         const pagination = parsePagination(params);
@@ -346,8 +298,6 @@ const studentRoutes: RouteDefinition = {
                 )!,
             );
         }
-        if (accountStatus === "disabled") conditions.push(eq(student.status, 0));
-        if (accountStatus === "normal") conditions.push(eq(student.status, 1));
         const baseQuery = db
             .select({
                 id: student.id,
@@ -355,7 +305,6 @@ const studentRoutes: RouteDefinition = {
                 name: student.name,
                 classId: student.classId,
                 className: class_.name,
-                status: student.status,
                 createdAt: student.createdAt,
             })
             .from(student)
@@ -426,23 +375,6 @@ const studentExperimentsRoutes: RouteDefinition = {
                 }[row.status],
             })),
         );
-    },
-};
-
-const studentStatusRoutes: RouteDefinition = {
-    async PUT(req) {
-        const id = parseId(req);
-        const body = await parseBody<{ status?: number }>(req);
-        if (!id || (body.status !== 0 && body.status !== 1)) return error("无效的学生状态", "VALIDATION_ERROR");
-        const updated = await db.transaction(async tx => {
-            const rows = await tx.update(student)
-                .set({ status: body.status, updatedAt: new Date() })
-                .where(eq(student.id, id)).returning({ id: student.id });
-            if (rows.length && body.status === 0) await clearUserSessionsForUser(STUDENT_USER_TYPE, id, tx);
-            return rows;
-        });
-        if (!updated.length) return error("学生不存在", "NOT_FOUND", 404);
-        return json({ success: true });
     },
 };
 
@@ -564,9 +496,7 @@ export {
     studentExperimentsRoutes,
     studentResetPasswordRoutes,
     studentRoutes,
-    studentStatusRoutes,
     teacherResetPasswordRoutes,
     teacherRoutes,
-    teacherStatusRoutes,
     teacherUpdateRoutes,
 };
