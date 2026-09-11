@@ -256,7 +256,26 @@ export function validateStudyContract(
         if (kind && kind !== "mean" && kind !== "proportion") {
             return `不支持的研究目标类型「${kind}」，请选择均值或比例`;
         }
-        return "请填写完整的研究问题、目标总体、分析单位和对照变量";
+        // 逐项点名缺少的内容：笼统地列四项会让人以为是全部缺失
+        const contractRaw = isRecord(fieldMapping.studyContract) ? fieldMapping.studyContract : null;
+        const contractTarget = isRecord(contractRaw?.target) ? contractRaw.target : null;
+        const missing: string[] = [];
+        if (!contractRaw || contractRaw.version !== 1) missing.push("合同版本");
+        if (!toNonEmptyString(contractRaw?.researchQuestion)) missing.push("研究问题");
+        if (!toNonEmptyString(contractRaw?.targetPopulation)) missing.push("目标总体");
+        if (!toNonEmptyString(contractRaw?.unitOfAnalysis)) missing.push("分析单位");
+        if (!parseTarget(contractRaw?.target)) {
+            if (kind === "proportion") {
+                if (!toNonEmptyString(contractTarget?.field)) missing.push("比例对照变量");
+                else if (!toNonEmptyString(contractTarget?.value)) missing.push("比例对照类别");
+                else missing.push("比例对照变量");
+            } else {
+                missing.push("均值对照变量");
+            }
+        }
+        return missing.length
+            ? `研究合同缺少：${missing.join("、")}`
+            : "研究合同格式无效，请重新保存研究目标与字段";
     }
     if (contract.researchQuestion.length < 5 || contract.researchQuestion.length > 300) {
         return "研究问题长度需在 5-300 字之间";

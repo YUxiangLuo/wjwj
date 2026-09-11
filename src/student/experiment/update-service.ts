@@ -112,6 +112,10 @@ export function buildStageCompletionUpdates(params: {
     }
 
     if (stage === 4) {
+        // 报告只接受富文本 HTML 字符串：结构化对象会被规范化成空内容，报"字数不足"会误导
+        if (payload.reportContent !== undefined && payload.reportContent !== null && typeof payload.reportContent !== "string") {
+            return fail("报告内容格式无效，请重新编辑后再提交", "VALIDATION_ERROR", 400);
+        }
         const reportContent = canonicalizeRichTextHtmlForStorage(payload.reportContent);
         const validationError = validateReportForSubmit(reportContent);
         if (validationError) return fail(validationError);

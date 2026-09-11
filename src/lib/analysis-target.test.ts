@@ -141,7 +141,7 @@ test("resolveStudyContract infers a compatible contract for legacy mappings", ()
 
 test("validateStudyContract enforces completeness, lengths, and legacy consistency", () => {
     expect(validateStudyContract(contractMapping)).toBeNull();
-    expect(validateStudyContract(mapping)).toBe("请填写完整的研究问题、目标总体、分析单位和对照变量");
+    expect(validateStudyContract(mapping)).toBe("研究合同缺少：合同版本、研究问题、目标总体、分析单位、均值对照变量");
     expect(validateStudyContract({
         ...contractMapping,
         studyContract: { ...contractMapping.studyContract, researchQuestion: "太短" },
@@ -153,7 +153,7 @@ test("validateStudyContract enforces completeness, lengths, and legacy consisten
     expect(validateStudyContract({
         ...contractMapping,
         studyContract: { ...contractMapping.studyContract, unitOfAnalysis: "" },
-    })).toBe("请填写完整的研究问题、目标总体、分析单位和对照变量");
+    })).toBe("研究合同缺少：分析单位");
     expect(validateStudyContract({
         ...contractMapping,
         analysisTarget: { kind: "proportion", field: "性别", value: "女" },
@@ -221,5 +221,18 @@ test("an unsupported estimator kind is named instead of reported as missing fiel
     expect(validateStudyContract(legacy)).toBe("不支持的研究目标类型「total」，请选择均值或比例");
 
     const incomplete = { ...mapping, studyContract: undefined, analysisTarget: undefined };
-    expect(validateStudyContract(incomplete)).toBe("请填写完整的研究问题、目标总体、分析单位和对照变量");
+    expect(validateStudyContract(incomplete)).toBe("研究合同缺少：合同版本、研究问题、目标总体、分析单位、均值对照变量");
+
+    // 比例目标漏写类别时点名到具体项，而不是笼统列四项
+    const proportionMissingValue = {
+        ...mapping,
+        studyContract: {
+            version: 1,
+            researchQuestion: "总体中女生占比是多少？",
+            targetPopulation: "全体学生",
+            unitOfAnalysis: "一名学生",
+            target: { kind: "proportion", field: "gender" },
+        },
+    };
+    expect(validateStudyContract(proportionMissingValue)).toBe("研究合同缺少：比例对照类别");
 });

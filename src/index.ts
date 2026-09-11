@@ -1,4 +1,5 @@
 import { serve } from "bun";
+import { routeTableWithMethodNotAllowed } from "./server/route-dispatch";
 import { resolve } from "node:path";
 import adminPage from "./admin/admin.html";
 import teacherPage from "./teacher/teacher.html";
@@ -113,10 +114,11 @@ function secureApiRoutes(routeMap: Record<string, RouteDefinition>) {
   })) as Record<string, RouteDefinition>;
 }
 
-const securedAdminApiRoutes = secureApiRoutes(adminApiRoutes);
-const securedStudentApiRoutes = secureApiRoutes(studentApiRoutes);
-const securedTeacherApiRoutes = secureApiRoutes(teacherApiRoutes);
-const securedDemoApiRoutes = secureApiRoutes(createDemoStudentRoutes(demoMode));
+// 405 instead of 404 when a scripted client uses the wrong method on a real path.
+const securedAdminApiRoutes = routeTableWithMethodNotAllowed(secureApiRoutes(adminApiRoutes));
+const securedStudentApiRoutes = routeTableWithMethodNotAllowed(secureApiRoutes(studentApiRoutes));
+const securedTeacherApiRoutes = routeTableWithMethodNotAllowed(secureApiRoutes(teacherApiRoutes));
+const securedDemoApiRoutes = routeTableWithMethodNotAllowed(secureApiRoutes(createDemoStudentRoutes(demoMode)));
 
 async function faviconRoute(req: Request) {
   if (req.method !== "GET" && req.method !== "HEAD") {

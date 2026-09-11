@@ -140,3 +140,35 @@ test("required stratification blocks a saved plan below H and uses any complete 
             samplingPolicy: { ...samplingPolicy, methods: { ...samplingPolicy.methods, stratified: requirement } } }).ok).toBe(true);
     }
 });
+
+test("a non-string report payload is rejected by type instead of a misleading word-count error", () => {
+    const record = {
+        id: 1, studentId: 2, taskId: 3, version: 4, status: "in_progress" as const,
+        currentStage: 4, questionnaire: null, samplePlan: null, samplingResults: null, reportContent: null,
+        stage1CompletedAt: new Date(), stage2CompletedAt: new Date(), stage3CompletedAt: new Date(), stage4CompletedAt: null,
+        createdAt: new Date(), updatedAt: new Date(), rejectReason: null,
+    };
+    const result = buildStageCompletionUpdates({
+        experimentRecord: record as never,
+        stage: 4,
+        payload: { reportContent: { background: "结构化对象" } },
+        populationSize: 100,
+        deadlinePassed: false,
+        fieldMapping: null,
+        samplingPolicy: null,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.message).toBe("报告内容格式无效，请重新编辑后再提交");
+    // 空内容仍按字数提示，便于学生理解该写什么
+    const empty = buildStageCompletionUpdates({
+        experimentRecord: record as never,
+        stage: 4,
+        payload: { reportContent: "" },
+        populationSize: 100,
+        deadlinePassed: false,
+        fieldMapping: null,
+        samplingPolicy: null,
+    });
+    expect(empty.ok === false && empty.message).toBe("本实验要求报告内容不少于100字");
+});

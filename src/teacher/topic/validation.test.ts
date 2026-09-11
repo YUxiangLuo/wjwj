@@ -311,7 +311,7 @@ describe("topic validation helpers", () => {
         expect(validateTopicFieldMappingConfig({
             ...mapping,
             studyContract: { version: 1, researchQuestion: "短" },
-        })).toBe("请填写完整的研究问题、目标总体、分析单位和对照变量");
+        })).toBe("研究合同缺少：目标总体、分析单位、均值对照变量");
         // 仅有旧版对照变量的历史课题不受影响
         expect(validateTopicFieldMappingConfig({
             ...mapping,
