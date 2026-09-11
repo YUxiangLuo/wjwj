@@ -1,3 +1,4 @@
+import { buildPopulationNumericStats } from "../../domain/statistics/population";
 import { calculateMeanEstimationSampleSize } from "../../student/experiment/sample-plan";
 import { DEMO_CLASS_NAME } from "./seed-identity";
 
@@ -105,9 +106,8 @@ export function allocateIntegerShares(total: number, ratios: readonly number[]):
 }
 
 export function computePpsMeanPlan(population = createPpsPopulation()) {
-    const weeklyHours = population.map((row) => Number(row.每周学习时长));
-    const mean = weeklyHours.reduce((sum, value) => sum + value, 0) / weeklyHours.length;
-    const populationVariance = weeklyHours.reduce((sum, value) => sum + (value - mean) ** 2, 0) / weeklyHours.length;
+    // Same convention as the student-facing population stats (see computeReadingPlan).
+    const populationVariance = buildPopulationNumericStats(population, ["每周学习时长"])["每周学习时长"]!.variance;
     const recommendedSize = calculateMeanEstimationSampleSize({
         confidenceLevel: "95",
         marginOfError: 2,
@@ -118,6 +118,28 @@ export function computePpsMeanPlan(population = createPpsPopulation()) {
     });
     if (recommendedSize === null) {
         throw new Error("Dogfood PPS mean sample plan could not be calculated");
+    }
+    return { recommendedSize, populationVariance };
+}
+
+/**
+ * Reading scenario plan derived from the generated population, so the stored
+ * fixture and the live planning UI cannot disagree about the variance.
+ */
+export function computeReadingPlan(population = createMeanPopulation()) {
+    // Same convention as the student-facing population stats, so the seeded plan
+    // and the live planning screen cannot disagree.
+    const populationVariance = buildPopulationNumericStats(population, ["每周阅读时长"])["每周阅读时长"]!.variance;
+    const recommendedSize = calculateMeanEstimationSampleSize({
+        confidenceLevel: "95",
+        marginOfError: 2,
+        populationSize: population.length,
+        populationVariance,
+        designEffect: 1,
+        nonResponseRate: 0,
+    });
+    if (recommendedSize === null) {
+        throw new Error("Reading scenario sample plan could not be calculated");
     }
     return { recommendedSize, populationVariance };
 }

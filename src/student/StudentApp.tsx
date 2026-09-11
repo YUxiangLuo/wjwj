@@ -104,6 +104,9 @@ function StudentAppContent() {
                             className="h-10 rounded-control px-1 text-navigation-foreground hover:bg-navigation-active hover:text-navigation-active-foreground focus-visible:ring-navigation-foreground focus-visible:ring-offset-navigation"
                             aria-label="打开账户菜单"
                             aria-expanded={showAccountMenu}
+                            // Radix points aria-controls at the popover content, which is
+                            // unmounted while closed; axe flags a dangling reference.
+                            aria-controls={showAccountMenu ? "student-account-menu" : undefined}
                         >
                             <Avatar className="h-9 w-9">
                                 <AvatarFallback className="bg-navigation-active text-navigation-active-foreground" data-testid="student-avatar">
@@ -111,7 +114,7 @@ function StudentAppContent() {
                                 </AvatarFallback>
                             </Avatar>
                         </Button></PopoverTrigger>
-                            <PopoverContent align="end" aria-label="账户操作" className="w-56 overflow-hidden bg-card py-1 text-foreground">
+                            <PopoverContent id="student-account-menu" align="end" aria-label="账户操作" className="w-56 overflow-hidden bg-card py-1 text-foreground">
                                 <div className="border-b border-border px-3 py-2.5">
                                     <p className="text-label font-medium">{currentUser.name}</p>
                                     <p className="mt-1 text-meta text-muted-foreground">{currentUser.studentId}</p>

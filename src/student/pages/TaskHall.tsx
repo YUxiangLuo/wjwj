@@ -135,7 +135,12 @@ interface TaskCardProps {
 
 function TaskCard({ task }: TaskCardProps) {
     const navigate = useNavigate();
-    const status = statusConfig[task.status];
+    // An expired, unfinished task is no longer "in progress" from the student's
+    // point of view, so the badge shows the deadline instead of the stale state.
+    const expired = isDeadlinePassed(task.deadline) && (task.status === "not_started" || task.status === "in_progress");
+    const status = expired
+        ? { label: "已截止", intent: "neutral" as StatusBadgeIntent }
+        : statusConfig[task.status];
     const notOpenYet = isTaskNotOpenYet(task.publishedAt);
     // A stable multiplicative hash varies nearby IDs without changing a topic's
     // decorative color across filtering, reloads or classes.

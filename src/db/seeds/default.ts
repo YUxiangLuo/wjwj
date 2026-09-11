@@ -30,6 +30,7 @@ import { compactSamplingResults } from "../../student/experiment/sampling-storag
 import {
     allocateIntegerShares,
     computePpsMeanPlan,
+    computeReadingPlan,
     createDiningServicePopulation,
     createGraduateIntentionPopulation,
     createMeanPopulation,
@@ -50,6 +51,7 @@ import {
 } from "./dogfood-fixtures";
 import { DEMO_STUDENT_ACCOUNTS } from "./demo-accounts";
 import { buildDefaultSamplingPolicy, type SamplingPolicyV1 } from "../../lib/sampling-policy";
+import { buildPopulationNumericStats } from "../../domain/statistics/population";
 
 const studyQuestionnaire = {
     title: "本科生学习投入调查（受访者视角试填）",
@@ -142,21 +144,12 @@ const learningPlan = {
     recommendedSize: ppsMeanRecommendedSize,
     finalSampleSize: ppsMeanRecommendedSize,
 };
-const calculatedMeanSize = calculateMeanEstimationSampleSize({
-    confidenceLevel: "95",
-    marginOfError: 2,
-    populationSize: 24,
-    populationVariance: 36,
-    designEffect: 1,
-    nonResponseRate: 0,
-});
-if (calculatedMeanSize === null) throw new Error("Dogfood mean sample plan could not be calculated");
-const readingRecommendedSize: number = calculatedMeanSize;
+const { recommendedSize: readingRecommendedSize, populationVariance: readingPopulationVariance } = computeReadingPlan();
 const readingPlan = {
     estimationType: "mean" as const,
     confidenceLevel: "95",
     marginOfError: 2,
-    populationVariance: 36,
+    populationVariance: readingPopulationVariance,
     designEffect: 1,
     nonResponseRate: 0,
     recommendedSize: readingRecommendedSize,
@@ -183,9 +176,7 @@ const graduatePlan = {
 };
 
 const diningPopulationForPlan = createDiningServicePopulation();
-const diningWaitValues = diningPopulationForPlan.map((row) => Number(row.等待分钟));
-const diningWaitMean = diningWaitValues.reduce((sum, value) => sum + value, 0) / diningWaitValues.length;
-const diningWaitVariance = diningWaitValues.reduce((sum, value) => sum + (value - diningWaitMean) ** 2, 0) / (diningWaitValues.length - 1);
+const diningWaitVariance = buildPopulationNumericStats(diningPopulationForPlan, ["等待分钟"])["等待分钟"]!.variance;
 const calculatedDiningSize = calculateMeanEstimationSampleSize({
     confidenceLevel: "95",
     marginOfError: 1.5,
@@ -208,7 +199,7 @@ const diningPlan = {
 };
 
 const reportContent = `<h2>实验目的</h2><p>本实验属于「2026 校园学习与生活状况调查」，对照虚拟总体中每周学习时长的均值，比较四种抽样设计。问卷阶段是受访者视角试填，答案不进入估计。</p><h2>方法与结果</h2><p>在百分之九十五置信水平和绝对误差限 2 下确定样本量，分别使用简单随机、系统、PPS 和分层抽样。PPS 使用月生活费作为规模变量，避免与对照变量循环。对不同方法的样本构成、每周学习时长与总体分布进行了比较，并记录随机种子以保证结果可复现。</p><h2>结论</h2><p>分层抽样能够稳定保持各层比例，简单随机抽样实现方便。实际调查中应结合总体结构、抽样框质量和执行成本选择方法，同时完整说明误差限和无回答率假设。</p>`;
-const readingReportContent = `<h2>实验目的</h2><p>本实验以每周阅读时长的均值为估计目标，使用总体方差估计、绝对误差限和有限总体校正确定样本量，并比较可执行抽样方法的结果。</p><h2>方法与结果</h2><p>总体中每周阅读时长包含零值，且没有其他对每个单位都为正数的数值字段，因此不存在合格的 PPS 规模变量。实验模板按规则将 PPS 设为不适用，随后完成简单随机、系统和按学院分层抽样。</p><h2>结论</h2><p>均值估计流程使用样本量 15。三种启用方法均保留随机种子和完整样本行；PPS 未启用是由总体数据条件决定的有效策略，而不是执行失败。分析时应明确记录这一限制，避免为完成形式而选用不满足正值条件的规模变量。</p>`;
+const readingReportContent = `<h2>实验目的</h2><p>本实验以每周阅读时长的均值为估计目标，使用总体方差估计、绝对误差限和有限总体校正确定样本量，并比较可执行抽样方法的结果。</p><h2>方法与结果</h2><p>总体中每周阅读时长包含零值，且没有其他对每个单位都为正数的数值字段，因此不存在合格的 PPS 规模变量。实验模板按规则将 PPS 设为不适用，随后完成简单随机、系统和按学院分层抽样。</p><h2>结论</h2><p>均值估计流程使用样本量 ${readingRecommendedSize}。三种启用方法均保留随机种子和完整样本行；PPS 未启用是由总体数据条件决定的有效策略，而不是执行失败。分析时应明确记录这一限制，避免为完成形式而选用不满足正值条件的规模变量。</p>`;
 const graduateReportContent = `<h2>研究问题</h2><p>本研究估计某综合大学本届毕业生中计划直接就业的学生比例，分析单位为一名毕业生。</p><h2>抽样设计</h2><p>以学院进行分层，并使用求职准备度作为 PPS 规模变量。目标类别属于分类变量，因此样本量规划采用最保守比例方差，误差限按百分点解释。</p><h2>结果解释</h2><p>比较四种抽样方法的直接就业比例、设计标准误与总体已知比例。结果仅代表该虚拟总体和当前抽样设计，不应外推到其他学校或毕业年份。</p>`;
 const diningReportContent = `<h2>研究问题</h2><p>本研究估计校园食堂工作日午间高峰服务时段的平均等待分钟数，分析单位是一个十五分钟服务时段，而不是一名学生。</p><h2>抽样设计</h2><p>按校区分层，并以客流量作为 PPS 规模变量，比较简单随机、系统、PPS 与分层抽样。</p><h2>结果解释</h2><p>等待时间会同时受到时段、客流量和开放窗口数影响。单次样本的均值差异不能直接解释为食堂服务质量的因果差异。</p>`;
 

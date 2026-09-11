@@ -29,6 +29,7 @@ let mockExperimentContext: {
     populationSize: number;
     experiment: Record<string, unknown> | null;
     completeStage: (stage: number, data: Record<string, unknown>) => Promise<boolean>;
+    reloadLatestVersion: () => Promise<void>;
 };
 
 mock.module("../ExperimentLayout", () => ({
@@ -131,6 +132,7 @@ beforeEach(() => {
             samplingResults: null,
         },
         completeStage: async () => true,
+        reloadLatestVersion: async () => undefined,
     };
 });
 
@@ -290,4 +292,35 @@ test("SamplingExecution feeds the research target into Neyman allocation", async
     fireEvent.click(neyman);
     expect((view.getByRole("spinbutton", { name: "A层样本数" }) as HTMLInputElement).value).toBe("3");
     expect((view.getByRole("spinbutton", { name: "B层样本数" }) as HTMLInputElement).value).toBe("27");
+});
+
+test("SamplingExecution turns a stale-stage rejection into a refresh path", async () => {
+    mockExperimentApi.executeSampling.mockResolvedValueOnce({
+        success: false,
+        error: { code: "INVALID_STAGE_ORDER", message: "当前不能执行抽样" },
+    } as never);
+    const view = render(<SamplingExecution onPrev={() => undefined} />);
+    await waitFor(() => expect(mockExperimentApi.getStats).toHaveBeenCalled());
+
+    fireEvent.click(view.getByTestId("student-sampling-simple-run"));
+
+    // A passing toast would leave the student on the stale page with no way out.
+    await waitFor(() => expect(view.getByTestId("student-sampling-stale-notice")).toBeTruthy());
+    expect(view.getByTestId("student-sampling-stale-notice").textContent).toContain("当前不能执行抽样");
+    fireEvent.click(view.getByTestId("student-sampling-load-latest"));
+    await waitFor(() => expect(view.queryByTestId("student-sampling-stale-notice")).toBeNull());
+});
+
+test("SamplingExecution keeps a plain failure as a toast instead of a stale notice", async () => {
+    mockExperimentApi.executeSampling.mockResolvedValueOnce({
+        success: false,
+        error: { code: "SAMPLING_METHOD_DISABLED", message: "该抽样方法未在本实验模板中启用" },
+    } as never);
+    const view = render(<SamplingExecution onPrev={() => undefined} />);
+    await waitFor(() => expect(mockExperimentApi.getStats).toHaveBeenCalled());
+
+    fireEvent.click(view.getByTestId("student-sampling-simple-run"));
+
+    await waitFor(() => expect(mockExperimentApi.executeSampling).toHaveBeenCalled());
+    expect(view.queryByTestId("student-sampling-stale-notice")).toBeNull();
 });

@@ -14,8 +14,9 @@ import {
     topicAttachment,
 } from "../schema";
 import { parseSpreadsheetFile } from "../../lib/spreadsheet";
+import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize } from "../../student/experiment/sample-plan";
 import { resolveStoragePath } from "../../server/storage-files";
-import { getPpsEligibleNumericFields, parseTopicFieldMapping } from "@/domain/statistics/population";
+import { buildPopulationNumericStats, getPpsEligibleNumericFields, parseTopicFieldMapping } from "@/domain/statistics/population";
 import { validateReportForSubmit } from "../../student/experiment/submit-validation";
 import { buildTaskProgressSnapshot } from "../../teacher/topic/task-progress";
 import {
@@ -124,6 +125,7 @@ async function verify() {
             results: experiment.samplingResults,
             reportContent: experiment.reportContent,
             snapshot: experiment.submissionSnapshot,
+            samplePlan: experiment.samplePlan,
         })
         .from(experiment)
         .innerJoin(student, eq(experiment.studentId, student.id))
@@ -245,6 +247,74 @@ async function verify() {
         `P2604|${DOGFOOD_NAMES.topicD}`,
     ].sort();
     check(JSON.stringify(visibleKeys) === JSON.stringify(expectedVisible), `Visible grading fixtures differ: ${JSON.stringify(visibleKeys)}`);
+
+    // The seeded plans must agree with the seeded populations: a hardcoded
+    // variance used to disagree with the generated file and no gate noticed.
+    const planRows = authoritative.filter((row) => row.samplePlan && typeof row.samplePlan === "object");
+    check(planRows.length > 0, "No authoritative experiment carries a sample plan");
+    const planPopulationCache = new Map<string, ReturnType<typeof parseSpreadsheetFile> extends Promise<infer T> ? T : never>();
+    for (const row of planRows) {
+        const plan = row.samplePlan as Record<string, unknown>;
+        const [storedTopic] = await db
+            .select({ path: topic.excelFilePath, mapping: topic.fieldMapping })
+            .from(topic)
+            .where(eq(topic.name, row.topicName));
+        check(storedTopic?.path, `${row.topicName} has no population file for its sample plan`);
+        let parsed = planPopulationCache.get(storedTopic.path);
+        if (!parsed) {
+            const file = Bun.file(resolveStoragePath(storedTopic.path));
+            parsed = await parseSpreadsheetFile(await file.arrayBuffer(), storedTopic.path);
+            planPopulationCache.set(storedTopic.path, parsed);
+        }
+        const mapping = parseTopicFieldMapping(storedTopic.mapping);
+        const targetField = mapping?.analysisTarget?.field;
+        check(targetField, `${row.topicName} sample plan target field is missing`);
+        const label = `${row.studentId}/${row.topicName} sample plan`;
+        const populationSize = parsed.rowCount;
+
+        if (plan.estimationType === "mean") {
+            // Reuse the production helper so the check cannot invent a third convention.
+            const stats = buildPopulationNumericStats(parsed.rows, [targetField])[targetField];
+            check(stats && stats.count > 1, `${row.topicName} sample plan target has no numeric rows`);
+            const populationVariance = stats.variance;
+            const storedVariance = Number(plan.populationVariance);
+            check(Number.isFinite(storedVariance), `${label} has no population variance`);
+            check(
+                Math.abs(storedVariance - populationVariance) < 1e-6,
+                `${label} variance differs from the population file: stored=${storedVariance} file=${populationVariance}`,
+            );
+            const expectedSize = calculateMeanEstimationSampleSize({
+                confidenceLevel: String(plan.confidenceLevel) as "95",
+                marginOfError: Number(plan.marginOfError),
+                populationSize,
+                populationVariance,
+                designEffect: Number(plan.designEffect ?? 1),
+                nonResponseRate: Number(plan.nonResponseRate ?? 0),
+            });
+            check(expectedSize !== null, `${label} could not be recomputed`);
+            check(
+                Number(plan.recommendedSize) === expectedSize,
+                `${label} recommended size differs from the population file: stored=${plan.recommendedSize} expected=${expectedSize}`,
+            );
+        } else {
+            const expectedSize = calculateFinitePopulationSampleSize({
+                confidenceLevel: String(plan.confidenceLevel) as "95",
+                marginOfError: Number(plan.marginOfError),
+                populationSize,
+                designEffect: Number(plan.designEffect ?? 1),
+                nonResponseRate: Number(plan.nonResponseRate ?? 0),
+            });
+            check(expectedSize !== null, `${label} could not be recomputed`);
+            check(
+                Number(plan.recommendedSize) === expectedSize,
+                `${label} recommended size differs from the population file: stored=${plan.recommendedSize} expected=${expectedSize}`,
+            );
+        }
+        check(
+            Number(plan.finalSampleSize) >= Number(plan.recommendedSize) && Number(plan.finalSampleSize) <= populationSize,
+            `${label} final sample size is out of range`,
+        );
+    }
 
     const storedTopics = await db
         .select({ name: topic.name, path: topic.excelFilePath, rowCount: topic.excelRowCount, fieldMapping: topic.fieldMapping, samplingPolicy: topic.samplingPolicy })

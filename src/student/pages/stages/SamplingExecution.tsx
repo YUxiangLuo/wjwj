@@ -93,7 +93,8 @@ function RequirementLabel({ value }: { value: SamplingMethodRequirement }) {
 }
 
 export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
-    const { populationSize, experiment, completeStage } = useExperiment();
+    const { populationSize, experiment, completeStage, reloadLatestVersion } = useExperiment();
+    const [staleNotice, setStaleNotice] = useState<string | null>(null);
     const samplingPolicy = resolveSamplingPolicy(experiment?.samplingPolicy);
     const enabledMethods = (Object.keys(samplingPolicy.methods) as PolicySamplingMethod[])
         .filter((method) => samplingPolicy.methods[method] !== "disabled");
@@ -212,6 +213,16 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
             : null;
     };
 
+
+    /** Server-side stage/version conflicts need a way forward, not a passing toast. */
+    const reportSamplingFailure = (errorCode: string | undefined, message: string | undefined, fallback: string) => {
+        if (errorCode === "INVALID_STAGE_ORDER" || errorCode === "VERSION_CONFLICT") {
+            setStaleNotice(message ?? "检测到其他页面已更新，请加载最新版本后重试。");
+            return;
+        }
+        toast.error(message || fallback);
+    };
+
     const parseSeed = useCallback((seedText: string): { seed: number | undefined; error: string | null } => {
         const trimmed = seedText.trim();
         if (!trimmed) return { seed: undefined, error: null };
@@ -245,7 +256,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 setAnimationSampledData({ data: dataArr, total: nextSimple.sampleCount ?? dataArr.length });
                 if (showAnimation) setAnimatingMethod("simple");
             } else {
-                toast.error(res.error?.message || "简单随机抽样执行失败");
+                reportSamplingFailure(res.error?.code, res.error?.message, "简单随机抽样执行失败");
                 setAnimatingMethod(null);
             }
         } catch (e) {
@@ -276,7 +287,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 setAnimationSampledData({ data: dataArr, total: nextSystematic.sampleCount ?? dataArr.length });
                 if (showAnimation) setAnimatingMethod("systematic");
             } else {
-                toast.error(res.error?.message || "系统抽样执行失败");
+                reportSamplingFailure(res.error?.code, res.error?.message, "系统抽样执行失败");
                 setAnimatingMethod(null);
             }
         } catch (e) {
@@ -309,7 +320,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 setAnimationSampledData({ data: dataArr, total: nextPps.sampleCount ?? dataArr.length });
                 if (showAnimation) setAnimatingMethod("pps");
             } else {
-                toast.error(res.error?.message || "PPS抽样执行失败");
+                reportSamplingFailure(res.error?.code, res.error?.message, "PPS抽样执行失败");
                 setAnimatingMethod(null);
             }
         } catch (e) {
@@ -469,6 +480,26 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 <TabsContent value="simple" className="mt-0 focus-visible:outline-none">
                     <div className="min-w-0 space-y-4">
                         <div className="min-w-0 space-y-4">
+                            {staleNotice && (
+                                <div
+                                    role="alert"
+                                    data-testid="student-sampling-stale-notice"
+                                    className="flex flex-wrap items-center justify-between gap-3 rounded-surface border border-warning-border bg-warning-muted p-4 text-label text-warning"
+                                >
+                                    <span>{staleNotice}</span>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        data-testid="student-sampling-load-latest"
+                                        onClick={() => { setStaleNotice(null); void reloadLatestVersion(); }}
+                                        className="border-warning-border bg-background text-warning hover:bg-warning-muted hover:text-warning"
+                                    >
+                                        <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                                        加载最新版本
+                                    </Button>
+                                </div>
+                            )}
                             <Card className="gap-0 rounded-surface border-border bg-card py-0">
                                 <CardHeader className="flex flex-wrap items-center justify-between gap-4 p-5">
                                     <div className="min-w-0 flex-1 basis-80 space-y-2">

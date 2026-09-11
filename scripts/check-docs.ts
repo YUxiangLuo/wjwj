@@ -1,5 +1,4 @@
-import { calculateMeanEstimationSampleSize } from "../src/student/experiment/sample-plan";
-import { computePpsMeanPlan, DOGFOOD_COUNTS, DOGFOOD_MAIN_TASK_PROGRESS, DOGFOOD_NAMES } from "../src/db/seeds/dogfood-fixtures";
+import { computePpsMeanPlan, computeReadingPlan, DOGFOOD_COUNTS, DOGFOOD_MAIN_TASK_PROGRESS, DOGFOOD_NAMES } from "../src/db/seeds/dogfood-fixtures";
 
 /**
  * 文档一致性检查：README.md / DATABASE.md 中的 fixture 描述必须与默认 seed 同源。
@@ -10,15 +9,7 @@ const readme = await Bun.file("README.md").text();
 const database = await Bun.file("DATABASE.md").text();
 
 const mainTaskRecommendedSize = computePpsMeanPlan().recommendedSize;
-const meanTaskSize = calculateMeanEstimationSampleSize({
-    confidenceLevel: "95",
-    marginOfError: 2,
-    populationSize: 24,
-    populationVariance: 36,
-    designEffect: 1,
-    nonResponseRate: 0,
-});
-if (meanTaskSize === null) throw new Error(`无法计算「${DOGFOOD_NAMES.topicB}」任务的 fixture 样本量`);
+const meanTaskSize = computeReadingPlan().recommendedSize;
 
 const requiredReadmeFragments = [
     `${DOGFOOD_COUNTS.admin} 管理员、${DOGFOOD_COUNTS.teacher} 教师、${DOGFOOD_COUNTS.semester} 学期、${DOGFOOD_COUNTS.class} 班级、${DOGFOOD_COUNTS.student} 学生、${DOGFOOD_COUNTS.topic} 实验模板、${DOGFOOD_COUNTS.task} 实验任务、${DOGFOOD_COUNTS.experiment} 学生实验`,

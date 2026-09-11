@@ -1,9 +1,13 @@
+import { buildPopulationNumericStats } from "../../domain/statistics/population";
 import { expect, test } from "bun:test";
 import {
     allocateIntegerShares,
     computePpsMeanPlan,
+    computeReadingPlan,
     createDiningServicePopulation,
     createGraduateIntentionPopulation,
+    createMeanPopulation,
+    createPpsPopulation,
 } from "./dogfood-fixtures";
 
 test("allocateIntegerShares preserves the total with largest remainder", () => {
@@ -11,10 +15,24 @@ test("allocateIntegerShares preserves the total with largest remainder", () => {
     expect(allocateIntegerShares(15, [1 / 3, 1 / 3, 1 / 3])).toEqual([5, 5, 5]);
 });
 
-test("computePpsMeanPlan matches the mean formula for the PPS population", () => {
+test("computePpsMeanPlan matches the student-facing population variance", () => {
     const plan = computePpsMeanPlan();
     expect(plan.recommendedSize).toBe(49);
-    expect(plan.populationVariance).toBeCloseTo(66.7924, 6);
+    // Same convention as buildPopulationNumericStats (÷(N−1)); a different
+    // divisor here would make the seeded plan disagree with the planning screen.
+    expect(plan.populationVariance).toBeCloseTo(
+        buildPopulationNumericStats(createPpsPopulation(), ["每周学习时长"])["每周学习时长"]!.variance,
+        9,
+    );
+});
+
+test("computeReadingPlan matches the student-facing population variance", () => {
+    const plan = computeReadingPlan();
+    expect(plan.recommendedSize).toBe(9);
+    expect(plan.populationVariance).toBeCloseTo(
+        buildPopulationNumericStats(createMeanPopulation(), ["每周阅读时长"])["每周阅读时长"]!.variance,
+        9,
+    );
 });
 
 test("the compatibility populations represent proportion and non-person service research", () => {

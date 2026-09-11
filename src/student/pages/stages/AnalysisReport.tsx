@@ -634,7 +634,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
                                 <TabsContent value="error" data-testid="student-analysis-error-chart">
                                     <ChartTabPanel
-                                        description={`利用完整虚拟总体比较已完成方法的设计标准误：简单随机和分层采用设计公式，系统抽样枚举随机起点，${hasPpsCompleted ? ppsStandardErrorDescription : ""}这些结果不是现实调查中仅凭当前样本直接得到的标准误。`}
+                                        description={`利用完整虚拟总体比较已完成方法的设计标准误：简单随机和分层采用设计公式，系统抽样枚举随机起点，${hasPpsCompleted ? ppsStandardErrorDescription : ""}这些结果不是现实调查中仅凭当前样本直接得到的标准误。注意口径：规划阶段填写的总体方差来自总体文件（按 N−1 计算，描述总体离散程度），这里的标准误则用本次样本的样本方差估计总体方差（按 n−1 计算），两者数值不同属正常。`}
                                         rows={errorRows}
                                         series={errorSeries}
                                         emptyMessage="暂无可用于误差分析的数值字段"
