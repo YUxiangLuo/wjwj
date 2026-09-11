@@ -34,7 +34,6 @@ export function TargetMetricsPanel({ target, methods = Object.keys(METHOD_META) 
             <div className="min-w-0 space-y-2">
                 <h2 className="text-section-title font-semibold text-foreground">研究目标结果</h2>
                 <p className="text-label text-muted-foreground">{target.plannedMarginOfError !== null ? <>本次规划误差半宽：<strong className="font-semibold text-foreground">{formatMargin(target.plannedMarginOfError)}</strong></> : "本次尚未设置可比较的规划误差半宽"}</p>
-                <p className="text-meta text-muted-foreground" data-testid="student-target-margin-caveat">教学误差半宽 = z × 设计标准误。半宽达标只说明这次达到规划精度，不能单独证明某种方法更好。{systematicMuchTighter ? <span data-testid="student-target-systematic-caveat"> 系统抽样半宽更小通常来自总体当前排序，不能推广成「系统抽样总是更准」。</span> : null}</p>
             </div>
             <div className="shrink-0 rounded-surface border border-primary-border bg-primary-muted px-4 py-3">
                 <p className="text-meta text-muted-foreground">虚拟总体真值 · 用于教学对照</p>
@@ -69,6 +68,7 @@ export function TargetMetricsPanel({ target, methods = Object.keys(METHOD_META) 
                 </tbody>
             </table>
         </div>
+        <p className="text-meta text-muted-foreground" data-testid="student-target-margin-caveat">教学误差半宽 = z × 设计标准误。半宽达标只说明这次达到规划精度，不能单独证明某种方法更好。{systematicMuchTighter ? <span data-testid="student-target-systematic-caveat"> 系统抽样半宽更小通常来自总体排序，不能推广成「系统抽样总是更准」。</span> : null}</p>
         {target.contract.inferred && <p className="text-meta leading-relaxed text-muted-foreground">当前研究目标由对照变量推断：{contract.researchQuestion}</p>}
         <details className="rounded-surface border border-border bg-background p-4">
             <summary className="cursor-pointer text-label font-semibold text-foreground">查看标准误、等效样本量与近似条件</summary>
