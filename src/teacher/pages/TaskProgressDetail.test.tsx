@@ -99,3 +99,26 @@ test("a failed load surfaces the error and retry refetches", async () => {
     await waitFor(() => expect(view.getByText("咖啡馆")).toBeTruthy());
     expect(getTaskProgress).toHaveBeenCalledTimes(2);
 });
+
+test("surfaces students whose required PPS was skipped because the data cannot support it", async () => {
+    getTaskProgress.mockResolvedValueOnce({
+        success: true,
+        data: {
+            ...progress,
+            ppsUnavailable: { count: 2, students: [{ studentId: "S1", name: "甲" }, { studentId: "S2", name: "乙" }] },
+        },
+    });
+    const view = renderAt("5");
+
+    await waitFor(() => expect(view.getByTestId("teacher-progress-pps-unavailable")).toBeTruthy());
+    expect(view.getByTestId("teacher-progress-pps-unavailable").textContent).toContain("2 名学生");
+    expect(view.getByTestId("teacher-progress-pps-unavailable").textContent).toContain("甲");
+});
+
+test("keeps the page free of a PPS notice when nothing was skipped", async () => {
+    getTaskProgress.mockResolvedValueOnce({ success: true, data: { ...progress, ppsUnavailable: { count: 0, students: [] } } });
+    const view = renderAt("5");
+
+    await waitFor(() => expect(view.getByText("咖啡馆")).toBeTruthy());
+    expect(view.queryByTestId("teacher-progress-pps-unavailable")).toBeNull();
+});

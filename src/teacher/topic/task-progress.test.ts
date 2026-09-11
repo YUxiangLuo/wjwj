@@ -14,3 +14,22 @@ test("buildTaskProgressSnapshot classifies the single experiment record", () => 
     expect(result.students.map((student) => student.status)).toEqual(["not_started", "stage2", "submitted", "graded", "rejected"]);
     expect(result.students[2]?.submissionId).toBe(12);
 });
+
+test("progress flags students whose required PPS was skipped as unusable", () => {
+    const snapshot = buildTaskProgressSnapshot([
+        { studentId: "S1", name: "甲", experimentId: 9, currentStage: 4, experimentStatus: "in_progress", lastActivity: null, samplingResults: { simple: { completed: true }, pps: { unavailable: true, unavailableReason: "no_eligible_size_field" } } },
+        { studentId: "S2", name: "乙", experimentId: 10, currentStage: 4, experimentStatus: "submitted", lastActivity: null, samplingResults: { simple: { completed: true }, pps: { completed: true } } },
+        { studentId: "S3", name: "丙", experimentId: null, currentStage: null, experimentStatus: null, lastActivity: null },
+    ]);
+
+    expect(snapshot.ppsUnavailable).toEqual({ count: 1, students: [{ studentId: "S1", name: "甲" }] });
+    expect(snapshot.counts.stage4).toBe(1);
+});
+
+test("progress reports no skipped PPS when every result is usable", () => {
+    const snapshot = buildTaskProgressSnapshot([
+        { studentId: "S2", name: "乙", experimentId: 10, currentStage: 4, experimentStatus: "graded", lastActivity: null, samplingResults: { pps: { completed: true } } },
+    ]);
+
+    expect(snapshot.ppsUnavailable).toEqual({ count: 0, students: [] });
+});

@@ -89,8 +89,23 @@ export function TaskProgressDetail() {
     if (loading) return <div role="status" aria-live="polite" className="p-12 text-center text-muted-foreground">加载中...</div>;
     if (!data) return <div className="p-12 text-center text-muted-foreground">未找到任务</div>;
 
+    const ppsUnavailable = data.ppsUnavailable;
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
+            {ppsUnavailable && ppsUnavailable.count > 0 && (
+                <div
+                    role="status"
+                    data-testid="teacher-progress-pps-unavailable"
+                    className="rounded-surface border border-warning-border bg-warning-muted p-4 text-label text-warning"
+                >
+                    <p className="font-medium">有 {ppsUnavailable.count} 名学生的 PPS 因总体数据不可用而被跳过</p>
+                    <p className="mt-1">
+                        该任务的总体没有每一行都为正数的非目标数值列，学生的 PPS 按“不适用”处理（{ppsUnavailable.students.map((item) => item.name).join("、")}）。
+                        模板发布后不可修改；如需真正执行 PPS，请更换总体数据或复制为新模板后重新发布。
+                    </p>
+                </div>
+            )}
             <div className="flex items-center gap-4">
                 <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-muted" onClick={() => navigate("/task")}>
                     <ArrowLeft className="w-4 h-4 mr-1" />

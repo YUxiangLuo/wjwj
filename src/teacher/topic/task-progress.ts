@@ -7,6 +7,15 @@ export interface TeacherTaskProgressStudentRow {
     currentStage: number | null;
     experimentStatus: ExperimentStatus | null;
     lastActivity: Date | null;
+    /** Stored sampling results, used to surface a skipped-because-unusable PPS. */
+    samplingResults?: unknown;
+}
+
+/** True when the server recorded that this population has no eligible PPS size field. */
+export function hasUnavailablePpsResult(samplingResults: unknown) {
+    if (!samplingResults || typeof samplingResults !== "object") return false;
+    const pps = (samplingResults as { pps?: { unavailable?: boolean } }).pps;
+    return pps?.unavailable === true;
 }
 
 export function buildTaskProgressSnapshot(students: TeacherTaskProgressStudentRow[]) {
@@ -55,5 +64,11 @@ export function buildTaskProgressSnapshot(students: TeacherTaskProgressStudentRo
         };
     });
 
-    return { counts, students: list };
+    // A required PPS that the population cannot support is degraded for the
+    // student; the teacher still needs to know their intent was not executed.
+    const ppsUnavailableStudents = students
+        .filter((student) => student.experimentId && hasUnavailablePpsResult(student.samplingResults))
+        .map((student) => ({ studentId: student.studentId, name: student.name }));
+
+    return { counts, students: list, ppsUnavailable: { count: ppsUnavailableStudents.length, students: ppsUnavailableStudents } };
 }

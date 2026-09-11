@@ -128,6 +128,7 @@ export async function getTeacherTaskProgress(taskId: number, teacherId: number) 
             currentStage: experiment.currentStage,
             experimentStatus: experiment.status,
             lastActivity: experiment.updatedAt,
+            samplingResults: experiment.samplingResults,
         })
         .from(student)
         .leftJoin(experiment, and(eq(experiment.studentId, student.id), eq(experiment.taskId, taskId)))
@@ -140,5 +141,6 @@ export async function getTeacherTaskProgress(taskId: number, teacherId: number) 
         task: { topicName: taskRow.topicName, className: taskRow.className, deadline: taskRow.deadline },
         counts: snapshot.counts,
         students: snapshot.students,
+        ppsUnavailable: snapshot.ppsUnavailable,
     };
 }
