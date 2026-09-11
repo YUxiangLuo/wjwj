@@ -148,7 +148,7 @@ describe("topic validation helpers", () => {
         expect(validateIdentifierFieldValues([{ id: "001" }, { id: "" }], "id"))
             .toBe("标识符字段 id 在数据第2行存在空值");
         expect(validateIdentifierFieldValues([{ id: "A1" }, { id: "Ａ1" }], "id"))
-            .toBe("标识符字段 id 在数据第2行与第1行重复");
+            .toBe("标识符字段 id 在数据第 2 行与第 1 行重复（忽略大小写）");
         expect(validateIdentifierFieldValues([{ id: "001" }, { id: "002" }], "id")).toBeNull();
     });
 
@@ -373,4 +373,51 @@ describe("topic validation helpers", () => {
         expect(validateTopicName("x".repeat(201))).toBe("实验模板名称不能超过200字");
         expect(validateTopicName("课题A")).toBeNull();
     });
+});
+
+test("identifier duplicates ignore case, matching the platform's identity semantics", () => {
+    const rows = [{ 编号: "R001" }, { 编号: "r001" }];
+    expect(validateIdentifierFieldValues(rows, "编号")).toBe("标识符字段 编号 在数据第 2 行与第 1 行重复（忽略大小写）");
+    expect(validateIdentifierFieldValues([{ 编号: "R001" }, { 编号: "R002" }], "编号")).toBeNull();
+});
+
+test("numeric validation accepts the text forms a spreadsheet export can carry", () => {
+    expect(validateNumericFieldValues([{ 值: "１２３" }], ["值"])).toBeNull();
+    expect(validateNumericFieldValues([{ 值: "1,234.5" }], ["值"])).toBeNull();
+    expect(validateNumericFieldValues([{ 值: "1,23" }], ["值"])).toContain("空值或非数值");
+    expect(validateNumericFieldValues([{ 值: "abc" }], ["值"])).toContain("空值或非数值");
+});
+
+test("publish readiness rejects a required PPS when no numeric column is all positive", () => {
+    const fieldMapping = {
+        identifier: "编号",
+        numeric: ["得分", "规模"],
+        stratified: ["组别"],
+        others: [],
+        analysisTarget: { kind: "mean", field: "得分" },
+        studyContract: {
+            version: 1,
+            researchQuestion: "总体中得分的平均水平是多少？",
+            targetPopulation: "全体单位",
+            unitOfAnalysis: "一个单位",
+            target: { kind: "mean", field: "得分" },
+        },
+    };
+    const base = {
+        excelFilePath: "/storage/uploads/topic.csv",
+        fieldMapping,
+        weightConfig: { questionnaire: 30, process: 30, report: 40 },
+    };
+    const policy = (pps: "required" | "optional") => ({ version: 1, methods: { simple: "required", systematic: "optional", pps, stratified: "optional" } });
+    const rowsWithZero = [{ 编号: "1", 得分: 10, 规模: 0 }, { 编号: "2", 得分: 20, 规模: 5 }];
+
+    // Field existence alone passed before; the value-level gate now rejects it.
+    expect(validateTopicPublishReadiness({ ...base, samplingPolicy: policy("required") })).toBeNull();
+    expect(validateTopicPublishReadiness({ ...base, samplingPolicy: policy("required"), rows: rowsWithZero }))
+        .toContain("没有合格的 PPS 规模变量");
+    expect(validateTopicPublishReadiness({
+        ...base,
+        samplingPolicy: policy("required"),
+        rows: [{ 编号: "1", 得分: 10, 规模: 3 }, { 编号: "2", 得分: 20, 规模: 5 }],
+    })).toBeNull();
 });

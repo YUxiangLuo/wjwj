@@ -6,9 +6,9 @@ import { getSamplingAcceptedRange } from "./sampling-tolerance";
 import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize } from "./sample-plan";
 import { parseAdvancedPlans, validateAdvancedPlanConsistency } from "./advanced-plan";
 import {
+    applyPpsAvailability,
     evaluateSamplingPolicy,
     isCompletedSamplingResult,
-    resolveSamplingPolicy,
     type SamplingMethod,
 } from "../../lib/sampling-policy";
 
@@ -223,7 +223,9 @@ export function validateSamplingResultsForSubmit(
         pps,
         stratified,
     };
-    const policy = resolveSamplingPolicy(samplingPolicy);
+    // Same degradation as the stage-completion gate: an unusable PPS size field
+    // must not make submission impossible.
+    const policy = applyPpsAvailability(samplingPolicy, data);
     const completedMethods = (Object.keys(byMethod) as SamplingMethod[])
         .filter((method) => policy.methods[method] !== "disabled" && isCompletedSamplingResult(byMethod[method]));
     const progress = evaluateSamplingPolicy(policy, completedMethods);

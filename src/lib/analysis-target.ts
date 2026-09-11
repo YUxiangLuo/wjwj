@@ -247,7 +247,17 @@ export function validateStudyContract(
 ): string | null {
     if (!isRecord(fieldMapping)) return "字段映射格式无效";
     const contract = parseStudyContract(fieldMapping);
-    if (!contract) return "请填写完整的研究问题、目标总体、分析单位和对照变量";
+    if (!contract) {
+        // Name an unsupported estimator instead of echoing the missing fields.
+        const rawTarget = isRecord(fieldMapping.studyContract) && isRecord(fieldMapping.studyContract.target)
+            ? fieldMapping.studyContract.target as Record<string, unknown>
+            : isRecord(fieldMapping.analysisTarget) ? fieldMapping.analysisTarget as Record<string, unknown> : null;
+        const kind = rawTarget && typeof rawTarget.kind === "string" ? rawTarget.kind : null;
+        if (kind && kind !== "mean" && kind !== "proportion") {
+            return `不支持的研究目标类型「${kind}」，请选择均值或比例`;
+        }
+        return "请填写完整的研究问题、目标总体、分析单位和对照变量";
+    }
     if (contract.researchQuestion.length < 5 || contract.researchQuestion.length > 300) {
         return "研究问题长度需在 5-300 字之间";
     }

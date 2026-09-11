@@ -1,5 +1,8 @@
+import { getPpsEligibleNumericFields } from "@/domain/statistics/population";
 import { parseStudyContract, resolveAnalysisTarget, validateAnalysisTarget, validateStudyContract } from "../../lib/analysis-target";
 import { buildDefaultSamplingPolicy, resolveSamplingPolicy, validateSamplingPolicy } from "../../lib/sampling-policy";
+import { identityKey, normalizeIdentityText } from "../../lib/identity-text";
+import { isNumericText } from "../../lib/numeric-text";
 import { isRowEmpty } from "./file-utils";
 
 interface ParsedExcelFile {
@@ -33,6 +36,8 @@ interface TopicPublishReadyInput {
     fieldMapping?: TopicFieldMappingInput | Record<string, unknown> | string | null;
     samplingPolicy?: unknown;
     weightConfig?: TopicWeightConfigInput | Record<string, unknown> | string | null;
+    /** Parsed population rows: enables the value-level PPS eligibility gate. */
+    rows?: Array<Record<string, any>>;
 }
 
 interface TopicAttachmentInput {
@@ -173,8 +178,18 @@ export function validateTopicPublishReadiness(topicInfo: TopicPublishReadyInput 
     }
     if (samplingPolicy.methods.pps !== "disabled") {
         const target = resolveAnalysisTarget(fieldMapping)?.target;
-        const hasMappedPpsCandidate = (fieldMapping.numeric ?? []).some((field) => field !== target?.field);
+        const numeric = fieldMapping.numeric ?? [];
+        const hasMappedPpsCandidate = numeric.some((field) => field !== target?.field);
         if (!hasMappedPpsCandidate) return "没有非目标数值字段时必须将 PPS 设为不适用";
+        // The mapping/policy save paths measure eligibility; publishing must too,
+        // otherwise data restored or edited outside those paths ships a template
+        // whose required PPS can never be executed.
+        if (topicInfo.rows) {
+            const eligible = getPpsEligibleNumericFields(topicInfo.rows, numeric).some((field: string) => field !== target?.field);
+            if (!eligible) {
+                return "当前总体没有合格的 PPS 规模变量（需每一行都是正数），请将 PPS 设为不适用后再发布";
+            }
+        }
     }
 
     const weightConfig = parseObjectLike<TopicWeightConfigInput>(topicInfo.weightConfig);
@@ -191,14 +206,7 @@ export function validateNumericFieldValues(
 ) {
     for (const field of numericFields) {
         for (let index = 0; index < rows.length; index += 1) {
-            const raw = rows[index]?.[field];
-            const isBlank = raw === undefined || raw === null || (typeof raw === "string" && raw.trim() === "");
-            const numeric = typeof raw === "number"
-                ? raw
-                : typeof raw === "string" && /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw.trim())
-                    ? Number(raw)
-                    : Number.NaN;
-            if (isBlank || !Number.isFinite(numeric)) {
+            if (!isNumericText(rows[index]?.[field])) {
                 return `数值变量 ${field} 在数据第${index + 1}行存在空值或非数值`;
             }
         }
@@ -232,13 +240,15 @@ export function validateIdentifierFieldValues(
 ) {
     const seen = new Map<string, number>();
     for (let index = 0; index < rows.length; index += 1) {
-        const value = String(rows[index]?.[identifierField] ?? "").trim().normalize("NFKC");
+        const value = normalizeIdentityText(String(rows[index]?.[identifierField] ?? ""));
         if (!value) return `标识符字段 ${identifierField} 在数据第${index + 1}行存在空值`;
-        const previousIndex = seen.get(value);
+        // Case-insensitive like the platform's other identity fields (citext IDs).
+        const key = identityKey(value);
+        const previousIndex = seen.get(key);
         if (previousIndex !== undefined) {
-            return `标识符字段 ${identifierField} 在数据第${index + 1}行与第${previousIndex + 1}行重复`;
+            return `标识符字段 ${identifierField} 在数据第 ${index + 1} 行与第 ${previousIndex + 1} 行重复（忽略大小写）`;
         }
-        seen.set(value, index);
+        seen.set(key, index);
     }
     return null;
 }

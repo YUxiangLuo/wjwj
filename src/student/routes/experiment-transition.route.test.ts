@@ -273,3 +273,37 @@ test("submission forwards the task sampling policy into the immutable snapshot",
     const update = operations.find((item) => item.kind === "update");
     expect((update?.set as any)?.submissionSnapshot?.samplingPolicy).toEqual(policy);
 });
+
+test("a required PPS whose size field is unusable completes stage 3 instead of trapping the student", async () => {
+    // Regression: a template published with pps=required over a population with no
+    // eligible size field used to answer SAMPLING_RESULTS_REQUIRED forever.
+    const stored = {
+        simple: { completed: true, serverGenerated: true, sampleCount: 50, data: Array.from({ length: 50 }, (_, id) => ({ id })) },
+        systematic: { completed: true, serverGenerated: true, sampleCount: 50, interval: 4, data: Array.from({ length: 50 }, (_, id) => ({ id: id * 4 })) },
+        pps: { unavailable: true, unavailableReason: PPS_UNAVAILABLE_REASON, serverGenerated: true },
+    };
+    const record = experimentRecord({
+        currentStage: 3,
+        stage2CompletedAt: new Date("2026-01-02T00:00:00Z"),
+        samplePlan: { confidenceLevel: "95", marginOfError: 5, finalSampleSize: 50 },
+        samplingResults: stored,
+    });
+    const updated = { ...record, currentStage: 4, version: 7 };
+    const stats: PopulationStats = {
+        stats: { group: { A: 100, B: 100 } }, numericFields: [], categoricalFields: ["group"],
+        categoricalStats: { group: { A: 100, B: 100 } }, populationNumericStats: {},
+        ppsEligibleFields: [], stratumNumericStats: {},
+    };
+    const { db } = createMockDb({ select: [[record]], update: [[updated]] });
+    mock.module("../../db", () => ({ db }));
+    mock.module("./auth", () => createStudentAuthModuleMock());
+    mock.module("../experiment/population-stats-service", () => ({
+        populationStatsService: { run: async () => stats },
+        populationRevisionKey: () => "revision",
+    }));
+    const module = await import(`./experiment.ts?pps-required-unavailable=${crypto.randomUUID()}`);
+
+    const response = await module.stageCompleteRoutes.POST!(post(3));
+
+    expect(response.status).toBe(200);
+});

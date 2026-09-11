@@ -108,6 +108,20 @@ export function getSamplingMethodState(
     return policy.methods[method] === "optional" ? "unselected" : "incomplete";
 }
 
+/**
+ * The server records `unavailable: true` when a population has no eligible size
+ * field. A policy that still marks PPS as required would then trap the student
+ * forever (PPS can never be executed), so the effective policy degrades PPS to
+ * "not applicable" for completion and submission checks.
+ */
+export function applyPpsAvailability(policyValue: unknown, samplingResults: unknown): SamplingPolicyV1 {
+    const policy = resolveSamplingPolicy(policyValue);
+    if (policy.methods.pps === "disabled") return policy;
+    const pps = (samplingResults as { pps?: { unavailable?: boolean } } | null | undefined)?.pps;
+    if (pps?.unavailable !== true) return policy;
+    return { ...policy, methods: { ...policy.methods, pps: "disabled" } };
+}
+
 export function evaluateSamplingPolicy(
     policyValue: unknown,
     completedMethods: Iterable<SamplingMethod>,

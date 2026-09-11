@@ -127,12 +127,14 @@ export async function updateTeacherTopicBasics(params: {
 
         if (params.body.status === 1) {
             const effectiveMapping = updateData.fieldMapping ?? topicInfo.fieldMapping;
-            const publishReadinessError = validateTopicPublishReadiness({
+            const readinessInput = {
                 excelFilePath: topicInfo.excelFilePath,
                 fieldMapping: effectiveMapping as Record<string, unknown> | string | null | undefined,
                 samplingPolicy: topicInfo.samplingPolicy,
                 weightConfig: topicInfo.weightConfig as Record<string, unknown> | string | null | undefined,
-            });
+            };
+            // Cheap checks first so a missing population still reports as such.
+            const publishReadinessError = validateTopicPublishReadiness(readinessInput);
             if (publishReadinessError) return fail(publishReadinessError);
             const mapping = parseTopicFieldMapping(effectiveMapping);
             if (!mapping || !topicInfo.excelFilePath) return fail("实验模板字段映射无效");
@@ -141,6 +143,10 @@ export async function updateTeacherTopicBasics(params: {
                 includeColumnValues: false,
                 numericFields: mapping.numeric ?? [],
             });
+            // Then re-check with the actual rows: publishing must not ship a
+            // required PPS that this population cannot execute.
+            const eligibilityError = validateTopicPublishReadiness({ ...readinessInput, rows: parsed.rows });
+            if (eligibilityError) return fail(eligibilityError);
             const populationError = validateMappedPopulationData(parsed, mapping);
             if (populationError) return fail(populationError);
         }

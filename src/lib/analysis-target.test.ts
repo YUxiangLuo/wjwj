@@ -200,3 +200,26 @@ test("default research questions use the readable name instead of the raw column
     // Unknown columns still fall back to the raw field rather than guessing.
     expect(buildDefaultResearchQuestion("未知调查", { kind: "mean", field: "mystery_col" })).toContain("mystery_col");
 });
+
+test("an unsupported estimator kind is named instead of reported as missing fields", () => {
+    const mapping = {
+        identifier: "id",
+        stratified: [],
+        numeric: ["score"],
+        others: [],
+        studyContract: {
+            version: 1,
+            researchQuestion: "总体中位数的估计值是多少？",
+            targetPopulation: "全体单位",
+            unitOfAnalysis: "一个单位",
+            target: { kind: "median", field: "score" },
+        },
+    };
+    expect(validateStudyContract(mapping)).toBe("不支持的研究目标类型「median」，请选择均值或比例");
+
+    const legacy = { ...mapping, studyContract: undefined, analysisTarget: { kind: "total", field: "score" } };
+    expect(validateStudyContract(legacy)).toBe("不支持的研究目标类型「total」，请选择均值或比例");
+
+    const incomplete = { ...mapping, studyContract: undefined, analysisTarget: undefined };
+    expect(validateStudyContract(incomplete)).toBe("请填写完整的研究问题、目标总体、分析单位和对照变量");
+});

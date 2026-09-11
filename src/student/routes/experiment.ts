@@ -33,6 +33,7 @@ import {
     isCompletedSamplingResult,
     resolveSamplingPolicy,
     type SamplingMethod as PolicySamplingMethod,
+    applyPpsAvailability,
 } from "../../lib/sampling-policy";
 import { getStudentTaskAccessError } from "../experiment/task-access";
 import {
@@ -256,15 +257,18 @@ async function prepareStoredSamplingResultsForCompletion(params: {
         }
     }
 
-    const enabledMethods = (Object.keys(policy.methods) as PolicySamplingMethod[])
-        .filter((method) => policy.methods[method] !== "disabled");
+    // A required PPS whose size field the server proved unusable degrades to
+    // "not applicable"; otherwise the student can never finish this stage.
+    const effectivePolicy = applyPpsAvailability(policy, stored);
+    const enabledMethods = (Object.keys(effectivePolicy.methods) as PolicySamplingMethod[])
+        .filter((method) => effectivePolicy.methods[method] !== "disabled");
     const untrustedCompleted = enabledMethods.some((method) => (
         isCompletedSamplingResult(stored[method]) && !isServerGeneratedResult(stored[method])
     ));
     const completedMethods = enabledMethods.filter((method) => (
         isCompletedSamplingResult(stored[method]) && isServerGeneratedResult(stored[method])
     ));
-    const progress = evaluateSamplingPolicy(policy, completedMethods);
+    const progress = evaluateSamplingPolicy(effectivePolicy, completedMethods);
     if (untrustedCompleted || !progress.canComplete) {
         return {
             ok: false as const,

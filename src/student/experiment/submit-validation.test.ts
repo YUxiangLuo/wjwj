@@ -194,16 +194,31 @@ describe("validateSamplingResultsForSubmit", () => {
         }, 12, 100)).toBe("请至少完成两种本实验启用的抽样方法");
     });
 
-    test("requires every method marked required and never counts unavailable PPS", () => {
+    test("treats a required PPS as not applicable once the server proved it unusable", () => {
         const policy = {
             version: 1,
             methods: { simple: "required", systematic: "optional", pps: "required", stratified: "optional" },
         } as const;
+        // Without this degradation a published template whose population has no
+        // eligible size field could never be submitted.
         expect(validateSamplingResultsForSubmit({
             simple: { completed: true, sampleCount: 12 },
             systematic: { completed: true, sampleCount: 12 },
-            pps: { unavailable: true },
-        }, 12, 100, policy)).toContain("请联系教师调整抽样策略");
+            pps: { unavailable: true, unavailableReason: "no_eligible_size_field" },
+        }, 12, 100, policy)).toBeNull();
+    });
+
+    test("still requires a usable method that is merely missing", () => {
+        const policy = {
+            version: 1,
+            methods: { simple: "required", systematic: "optional", pps: "required", stratified: "optional" },
+        } as const;
+        const error = validateSamplingResultsForSubmit({
+            simple: { completed: true, sampleCount: 12 },
+            systematic: { completed: true, sampleCount: 12 },
+        }, 12, 100, policy);
+        expect(error).toBeTruthy();
+        expect(error).not.toContain("没有合格规模变量");
     });
 });
 

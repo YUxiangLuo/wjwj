@@ -1,4 +1,5 @@
 import type { AnalysisTarget, StudyContract } from "../../lib/analysis-target";
+import { parseNumericText } from "../../lib/numeric-text";
 import { createSafeRecord } from "../../lib/safe-record";
 import { stratumKey } from "./sampling";
 
@@ -51,11 +52,9 @@ export function buildStratifiedStats(population: Array<Record<string, unknown>>,
 }
 
 function toFiniteNumericValue(value: unknown): number | null {
-    if (value === undefined || value === null || (typeof value === "string" && value.trim() === "")) {
-        return null;
-    }
-    const numeric = Number(value);
-    return Number.isFinite(numeric) ? numeric : null;
+    // Shared with the teacher-side validation so a column cannot pass validation
+    // and still be treated as missing here.
+    return parseNumericText(value);
 }
 
 export interface StratumNumericStat {
