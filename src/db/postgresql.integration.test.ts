@@ -4,6 +4,7 @@ import { expect, test } from "bun:test";
 import { and, count, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sql";
 import * as schema from "./schema";
+import { assertTestDatabaseIsMigrated } from "./test-database-guard";
 import { jsonbNullSafeEquals } from "./native-jsonb";
 import { MAX_SAMPLING_ATTEMPTS_PER_EXPERIMENT, trimSamplingAttempts } from "../student/experiment/sampling-attempt-retention";
 
@@ -19,6 +20,7 @@ const postgresqlTest = requireTestDatabase ? test : test.skip;
 
 postgresqlTest("PostgreSQL preserves the application database contract", async () => {
     const sqlClient = new SQL(testDatabaseUrl!);
+    await assertTestDatabaseIsMigrated(sqlClient);
     const database = drizzle(sqlClient, { schema });
     const suffix = crypto.randomUUID();
     const username = `PgCase_${suffix}`;

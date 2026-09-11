@@ -2,6 +2,7 @@ import { SQL } from "bun";
 import { afterAll, afterEach, beforeAll, expect, test } from "bun:test";
 import { and, eq, inArray } from "drizzle-orm";
 import * as schema from "./schema";
+import { assertTestDatabaseIsMigrated } from "./test-database-guard";
 
 const required = process.env.REQUIRE_TEST_DATABASE === "1";
 const url = process.env.TEST_DATABASE_URL?.trim();
@@ -21,6 +22,7 @@ beforeAll(async () => {
     process.env.DATABASE_URL = url!;
     application = await import("./index");
     raw = new SQL(url!);
+    await assertTestDatabaseIsMigrated(raw);
     [management, classroom, grading, teacherAuth, studentAuth] = await Promise.all([
         import("../admin/routes/management"), import("../teacher/routes/classroom"), import("../teacher/routes/grading"),
         import("../teacher/routes/auth"), import("../student/routes/auth"),

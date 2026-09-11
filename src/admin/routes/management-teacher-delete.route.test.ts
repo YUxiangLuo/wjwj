@@ -1,4 +1,6 @@
 import { expect, mock, test } from "bun:test";
+import type { SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
 import { auditEvent, teacher, userSession } from "../../db/schema";
 import { createMockDb } from "../../test-utils/mock-db";
 
@@ -34,7 +36,7 @@ test("teacher removal is blocked while classes or templates still reference the 
     expect(operations.some((operation) => operation.kind === "delete")).toBe(false);
 });
 
-test("teacher removal drops the account, its sessions and actor audit events", async () => {
+test("teacher removal drops the account and its sessions but keeps authored audit events", async () => {
     const { module, operations } = await load([
         [{ id: 6, employeeId: "T006" }],
         [{ count: 0 }],
@@ -48,7 +50,13 @@ test("teacher removal drops the account, its sessions and actor audit events", a
     const deletedTables = operations.filter((operation) => operation.kind === "delete").map((operation) => operation.table);
     expect(deletedTables).toContain(userSession);
     expect(deletedTables).toContain(teacher);
-    expect(deletedTables).toContain(auditEvent);
+    // Only the teacher's own entity trail is cleared; events they authored (for
+    // example student.deleted) survive so the action stays accountable.
+    const auditDeletes = operations.filter((operation) => operation.kind === "delete" && operation.table === auditEvent);
+    expect(auditDeletes).toHaveLength(1);
+    const auditWhere = new PgDialect().sqlToQuery(auditDeletes[0]!.where as SQL).sql;
+    expect(auditWhere).toContain("entity_type");
+    expect(auditWhere).not.toContain("actor_type");
     // One de-identified record survives the cleanup of the teacher's own events.
     const audit = operations.find((operation) => operation.kind === "insert" && operation.table === auditEvent);
     expect(audit?.values).toMatchObject({ action: "teacher.deleted", actorType: "admin", entityType: "teacher", entityId: 6 });

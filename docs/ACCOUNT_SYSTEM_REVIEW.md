@@ -8,7 +8,7 @@
 | 实体 | 关键约束 | 含义 |
 | --- | --- | --- |
 | `student` | `student_id` **citext UNIQUE（全表）**，`class_id` NOT NULL | 学号全局唯一，一个学生同时只属于一个班级 |
-| `teacher` | `employee_id` citext UNIQUE | 管理员可删除**无班级、无实验模板**的教师（有引用时 409）；删除会一并清理该教师作为操作者的审计记录（隐私取舍，仅保留 `teacher.deleted` 脱敏留痕） |
+| `teacher` | `employee_id` citext UNIQUE | 管理员可删除**无班级、无实验模板**的教师（有引用时 409）；删除只清理该教师自身的 entity 审计，**保留其作为操作者的留痕**（如他签发的 `student.deleted`），并新增一条 `teacher.deleted` 脱敏记录 |
 | `class` | 硬删除；有学生或任务时拒绝 | 班级可被管理员删除 |
 | `semester` | 当前学期不可删；有班级时拒绝 | — |
 | `experiment.student_id` | `ON DELETE CASCADE` | 硬删学生会级联删除实验/提交/成绩/抽样记录 |

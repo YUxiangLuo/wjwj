@@ -77,6 +77,11 @@ bun test
 bun run build
 ```
 
+`test:db` talks to whatever `TEST_DATABASE_URL` names and refuses to run before
+checking that the schema is migrated (it fails with the exact `db:migrate`
+command instead of "relation does not exist"). Point it at a disposable,
+already-migrated database.
+
 `test:db` runs its test files in isolation. In addition to schema and persistence
 checks, it exercises ownership locking, session-cleanup locking, and
 both lock orders of current-semester selection/deletion against PostgreSQL.

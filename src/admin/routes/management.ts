@@ -4,9 +4,10 @@ import { announcement, class_, experiment, semester, student, task, teacher, top
 import { experimentProgress } from "../../lib/experiment-progress";
 import { error, getPositiveRouteId, getSearchParams, json, parseBody, parsePagination, parsePositiveInteger, stringValue } from "../../server/http";
 import { hashPassword } from "../../server/password-work";
+import { normalizeIdentityText } from "../../lib/identity-text";
 import type { RouteDefinition } from "../../server/route-types";
 import { clearUserSessionsForUser } from "../../server/user-session";
-import { deleteAuditEventsForActor, deleteAuditEventsForEntities, hashEntityIdentifier, writeAuditEvent } from "../../server/audit-event";
+import { deleteAuditEventsForEntities, hashEntityIdentifier, writeAuditEvent } from "../../server/audit-event";
 import { getAdminUser } from "./auth";
 import { STUDENT_USER_TYPE } from "../../student/routes/auth";
 import { TEACHER_USER_TYPE } from "../../teacher/routes/auth";
@@ -157,7 +158,7 @@ const teacherRoutes: RouteDefinition = {
 
     async POST(req) {
         const body = await parseBody<{ employeeId?: string; name?: string }>(req);
-        const employeeId = stringValue(body.employeeId).trim();
+        const employeeId = normalizeIdentityText(stringValue(body.employeeId));
         const name = stringValue(body.name).trim();
         if (!employeeId || !name || employeeId.length > 50 || name.length > 100) {
             return error("教师工号或姓名无效", "VALIDATION_ERROR");
@@ -215,8 +216,9 @@ const teacherItemRoutes: RouteDefinition = {
                 eq(userSession.userType, TEACHER_USER_TYPE),
                 eq(userSession.userId, id),
             ));
+            // Remove the deleted teacher's own entity trail, but keep the events
+            // they authored: traces like student.deleted must stay accountable.
             await deleteAuditEventsForEntities(tx, "teacher", [id]);
-            await deleteAuditEventsForActor(tx, "teacher", id);
             await tx.delete(teacher).where(eq(teacher.id, id));
             await writeAuditEvent(tx, {
                 actorType: "admin",

@@ -501,3 +501,42 @@ test("student deletion of an unsubmitted roster entry stays a one-step delete", 
     expect(response.status).toBe(200);
     expect(operations.some((operation) => operation.kind === "delete" && operation.table === student)).toBe(true);
 });
+
+test("student import treats full-width digits as the same student ID", async () => {
+    const { module, operations } = await loadClassroomRoutes({
+        select: [
+            [{ id: 3 }],
+            [{ id: 42, studentId: "S2601", classId: 3, className: "统计一班", teacherId: 9 }],
+        ],
+    });
+    const formData = new FormData();
+    formData.append("file", new File(["studentId,name\nＳ2601,全角林清\n"], "students.csv", { type: "text/csv" }));
+
+    const response = await module.classStudentsImportRoutes.POST!(withRouteParam(
+        new Request("https://example.com/api/teacher/classes/3/students/import", { method: "POST", body: formData }),
+        "3",
+    ));
+    const payload = await response.json() as any;
+
+    // Full-width input must not fork a second, visually identical account.
+    expect(payload.data).toMatchObject({ successCount: 0, skippedCount: 1, failureCount: 0 });
+    expect(operations.some((operation) => operation.kind === "insert")).toBe(false);
+});
+
+test("student creation stores the normalized form of a full-width student ID", async () => {
+    const { module, operations } = await loadClassroomRoutes({
+        select: [[{ id: 3 }], [], [{ id: 3 }]],
+    });
+    const response = await module.classStudentsRoutes.POST!(withRouteParam(new Request(
+        "https://example.com/api/teacher/classes/3/students",
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ studentId: "　２６０１ ", name: "全角学生" }),
+        },
+    ), "3"));
+
+    expect(response.status).toBe(201);
+    const insert = operations.find((operation) => operation.kind === "insert" && operation.table === student);
+    expect(insert?.values).toMatchObject({ studentId: "2601", name: "全角学生" });
+});

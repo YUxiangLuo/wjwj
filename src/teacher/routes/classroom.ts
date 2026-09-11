@@ -2,6 +2,7 @@ import { and, count, desc, eq, ilike, inArray, or } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, experiment, samplingAttempt, semester, student, userSession } from "../../db/schema";
 import { isValidOptionalEmail } from "../../lib/email";
+import { identityKey, normalizeIdentityText } from "../../lib/identity-text";
 import { parseSpreadsheetFile, spreadsheetRequestExceedsLimit, validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
 import { hashPassword, mapWithConcurrency } from "../../server/password-work";
 import { deleteAuditEventsForActor, deleteAuditEventsForEntities, hashEntityIdentifier, writeAuditEvent } from "../../server/audit-event";
@@ -26,8 +27,9 @@ function escapeLike(value: string) {
     return value.replace(/[\\%_]/g, (match) => `\\${match}`);
 }
 
+/** Full-width digits, ideographic spaces and case must not fork one student ID. */
 function normalizeStudentId(value: string) {
-    return value.toLocaleLowerCase("en-US");
+    return identityKey(value);
 }
 
 function parseRouteId(req: Request, name: string) {
@@ -245,7 +247,7 @@ const classStudentsRoutes: RouteDefinition = {
         if (body.email !== undefined && typeof body.email !== "string") {
             return error("邮箱格式无效", "VALIDATION_ERROR");
         }
-        const studentId = stringValue(body.studentId).trim();
+        const studentId = normalizeIdentityText(stringValue(body.studentId));
         const name = stringValue(body.name).trim();
         const email = stringValue(body.email).trim();
         if (!studentId || !name) return error("学号和姓名不能为空", "VALIDATION_ERROR");
@@ -332,12 +334,13 @@ const classStudentsImportRoutes: RouteDefinition = {
                 return [];
             }
             const normalizedStudentId = normalizeStudentId(studentId);
+            const storedStudentId = normalizeIdentityText(studentId);
             if (seenIds.has(normalizedStudentId)) {
                 errors.push({ row: rowNumber, reason: `文件中学号重复: ${studentId}` });
                 return [];
             }
             seenIds.add(normalizedStudentId);
-            return [{ studentId, normalizedStudentId, name, email: email || null, row: rowNumber }];
+            return [{ studentId: storedStudentId, normalizedStudentId, name, email: email || null, row: rowNumber }];
         });
 
         const candidates = parsed;
