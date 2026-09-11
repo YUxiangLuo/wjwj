@@ -626,18 +626,38 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                 >
                                     完成试填
                                 </Button>
-                                {answeredCount !== totalQuestions && (
-                                    <div className="space-y-3">
-                                        <p role="status" className="text-body text-warning">还有 {totalQuestions - answeredCount} 道题未完成，请补充作答后提交。</p>
-                                        <Button type="button" variant="outline" onClick={() => {
-                                            const index = questions.findIndex((question, i) => !isQuestionAnswered(question, answersByIndex[i]));
-                                            if (index >= 0) {
-                                                setDirection("backward");
-                                                setPage({ type: "question", index });
-                                            }
-                                        }}>返回未答题</Button>
-                                    </div>
-                                )}
+                                {answeredCount !== totalQuestions && (() => {
+                                    const jumpTo = (index: number) => {
+                                        setDirection("backward");
+                                        setPage({ type: "question", index });
+                                    };
+                                    const missing = questions
+                                        .map((question, index) => ({ question, index }))
+                                        .filter(({ question, index }) => !isQuestionAnswered(question, answersByIndex[index]));
+                                    return (
+                                        <div className="space-y-3">
+                                            <p role="status" className="text-body text-warning">还有 {missing.length} 道题未完成，请补充作答后提交：</p>
+                                            <ul className="mx-auto flex max-w-xl flex-col gap-2 text-left">
+                                                {missing.map(({ question, index }) => (
+                                                    <li key={question.id ?? index}>
+                                                        <button
+                                                            type="button"
+                                                            data-testid={`immersive-preview-missing-${index + 1}`}
+                                                            onClick={() => jumpTo(index)}
+                                                            className="w-full rounded-control border border-warning-border bg-warning-muted px-3 py-2 text-label text-warning"
+                                                        >
+                                                            第 {index + 1} 题：{question.content?.trim() || "（未填写题干）"}
+                                                        </button>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                            <Button type="button" variant="outline" onClick={() => {
+                                                const index = questions.findIndex((question, i) => !isQuestionAnswered(question, answersByIndex[i]));
+                                                if (index >= 0) jumpTo(index);
+                                            }}>返回未答题</Button>
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         )}
 

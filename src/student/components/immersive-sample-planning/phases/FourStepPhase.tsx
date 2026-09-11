@@ -44,7 +44,7 @@ export function FourStepPhase({ params, estimationType, populationVariance, onNe
                 </div>
             </li>)}
         </ol>
-        {details.n3 >= params.populationSize && <p className="rounded-surface border border-warning-border bg-warning-muted p-4 text-label text-warning">已达总体数量上限。{params.nonResponseRate > 0 ? "全体发放仍可能无法获得足够的有效回答，请在调整方案时查看预期精度。" : "只有全部单位都完成回答时，才相当于完整普查。"}</p>}
+        {details.n3 >= params.populationSize && <p className="rounded-surface border border-warning-border bg-warning-muted p-4 text-label text-warning">已达总体数量上限。{params.nonResponseRate > 0 ? "全体发放仍可能无法获得足够的有效回答，请在调整方案时查看预期精度。" : "这等于完整普查：预期抽样误差为 0，各抽样方法的估计会相同，无法比较方法差异。"}</p>}
         <PlanningAssumptions params={params}/>
         {!hideNext && <Button onClick={onNext}>继续：调整方案<ArrowRight className="ml-2 h-4 w-4"/></Button>}
     </div>;

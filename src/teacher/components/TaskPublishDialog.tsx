@@ -39,7 +39,7 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="bg-card border-border text-foreground max-w-md">
+            <DialogContent className="bg-card border-border text-foreground max-w-md" showCloseButton={false}>
                 <DialogHeader>
                     <DialogTitle className="text-foreground">发布实验任务</DialogTitle>
                     <DialogDescription className="sr-only">

@@ -103,6 +103,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const hasValidSamplePlan = Number.isInteger(samplePlan?.finalSampleSize) && (samplePlan?.finalSampleSize ?? 0) > 0;
     const n = hasValidSamplePlan ? samplePlan!.finalSampleSize : 0;
     const N = populationSize;
+    const censusPlan = hasValidSamplePlan && N > 0 && n >= N;
     const systematicInterval = getSystematicInterval(N, n);
 
     // Initialize from saved data
@@ -388,6 +389,11 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 <div className="flex items-center gap-3 rounded-surface border border-border bg-card p-3"><IconTile intent="info"><Database className="h-5 w-5"/></IconTile><div><p className="text-meta text-muted-foreground">调查总体</p><p className="text-section-title font-semibold tabular-nums">{N.toLocaleString()} <span className="text-label font-normal">个单位</span></p></div></div>
                 <div className="flex items-center gap-3 rounded-surface border border-border bg-card p-3"><IconTile intent={allCompleted ? "success" : "neutral"}><Layers className="h-5 w-5"/></IconTile><div><p className="text-meta text-muted-foreground">已保存的抽样结果</p><p className="text-section-title font-semibold tabular-nums">{completedMethodCount} <span className="text-label font-normal">种方法</span></p></div></div>
             </div>
+            {censusPlan && (
+                <p role="status" data-testid="student-sampling-census-notice" className="rounded-surface border border-warning-border bg-warning-muted p-3 text-label text-warning">
+                    规划样本量等于总体规模，本次执行是完整普查：各方法都会抽满全部单位，估计结果与抽样误差相同，无法比较方法差异。
+                </p>
+            )}
             {statsState === "loading" && (
                 <Card role="status" aria-live="polite" className="rounded-surface border-info-border bg-info-muted " data-testid="student-sampling-stats-loading">
                     <CardContent className="flex items-center gap-3 px-4 py-3 text-label text-info">

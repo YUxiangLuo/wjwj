@@ -32,6 +32,8 @@ interface TopicWizardDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     editingTopicId: number | null;
+    /** create 期间标题保持“创建”，不会因第 1 步已建草稿而变成“编辑”。 */
+    mode?: "create" | "edit";
     /** 已发布课题：总体数据、字段映射和评分权重只读 */
     isPublishedTopic?: boolean;
     currentStep: number;
@@ -71,6 +73,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
         open,
         onOpenChange,
         editingTopicId,
+        mode,
         isPublishedTopic = false,
         currentStep,
         setCurrentStep,
@@ -208,7 +211,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                 onInteractOutside={(e) => e.preventDefault()}
             >
                 <DialogHeader>
-                    <DialogTitle className="text-foreground">{editingTopicId ? "编辑实验模板" : "创建实验模板"}</DialogTitle>
+                    <DialogTitle className="text-foreground">{(mode ?? (editingTopicId ? "edit" : "create")) === "edit" ? "编辑实验模板" : "创建实验模板"}</DialogTitle>
                     <DialogDescription className="sr-only">
                         通过七个步骤配置实验模板的基础信息、总体数据、研究目标、抽样策略、教学资料、推荐题目和评分规则。
                     </DialogDescription>
@@ -415,6 +418,12 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         </Button>
                                     </div>
                                 </div>
+
+                                {excelInfo && excelInfo.rowCount > 0 && excelInfo.rowCount < 100 && (
+                                    <div data-testid="teacher-topic-small-population-notice" className="rounded-surface border border-warning-border bg-warning-muted px-4 py-3 text-label text-warning">
+                                        总体只有 {excelInfo.rowCount} 个单位：按常用精度规划时很可能直接抽满总体（普查），各抽样方法会得到相同估计且没有抽样误差差异，不适合做方法比较。若教学目标是比较抽样方法，请把总体规模增加到至少数百个单位。
+                                    </div>
+                                )}
 
                                 <div className="space-y-2">
                                     <Label className="text-foreground">标识符（必选 1 个）</Label>

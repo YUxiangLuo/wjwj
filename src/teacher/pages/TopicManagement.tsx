@@ -62,6 +62,7 @@ export function TopicManagement() {
 
     // Form state
     const [editingTopicId, setEditingTopicId] = useState<number | null>(null);
+    const [topicWizardMode, setTopicWizardMode] = useState<"create" | "edit">("create");
     /** 当前编辑的课题是否已发布（已发布则「上传数据」「字段映射」只读且下一步不发起相关保存请求） */
     const [editingTopicPublished, setEditingTopicPublished] = useState(false);
     const [newTopicName, setNewTopicName] = useState("");
@@ -163,6 +164,7 @@ export function TopicManagement() {
 
     function openCreateModal() {
         setEditingTopicId(null);
+        setTopicWizardMode("create");
         setEditingTopicPublished(false);
         setNewTopicName("");
         setNewTopicDesc("");
@@ -179,6 +181,7 @@ export function TopicManagement() {
 
     function openEditModal(topic: Topic) {
         setEditingTopicId(topic.id);
+        setTopicWizardMode("edit");
         setEditingTopicPublished(topic.status === 1);
         setNewTopicName(topic.name);
         setNewTopicDesc(topic.description || "");
@@ -562,6 +565,7 @@ export function TopicManagement() {
 
             <TopicWizardDialog
                 open={showCreateModal}
+                mode={topicWizardMode}
                 onOpenChange={(open) => {
                     setShowCreateModal(open);
                     if (!open) {

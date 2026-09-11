@@ -6,6 +6,46 @@ const ID_LABEL_KEYWORDS = ["编号", "编码", "序号", "样本号", "学号", 
 const NUMERIC_KEYWORDS = ["age", "income", "score", "amount", "count", "frequency", "rate", "price", "spending", "nps", "满意", "次数", "分数", "金额", "收入"];
 const STRATIFIED_KEYWORDS = ["gender", "sex", "education", "province", "city", "grade", "major", "class", "platform", "status", "marital", "职业", "学历", "年级", "专业", "地区", "省", "性别"];
 
+// Groups that connect a topic name to a plausible outcome column. A group only
+// scores when BOTH the topic and the column share its semantic, so a study
+// about learning is not redirected to a time column just because one exists.
+const TARGET_SEMANTIC_GROUPS: Array<{ cn: string[]; en: string[] }> = [
+    { cn: ["消费", "支出", "花费", "开销"], en: ["spending", "expenditure", "consumption", "spend", "expense"] },
+    { cn: ["收入", "工资", "薪酬"], en: ["income", "salary", "wage", "revenue"] },
+    { cn: ["利润", "盈亏", "收益"], en: ["profit", "earnings", "margin"] },
+    { cn: ["金额", "销售额", "成交额"], en: ["amount", "sales", "turnover"] },
+    { cn: ["评分", "满意度", "得分", "分值", "分数"], en: ["score", "rating", "satisfaction", "nps"] },
+    { cn: ["时长", "时间", "等待", "耗时", "分钟"], en: ["time", "duration", "wait", "latency", "minutes"] },
+    { cn: ["温度", "浓度", "用电量", "能耗", "偏差"], en: ["temperature", "concentration", "energy", "power", "deviation"] },
+    { cn: ["年龄"], en: ["age"] },
+    { cn: ["身高"], en: ["height"] },
+    { cn: ["体重"], en: ["weight", "bmi"] },
+];
+
+const GENERIC_TARGET_KEYWORDS = ["amount", "spending", "expenditure", "consumption", "income", "score", "rate", "price", "value", "sales", "profit", "cost", "duration", "消费", "支出", "金额", "收入", "评分", "分数", "时长", "次数"];
+const DEMOGRAPHIC_KEYWORDS = ["age", "height", "bmi", "weight", "年龄", "身高", "体重"];
+
+/** Higher means more likely to be the study outcome; ties keep column order. */
+export function scoreNumericTarget(column: string, topicName: string) {
+    const normalizedTopic = normalizeColumnName(topicName);
+    const normalizedColumn = normalizeColumnName(column);
+    const topicTokens = tokenizeColumnName(topicName);
+    const columnTokens = tokenizeColumnName(column);
+    let score = 0;
+    if (normalizedColumn.length >= 2 && normalizedTopic.includes(normalizedColumn)) score += 100;
+    if (columnTokens.length > 0 && columnTokens.every((token) => token.length >= 3 && topicTokens.includes(token))) score += 50;
+    for (const group of TARGET_SEMANTIC_GROUPS) {
+        const topicMatch = group.cn.some((keyword) => topicName.includes(keyword))
+            || group.en.some((keyword) => normalizedTopic.includes(keyword));
+        const columnMatch = group.cn.some((keyword) => column.includes(keyword))
+            || group.en.some((keyword) => normalizedColumn.includes(keyword));
+        if (topicMatch && columnMatch) score += 60;
+    }
+    if (GENERIC_TARGET_KEYWORDS.some((keyword) => normalizedColumn.includes(keyword) || column.includes(keyword))) score += 10;
+    if (DEMOGRAPHIC_KEYWORDS.some((keyword) => normalizedColumn.includes(keyword) || column.includes(keyword))) score -= 20;
+    return score;
+}
+
 function normalizeColumnName(value: string) {
     return value.toLowerCase().replace(/[\s_-]/g, "");
 }
@@ -98,9 +138,15 @@ export function buildRecommendedFieldMapping(params: {
         ?? columns.find((column) => isLikelyIdentifierColumn(column))
         ?? columns[0];
     const analysableCandidates = columns.filter((column) => column !== identifier && !isLikelyIdentifierColumn(column));
+    // Rank plausible outcomes so the most topic-relevant column becomes the
+    // default analysis target; this used to be the first numeric column only.
     const numeric = unique(
         analysableCandidates.filter((column) => isLikelyNumeric(preview, column)),
-    ).slice(0, 4);
+    )
+        .map((column, index) => ({ column, index, score: scoreNumericTarget(column, topicName) }))
+        .sort((a, b) => b.score - a.score || a.index - b.index)
+        .map((entry) => entry.column)
+        .slice(0, 4);
     const stratifiedPool = analysableCandidates.filter(
         (column) => !numeric.includes(column) && !isLikelyHighCardinalityColumn(preview, column),
     );

@@ -155,6 +155,16 @@ test("SamplingExecution aborts obsolete stats requests on task changes and unmou
     expect(currentSignal?.aborted).toBe(true);
 });
 
+test("SamplingExecution flags a census plan (n equals N)", async () => {
+    mockExperimentContext.populationSize = 13;
+    mockExperimentContext.experiment = {
+        ...mockExperimentContext.experiment,
+        samplePlan: { finalSampleSize: 13, confidenceLevel: "95", marginOfError: 5 },
+    };
+    const view = render(<SamplingExecution onPrev={() => undefined} />);
+    await waitFor(() => expect(view.getByTestId("student-sampling-census-notice")).toBeTruthy());
+});
+
 test("SamplingExecution blocks the stage when sample plan is missing", async () => {
     mockExperimentContext.experiment = {
         id: 88,

@@ -135,6 +135,23 @@ describe("ImmersiveQuestionnairePreview", () => {
         expect(onComplete).toHaveBeenCalled();
     });
 
+    test("the ending page names each unanswered question and jumps to it", () => {
+        const view = render(<ImmersiveQuestionnairePreview questionnaire={baseQuestionnaire({ questions: [
+            { id: "first", type: "boolean", content: "第一题？" },
+            { id: "last", type: "boolean", content: "最后一题？" },
+        ] })} onComplete={() => {}} onClose={() => {}} />);
+        fireEvent.click(view.getByTestId("immersive-preview-start"));
+        fireEvent.click(view.getByTitle("第 2 题"));
+        fireEvent.click(view.getByText("是"));
+        fireEvent.click(view.getByTestId("immersive-preview-next"));
+
+        const missing = view.getByTestId("immersive-preview-missing-1");
+        expect(missing.textContent).toContain("第 1 题");
+        expect(missing.textContent).toContain("第一题？");
+        fireEvent.click(missing);
+        expect(view.getByText("第一题？")).toBeTruthy();
+    });
+
     test("jumping to the last question cannot complete an unanswered preview", () => {
         const onComplete = mock(() => {});
         const view = render(<ImmersiveQuestionnairePreview questionnaire={baseQuestionnaire({ questions: [

@@ -47,6 +47,7 @@ export function PlanningOutcome({ params, sampleSize = params.finalSampleSize }:
             </div>
         </dl>
         {params.nonResponseRate > 0 && <p className="text-meta text-muted-foreground">计划邀请 {sampleSize} 个单位，预期完成约 {formatSamplePlanNumber(precision.expectedCompleted)} 个有效样本；增加邀请数不能消除无回答偏差。</p>}
+        {precision.expectedCompleted >= params.populationSize && <p role="status" className="rounded-surface border border-warning-border bg-warning-muted p-3 text-label text-warning">该方案覆盖全部 {formatSamplePlanNumber(params.populationSize)} 个总体单位，属于完整普查：预期抽样误差为 0，各抽样方法的估计结果会完全相同，无法进行方法间比较。若教学目标是比较抽样方法，请增大总体规模或选择更大的误差限。</p>}
         {!precision.meetsTarget && <p className="text-label text-warning">可以保留这个样本量用于探索，但应在报告中说明未达到当前精度目标。</p>}
         {params.advancedPlanSource && <p className="text-meta text-muted-foreground">高级工具的目标和假设可能不同，请同时查看已保存的工具方案。</p>}
     </div>;
