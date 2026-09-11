@@ -49,6 +49,11 @@ jobs:
   randomized:
     runs-on: ubuntu-latest
     continue-on-error: true
+    env:
+      # Unit tests only need the variable to be present: the SQL client is
+      # lazy and no unit test opens a connection. DB-backed tests are gated by
+      # REQUIRE_TEST_DATABASE and run in the verify job.
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/sampling_vlab_test
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2

@@ -13,6 +13,9 @@ permissions:
 jobs:
   randomized-unit:
     runs-on: ubuntu-latest
+    env:
+      # Present for src/db/index.ts; no unit test opens a connection.
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/sampling_vlab_test
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
