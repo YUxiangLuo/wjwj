@@ -314,6 +314,9 @@ try {
     for (const key of ["questionnaire", "process", "report"]) await browser(teacher, "fill", `#grading-score-${key}`, "90");
     await browser(teacher, "fill", "#grading-comment", "已完成修改，分析准确。");
     await namedButton(teacher, "提交评分");
+    // Grading is a two-step confirm in the UI; skipping the second step leaves the
+    // form filled but unsaved, which used to make this harness report a timeout.
+    await activate(teacher, '[data-testid="teacher-grade-confirm"]');
     await eventually(async () => (await api<ExperimentData>(student, experimentPath)).status === "graded", "Grading failed");
     await page(student, `/student/task/${task.id}/result`, '[data-testid="student-submission-detail"]');
     assert(await evaluate(student, 'document.body.textContent.includes("90") && document.body.textContent.includes("已完成修改，分析准确。")'), "Student grade or comment missing");
