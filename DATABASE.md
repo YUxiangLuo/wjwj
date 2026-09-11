@@ -77,6 +77,16 @@ bun test
 bun run build
 ```
 
+On a shared development machine several servers and test runs compete for
+connections (the app pool keeps about ten per process), so Postgres can answer
+"remaining connection slots are reserved for the superuser". Raise the local
+limit once instead of retrying:
+
+```sh
+sudo -u postgres psql -c "ALTER SYSTEM SET max_connections = 300"
+sudo systemctl restart postgresql
+```
+
 `test:db` talks to whatever `TEST_DATABASE_URL` names and refuses to run before
 checking that the schema is migrated (it fails with the exact `db:migrate`
 command instead of "relation does not exist"). Point it at a disposable,
