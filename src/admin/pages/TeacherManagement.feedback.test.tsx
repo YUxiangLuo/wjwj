@@ -30,3 +30,20 @@ test("pending save prevents duplicates; late completion cannot close a later edi
     expect((view.getByLabelText("姓名") as HTMLInputElement).value).toBe("第二份未提交输入");
     expect(view.getByRole("dialog")).toBeTruthy();
 });
+
+test("teacher removal is disabled while classes or templates still reference the account", async () => {
+    dom = installDomGlobals();
+    const data = [
+        { id: 1, employeeId: "T001", name: "在职教师", classCount: 2, topicCount: 3, deleteBlockers: ["2 个班级", "3 个实验模板"], createdAt: "2026-01-01" },
+        { id: 2, employeeId: "T002", name: "离职教师", classCount: 0, topicCount: 0, deleteBlockers: [], createdAt: "2026-01-02" },
+    ];
+    globalThis.fetch = (async (_url: RequestInfo | URL, init?: RequestInit) => init?.method === "DELETE"
+        ? Response.json({ success: true, data: { success: true } })
+        : Response.json({ success: true, data })) as unknown as typeof fetch;
+    const { TeacherManagement } = await import("./TeacherManagement");
+    const view = render(<TeacherManagement />);
+    await waitFor(() => expect(view.getByTestId("admin-teacher-delete-1")).toBeTruthy());
+
+    expect((view.getByTestId("admin-teacher-delete-1") as HTMLButtonElement).disabled).toBe(true);
+    expect((view.getByTestId("admin-teacher-delete-2") as HTMLButtonElement).disabled).toBe(false);
+});

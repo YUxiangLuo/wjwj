@@ -114,9 +114,19 @@ export function ClassManagement() {
         }
     }
 
+    function deleteBlockers(cls: Class) {
+        if (cls.deleteBlockers) return cls.deleteBlockers;
+        const fallback: string[] = [];
+        if (cls.studentCount > 0) fallback.push(`${cls.studentCount} 名学生`);
+        if ((cls.taskCount ?? 0) > 0) fallback.push(`${cls.taskCount} 个任务`);
+        return fallback;
+    }
+
     async function handleDelete(cls: Class) {
-        if (cls.studentCount > 0) {
-            toast.error("班级仍有学生，不能删除");
+        // The list already knows why a class cannot be deleted; keep the server
+        // check as the authority but never open a doomed confirmation.
+        if (deleteBlockers(cls).length > 0) {
+            toast.error(`该班级已有 ${deleteBlockers(cls).join("、")}，无法删除`);
             return;
         }
 
@@ -318,6 +328,8 @@ export function ClassManagement() {
                                                     size="sm"
                                                     data-testid={`class-delete-${cls.id}`}
                                                     onClick={() => handleDelete(cls)}
+                                                    disabled={deleteBlockers(cls).length > 0}
+                                                    title={deleteBlockers(cls).length > 0 ? `已有 ${deleteBlockers(cls).join("、")}，无法删除` : "删除班级"}
                                                     className="h-8 text-muted-foreground hover:text-destructive hover:bg-destructive-muted"
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5 mr-1" />

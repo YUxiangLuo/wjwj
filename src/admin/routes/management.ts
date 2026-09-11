@@ -1,11 +1,14 @@
 import { and, count, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 import { db } from "../../db";
-import { announcement, class_, experiment, semester, student, task, teacher, topic } from "../../db/schema";
+import { announcement, class_, experiment, semester, student, task, teacher, topic, userSession } from "../../db/schema";
 import { experimentProgress } from "../../lib/experiment-progress";
 import { error, getPositiveRouteId, getSearchParams, json, parseBody, parsePagination, parsePositiveInteger, stringValue } from "../../server/http";
 import { hashPassword } from "../../server/password-work";
 import type { RouteDefinition } from "../../server/route-types";
 import { clearUserSessionsForUser } from "../../server/user-session";
+import { deleteAuditEventsForActor, deleteAuditEventsForEntities, writeAuditEvent } from "../../server/audit-event";
+import { getAdminUser } from "./auth";
+import { loadDeletionImpact } from "../../teacher/deletion-impact";
 import { STUDENT_USER_TYPE } from "../../student/routes/auth";
 import { TEACHER_USER_TYPE } from "../../teacher/routes/auth";
 
@@ -42,7 +45,14 @@ const semesterRoutes: RouteDefinition = {
                 .where(inArray(class_.semesterId, ids))
                 .groupBy(class_.semesterId),
         );
-        return json(rows.map((row) => ({ ...row, classCount: counts.get(row.id) ?? 0 })));
+        // Current semesters and semesters with classes cannot be deleted.
+        return json(rows.map((row) => {
+            const classCount = counts.get(row.id) ?? 0;
+            const blockers: string[] = [];
+            if (row.isCurrent === 1) blockers.push("当前学期");
+            if (classCount > 0) blockers.push(`${classCount} 个班级`);
+            return { ...row, classCount, deleteBlockers: blockers };
+        }));
     },
 
     async POST(req) {
@@ -128,7 +138,22 @@ const teacherRoutes: RouteDefinition = {
                 .where(inArray(class_.teacherId, ids))
                 .groupBy(class_.teacherId),
         );
-        return json(rows.map((row) => ({ ...row, classCount: classCounts.get(row.id) ?? 0 })));
+        const topicCounts = await loadCounts(ids, () =>
+            db
+                .select({ key: topic.teacherId, count: count() })
+                .from(topic)
+                .where(inArray(topic.teacherId, ids))
+                .groupBy(topic.teacherId),
+        );
+        // Teachers can only be removed once their classes and templates are gone.
+        return json(rows.map((row) => {
+            const classCount = classCounts.get(row.id) ?? 0;
+            const topicCount = topicCounts.get(row.id) ?? 0;
+            const blockers: string[] = [];
+            if (classCount > 0) blockers.push(`${classCount} 个班级`);
+            if (topicCount > 0) blockers.push(`${topicCount} 个实验模板`);
+            return { ...row, classCount, topicCount, deleteBlockers: blockers };
+        }));
     },
 
     async POST(req) {
@@ -151,7 +176,7 @@ const teacherRoutes: RouteDefinition = {
     },
 };
 
-const teacherUpdateRoutes: RouteDefinition = {
+const teacherItemRoutes: RouteDefinition = {
     async PUT(req) {
         const id = parseId(req);
         const body = await parseBody<{ name?: string }>(req);
@@ -164,6 +189,39 @@ const teacherUpdateRoutes: RouteDefinition = {
             .where(eq(teacher.id, id))
             .returning({ id: teacher.id });
         return updated.length ? json({ success: true }) : error("教师不存在", "NOT_FOUND", 404);
+    },
+
+    async DELETE(req) {
+        const id = parseId(req);
+        if (!id) return error("无效的教师ID", "INVALID_ID");
+        const result = await db.transaction(async (tx) => {
+            const [row] = await tx.select({ id: teacher.id }).from(teacher).where(eq(teacher.id, id)).for("update");
+            if (!row) return { ok: false as const, message: "教师不存在", code: "NOT_FOUND", status: 404 };
+            const [classes] = await tx.select({ count: count() }).from(class_).where(eq(class_.teacherId, id));
+            const [topics] = await tx.select({ count: count() }).from(topic).where(eq(topic.teacherId, id));
+            const blockers: string[] = [];
+            if ((classes?.count ?? 0) > 0) blockers.push(`${classes!.count} 个班级`);
+            if ((topics?.count ?? 0) > 0) blockers.push(`${topics!.count} 个实验模板`);
+            if (blockers.length > 0) {
+                return {
+                    ok: false as const,
+                    message: `该教师仍有 ${blockers.join("、")}，请先删除后再移除账号`,
+                    code: "TEACHER_IN_USE",
+                    status: 409,
+                };
+            }
+            // Grading rows keep their scores via ON DELETE SET NULL.
+            await tx.delete(userSession).where(and(
+                eq(userSession.userType, TEACHER_USER_TYPE),
+                eq(userSession.userId, id),
+            ));
+            await deleteAuditEventsForEntities(tx, "teacher", [id]);
+            await deleteAuditEventsForActor(tx, "teacher", id);
+            await tx.delete(teacher).where(eq(teacher.id, id));
+            return { ok: true as const };
+        });
+        if (!result.ok) return error(result.message, result.code, result.status);
+        return json({ success: true });
     },
 };
 
@@ -216,7 +274,23 @@ const classRoutes: RouteDefinition = {
                 .where(inArray(student.classId, ids))
                 .groupBy(student.classId),
         );
-        return json(rows.map((row) => ({ ...row, studentCount: studentCounts.get(row.id) ?? 0 })));
+        const taskCounts = await loadCounts(ids, () =>
+            db
+                .select({ key: task.classId, count: count() })
+                .from(task)
+                .where(inArray(task.classId, ids))
+                .groupBy(task.classId),
+        );
+        // Deletion is blocked by students or tasks; report the blockers with the
+        // list so the UI can disable the action instead of failing after a click.
+        return json(rows.map((row) => {
+            const studentCount = studentCounts.get(row.id) ?? 0;
+            const taskCount = taskCounts.get(row.id) ?? 0;
+            const blockers: string[] = [];
+            if (studentCount > 0) blockers.push(`${studentCount} 名学生`);
+            if (taskCount > 0) blockers.push(`${taskCount} 个任务`);
+            return { ...row, studentCount, taskCount, deleteBlockers: blockers };
+        }));
     },
 
     async POST(req) {
@@ -339,6 +413,82 @@ const studentRoutes: RouteDefinition = {
             .leftJoin(class_, eq(student.classId, class_.id))
             .where(and(...conditions));
         return json({ items, total: Number(totalRow?.count ?? 0), page, pageSize });
+    },
+};
+
+const studentLookupRoutes: RouteDefinition = {
+    async GET(req) {
+        const studentId = (getSearchParams(req).get("studentId") ?? "").trim();
+        if (!studentId || studentId.length > 50) return error("请输入有效的学号", "VALIDATION_ERROR", 400);
+        // citext keeps this case-insensitive, matching the import duplicate check.
+        const [row] = await db
+            .select({
+                id: student.id,
+                studentId: student.studentId,
+                name: student.name,
+                email: student.email,
+                classId: student.classId,
+                className: class_.name,
+                teacherId: class_.teacherId,
+                teacherName: teacher.name,
+                createdAt: student.createdAt,
+            })
+            .from(student)
+            .innerJoin(class_, eq(student.classId, class_.id))
+            .leftJoin(teacher, eq(class_.teacherId, teacher.id))
+            .where(eq(student.studentId, studentId));
+        if (!row) return error("未找到该学号", "NOT_FOUND", 404);
+        const impact = await loadDeletionImpact(db, eq(experiment.studentId, row.id));
+        return json({ student: row, impact });
+    },
+};
+
+const studentClassRoutes: RouteDefinition = {
+    async PUT(req) {
+        const id = parseId(req);
+        const body = await parseBody<{ classId?: number }>(req);
+        if (!id) return error("无效的学生ID", "INVALID_ID");
+        if (!Number.isInteger(body.classId) || (body.classId ?? 0) <= 0) return error("请选择有效的班级", "VALIDATION_ERROR", 400);
+        const targetClassId = body.classId!;
+
+        const adminId = getAdminUser(req)?.id ?? 0;
+        const result = await db.transaction(async (tx) => {
+            const [current] = await tx
+                .select({ id: student.id, classId: student.classId, studentId: student.studentId })
+                .from(student)
+                .where(eq(student.id, id))
+                .for("update");
+            if (!current) return { ok: false as const, message: "学生不存在", code: "NOT_FOUND", status: 404 };
+            const [target] = await tx
+                .select({ id: class_.id, name: class_.name, teacherId: class_.teacherId })
+                .from(class_)
+                .where(eq(class_.id, targetClassId))
+                .for("share");
+            if (!target) return { ok: false as const, message: "班级不存在", code: "NOT_FOUND", status: 404 };
+            if (current.classId === target.id) {
+                return { ok: true as const, moved: false, classId: target.id };
+            }
+            await tx.update(student).set({ classId: target.id, updatedAt: new Date() }).where(eq(student.id, id));
+            // The class is part of the student's identity: force a fresh login so a
+            // stale session cannot keep reading the previous class.
+            await clearUserSessionsForUser(STUDENT_USER_TYPE, id, tx);
+            await writeAuditEvent(tx, {
+                actorType: "admin",
+                actorId: adminId,
+                action: "student.class_changed",
+                entityType: "student",
+                entityId: id,
+                details: { previousClassId: current.classId, classId: target.id },
+            });
+            return { ok: true as const, moved: true, classId: target.id, previousClassId: current.classId };
+        });
+        if (!result.ok) return error(result.message, result.code, result.status);
+        return json({
+            success: true,
+            moved: result.moved,
+            classId: result.classId,
+            ...(result.moved ? { previousClassId: result.previousClassId } : {}),
+        });
     },
 };
 
@@ -493,10 +643,12 @@ export {
     semesterCurrentRoutes,
     semesterDeleteRoutes,
     semesterRoutes,
+    studentClassRoutes,
     studentExperimentsRoutes,
+    studentLookupRoutes,
     studentResetPasswordRoutes,
     studentRoutes,
     teacherResetPasswordRoutes,
     teacherRoutes,
-    teacherUpdateRoutes,
+    teacherItemRoutes,
 };

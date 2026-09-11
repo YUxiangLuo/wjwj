@@ -1,4 +1,4 @@
-import { Download, Loader2, Upload } from "lucide-react";
+import { Download, FileWarning, Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ interface StudentImportDialogProps {
     importing: boolean;
     importResult: StudentImportResult | null;
     onDownloadTemplate: () => void;
+    onDownloadErrors: () => void;
     onImport: () => void;
 }
 
@@ -31,6 +32,7 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
         importing,
         importResult,
         onDownloadTemplate,
+        onDownloadErrors,
         onImport,
     } = props;
     return (
@@ -76,11 +78,22 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                                 <p className="text-meta text-info">新建学生的登录密码与学号相同。</p>
                             )}
                             {importResult.errors.length > 0 && (
-                                <div className="max-h-32 overflow-y-auto text-meta space-y-1 bg-card p-2 rounded-control border border-border">
-                                    {importResult.errors.map((err, idx) => (
-                                        <div key={idx} className="text-destructive">行 {err.row === -1 ? "-" : err.row}：{err.reason}</div>
-                                    ))}
-                                </div>
+                                <>
+                                    <div className="max-h-32 overflow-y-auto text-meta space-y-1 bg-card p-2 rounded-control border border-border">
+                                        {importResult.errors.map((err, idx) => (
+                                            <div key={idx} className="text-destructive">行 {err.row === -1 ? "-" : err.row}：{err.reason}</div>
+                                        ))}
+                                    </div>
+                                    <Button
+                                        data-testid="teacher-student-import-errors-download"
+                                        variant="link"
+                                        className="h-auto p-0 text-primary hover:text-primary"
+                                        onClick={onDownloadErrors}
+                                    >
+                                        <FileWarning className="mr-1 h-4 w-4" />
+                                        下载错误明细（CSV）
+                                    </Button>
+                                </>
                             )}
                             {(importResult.skipped?.length ?? 0) > 0 && (
                                 <div className="max-h-24 overflow-y-auto text-meta space-y-1 bg-card p-2 rounded-control border border-border">

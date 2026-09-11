@@ -2,10 +2,31 @@ import { createApiClient } from "@/lib/api-client";
 export type { ApiResponse } from "@/lib/api-client";
 const { request } = createApiClient("admin");
 export interface Stats { currentSemester: string; teacherCount: number; classCount: number; studentCount: number; pendingItems: number }
-export interface Semester { id: number; name: string; isCurrent: number; classCount: number; createdAt: string }
-export interface Teacher { id: number; employeeId: string; name: string; classCount: number; createdAt: string }
-export interface Class { id: number; name: string; semesterId: number; semesterName: string | null; teacherId: number; teacherName: string | null; studentCount: number; createdAt: string }
+export interface Semester { id: number; name: string; isCurrent: number; classCount: number; deleteBlockers?: string[]; createdAt: string }
+export interface Teacher {
+    id: number; employeeId: string; name: string;
+    classCount: number; topicCount?: number; deleteBlockers?: string[]; createdAt: string;
+}
+export interface Class {
+    id: number; name: string; semesterId: number; semesterName: string | null;
+    teacherId: number; teacherName: string | null; studentCount: number;
+    taskCount?: number; deleteBlockers?: string[]; createdAt: string;
+}
 export interface Student { id: number; studentId: string; name: string; classId: number; className: string | null; progress: number; createdAt: string }
+export interface StudentLookup {
+    student: {
+        id: number;
+        studentId: string;
+        name: string;
+        email: string | null;
+        classId: number;
+        className: string;
+        teacherId: number;
+        teacherName: string | null;
+        createdAt: string;
+    };
+    impact: { experiments: number; submitted: number; graded: number };
+}
 export interface StudentListPage { items: Student[]; total: number; page: number; pageSize: number }
 export interface StudentExperiment {
     id: number; taskName: string | null; currentStage: number;
@@ -35,6 +56,7 @@ export const teacherApi = {
     create: (data: { employeeId: string; name: string }) => request<{ id: number }>("/api/admin/teachers", { method: "POST", body: JSON.stringify(data) }),
     update: (id: number, data: { name: string }) => request<{ success: boolean }>(`/api/admin/teachers/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     resetPassword: (id: number) => request<{ success: boolean }>(`/api/admin/teachers/${id}/reset-password`, { method: "POST" }),
+    delete: (id: number) => request<{ success: boolean }>(`/api/admin/teachers/${id}`, { method: "DELETE" }),
 };
 export const classApi = {
     list: (params?: { semesterId?: string; teacherId?: string }) => {
@@ -64,6 +86,11 @@ export const studentApi = {
     },
     resetPassword: (id: number) => request<{ success: boolean }>(`/api/admin/students/${id}/reset-password`, { method: "POST" }),
     getExperiments: (id: number) => request<StudentExperiment[]>(`/api/admin/students/${id}/experiments`),
+    lookup: (studentId: string) => request<StudentLookup>(`/api/admin/students/lookup?studentId=${encodeURIComponent(studentId)}`),
+    moveToClass: (id: number, classId: number) => request<{ success: boolean; moved: boolean; classId: number; previousClassId?: number }>(
+        `/api/admin/students/${id}/class`,
+        { method: "PUT", body: JSON.stringify({ classId }) },
+    ),
 };
 export const announcementApi = {
     list: () => request<Announcement[]>("/api/admin/announcements"),

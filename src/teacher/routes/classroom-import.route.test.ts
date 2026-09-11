@@ -324,7 +324,7 @@ test("student import tells the teacher which class blocks the row", async () => 
     expect(response.status).toBe(200);
     expect(payload.data).toMatchObject({ successCount: 0, failureCount: 2 });
     expect(payload.data.errors[0]).toEqual({ row: 2, reason: "学号已存在于班级「数据分析班」，如需变更班级请先在该班级删除该学生" });
-    expect(payload.data.errors[1]).toEqual({ row: 3, reason: "学号已被其他教师使用" });
+    expect(payload.data.errors[1]).toEqual({ row: 3, reason: "学号已被其他教师使用，请联系管理员确认归属后重试" });
 });
 
 test("student import reports and skips malformed optional emails", async () => {

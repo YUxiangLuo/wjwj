@@ -36,6 +36,11 @@ export function collectCsvHeaders(rows: Array<Record<string, unknown>>) {
     return headers;
 }
 
+/** Serialize already-ordered rows, escaping cells and defusing formula prefixes. */
+export function rowsToCsv(rows: ReadonlyArray<ReadonlyArray<unknown>>) {
+    return rows.map((row) => row.map(encodeCsvCell).join(",")).join("\n");
+}
+
 export function recordsToCsv(data: Array<Record<string, unknown>>, extraHeaders: string[] = []) {
     const headerSet = collectCsvHeaders(data);
     extraHeaders.forEach((header) => headerSet.add(header));

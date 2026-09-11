@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { isValidOptionalEmail } from "@/lib/email";
+import { rowsToCsv } from "@/lib/csv";
 
 export function StudentManagement() {
     const { classId } = useParams();
@@ -97,9 +98,7 @@ export function StudentManagement() {
     }
 
     const handleDownloadTemplate = () => {
-        const headers = ["studentId", "name", "email"];
-        const sample = ["20240001", "张三", "zhangsan@example.com"];
-        const content = `\uFEFF${headers.join(",")}\n${sample.join(",")}\n`;
+        const content = `\uFEFF${rowsToCsv([["studentId", "name", "email"], ["20240001", "张三", "zhangsan@example.com"]])}\n`;
         const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
@@ -110,6 +109,20 @@ export function StudentManagement() {
         link.remove();
         URL.revokeObjectURL(url);
     };
+
+    function handleDownloadImportErrors() {
+        if (!importResult?.errors.length) return;
+        const csv = rowsToCsv([["行号", "原因"], ...importResult.errors.map((item) => [item.row, item.reason])]);
+        const blob = new Blob([`\uFEFF${csv}\n`], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `import-errors-${Date.now()}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+    }
 
     const handleImport = async () => {
         if (!classId || !importFile) return;
@@ -329,6 +342,7 @@ export function StudentManagement() {
                 importing={importing}
                 importResult={importResult}
                 onDownloadTemplate={handleDownloadTemplate}
+                onDownloadErrors={handleDownloadImportErrors}
                 onImport={handleImport}
             />
 

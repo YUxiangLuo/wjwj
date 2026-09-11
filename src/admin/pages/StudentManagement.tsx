@@ -35,6 +35,7 @@ import {
     type Class,
     type Student,
     type StudentExperiment,
+    type StudentLookup,
 } from "../api-client";
 
 const PAGE_SIZE = 20;
@@ -60,6 +61,11 @@ export function StudentManagement() {
     const [selected, setSelected] = useState<Student | null>(null);
     const [experiments, setExperiments] = useState<StudentExperiment[]>([]);
     const [refreshVersion, setRefreshVersion] = useState(0);
+    const [lookupId, setLookupId] = useState("");
+    const [lookupLoading, setLookupLoading] = useState(false);
+    const [lookupResult, setLookupResult] = useState<StudentLookup | null>(null);
+    const [targetClassId, setTargetClassId] = useState("");
+    const [moving, setMoving] = useState(false);
 
     const load = async ({
         nextClassId = classId,
@@ -138,6 +144,40 @@ export function StudentManagement() {
         void load({ nextClassId: "all", nextSearch: "", nextPage: 1 });
     };
 
+    async function runStudentLookup() {
+        const value = lookupId.trim();
+        if (!value) {
+            toast.error("请输入完整学号");
+            return;
+        }
+        setLookupLoading(true);
+        const response = await studentApi.lookup(value);
+        setLookupLoading(false);
+        if (response.success && response.data) {
+            setLookupResult(response.data);
+            setTargetClassId("");
+        } else {
+            setLookupResult(null);
+            toast.error(response.error?.message ?? "查询失败");
+        }
+    }
+
+    async function moveStudentToClass() {
+        if (!lookupResult || !targetClassId) return;
+        setMoving(true);
+        const response = await studentApi.moveToClass(lookupResult.student.id, Number(targetClassId));
+        setMoving(false);
+        if (response.success && response.data) {
+            toast.success(response.data.moved ? "已调整班级，该学生需重新登录" : "该学生已在此班级");
+            setLookupResult(null);
+            setTargetClassId("");
+            setLookupId("");
+            setRefreshVersion((value) => value + 1);
+        } else {
+            toast.error(response.error?.message ?? "调整班级失败");
+        }
+    }
+
     const openExperiments = async (item: Student) => {
         setSelected(item);
         setExperiments([]);
@@ -145,7 +185,69 @@ export function StudentManagement() {
         if (response.success && response.data) setExperiments(response.data);
     };
 
+    const availableClasses = classes.filter((item) => item.id !== lookupResult?.student.classId);
+
     return (
+        <div className="space-y-6">
+        <Card>
+            <CardHeader>
+                <CardTitle>学号归属查询</CardTitle>
+                <p className="text-label text-muted-foreground">
+                    学号被其他教师的班级占用时，先用学号确认归属，再把学生调整到正确的班级；账号与全部实验历史都会保留。
+                </p>
+            </CardHeader>
+            <CardContent>
+                <div className="flex flex-wrap items-end gap-2">
+                    <div className="min-w-56 max-w-xs flex-1">
+                        <Label htmlFor="admin-student-lookup" className="sr-only">学号</Label>
+                        <Input
+                            id="admin-student-lookup"
+                            data-testid="admin-student-lookup-input"
+                            value={lookupId}
+                            onChange={(event) => setLookupId(event.target.value)}
+                            onKeyDown={(event) => event.key === "Enter" && void runStudentLookup()}
+                            placeholder="输入完整学号"
+                        />
+                    </div>
+                    <Button variant="outline" data-testid="admin-student-lookup-submit" disabled={lookupLoading} onClick={() => void runStudentLookup()}>
+                        {lookupLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                        查询归属
+                    </Button>
+                </div>
+                {lookupResult && (
+                    <div data-testid="admin-student-lookup-result" className="mt-4 space-y-3 rounded-surface border border-border bg-background p-4">
+                        <p className="text-label text-foreground">
+                            {lookupResult.student.name}（{lookupResult.student.studentId}）当前属于「{lookupResult.student.className}」，
+                            授课教师 {lookupResult.student.teacherName ?? "-"}。
+                        </p>
+                        <p className="text-meta text-muted-foreground">
+                            已有 {lookupResult.impact.experiments} 条实验记录（已提交 {lookupResult.impact.submitted}、已批改 {lookupResult.impact.graded}），调整班级不会删除这些记录。
+                        </p>
+                        <div className="flex flex-wrap items-end gap-2">
+                            <div className="w-56">
+                                <Label htmlFor="admin-student-lookup-target" className="sr-only">目标班级</Label>
+                                <Select value={targetClassId} onValueChange={setTargetClassId}>
+                                    <SelectTrigger id="admin-student-lookup-target" aria-label="选择目标班级" data-testid="admin-student-lookup-target">
+                                        <SelectValue placeholder="选择目标班级" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {availableClasses.length === 0 ? (
+                                            <SelectItem value="none" disabled>没有其他班级</SelectItem>
+                                        ) : availableClasses.map((item) => (
+                                            <SelectItem key={item.id} value={String(item.id)}>{item.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <Button data-testid="admin-student-lookup-move" disabled={!targetClassId || moving} onClick={() => void moveStudentToClass()}>
+                                {moving ? "调整中…" : "调整到该班级"}
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+
         <Card>
             <CardHeader>
                 <CardTitle>学生管理</CardTitle>
@@ -331,5 +433,6 @@ export function StudentManagement() {
                 </DialogContent>
             </Dialog>
         </Card>
+        </div>
     );
 }

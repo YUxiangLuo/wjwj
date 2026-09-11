@@ -1,7 +1,7 @@
 import { RequestError } from "@/components/RequestError";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useEffect, useRef, useState } from "react";
-import { Pencil, Plus, RotateCcw, Search } from "lucide-react";
+import { Pencil, Plus, RotateCcw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button, IconButton } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingStatus } from "@/components/LoadingStatus";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { teacherApi, type Teacher } from "../api-client";
 
 export function TeacherManagement() {
@@ -20,6 +21,7 @@ export function TeacherManagement() {
     const [creating, setCreating] = useState(false);
     const [form, setForm] = useState({ employeeId: "", name: "" });
     const [saving, setSaving] = useState(false);
+    const { confirm, dialog } = useConfirmDialog();
     const pending = useRef(false);
     const editorVersion = useRef(0);
     const closeEditor = () => {
@@ -30,6 +32,35 @@ export function TeacherManagement() {
         setEditing(null);
     };
     useEffect(() => () => { editorVersion.current++; }, []);
+    function deleteBlockers(row: Teacher) {
+        if (row.deleteBlockers) return row.deleteBlockers;
+        const fallback: string[] = [];
+        if (row.classCount > 0) fallback.push(`${row.classCount} 个班级`);
+        if ((row.topicCount ?? 0) > 0) fallback.push(`${row.topicCount} 个实验模板`);
+        return fallback;
+    }
+
+    async function handleDelete(row: Teacher) {
+        if (deleteBlockers(row).length > 0) {
+            toast.error(`该教师仍有 ${deleteBlockers(row).join("、")}，请先删除后再移除账号`);
+            return;
+        }
+        const shouldDelete = await confirm({
+            title: `删除教师「${row.name}」`,
+            description: `将永久删除工号 ${row.employeeId} 的账号与全部登录会话。此操作不可恢复；如需重新启用请重新创建账号。`,
+            confirmLabel: "永久删除",
+            tone: "destructive",
+        });
+        if (!shouldDelete) return;
+        const response = await teacherApi.delete(row.id);
+        if (response.success) {
+            toast.success("教师已删除");
+            void load();
+        } else {
+            toast.error(response.error?.message ?? "删除失败");
+        }
+    }
+
     const load = async (keyword = search) => {
         return run(async () => requireApiData(await teacherApi.list(keyword.trim() || undefined), "教师列表加载失败"), setRows);
     };
@@ -63,11 +94,12 @@ export function TeacherManagement() {
                     <Table aria-label="教师列表"><TableHeader><TableRow><TableHead>工号</TableHead><TableHead>姓名</TableHead><TableHead>班级数</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader><TableBody>{rows.length === 0 ? (
                         <TableRow><TableCell colSpan={4} className="py-12 text-center"><div className="flex flex-col items-center gap-3 text-muted-foreground"><Search className="h-6 w-6" /><p>{search.trim() ? `未找到与“${search.trim()}”匹配的教师` : "暂无教师数据"}</p>{search.trim() && <Button variant="outline" size="sm" onClick={() => { setSearch(""); void load(""); }}>清除搜索</Button>}</div></TableCell></TableRow>
                     ) : rows.map((row) => (
-                        <TableRow key={row.id}><TableCell className="font-mono">{row.employeeId}</TableCell><TableCell>{row.name}</TableCell><TableCell>{row.classCount}</TableCell><TableCell><div className="flex justify-end gap-1"><Button variant="ghost" size="sm" onClick={() => { setEditing(row); setForm({ employeeId: row.employeeId, name: row.name }); }}><Pencil className="mr-1 h-4 w-4" />编辑</Button><Button variant="ghost" size="sm" onClick={async () => { const response = await teacherApi.resetPassword(row.id); response.success ? toast.success("密码已重置为工号") : toast.error(response.error?.message); }}><RotateCcw className="mr-1 h-4 w-4" />重置密码</Button></div></TableCell></TableRow>
+                        <TableRow key={row.id}><TableCell className="font-mono">{row.employeeId}</TableCell><TableCell>{row.name}</TableCell><TableCell>{row.classCount}</TableCell><TableCell><div className="flex justify-end gap-1"><Button variant="ghost" size="sm" onClick={() => { setEditing(row); setForm({ employeeId: row.employeeId, name: row.name }); }}><Pencil className="mr-1 h-4 w-4" />编辑</Button><Button variant="ghost" size="sm" onClick={async () => { const response = await teacherApi.resetPassword(row.id); response.success ? toast.success("密码已重置为工号") : toast.error(response.error?.message); }}><RotateCcw className="mr-1 h-4 w-4" />重置密码</Button><Button variant="ghost" size="sm" data-testid={`admin-teacher-delete-${row.id}`} disabled={deleteBlockers(row).length > 0} title={deleteBlockers(row).length > 0 ? `仍有 ${deleteBlockers(row).join("、")}，无法删除` : "删除教师"} onClick={() => void handleDelete(row)}><Trash2 className="mr-1 h-4 w-4" />删除</Button></div></TableCell></TableRow>
                     ))}</TableBody></Table>
                 )}
             </CardContent>
             <Dialog open={creating || editing !== null} onOpenChange={(open) => { if (!open) closeEditor(); }}><DialogContent><DialogHeader><DialogTitle>{editing ? "编辑教师" : "新增教师"}</DialogTitle><DialogDescription>{editing ? "修改教师姓名。工号创建后不可变更。" : "填写工号和姓名以创建教师账号。"}</DialogDescription></DialogHeader><div className="space-y-4"><div><Label htmlFor="admin-teacher-employee-id">工号</Label><Input id="admin-teacher-employee-id" value={form.employeeId} disabled={saving || !!editing} onChange={(event) => setForm({ ...form, employeeId: event.target.value })} /></div><div><Label htmlFor="admin-teacher-name">姓名</Label><Input id="admin-teacher-name" disabled={saving} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></div></div><DialogFooter><Button variant="outline" onClick={closeEditor}>取消</Button><Button aria-busy={saving} disabled={saving || !form.name.trim() || (!editing && !form.employeeId.trim())} onClick={() => void save()}>{saving ? "保存中..." : "保存"}</Button></DialogFooter></DialogContent></Dialog>
+            {dialog}
         </Card>
     );
 }

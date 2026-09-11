@@ -125,9 +125,17 @@ export function SemesterManagement() {
         }
     }
 
+    function deleteBlockers(semester: Semester) {
+        if (semester.deleteBlockers) return semester.deleteBlockers;
+        const fallback: string[] = [];
+        if (semester.isCurrent === 1) fallback.push("当前学期");
+        if (semester.classCount > 0) fallback.push(`${semester.classCount} 个班级`);
+        return fallback;
+    }
+
     async function handleDelete(semester: Semester) {
-        if (semester.classCount > 0) {
-            toast.error("该学期下有班级，无法删除");
+        if (deleteBlockers(semester).length > 0) {
+            toast.error(`该学期是${deleteBlockers(semester).join("、")}，无法删除`);
             return;
         }
 
@@ -318,7 +326,8 @@ export function SemesterManagement() {
                                                     data-testid={`semester-delete-${semester.id}`}
                                                     onClick={() => handleDelete(semester)}
                                                     className="text-muted-foreground hover:text-destructive hover:bg-destructive-muted h-8"
-                                                    disabled={semester.classCount > 0}
+                                                    disabled={deleteBlockers(semester).length > 0}
+                                                    title={deleteBlockers(semester).length > 0 ? `已有 ${deleteBlockers(semester).join("、")}，无法删除` : "删除学期"}
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5 mr-1.5" />
                                                     删除

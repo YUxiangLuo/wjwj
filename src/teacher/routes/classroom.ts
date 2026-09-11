@@ -93,7 +93,7 @@ function describeStudentConflict(
     classId: number,
     teacherId: number,
 ): string | null {
-    if (account.teacherId !== teacherId) return "学号已被其他教师使用";
+    if (account.teacherId !== teacherId) return "学号已被其他教师使用，请联系管理员确认归属后重试";
     if (account.classId === classId) return null;
     return `学号已存在于班级「${account.className}」，如需变更班级请先在该班级删除该学生`;
 }

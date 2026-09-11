@@ -53,3 +53,23 @@ test("without semesters class creation remains unavailable", async () => {
     const { view } = await setup([]);
     expect((view.getByRole("button", { name: "确认创建" }) as HTMLButtonElement).disabled).toBe(true);
 });
+
+test("class delete is disabled with the blocking reason instead of failing after a click", async () => {
+    dom = installDomGlobals("http://localhost/admin/classes");
+    globalThis.fetch = (async (url) => {
+        const path = String(url);
+        const data = path.endsWith("/semesters") ? semesters : path.endsWith("/teachers")
+            ? [{ id: 1, name: "教师甲", employeeId: "T01" }]
+            : [
+                { id: 7, name: "统计一班", semesterId: 1, semesterName: "当前秋季学期", teacherId: 1, teacherName: "教师甲", studentCount: 12, taskCount: 2, deleteBlockers: ["12 名学生", "2 个任务"], createdAt: "2026-09-08" },
+                { id: 8, name: "空班级", semesterId: 1, semesterName: "当前秋季学期", teacherId: 1, teacherName: "教师甲", studentCount: 0, taskCount: 0, deleteBlockers: [], createdAt: "2026-09-08" },
+            ];
+        return Response.json({ success: true, data });
+    }) as typeof fetch;
+    const { ClassManagement } = await import("./ClassManagement");
+    const view = render(<MemoryRouter><ClassManagement /></MemoryRouter>);
+    await waitFor(() => expect(view.getByTestId("class-delete-7")).toBeTruthy());
+
+    expect((view.getByTestId("class-delete-7") as HTMLButtonElement).disabled).toBe(true);
+    expect((view.getByTestId("class-delete-8") as HTMLButtonElement).disabled).toBe(false);
+});

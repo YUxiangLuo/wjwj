@@ -2,6 +2,8 @@ import { afterAll, afterEach, beforeAll, expect, mock, test } from "bun:test";
 import { cleanup, fireEvent, render, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { installDomGlobals } from "@/test-utils/dom";
+const toastSpy = mock(() => undefined);
+mock.module("sonner", () => ({ toast: { success: toastSpy, error: toastSpy, message: toastSpy } }));
 import { StudentManagement } from "./StudentManagement";
 
 // Smoke coverage for admin student management: query initialization, roster
