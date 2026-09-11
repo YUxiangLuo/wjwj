@@ -21,7 +21,16 @@ setsid bash -c 'exec bun --hot src/index.ts > /tmp/wj-dev.log 2>&1' < /dev/null 
 # 等待日志出现 Server running，并确认三端登录页 200
 ```
 
-证据目录：`test-results/integration-2026-09-11/`（`round*.json` 结果、`shots/` 截图、`REPORT.md`）。
+脚本（仓库内，可重复执行）：`scripts/integration/{lib,round1,round2,round3,cleanup,prep-ui}.ts`。
+证据目录（已 gitignore）：`test-results/integration-2026-09-11/`（`round*.json` 结果、`shots/` 截图、`REPORT.md`）。
+
+```bash
+bun scripts/integration/round1.ts   # 主链路
+bun scripts/integration/round2.ts   # 边界与降级
+bun scripts/integration/round3.ts   # 并发、隔离与护栏
+bun scripts/integration/cleanup.ts  # 清理测试数据
+bun run db:seed:check
+```
 
 ## 第一轮：主链路贯通（新账号全程）
 
