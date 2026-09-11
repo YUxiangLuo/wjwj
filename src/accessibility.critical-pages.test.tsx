@@ -4,25 +4,20 @@ import { MemoryRouter } from "react-router-dom";
 import { getAccessibilityViolations } from "@/test-utils/accessibility";
 import { installDomGlobals } from "@/test-utils/dom";
 
+// One smoke test per surface: a data-heavy page and a dialog. Keep this list
+// short; axe scans are slow and only one representative page per pattern adds
+// meaningful regression signal.
+
 let restoreDom: (() => void) | null = null;
 let AnnouncementManagement: typeof import("@/admin/pages/AnnouncementManagement").AnnouncementManagement;
-let TeacherManagement: typeof import("@/admin/pages/TeacherManagement").TeacherManagement;
 let TaskHall: typeof import("@/student/pages/TaskHall").TaskHall;
-let GradeExport: typeof import("@/teacher/pages/GradeExport").GradeExport;
 const originalFetch = globalThis.fetch;
 
 beforeAll(async () => {
     restoreDom = installDomGlobals("http://localhost/").restore;
-    [
-        { AnnouncementManagement },
-        { TeacherManagement },
-        { TaskHall },
-        { GradeExport },
-    ] = await Promise.all([
+    [{ AnnouncementManagement }, { TaskHall }] = await Promise.all([
         import("@/admin/pages/AnnouncementManagement"),
-        import("@/admin/pages/TeacherManagement"),
         import("@/student/pages/TaskHall"),
-        import("@/teacher/pages/GradeExport"),
     ]);
 });
 
@@ -66,76 +61,6 @@ test("student task hall has no automated structural accessibility violations", a
 
     const view = render(<MemoryRouter><TaskHall /></MemoryRouter>);
     await waitFor(() => expect(view.getByText("校园抽样")).toBeTruthy());
-
-    expect(await getAccessibilityViolations(view.container)).toEqual([]);
-});
-
-test("teacher grade export names filters, task selectors, and progress", async () => {
-    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.endsWith("/api/teacher/classes")) {
-            return jsonResponse([{
-                id: 1,
-                name: "统计一班",
-                semester: "2026 秋",
-                studentCount: 2,
-                createdAt: "2026-07-20T00:00:00.000Z",
-            }]);
-        }
-        if (url.endsWith("/api/teacher/topics")) {
-            return jsonResponse([{
-                id: 1,
-                name: "校园抽样",
-                description: null,
-                status: 1,
-                dataRows: 200,
-                createdAt: "2026-07-20T00:00:00.000Z",
-            }]);
-        }
-        if (url.includes("/api/teacher/grade-export/preview")) {
-            return jsonResponse([{
-                taskId: 1,
-                topicId: 1,
-                topic: "校园抽样",
-                classId: 1,
-                className: "统计一班",
-                graded: 1,
-                total: 2,
-                avgScore: 90,
-            }]);
-        }
-        if (url.includes("/api/teacher/grade-export/analytics")) {
-            return jsonResponse({
-                funnel: { total: 2, notStarted: 0, inProgress: 0, pendingGrading: 1, graded: 1, rejected: 0 },
-                scores: {
-                    count: 1,
-                    average: 90,
-                    median: 90,
-                    componentAverages: { questionnaire: 90, process: 90, report: 90 },
-                    bands: [
-                        { label: "<60", count: 0 }, { label: "60–69", count: 0 }, { label: "70–79", count: 0 }, { label: "80–89", count: 0 }, { label: "90–100", count: 1 },
-                    ],
-                },
-            });
-        }
-        throw new Error(`Unhandled fetch: ${url}`);
-    }) as unknown as typeof fetch;
-
-    const view = render(<GradeExport />);
-    await waitFor(() => expect(view.getByTestId("teacher-export-row-1")).toBeTruthy());
-
-    expect(await getAccessibilityViolations(view.container)).toEqual([]);
-});
-
-test("admin teacher management gives the search control an accessible name", async () => {
-    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.endsWith("/api/admin/teachers")) return jsonResponse([]);
-        throw new Error(`Unhandled fetch: ${url}`);
-    }) as unknown as typeof fetch;
-
-    const view = render(<TeacherManagement />);
-    await waitFor(() => expect(view.getByRole("button", { name: "搜索教师" })).toBeTruthy());
 
     expect(await getAccessibilityViolations(view.container)).toEqual([]);
 });

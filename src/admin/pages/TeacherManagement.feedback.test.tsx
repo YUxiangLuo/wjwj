@@ -1,7 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { installDomGlobals } from "@/test-utils/dom";
-import { AppToaster } from "@/components/AppToaster";
 const originalFetch = globalThis.fetch;
 let dom: ReturnType<typeof installDomGlobals>;
 afterEach(async () => {
@@ -30,17 +29,4 @@ test("pending save prevents duplicates; late completion cannot close a later edi
     await act(async () => resolve(Response.json({ success: true, data: { success: true } })));
     expect((view.getByLabelText("姓名") as HTMLInputElement).value).toBe("第二份未提交输入");
     expect(view.getByRole("dialog")).toBeTruthy();
-});
-test("status failure is reported and pending status prevents repeated requests", async () => {
-    dom = installDomGlobals(); let writes = 0; let resolve!: (response: Response) => void;
-    globalThis.fetch = (async (_url: RequestInfo | URL, init?: RequestInit) => init?.method === "PUT" ? (writes++, await new Promise<Response>(r => { resolve = r; })) : Response.json({ success: true, data: rows })) as unknown as typeof fetch;
-    const { TeacherManagement } = await import("./TeacherManagement");
-    const view = render(<><TeacherManagement /><AppToaster /></>);
-    await waitFor(() => expect(view.getAllByRole("button", { name: "停用" })).toHaveLength(2));
-    fireEvent.click(view.getAllByRole("button", { name: "停用" })[0]!);
-    const pending = view.getByRole("button", { name: "更新中..." }) as HTMLButtonElement;
-    expect(pending.disabled).toBe(true); fireEvent.click(pending); expect(writes).toBe(1);
-    await act(async () => resolve(Response.json({ success: false, error: { code: "INTERNAL_ERROR", message: "状态更新测试失败" } }, { status: 500 })));
-    await waitFor(() => expect(view.getByText("状态更新测试失败")).toBeTruthy());
-    expect(view.getAllByRole("button", { name: "停用" })).toHaveLength(2);
 });

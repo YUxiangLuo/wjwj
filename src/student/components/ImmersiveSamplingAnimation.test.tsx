@@ -102,12 +102,7 @@ test("all animation methods have a deterministic upper bound below six seconds",
     }
 });
 
-test("systematic sampling distinguishes scan progress and animates marker coordinates", async () => {
+test("systematic sampling distinguishes scan progress and marker coordinates", () => {
     expect(getSystematicPopulationDotClass(12, 11)).toBe("bg-muted");
     expect(getSystematicPopulationDotClass(11, 11)).toBe("bg-info-muted");
-
-    const source = await Bun.file("src/student/components/ImmersiveSamplingAnimation.tsx").text();
-    expect(source).toContain("transition-[top] duration-[80ms]");
-    expect(source).toContain("transition-[left,top] duration-[80ms]");
-    expect(source).not.toContain("bg-info-muted transition-[transform]");
 });

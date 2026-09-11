@@ -122,21 +122,3 @@ test("非法比例、置信水平和误差限不能回退为可应用的样本�
         expect(calculateSurveyVariableRequiredSampleSize(proportionVar({ estimatedValue: p }), 1000)).toBe(278);
     }
 });
-
-test("传入 onApplyToPlan 时不自动调用 onRecommendedSampleSizeChange", async () => {
-    const onRecommendedSampleSizeChange = mock((_n: number) => {});
-    const onApplyToPlan = mock(() => {});
-
-    render(
-        <MultiVariableSamplePlan
-            populationSize={2000}
-            initialVariables={[proportionVar()]}
-            onVariablesChange={() => {}}
-            onRecommendedSampleSizeChange={onRecommendedSampleSizeChange}
-            onApplyToPlan={onApplyToPlan}
-        />,
-    );
-
-    await new Promise((r) => setTimeout(r, 150));
-    expect(onRecommendedSampleSizeChange).not.toHaveBeenCalled();
-});

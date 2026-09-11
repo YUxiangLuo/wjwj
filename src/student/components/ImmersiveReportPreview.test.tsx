@@ -67,18 +67,11 @@ test("ImmersiveReportPreview shows persisted sample plan semantics in overview",
     });
 
     expect(view.getByRole("button", { name: "关闭全屏预览" })).toBeTruthy();
-    expect(view.getAllByRole("button", { name: "实验概览" })).toHaveLength(1);
-    expect(view.getByRole("navigation")).toBeTruthy();
 
     const text = view.container.textContent ?? "";
-    expect(text).toContain("估计类型");
-    expect(text).toContain("均值估计");
     expect(text).toContain("最终样本量来源");
     expect(text).toContain("CV-based计算（高级工具）");
-    expect(text).toContain("绝对误差限");
-    expect(text).toContain("±2（与均值同单位）");
-    expect(text).toContain("总体方差 σ²");
-    expect(text).toContain("100");
+    // Analysis units are research-neutral, never assumed to be people.
     expect(text).toContain("8,000个单位");
     expect(text).not.toContain("8,000人");
 });

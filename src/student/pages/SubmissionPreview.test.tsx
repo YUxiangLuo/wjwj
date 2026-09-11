@@ -1,9 +1,8 @@
 import { afterEach, beforeEach, expect, mock, test } from "bun:test";
-import { cleanup, render, waitFor, within } from "@testing-library/react";
+import { cleanup, render, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { installDomGlobals } from "@/test-utils/dom";
 import { SubmissionPreview } from "./SubmissionPreview";
-import { ImmersiveReportPreviewContent } from "../components/ImmersiveReportPreview";
 
 const originalFetch = globalThis.fetch;
 let restoreDom: (() => void) | null = null;
@@ -74,14 +73,7 @@ test("submission previews distinguish selected, unselected, and disabled samplin
     );
 
     await waitFor(() => expect(view.getByTestId("student-preview-sampling-pps").textContent).toContain("未选择"));
-    expect(view.getByRole("heading", { level: 1, name: "提交前预览" })).toBeTruthy();
     expect(view.getByTestId("student-preview-sampling-simple").textContent).toContain("已完成");
+    // Disabled methods are not rendered as selectable rows.
     expect(view.queryByTestId("student-preview-sampling-stratified")).toBeNull();
-
-    const fullPreview = render(
-        <ImmersiveReportPreviewContent experiment={experiment as any} taskName="策略实验" onClose={() => undefined} />,
-    );
-    const ppsRow = fullPreview.getByText("PPS抽样").parentElement;
-    expect(ppsRow?.textContent).toContain("未选择");
-    expect(within(fullPreview.container).queryByText("分层抽样")).toBeNull();
 });

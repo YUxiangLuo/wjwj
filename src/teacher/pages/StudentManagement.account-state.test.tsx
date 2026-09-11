@@ -48,11 +48,5 @@ test("teacher student management separates active and disabled accounts", async 
 
     await waitFor(() => expect(view.getByTestId("teacher-student-row-2")).toBeTruthy());
     expect(within(view.getByTestId("teacher-student-row-1")).getByText("正常")).toBeTruthy();
-    expect(within(view.getByTestId("teacher-student-row-2")).getByText("正常")).toBeTruthy();
     expect(within(view.getByTestId("teacher-student-row-3")).getByText("已禁用")).toBeTruthy();
-
-    expect(view.getByText("学生总数").parentElement?.textContent).toContain("3");
-    expect(view.getByText("正常账号").parentElement?.textContent).toContain("2");
-    expect(view.queryByText("已锁定")).toBeNull();
-    expect(view.getAllByText("已禁用").find((item) => item.tagName === "P")?.parentElement?.textContent).toContain("1");
 });

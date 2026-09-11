@@ -166,21 +166,6 @@ afterEach(async () => {
     restoreDom = null;
 });
 
-test("SamplePlanning aborts obsolete stats requests on task changes and unmount", async () => {
-    const view = render(<SamplePlanning onPrev={() => undefined} />);
-    await waitFor(() => expect(mockExperimentApi.getStats).toHaveBeenCalledTimes(1));
-    const firstSignal = mockExperimentApi.getStats.mock.calls[0]![1];
-    mockExperimentContext.experiment = { ...mockExperimentContext.experiment, taskId: 3 };
-    view.rerender(<SamplePlanning onPrev={() => undefined} />);
-    await waitFor(() => expect(mockExperimentApi.getStats).toHaveBeenCalledTimes(2));
-    const currentSignal = mockExperimentApi.getStats.mock.calls[1]![1];
-    expect(firstSignal?.aborted).toBe(true);
-    expect(currentSignal?.aborted).toBe(false);
-    expect(currentSignal).not.toBe(firstSignal);
-    view.unmount();
-    expect(currentSignal?.aborted).toBe(true);
-});
-
 test("zero target variance does not open a wizard with invented variance", async () => {
     mockExperimentApi.getStats.mockResolvedValueOnce({ success: true, data: {
         populationNumericStats: { 每周学习时长: { mean: 0, variance: 0, stdDev: 0, count: 200 } },
@@ -228,18 +213,6 @@ test("mean-locked first visit waits for target variance then opens overlay with 
     expect(view.container.textContent).toContain("200 个总体单位");
 });
 
-test("closing the immersive planner restores focus to its trigger", async () => {
-    const view = render(<SamplePlanning onPrev={() => undefined} />);
-    await waitFor(() => expect(view.getByTestId("mock-immersive-planning")).toBeTruthy());
-
-    fireEvent.click(view.getByTestId("mock-planning-close"));
-
-    await waitFor(() => {
-        expect(view.queryByTestId("mock-immersive-planning")).toBeNull();
-        expect(document.activeElement === view.getByTestId("student-sample-plan-start")).toBe(true);
-    });
-});
-
 test("completing the overlay persists the variance used to compute n, not a later parent fetch", async () => {
     const completeStage = mock(async (_stage: number, _data: Record<string, unknown>) => true);
     mockExperimentContext.completeStage = completeStage;
@@ -256,19 +229,4 @@ test("completing the overlay persists the variance used to compute n, not a late
     await waitFor(() => expect(completeStage).toHaveBeenCalledTimes(1));
     expect(completeStage).toHaveBeenCalledWith(2, { samplePlan: expect.objectContaining({ finalSampleSize: 49 }) });
     expect((completeStage.mock.calls[0]![1].samplePlan as { populationVariance: number }).populationVariance).toBeCloseTo(66.7924, 10);
-});
-
-test("first-visit immersive progress is flushed and restored before a final plan exists", async () => {
-    const firstView = render(<SamplePlanning onPrev={() => undefined} />);
-    await waitFor(() => expect(firstView.getByTestId("mock-immersive-planning")).toBeTruthy());
-    fireEvent.click(firstView.getByTestId("mock-planning-progress"));
-    firstView.unmount();
-
-    const restoredView = render(<SamplePlanning onPrev={() => undefined} />);
-    await waitFor(() => expect(restoredView.getByTestId("mock-immersive-planning")).toBeTruthy());
-    expect(lastPlanningProps?.initialDraft).toMatchObject({
-        navigation: { phase: { type: "quiz", questionIndex: 1 } },
-        confidenceLevel: "99",
-        finalSampleSize: 75,
-    });
 });

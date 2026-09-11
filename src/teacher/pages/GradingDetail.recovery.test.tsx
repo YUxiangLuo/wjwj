@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
-import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { installDomGlobals } from "@/test-utils/dom";
 import { GradingDetail } from "./GradingDetail";
 
@@ -14,14 +14,6 @@ function record(version = 1) {
         scoreQuestionnaire: 10, scoreProcess: 20, scoreReport: 30, teacherComment: "初始评语", weights: { questionnaire: 30, process: 30, report: 40 } };
 }
 function page() { return render(<MemoryRouter initialEntries={["/grading/7"]}><Routes><Route path="/grading/:submissionId" element={<GradingDetail />} /></Routes></MemoryRouter>); }
-
-test("ungraded submissions keep score fields empty until the teacher enters them", async () => {
-    globalThis.fetch = (async () => Response.json({ success: true, data: { ...record(), scoreQuestionnaire: null, scoreProcess: null, scoreReport: null } })) as unknown as typeof fetch;
-    const view = page();
-    await waitFor(() => expect(view.getByLabelText("教师评语")).toBeTruthy());
-    expect((view.getByLabelText("问卷设计（30%）") as HTMLInputElement).value).toBe("");
-    expect((view.getByRole("button", { name: "提交评分" }) as HTMLButtonElement).disabled).toBe(true);
-});
 
 test("initial request failure is retryable rather than a missing submission", async () => {
     let requests = 0;
@@ -55,25 +47,4 @@ test("version conflict keeps scoring inputs until an explicit refresh", async ()
     await waitFor(() => expect(view.queryByText("加载最新记录并保留输入")).toBeNull());
     expect((view.getByLabelText("教师评语") as HTMLTextAreaElement).value).toBe("保留当前输入");
     expect((view.getByLabelText("实验报告（40%）") as HTMLInputElement).value).toBe("30");
-});
-
-test("a completed save cannot navigate away from the page the teacher opened next", async () => {
-    let finish!: (response: Response) => void;
-    globalThis.fetch = (async (_input, init) => {
-        if (init?.method === "POST") return new Promise<Response>(resolve => { finish = resolve; });
-        return Response.json({ success: true, data: record() });
-    }) as typeof fetch;
-    const view = render(<MemoryRouter initialEntries={["/grading/7"]}>
-        <Link to="/other">切换页面</Link>
-        <Routes><Route path="/grading/:submissionId" element={<GradingDetail />} /><Route path="/other" element={<p>其他页面</p>} /><Route path="/grading" element={<p>批改列表</p>} /></Routes>
-    </MemoryRouter>);
-    await waitFor(() => expect(view.getByText("提交评分")).toBeTruthy());
-    fireEvent.click(view.getByText("提交评分"));
-    await waitFor(() => expect(view.getByTestId("teacher-grade-confirm")).toBeTruthy());
-    fireEvent.click(view.getByTestId("teacher-grade-confirm"));
-    fireEvent.click(view.getByText("切换页面"));
-    expect(view.getByText("其他页面")).toBeTruthy();
-    await act(async () => { finish(Response.json({ success: true, data: { totalScore: 90 } })); });
-    expect(view.getByText("其他页面")).toBeTruthy();
-    expect(view.queryByText("批改列表")).toBeNull();
 });

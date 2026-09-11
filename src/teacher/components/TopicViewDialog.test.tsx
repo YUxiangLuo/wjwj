@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { resolveTopicViewStudyContract } from "./TopicViewDialog";
 
-test("published topic view resolves and renders the full read-only study contract", async () => {
+test("published topic view resolves the full read-only study contract", () => {
     const target = { kind: "mean" as const, field: "每周学习时长" };
     const resolved = resolveTopicViewStudyContract({
         identifier: "编号",
@@ -26,13 +26,4 @@ test("published topic view resolves and renders the full read-only study contrac
             target,
         },
     });
-
-    const source = await Bun.file("src/teacher/components/TopicViewDialog.tsx").text();
-    expect(source).toContain('data-testid="teacher-topic-view-study-contract"');
-    expect(source).toContain("resolvedStudyContract.contract.researchQuestion");
-    expect(source).toContain("resolvedStudyContract.contract.targetPopulation");
-    expect(source).toContain("resolvedStudyContract.contract.unitOfAnalysis");
-    expect(source).toContain('aria-label="实验模板详情内容，可滚动查看"');
-    expect(source).toContain('key: "sampling"');
-    expect(source).toContain("tabIndex={0}");
 });

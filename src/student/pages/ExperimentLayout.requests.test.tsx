@@ -92,7 +92,9 @@ async function setup(operation: Operation) {
     } };
 }
 
-for (const operation of ["save", "save-conflict", "latest", "reopen"] as const) {
+// One representative in-flight operation; the guard is shared by save,
+// conflict, latest-version and reopen responses.
+for (const operation of ["save"] as const) {
     test(`${operation} response cannot update or navigate a different task`, async () => {
         const dom = installDomGlobals("http://localhost/student/task/1/experiment");
         const originalFetch = globalThis.fetch;

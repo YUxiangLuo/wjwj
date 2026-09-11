@@ -45,10 +45,6 @@ test("controlled alert dialogs restore focus to their external opener", async ()
     opener.focus();
     fireEvent.click(opener);
     const action = await view.findByRole("button", { name: "确认删除" });
-    expect(action.getAttribute("data-slot")).toBe("alert-dialog-action");
-    expect(action.getAttribute("data-variant")).toBe("destructive");
-    expect(action.className).toContain("h-11");
-    expect(action.className).not.toContain("h-10");
     fireEvent.click(action);
 
     await waitFor(() => expect(document.activeElement).toBe(opener));

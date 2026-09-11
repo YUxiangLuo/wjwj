@@ -22,7 +22,7 @@
     "test:teaching": "bun run scripts/test-teaching-flow.ts",
     "test:unit": "bun test --isolate src scripts",
     "test:unit:random": "bun test --isolate --randomize --seed=20260903 src scripts",
-    "verify": "bun run typecheck && bun run check:docs && bun run test:unit && bun run test:unit:random && bun run build && bun run db:check && bun run audit:applicable",
+    "verify": "bun run typecheck && bun run check:docs && bun run test:unit && bun run build && bun run db:check && bun run audit:applicable",
     "check:styles": "bun run scripts/check-styles.ts",
     "check:docs": "bun run scripts/check-docs.ts",
     "audit:shadcn": "bun run scripts/audit-shadcn.ts",

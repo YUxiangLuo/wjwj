@@ -8,6 +8,10 @@ import {
 } from "@/lib/document-title";
 import { installDomGlobals } from "@/test-utils/dom";
 
+// Covers the pure title mapping, the title hook, and the two shared shell
+// controls. These are deterministic and cheap, so they stay in the blocking
+// suite even though the heavier per-page axe scans were trimmed.
+
 let restoreDom: (() => void) | null = null;
 let LoadingStatus: ComponentType<{ label?: string }>;
 let SkipLink: ComponentType;
@@ -34,6 +38,7 @@ afterAll(() => {
 
 test("route title mappings identify nested student, teacher, and admin pages", () => {
     expect(getStudentDocumentTitle("/task/3/experiment")).toStartWith("实验过程 -");
+    expect(getStudentDocumentTitle("/task/3")).toStartWith("课题详情 -");
     expect(getTeacherDocumentTitle("/task/7/progress")).toStartWith("任务进度 -");
     expect(getTeacherDocumentTitle("/grading/5")).toStartWith("批改详情 -");
     expect(getAdminDocumentTitle("/announcement")).toStartWith("公告管理 -");

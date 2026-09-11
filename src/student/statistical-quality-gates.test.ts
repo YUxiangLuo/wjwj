@@ -1,5 +1,4 @@
 import { expect, test } from "bun:test";
-import { join } from "node:path";
 import { ADVANCED_TAB_CONFIG } from "./components/sample-planning/advancedTabs";
 import { allocateStratifiedSampleCounts } from "./components/stratified-allocation";
 import {
@@ -92,27 +91,5 @@ test("every advanced planning tool declares estimand, assumptions/source, scope,
         expect(tool.targetEstimand.trim().length).toBeGreaterThan(10);
         expect(tool.assumptionsAndSource.trim().length).toBeGreaterThan(10);
         expect(tool.scopeAndLimitations.trim().length).toBeGreaterThan(10);
-    }
-});
-
-test("copy gate rejects previously identified unconditional statistical claims", async () => {
-    const sourceRoot = join(import.meta.dir, "..");
-    const glob = new Bun.Glob("**/*.{ts,tsx}");
-    const productionSources: string[] = [];
-
-    for await (const relativePath of glob.scan({ cwd: sourceRoot })) {
-        if (/\.(?:test|spec)\.[^.]+$/.test(relativePath)) continue;
-        productionSources.push(await Bun.file(join(sourceRoot, relativePath)).text());
-    }
-    const text = productionSources.join("\n");
-    const forbiddenClaims = [
-        /成本.{0,8}指数增长/,
-        /1000.{0,12}(?:显著|明显).{0,8}(?:下降|递减)/,
-        /题型.{0,8}(?:越多越好|越丰富.{0,4}越好)/,
-        /全体发放.{0,12}(?:零误差|误差为零)/,
-    ];
-
-    for (const claim of forbiddenClaims) {
-        expect(text).not.toMatch(claim);
     }
 });

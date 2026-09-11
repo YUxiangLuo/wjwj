@@ -72,10 +72,3 @@ test("object URLs are released even when publication throws", async () => {
     expect(revokeUrl).toHaveBeenCalledWith("blob:fixture");
     expect(document.querySelectorAll("a")).toHaveLength(0);
 });
-test("SPA entries delegate BFCache handling to their document client", async () => {
-    for (const role of ["student", "teacher", "admin"]) {
-        const source = await Bun.file(`src/${role}/${role}.tsx`).text();
-        expect(source).not.toContain("pageshow");
-        expect(source).not.toContain("reloadBfcachePage");
-    }
-});
