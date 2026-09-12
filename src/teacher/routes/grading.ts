@@ -194,6 +194,7 @@ const gradingDetailRoutes: RouteDefinition = {
             topicName?: string;
             populationSize?: number | null;
             questionnaire?: unknown;
+            variableDictionary?: unknown;
             samplePlan?: unknown;
             samplingResults?: unknown;
             reportContent?: string;
@@ -241,6 +242,8 @@ const gradingDetailRoutes: RouteDefinition = {
             topicName: snapshot?.topicName ?? row.topicName,
             populationSize,
             questionnaire: snapshot?.questionnaire ?? parseStoredJson(row.questionnaire),
+            // Never attach current metadata retroactively to a historical submission.
+            variableDictionary: snapshot?.variableDictionary ?? null,
             samplePlan: normalizeSamplePlanData(
                 snapshot?.samplePlan ?? parseStoredJson(row.samplePlan),
                 populationSize,

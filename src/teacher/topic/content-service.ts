@@ -3,7 +3,8 @@ import { basename } from "node:path";
 import { db } from "../../db";
 import { task, topic, topicAttachment } from "../../db/schema";
 import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
-import { copyStorageFile, createStorageUploadPath, deleteStorageFileIfExists, writeStorageFile } from "../../server/storage-files";
+import { copyStorageFile, createStorageUploadPath, deleteStorageFileIfExists, resolveStoragePath, writeStorageFile } from "../../server/storage-files";
+import { dictionaryDatasetRevision, readStoredVariableDictionary } from "../../server/variable-dictionary";
 import {
     attachmentContentMatchesExtension,
     getAttachmentContentType,
@@ -214,6 +215,16 @@ export async function copyTopicWithResources(params: {
                 .from(topic)
                 .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)));
             if (!sourceTopic) return null;
+            const storedDictionary = readStoredVariableDictionary(sourceTopic.variableDictionary, sourceTopic.variableDictionaryRevision);
+            if (!storedDictionary.ok) return storedDictionary;
+            const dictionary = storedDictionary.value;
+            if (dictionary) {
+                if (!sourceTopic.excelFilePath) return fail("变量字典缺少来源数据，不能复制", "DATASET_CHANGED", 409);
+                const sourceBytes = await Bun.file(resolveStoragePath(sourceTopic.excelFilePath)).arrayBuffer();
+                if (dictionary.datasetRevision !== dictionaryDatasetRevision(sourceBytes, sourceTopic.excelFilePath, sourceTopic.fieldMapping)) {
+                    return fail("总体数据已改变，请重新确认变量字典后复制", "DATASET_CHANGED", 409);
+                }
+            }
             const attachments = await tx.select().from(topicAttachment).where(eq(topicAttachment.topicId, params.topicId));
 
             const copiedExcelFilePath = sourceTopic.excelFilePath
@@ -260,6 +271,9 @@ export async function copyTopicWithResources(params: {
                     excelFilePath: copiedExcelFilePath,
                     excelRowCount: sourceTopic.excelRowCount,
                     fieldMapping: retitleGeneratedStudyContract(sourceFieldMapping, sourceTopic.name, copiedName),
+                    // Same bytes and parsing profile, but a new owning topic/revision.
+                    variableDictionary: dictionary ? { ...dictionary, revision: 1 } : null,
+                    variableDictionaryRevision: dictionary ? 1 : 0,
                     samplingPolicy: normalizeJsonColumnValue(sourceTopic.samplingPolicy),
                     weightConfig: normalizeJsonColumnValue(sourceTopic.weightConfig),
                     recommendQuestions: recommendQuestions ?? null,
@@ -282,6 +296,7 @@ export async function copyTopicWithResources(params: {
         });
 
         if (newTopicId === null) return fail("实验模板不存在", "NOT_FOUND", 404);
+        if (typeof newTopicId !== "number") return newTopicId;
         return { ok: true as const, id: newTopicId };
     } catch (error) {
         await Promise.all(copiedStoragePaths.map((filePath) => deleteStorageFileIfExists(filePath).catch(() => undefined)));

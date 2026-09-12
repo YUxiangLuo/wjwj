@@ -5,6 +5,8 @@ import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
 import { deleteAuditEventsForEntities, writeAuditEvent } from "../../server/audit-event";
 import { validateTopicPublishReadiness } from "./validation";
 import { deletionRequiresConfirmation, loadDeletionImpact } from "../deletion-impact";
+import { dictionaryDatasetRevision, readStoredVariableDictionary } from "../../server/variable-dictionary";
+import { resolveStoragePath } from "../../server/storage-files";
 
 interface TaskServiceFailure {
     ok: false;
@@ -74,6 +76,8 @@ export async function publishTopicTasks(params: {
                 status: topic.status,
                 excelFilePath: topic.excelFilePath,
                 fieldMapping: topic.fieldMapping,
+                variableDictionary: topic.variableDictionary,
+                variableDictionaryRevision: topic.variableDictionaryRevision,
                 samplingPolicy: topic.samplingPolicy,
                 weightConfig: topic.weightConfig,
             })
@@ -94,6 +98,19 @@ export async function publishTopicTasks(params: {
         });
         if (publishReadinessError) {
             return fail(publishReadinessError, "VALIDATION_ERROR");
+        }
+
+        const dictionary = readStoredVariableDictionary(topicRow.variableDictionary, topicRow.variableDictionaryRevision);
+        if (!dictionary.ok) return dictionary;
+        if (dictionary.value) {
+            try {
+                const bytes = await Bun.file(resolveStoragePath(topicRow.excelFilePath!)).arrayBuffer();
+                if (dictionary.value.datasetRevision !== dictionaryDatasetRevision(bytes, topicRow.excelFilePath!, topicRow.fieldMapping)) {
+                    return fail("总体数据与变量字典不一致，请重新配置模板", "DATASET_CHANGED", 409);
+                }
+            } catch {
+                return fail("无法读取变量字典的来源数据", "READ_FAILED", 422);
+            }
         }
 
         const allowedClasses = await tx

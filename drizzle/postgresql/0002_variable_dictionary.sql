@@ -1,0 +1,2 @@
+ALTER TABLE "topic" ADD COLUMN "variable_dictionary" jsonb;--> statement-breakpoint
+ALTER TABLE "topic" ADD CONSTRAINT "topic_ck_variable_dictionary_object" CHECK ("topic"."variable_dictionary" is null or (jsonb_typeof("topic"."variable_dictionary") = 'object' and "topic"."variable_dictionary"->>'schemaVersion' = '1' and jsonb_typeof("topic"."variable_dictionary"->'variables') = 'array' and ("topic"."variable_dictionary"->'revision')::text ~ '^[1-9][0-9]*$') is true);

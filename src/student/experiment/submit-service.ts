@@ -6,6 +6,8 @@ import { resolveAnalysisTarget } from "../../lib/analysis-target";
 import { scoringWeightsFrom, type ScoringWeights } from "../../lib/scoring-weights";
 import { resolveSamplingPolicy, type SamplingPolicyV1 } from "../../lib/sampling-policy";
 import { resolveStoragePath } from "../../server/storage-files";
+import { dictionaryDatasetRevisionFromHash, readStoredVariableDictionary } from "../../server/variable-dictionary";
+import type { VariableDictionaryV1 } from "../../domain/experiment/variable-dictionary";
 import { normalizeSamplePlanData } from "./sample-plan-display";
 import { parseStoredJson } from "./serialization";
 import { compactSamplingResults } from "./sampling-storage";
@@ -35,12 +37,15 @@ export interface SubmissionSnapshot {
     populationFileSha256?: string | null;
     parserVersion?: string;
     samplingAlgorithmVersion?: string;
+    variableDictionary?: VariableDictionaryV1;
 }
 
 interface SubmitTaskInfo {
     topicName: string | null;
     populationSize: number | string | null;
     weightConfig?: unknown;
+    variableDictionary?: unknown;
+    variableDictionaryRevision?: number;
     fieldMapping?: unknown;
     samplingPolicy?: unknown;
     excelFilePath?: string | null;
@@ -136,6 +141,12 @@ export async function submitStudentExperiment(params: {
         parseStoredJson<Record<string, unknown>>(params.experimentRecord.samplingResults),
     );
     const populationFileHash = await populationFileSha256(params.taskInfo.excelFilePath);
+    const dictionary = readStoredVariableDictionary(params.taskInfo.variableDictionary, params.taskInfo.variableDictionaryRevision);
+    if (!dictionary.ok) return dictionary;
+    if (dictionary.value && (!populationFileHash || !params.taskInfo.excelFilePath
+        || dictionary.value.datasetRevision !== dictionaryDatasetRevisionFromHash(populationFileHash, params.taskInfo.excelFilePath, params.taskInfo.fieldMapping))) {
+        return fail("总体数据与变量字典不一致，请联系教师检查", "DATASET_CHANGED", 409);
+    }
     const snapshot: SubmissionSnapshot = {
         topicName: params.taskInfo.topicName ?? "未命名实验模板",
         studentName: params.student.name || params.student.studentId,
@@ -151,6 +162,7 @@ export async function submitStudentExperiment(params: {
         populationFileSha256: populationFileHash,
         parserVersion: "spreadsheet-v2",
         samplingAlgorithmVersion: "sampling-v2",
+        ...(dictionary.value ? { variableDictionary: dictionary.value } : {}),
     };
     const submittedAt = new Date();
 

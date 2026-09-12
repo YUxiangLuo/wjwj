@@ -117,6 +117,10 @@ export const topic = pgTable(
         excelFilePath: varchar("excel_file_path", { length: 500 }),
         excelRowCount: integer("excel_row_count").notNull().default(0),
         fieldMapping: nativeJsonb("field_mapping"),
+        /** Null keeps legacy templates on their existing interpretation. */
+        variableDictionary: nativeJsonb("variable_dictionary"),
+        // Survives dictionary invalidation: restoring identical data must not revive stale writes.
+        variableDictionaryRevision: bigint("variable_dictionary_revision", { mode: "number" }).notNull().default(0),
         samplingPolicy: nativeJsonb("sampling_policy").notNull().default(sql`'{"version":1,"methods":{"simple":"required","systematic":"optional","pps":"optional","stratified":"optional"}}'::jsonb`),
         weightConfig: nativeJsonb("weight_config"),
         recommendQuestions: nativeJsonb("recommend_questions"),
@@ -130,6 +134,14 @@ export const topic = pgTable(
         fieldMappingObject: check(
             "topic_ck_field_mapping_object",
             sql`${table.fieldMapping} is null or jsonb_typeof(${table.fieldMapping}) = 'object'`,
+        ),
+        variableDictionaryRevisionRange: check(
+            "topic_ck_variable_dictionary_revision",
+            sql`${table.variableDictionaryRevision} between 0 and 9007199254740991`,
+        ),
+        variableDictionaryObject: check(
+            "topic_ck_variable_dictionary_object",
+            sql`${table.variableDictionary} is null or (jsonb_typeof(${table.variableDictionary}) = 'object' and ${table.variableDictionary}->>'schemaVersion' = '1' and jsonb_typeof(${table.variableDictionary}->'variables') = 'array' and (${table.variableDictionary}->'revision')::text ~ '^[1-9][0-9]*$') is true`,
         ),
         samplingPolicyObject: check(
             "topic_ck_sampling_policy_object",

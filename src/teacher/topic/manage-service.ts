@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { task, topic, topicAttachment } from "../../db/schema";
 import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
@@ -13,6 +13,7 @@ import { deleteTopicStorageFileIfUnreferenced } from "./storage-cleanup";
 import { getPpsEligibleNumericFields, parseTopicFieldMapping } from "@/domain/statistics/population";
 import { canonicalizeRichTextHtmlForStorage } from "../../server/rich-text";
 import { deleteAuditEventsForEntities } from "../../server/audit-event";
+import { dictionaryDatasetRevision, readStoredVariableDictionary } from "../../server/variable-dictionary";
 import {
     validateMappedPopulationData,
     validateParsedExcelUpload,
@@ -99,6 +100,8 @@ export async function updateTeacherTopicBasics(params: {
                 name: topic.name,
                 excelFilePath: topic.excelFilePath,
                 fieldMapping: topic.fieldMapping,
+                variableDictionary: topic.variableDictionary,
+                variableDictionaryRevision: topic.variableDictionaryRevision,
                 samplingPolicy: topic.samplingPolicy,
                 weightConfig: topic.weightConfig,
             })
@@ -141,6 +144,11 @@ export async function updateTeacherTopicBasics(params: {
             const mapping = parseTopicFieldMapping(effectiveMapping);
             if (!mapping || !topicInfo.excelFilePath) return fail("实验模板字段映射无效");
             const buffer = await Bun.file(resolveStoragePath(topicInfo.excelFilePath)).arrayBuffer();
+            const dictionary = readStoredVariableDictionary(topicInfo.variableDictionary, topicInfo.variableDictionaryRevision);
+            if (!dictionary.ok) return dictionary;
+            if (dictionary.value && dictionary.value.datasetRevision !== dictionaryDatasetRevision(buffer, topicInfo.excelFilePath, effectiveMapping)) {
+                return fail("总体数据或字段配置已改变，请重新确认变量字典", "DATASET_CHANGED", 409);
+            }
             const parsed = await parseExcelFile(buffer, topicInfo.excelFilePath, {
                 includeColumnValues: false,
                 numericFields: mapping.numeric ?? [],
@@ -266,6 +274,8 @@ export async function replaceTopicExcelData(params: {
                     excelFilePath: filePath,
                     excelRowCount: parsed.rowCount,
                     fieldMapping: null,
+                    variableDictionary: null,
+                    variableDictionaryRevision: sql`${topic.variableDictionaryRevision} + 1`,
                     updatedAt: new Date(),
                 })
                 .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)))
@@ -351,6 +361,12 @@ export async function updateTopicFieldMapping(params: {
             .update(topic)
             .set({
                 fieldMapping: params.fieldMapping,
+                // Equivalent saves/title edits retain confirmed metadata; changed roles
+                // or targets require explicit re-confirmation against the new mapping.
+                ...(!hasSameSamplingMapping(topicInfo.fieldMapping, params.fieldMapping) ? {
+                    variableDictionary: null,
+                    variableDictionaryRevision: sql`${topic.variableDictionaryRevision} + 1`,
+                } : {}),
                 // Navigation through the wizard must not overwrite an existing
                 // policy. Replaced files clear fieldMapping, so they still reset.
                 ...(!preservePolicy ? {

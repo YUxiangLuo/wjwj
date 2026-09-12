@@ -15,6 +15,7 @@ import {
     gradingSamplingExportRoutes,
 } from "./routes/grading";
 import { teacherAnnouncementsRoutes } from "./routes/announcements";
+import { topicVariableDictionaryRoutes } from "./routes/variable-dictionary";
 import {
     taskDeletionPreviewRoutes,
     taskExtendRoutes,
@@ -52,6 +53,7 @@ export const teacherApiRoutes = {
     "/api/teacher/topics/:id/detail": withTeacherAuth(topicDetailRoutes),
     "/api/teacher/topics/:id/excel": withTeacherAuth(topicExcelUploadRoutes),
     "/api/teacher/topics/:id/mapping": withTeacherAuth(topicFieldMappingRoutes),
+    "/api/teacher/topics/:id/variables": withTeacherAuth(topicVariableDictionaryRoutes),
     "/api/teacher/topics/:id/attachments": withTeacherAuth(topicAttachmentRoutes),
     "/api/teacher/topics/:id/attachments/:attachmentId": withTeacherAuth(topicAttachmentDeleteRoutes),
     "/api/teacher/topics/:id/attachments/:attachmentId/download": withTeacherAuth(topicAttachmentDownloadRoutes),

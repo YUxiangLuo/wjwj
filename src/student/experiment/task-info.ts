@@ -80,6 +80,8 @@ export async function findStudentTaskSubmitInfo(taskId: number, classId: number)
             topicName: topic.name,
             populationSize: topic.excelRowCount,
             weightConfig: topic.weightConfig,
+            variableDictionary: topic.variableDictionary,
+            variableDictionaryRevision: topic.variableDictionaryRevision,
             fieldMapping: topic.fieldMapping,
             samplingPolicy: topic.samplingPolicy,
             excelFilePath: topic.excelFilePath,
