@@ -3,6 +3,7 @@ import { db } from "../../db";
 import { task, topic, topicAttachment } from "../../db/schema";
 import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
 import { resolveAnalysisTarget, retitleGeneratedStudyContract } from "../../lib/analysis-target";
+import { hasSameSamplingMapping } from "./sampling-mapping";
 import { buildDefaultSamplingPolicy, parseSamplingPolicy, validateSamplingPolicy } from "../../lib/sampling-policy";
 import { validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
 import { createStorageUploadPath, deleteStorageFileIfExists, resolveStoragePath, writeStorageFile } from "../../server/storage-files";
@@ -312,7 +313,7 @@ export async function updateTopicFieldMapping(params: {
     return db.transaction(async (tx) => {
         await acquireStorageMutationLock(tx);
         const [topicInfo] = await tx
-            .select({ excelFilePath: topic.excelFilePath, status: topic.status })
+            .select({ excelFilePath: topic.excelFilePath, status: topic.status, fieldMapping: topic.fieldMapping, samplingPolicy: topic.samplingPolicy })
             .from(topic)
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)));
         if (!topicInfo) return fail("实验模板不存在", "NOT_FOUND", 404);
@@ -336,15 +337,22 @@ export async function updateTopicFieldMapping(params: {
             parsed.rows,
             params.fieldMapping.numeric ?? [],
         ).some((field) => field !== targetField);
+        const stratifiedEnabled = (params.fieldMapping.stratified?.length ?? 0) > 0;
+        const currentPolicy = parseSamplingPolicy(topicInfo.samplingPolicy);
+        const preservePolicy = hasSameSamplingMapping(topicInfo.fieldMapping, params.fieldMapping)
+            && currentPolicy !== null && validateSamplingPolicy(currentPolicy) === null
+            && (ppsEnabled || currentPolicy.methods.pps === "disabled")
+            && (stratifiedEnabled || currentPolicy.methods.stratified === "disabled");
 
         const [updated] = await tx
             .update(topic)
             .set({
                 fieldMapping: params.fieldMapping,
-                samplingPolicy: buildDefaultSamplingPolicy({
-                    ppsEnabled,
-                    stratifiedEnabled: (params.fieldMapping.stratified?.length ?? 0) > 0,
-                }),
+                // Navigation through the wizard must not overwrite an existing
+                // policy. Replaced files clear fieldMapping, so they still reset.
+                ...(!preservePolicy ? {
+                    samplingPolicy: buildDefaultSamplingPolicy({ ppsEnabled, stratifiedEnabled }),
+                } : {}),
                 updatedAt: new Date(),
             })
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)))

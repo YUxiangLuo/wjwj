@@ -285,24 +285,26 @@ export function StudentManagement() {
                         </p>
                     </div>
                     <div className="flex gap-3 flex-row w-auto">
-                        <div className="relative w-52">
-                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                data-testid="teacher-student-search"
-                                aria-label="搜索学生"
-                                placeholder="搜索学号、姓名或邮箱"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                onKeyDown={(event) => {
-                                    if (event.key !== "Enter") return;
-                                    const next = searchQuery.trim();
-                                    setAppliedSearch(next);
-                                    setPage(1);
-                                    void loadData(true, { search: next, page: 1 });
-                                }}
-                                className="pl-9 bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
-                            />
-                        </div>
+                        <form role="search" aria-label="学生搜索" className="flex items-center gap-2" onSubmit={(event) => {
+                            event.preventDefault();
+                            const next = searchQuery.trim();
+                            setAppliedSearch(next);
+                            setPage(1);
+                            void loadData(true, { search: next, page: 1 });
+                        }}>
+                            <div className="relative w-52">
+                                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                <Input
+                                    data-testid="teacher-student-search"
+                                    aria-label="搜索学生"
+                                    placeholder="搜索学号、姓名或邮箱"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-9 bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
+                                />
+                            </div>
+                            <Button type="submit" variant="outline">搜索</Button>
+                        </form>
                         <Button data-testid="teacher-student-import-open" variant="outline" onClick={() => setShowImportModal(true)} className="border-input bg-muted text-foreground hover:bg-muted hover:text-foreground">
                             <Upload className="w-4 h-4 mr-2" />
                             批量导入

@@ -404,6 +404,9 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         该实验模板已发布，研究目标与字段不可修改，仅可查看当前配置。
                                     </div>
                                 )}
+                                {!isPublishedTopic && <p className="text-meta text-muted-foreground">
+                                    字段角色或估计目标变更后会重置抽样策略，请在下一步确认要求；未变更配置或仅修改文字说明时保留原有有效策略。
+                                </p>}
                                 <div className={`rounded-surface border border-border bg-background p-4 ${isPublishedTopic ? "opacity-70" : ""}`}>
                                     <div className="flex items-start justify-between gap-3">
                                         <div>

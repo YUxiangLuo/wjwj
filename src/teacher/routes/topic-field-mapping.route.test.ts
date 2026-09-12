@@ -9,6 +9,46 @@ function withRouteParam(request: Request, id: string) {
     return request;
 }
 
+for (const scenario of ["unchanged", "target-changed", "roles-changed", "file-replaced", "missing-policy", "ineligible-pps"] as const) {
+    test(`saving a draft mapping handles its sampling policy: ${scenario}`, async () => {
+        const filePath = `/storage/uploads/mapping-policy-${crypto.randomUUID()}.csv`;
+        const file = Bun.file(`${process.cwd()}${filePath}`);
+        await Bun.write(file, `id,y,size,g\n1,1,${scenario === "ineligible-pps" ? 0 : 2},A\n2,2,4,B\n3,3,6,A\n4,4,8,B\n`);
+        const target = { kind: "mean", field: "y" };
+        const previous = { identifier: "id", numeric: ["y", "size"], stratified: ["g"], others: [],
+            studyContract: { version: 1, researchQuestion: "均值是多少？", targetPopulation: "全部单位", unitOfAnalysis: "一个单位", target },
+        };
+        const next = scenario === "target-changed" ? { ...previous, studyContract: { ...previous.studyContract, target: { kind: "mean", field: "size" } } }
+            : scenario === "roles-changed" ? { ...previous, stratified: [], others: ["g"] }
+            : { ...previous, analysisTarget: target };
+        const samplingPolicy = { version: 1, methods: { simple: "required", systematic: "disabled", pps: "required", stratified: "required" } };
+        const { db, operations } = createMockDb({
+            select: [
+                [{ id: 12, status: 0, hasTasks: false }],
+                [{ status: 0, excelFilePath: filePath, fieldMapping: scenario === "file-replaced" ? null : previous,
+                    samplingPolicy: scenario === "missing-policy" ? null : samplingPolicy }], [],
+            ], update: [[{ id: 12 }]],
+        });
+        mock.module("../../db", () => ({ db }));
+        mock.module("./auth", () => createTeacherAuthModuleMock());
+        try {
+            const module = await import(`./topic-task.ts?preserve-policy=${crypto.randomUUID()}`);
+            const response = await module.topicFieldMappingRoutes.PUT!(withRouteParam(new Request("https://example.com/api/teacher/topics/12/mapping", {
+                method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fieldMapping: next }),
+            }), "12"));
+            expect(response.status).toBe(200);
+            const update = operations.find(op => op.kind === "update")?.set;
+            expect(update).toMatchObject({ fieldMapping: next });
+            if (scenario === "unchanged") expect(update).not.toHaveProperty("samplingPolicy");
+            else expect(update).toMatchObject({ samplingPolicy: { version: 1, methods: {
+                simple: "required", systematic: "optional",
+                pps: scenario === "ineligible-pps" ? "disabled" : "optional",
+                stratified: scenario === "roles-changed" ? "disabled" : "optional",
+            } } });
+        } finally { await file.delete(); }
+    });
+}
+
 test("field mapping rejects columns left over from a replaced workbook", async () => {
     const filePath = `/storage/uploads/mapping-current-${crypto.randomUUID()}.xlsx`;
     const absolutePath = `${process.cwd()}${filePath}`;

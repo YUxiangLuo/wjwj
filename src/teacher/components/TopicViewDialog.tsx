@@ -270,8 +270,8 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                             </dl>
                                         </div>
                                     )}
-                                    {fieldMapping.identifier || fieldMapping.stratified.length > 0 || fieldMapping.numeric.length > 0 ? (
-                                        <div className="grid grid-cols-3 gap-4">
+                                    {fieldMapping.identifier || fieldMapping.stratified.length > 0 || fieldMapping.numeric.length > 0 || fieldMapping.others.length > 0 ? (
+                                        <div className="grid grid-cols-2 gap-4">
                                             <div className="bg-background border border-border rounded-surface p-4 space-y-3">
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-2 h-2 rounded-circle bg-info" />
@@ -309,6 +309,18 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                                         ))
                                                         : <span className="text-label text-muted-foreground">未设置</span>
                                                     }
+                                                </div>
+                                            </div>
+                                            <div data-testid="teacher-topic-other-fields" className="bg-background border border-border rounded-surface p-4 space-y-3">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-2 h-2 rounded-circle bg-info" />
+                                                    <div className="text-meta font-medium text-muted-foreground">其他分类变量（{fieldMapping.others.length}）</div>
+                                                </div>
+                                                <p className="text-meta text-muted-foreground">用于比例目标或分类分布比较，不用于分层。</p>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {fieldMapping.others.length > 0
+                                                        ? fieldMapping.others.map(field => <StatusBadge intent="info" key={field}>{field}</StatusBadge>)
+                                                        : <span className="text-label text-muted-foreground">未设置</span>}
                                                 </div>
                                             </div>
                                         </div>
