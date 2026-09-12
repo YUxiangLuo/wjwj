@@ -219,6 +219,53 @@ test("AnalysisReport omits disabled methods from the export and parameter panels
     expect(view.getByTestId("student-analysis-sampling-params-systematic")).toBeTruthy();
 });
 
+for (const scenario of [
+    { name: "mean with exact PPS", kind: "mean", mode: "systematic_exact", ppsText: "PPS 按全部随机起点区间及其概率计算 Hájek 比估计的设计标准误" },
+    { name: "mean with census PPS", kind: "mean", mode: "census_exact", ppsText: "设计标准误精确为 0，未执行 Monte Carlo 重复抽样" },
+    { name: "mean with legacy Monte Carlo PPS", kind: "mean", mode: "monte_carlo", ppsText: "PPS 为 256 次重复抽样的 Monte Carlo 估计" },
+    { name: "categorical proportion without PPS", kind: "proportion", mode: null, ppsText: null },
+] as const) {
+    test(`design standard error explains population variance rather than sample variance: ${scenario.name}`, async () => {
+        mockExperimentContext.experiment = {
+            ...mockExperimentContext.experiment,
+            analysisTarget: { target: scenario.kind === "mean"
+                ? { kind: "mean", field: "数值" }
+                : { kind: "proportion", field: "类别", value: "待复检" } },
+            ...(scenario.mode === "census_exact" ? {
+                samplePlan: { finalSampleSize: 8000 },
+                samplingResults: Object.fromEntries(["simple", "systematic", "pps", "stratified"].map((method) => [
+                    method, { completed: true, sampleCount: 8000, data: [] },
+                ])),
+            } : {}),
+            ...(scenario.mode === null ? {
+                samplingPolicy: { version: 1, methods: { simple: "required", systematic: "optional", pps: "disabled", stratified: "optional" } },
+                samplingResults: { simple: { completed: true, sampleCount: 400, data: [] } },
+            } : {}),
+        };
+        mockExperimentApi.getAnalysisMetrics.mockResolvedValueOnce({
+            success: true,
+            data: {
+                ...(scenario.mode ? { ppsStandardErrorMode: scenario.mode, ppsMonteCarloReplicates: 256 } : {}),
+                numericFields: [], categoricalFields: [], numeric: {}, categorical: {},
+            },
+        });
+        const view = render(<AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />);
+        const chart = view.getByTestId("student-analysis-error-chart");
+        await waitFor(() => {
+            expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(1);
+            if (scenario.ppsText) expect(chart.textContent).toContain(scenario.ppsText);
+        });
+        expect(chart.textContent).toContain("利用完整虚拟总体");
+        expect(chart.textContent).toContain("均值规划的总体方差 σ² 按 N 计算");
+        expect(chart.textContent).toContain("按 N−1 计算的总体方差 S² = Nσ²/(N−1)");
+        expect(chart.textContent).toContain("不以本次样本方差估计总体方差");
+        expect(chart.textContent).toContain("估计量在重复抽样中的波动");
+        expect(chart.textContent).not.toContain("标准误则用本次样本的样本方差");
+        expect(chart.textContent).not.toContain("总体文件（按 N−1 计算");
+        if (!scenario.ppsText) expect(chart.textContent).not.toContain("PPS");
+    });
+}
+
 test("AnalysisReport excludes unselected methods from every analysis chart", async () => {
     mockExperimentContext.experiment = {
         ...mockExperimentContext.experiment,
