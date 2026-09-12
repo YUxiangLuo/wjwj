@@ -7,7 +7,9 @@ const { cleanup, fireEvent, render, waitFor } = await import("@testing-library/r
 const { MemoryRouter } = await import("react-router-dom");
 
 const toastError = mock(() => undefined);
-mock.module("sonner", () => ({ toast: { error: toastError, success: mock(() => undefined) } }));
+const toastSuccess = mock(() => undefined);
+const copyTopic = mock(async (_id: number): Promise<{ success: boolean; data?: { id: number }; error?: { code: string; message: string } }> => ({ success: true, data: { id: 44 } }));
+mock.module("sonner", () => ({ toast: { error: toastError, success: toastSuccess } }));
 
 const getTopics = mock(async () => ({ success: true, data: [] as Topic[] }));
 const updateTopic = mock(async (_id: number, _body: unknown) => ({ success: true }));
@@ -24,7 +26,7 @@ mock.module("../api-client", () => ({
         createTopic,
         getTopicDetail: async () => ({ success: true, data: { topic: null, hasExcelFile: false, attachments: [], recommendQuestions: [] } }),
         uploadTopicExcel: async () => ({ success: true, data: { rowCount: 0, columns: [], preview: [] } }),
-        copyTopic: async () => ({ success: true }),
+        copyTopic,
     },
 }));
 mock.module("@/components/RichTextEditor", () => ({
@@ -48,6 +50,8 @@ beforeEach(() => {
     deleteTopic.mockClear();
     createTopic.mockClear();
     toastError.mockClear();
+    toastSuccess.mockClear();
+    copyTopic.mockClear();
 });
 
 afterEach(async () => {
@@ -129,4 +133,36 @@ test("creating a topic opens the wizard and refuses an empty name", async () => 
     fireEvent.click(view.getByTestId("teacher-topic-next"));
     await waitFor(() => expect(toastError).toHaveBeenCalledWith("请输入实验模板名称"));
     expect(createTopic).not.toHaveBeenCalled();
+});
+
+for (const source of [assigned, published]) {
+    test(`copying template ${source.id} reveals the draft and focuses its edit action`, async () => {
+        getTopics.mockResolvedValueOnce({ success: true, data: [source] });
+        getTopics.mockResolvedValueOnce({ success: true, data: [source, { ...draft, id: 44, name: "新副本" }] });
+        const view = renderPage();
+        await waitFor(() => expect(view.getByTestId(`teacher-topic-copy-${source.id}`)).toBeTruthy());
+        fireEvent.change(view.getByTestId("teacher-topic-search"), { target: { value: source.name } });
+        fireEvent.keyDown(view.getByTestId("teacher-topic-status-filter"), { key: "Enter" });
+        fireEvent.click(view.getByRole("option", { name: "已发布" }));
+        await waitFor(() => expect(document.activeElement === view.getByTestId("teacher-topic-status-filter")).toBe(true));
+        fireEvent.click(view.getByTestId(`teacher-topic-copy-${source.id}`));
+        await waitFor(() => expect(view.getByTestId("teacher-topic-edit-44")).toBeTruthy());
+        expect(copyTopic).toHaveBeenCalledWith(source.id);
+        expect((view.getByTestId("teacher-topic-search") as HTMLInputElement).value).toBe("");
+        expect(view.getByTestId("teacher-topic-status-filter").textContent).toBe("草稿");
+        expect(document.activeElement).toBe(view.getByTestId("teacher-topic-edit-44"));
+        expect(toastSuccess).toHaveBeenCalledWith("已复制为草稿，可继续编辑后发布");
+    });
+}
+
+test("failed copying leaves the current filter and search intact", async () => {
+    getTopics.mockResolvedValueOnce({ success: true, data: [published] });
+    copyTopic.mockResolvedValueOnce({ success: false, error: { code: "FAILED", message: "暂不可用" } });
+    const view = renderPage();
+    await waitFor(() => expect(view.getByTestId("teacher-topic-copy-3")).toBeTruthy());
+    fireEvent.change(view.getByTestId("teacher-topic-search"), { target: { value: published.name } });
+    fireEvent.click(view.getByTestId("teacher-topic-copy-3"));
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith("复制失败: 暂不可用"));
+    expect((view.getByTestId("teacher-topic-search") as HTMLInputElement).value).toBe(published.name);
+    expect(toastSuccess).not.toHaveBeenCalled();
 });

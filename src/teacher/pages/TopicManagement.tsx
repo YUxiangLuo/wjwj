@@ -59,6 +59,7 @@ export function TopicManagement() {
     const [uploadingExcel, setUploadingExcel] = useState(false);
     const [uploadingAttachment, setUploadingAttachment] = useState(false);
     const [copyingTopicId, setCopyingTopicId] = useState<number | null>(null);
+    const [copiedTopicId, setCopiedTopicId] = useState<number | null>(null);
     const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "published">("all");
     const [searchTerm, setSearchTerm] = useState("");
 
@@ -203,6 +204,22 @@ export function TopicManagement() {
         setShowViewModal(true);
     }
 
+    async function copyTopic(topic: Topic) {
+        setCopyingTopicId(topic.id);
+        try {
+            const res = await teacherApi.copyTopic(topic.id);
+            if (!res.success || !res.data) {
+                toast.error("复制失败: " + (res.error?.message ?? "请重试"));
+                return;
+            }
+            setStatusFilter("draft");
+            setSearchTerm("");
+            setCopiedTopicId(res.data.id);
+            toast.success("已复制为草稿，可继续编辑后发布");
+            await loadTopics();
+        } finally { setCopyingTopicId(null); }
+    }
+
     function requestPublish(topic: Topic) {
         if (topic.dataRows <= 0) {
             toast.error("实验模板需先上传总体数据后才能发布");
@@ -223,6 +240,7 @@ export function TopicManagement() {
         }
 
         if (res?.success) {
+            toast.success(type === "publish" ? "实验模板已发布，可在实验任务中分配给班级" : "实验模板已删除");
             loadTopics();
         } else {
             const actionLabel = type === "publish" ? "发布" : "删除";
@@ -351,6 +369,7 @@ export function TopicManagement() {
         }
         const res = await teacherApi.updateWeightConfig(editingTopicId, weightConfig);
         if (res.success) {
+            toast.success("模板配置已保存，发布后可分配给班级");
             setShowCreateModal(false);
             setCurrentStep(1);
             setEditingTopicId(null);
@@ -381,6 +400,15 @@ export function TopicManagement() {
             return matchesKeyword && matchesStatus;
         });
     }, [topics, searchTerm, statusFilter]);
+
+    useEffect(() => {
+        if (copiedTopicId === null) return;
+        const editButton = document.querySelector<HTMLButtonElement>(`[data-testid="teacher-topic-edit-${copiedTopicId}"]`);
+        if (!editButton) return;
+        editButton.scrollIntoView?.({ block: "center", behavior: "instant" });
+        editButton.focus({ preventScroll: true });
+        setCopiedTopicId(null);
+    }, [filteredTopics, copiedTopicId]);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -518,21 +546,9 @@ export function TopicManagement() {
                                                 size="sm"
                                                 disabled={copyingTopicId !== null}
                                                 className="text-muted-foreground hover:text-info hover:bg-info-muted"
-                                                onClick={async () => {
-                                                    setCopyingTopicId(topic.id);
-                                                    try {
-                                                        const res = await teacherApi.copyTopic(topic.id);
-                                                        if (res.success) {
-                                                            loadTopics();
-                                                        } else {
-                                                            toast.error("复制失败: " + res.error?.message);
-                                                        }
-                                                    } finally {
-                                                        setCopyingTopicId(null);
-                                                    }
-                                                }}
+                                                onClick={() => void copyTopic(topic)}
                                             >
-                                                复制
+                                                {copyingTopicId === topic.id ? "正在复制…" : "复制"}
                                             </Button>
                                         </>
                                     ) : topic.status === 0 ? (
@@ -552,21 +568,9 @@ export function TopicManagement() {
                                                 size="sm"
                                                 disabled={copyingTopicId !== null}
                                                 className="text-muted-foreground hover:text-info hover:bg-info-muted"
-                                                onClick={async () => {
-                                                    setCopyingTopicId(topic.id);
-                                                    try {
-                                                        const res = await teacherApi.copyTopic(topic.id);
-                                                        if (res.success) {
-                                                            loadTopics();
-                                                        } else {
-                                                            toast.error("复制失败: " + res.error?.message);
-                                                        }
-                                                    } finally {
-                                                        setCopyingTopicId(null);
-                                                    }
-                                                }}
+                                                onClick={() => void copyTopic(topic)}
                                             >
-                                                复制
+                                                {copyingTopicId === topic.id ? "正在复制…" : "复制"}
                                             </Button>
                                             <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive hover:bg-destructive-muted" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
                                         </>
@@ -609,7 +613,7 @@ export function TopicManagement() {
                 setNewTopicName={setNewTopicName}
                 newTopicDesc={newTopicDesc}
                 setNewTopicDesc={setNewTopicDesc}
-                loadingDetail={detailLoad.loading || Boolean(detailLoad.error)}
+                loadingDetail={editingTopicId !== null && (detailLoad.loading || Boolean(detailLoad.error))}
                 detailError={editingTopicId ? detailLoad.error : null}
                 onRetryDetail={() => { if (editingTopicId) void loadTopicDetail(editingTopicId); }}
                 excelInfo={excelInfo}

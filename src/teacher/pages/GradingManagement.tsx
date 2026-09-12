@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, ClipboardList, Search } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button, IconButton } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,45 +19,64 @@ import { teacherApi, type GradingItem } from "../api-client";
 
 const PAGE_SIZE = 20;
 
+function listQuery(status: string, keyword: string, page: number) {
+    const query = new URLSearchParams();
+    if (status !== "pending") query.set("status", status);
+    if (keyword.trim()) query.set("keyword", keyword.trim());
+    if (page > 1) query.set("page", String(page));
+    return query;
+}
+
 export function GradingManagement() {
     const navigate = useNavigate();
     const [items, setItems] = useState<GradingItem[]>([]);
     const [total, setTotal] = useState(0);
-    const [page, setPage] = useState(1);
-    const [status, setStatus] = useState("pending");
-    const [keyword, setKeyword] = useState("");
+    const [searchParams, setSearchParams] = useSearchParams();
+    const rawPage = Number(searchParams.get("page") ?? 1);
+    const page = Number.isSafeInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+    const rawStatus = searchParams.get("status") ?? "pending";
+    const status = ["pending", "graded", "rejected", "all"].includes(rawStatus) ? rawStatus : "pending";
+    const appliedKeyword = searchParams.get("keyword")?.trim() ?? "";
+    const [keyword, setKeyword] = useState(appliedKeyword);
+    useEffect(() => { setKeyword(appliedKeyword); }, [appliedKeyword]);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
     const requestIdRef = useRef(0);
     useEffect(() => () => { requestIdRef.current += 1; }, []);
 
-    const load = async (nextPage = 1) => {
+    const load = useCallback(async () => {
         const requestId = ++requestIdRef.current;
-        setPage(nextPage);
         setLoading(true);
         setLoadError(null);
         const response = await teacherApi.getGradingList({
             status: status === "all" ? undefined : status,
-            keyword: keyword.trim() || undefined,
-            page: nextPage,
+            keyword: appliedKeyword || undefined,
+            page,
             pageSize: PAGE_SIZE,
         });
         if (requestId !== requestIdRef.current) return;
         if (response.success && response.data) {
+            const lastPage = Math.max(1, Math.ceil(response.data.total / PAGE_SIZE));
+            if (page > lastPage) {
+                setSearchParams(listQuery(status, appliedKeyword, lastPage), { replace: true });
+                return;
+            }
             setItems(response.data.items);
             setTotal(response.data.total);
-            setPage(response.data.page);
         } else {
             setItems([]);
             setTotal(0);
             setLoadError(response.error?.message ?? "批改列表加载失败");
         }
         setLoading(false);
-    };
+    }, [status, appliedKeyword, page, setSearchParams]);
 
-    useEffect(() => {
-        void load(1);
-    }, [status]);
+    useEffect(() => { void load(); }, [load]);
+    const applyFilters = (nextStatus = status) => {
+        const query = listQuery(nextStatus, keyword, 1);
+        if (query.toString() === searchParams.toString()) void load();
+        else setSearchParams(query);
+    };
 
     const badge = (item: GradingItem) => {
         if (item.status === "submitted") return <StatusBadge intent="warning">待批改</StatusBadge>;
@@ -81,12 +100,12 @@ export function GradingManagement() {
                                 className="pl-9 w-56"
                                 value={keyword}
                                 onChange={(event) => setKeyword(event.target.value)}
-                                onKeyDown={(event) => event.key === "Enter" && void load(1)}
+                                onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) applyFilters(); }}
                                 placeholder="搜索学生或实验模板"
                             />
                         </div>
-                        <Button variant="outline" onClick={() => void load(1)}>搜索</Button>
-                        <Select value={status} onValueChange={setStatus}>
+                        <Button variant="outline" onClick={() => applyFilters()}>搜索</Button>
+                        <Select value={status} onValueChange={applyFilters}>
                             <SelectTrigger aria-label="按批改状态筛选" className="w-32">
                                 <SelectValue />
                             </SelectTrigger>
@@ -100,14 +119,14 @@ export function GradingManagement() {
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                    {loadError && <div role="alert" className="flex items-center gap-3 text-label text-destructive"><span>{loadError}</span><Button variant="outline" onClick={() => void load(page)}>重试加载</Button></div>}
+                    {loadError && <div role="alert" className="flex items-center gap-3 text-label text-destructive"><span>{loadError}</span><Button variant="outline" onClick={() => void load()}>重试加载</Button></div>}
                     {loading ? (
                         <p className="py-12 text-center text-label text-muted-foreground" role="status">加载中...</p>
                     ) : items.map((item) => (
                         <button
                             key={item.id}
                             className="flex w-full gap-3 rounded-surface border border-border p-4 text-left transition-none hover:bg-muted flex-row items-center"
-                            onClick={() => navigate(`/grading/${item.id}`)}
+                            onClick={() => navigate(`/grading/${item.id}${searchParams.size ? `?${searchParams}` : ""}`)}
                         >
                             <Avatar>
                                 <AvatarFallback className="bg-primary text-primary-foreground">
@@ -141,7 +160,7 @@ export function GradingManagement() {
                                 aria-label="上一页"
                                 variant="outline"
                                 disabled={loading || page <= 1}
-                                onClick={() => void load(page - 1)}
+                                onClick={() => setSearchParams(listQuery(status, appliedKeyword, page - 1))}
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </IconButton>
@@ -150,7 +169,7 @@ export function GradingManagement() {
                                 aria-label="下一页"
                                 variant="outline"
                                 disabled={loading || page >= pages}
-                                onClick={() => void load(page + 1)}
+                                onClick={() => setSearchParams(listQuery(status, appliedKeyword, page + 1))}
                             >
                                 <ChevronRight className="h-4 w-4" />
                             </IconButton>

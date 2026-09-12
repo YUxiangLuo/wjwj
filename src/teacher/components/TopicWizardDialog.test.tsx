@@ -4,7 +4,7 @@ import { buildDefaultSamplingPolicy } from "@/lib/sampling-policy";
 import type { FieldMappingState } from "./StudyContractEditor";
 
 const bootstrapDom = installDomGlobals();
-const { cleanup, fireEvent, render, waitFor } = await import("@testing-library/react");
+const { act, cleanup, fireEvent, render, waitFor } = await import("@testing-library/react");
 
 mock.module("@/components/RichTextEditor", () => ({
     RichTextEditor: ({ value }: { value: string }) => <div data-testid="mock-richtext">{value}</div>,
@@ -198,4 +198,60 @@ test("a published topic is read-only and always allows advancing", async () => {
     expect((view.getByTestId("teacher-topic-mapping-others-cat") as HTMLInputElement).disabled).toBe(true);
     expect((view.getByTestId("teacher-topic-next") as HTMLButtonElement).disabled).toBe(false);
     await waitFor(() => expect(view.getByTestId("teacher-topic-next").textContent).toBe("下一步"));
+});
+
+test("changing steps resets scrolling and focuses the step, but editing does not", () => {
+    const props = makeProps({ currentStep: 2 });
+    const view = render(<TopicWizardDialog {...props} />);
+    const content = view.getByTestId("teacher-topic-scroll-content");
+    content.scrollTop = 368;
+    view.rerender(<TopicWizardDialog {...props} newTopicName="修改名称" />);
+    expect(content.scrollTop).toBe(368);
+    view.rerender(<TopicWizardDialog {...props} currentStep={3} />);
+    expect(content.scrollTop).toBe(0);
+    expect(document.activeElement).toBe(view.getByTestId("teacher-topic-step-3"));
+    expect(document.activeElement?.getAttribute("aria-current")).toBe("step");
+});
+
+test("the introductory flow is optional instead of pushing the first fields down", () => {
+    const view = render(<TopicWizardDialog {...makeProps()} />);
+    const help = view.getByText("实验模板如何生成学生实验").closest("details")!;
+    expect(help.open).toBe(false);
+    expect(view.getByText("仅上传总体数据不会立即生成学生实验；必须完成七步配置，再发布模板并分配到班级。")).toBeTruthy();
+});
+
+test("pending saves prevent duplicate requests, field edits and closing", async () => {
+    let finish!: () => void;
+    const save = mock(() => new Promise<void>(resolve => { finish = resolve; }));
+    const close = mock(() => {});
+    const view = render(<TopicWizardDialog {...makeProps({ onSubmitTopic: save, onOpenChange: close })} />);
+    const next = view.getByTestId("teacher-topic-next") as HTMLButtonElement;
+    fireEvent.click(next); fireEvent.click(next);
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(next.disabled).toBe(true);
+    expect(view.getByText(/正在保存/)).toBeTruthy();
+    expect(view.getByRole("dialog").querySelector('[aria-busy="true"]')?.hasAttribute("inert")).toBe(true);
+    expect(view.queryByRole("button", { name: "关闭" })).toBeNull();
+    fireEvent.keyDown(view.getByRole("dialog"), { key: "Escape" });
+    expect(close).not.toHaveBeenCalled();
+    await act(async () => finish());
+    expect(next.disabled).toBe(false);
+});
+
+test("unexpected save failure leaves the wizard open and permits retry", async () => {
+    const save = mock(async () => { throw Error("offline"); });
+    const view = render(<TopicWizardDialog {...makeProps({ onSubmitTopic: save })} />);
+    fireEvent.click(view.getByTestId("teacher-topic-next"));
+    await waitFor(() => expect(view.getByTestId("teacher-topic-save-error").textContent).toContain("本页输入已保留"));
+    expect((view.getByTestId("teacher-topic-next") as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(view.getByTestId("teacher-topic-next"));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
+});
+
+test("uploading blocks step changes until population processing finishes", () => {
+    const view = render(<TopicWizardDialog {...makeProps({ currentStep: 2, uploadingExcel: true, isPublishedTopic: false,
+        excelInfo: { rowCount: 10, colCount: 1, columns: ["id"], preview: [] } })} />);
+    expect((view.getByTestId("teacher-topic-next") as HTMLButtonElement).disabled).toBe(true);
+    expect((view.getByTestId("teacher-topic-prev") as HTMLButtonElement).disabled).toBe(true);
+    expect(view.getByText(/正在上传…/)).toBeTruthy();
 });

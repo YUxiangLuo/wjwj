@@ -2,7 +2,8 @@ import { RequestError } from "@/components/RequestError";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, CheckCircle2, Download, History, XCircle } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useSectionNavigation } from "@/hooks/useSectionNavigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,14 +29,18 @@ function parseScoreField(value: string) {
 
 function scoreFieldMessage(scores: { questionnaire: string; process: string; report: string }) {
     const values = [scores.questionnaire, scores.process, scores.report];
+    if (values.some((value) => value.trim() !== "" && parseScoreField(value) === null)) return "分项分数需在 0–100 之间。";
     if (values.some((value) => value.trim() === "")) return "请填写三项分数后再提交。";
-    if (values.some((value) => parseScoreField(value) === null)) return "分项分数需在 0–100 之间。";
     return null;
 }
 
 export function GradingDetail() {
     const { submissionId } = useParams();
     const navigate = useNavigate();
+    const { search } = useLocation();
+    const returnToList = () => navigate(`/grading${search}`);
+    const [section, selectSection, navigationRef] = useSectionNavigation<string>("questionnaire", "main > header");
+    const mutationInFlight = useRef(false);
     const [data, setData] = useState<SubmissionDetail | null>(null);
     const { loading, error: loadError, run, cancel } = useAsyncLoad("批改记录加载失败");
     const [conflict, setConflict] = useState(false);
@@ -66,6 +71,7 @@ export function GradingDetail() {
         setData(null);
         setConflict(false);
         setSaving(false);
+        mutationInFlight.current = false;
         setRejectOpen(false);
         setGradeConfirmOpen(false);
         if (Number.isInteger(id) && id > 0) void load();
@@ -87,7 +93,8 @@ export function GradingDetail() {
         ) / 100;
     }, [parsedScores, scoresReady, weights]);
     const grade = async () => {
-        if (!data || !scoresReady) return;
+        if (!data || !scoresReady || !canGrade || mutationInFlight.current) return;
+        mutationInFlight.current = true;
         setGradeConfirmOpen(false);
         setSaving(true);
         const response = await teacherApi.submitGrade(id, data.version, {
@@ -97,6 +104,7 @@ export function GradingDetail() {
             comment,
         });
         if (currentId.current !== id) return;
+        mutationInFlight.current = false;
         setSaving(false);
         if (!response.success) {
             toast.error(response.error?.message ?? "评分失败");
@@ -104,25 +112,29 @@ export function GradingDetail() {
             return;
         }
         toast.success("评分已保存");
-        navigate("/grading");
+        returnToList();
     };
     const reject = async () => {
-        if (!data) return;
+        if (!data || !canGrade || rejectReason.trim().length < 5 || mutationInFlight.current) return;
+        mutationInFlight.current = true;
+        setSaving(true);
         const response = await teacherApi.rejectSubmission(id, data.version, rejectReason);
         if (currentId.current !== id) return;
+        mutationInFlight.current = false;
+        setSaving(false);
         if (!response.success) {
             toast.error(response.error?.message ?? "驳回失败");
             if (response.error?.code === "VERSION_CONFLICT") { setConflict(true); setRejectOpen(false); }
             return;
         }
         toast.success("已驳回，学生可修改后重交");
-        navigate("/grading");
+        returnToList();
     };
     if (!Number.isInteger(id) || id <= 0) return <p className="py-12 text-center text-muted-foreground">未找到提交记录</p>;
     if (!data && loadError) return <RequestError message={loadError} onRetry={() => void load()} />;
     if (loading && !data) return <p role="status" aria-live="polite" className="py-12 text-center text-muted-foreground">加载中...</p>;
     if (!data) return <p className="py-12 text-center text-muted-foreground">未找到提交记录</p>;
-    const canGrade = !conflict && !loading && !loadError && (data.status === "submitted" || data.status === "graded");
+    const canGrade = !saving && !conflict && !loading && !loadError && (data.status === "submitted" || data.status === "graded");
     const scoreLabels = {
         questionnaire: `问卷设计（${weights.questionnaire}%）`,
         process: `实验过程（${weights.process}%）`,
@@ -133,23 +145,24 @@ export function GradingDetail() {
             {loadError && <RequestError message={loadError} onRetry={() => void load(true)} retrying={loading} />}
             {conflict && <div role="alert" className="space-y-3 rounded-surface border border-warning-border bg-warning-muted p-4 text-label text-warning"><p>记录已在其他页面更新，当前评分和评语已保留。请加载最新记录后核对再提交。</p><Button variant="outline" disabled={loading} onClick={() => void load(true)}>加载最新记录并保留输入</Button></div>}
             <div className="flex items-center justify-between">
-                <Button variant="ghost" onClick={() => navigate("/grading")}><ArrowLeft className="mr-2 h-4 w-4" />返回列表</Button>
+                <Button variant="ghost" disabled={saving} onClick={returnToList}><ArrowLeft className="mr-2 h-4 w-4" />返回列表</Button>
                 <div className="flex items-center gap-2">
                     <StatusBadge intent={data.status === "graded" ? "success" : data.status === "rejected" ? "destructive" : "warning"}>
                         {data.status === "graded" ? "已批改" : data.status === "rejected" ? "已驳回" : "待批改"}
                     </StatusBadge>
                 </div>
             </div>
-            <Card>
-                <CardHeader>
+            <div className="flex items-start gap-5" data-testid="teacher-grading-workspace">
+            <Card className="min-w-0 flex-1 gap-3 py-4">
+                <CardHeader className="px-4">
                     <CardTitle>
                         <h2>{data.studentName} · {data.topic}</h2>
                     </CardTitle>
                     <p className="text-label text-muted-foreground">{data.className} · {data.studentId}</p>
                 </CardHeader>
-                <CardContent>
-                    <Tabs defaultValue="questionnaire">
-                        <TabsList className="grid w-full grid-cols-4">
+                <CardContent className="px-4">
+                    <Tabs ref={navigationRef} value={section} onValueChange={selectSection} className="scroll-mt-20">
+                        <TabsList className="sticky top-16 z-20 grid w-full grid-cols-4" aria-label="提交材料">
                             <TabsTrigger value="questionnaire">问卷</TabsTrigger>
                             <TabsTrigger value="plan">方案</TabsTrigger>
                             <TabsTrigger value="sampling">抽样结果</TabsTrigger>
@@ -202,20 +215,20 @@ export function GradingDetail() {
                 </CardContent>
             </Card>
             {data.status === "rejected" ? (
-                <Card className="border-destructive-border">
+                <Card className="sticky top-20 w-80 shrink-0 border-destructive-border">
                     <CardHeader><CardTitle className="flex items-center gap-2 text-destructive"><XCircle className="h-5 w-5" />驳回理由</CardTitle></CardHeader>
                     <CardContent><p className="whitespace-pre-wrap text-label">{data.rejectReason}</p></CardContent>
                 </Card>
             ) : (
-                <Card>
-                    <CardHeader><CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-success" />评分</CardTitle></CardHeader>
-                    <CardContent className="space-y-5">
-                        <div className="grid gap-4 grid-cols-3">
+                <Card className="sticky top-20 max-h-[calc(100dvh-6rem)] w-80 shrink-0 gap-3 overflow-y-auto py-4" data-testid="teacher-grading-panel">
+                    <CardHeader className="px-4"><CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-success" />评分</CardTitle><p className="break-words text-meta text-muted-foreground">{data.studentName} · {data.studentId}</p></CardHeader>
+                    <CardContent className="space-y-3 px-4">
+                        <div className="grid gap-2 grid-cols-3">
                             {(["questionnaire", "process", "report"] as const).map((key) => {
                                 const inputId = `grading-score-${key}`;
                                 return (
                                     <div key={key}>
-                                        <Label htmlFor={inputId}>{scoreLabels[key]}</Label>
+                                        <Label htmlFor={inputId} className="block text-meta">{scoreLabels[key]}</Label>
                                         <Input
                                             id={inputId}
                                             type="number"
@@ -231,9 +244,10 @@ export function GradingDetail() {
                         </div>
                         <div>
                             <Label htmlFor="grading-comment">教师评语</Label>
-                            <Textarea id="grading-comment" rows={4} value={comment} disabled={!canGrade} onChange={(event) => setComment(event.target.value)} />
+                            <Textarea id="grading-comment" rows={3} value={comment} disabled={!canGrade} onChange={(event) => setComment(event.target.value)} />
                         </div>
-                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-surface bg-muted p-4">
+                        <div className="space-y-2 rounded-surface bg-muted p-3">
+                            {!scoresReady && <p className="text-meta text-muted-foreground" role="status">{scoreFieldMessage(scores)}</p>}
                             <p>加权总分：<span className="text-page-title font-bold text-primary">{total === null ? "—" : total.toFixed(2)}</span></p>
                             <div className="flex flex-wrap gap-2">
                                 {data.status === "submitted" && <Button variant="destructive" disabled={!canGrade || saving} onClick={() => setRejectOpen(true)}>驳回修改</Button>}
@@ -246,7 +260,7 @@ export function GradingDetail() {
                                                     : `确认提交评分？加权总分为 ${total?.toFixed(2) ?? "—"}。`)}
                                         </p>
                                         <Button variant="outline" disabled={saving} onClick={() => setGradeConfirmOpen(false)}>取消</Button>
-                                        <Button data-testid="teacher-grade-confirm" disabled={saving || !scoresReady} onClick={() => void grade()}>确认提交</Button>
+                                        <Button data-testid="teacher-grade-confirm" disabled={!canGrade || !scoresReady} onClick={() => void grade()}>确认提交</Button>
                                     </>
                                 ) : (
                                     <Button disabled={!canGrade || saving || !scoresReady} onClick={() => setGradeConfirmOpen(true)}>{saving ? "保存中..." : data.status === "graded" ? "更新评分" : "提交评分"}</Button>
@@ -256,19 +270,20 @@ export function GradingDetail() {
                     </CardContent>
                 </Card>
             )}
-            <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
-                <DialogContent>
+            </div>
+            <Dialog open={rejectOpen} onOpenChange={(open) => { if (!saving) setRejectOpen(open); }}>
+                <DialogContent showCloseButton={!saving}>
                     <DialogHeader>
                         <DialogTitle>驳回实验</DialogTitle>
                         <DialogDescription>说明需要修改的内容；学生重新提交后原评分和驳回状态会被清除。</DialogDescription>
                     </DialogHeader>
                     <div>
                         <Label htmlFor="grading-reject-reason">请说明需要修改的内容</Label>
-                        <Textarea id="grading-reject-reason" rows={5} value={rejectReason} onChange={(event) => setRejectReason(event.target.value)} />
+                        <Textarea id="grading-reject-reason" rows={5} value={rejectReason} disabled={saving} onChange={(event) => setRejectReason(event.target.value)} />
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setRejectOpen(false)}>取消</Button>
-                        <Button variant="destructive" disabled={rejectReason.trim().length < 5} onClick={() => void reject()}>确认驳回</Button>
+                        <Button variant="outline" disabled={saving} onClick={() => setRejectOpen(false)}>取消</Button>
+                        <Button variant="destructive" disabled={!canGrade || rejectReason.trim().length < 5} onClick={() => void reject()}>{saving ? "正在驳回…" : "确认驳回"}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
