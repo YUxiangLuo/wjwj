@@ -207,13 +207,10 @@ function ExperimentWorkspace() {
     return (
         <ExperimentContext.Provider value={{ experiment, populationSize: experiment.populationSize, isSaving, completeStage, reloadLatestVersion: loadLatestVersion }}>
             <div className="pb-4" data-testid="student-experiment-layout">
-                <div className="sticky top-16 z-40 -mt-2 border-b border-border bg-background">
-                    <div className="flex items-center justify-between py-2">
-                        <div className="flex min-w-0 items-center gap-2"><Button asChild variant="ghost" size="icon"><Link to="/" aria-label="返回任务大厅"><Home className="h-4 w-4" /></Link></Button><Button asChild variant="ghost" className="gap-2 flex shrink-0"><Link to={`/task/${numericTaskId}`}><ArrowLeft className="h-4 w-4" />返回任务</Link></Button><h1 tabIndex={-1} className="ml-2 line-clamp-1 border-l border-border pl-4 text-label font-semibold outline-none">{taskName}</h1></div>
-                        {deadlineInfo && <span className={`items-center gap-1 text-meta flex ${deadlineInfo.urgent ? "text-destructive" : "text-muted-foreground"}`}>{deadlineInfo.urgent ? <AlertCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}{deadlineInfo.text}</span>}
-                    </div>
-                    {saveError && <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-surface border border-destructive-border bg-destructive-muted px-3 py-2 text-label text-destructive"><span>{saveError}</span>{versionConflict && <Button type="button" size="sm" variant="outline" disabled={isSaving} data-testid="student-load-latest-version" onClick={() => void loadLatestVersion()} className="border-destructive-border bg-background text-destructive hover:bg-destructive-muted hover:text-destructive"><RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isSaving ? "animate-spin" : ""}`} />加载最新版本</Button>}</div>}
-                    <div className="flex items-center gap-2 overflow-x-auto pb-2.5" data-testid="student-experiment-stages">
+                <div className="sticky top-16 z-40 -mt-2 border-b border-border bg-background" data-testid="student-experiment-navigation">
+                    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2">
+                        <div className="flex min-w-[20rem] flex-1 items-center gap-2"><Button asChild variant="ghost" size="icon"><Link to="/" aria-label="返回任务大厅"><Home className="h-4 w-4" /></Link></Button><Button asChild variant="ghost" className="gap-2 flex shrink-0"><Link to={`/task/${numericTaskId}`}><ArrowLeft className="h-4 w-4" />返回任务</Link></Button><h1 tabIndex={-1} title={taskName} className="ml-2 min-w-0 line-clamp-1 border-l border-border pl-4 text-label font-semibold outline-none">{taskName}</h1></div>
+                    <div className="flex shrink-0 items-center gap-2" data-testid="student-experiment-stages">
                         {stages.map((stage, index) => {
                             const number = index + 1;
                             const isCurrent = number === currentStage;
@@ -222,6 +219,9 @@ function ExperimentWorkspace() {
                             return <div key={stage.name} className="flex items-center gap-2">{index > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}<button aria-label={`${isCurrent ? "当前阶段" : isCompleted ? "查看已完成阶段" : "未完成阶段"} ${number}：${stage.name}`} disabled={number >= currentStage || !isCompleted} onClick={() => setInspectStage(number)} className={`flex items-center gap-1.5 whitespace-nowrap rounded-surface px-2.5 py-1 text-meta font-medium ${isCurrent ? "border border-primary-border bg-primary-muted text-primary" : isCompleted ? "text-success hover:bg-success-muted" : "text-muted-foreground"}`}>{isCompleted && !isCurrent ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}<span>{stage.name}</span></button></div>;
                         })}
                     </div>
+                        {deadlineInfo && <span className={`flex shrink-0 items-center gap-1 text-meta ${deadlineInfo.urgent ? "text-destructive" : "text-muted-foreground"}`}>{deadlineInfo.urgent ? <AlertCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}{deadlineInfo.text}</span>}
+                    </div>
+                    {saveError && <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-surface border border-destructive-border bg-destructive-muted px-3 py-2 text-label text-destructive"><span>{saveError}</span>{versionConflict && <Button type="button" size="sm" variant="outline" disabled={isSaving} data-testid="student-load-latest-version" onClick={() => void loadLatestVersion()} className="border-destructive-border bg-background text-destructive hover:bg-destructive-muted hover:text-destructive"><RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isSaving ? "animate-spin" : ""}`} />加载最新版本</Button>}</div>}
                 </div>
                 <PageHeader border={false} className="my-4 flex-wrap items-baseline">
                     <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-2">

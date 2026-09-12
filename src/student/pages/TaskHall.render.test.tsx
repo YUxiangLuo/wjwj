@@ -148,6 +148,27 @@ test("TaskHall rejected task continues the same experiment without resetting", a
     });
 });
 
+test("long task titles keep their clipping inside a block link and expose the full title", async () => {
+    const name = "社区公共服务窗口等待时间：比较不同抽样设计的长期课堂综合实验";
+    installFetch([buildTask({ name })]);
+    const view = renderTaskHall();
+    await waitFor(() => expect(view.getByRole("link", { name })).toBeTruthy());
+    const link = view.getByRole("link", { name });
+    expect(link.title).toBe(name);
+    expect(link.classList.contains("block")).toBe(true);
+    expect(link.querySelector(".line-clamp-2")?.textContent).toBe(name);
+    fireEvent.click(link);
+    await waitFor(() => expect(view.getByTestId("location-probe").textContent).toBe("/task/1"));
+});
+
+test("submitted reports do not advertise an active editing stage", async () => {
+    installFetch([buildTask({ status: "submitted", currentStage: 4, progress: 100 })]);
+    const view = renderTaskHall();
+    await waitFor(() => expect(view.getByTestId("student-task-card-1")).toBeTruthy());
+    expect(view.getByTestId("student-task-card-1").textContent).not.toContain("当前阶段");
+    expect(view.getByTestId("student-task-primary-1").textContent).toContain("查看提交");
+});
+
 test("TaskHall continues in-progress experiments and opens not-yet-started topics", async () => {
     installFetch([
         buildTask({ id: 9, status: "in_progress", name: "进行中任务", progress: 75, currentStage: 4 }),
@@ -156,6 +177,7 @@ test("TaskHall continues in-progress experiments and opens not-yet-started topic
 
     const view = renderTaskHall();
     await waitFor(() => expect(view.getByTestId("student-task-card-9")).toBeTruthy());
+    expect(view.getByTestId("student-task-card-9").textContent).toContain("当前阶段：分析与报告");
 
     fireEvent.click(view.getByTestId("student-task-title-8"));
     await waitFor(() => expect(view.getByTestId("location-probe").textContent).toBe("/task/8"));

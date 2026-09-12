@@ -68,7 +68,7 @@ mock.module("@/components/ui/tabs", () => ({
     Tabs: ({ children }: { children: ReactNode }) => <div>{children}</div>,
     TabsList: ({ children, ...props }: ComponentProps<"div">) => <div {...props}>{children}</div>,
     TabsTrigger: ({ children, ...props }: ComponentProps<"button">) => <button {...props}>{children}</button>,
-    TabsContent: ({ children, ...props }: ComponentProps<"div">) => <div {...props}>{children}</div>,
+    TabsContent: ({ children, forceMount, ...props }: ComponentProps<"div"> & { forceMount?: boolean }) => <div data-force-mount={forceMount ? "true" : undefined} {...props}>{children}</div>,
 }));
 
 mock.module("@/components/ui/select", () => ({
@@ -151,6 +151,29 @@ test("SamplingExecution aborts obsolete stats requests on task changes and unmou
     expect(currentSignal?.aborted).toBe(false);
     view.unmount();
     expect(currentSignal?.aborted).toBe(true);
+});
+
+test("compact sampling summary keeps sample size, population, progress and completion requirements", async () => {
+    mockExperimentContext.experiment = {
+        ...mockExperimentContext.experiment,
+        samplingPolicy: { version: 1, methods: { simple: "required", systematic: "disabled", pps: "optional", stratified: "optional" } },
+        samplingResults: { simple: { completed: true, sampleCount: 13, data: [] } },
+    };
+    const view = render(<SamplingExecution onPrev={() => undefined} />);
+    await waitFor(() => expect(mockExperimentApi.getStats).toHaveBeenCalledTimes(1));
+    const summary = view.getByTestId("student-sampling-policy-summary");
+    expect(Array.from(summary.querySelectorAll("dd"), node => node.textContent)).toEqual(["13 个单位", "100 个单位", "1 / 3 种方法"]);
+    expect(summary.textContent).toContain("至少完成 2 种启用方法");
+    expect(summary.textContent).toContain("每次抽样后结果会立即保存");
+    expect((view.getByTestId("student-sampling-next") as HTMLButtonElement).disabled).toBe(true);
+});
+
+test("stratified configuration stays mounted but hidden when another method is selected", async () => {
+    const view = render(<SamplingExecution onPrev={() => undefined} />);
+    await waitFor(() => expect(mockExperimentApi.getStats).toHaveBeenCalledTimes(1));
+    const panel = view.getByTestId("student-sampling-stratified-panel");
+    expect(panel.getAttribute("data-force-mount")).toBe("true");
+    expect(panel.className).toContain("data-[state=inactive]:hidden");
 });
 
 test("SamplingExecution flags a census plan (n equals N)", async () => {

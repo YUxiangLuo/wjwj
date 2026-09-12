@@ -192,9 +192,9 @@ function TaskCard({ task }: TaskCardProps) {
             >
                 <CardHeader className="pb-3 text-foreground">
                 <div className="flex justify-between items-start gap-2">
-                    <CardTitle className="text-subheading line-clamp-1 text-foreground">
-                        <Link to={`/task/${task.id}`} className="rounded-control outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring" data-testid={`student-task-title-${task.id}`}>
-                            {task.name}
+                    <CardTitle className="min-w-0 flex-1 text-subheading text-foreground">
+                        <Link to={`/task/${task.id}`} title={task.name} className="block rounded-control outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring" data-testid={`student-task-title-${task.id}`}>
+                            <span className="line-clamp-2 break-words">{task.name}</span>
                         </Link>
                     </CardTitle>
                     <StatusBadge intent={status.intent} className="whitespace-nowrap">{status.label}</StatusBadge>
@@ -213,7 +213,7 @@ function TaskCard({ task }: TaskCardProps) {
                                 <span className="text-foreground font-medium">{task.progress}%</span>
                             </div>
                             <Progress aria-label={`${task.name}实验进度`} value={task.progress} className="h-2 bg-muted [&>div]:bg-primary" />
-                            {task.currentStage > 0 && task.currentStage < 4 && (
+                            {task.status === "in_progress" && task.currentStage > 0 && task.currentStage <= stageNames.length && (
                                 <p className="text-meta text-muted-foreground flex items-center gap-1">
                                     <span className="w-1.5 h-1.5 rounded-circle bg-primary"></span>
                                     当前阶段：{stageNames[task.currentStage - 1]}

@@ -175,6 +175,23 @@ test("AnalysisReport restores a version-matched local report draft", async () =>
     expect(view.getByTestId("student-analysis-report-editor").textContent).not.toContain("服务器基线报告");
 });
 
+for (const length of [20, 120, 5001]) {
+    test(`report length feedback stays next to the primary action (${length} characters)`, async () => {
+        writeExperimentDraft({ experimentId: 88, experimentVersion: 6, stage: 4 }, {
+            reportContent: `<p>${"字".repeat(length)}</p>`, workspace: "report",
+        });
+        const view = render(<AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />);
+        await waitFor(() => expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(1));
+        const footer = view.getByTestId("student-stage-actions");
+        const status = within(footer).getByTestId("student-analysis-length-status");
+        expect(status.textContent).toContain(`${length} / 5000 字`);
+        expect(status.getAttribute("role")).toBe("status");
+        const action = within(footer).getByTestId("student-analysis-preview") as HTMLButtonElement;
+        expect(action.disabled).toBe(length < 100 || length > 5000);
+        expect(status.textContent).toContain(length < 100 ? "还需至少 80 字" : length > 5000 ? "已超出 1 字" : "字数符合要求");
+    });
+}
+
 test("AnalysisReport surfaces a retryable error when analysis metrics fail to load", async () => {
     mockExperimentApi.getAnalysisMetrics.mockRejectedValueOnce(new Error("network"));
 

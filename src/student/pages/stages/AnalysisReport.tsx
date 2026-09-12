@@ -1,5 +1,6 @@
 import { SamplingObservationNotice } from "../../components/SamplingObservationNotice";
 import { DraftSaveStatus } from "../../components/DraftSaveStatus";
+import { useSectionNavigation } from "@/hooks/useSectionNavigation";
 import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -208,7 +209,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const [reportContent, setReportContent] = useState(
         restoredDraft?.reportContent ?? experiment?.reportContent ?? "",
     );
-    const [workspace, setWorkspace] = useState<AnalysisWorkspace>(restoredDraft?.workspace && ["overview", "charts", "records", "report"].includes(restoredDraft.workspace) ? restoredDraft.workspace : "overview");
+    const [workspace, setWorkspace, workspaceNavigationRef] = useSectionNavigation<AnalysisWorkspace>(restoredDraft?.workspace && ["overview", "charts", "records", "report"].includes(restoredDraft.workspace) ? restoredDraft.workspace : "overview", '[data-testid="student-experiment-navigation"]');
     const reportDraft = useMemo(() => ({ reportContent, workspace }), [reportContent, workspace]);
     const clearDraft = useExperimentDraft({
         experimentId: experiment?.id,
@@ -248,6 +249,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const maxLength = 5000;
     const reportTextLength = useMemo(() => getRichTextPlainLength(reportContent), [reportContent]);
     const isValidLength = reportTextLength >= minLength && reportTextLength <= maxLength;
+    const reportLengthHint = reportTextLength > maxLength ? `已超出 ${reportTextLength - maxLength} 字，请精简后继续`
+        : reportTextLength < minLength ? `还需至少 ${minLength - reportTextLength} 字` : "字数符合要求，请检查结论与数据";
 
     // ---- Data derivation ----
 
@@ -543,7 +546,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     return <div className="min-w-0 space-y-5" data-testid="student-stage-analysis-report">
         <Tabs value={workspace} onValueChange={switchWorkspace} className="min-w-0 space-y-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div ref={workspaceNavigationRef} className="scroll-mt-36 flex flex-wrap items-center justify-between gap-3">
                 <TabsList aria-label="分析与报告工作区" className="flex h-auto flex-wrap gap-1 rounded-surface border border-border bg-card p-1" data-testid="student-analysis-workspace-tabs">
                     <TabsTrigger value="overview" className="min-h-11 px-4" data-testid="student-analysis-workspace-overview">研究结果</TabsTrigger>
                     <TabsTrigger value="charts" className="min-h-11 px-4" data-testid="student-analysis-section-tab-charts">图表探索</TabsTrigger>
@@ -676,17 +679,12 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             <TabsContent value="report" forceMount className="min-w-0 data-[state=inactive]:hidden">
                 <div className="flex flex-wrap items-start gap-5">
                     <Card className="min-w-0 flex-[3_1_36rem] gap-0 rounded-surface border-border bg-card py-0">
-                        <CardHeader className="border-b border-border p-5"><CardTitle><h2 className="text-section-title font-semibold">用数据回答研究问题</h2></CardTitle><CardDescription>报告需 {minLength}–{maxLength} 字。先写结论，再用估计值、误差和抽样设计说明理由。</CardDescription></CardHeader>
-                        <CardContent className="space-y-3 p-5">
-                            <Label htmlFor="report" className="text-label font-medium">报告正文</Label>
+                        <CardHeader className="border-b border-border p-3"><CardTitle><h2 className="text-section-title font-semibold">用数据回答研究问题</h2></CardTitle><CardDescription>报告需 {minLength}–{maxLength} 字。先写结论，再用估计值、误差和抽样设计说明理由。</CardDescription></CardHeader>
+                        <CardContent className="px-3 pb-3 pt-1">
+                            <Label htmlFor="report" className="sr-only">报告正文</Label>
                             <RichTextEditor dataTestId="student-analysis-report" editorTestId="student-analysis-report-editor" id="report" ariaLabel="报告正文" showWordCount={false}
                                 placeholder="这次调查要回答什么问题？各方法得到了什么结果？请引用具体数值，并说明结论的适用范围。"
-                                value={reportContent} onChange={setReportContent} editorClassName="min-h-[420px]"/>
-                            <div className="flex flex-wrap items-center justify-between gap-2 text-meta" aria-live="polite">
-                                <span className={reportTextLength > maxLength ? "text-destructive" : isValidLength ? "text-success" : "text-muted-foreground"}>
-                                    {reportTextLength > maxLength ? "已超出 " + (reportTextLength - maxLength) + " 字，请精简后继续" : reportTextLength < minLength ? "还需至少 " + (minLength - reportTextLength) + " 字" : "字数符合要求，请再检查结论与数据是否一致"}
-                                </span><span className="tabular-nums text-muted-foreground">{reportTextLength} / {maxLength} 字</span>
-                            </div>
+                                value={reportContent} onChange={setReportContent} editorClassName="min-h-[10rem] h-[clamp(10rem,calc(100dvh-30rem),26rem)] overflow-y-auto"/>
                         </CardContent>
                     </Card>
                     <aside className="min-w-0 flex-[1_1_18rem] space-y-4" aria-label="报告写作参考">
@@ -717,9 +715,14 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
         <StageActions>
             <div className="space-y-2"><DraftSaveStatus status={clearDraft.status === "saved" && workspace !== "report" ? "idle" : clearDraft.status} onRetry={clearDraft.retry} savedLabel="报告草稿保存在当前浏览器，提交预览时才写入服务器"/><Button variant="outline" onClick={onPrev} data-testid="student-analysis-prev">查看抽样记录</Button></div>
-            {workspace === "report" ? <Button onClick={handleSubmit} disabled={!isValidLength || isSubmitting || clearDraft.status === "conflict"} data-testid="student-analysis-preview">
-                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>正在保存报告…</> : <><Send className="mr-2 h-4 w-4"/>保存并预览报告</>}
-            </Button> : <Button onClick={() => setWorkspace("report")} data-testid="student-analysis-write">继续：撰写报告<ArrowRight className="ml-2 h-4 w-4"/></Button>}
+            {workspace === "report" ? <div className="flex flex-col items-end gap-1">
+                <p className={`text-meta ${reportTextLength > maxLength ? "text-destructive" : isValidLength ? "text-success" : "text-muted-foreground"}`} role="status" data-testid="student-analysis-length-status">
+                    <span className="tabular-nums">{reportTextLength} / {maxLength} 字</span> · {reportLengthHint}
+                </p>
+                <Button onClick={handleSubmit} disabled={!isValidLength || isSubmitting || clearDraft.status === "conflict"} data-testid="student-analysis-preview">
+                    {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>正在保存报告…</> : <><Send className="mr-2 h-4 w-4"/>保存并预览报告</>}
+                </Button>
+            </div> : <Button onClick={() => setWorkspace("report")} data-testid="student-analysis-write">继续：撰写报告<ArrowRight className="ml-2 h-4 w-4"/></Button>}
         </StageActions>
 
         <Dialog open={exportOpen} onOpenChange={setExportOpen}>

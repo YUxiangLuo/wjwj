@@ -1,6 +1,6 @@
 import { SamplingObservationNotice } from "../../components/SamplingObservationNotice";
 import { StageActions } from "../../components/StageActions";
-import { IconTile } from "@/components/IconTile";
+import { useSectionNavigation } from "@/hooks/useSectionNavigation";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Switch } from "@/components/ui/switch";
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -18,7 +18,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { AlertCircle, CheckCircle2, Play, Loader2, Target, Layers, ArrowRight, Database, RefreshCw } from "lucide-react";
+import { AlertCircle, CheckCircle2, Play, Loader2, ArrowRight, RefreshCw } from "lucide-react";
 import { useExperiment } from "../ExperimentLayout";
 import { experimentApi } from "../../api-client";
 import type { SamplingResultsData, SamplePlanData } from "@/domain/experiment/types";
@@ -109,7 +109,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
     // Initialize from saved data
     const initialResults = experiment?.samplingResults as SamplingResultsData | null;
-    const [activeMethod, setActiveMethod] = useState<PolicySamplingMethod>(() => enabledMethods.find(method => samplingPolicy.methods[method] === "required" && !initialResults?.[method]?.completed) ?? enabledMethods[0] ?? "simple");
+    const [activeMethod, setActiveMethod, methodNavigationRef] = useSectionNavigation<PolicySamplingMethod>(() => enabledMethods.find(method => samplingPolicy.methods[method] === "required" && !initialResults?.[method]?.completed) ?? enabledMethods[0] ?? "simple", '[data-testid="student-experiment-navigation"]');
     const [showAnimation, setShowAnimation] = useState(() => !shouldSkipSamplingAnimation());
 
     const [simpleResult, setSimpleResult] = useState(initialResults?.simple ?? null);
@@ -395,11 +395,6 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
     return (
         <div className="min-w-0 space-y-4" data-testid="student-stage-sampling">
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-3">
-                <div className="flex items-center gap-3 rounded-surface border border-border bg-card p-3"><IconTile intent="primary"><Target className="h-5 w-5"/></IconTile><div><p className="text-meta text-muted-foreground">规划样本量</p><p className="text-section-title font-semibold tabular-nums">{n} <span className="text-label font-normal">个单位</span></p></div></div>
-                <div className="flex items-center gap-3 rounded-surface border border-border bg-card p-3"><IconTile intent="info"><Database className="h-5 w-5"/></IconTile><div><p className="text-meta text-muted-foreground">调查总体</p><p className="text-section-title font-semibold tabular-nums">{N.toLocaleString()} <span className="text-label font-normal">个单位</span></p></div></div>
-                <div className="flex items-center gap-3 rounded-surface border border-border bg-card p-3"><IconTile intent={allCompleted ? "success" : "neutral"}><Layers className="h-5 w-5"/></IconTile><div><p className="text-meta text-muted-foreground">已保存的抽样结果</p><p className="text-section-title font-semibold tabular-nums">{completedMethodCount} <span className="text-label font-normal">种方法</span></p></div></div>
-            </div>
             {censusPlan && (
                 <p role="status" data-testid="student-sampling-census-notice" className="rounded-surface border border-warning-border bg-warning-muted p-3 text-label text-warning">
                     规划样本量等于总体规模，本次执行是完整普查：各方法都会抽满全部单位，估计结果与抽样误差相同，无法比较方法差异。
@@ -435,19 +430,21 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 </Card>
             )}
 
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-surface border border-border bg-card p-3" data-testid="student-sampling-policy-summary">
-                <div className="min-w-0 space-y-1 text-label">
-                    <p className="font-medium">必做：{samplingProgress.required.map(method => METHOD_LABELS[method]).join("、")}。须完成全部必做，且至少完成 {samplingProgress.minimumCompleted} 种启用方法。已保存 {completedMethodCount} 种，至少需 {samplingProgress.minimumCompleted} 种。</p>
-                    <p className="text-meta text-muted-foreground">{enabledMethods.some(method => samplingPolicy.methods[method] === "optional") ? "其他标为“选做”的方法可按需尝试。" : "本任务没有选做方法。"}每次抽样后结果会立即保存。</p>
-                </div>
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-surface border border-border bg-card p-3" data-testid="student-sampling-policy-summary">
+                <dl className="flex flex-wrap items-center gap-x-6 gap-y-1 text-label">
+                    <div className="flex items-baseline gap-2"><dt className="text-muted-foreground">规划样本量</dt><dd className="font-semibold tabular-nums">{n} 个单位</dd></div>
+                    <div className="flex items-baseline gap-2"><dt className="text-muted-foreground">调查总体</dt><dd className="font-semibold tabular-nums">{N.toLocaleString()} 个单位</dd></div>
+                    <div className="flex items-baseline gap-2"><dt className="text-muted-foreground">已保存结果</dt><dd className={`font-semibold tabular-nums ${allCompleted ? "text-success" : "text-foreground"}`}>{completedMethodCount} / {enabledMethods.length} 种方法</dd></div>
+                </dl>
                 <div className="flex shrink-0 items-center gap-2">
                     <Switch id="show-sampling-animation" checked={showAnimation} onCheckedChange={value => {setShowAnimation(value); try {sessionStorage.setItem(SAMPLING_ANIMATION_SKIP_KEY, value ? "0" : "1");} catch { /* Session preference is optional. */ }}}/>
                     <Label htmlFor="show-sampling-animation" className="cursor-pointer text-label">抽样后播放演示</Label>
                 </div>
+                <p className="w-full text-meta text-muted-foreground">须完成全部标为“必做”的方法，且至少完成 {samplingProgress.minimumCompleted} 种启用方法；每次抽样后结果会立即保存。</p>
             </div>
             {/* Sampling methods tabs */}
             <Tabs value={activeMethod} onValueChange={value => setActiveMethod(value as PolicySamplingMethod)} className="min-w-0 space-y-5">
-                <TabsList className="scroll-mt-48 bg-card border border-border p-1 rounded-surface w-full min-w-0 flex flex-wrap h-auto gap-1" data-testid="student-sampling-tabs">
+                <TabsList ref={methodNavigationRef} className="scroll-mt-36 bg-card border border-border p-1 rounded-surface w-full min-w-0 flex flex-wrap h-auto gap-1" data-testid="student-sampling-tabs">
                     <TabsTrigger value="simple" data-testid="student-sampling-tab-simple" className="scroll-mt-48 min-w-0 flex-1 basis-48 rounded-surface py-2.5 px-3 text-label data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
                         <span>简单随机抽样</span>
                         <RequirementLabel value={samplingPolicy.methods.simple} />
@@ -811,7 +808,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
                 {/* Stratified Sampling */}
                 {samplingPolicy.methods.stratified !== "disabled" && (
-                <TabsContent value="stratified" className="mt-0 focus-visible:outline-none">
+                <TabsContent value="stratified" forceMount className="mt-0 focus-visible:outline-none data-[state=inactive]:hidden" data-testid="student-sampling-stratified-panel">
                     <StratifiedSamplingTab
                         n={n}
                         N={N}
@@ -852,7 +849,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                     <Button variant="outline" onClick={onPrev} data-testid="student-sampling-prev" disabled={isCompleting}>查看样本量规划</Button>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                    {nextMethod && nextMethod !== activeMethod && <Button variant="outline" onClick={() => {setActiveMethod(nextMethod); document.querySelector('[data-testid=student-sampling-tabs]')?.scrollIntoView({block:"start",behavior:"smooth"});}}>继续：{METHOD_LABELS[nextMethod]}</Button>}
+                    {nextMethod && nextMethod !== activeMethod && <Button variant="outline" onClick={() => setActiveMethod(nextMethod)}>继续：{METHOD_LABELS[nextMethod]}</Button>}
                     <Button onClick={() => void handleConfirmNext()} disabled={!allCompleted || isCompleting || executing !== null} data-testid="student-sampling-next" className="w-auto">
                         {isCompleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ArrowRight className="mr-2 h-4 w-4"/>}进入分析与报告
                     </Button>
