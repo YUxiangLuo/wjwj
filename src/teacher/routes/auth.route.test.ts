@@ -1,4 +1,6 @@
 import { expect, mock, test } from "bun:test";
+import { type SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
 import { createMockDb } from "../../test-utils/mock-db";
 
 test("teacher password change revokes all old sessions and rotates the cookie", async () => {
@@ -73,4 +75,19 @@ test("teacher sessions can access protected routes without a first-login gate", 
     }));
     expect(response.status).toBe(200);
     expect(handler).toHaveBeenCalledTimes(1);
+});
+
+test("teacher login canonicalizes the employee ID but never normalizes the password", async () => {
+    const password = "ＦullWidthPassword!";
+    const { db, operations } = createMockDb({ select: [
+        [{ id: 9, employeeId: "T001", name: "教师", password: await Bun.password.hash(password) }], [{ id: 9 }],
+    ] });
+    mock.module("../../db", () => ({ db }));
+    const module = await import(`./auth.ts?normalized-login=${crypto.randomUUID()}`);
+    const response = await module.teacherLoginRoutes.POST!(new Request("https://example.com", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employeeId: "　Ｔ００１ ", password }),
+    }));
+    expect(response.status).toBe(200);
+    expect(new PgDialect().sqlToQuery(operations[0]!.where as SQL).params).toEqual(["T001"]);
 });

@@ -11,6 +11,11 @@ export function normalizeIdentityText(value: string) {
     return value.normalize("NFKC").trim();
 }
 
+/** PostgreSQL text cannot store NUL; reject it before querying or writing. */
+export function containsNul(...values: string[]) {
+    return values.some(value => value.includes("\0"));
+}
+
 /** Comparison key: the stored form, case-folded. */
 export function identityKey(value: string) {
     return normalizeIdentityText(value).toLocaleLowerCase("en-US");

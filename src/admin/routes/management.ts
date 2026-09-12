@@ -4,7 +4,7 @@ import { announcement, class_, experiment, semester, student, task, teacher, top
 import { experimentProgress } from "../../lib/experiment-progress";
 import { error, getPositiveRouteId, getSearchParams, json, parseBody, parsePagination, parsePositiveInteger, stringValue } from "../../server/http";
 import { hashPassword } from "../../server/password-work";
-import { normalizeIdentityText } from "../../lib/identity-text";
+import { containsNul, normalizeIdentityText } from "../../lib/identity-text";
 import type { RouteDefinition } from "../../server/route-types";
 import { clearUserSessionsForUser } from "../../server/user-session";
 import { deleteAuditEventsForEntities, hashEntityIdentifier, writeAuditEvent } from "../../server/audit-event";
@@ -160,7 +160,7 @@ const teacherRoutes: RouteDefinition = {
         const body = await parseBody<{ employeeId?: string; name?: string }>(req);
         const employeeId = normalizeIdentityText(stringValue(body.employeeId));
         const name = stringValue(body.name).trim();
-        if (!employeeId || !name || employeeId.length > 50 || name.length > 100) {
+        if (!employeeId || !name || containsNul(employeeId, name) || employeeId.length > 50 || name.length > 100) {
             return error("教师工号或姓名无效", "VALIDATION_ERROR");
         }
         const [duplicateTeacher] = await db
@@ -347,16 +347,22 @@ const classUpdateRoutes: RouteDefinition = {
     async DELETE(req) {
         const id = parseId(req);
         if (!id) return error("无效的班级ID", "INVALID_ID");
-        const [students] = await db.select({ count: count() }).from(student).where(eq(student.classId, id));
-        const [tasks] = await db.select({ count: count() }).from(task).where(eq(task.classId, id));
-        if ((students?.count ?? 0) > 0 || (tasks?.count ?? 0) > 0) {
-            const blockers: string[] = [];
-            if ((students?.count ?? 0) > 0) blockers.push(`${students!.count} 名学生`);
-            if ((tasks?.count ?? 0) > 0) blockers.push(`${tasks!.count} 个任务`);
-            return error(`班级已有 ${blockers.join("、")}，无法删除`, "CLASS_IN_USE", 409);
-        }
-        const removed = await db.delete(class_).where(eq(class_.id, id)).returning({ id: class_.id });
-        return removed.length ? json({ success: true }) : error("班级不存在", "NOT_FOUND", 404);
+        return db.transaction(async (tx) => {
+            // Serialize against roster imports and child FK inserts before the
+            // preflight. Counts after a lock wait see the committed children.
+            const [row] = await tx.select({ id: class_.id }).from(class_).where(eq(class_.id, id)).for("update");
+            if (!row) return error("班级不存在", "NOT_FOUND", 404);
+            const [students] = await tx.select({ count: count() }).from(student).where(eq(student.classId, id));
+            const [tasks] = await tx.select({ count: count() }).from(task).where(eq(task.classId, id));
+            if ((students?.count ?? 0) > 0 || (tasks?.count ?? 0) > 0) {
+                const blockers: string[] = [];
+                if ((students?.count ?? 0) > 0) blockers.push(`${students!.count} 名学生`);
+                if ((tasks?.count ?? 0) > 0) blockers.push(`${tasks!.count} 个任务`);
+                return error(`班级已有 ${blockers.join("、")}，无法删除`, "CLASS_IN_USE", 409);
+            }
+            await tx.delete(class_).where(eq(class_.id, id));
+            return json({ success: true });
+        });
     },
 };
 

@@ -366,6 +366,7 @@ test("student hard deletion removes sessions, audit events, and the student row"
         select: [
             [{ id: 44, studentId: "S044", classId: 3 }],
             [{ id: 91 }, { id: 92 }],
+            [{ status: "in_progress", count: 2 }],
         ],
     });
     const response = await module.studentRoutes.DELETE!(withStudentParam(new Request(
@@ -450,6 +451,7 @@ test("student deletion refuses to cascade graded work without an explicit confir
         teacherId: 9,
         select: [
             [{ id: 44, studentId: "S044", classId: 3 }],
+            [{ id: 91 }, { id: 92 }],
             [{ status: "graded", count: 2 }],
         ],
     });
@@ -462,6 +464,9 @@ test("student deletion refuses to cascade graded work without an explicit confir
     const payload = await response.json() as any;
     expect(payload.error.code).toBe("SUBMISSIONS_EXIST");
     expect(payload.error.message).toContain("2 条");
+    const reads = operations.filter(op => op.kind === "select" && op.table === experiment);
+    expect(reads[0]?.lockStrength).toBe("update");
+    expect(reads).toHaveLength(2);
     expect(operations.some((operation) => operation.kind === "delete")).toBe(false);
 });
 
@@ -470,8 +475,8 @@ test("student deletion with confirmation removes the graded work", async () => {
         teacherId: 9,
         select: [
             [{ id: 44, studentId: "S044", classId: 3 }],
-            [{ status: "graded", count: 1 }],
             [{ id: 91 }],
+            [{ status: "graded", count: 1 }],
         ],
     });
     const response = await module.studentRoutes.DELETE!(withStudentParam(new Request(
@@ -489,8 +494,8 @@ test("student deletion of an unsubmitted roster entry stays a one-step delete", 
         teacherId: 9,
         select: [
             [{ id: 44, studentId: "S044", classId: 3 }],
+            [{ id: 91 }],
             [{ status: "in_progress", count: 1 }],
-            [],
         ],
     });
     const response = await module.studentRoutes.DELETE!(withStudentParam(new Request(

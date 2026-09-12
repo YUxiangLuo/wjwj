@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, student } from "../../db/schema";
+import { containsNul, normalizeIdentityText } from "../../lib/identity-text";
 import { STUDENT_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
 import { buildSessionCookie, error, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
 import { hashPassword, verifyPassword } from "../../server/password-work";
@@ -63,9 +64,9 @@ export async function requireAuth(req: Request) {
 const loginRoutes: RouteDefinition = {
     async POST(req) {
         const body = await parseBody<{ studentId?: string; password?: string }>(req);
-        const studentId = stringValue(body.studentId).trim();
+        const studentId = normalizeIdentityText(stringValue(body.studentId));
         const password = stringValue(body.password);
-        if (!studentId || !password) return error("请输入学号和密码", "VALIDATION_ERROR", 400);
+        if (!studentId || !password || containsNul(studentId)) return error("请输入学号和密码", "VALIDATION_ERROR", 400);
         const [row] = await db.select().from(student).where(eq(student.studentId, studentId));
         if (!row) {
             return error("账号或密码错误", "INVALID_CREDENTIALS", 401);

@@ -1,6 +1,6 @@
 import { RequestError } from "@/components/RequestError";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, ChevronLeft, ChevronRight, Search, Upload, UserPlus, RotateCcw, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,10 @@ export function StudentManagement() {
         summary: string | null;
     } | null>(null);
 
+    const confirmRequestRef = useRef(0);
+    const confirmingRef = useRef(false);
+    const [confirming, setConfirming] = useState(false);
+
     // Confirmation State
     const [confirmDialog, setConfirmDialog] = useState<{
         open: boolean;
@@ -53,8 +57,9 @@ export function StudentManagement() {
 
     useEffect(() => {
         setClassInfo(null);
+        closeConfirmDialog();
         if (Number.isInteger(Number(classId)) && Number(classId) > 0) void loadData();
-        return cancel;
+        return () => { cancel(); confirmRequestRef.current += 1; };
     }, [classId]);
 
     async function loadData(_showLoading = true, overrides?: { search?: string; page?: number }) {
@@ -161,14 +166,26 @@ export function StudentManagement() {
         }
     };
 
+    function closeConfirmDialog() {
+        confirmRequestRef.current += 1;
+        confirmingRef.current = false;
+        setConfirming(false);
+        setConfirmDialog({ open: false, type: null, student: null });
+        setDeleteImpact(null);
+    }
+
     function handleResetPassword(student: Student) {
+        confirmRequestRef.current += 1;
+        setDeleteImpact(null);
         setConfirmDialog({ open: true, type: "reset", student });
     }
 
     async function handleDelete(student: Student) {
+        const requestId = ++confirmRequestRef.current;
         setConfirmDialog({ open: true, type: "delete", student });
         setDeleteImpact({ loading: true, requiresConfirmation: false, summary: null });
         const res = await teacherApi.getStudentDeletionImpact(student.id);
+        if (requestId !== confirmRequestRef.current) return;
         if (res.success && res.data) {
             setDeleteImpact({
                 loading: false,
@@ -183,39 +200,37 @@ export function StudentManagement() {
 
     async function executeConfirmAction() {
         const { type, student } = confirmDialog;
-        if (!student || !type) return;
-
-        let res;
-        switch (type) {
-            case "reset":
-                res = await teacherApi.updateStudent(student.id, { action: "reset_password" });
-                break;
-            case "delete":
-                res = await teacherApi.deleteStudent(student.id, {
-                    confirm: deleteImpact?.requiresConfirmation === true,
+        if (!student || !type || confirmingRef.current || (type === "delete" && deleteImpact?.loading)) return;
+        const requestId = confirmRequestRef.current;
+        confirmingRef.current = true;
+        setConfirming(true);
+        try {
+            const res = type === "reset"
+                ? await teacherApi.updateStudent(student.id, { action: "reset_password" })
+                : await teacherApi.deleteStudent(student.id, { confirm: deleteImpact?.requiresConfirmation === true });
+            if (requestId !== confirmRequestRef.current) return;
+            if (res.success) {
+                if (type === "reset") toast.success("密码已重置为学号");
+                closeConfirmDialog();
+                void loadData(false);
+                return;
+            }
+            if (type === "delete" && res.error?.code === "SUBMISSIONS_EXIST") {
+                // Keep the dialog open so the next click is an explicit confirmation.
+                setDeleteImpact({
+                    loading: false,
+                    requiresConfirmation: true,
+                    summary: res.error.message,
                 });
-                break;
+                return;
+            }
+            toast.error("操作失败: " + res.error?.message);
+        } finally {
+            if (requestId === confirmRequestRef.current) {
+                confirmingRef.current = false;
+                setConfirming(false);
+            }
         }
-
-        if (res?.success) {
-            if (type === "reset") toast.success("密码已重置为学号");
-            setConfirmDialog({ open: false, type: null, student: null });
-            setDeleteImpact(null);
-            void loadData(false);
-            return;
-        }
-        if (type === "delete" && res?.error?.code === "SUBMISSIONS_EXIST") {
-            // Keep the dialog open so the next click is an explicit confirmation.
-            setDeleteImpact({
-                loading: false,
-                requiresConfirmation: true,
-                summary: res.error.message,
-            });
-            return;
-        }
-        toast.error("操作失败: " + res?.error?.message);
-        setConfirmDialog({ open: false, type: null, student: null });
-        setDeleteImpact(null);
     }
 
     // Search and paging run on the server so a 500-row roster stays responsive.
@@ -399,15 +414,11 @@ export function StudentManagement() {
             <StudentConfirmDialog
                 state={confirmDialog}
                 onOpenChange={(open) => {
-                    if (open) return;
-                    setConfirmDialog((prev) => ({ ...prev, open: false }));
-                    setDeleteImpact(null);
+                    if (!open && !confirmingRef.current) closeConfirmDialog();
                 }}
-                onCancel={() => {
-                    setConfirmDialog({ open: false, type: null, student: null });
-                    setDeleteImpact(null);
-                }}
+                onCancel={() => { if (!confirmingRef.current) closeConfirmDialog(); }}
                 onConfirm={executeConfirmAction}
+                actionPending={confirming}
                 impactSummary={deleteImpact?.summary ?? null}
                 impactPending={deleteImpact?.loading ?? false}
             />

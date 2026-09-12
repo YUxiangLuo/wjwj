@@ -109,7 +109,7 @@ test("task deadline extension rejects non-string runtime values", async () => {
 });
 
 test("task hard deletion removes related audit events and the task row", async () => {
-    const { module, operations } = await load([[{ id: 88 }], [{ id: 91 }, { id: 92 }]]);
+    const { module, operations } = await load([[{ id: 88 }], [{ id: 91 }, { id: 92 }], [{ status: "in_progress", count: 2 }]]);
 
     expect(await module.deleteTeacherTask({ teacherId: 9, taskId: 88 })).toEqual({ ok: true });
 
@@ -119,7 +119,7 @@ test("task hard deletion removes related audit events and the task row", async (
     expect(operations.some((item) => item.kind === "select" && item.table === experiment)).toBe(true);
     expect(operations.some((item) => item.kind === "update")).toBe(false);
     const audit = operations.find((item) => item.kind === "insert" && item.table === auditEvent);
-    expect(audit?.values).toMatchObject({ action: "task.deleted", actorType: "teacher", actorId: 9, entityType: "task", entityId: 88 });
+    expect(audit?.values).toMatchObject({ action: "task.deleted", actorType: "teacher", actorId: 9, entityType: "task", entityId: 88, details: { experiments: 2 } });
 });
 
 test("task deletion impact is exposed before the cascade", async () => {
@@ -134,6 +134,7 @@ test("task deletion impact is exposed before the cascade", async () => {
 test("task deletion refuses to cascade hand-in work without confirmation", async () => {
     const { module, operations } = await load([
         [{ id: 88, classId: 101, deadline: null }],
+        [{ id: 91 }],
         [{ status: "graded", count: 1 }],
     ]);
     expect(await module.deleteTeacherTask({ teacherId: 9, taskId: 88 })).toMatchObject({
@@ -147,8 +148,8 @@ test("task deletion refuses to cascade hand-in work without confirmation", async
 test("task deletion with confirmation removes the graded submissions", async () => {
     const { module, operations } = await load([
         [{ id: 88, classId: 101, deadline: null }],
-        [{ status: "graded", count: 1 }],
         [{ id: 91 }],
+        [{ status: "graded", count: 1 }],
     ]);
     expect(await module.deleteTeacherTask({ teacherId: 9, taskId: 88, confirm: true })).toEqual({ ok: true });
     expect(operations.some((item) => item.kind === "delete" && item.table === task)).toBe(true);

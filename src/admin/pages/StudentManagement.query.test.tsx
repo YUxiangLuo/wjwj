@@ -1,10 +1,10 @@
 import { afterAll, afterEach, beforeAll, expect, mock, test } from "bun:test";
-import { cleanup, fireEvent, render, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { installDomGlobals } from "@/test-utils/dom";
 const toastSpy = mock(() => undefined);
 mock.module("sonner", () => ({ toast: { success: toastSpy, error: toastSpy, message: toastSpy } }));
-import { StudentManagement } from "./StudentManagement";
+let StudentManagement: typeof import("./StudentManagement").StudentManagement;
 
 // Smoke coverage for admin student management: query initialization, roster
 // rendering, and list refresh after a password reset.
@@ -17,8 +17,9 @@ function LocationProbe() {
     return <output data-testid="location-search">{location.search}</output>;
 }
 
-beforeAll(() => {
+beforeAll(async () => {
     restoreDom = installDomGlobals("http://localhost/admin/student?classId=7").restore;
+    ({ StudentManagement } = await import("./StudentManagement"));
 });
 
 afterEach(async () => {
@@ -102,4 +103,32 @@ test("resetting a student password refreshes the list without changing account s
         expect(listRequests).toBeGreaterThanOrEqual(2);
         expect(within(view.getByText("SACTIVE").closest("tr")!).getByRole("button", { name: "重置密码" })).toBeTruthy();
     });
+});
+
+test("closed experiment requests cannot replace another student's details and table columns align", async () => {
+    const late = Promise.withResolvers<Response>();
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith("/1/experiments")) return late.promise;
+        if (url.endsWith("/2/experiments")) return Response.json({ success: true, data: [{ id: 22, taskName: "乙的任务", currentStage: 4, statusText: "已批改", progress: 100, score: 90 }] });
+        return Response.json({ success: true, data: url.includes("/classes") ? [] : {
+            items: [{ id: 1, studentId: "A", name: "学生甲", progress: 0 }, { id: 2, studentId: "B", name: "学生乙", progress: 100 }],
+            total: 2, page: 1, pageSize: 20,
+        } });
+    }) as unknown as typeof fetch;
+    const view = render(<MemoryRouter><StudentManagement /></MemoryRouter>);
+    await waitFor(() => expect(view.getByText("学生甲")).toBeTruthy());
+    const open = (name: string) => fireEvent.click(within(view.getByText(name).closest("tr")!).getByRole("button", { name: "实验" }));
+    open("学生甲");
+    expect(view.getByText("正在加载实验记录…")).toBeTruthy();
+    fireEvent.click(within(view.getByRole("dialog")).getByRole("button", { name: "关闭" }));
+    open("学生乙");
+    await waitFor(() => expect(view.getByText("乙的任务")).toBeTruthy());
+    await act(async () => { late.resolve(Response.json({ success: true, data: [{ id: 11, taskName: "甲的任务", currentStage: 4, statusText: "已提交", progress: 100, score: null }] })); });
+    expect(view.getByText("学生乙 的实验记录")).toBeTruthy();
+    expect(view.queryByText("甲的任务")).toBeNull();
+    const table = view.getByRole("table", { name: "该学生的实验记录" });
+    expect(within(table).getAllByRole("columnheader")).toHaveLength(5);
+    expect(within(table).getAllByRole("cell")).toHaveLength(5);
+    expect(within(table).getByRole("columnheader", { name: "状态" })).toBeTruthy();
 });

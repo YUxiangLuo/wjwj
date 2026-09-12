@@ -211,7 +211,14 @@ export async function deleteTeacherTask(params: {
             .for("update");
         if (!row) return fail("任务不存在", "NOT_FOUND", 404);
 
-        // Guarded in the same locked transaction as the cascade below.
+        // Lock existing experiment updates as well as new inserts through the
+        // parent FK, before computing the confirmation guard.
+        const experimentRows = await tx
+            .select({ id: experiment.id })
+            .from(experiment)
+            .where(eq(experiment.taskId, params.taskId))
+            .orderBy(experiment.id)
+            .for("update");
         const impact = await loadDeletionImpact(tx, eq(experiment.taskId, params.taskId));
         if (!params.confirm && deletionRequiresConfirmation(impact)) {
             return {
@@ -222,10 +229,6 @@ export async function deleteTeacherTask(params: {
             };
         }
 
-        const experimentRows = await tx
-            .select({ id: experiment.id })
-            .from(experiment)
-            .where(eq(experiment.taskId, params.taskId));
         const experimentIds = experimentRows.map((item) => item.id);
         const attemptRows = experimentIds.length
             ? await tx

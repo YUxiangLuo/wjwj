@@ -18,24 +18,28 @@ async function load(select: unknown[] = []) {
     return { module, operations };
 }
 
-test("student login creates an independent fixed session", async () => {
+for (const studentId of ["S001", "　Ｓ００１ "]) {
+test(`student login canonicalizes ${studentId} and creates an independent fixed session`, async () => {
     const password = "Teaching123!";
     const { module, operations } = await load([[{
         id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1,
         password: await Bun.password.hash(password),
     }], [{ id: 11 }]]);
-    const response = await module.loginRoutes.POST!(request("POST", { studentId: "S001", password }));
+    const response = await module.loginRoutes.POST!(request("POST", { studentId, password }));
     expect(response.status).toBe(200);
     expect(response.headers.get("Set-Cookie")).toContain("student_session=");
     expect(await response.json()).toMatchObject({ data: { user: { studentId: "S001" } } });
     const session = operations.find((item) => item.kind === "insert");
     expect(session?.values).toMatchObject({ userType: 3, userId: 11, expiresAt: expect.any(Date) });
     expect(session?.values).not.toHaveProperty("deviceInfo");
+    expect(new PgDialect().sqlToQuery(operations[0]!.where as SQL).params).toEqual(["S001"]);
 });
+}
 
-test("student login rejects non-string fields before querying", async () => {
+test("student login rejects invalid fields before querying", async () => {
     for (const body of [
         { studentId: 123, password: "wrong" },
+        { studentId: "S\0ID", password: "wrong" },
         { studentId: "S001", password: 123 },
     ]) {
         const { module, operations } = await load();

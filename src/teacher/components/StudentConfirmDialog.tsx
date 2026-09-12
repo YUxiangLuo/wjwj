@@ -26,10 +26,11 @@ interface StudentConfirmDialogProps {
     /** Hard deletes cascade; show the numbers the teacher is about to destroy. */
     impactSummary?: string | null;
     impactPending?: boolean;
+    actionPending?: boolean;
 }
 
 export function StudentConfirmDialog(props: StudentConfirmDialogProps) {
-    const { state, onOpenChange, onCancel, onConfirm, impactSummary, impactPending } = props;
+    const { state, onOpenChange, onCancel, onConfirm, impactSummary, impactPending, actionPending } = props;
 
     return (
         <AlertDialog open={state.open} onOpenChange={onOpenChange}>
@@ -50,10 +51,15 @@ export function StudentConfirmDialog(props: StudentConfirmDialogProps) {
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel onClick={onCancel}>
+                    <AlertDialogCancel onClick={onCancel} disabled={actionPending}>
                         取消
                     </AlertDialogCancel>
-                    <AlertDialogAction data-testid="teacher-student-confirm-submit" onClick={onConfirm} variant={state.type === "delete" ? "destructive" : "default"}>
+                    <AlertDialogAction
+                        data-testid="teacher-student-confirm-submit"
+                        disabled={actionPending || impactPending}
+                        onClick={(event) => { event.preventDefault(); onConfirm(); }}
+                        variant={state.type === "delete" ? "destructive" : "default"}
+                    >
                         {state.type === "delete" ? "永久删除" : "确认"}
                     </AlertDialogAction>
                 </AlertDialogFooter>

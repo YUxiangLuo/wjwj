@@ -15,6 +15,7 @@ let classroom: typeof import("../teacher/routes/classroom");
 let grading: typeof import("../teacher/routes/grading");
 let teacherAuth: typeof import("../teacher/routes/auth");
 let studentAuth: typeof import("../student/routes/auth");
+let taskService: typeof import("../teacher/topic/task-service");
 const ids = { semesters: [] as number[], teachers: [] as number[], classes: [] as number[], students: [] as number[], topics: [] as number[] };
 
 beforeAll(async () => {
@@ -23,9 +24,9 @@ beforeAll(async () => {
     application = await import("./index");
     raw = new SQL(url!);
     await assertTestDatabaseIsMigrated(raw);
-    [management, classroom, grading, teacherAuth, studentAuth] = await Promise.all([
+    [management, classroom, grading, teacherAuth, studentAuth, taskService] = await Promise.all([
         import("../admin/routes/management"), import("../teacher/routes/classroom"), import("../teacher/routes/grading"),
-        import("../teacher/routes/auth"), import("../student/routes/auth"),
+        import("../teacher/routes/auth"), import("../student/routes/auth"), import("../teacher/topic/task-service"),
     ]);
 });
 
@@ -337,3 +338,111 @@ pgTest("hard deleting a student requires confirming the cascaded submissions", a
     expect(confirmed.status).toBe(200);
     expect(await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, experiment.id))).toHaveLength(0);
 });
+
+for (const entity of ["student", "task"] as const) {
+    for (const first of ["submit", "delete"] as const) {
+        pgTest(`${first}-first ${entity} deletion serializes existing submissions before counting the cascade`, async () => {
+            const group = await fixture();
+            const { experiment, taskId } = await addSubmission(group);
+            await application.db.update(schema.experiment).set({ status: "in_progress", submittedAt: null }).where(eq(schema.experiment.id, experiment.id));
+            const release = await holdRow("experiment", experiment.id);
+            // Match submit-service's optimistic UPDATE. Parent row locks alone
+            // do not conflict with this write to an existing experiment.
+            const submit = async () => raw`update experiment set status='submitted', submitted_at=now(), version=version+1
+                where id=${experiment.id} and status='in_progress' and version=${experiment.version} returning id`;
+            const remove = () => entity === "student"
+                ? classroom.deleteTeacherStudent({ teacherId: group.teachers[0]!.id, studentId: group.students[0]!.id })
+                : taskService.deleteTeacherTask({ teacherId: group.teachers[0]!.id, taskId });
+            let submission: ReturnType<typeof submit> | undefined;
+            let deletion: ReturnType<typeof remove> | undefined;
+            try {
+                if (first === "submit") submission = submit(); else deletion = remove();
+                await waitUntil(() => blocked(""));
+                if (first === "submit") deletion = remove(); else submission = submit();
+                await waitUntil(async () => {
+                    const [row] = await raw`select count(*)::int n from pg_stat_activity where datname=current_database() and wait_event_type='Lock'`;
+                    return row.n >= 2;
+                });
+            } finally {
+                await release();
+                await Promise.allSettled([submission, deletion]);
+            }
+            expect(await submission).toHaveLength(first === "submit" ? 1 : 0);
+            expect(await deletion).toMatchObject(first === "submit" ? { ok: false, code: "SUBMISSIONS_EXIST" } : { ok: true });
+            expect(await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, experiment.id))).toHaveLength(first === "submit" ? 1 : 0);
+        }, 15000);
+    }
+}
+
+pgTest("class deletion waits for an in-flight roster transaction before checking blockers", async () => {
+    const group = await fixture();
+    await application.db.delete(schema.student).where(eq(schema.student.classId, group.cls.id));
+    const ready = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const importing = raw.begin(async tx => {
+        await tx`select id from class where id=${group.cls.id} for share`;
+        const [row] = await tx`insert into student(student_id,name,password,class_id) values (${crypto.randomUUID()},'并发新学生','unused',${group.cls.id}) returning id`;
+        ids.students.push(Number(row.id));
+        ready.resolve();
+        await release.promise;
+    });
+    await ready.promise;
+    const deleting = management.classUpdateRoutes.DELETE!(request("DELETE", { id: String(group.cls.id) }));
+    try { await waitUntil(() => blocked('"class"')); }
+    finally { release.resolve(); await importing; await Promise.allSettled([deleting]); }
+    const response = await deleting;
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: { code: "CLASS_IN_USE" } });
+    expect(await application.db.select().from(schema.class_).where(eq(schema.class_.id, group.cls.id))).toHaveLength(1);
+}, 15000);
+
+pgTest("opposite-order overlapping roster imports retain row accounting without deadlocking", async () => {
+    const group = await fixture();
+    const token = await session(2, group.teachers[0]!.id);
+    const prefix = `ORDER-${crypto.randomUUID().slice(0, 8)}`;
+    const names = [`${prefix}-A`, `${prefix}-B`];
+    // Pause before each transaction's second row. Without canonical sorting,
+    // both first rows are inserted and each transaction then waits on the other.
+    await raw.unsafe(`CREATE FUNCTION review_import_order_gate() RETURNS trigger LANGUAGE plpgsql AS $$ DECLARE first_id text; BEGIN
+        IF NEW.student_id IN ('${names[0]}','${names[1]}') THEN
+            first_id:=current_setting('review.first_import_id',true);
+            IF first_id IS NULL OR first_id='' THEN PERFORM set_config('review.first_import_id',NEW.student_id,true);
+            ELSE PERFORM pg_advisory_xact_lock(478232,CASE WHEN first_id='${names[0]}' THEN 1 ELSE 2 END); END IF;
+        END IF; RETURN NEW; END $$`);
+    await raw.unsafe("CREATE TRIGGER review_import_order_gate BEFORE INSERT ON student FOR EACH ROW EXECUTE FUNCTION review_import_order_gate()");
+    const ready = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const barrier = raw.begin(async tx => {
+        await tx`select pg_advisory_xact_lock(478232,1)`;
+        await tx`select pg_advisory_xact_lock(478232,2)`;
+        ready.resolve(); await release.promise;
+    });
+    await ready.promise;
+    const upload = (ordered: string[]) => teacherAuth.withTeacherAuth(classroom.classStudentsImportRoutes).POST!(
+        importRequest(group.cls.id, `studentId,name\n${ordered.map(id => `${id},学生`).join("\n")}`, token),
+    );
+    const first = upload([...names].reverse());
+    let second: Promise<Response> | undefined;
+    try {
+        try {
+            await waitUntil(() => blocked('insert into "student"'));
+            second = Promise.resolve(upload(names));
+            await waitUntil(async () => {
+                const [row] = await raw`select count(*)::int n from pg_stat_activity where datname=current_database() and wait_event_type='Lock' and query like 'insert into "student"%'`;
+                return row.n >= 2;
+            });
+        } finally { release.resolve(); await barrier; await Promise.allSettled([first, second]); }
+        const responses = await Promise.all([first, second!]);
+        expect(responses.map(r => r.status)).toEqual([200, 200]);
+        const payloads = await Promise.all(responses.map(r => r.json()));
+        expect(payloads.map(p => p.data.successCount).sort()).toEqual([0, 2]);
+        expect(payloads.map(p => p.data.skippedCount).sort()).toEqual([0, 2]);
+        expect(payloads.every(p => p.data.failureCount === 0)).toBe(true);
+        expect(payloads.find(p => p.data.skippedCount === 2).data.skipped.map((row: { row: number }) => row.row)).toEqual([2, 3]);
+    } finally {
+        await raw.unsafe("DROP TRIGGER review_import_order_gate ON student");
+        await raw.unsafe("DROP FUNCTION review_import_order_gate()");
+        const rows = await application.db.select().from(schema.student).where(inArray(schema.student.studentId, names));
+        ids.students.push(...rows.map(row => row.id));
+    }
+}, 15000);

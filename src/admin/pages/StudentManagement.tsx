@@ -56,9 +56,12 @@ export function StudentManagement() {
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
     const requestIdRef = useRef(0);
-    useEffect(() => () => { requestIdRef.current += 1; }, []);
+    const experimentRequestRef = useRef(0);
+    useEffect(() => () => { requestIdRef.current += 1; experimentRequestRef.current += 1; }, []);
     const [selected, setSelected] = useState<Student | null>(null);
     const [experiments, setExperiments] = useState<StudentExperiment[]>([]);
+    const [experimentsLoading, setExperimentsLoading] = useState(false);
+    const [experimentsError, setExperimentsError] = useState<string | null>(null);
     const [refreshVersion, setRefreshVersion] = useState(0);
 
     const load = async ({
@@ -139,10 +142,16 @@ export function StudentManagement() {
     };
 
     const openExperiments = async (item: Student) => {
+        const requestId = ++experimentRequestRef.current;
         setSelected(item);
         setExperiments([]);
+        setExperimentsLoading(true);
+        setExperimentsError(null);
         const response = await studentApi.getExperiments(item.id);
+        if (requestId !== experimentRequestRef.current) return;
         if (response.success && response.data) setExperiments(response.data);
+        else setExperimentsError(response.error?.message ?? "实验记录加载失败");
+        setExperimentsLoading(false);
     };
 
     return (
@@ -294,7 +303,9 @@ export function StudentManagement() {
                 )}
             </CardContent>
 
-            <Dialog open={selected !== null} onOpenChange={(open) => !open && setSelected(null)}>
+            <Dialog open={selected !== null} onOpenChange={(open) => {
+                if (!open) { experimentRequestRef.current += 1; setSelected(null); }
+            }}>
                 <DialogContent className="max-w-3xl">
                     <DialogHeader>
                         <DialogTitle>{selected?.name} 的实验记录</DialogTitle>
@@ -305,6 +316,7 @@ export function StudentManagement() {
                             <TableRow>
                                 <TableHead>任务</TableHead>
                                 <TableHead>阶段</TableHead>
+                                <TableHead>状态</TableHead>
                                 <TableHead>进度</TableHead>
                                 <TableHead>成绩</TableHead>
                             </TableRow>
@@ -321,8 +333,8 @@ export function StudentManagement() {
                             ))}
                             {!experiments.length && (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
-                                        暂无实验记录
+                                    <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                                        {experimentsLoading ? "正在加载实验记录…" : experimentsError ?? "暂无实验记录"}
                                     </TableCell>
                                 </TableRow>
                             )}

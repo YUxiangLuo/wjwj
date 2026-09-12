@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { teacher } from "../../db/schema";
+import { containsNul, normalizeIdentityText } from "../../lib/identity-text";
 import { TEACHER_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
 import { buildSessionCookie, error, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
 import { hashPassword, verifyPassword } from "../../server/password-work";
@@ -105,9 +106,9 @@ export function withTeacherAuth(routes: RouteDefinition): RouteDefinition {
 const teacherLoginRoutes: RouteDefinition = {
     async POST(req) {
         const body = await parseBody<{ employeeId?: string; password?: string }>(req);
-        const employeeId = stringValue(body.employeeId).trim();
+        const employeeId = normalizeIdentityText(stringValue(body.employeeId));
         const password = stringValue(body.password);
-        if (!employeeId || !password) return error("请输入工号和密码", "VALIDATION_ERROR", 400);
+        if (!employeeId || !password || containsNul(employeeId)) return error("请输入工号和密码", "VALIDATION_ERROR", 400);
         const [row] = await db.select().from(teacher).where(eq(teacher.employeeId, employeeId));
         if (!row) {
             return error("工号或密码错误", "INVALID_CREDENTIALS", 401);

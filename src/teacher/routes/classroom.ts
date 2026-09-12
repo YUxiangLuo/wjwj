@@ -2,7 +2,7 @@ import { and, count, desc, eq, ilike, inArray, or } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, experiment, samplingAttempt, semester, student, userSession } from "../../db/schema";
 import { isValidOptionalEmail } from "../../lib/email";
-import { identityKey, normalizeIdentityText } from "../../lib/identity-text";
+import { containsNul, identityKey, normalizeIdentityText } from "../../lib/identity-text";
 import { parseSpreadsheetFile, spreadsheetRequestExceedsLimit, validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
 import { hashPassword, mapWithConcurrency } from "../../server/password-work";
 import { deleteAuditEventsForActor, deleteAuditEventsForEntities, hashEntityIdentifier, writeAuditEvent } from "../../server/audit-event";
@@ -127,16 +127,18 @@ export async function deleteTeacherStudent(params: {
     return db.transaction(async (tx) => {
         const owned = await findOwnedStudent(params.studentId, params.teacherId, tx);
         if (!owned) return { ok: false, code: "NOT_FOUND" };
-        // The guard runs against the same locked row set as the delete, so a
-        // submission cannot land between the check and the cascade.
+        // The parent lock blocks new experiments via the FK, but does not block
+        // updates to existing experiments. Lock those BEFORE counting statuses.
+        const experimentRows = await tx
+            .select({ id: experiment.id })
+            .from(experiment)
+            .where(eq(experiment.studentId, params.studentId))
+            .orderBy(experiment.id)
+            .for("update");
         const impact = await loadDeletionImpact(tx, eq(experiment.studentId, params.studentId));
         if (!params.confirm && deletionRequiresConfirmation(impact)) {
             return { ok: false, code: "SUBMISSIONS_EXIST", impact };
         }
-        const experimentRows = await tx
-            .select({ id: experiment.id })
-            .from(experiment)
-            .where(eq(experiment.studentId, params.studentId));
         const experimentIds = experimentRows.map((row) => row.id);
         const attemptRows = experimentIds.length
             ? await tx
@@ -251,6 +253,7 @@ const classStudentsRoutes: RouteDefinition = {
         const name = stringValue(body.name).trim();
         const email = stringValue(body.email).trim();
         if (!studentId || !name) return error("学号和姓名不能为空", "VALIDATION_ERROR");
+        if (containsNul(studentId, name, email)) return error("学号、姓名或邮箱含无效字符", "VALIDATION_ERROR");
         if (studentId.length > MAX_STUDENT_ID_LENGTH) return error("学号不能超过50个字符", "VALIDATION_ERROR");
         if (name.length > MAX_STUDENT_NAME_LENGTH) return error("姓名不能超过100个字符", "VALIDATION_ERROR");
         if (email.length > MAX_STUDENT_EMAIL_LENGTH) return error("邮箱不能超过120个字符", "VALIDATION_ERROR");
@@ -297,6 +300,7 @@ const classStudentsImportRoutes: RouteDefinition = {
             const buffer = await file.arrayBuffer();
             const parsedFile = await parseSpreadsheetFile(buffer, file.name, { includeColumnValues: false });
             if (parsedFile.malformed) return error("表格行列结构不一致或引号未闭合", "INVALID_FILE", 400);
+            if (parsedFile.duplicateColumns.length) return error("表格存在重复列名，请确保每个字段只有一列", "INVALID_FILE", 400);
             rows = parsedFile.rows;
             rowNumbers = parsedFile.rowNumbers;
         } catch {
@@ -310,11 +314,15 @@ const classStudentsImportRoutes: RouteDefinition = {
         const seenIds = new Set<string>();
         const parsed: ImportCandidate[] = rows.flatMap((row, index) => {
             const rowNumber = rowNumbers?.[index] ?? index + 2;
-            const studentId = String(row.studentId ?? row["学号"] ?? row.id ?? "").trim();
+            const studentId = normalizeIdentityText(String(row.studentId ?? row["学号"] ?? row.id ?? ""));
             const name = String(row.name ?? row["姓名"] ?? "").trim();
             const email = String(row.email ?? row["邮箱"] ?? "").trim();
             if (!studentId || !name) {
                 errors.push({ row: rowNumber, reason: "缺少学号或姓名" });
+                return [];
+            }
+            if (containsNul(studentId, name, email)) {
+                errors.push({ row: rowNumber, reason: "学号、姓名或邮箱含无效字符" });
                 return [];
             }
             if (studentId.length > MAX_STUDENT_ID_LENGTH) {
@@ -334,13 +342,12 @@ const classStudentsImportRoutes: RouteDefinition = {
                 return [];
             }
             const normalizedStudentId = normalizeStudentId(studentId);
-            const storedStudentId = normalizeIdentityText(studentId);
             if (seenIds.has(normalizedStudentId)) {
                 errors.push({ row: rowNumber, reason: `文件中学号重复: ${studentId}` });
                 return [];
             }
             seenIds.add(normalizedStudentId);
-            return [{ studentId: storedStudentId, normalizedStudentId, name, email: email || null, row: rowNumber }];
+            return [{ studentId, normalizedStudentId, name, email: email || null, row: rowNumber }];
         });
 
         const candidates = parsed;
@@ -361,6 +368,9 @@ const classStudentsImportRoutes: RouteDefinition = {
             skipped.push({ row: item.row, reason: `学号已存在，未做变更: ${item.studentId}` });
         }
         errors.sort((a, b) => a.row - b.row);
+        // All batches acquire unique-index entries in the same order, even when
+        // uploaded rows are reversed. Keep each hash paired with its sorted row.
+        inserts.sort((a, b) => a.normalizedStudentId < b.normalizedStudentId ? -1 : a.normalizedStudentId > b.normalizedStudentId ? 1 : 0);
         // Slow password work stays outside the transaction.
         const hashes = await mapWithConcurrency(inserts, 4, (item) => hashPassword(item.studentId));
 
@@ -406,6 +416,7 @@ const classStudentsImportRoutes: RouteDefinition = {
                 errors.sort((a, b) => a.row - b.row);
             }
         }
+        skipped.sort((a, b) => a.row - b.row);
         return json({
             successCount: insertedIds.size,
             skippedCount: skipped.length,
