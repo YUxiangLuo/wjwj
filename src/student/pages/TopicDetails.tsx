@@ -1,4 +1,4 @@
-import { RequestError } from "@/components/RequestError";
+import { StudentStatusPage } from "../components/StudentStatusPage";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useState, useEffect } from "react";
 import { ArrowLeft, FileText, Download, Play, Image, File, CheckCircle, Clock, AlertTriangle, BookOpen, ChevronRight, Eye } from "lucide-react";
@@ -107,7 +107,9 @@ export function TopicDetails() {
         return cancel;
     }, [id, cancel]);
     if (!Number.isInteger(id) || id <= 0) return <Navigate to="/" replace />;
-    if (loadError) return <RequestError message={loadError} onRetry={() => void load()} />;
+    if (loadError) {
+        return <StudentStatusPage title="课题详情" message="课题信息加载失败，请重试或返回任务大厅。" error={{ message: loadError, onRetry: () => void load() }} />;
+    }
 
     if (loading) {
         return <LoadingStatus className="py-24" iconClassName="h-10 w-10" label="正在加载实验任务" />;

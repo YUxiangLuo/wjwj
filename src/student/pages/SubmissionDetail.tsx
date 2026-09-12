@@ -1,4 +1,4 @@
-import { RequestError } from "@/components/RequestError";
+import { StudentStatusPage } from "../components/StudentStatusPage";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useEffect, useState } from "react";
 import { AlertCircle, ArrowLeft, Calendar, CheckCircle2, FileText, Loader2, User } from "lucide-react";
@@ -34,11 +34,16 @@ export function SubmissionDetailPage() {
         if (Number.isInteger(numericTaskId) && numericTaskId > 0) void load();
         return cancel;
     }, [numericTaskId, cancel]);
-    if (!Number.isInteger(numericTaskId) || numericTaskId <= 0) return <p>无效的任务</p>;
-    if (error) return <RequestError message={error} onRetry={() => void load()} />;
+    // 整页状态（无效编号 / 加载失败 / 记录不存在）都带一级标题与出口：见 StudentStatusPage 注释。
+    if (!Number.isInteger(numericTaskId) || numericTaskId <= 0) {
+        return <StudentStatusPage title="实验结果" message="无效的任务编号，无法显示实验结果。" />;
+    }
+    if (error) {
+        return <StudentStatusPage title="实验结果" error={{ message: error, onRetry: () => void load() }} />;
+    }
 
     if (loading) return <LoadingStatus className="py-24" iconClassName="h-8 w-8" label="正在加载实验结果" />;
-    if (!detail) return <div className="mx-auto max-w-xl rounded-surface border border-border bg-card p-8 text-center text-muted-foreground">{error ?? "未找到提交记录"}</div>;
+    if (!detail) return <StudentStatusPage title="实验结果" message="未找到提交记录，可能尚未提交或记录已被删除。" />;
 
     const status = statusConfig[detail.status];
     const scoreWeights = [

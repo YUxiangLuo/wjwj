@@ -1,4 +1,4 @@
-import { RequestError } from "@/components/RequestError";
+import { StudentStatusPage } from "../components/StudentStatusPage";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
@@ -137,17 +137,17 @@ export function SubmissionPreview() {
         }
     };
 
-    if (!Number.isInteger(numericTaskId) || numericTaskId <= 0) return <p>无效的任务</p>;
-    if (loadError) return <RequestError message={loadError} onRetry={() => void loadData()} />;
+    if (!Number.isInteger(numericTaskId) || numericTaskId <= 0) {
+        return <StudentStatusPage title="提交预览" message="无效的任务编号，无法生成预览。" />;
+    }
+    if (loadError) {
+        return <StudentStatusPage title="提交预览" error={{ message: loadError, onRetry: () => void loadData() }} />;
+    }
     if (loading) {
         return <LoadingStatus className="py-24" iconClassName="h-8 w-8 text-info" label="正在加载提交预览" />;
     }
 
-    if (!task || !experiment) {
-        return (
-            <div className="text-center text-muted-foreground mt-20">未找到实验数据</div>
-        );
-    }
+    if (!task || !experiment) return <StudentStatusPage title="提交预览" message="未找到实验数据，请先完成实验各阶段。" />;
 
     const questionnaire = experiment.questionnaire;
     const questionnaireQuestions = questionnaire?.questions ?? [];

@@ -1,4 +1,4 @@
-import { RequestError } from "@/components/RequestError";
+import { StudentStatusPage } from "../components/StudentStatusPage";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, ArrowLeft, BarChart3, CheckCircle2, ChevronRight, Clock, FileText, Home, Play, RefreshCw, Ruler } from "lucide-react";
@@ -183,7 +183,9 @@ function ExperimentWorkspace() {
     }, [currentStage, experiment]);
 
     if (!Number.isInteger(numericTaskId) || numericTaskId <= 0) return <Navigate to="/" replace />;
-    if (loadError) return <RequestError message={loadError} onRetry={() => void loadExperiment()} />;
+    if (loadError) {
+        return <StudentStatusPage title="实验过程" message="实验进度加载失败，请重试或返回任务。" error={{ message: loadError, onRetry: () => void loadExperiment() }} />;
+    }
     if (loading) return <LoadingStatus className="py-24" iconClassName="h-10 w-10" label="正在加载实验进度" />;
     if (redirect) return <Navigate to={redirect} replace />;
     if (!experiment) return <Navigate to="/" replace />;
