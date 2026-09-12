@@ -16,14 +16,18 @@ function request(policy = buildDefaultSamplingPolicy()) {
     return value;
 }
 
-test("draft experiment template saves a validated sampling policy", async () => {
+for (const format of ["plain", "currency", "full-width"] as const) {
+test(`draft experiment template saves a validated sampling policy with ${format} size values`, async () => {
     const filePath = `/storage/uploads/sampling-policy-${crypto.randomUUID()}.xlsx`;
     const absolutePath = `${process.cwd()}${filePath}`;
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([
+    const sheet = XLSX.utils.json_to_sheet([
         { id: 1, group: "A", target: 10, size: 2 },
         { id: 2, group: "B", target: 20, size: 4 },
-    ]), "总体数据");
+    ]);
+    if (format === "currency") { sheet.D2!.z = '"¥"#,##0.00'; sheet.D3!.z = '"¥"#,##0.00'; }
+    if (format === "full-width") { sheet.D2 = { t: "s", v: "２" }; sheet.D3 = { t: "s", v: "４" }; }
+    XLSX.utils.book_append_sheet(workbook, sheet, "总体数据");
     await Bun.write(absolutePath, XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }));
 
     const policy = buildDefaultSamplingPolicy();
@@ -47,6 +51,8 @@ test("draft experiment template saves a validated sampling policy", async () => 
         await unlink(absolutePath).catch(() => undefined);
     }
 });
+
+}
 
 test("sampling policy requires stratified sampling to be disabled without strata", async () => {
     const filePath = `/storage/uploads/sampling-policy-no-strata-${crypto.randomUUID()}.xlsx`;

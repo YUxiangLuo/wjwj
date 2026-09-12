@@ -1,4 +1,5 @@
 import { createSafeRecord } from "../../lib/safe-record";
+import { parseNumericText } from "../../lib/numeric-text";
 import { StableSum } from "./stable-sum";
 
 export function createSeededRandom(seed?: number | string) {
@@ -162,8 +163,8 @@ function exactPositiveMass(value: number): bigint {
 }
 
 function toPositiveSizeValue(value: unknown) {
-    const numericValue = Number(value);
-    return Number.isFinite(numericValue) && numericValue > 0 ? numericValue : 0;
+    const numericValue = parseNumericText(value);
+    return numericValue !== null && numericValue > 0 ? numericValue : 0;
 }
 
 interface PpsDesignFrame {

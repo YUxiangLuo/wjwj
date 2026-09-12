@@ -147,9 +147,11 @@ export function buildRecommendedFieldMapping(params: {
         .sort((a, b) => b.score - a.score || a.index - b.index)
         .map((entry) => entry.column)
         .slice(0, 4);
-    const stratifiedPool = analysableCandidates.filter(
-        (column) => !numeric.includes(column) && !isLikelyHighCardinalityColumn(preview, column),
-    );
+    const stratifiedPool = analysableCandidates.filter((column) => {
+        const { uniqueCount } = columnProfile(preview, column);
+        return !numeric.includes(column) && uniqueCount >= 2 && uniqueCount <= 20
+            && !isLikelyHighCardinalityColumn(preview, column);
+    });
     let stratified = unique(
         stratifiedPool.filter((column) => isLikelyStratified(preview, column)),
     ).slice(0, 4);
@@ -169,7 +171,7 @@ export function buildRecommendedFieldMapping(params: {
         identifier,
         stratified,
         numeric,
-        others: [],
+        others: analysableCandidates.filter(column => !numeric.includes(column) && !stratified.includes(column) && !isLikelyNumeric(preview, column)),
         analysisTarget,
         studyContract: analysisTarget ? buildDefaultStudyContract(topicName, analysisTarget) : undefined,
     };

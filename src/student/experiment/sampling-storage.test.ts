@@ -112,6 +112,16 @@ test("storage inspection rejects malformed compact sections before population lo
     });
 });
 
+test("stratified compact replay preserves exact whitespace field keys", () => {
+    const rows = [{ "g ": "A" }, { "g ": "A" }, { "g ": "B" }, { "g ": "B" }];
+    const section = { completed: true, serverGenerated: true, stratifyBy: "g ", sampleCount: 2, indices: [0, 2],
+        layers: [{ name: "A", count: 2, sampleCount: 1 }, { name: "B", count: 2, sampleCount: 1 }],
+    };
+    expect(hydrateSamplingResults({ stratified: section }, rows)).toEqual({
+        ok: true, value: { stratified: { ...section, data: [rows[0], rows[2]] } },
+    });
+});
+
 test("stratified hydration rejects missing population coverage and mismatched Nh", () => {
     const stratifiedPopulation = [
         { id: 1, group: "A" },

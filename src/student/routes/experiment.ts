@@ -366,6 +366,19 @@ const stageCompleteRoutes: RouteDefinition = {
             stratifiedStats,
         });
         if (!result.ok) return error(result.message, result.code, result.status);
+        if (stage === 2 && resolveSamplingPolicy(stageTaskInfo?.samplingPolicy).methods.pps === "required") {
+            if (!stageTaskInfo?.excelFilePath) return error("必做 PPS 缺少总体数据文件", "NO_DATA_FILE");
+            try {
+                const stats = await populationStatsService.run({
+                    populationPath: stageTaskInfo.excelFilePath,
+                    fieldMapping,
+                    ppsSampleSize: Number((result.updates.samplePlan as Record<string, unknown>).finalSampleSize),
+                }, req.signal);
+                if (stats.ppsPlanFeasible === false) {
+                    return error("当前样本量下，所有辅助规模变量均无法可靠计算必做 PPS 的入样概率。请调整样本量后重试；选择总体规模进行普查可避免此概率精度问题。", "PPS_PLAN_INFEASIBLE");
+                }
+            } catch (cause) { return handleServerError(cause); }
+        }
 
         const [updated] = await db
             .update(experiment)

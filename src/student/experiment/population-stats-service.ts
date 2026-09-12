@@ -7,7 +7,7 @@ export function populationRevisionKey(job: PopulationStatsJob) {
     try {
         const path = resolveStoragePath(job.populationPath);
         const file = Bun.file(path);
-        return JSON.stringify([path, file.size, file.lastModified, job.fieldMapping]);
+        return JSON.stringify([path, file.size, file.lastModified, job.fieldMapping, job.ppsSampleSize ?? null]);
     } catch {
         throw new WorkerServiceError("READ_FAILED", "总体数据为空或读取失败", 500);
     }

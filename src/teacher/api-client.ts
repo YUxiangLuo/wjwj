@@ -21,6 +21,7 @@ export interface TopicExcelInfo {
     preview: any[];
     columnValues?: Record<string, string[]>;
     columnValuesTruncated?: string[];
+    ppsEligibleFields?: string[];
 }
 export interface TopicDetail { topic: any; hasExcelFile: boolean; attachments: TopicAttachment[]; recommendQuestions: Question[]; excelInfo?: TopicExcelInfo | null }
 export type { Question };

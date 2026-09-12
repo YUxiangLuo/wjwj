@@ -32,6 +32,28 @@ test("constant mean targets fail early while constant proportions remain valid",
     }
 });
 
+for (const values of [["１２", "12", "１２"], [1e200, 2e200, 3e200], [1e-200, 2e-200, 3e-200], [1e154, 2e154, 3e154]]) {
+    test(`unplannable mean scale ${values[0]} is rejected before publication`, () => {
+        const rows = values.map((value, id) => ({ id: String(id), value }));
+        const parsed = { rows, columns: ["id", "value"], rowCount: rows.length, colCount: 2 };
+        const mapping = { identifier: "id", numeric: ["value"], analysisTarget: { kind: "mean", field: "value" } };
+        expect(validateMappedPopulationData(parsed, mapping)).toMatch(/方差为0|换算计量单位/);
+    });
+}
+
+test("full-width variable means and non-stratified categorical targets are publishable", () => {
+    for (const count of [1, 40]) {
+        const rows = Array.from({ length: 40 }, (_, id) => ({ id: String(id), cat: `类别${id % count}`, "y ": String(id).replace(/\d/g, digit => String.fromCharCode(digit.charCodeAt(0) + 0xfee0)) }));
+        const parsed = { rows, columns: ["id", "cat", "y "], rowCount: 40, colCount: 3 };
+        expect(validateMappedPopulationData(parsed, {
+            identifier: "id", numeric: ["y "], others: ["cat"], analysisTarget: { kind: "mean", field: "y " },
+        })).toBeNull();
+        expect(validateMappedPopulationData(parsed, {
+            identifier: "id", others: ["cat"], analysisTarget: { kind: "proportion", field: "cat", value: "类别0" },
+        })).toBeNull();
+    }
+});
+
 describe("topic validation helpers", () => {
     test("validateParsedExcelUpload rejects duplicate columns, blank headers, and blank rows", () => {
         expect(

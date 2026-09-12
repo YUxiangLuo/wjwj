@@ -173,6 +173,39 @@ for (const stage of [2, 3] as const) {
     });
 }
 
+for (const feasible of [false, true]) {
+    test(`required PPS planning feasibility ${feasible} gates stage 2 without marking sampling complete`, async () => {
+        const fixture = statsCompletionFixture(2);
+        fixture.options.samplingInfo.samplingPolicy.methods.stratified = "disabled";
+        fixture.options.samplingInfo.samplingPolicy.methods.pps = "required";
+        const { module, operations, readStats } = await load(fixture.record, {
+            ...fixture.options, readStats: async () => ({ ...fixture.stats, ppsPlanFeasible: feasible }),
+        });
+        const response = await module.stageCompleteRoutes.POST!(post(2));
+        expect(readStats).toHaveBeenCalledWith(expect.objectContaining({ ppsSampleSize: 50 }), expect.any(AbortSignal));
+        expect(response.status).toBe(feasible ? 200 : 400);
+        if (!feasible) {
+            expect(await response.json()).toMatchObject({ error: { code: "PPS_PLAN_INFEASIBLE", message: expect.stringContaining("普查") } });
+            expect(operations.some(op => op.kind === "update")).toBe(false);
+        } else {
+            expect(operations.filter(op => op.kind === "update")).toHaveLength(1);
+            expect(operations.find(op => op.kind === "update")?.set).not.toHaveProperty("samplingResults");
+        }
+    });
+}
+
+test("invalid planning inputs reject before required PPS worker work", async () => {
+    const fixture = statsCompletionFixture(2);
+    fixture.options.samplingInfo.samplingPolicy.methods.stratified = "disabled";
+    fixture.options.samplingInfo.samplingPolicy.methods.pps = "required";
+    const { module, readStats } = await load(fixture.record, fixture.options);
+    const request = post(2);
+    const invalid = new Request(request, { body: JSON.stringify({ observedVersion: 6, samplePlan: { finalSampleSize: 1e308 } }) });
+    (invalid as Request & { params: Record<string, string> }).params = { id: "3", stage: "2" };
+    expect((await module.stageCompleteRoutes.POST!(invalid)).status).toBe(400);
+    expect(readStats).not.toHaveBeenCalled();
+});
+
 test("stage completion returns 409 when a concurrent update wins after the route read", async () => {
     const { module, operations } = await load(experimentRecord());
     const response = await module.stageCompleteRoutes.POST!(post(2));

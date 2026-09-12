@@ -92,6 +92,7 @@ test("topic detail returns attachments, recommended questions, and parsed excel 
                 score: ["95", "88"],
             },
             columnValuesTruncated: [],
+            ppsEligibleFields: [],
         });
     } finally {
         await unlink(absolutePath).catch(() => undefined);

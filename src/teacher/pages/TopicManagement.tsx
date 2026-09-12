@@ -43,6 +43,7 @@ export function TopicManagement() {
         preview: any[];
         columnValues?: Record<string, string[]>;
         columnValuesTruncated?: string[];
+        ppsEligibleFields?: string[];
     } | null>(null);
     const [columns, setColumns] = useState<string[]>([]);
     const [fieldMapping, setFieldMapping] = useState<FieldMappingState>({
@@ -111,6 +112,7 @@ export function TopicManagement() {
                     preview: data.excelInfo.preview,
                     columnValues: data.excelInfo.columnValues,
                     columnValuesTruncated: data.excelInfo.columnValuesTruncated,
+                    ppsEligibleFields: data.excelInfo.ppsEligibleFields,
                 });
             }
             setAttachments(data.attachments ?? []);

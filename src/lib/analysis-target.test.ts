@@ -79,6 +79,15 @@ const contractMapping = {
     },
 };
 
+test("analysis targets preserve exact spreadsheet keys in both contract formats", () => {
+    const target = { kind: "mean", field: " score " } as const;
+    expect(parseAnalysisTarget({ numeric: [" score "], analysisTarget: target })).toEqual(target);
+    expect(parseStudyContract({
+        numeric: [" score "], studyContract: { ...contractMapping.studyContract, target },
+    })?.target).toEqual(target);
+    expect(parseAnalysisTarget({ analysisTarget: { kind: "mean", field: "  " } })).toBeNull();
+});
+
 test("parseStudyContract requires complete versioned payloads", () => {
     expect(parseStudyContract(contractMapping)).toEqual(contractMapping.studyContract);
     expect(parseStudyContract(mapping)).toBeNull();

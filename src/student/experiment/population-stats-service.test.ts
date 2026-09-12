@@ -3,6 +3,23 @@ import { PopulationStatsService } from "./population-stats-service";
 import { runPopulationStatsJob } from "./population-stats-job";
 import type { ServiceWorker } from "../../server/worker-service";
 
+test("PPS planning checks actual designs, excludes the target and caches each sample size separately", async () => {
+    const path = `/storage/test-pps-plan-${crypto.randomUUID()}.csv`;
+    const file = Bun.file(`${process.cwd()}${path}`);
+    await Bun.write(file, "id,y,size,safe\n1,1,8e-16,1\n2,2,1e308,1\n3,3,1e308,1\n");
+    const service = new PopulationStatsService();
+    const fieldMapping = { numeric: ["y", "size"], analysisTarget: { kind: "mean", field: "y" } };
+    const job = { populationPath: path, fieldMapping };
+    try {
+        expect((await service.run(job)).ppsPlanFeasible).toBeUndefined();
+        expect((await service.run({ ...job, ppsSampleSize: 1 })).ppsPlanFeasible).toBe(false);
+        expect((await service.run({ ...job, ppsSampleSize: 3 })).ppsPlanFeasible).toBe(true);
+        expect((await service.run({ ...job, ppsSampleSize: 1 })).ppsPlanFeasible).toBe(false);
+        expect((await service.run({ ...job, ppsSampleSize: 1, fieldMapping: { ...fieldMapping, numeric: ["y", "size", "safe"] } })).ppsPlanFeasible).toBe(true);
+        expect((await service.run({ ...job, ppsSampleSize: 1, fieldMapping: { ...fieldMapping, numeric: ["y"] } })).ppsPlanFeasible).toBeNull();
+    } finally { service.close(); await file.delete(); }
+});
+
 test("50 readers share statistics; cache invalidates for file, mapping and deletion", async () => {
     const path = `/storage/test-shared-stats-${crypto.randomUUID()}.csv`;
     const file = Bun.file(`${process.cwd()}${path}`);

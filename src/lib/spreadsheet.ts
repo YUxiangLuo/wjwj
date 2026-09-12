@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { parseNumericText } from "./numeric-text";
 import { createSafeRecord } from "./safe-record";
 
 export const MAX_SPREADSHEET_UPLOAD_BYTES = 20 * 1024 * 1024;
@@ -274,11 +275,21 @@ export async function parseSpreadsheetFile(
     const normalizedName = fileName?.toLowerCase() ?? "";
     if (normalizedName.endsWith(".csv")) {
         const parsed = parseCsvText(new TextDecoder("utf-8", { fatal: true }).decode(buffer));
+        // Convert only declared numeric roles: IDs and numeric-looking categories
+        // must retain their displayed text (including leading zeros).
+        const rows: Array<Record<string, unknown>> = parsed.rows;
+        for (const field of options.numericFields ?? []) {
+            for (const row of rows) {
+                if (Object.hasOwn(row, field)) row[field] = parseNumericText(row[field]) ?? row[field];
+            }
+        }
         return {
             ...parsed,
+            rows,
+            preview: rows.slice(0, 20),
             ...(options.includeColumnValues === false
                 ? { columnValues: {}, columnValuesTruncated: [] }
-                : collectUniqueColumnValues(parsed.rows, parsed.columns)),
+                : collectUniqueColumnValues(rows, parsed.columns)),
         };
     }
 
@@ -296,7 +307,7 @@ export async function parseSpreadsheetFile(
         const raw = rawRows[rowIndex] ?? {};
         return Object.fromEntries(Object.keys(displayed).map((field) => [
             field,
-            numericFields.has(field) ? raw[field] : displayed[field],
+            numericFields.has(field) ? parseNumericText(raw[field]) ?? raw[field] : displayed[field],
         ]));
     });
     const columns = Object.keys(rows[0] ?? {});

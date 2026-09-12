@@ -5,7 +5,7 @@ import { normalizeRecommendQuestionsFromDb } from "../../lib/questionnaire-norma
 import { resolveStoragePath } from "../../server/storage-files";
 import { parseExcelFile } from "./file-utils";
 import { buildTaskProgressSnapshot } from "./task-progress";
-import { parseTopicFieldMapping } from "@/domain/statistics/population";
+import { getPpsEligibleNumericFields, parseTopicFieldMapping } from "@/domain/statistics/population";
 
 export async function listTeacherTopics(teacherId: number) {
     const assignedTask = db
@@ -46,14 +46,18 @@ export async function getTeacherTopicDetail(topicId: number) {
         ? normalizeRecommendQuestionsFromDb(topicInfo.recommendQuestions)
         : [];
 
-    let excelInfo = null as null | { columns: string[]; preview: any[]; columnValues: Record<string, string[]>; columnValuesTruncated: string[] };
+    let excelInfo = null as null | { columns: string[]; preview: any[]; columnValues: Record<string, string[]>; columnValuesTruncated: string[]; ppsEligibleFields: string[] };
     if (topicInfo?.excelFilePath) {
         try {
             const buffer = await Bun.file(resolveStoragePath(topicInfo.excelFilePath)).arrayBuffer();
             const parsed = await parseExcelFile(buffer, topicInfo.excelFilePath, {
                 numericFields: parseTopicFieldMapping(topicInfo.fieldMapping)?.numeric ?? [],
             });
-            excelInfo = { columns: parsed.columns, preview: parsed.preview, columnValues: parsed.columnValues, columnValuesTruncated: parsed.columnValuesTruncated };
+            excelInfo = {
+                columns: parsed.columns, preview: parsed.preview, columnValues: parsed.columnValues,
+                columnValuesTruncated: parsed.columnValuesTruncated,
+                ppsEligibleFields: getPpsEligibleNumericFields(parsed.rows, parseTopicFieldMapping(topicInfo.fieldMapping)?.numeric ?? []),
+            };
         } catch {
             excelInfo = null;
         }

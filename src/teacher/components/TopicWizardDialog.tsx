@@ -1,4 +1,6 @@
 import { RequestError } from "@/components/RequestError";
+import { parseNumericText } from "@/lib/numeric-text";
+import { assignFieldRole } from "../topic/field-roles";
 import { useState } from "react";
 import { ArrowDown, ArrowUp, CheckCircle2, ChevronRight, Download, FileText, HelpCircle, Loader2, Pencil, Play, School, Sparkles, Trash2, Upload, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -46,7 +48,7 @@ interface TopicWizardDialogProps {
     loadingDetail: boolean;
     detailError?: string | null;
     onRetryDetail?: () => void;
-    excelInfo: { rowCount: number; colCount: number; columns: string[]; preview: any[]; columnValues?: Record<string, string[]>; columnValuesTruncated?: string[] } | null;
+    excelInfo: { rowCount: number; colCount: number; columns: string[]; preview: any[]; columnValues?: Record<string, string[]>; columnValuesTruncated?: string[]; ppsEligibleFields?: string[] } | null;
     uploadingExcel: boolean;
     onExcelUpload: (file: File) => void;
     columns: string[];
@@ -189,9 +191,10 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
     const targetField = fieldMapping.studyContract?.target.field ?? fieldMapping.analysisTarget?.field;
     const ppsEligibleFields = fieldMapping.numeric.filter((field) => {
         if (field === targetField) return false;
+        if (excelInfo?.ppsEligibleFields) return excelInfo.ppsEligibleFields.includes(field);
         const values = excelInfo?.columnValues?.[field]
             ?? (excelInfo?.preview ?? []).map((row) => String(row?.[field] ?? "")).filter(Boolean);
-        return values.length > 0 && values.every((value) => Number.isFinite(Number(value)) && Number(value) > 0);
+        return values.length > 0 && values.every((value) => (parseNumericText(value) ?? 0) > 0);
     });
     const samplingPolicyError = validateSamplingPolicy(samplingPolicy)
         ?? (ppsEligibleFields.length === 0 && samplingPolicy.methods.pps !== "disabled"
@@ -433,12 +436,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     <Select
                                         value={fieldMapping.identifier ?? ""}
                                         onValueChange={(v) =>
-                                            setFieldMapping((prev) => ({
-                                                ...prev,
-                                                identifier: v,
-                                                stratified: prev.stratified.filter((item) => item !== v),
-                                                numeric: prev.numeric.filter((item) => item !== v),
-                                            }))}
+                                            setFieldMapping((prev) => assignFieldRole(prev, v, "identifier"))}
                                         disabled={isPublishedTopic}
                                     >
                                         <SelectTrigger aria-label="选择唯一标识字段" data-testid="teacher-topic-mapping-identifier" className="bg-card text-foreground disabled:border-input disabled:bg-muted disabled:text-muted-foreground">
@@ -470,22 +468,19 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="space-y-2">
                                         <Label className="text-foreground">分层变量（按需，已选 {fieldMapping.stratified.length}）</Label>
-                                        <p className="text-meta text-muted-foreground">仅在需要分层抽样或分类分布比较时选择，建议 1-3 个，且每个字段唯一值不超过 20。</p>
+                                        <p className="text-meta text-muted-foreground">仅在需要分层抽样时选择，建议 1-3 个，每个字段需有 2-20 个类别；只做比例或分类分布比较时可使用下方其他分类变量。</p>
                                         {riskyStratifiedFields.length > 0 && (
                                             <p className="text-meta text-warning">
-                                                当前分层变量包含高基数或 ID 类字段（{riskyStratifiedFields.join("、")}），保存时可能失败，建议替换。
+                                                请核对编码或高基数字段（{riskyStratifiedFields.join("、")}）是否代表实际分组：分层需有 2-20 个类别；其他分类分析不受此限制。
                                             </p>
                                         )}
                                         <div className="bg-background border border-border rounded-surface p-3 max-h-60 overflow-y-auto space-y-2">
                                             {columns.map((c) => {
                                                 const checked = fieldMapping.stratified.includes(c);
-                                                const blockedAsIdentifier = isLikelyIdentifierColumn(c) && !checked;
-                                                const disabled = isPublishedTopic || fieldMapping.identifier === c || blockedAsIdentifier;
+                                                const disabled = isPublishedTopic || fieldMapping.identifier === c;
                                                 const reason = fieldMapping.identifier === c
                                                     ? "该字段已作为标识符"
-                                                    : blockedAsIdentifier
-                                                        ? "ID 类字段不建议作为分层变量"
-                                                        : undefined;
+                                                    : isLikelyIdentifierColumn(c) ? "请确认该编码代表分组而非唯一单位；分层需有2-20个类别" : undefined;
                                                 return (
                                                     <label
                                                         key={c}
@@ -502,11 +497,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                             disabled={disabled}
                                                             checked={checked}
                                                             onChange={(e) => {
-                                                                setFieldMapping(prev => ({
-                                                                    ...prev,
-                                                                    stratified: e.target.checked ? [...prev.stratified, c] : prev.stratified.filter(x => x !== c),
-                                                                    numeric: e.target.checked ? prev.numeric.filter(x => x !== c) : prev.numeric,
-                                                                }));
+                                                                setFieldMapping(prev => assignFieldRole(prev, c, e.target.checked ? "stratified" : null));
                                                             }}
                                                         />
                                                         {c}
@@ -521,13 +512,10 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         <div className="bg-background border border-border rounded-surface p-3 max-h-60 overflow-y-auto space-y-2">
                                             {columns.map((c) => {
                                                 const checked = fieldMapping.numeric.includes(c);
-                                                const blockedAsIdentifier = isLikelyIdentifierColumn(c) && !checked;
-                                                const disabled = isPublishedTopic || fieldMapping.identifier === c || blockedAsIdentifier;
+                                                const disabled = isPublishedTopic || fieldMapping.identifier === c;
                                                 const reason = fieldMapping.identifier === c
                                                     ? "该字段已作为标识符"
-                                                    : blockedAsIdentifier
-                                                        ? "ID 类字段不建议作为数值变量"
-                                                        : undefined;
+                                                    : isLikelyIdentifierColumn(c) ? "请确认该字段是数值度量而非单位编号" : undefined;
                                                 return (
                                                     <label
                                                         key={c}
@@ -544,11 +532,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                             disabled={disabled}
                                                             checked={checked}
                                                             onChange={(e) => {
-                                                                setFieldMapping(prev => ({
-                                                                    ...prev,
-                                                                    numeric: e.target.checked ? [...prev.numeric, c] : prev.numeric.filter(x => x !== c),
-                                                                    stratified: e.target.checked ? prev.stratified.filter(x => x !== c) : prev.stratified,
-                                                                }));
+                                                                setFieldMapping(prev => assignFieldRole(prev, c, e.target.checked ? "numeric" : null));
                                                             }}
                                                         />
                                                         {c}
@@ -556,6 +540,25 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 );
                                             })}
                                         </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label>其他分类变量（不用于分层，已选 {fieldMapping.others.length}）</Label>
+                                    <p className="text-meta text-muted-foreground">用于比例目标或分类分布比较；允许只有一个类别或超过20类，不要求执行分层抽样。</p>
+                                    <div className="grid grid-cols-2 gap-2 rounded-surface border border-border bg-background p-3">
+                                        {columns.map((field) => (
+                                            <label key={field} className="flex items-center gap-2 text-label">
+                                                <input
+                                                    type="checkbox"
+                                                    data-testid={`teacher-topic-mapping-others-${field}`}
+                                                    disabled={isPublishedTopic || fieldMapping.identifier === field}
+                                                    checked={fieldMapping.others.includes(field)}
+                                                    onChange={(event) => setFieldMapping(prev => assignFieldRole(prev, field, event.target.checked ? "others" : null))}
+                                                />
+                                                {field}
+                                            </label>
+                                        ))}
                                     </div>
                                 </div>
 

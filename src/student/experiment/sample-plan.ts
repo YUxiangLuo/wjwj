@@ -133,7 +133,8 @@ export function finitePopulationS2ToSigma2(s2: number, populationCount: number):
         return null;
     }
     if (populationCount === 1) return 0;
-    return s2 * (populationCount - 1) / populationCount;
+    const scaled = s2 * (populationCount - 1);
+    return Number.isFinite(scaled) ? scaled / populationCount : s2 * ((populationCount - 1) / populationCount);
 }
 
 export function calculateFinitePopulationSampleSize(params: {

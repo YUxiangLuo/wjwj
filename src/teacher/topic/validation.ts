@@ -1,8 +1,9 @@
-import { getPpsEligibleNumericFields } from "@/domain/statistics/population";
+import { Z_VALUES } from "../../domain/statistics/confidence-level";
+import { buildPopulationNumericStats, getPpsEligibleNumericFields } from "@/domain/statistics/population";
 import { parseStudyContract, resolveAnalysisTarget, validateAnalysisTarget, validateStudyContract } from "../../lib/analysis-target";
 import { buildDefaultSamplingPolicy, resolveSamplingPolicy, validateSamplingPolicy } from "../../lib/sampling-policy";
 import { identityKey, normalizeIdentityText } from "../../lib/identity-text";
-import { isNumericText } from "../../lib/numeric-text";
+import { isNumericText, parseNumericText } from "../../lib/numeric-text";
 import { isRowEmpty } from "./file-utils";
 
 interface ParsedExcelFile {
@@ -268,9 +269,15 @@ export function validateMappedPopulationData(
     if (validationError) return validationError;
     const target = resolveAnalysisTarget(fieldMapping)?.target;
     if (target?.kind === "mean" && parsed.rows.length > 0) {
-        const first = Number(parsed.rows[0]?.[target.field]);
-        if (parsed.rows.every(row => Number(row[target.field]) === first)) {
+        const first = parseNumericText(parsed.rows[0]?.[target.field]);
+        if (parsed.rows.every(row => parseNumericText(row[target.field]) === first)) {
             return `均值研究目标 ${target.field} 的总体值全部相同（方差为0），当前样本量规划要求正方差，请调整研究目标或总体数据`;
+        }
+        const stat = buildPopulationNumericStats(parsed.rows, [target.field])[target.field];
+        const sigma2 = stat ? stat.variance * ((stat.count - 1) / stat.count) : NaN;
+        if (!stat || !Number.isFinite(stat.mean) || !Number.isFinite(sigma2) || sigma2 <= 0
+            || !Number.isFinite(sigma2 * Z_VALUES["99"] ** 2)) {
+            return `均值研究目标 ${target.field} 的数值尺度无法可靠计算规划方差，请换算计量单位后重新上传`;
         }
     }
     return null;

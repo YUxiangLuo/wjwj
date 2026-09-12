@@ -1,3 +1,4 @@
+import { parseFieldKey } from "@/lib/analysis-target";
 import { stratumKey } from "@/domain/statistics/sampling";
 
 const SAMPLING_METHODS = ["simple", "systematic", "pps", "stratified"] as const;
@@ -80,7 +81,7 @@ function validateStratifiedPopulationCoverage(
     population: Array<Record<string, unknown>>,
     sampledRows: Array<Record<string, unknown>>,
 ) {
-    const field = typeof section.stratifyBy === "string" ? section.stratifyBy.trim() : "";
+    const field = parseFieldKey(section.stratifyBy);
     if (!field || !Array.isArray(section.layers)) return "stratified design metadata is missing";
     const populationCounts = new Map<string, number>();
     for (const row of population) {

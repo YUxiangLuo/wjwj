@@ -191,8 +191,8 @@ export function getPpsEligibleNumericFields(
     return numericFields.filter((field) =>
         population.length > 0
         && population.every((row) => {
-            const value = Number(row[field]);
-            return Number.isFinite(value) && value > 0;
+            const value = parseNumericText(row[field]);
+            return value !== null && value > 0;
         })
     );
 }

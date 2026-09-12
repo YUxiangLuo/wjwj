@@ -383,8 +383,8 @@ export async function updateTopicSamplingPolicy(params: {
 
         if (samplingPolicy.methods.pps !== "disabled") {
             const buffer = await Bun.file(resolveStoragePath(topicInfo.excelFilePath)).arrayBuffer();
-            const parsed = await parseExcelFile(buffer, topicInfo.excelFilePath);
             const mapping = parseTopicFieldMapping(topicInfo.fieldMapping);
+            const parsed = await parseExcelFile(buffer, topicInfo.excelFilePath, { numericFields: mapping?.numeric ?? [] });
             const resolvedTarget = resolveAnalysisTarget(topicInfo.fieldMapping);
             const targetField = resolvedTarget?.inferred ? undefined : resolvedTarget?.target.field;
             const eligible = getPpsEligibleNumericFields(parsed.rows, mapping?.numeric ?? [])

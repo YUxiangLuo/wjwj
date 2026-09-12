@@ -1,13 +1,11 @@
+import { parseNumericText } from "../../lib/numeric-text";
+
 export function unique<T>(values: T[]) {
     return Array.from(new Set(values));
 }
 
 function toFiniteNumber(value: unknown) {
-    if (value === undefined || value === null || (typeof value === "string" && value.trim() === "")) {
-        return null;
-    }
-    const numericValue = Number(value);
-    return Number.isFinite(numericValue) ? numericValue : null;
+    return parseNumericText(value);
 }
 
 export function toTrimmedCategory(value: unknown) {

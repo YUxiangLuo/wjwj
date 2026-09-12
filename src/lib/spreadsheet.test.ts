@@ -170,6 +170,25 @@ test("XLSX parser uses display text for identifiers and raw values only for mapp
     expect(mapped.rows[0]).toEqual({ id: "001", score: 1234.5 });
 });
 
+for (const format of ["csv", "xlsx"] as const) {
+    test(`${format} normalizes only declared numeric fields, preserving category and column keys`, async () => {
+        const input = [["id", "cat", "score "], ["001", "０１", "１，２００"], ["002", "02", "2e3"], ["003", "03", "not numeric"]];
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(input), "Population");
+        const bytes = format === "csv"
+            ? new TextEncoder().encode('id,cat,score \n001,０１,１，２００\n002,02,2e3\n003,03,not numeric').buffer
+            : XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+        const parsed = await parseSpreadsheetFile(bytes, `population.${format}`, { numericFields: ["score "] });
+        expect(parsed.rows).toEqual([
+            { id: "001", cat: "０１", "score ": 1200 },
+            { id: "002", cat: "02", "score ": 2000 },
+            { id: "003", cat: "03", "score ": "not numeric" },
+        ]);
+        expect(parsed.preview).toEqual(parsed.rows);
+        expect(parsed.columnValues["score "]).toEqual(["1200", "2000", "not numeric"]);
+    });
+}
+
 test("spreadsheet multipart preflight rejects declared oversized bodies", () => {
     expect(spreadsheetRequestExceedsLimit(new Request("https://example.com", {
         headers: { "content-length": String(MAX_SPREADSHEET_MULTIPART_BYTES + 1) },

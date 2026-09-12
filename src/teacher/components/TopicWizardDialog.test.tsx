@@ -76,6 +76,47 @@ afterEach(async () => {
     restoreDom = null;
 });
 
+test("non-stratified categories are selectable and roles remain exclusive", () => {
+    let mapping: FieldMappingState = { ...completeMapping, stratified: ["cat"] };
+    const props = makeProps({ currentStep: 3, columns: ["id", "score", "cat"], fieldMapping: mapping,
+        setFieldMapping: update => { mapping = typeof update === "function" ? update(mapping) : update; },
+    });
+    const view = render(<TopicWizardDialog {...props} />);
+    fireEvent.click(view.getByTestId("teacher-topic-mapping-others-cat"));
+    expect(mapping.others).toEqual(["cat"]);
+    expect(mapping.stratified).toEqual([]);
+    view.rerender(<TopicWizardDialog {...props} fieldMapping={mapping} />);
+    fireEvent.click(view.getByTestId("teacher-topic-mapping-numeric-cat"));
+    expect(mapping.others).toEqual([]);
+    expect(mapping.numeric).toContain("cat");
+});
+
+test("ID-like field names warn but do not prohibit valid grouping", () => {
+    let mapping = completeMapping;
+    const view = render(<TopicWizardDialog {...makeProps({ currentStep: 3, columns: ["id", "region_id", "score"],
+        fieldMapping: mapping, setFieldMapping: update => { mapping = typeof update === "function" ? update(mapping) : update; },
+    })} />);
+    const input = view.getByTestId("teacher-topic-mapping-stratified-region_id") as HTMLInputElement;
+    expect(input.disabled).toBe(false);
+    fireEvent.click(input);
+    expect(mapping.stratified).toEqual(["region_id"]);
+    expect((view.getByTestId("teacher-topic-mapping-stratified-id") as HTMLInputElement).disabled).toBe(true);
+});
+
+for (const eligible of [true, false]) {
+    test(`PPS wizard uses full-population eligibility (${eligible}), not formatted/truncated previews`, () => {
+        const policy = buildDefaultSamplingPolicy();
+        policy.methods.pps = "required";
+        policy.methods.stratified = "disabled";
+        const view = render(<TopicWizardDialog {...makeProps({ currentStep: 4, samplingPolicy: policy,
+            fieldMapping: { ...completeMapping, numeric: ["score", "size"] },
+            excelInfo: { rowCount: 40, colCount: 3, columns: ["id", "score", "size"],
+                preview: [{ size: eligible ? "¥1,200.00" : "1200" }], ppsEligibleFields: eligible ? ["size"] : [] },
+        })} />);
+        expect((view.getByTestId("teacher-topic-next") as HTMLButtonElement).disabled).toBe(!eligible);
+    });
+}
+
 test("the title reflects create vs edit mode, not the draft state", () => {
     const create = render(<TopicWizardDialog {...makeProps({ mode: "create", editingTopicId: 12 })} />);
     expect(create.getByRole("heading", { name: "创建实验模板" })).toBeTruthy();
@@ -148,11 +189,13 @@ test("a published topic is read-only and always allows advancing", async () => {
     const view = render(<TopicWizardDialog {...makeProps({
         currentStep: 3,
         isPublishedTopic: true,
+        columns: ["id", "cat"],
         fieldMapping: { stratified: [], numeric: [], others: [] },
         excelInfo: { rowCount: 10, colCount: 2, columns: ["id", "score"], preview: [] },
     })} />);
 
     expect(view.getByText(/研究目标与字段不可修改/)).toBeTruthy();
+    expect((view.getByTestId("teacher-topic-mapping-others-cat") as HTMLInputElement).disabled).toBe(true);
     expect((view.getByTestId("teacher-topic-next") as HTMLButtonElement).disabled).toBe(false);
     await waitFor(() => expect(view.getByTestId("teacher-topic-next").textContent).toBe("下一步"));
 });

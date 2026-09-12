@@ -172,8 +172,8 @@ test("experiment reads hydrate compact stored indices for the SPA", async () => 
     expect(response.status).toBe(200);
     expect(payload.data.rejectReason).toBe("请补充四种抽样方法的比较");
     expect(payload.data.samplingResults.simple.data).toEqual([
-        { id: "2", gender: "A", weight: "2" },
-        { id: "4", gender: "B", weight: "4" },
+        { id: "2", gender: "A", weight: 2 },
+        { id: "4", gender: "B", weight: 4 },
     ]);
     expect(payload.data.samplingResults.simple).not.toHaveProperty("indices");
 });

@@ -215,6 +215,10 @@ test("finite population variance factor uses the exact denominator-N convention"
     expect(finitePopulationVarianceFactor(60, 60)).toBe(0);
 });
 
+test("finite-population variance conversion avoids intermediate overflow", () => {
+    expect(finitePopulationS2ToSigma2(1e306, 1000)).toBe(1e306 * 0.999);
+});
+
 test("finite-population S² is converted from denominator N−1 to denominator N", () => {
     expect(finitePopulationS2ToSigma2(50, 24)).toBeCloseTo(47.916666666666664, 14);
     expect(finitePopulationS2ToSigma2(67.128040201005, 200)).toBeCloseTo(66.7924, 10);

@@ -2,6 +2,16 @@ import { expect, test } from "bun:test";
 
 import { buildRecommendedFieldMapping } from "./mapping-recommendation";
 
+for (const count of [1, 40]) {
+    test(`categorical fields with ${count} categories are recommended without forcing stratification`, () => {
+        const result = buildRecommendedFieldMapping({
+            columns: ["id", "cat"], topicName: "类别比例", preview: Array.from({ length: 40 }, (_, i) => ({ id: String(i), cat: `类别${i % count}` })),
+        });
+        expect(result.stratified).toEqual([]);
+        expect(result.others).toEqual(["cat"]);
+    });
+}
+
 test("mapping recommendation never treats categorical satisfaction labels as numeric", () => {
     const preview = [
         { 编号: "D001", 校区: "东区", 满意类别: "满意", 学习分钟: 42, 规模权重: 120 },

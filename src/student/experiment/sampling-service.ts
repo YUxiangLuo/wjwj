@@ -6,7 +6,8 @@ import {
     performSystematicSampling,
     stratumKey,
 } from "@/domain/statistics/sampling";
-import { analysisTargetConflictsWithSizeField, resolveAnalysisTarget } from "../../lib/analysis-target";
+import { parseNumericText } from "../../lib/numeric-text";
+import { analysisTargetConflictsWithSizeField, parseFieldKey, resolveAnalysisTarget } from "../../lib/analysis-target";
 import { parseTopicFieldMapping } from "@/domain/statistics/population";
 import { getSamplingAcceptedRange } from "./sampling-tolerance";
 import type { MethodKey as SamplingMethod } from "@/domain/experiment/types";
@@ -127,7 +128,7 @@ export async function executeSamplingAction(params: {
             };
         }
         case "pps": {
-            const sizeField = toTrimmedString(parsedParams.sizeField);
+            const sizeField = parseFieldKey(parsedParams.sizeField);
             if (!sizeField) {
                 return { ok: false as const, errorMessage: "请选择规模变量" };
             }
@@ -147,8 +148,8 @@ export async function executeSamplingAction(params: {
             }
 
             const hasInvalidSizeValue = params.population.some((row) => {
-                const value = Number(row[sizeField]);
-                return !Number.isFinite(value) || value <= 0;
+                const value = parseNumericText(row[sizeField]);
+                return value === null || value <= 0;
             });
             if (hasInvalidSizeValue) {
                 return { ok: false as const, errorMessage: "规模变量需在总体中对每个单位都为正数" };
@@ -171,7 +172,7 @@ export async function executeSamplingAction(params: {
 
             const selection = await performPPSSampling(params.population, sizeField, sampleSize, random);
             if (selection.data.length !== sampleSize) {
-                return { ok: false as const, errorMessage: "PPS抽样执行失败，请检查规模变量与样本量设置" };
+                return { ok: false as const, errorMessage: "当前规模变量与样本量无法可靠计算 PPS 入样概率。请改用其他规模变量或规划样本量；仍失败时请返回样本量规划调整，普查可避免此概率精度问题" };
             }
             return {
                 ok: true as const,
@@ -189,7 +190,7 @@ export async function executeSamplingAction(params: {
             };
         }
         case "stratified": {
-            const stratifyBy = toTrimmedString(parsedParams.stratifyBy);
+            const stratifyBy = parseFieldKey(parsedParams.stratifyBy);
             if (!stratifyBy) {
                 return { ok: false as const, errorMessage: "请选择分层变量" };
             }

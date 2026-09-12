@@ -53,6 +53,21 @@ test("getTeacherTopicDetail never leaks the owner id or storage path", async () 
     expect(detail.excelInfo).toBeNull();
 });
 
+test("topic detail computes PPS eligibility from all rows using mapped numeric parsing", async () => {
+    const path = `/storage/test-topic-eligibility-${crypto.randomUUID()}.csv`;
+    const file = Bun.file(`${process.cwd()}${path}`);
+    await Bun.write(file, `id,size,other\n${Array.from({ length: 30 }, (_, i) => `${i},１２,${i === 29 ? 0 : 1}`).join("\n")}`);
+    const { module } = await loadQueryService([[{
+        id: 12, excelFilePath: path, fieldMapping: { numeric: ["size", "other"] },
+    }], []]);
+    try {
+        const detail = await module.getTeacherTopicDetail(12);
+        expect(detail.excelInfo?.ppsEligibleFields).toEqual(["size"]);
+        expect(detail.excelInfo?.preview).toHaveLength(20);
+        expect(detail.excelInfo?.preview[0]).toMatchObject({ size: 12, other: 1 });
+    } finally { await file.delete(); }
+});
+
 test("getTeacherTaskProgress returns null for a task outside the teacher's classes", async () => {
     const { module } = await loadQueryService([[]]);
 

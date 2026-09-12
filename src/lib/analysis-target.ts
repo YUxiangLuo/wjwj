@@ -82,6 +82,11 @@ function toNonEmptyString(value: unknown): string | null {
     return trimmed ? trimmed : null;
 }
 
+/** Spreadsheet column names are exact keys, not human text to trim. */
+export function parseFieldKey(value: unknown): string | null {
+    return typeof value === "string" && value.trim() ? value : null;
+}
+
 export function categoricalFieldsFromMapping(mapping: {
     stratified?: string[];
     others?: string[];
@@ -98,7 +103,7 @@ function parseLegacyAnalysisTarget(fieldMapping: unknown): AnalysisTarget | null
     if (!isRecord(fieldMapping)) return null;
     const raw = fieldMapping.analysisTarget;
     if (!isRecord(raw)) return null;
-    const field = toNonEmptyString(raw.field);
+    const field = parseFieldKey(raw.field);
     if (!field) return null;
     if (raw.kind === "mean") return { kind: "mean", field };
     if (raw.kind === "proportion") {
@@ -157,7 +162,7 @@ export function retitleGeneratedStudyContract(
 
 function parseTarget(raw: unknown): AnalysisTarget | null {
     if (!isRecord(raw)) return null;
-    const field = toNonEmptyString(raw.field);
+    const field = parseFieldKey(raw.field);
     if (!field) return null;
     if (raw.kind === "mean") return { kind: "mean", field };
     if (raw.kind === "proportion") {

@@ -6,6 +6,37 @@ const population = Array.from({ length: 200 }, (_, i) => ({
     gender: i % 2 === 0 ? "男" : "女",
 }));
 
+test("PPS preserves whitespace column keys and accepts shared numeric text formats", async () => {
+    const result = await executeSamplingAction({
+        method: "pps", rawParams: { sizeField: "size ", sampleSize: 2, seed: 2026 }, targetSampleSize: 2,
+        population: [{ "size ": "１，０００", y: 1 }, { "size ": "2,000", y: 2 }, { "size ": "3e3", y: 3 }, { "size ": 4000, y: 4 }],
+        fieldMapping: { numeric: ["size ", "y"], analysisTarget: { kind: "mean", field: "y" } },
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.result).toMatchObject({ sizeField: "size ", sampleCount: 2 });
+});
+
+test("stratification preserves exact whitespace column keys", async () => {
+    const result = await executeSamplingAction({
+        method: "stratified", rawParams: { stratifyBy: "g ", layers: [{ name: "A", sampleCount: 1 }, { name: "B", sampleCount: 1 }], seed: 2026 },
+        targetSampleSize: 2,
+        population: [{ "g ": "A" }, { "g ": "A" }, { "g ": "B" }, { "g ": "B" }],
+        fieldMapping: { stratified: ["g "] },
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.result).toMatchObject({ stratifyBy: "g ", sampleCount: 2 });
+});
+
+test("PPS precision failure gives a recovery path without returning a completed sample", async () => {
+    const result = await executeSamplingAction({
+        method: "pps", rawParams: { sizeField: "size", sampleSize: 1 }, targetSampleSize: 1,
+        population: [8e-16, 1e308, 1e308].map((size, i) => ({ size, y: i + 1 })),
+        fieldMapping: { numeric: ["size", "y"], analysisTarget: { kind: "mean", field: "y" } },
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errorMessage).toContain("普查");
+});
+
 test("systematic sampling returns exact target count for N=200,n=132", async () => {
     const result = await executeSamplingAction({
         method: "systematic",
