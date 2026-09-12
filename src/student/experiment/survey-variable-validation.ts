@@ -1,5 +1,5 @@
 import type { SurveyVariableSpec } from "../../domain/experiment/planning-types";
-import { isConfidenceLevel } from "./confidence-level";
+import { isConfidenceLevel } from "@/domain/statistics/confidence-level";
 
 /** Shared by the calculator, its form, and saved-plan validation. */
 export function getSurveyVariableParameterError(variable: Pick<SurveyVariableSpec,

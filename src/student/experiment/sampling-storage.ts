@@ -1,4 +1,4 @@
-import { stratumKey } from "../sampling";
+import { stratumKey } from "@/domain/statistics/sampling";
 
 const SAMPLING_METHODS = ["simple", "systematic", "pps", "stratified"] as const;
 

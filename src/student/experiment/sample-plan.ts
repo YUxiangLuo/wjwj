@@ -1,6 +1,6 @@
 import type { SurveyVariableSpec } from "../../domain/experiment/planning-types";
 export type { SurveyVariableSpec } from "../../domain/experiment/planning-types";
-import { zForConfidenceLevel, isConfidenceLevel, Z_VALUES } from "./confidence-level";
+import { zForConfidenceLevel, isConfidenceLevel, Z_VALUES } from "@/domain/statistics/confidence-level";
 import { getSurveyVariableParameterError } from "./survey-variable-validation";
 
 /**

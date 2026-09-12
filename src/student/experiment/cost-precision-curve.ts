@@ -1,4 +1,4 @@
-import { zForConfidenceLevel } from "./confidence-level";
+import { zForConfidenceLevel } from "@/domain/statistics/confidence-level";
 import { finitePopulationVarianceFactor } from "./sample-plan";
 
 export interface CostPrecisionPoint {

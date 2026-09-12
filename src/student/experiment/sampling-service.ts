@@ -5,7 +5,7 @@ import {
     performStratifiedSamplingWithIndices,
     performSystematicSampling,
     stratumKey,
-} from "../sampling";
+} from "@/domain/statistics/sampling";
 import { analysisTargetConflictsWithSizeField, resolveAnalysisTarget } from "../../lib/analysis-target";
 import { parseTopicFieldMapping } from "@/domain/statistics/population";
 import { getSamplingAcceptedRange } from "./sampling-tolerance";

@@ -9,7 +9,9 @@ bun run audit:applicable
 
 `bun audit` 保留上游公告的完整可见性；`audit:applicable` 是发布门禁，只允许下表中按“公告 ID + 包名”精确匹配的已评估残留。任何新公告、包名变化或 ID 变化都会使门禁失败。
 
-## 当前残留（复核日期：2026-08-14）
+## 已接受的依赖残留
+
+以下是适用性结论，不替代发布时的实时审计。
 
 | 公告 | 依赖路径 | 适用性结论 |
 | --- | --- | --- |
@@ -35,21 +37,17 @@ React Router 公告已通过升级至 `7.18.2+` 清除；`happy-dom` 的 `ws` �
 - 密码始终使用 Argon2 哈希存储，密码计算保留全局并发上限，避免批量导入耗尽进程内存。
 - 不存在和密码错误账号返回通用的 `INVALID_CREDENTIALS`。
 - 生产构建把前端的 `process.env.DEV_AUTH_MODE` 内联为 `"0"`。不要用未构建的 `NODE_ENV=production bun src/index.ts` 上课。
-- 学生、任务和未分配模板使用硬删除；相关实验、成绩、抽样记录、会话和审计事件会按删除范围永久清除，界面必须在确认前明确提示不可恢复性。
+- 硬删除不可恢复，确认与级联范围见[教学与账号指南](docs/TEACHING.md)；备份与存储清理见 [DATABASE.md](DATABASE.md)。
 
 ## 教学数据边界
 
-学生抽样结果包含总体文件中被抽中行的完整字段，并支持导出和重新抽样。课题总体文件只允许使用合成或充分脱敏的数据；不得依赖“学生只能看到一次样本”来保护个人信息。若未来需要处理真实受限数据，必须先实现字段级披露控制、抽样尝试审计和重抽策略。
+学生抽样结果包含总体文件中被抽中行的完整字段，并支持导出和重新抽样。课题总体文件只允许使用合成或充分脱敏的数据；不得依赖“学生只能看到一次样本”来保护个人信息。若未来需要处理真实受限数据，必须先实现字段级披露控制与重抽策略，并按隐私要求完善审计；当前每个实验仅保留最近 100 次服务端抽样记录。
 
 附件内容会按允许的扩展名检查基础文件签名，预览 MIME 由服务端根据扩展名生成，不信任上传请求声明的 MIME。生产环境仍建议把用户文件放在独立文件域名或对象存储中。
 
 ## 生产 HTTP 防护
 
-`bun run start` 会先执行生产构建；若直接以 `NODE_ENV=production bun src/index.ts` 启动，则必须预先运行 `bun run build`。生产模式下，Bun 服务从 `dist/` 提供构建产物，并统一设置 CSP（包括 `frame-ancestors 'self'`）、`X-Frame-Options: SAMEORIGIN`、`X-Content-Type-Options`、`Referrer-Policy`、`Permissions-Policy` 和同源资源策略。构建脚本使用根路径资源 URL，因此 SPA 深链也能正确加载静态资源。
-
-TLS 与 HSTS 仍由正式环境的反向代理或负载均衡器负责；只有确认所有流量均已强制 HTTPS 后才能启用 HSTS。
-
-Bun HTTP 连接空闲超时为60秒，高于分析服务的30秒等待/计算期限，保证分析超时能返回可重试的JSON错误；反向代理配置也应为该错误响应保留足够时间。
+生产启动与代理配置见[运行与部署](docs/OPERATIONS.md)。生产页面、静态资源与 API 统一设置 CSP（包括 `frame-ancestors 'self'`）、`X-Frame-Options: SAMEORIGIN`、`X-Content-Type-Options`、`Referrer-Policy`、`Permissions-Policy` 和同源资源策略。构建脚本使用根路径资源 URL，因此 SPA 深链也能正确加载静态资源。
 
 ## 复核规则
 

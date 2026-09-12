@@ -1,7 +1,6 @@
 import { expect, test } from "bun:test";
 import { buildAnalysisMetrics } from "./analysis";
 import { createSeededRandom, performPPSSampling } from "./sampling";
-import { buildAnalysisMetrics as configuredAnalysis } from "../../student/experiment/analysis-metrics";
 
 test("exact PPS analysis ignores legacy simulation configuration", () => {
     const previous = process.env.PPS_MONTE_CARLO_REPLICATES;
@@ -16,8 +15,7 @@ test("exact PPS analysis ignores legacy simulation configuration", () => {
         };
         expect(buildAnalysisMetrics({ ...input, ppsMonteCarloReplicates: 32 }).ppsMonteCarloReplicates).toBe(0);
         expect(buildAnalysisMetrics(input).ppsMonteCarloReplicates).toBe(0);
-        expect(configuredAnalysis(input).ppsMonteCarloReplicates).toBe(0);
-        expect(configuredAnalysis(input)).toEqual(buildAnalysisMetrics({ ...input, ppsMonteCarloReplicates: 64 }));
+        expect(buildAnalysisMetrics(input)).toEqual(buildAnalysisMetrics({ ...input, ppsMonteCarloReplicates: 64 }));
     } finally {
         if (previous === undefined) delete process.env.PPS_MONTE_CARLO_REPLICATES;
         else process.env.PPS_MONTE_CARLO_REPLICATES = previous;

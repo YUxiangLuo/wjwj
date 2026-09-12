@@ -1,17 +1,10 @@
-# PostgreSQL operations
+# 数据库与文件维护
 
-The application uses PostgreSQL through Bun SQL and Drizzle's `bun-sql`
-adapter. `DATABASE_URL` is the only runtime database setting. Product
-overview and seed accounts are in [README.md](README.md).
+PostgreSQL 通过 Drizzle 的 `bun-sql` adapter 访问，运行连接为 `DATABASE_URL`。表结构源在 `src/db/schema.ts`，包括账号、学期/班级、模板/附件、任务/实验、抽样记录、公告、审计与会话共 13 张表。配置见[运行与部署](docs/OPERATIONS.md)。
 
-Active tables: `admin`, `teacher`, `student`, `semester`, `class`,
-`topic`, `topic_attachment`, `task`, `experiment`, `sampling_attempt`,
-`announcement`, `audit_event`, `user_session`. `drizzle/postgresql/0000` is the
-single clean empty-database baseline and contains the complete current schema.
+## 初始化与迁移
 
-## Create the database
-
-Create an empty PostgreSQL database and export its connection URL:
+在空数据库执行，迁移角色须能 `CREATE EXTENSION citext`，否则请 DBA 先安装扩展：
 
 ```sh
 export DATABASE_URL='postgresql://user:password@127.0.0.1:5432/wenjuan'
@@ -19,119 +12,55 @@ bun run db:migrate
 bun run db:bootstrap-admin
 ```
 
-The first migration enables `citext` and creates the application tables,
-foreign keys, constraints, and indexes. The role applying it must be
-allowed to run `CREATE EXTENSION citext`; otherwise a database administrator
-must install that extension first.
+当前 `drizzle/postgresql/0000` 是完整的空库基线，替代了旧迁移历史。**旧版本数据库不能直接原地升级到该基线。** 应先备份，再选择新库部署，或明确接受丢弃数据后重建；不要把 reset 当作保留数据的升级方式。后续表结构变更按增量迁移维护：
 
-This baseline replaces all previous migration history and supports only an
-empty database. Existing installations must run `bun run db:reset` or deploy
-against a new database; in-place upgrades are intentionally unsupported and
-existing application data is discarded.
+1. 修改 `src/db/schema.ts`。
+2. `bun run db:generate`，审查生成的 SQL。
+3. `bun run db:migrate`，再运行 `bun run db:check` 检查迁移文件。
 
-`db:seed` is a guarded alias for the deterministic dogfood fixture and refuses
-to run unless `DEMO_MODE=1`; normal production bootstrap must use
-`db:bootstrap-admin`. `db:seed:demo` writes the fixture in
-`src/db/seeds/default.ts`: 1 admin, 3 teachers, 3 semesters, 4 classes,
-20 students, 5 topics, 6 tasks, 17 experiments, 12 bounded sampling-attempt
-audit rows, 5 announcements, 2 attachments, and four generated population
-files. The stage-4 and terminal fixtures use production-style compact replay
-indices. The main mean/PPS task covers all eight teacher progress buckets. The
-four research scenarios cover mean and proportion targets, person and service-
-period units of analysis, multiple strata, and both eligible and unavailable
-PPS size fields. `SEED_NOW` optionally fixes the relative-time anchor, and
-`SEED_ADMIN_PASSWORD` overrides the generated admin password. In the demo
-fixture, every student password equals the student ID and every teacher password
-equals the employee ID; the administrator keeps its independently configured password.
-See the exact credentials/personas in [README.md](README.md). Seed is not
-applied by `db:migrate`.
+不使用 Drizzle Kit 的 `push` / `studio` / `drop`。迁移不自动写 seed；生产只 bootstrap 首个管理员，演示 seed 的准备、失败重建和固定计数见[演示指南](docs/DEMO.md)。
 
-`db:seed:demo` is non-idempotent and only supports an empty migrated database. It
-preflights the required guide source before inserting rows, but later failures
-can still leave partial rows or generated files. Fix the reported cause, then
-run `bun run db:reset` to clean and rebuild the database instead of retrying
-seed against the partial state. Run `bun run db:seed:check` immediately after a
-successful seed for the read-only fixture integrity check.
+## 真实数据库验证
 
-## Change the schema
-
-1. Update `src/db/schema.ts`.
-2. Run `bun run db:generate`.
-3. Review the generated SQL under `drizzle/postgresql`.
-4. Apply it with `bun run db:migrate`.
-
-The project does not expose Drizzle Kit's `push`, `studio`, or `drop` commands.
-Those commands require a separate Node.js database driver and cannot use the
-project's Bun SQL connection.
-
-## Validate
-
-Run the database contract and concurrency tests against a disposable test
-database, then run the normal project checks:
+`db:check` 只检查迁移文件，不验证实际数据库。使用独立、可丢弃的数据库运行合同及并发测试：
 
 ```sh
-TEST_DATABASE_URL="$DATABASE_URL" bun run test:db
-bun run db:check
-bun run typecheck
-bun test
-bun run build
+export TEST_DATABASE_URL='postgresql://user:password@127.0.0.1:5432/wenjuan_test'
+DATABASE_URL="$TEST_DATABASE_URL" bun run db:migrate
+bun run test:db
 ```
 
-On a shared development machine several servers and test runs compete for
-connections (the app pool keeps about ten per process), so Postgres can answer
-"remaining connection slots are reserved for the superuser". Raise the local
-limit once instead of retrying:
+`test:db` 只使用 `TEST_DATABASE_URL`，不回退到应用库；运行前会检查是否已迁移。测试覆盖持久化、唯一约束、级联删除、会话与归属锁、当前学期创建/选择/删除的并发不变量。完整测试入口见 [README](README.md#开发与验证)。
+
+共享开发机上的多个应用进程会竞争连接，每进程连接池约 10 个。遇到连接数耗尽时先清理不用的进程；确需提高 PostgreSQL `max_connections` 时，评估内存并安排重启，不要持续盲目重试。
+
+## 危险操作与存储清理
+
+| 命令 | 影响 |
+| --- | --- |
+| `bun run db:clean` | 删除本项目当前/历史表及 `drizzle` 元数据 schema，不枚举删除其他项目表 |
+| `bun run db:reset` | clean → migrate → bootstrap 首个管理员 |
+| `bun run db:reset:demo` | clean → migrate → 演示 seed |
+
+上述清表步骤必须提供 `CONFIRM_DATABASE_NAME`，值与连接串中的数据库名完全一致。**清表不可恢复，且不会删除 `storage/`。** 在运行前核对目标库和配套备份。
 
 ```sh
-sudo -u postgres psql -c "ALTER SYSTEM SET max_connections = 300"
-sudo systemctl restart postgresql
+bun run storage:audit      # 只读检查孤立文件
 ```
 
-`test:db` talks to whatever `TEST_DATABASE_URL` names and refuses to run before
-checking that the schema is migrated (it fails with the exact `db:migrate`
-command instead of "relation does not exist"). Point it at a disposable,
-already-migrated database.
+审阅列表后，按输出的 snapshot token 执行 `bun run storage:clean --confirm=<token>`。清理只删除未被总体、附件或可识别的旧提交路径引用的文件，不直接清空存储目录。
 
-`test:db` runs its test files in isolation. In addition to schema and persistence
-checks, it exercises ownership locking, session-cleanup locking, and
-both lock orders of current-semester selection/deletion against PostgreSQL.
-Current-semester creation, selection, and deletion share a short transaction
-advisory lock, separate from the storage lock described below.
+- 替换总体文件先提交数据库更新，再删除旧文件。
+- 上传、复制、发布任务、删除任务/模板和存储清理共享 PostgreSQL advisory lock；持锁后重新验证归属与可修改性，避免删除尚在提交的文件引用。
+- 学生与任务硬删除会级联清除实验、抽样记录和相关审计明细；学生会话在同一事务清除。已分配模板在全部任务删除前受保护。产品侧确认规则见[教学与账号指南](docs/TEACHING.md)。
 
-`bun run db:clean` removes only this project's current and legacy tables plus
-its `drizzle` metadata schema. It does not enumerate or delete unrelated
-tables in `public`. The operator must supply the cleaner's required exact
-database name through `CONFIRM_DATABASE_NAME`; `db:reset` invokes it before
-reapplying migrations and creating only the bootstrap administrator.
+## 单实例配套备份与恢复
 
-Database reset does not delete files under `storage/`. Replacing a topic's
-Excel file removes the previous file after the database update succeeds. For
-older orphaned files, first run the read-only audit:
+**PostgreSQL 与 `storage/` 必须作为同一套备份。** 当前本地文件系统按单实例设计；多实例需要共享卷或对象存储，不能仅增加应用进程。
 
-```sh
-bun run storage:audit
-```
+### 备份
 
-After reviewing the exact list and rerunning with the printed
-`--confirm=<snapshot-token>`, `bun run storage:clean` deletes only files not
-referenced by topic data, attachments, or recognized legacy submission paths.
-Upload, copy, task publication, task deletion, topic deletion, audit, and cleanup operations
-share a PostgreSQL advisory lock. Ownership and mutability are revalidated only
-after that lock is held, so a file cannot be deleted while a task or another
-metadata reference is being committed by the application.
-
-Students, tasks, and unassigned topics are hard-deleted. Student and task
-deletion cascades through experiments and sampling attempts and removes related
-audit events; student sessions are removed in the same transaction. Assigned
-topics remain protected until every task has been deleted. Topic deletion
-removes attachment metadata transactionally and then removes unreferenced files.
-
-## Coordinated single-instance backup and restore
-
-PostgreSQL rows and `storage/` files form one backup set. For a consistent
-single-instance backup, enter a maintenance window and stop every application
-process that can upload, replace, or delete files. Then create both artifacts
-under the same timestamp outside the repository:
+进入维护窗口，停止所有能上传、替换或删除文件的应用进程，再用同一时间戳把两部分保存到仓库外：
 
 ```sh
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -145,11 +74,11 @@ tar -C "$(pwd)" -czf "$backup_dir/wenjuan-storage-$stamp.tar.gz" storage
 )
 ```
 
-The checksum manifest deliberately contains basenames so the set can be moved
-and verified from its own directory. Keep the dump, storage archive, checksum
-file, application commit, and migration version together. Before any restore,
-verify both artifacts, then restore into a disposable empty PostgreSQL database
-and an empty application storage location using the same application version:
+一并保留校验清单、应用 commit 与迁移版本。校验清单使用相对文件名，移动整套备份后仍可校验。
+
+### 恢复演练
+
+使用相同应用版本、**独立空测试库和不存在的目标 storage 目录**；不能只恢复其中一部分或覆盖现有生产目录：
 
 ```sh
 stamp=20260814T120000Z
@@ -169,58 +98,24 @@ TEST_DATABASE_URL="$RESTORE_DATABASE_URL" bun run test:db
 DATABASE_URL="$RESTORE_DATABASE_URL" bun run storage:audit
 ```
 
-Use a dedicated disposable restore database: `test:db` intentionally refuses to
-fall back to `DATABASE_URL`. After the commands pass, start the application with
-`DATABASE_URL="$RESTORE_DATABASE_URL"` and test representative attachment and
-population downloads before accepting the backup. Do not restore only one half
-of the set or extract over an existing production `storage/` directory.
+确认每步成功后再继续。验证通过后，以恢复库启动应用并检查典型附件和总体下载，才可接受这套备份。不要在生产库上运行恢复测试。
 
-The current local-filesystem design is intentionally single-instance. Shared
-volumes or object storage are required before horizontal multi-instance
-deployment and are deferred until that deployment model is needed.
+## 排序规则版本不一致
 
-## Repair a collation version mismatch
-
-An operating-system libc/ICU upgrade can change sort rules after a database
-has recorded its collation version. Do not silence the warning by refreshing
-the version marker first: indexes whose ordering depends on the old rules must
-be rebuilt before the catalog version is updated.
-
-Check the recorded and current versions:
+系统 libc/ICU 升级可能使 PostgreSQL 记录的 collation 版本落后。**先重建索引，再刷新版本标记**；仅刷新标记不能修复索引顺序。
 
 ```sql
-SELECT
-    datname,
-    datcollversion AS recorded_version,
-    pg_database_collation_actual_version(oid) AS actual_version
-FROM pg_database
-WHERE datname = current_database();
+SELECT datname, datcollversion AS recorded_version,
+       pg_database_collation_actual_version(oid) AS actual_version
+FROM pg_database WHERE datname = current_database();
 ```
 
-For the local development database, use a maintenance window:
+维护窗口中停止写入、使用 `pg_dump` 备份，然后在受影响的数据库连接中执行（替换为实际数据库标识符）：
 
-1. Stop application processes that can write to the database.
-2. Take a restorable backup outside the repository:
+```sql
+REINDEX DATABASE wenjuan_pg_dev;
+-- 仅在 REINDEX 成功后执行：
+ALTER DATABASE wenjuan_pg_dev REFRESH COLLATION VERSION;
+```
 
-   ```sh
-   pg_dump "$DATABASE_URL" --format=custom --file=/safe/path/wenjuan-before-collation-repair.dump
-   ```
-
-3. Rebuild database indexes using a connection to the affected database:
-
-   ```sql
-   REINDEX DATABASE wenjuan_pg_dev;
-   ```
-
-4. Only after `REINDEX` succeeds, refresh the database version marker:
-
-   ```sql
-   ALTER DATABASE wenjuan_pg_dev REFRESH COLLATION VERSION;
-   ```
-
-5. Re-run the version query, application database test, and a representative
-   case-insensitive lookup. Keep the backup until those checks pass.
-
-Use the real database identifier for non-development deployments and quote it
-when necessary. `ALTER DATABASE ... REFRESH COLLATION VERSION` only updates
-metadata; it does not verify that affected objects were rebuilt.
+重新查询版本并验证大小写不敏感的查找。数据库测试只能在独立恢复/测试库运行；验证完成前保留备份。

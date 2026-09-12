@@ -7,7 +7,7 @@ import {
 } from "./sample-plan";
 
 import { calculateCostPlan } from "./cost-plan";
-import { isConfidenceLevel } from "./confidence-level";
+import { isConfidenceLevel } from "@/domain/statistics/confidence-level";
 import { getSurveyVariableParameterError } from "./survey-variable-validation";
 
 const KINDS = new Set<AdvancedPlanKind>(["cost", "multivar", "cv", "cluster"]);

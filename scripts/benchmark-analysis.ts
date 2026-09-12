@@ -1,7 +1,7 @@
 import { AnalysisService } from "../src/student/experiment/analysis-service";
 import { runAnalysisJob, type AnalysisJob } from "../src/student/experiment/analysis-job";
 import { compactSamplingResults } from "../src/student/experiment/sampling-storage";
-import { createSeededRandom, performPPSSampling } from "../src/student/sampling";
+import { createSeededRandom, performPPSSampling } from "../src/domain/statistics/sampling";
 
 // The load generator must run in a separate process: a same-thread client would
 // stop scheduling its probes while the baseline blocks and underreport latency.

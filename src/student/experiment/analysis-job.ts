@@ -1,4 +1,5 @@
-import { buildAnalysisMetrics, type AnalysisMetricsResult } from "./analysis-metrics";
+import { buildAnalysisMetrics } from "@/domain/statistics/analysis";
+import type { AnalysisMetricsResult } from "@/domain/experiment/analysis-types";
 import { readPopulationData } from "./population-data";
 import { parseTopicFieldMapping } from "@/domain/statistics/population";
 import { normalizeSamplePlanData } from "./sample-plan-display";

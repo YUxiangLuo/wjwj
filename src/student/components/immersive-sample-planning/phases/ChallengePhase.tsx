@@ -6,7 +6,7 @@ import { ArrowRight, PencilLine } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { calculatePlannedPrecision, formatPlanningError } from "../../../experiment/planned-precision";
 import { PlanningAssumptions, PlanningHeading } from "../PlanningShared";
-import { normalizeConfidenceLevel } from "../../../experiment/confidence-level";
+import { normalizeConfidenceLevel } from "@/domain/statistics/confidence-level";
 import type { EstimationType, SampleParams } from "../types";
 
 interface Props {

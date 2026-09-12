@@ -1,7 +1,7 @@
 import { experiment } from "../../db/schema";
 import { attachCalculatedSampleSize } from "./sample-plan";
 import { parseStoredJson } from "./serialization";
-import { ExperimentStatus } from "./status";
+import { ExperimentStatus } from "@/domain/experiment/status";
 import { getRequiredStratifiedMinimum } from "./final-sample-bounds";
 import { resolveAnalysisTarget } from "../../lib/analysis-target";
 import { canonicalizeRichTextHtmlForStorage } from "../../server/rich-text";

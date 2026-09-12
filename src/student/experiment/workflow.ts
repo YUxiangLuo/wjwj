@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment } from "../../db/schema";
-import { ExperimentStatus } from "./status";
+import { ExperimentStatus } from "@/domain/experiment/status";
 
 export async function getOrCreateStudentExperiment(studentId: number, taskId: number) {
     let [record] = await db

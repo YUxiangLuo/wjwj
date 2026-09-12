@@ -1,4 +1,4 @@
-import { isConfidenceLevel, zForConfidenceLevel } from "./confidence-level";
+import { isConfidenceLevel, zForConfidenceLevel } from "@/domain/statistics/confidence-level";
 import { finitePopulationVarianceFactor } from "./sample-plan";
 import { formatStatistic } from "@/utils/statistic-format";
 

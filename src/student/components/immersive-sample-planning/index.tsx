@@ -16,8 +16,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize } from "../../experiment/sample-plan";
-import type { ConfidenceLevel } from "../../experiment/confidence-level";
-import { normalizeConfidenceLevel } from "../../experiment/confidence-level";
+import { normalizeConfidenceLevel, type ConfidenceLevel } from "@/domain/statistics/confidence-level";
 import { calculatePlannedPrecision } from "../../experiment/planned-precision";
 import { PlanningHeading, PlanningOutcome, PlanningAssumptions } from "./PlanningShared";
 import type { AdvancedNonStandardSampleSource } from "../sample-planning/advancedTabs";

@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test";
 import { AnalysisService, type AnalysisWorker } from "./analysis-service";
 import { runAnalysisJob, type AnalysisJob, type AnalysisWorkerReply, type AnalysisWorkerRequest } from "./analysis-job";
-import type { AnalysisMetricsResult } from "./analysis-metrics";
-import { createSeededRandom, performPPSSampling, performSimpleSamplingWithIndices, performSystematicSampling } from "../sampling";
+import type { AnalysisMetricsResult } from "@/domain/experiment/analysis-types";
+import { createSeededRandom, performPPSSampling, performSimpleSamplingWithIndices, performSystematicSampling } from "@/domain/statistics/sampling";
 import { compactSamplingResults } from "./sampling-storage";
 
 const emptyResult = { numericFields: [] } as unknown as AnalysisMetricsResult;

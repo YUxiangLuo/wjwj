@@ -9,7 +9,7 @@ import { resolveStoragePath } from "../../server/storage-files";
 import { normalizeSamplePlanData } from "./sample-plan-display";
 import { parseStoredJson } from "./serialization";
 import { compactSamplingResults } from "./sampling-storage";
-import { ExperimentStatus } from "./status";
+import { ExperimentStatus } from "@/domain/experiment/status";
 import {
     getTargetSampleSizeFromSamplePlan,
     validateQuestionnaireForSubmit,

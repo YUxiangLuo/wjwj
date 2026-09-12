@@ -1,4 +1,4 @@
-import type { AnalysisMetricsResult } from "./analysis-metrics";
+import type { AnalysisMetricsResult } from "@/domain/experiment/analysis-types";
 import type { AnalysisJob } from "./analysis-job";
 import { WorkerService, queueLimitFromEnv, type ServiceWorker } from "../../server/worker-service";
 export { WorkerServiceError as AnalysisServiceError } from "../../server/worker-service";

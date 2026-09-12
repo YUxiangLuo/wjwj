@@ -50,8 +50,7 @@ export function planningStepIndex(type: PhaseType) {
     return Math.max(0, PLANNING_STEPS.findIndex(step => step.type === type));
 }
 
-import type { ConfidenceLevel } from "../../experiment/confidence-level";
-import { Z_VALUES, zForConfidenceLevel } from "../../experiment/confidence-level";
+import { Z_VALUES, zForConfidenceLevel, type ConfidenceLevel } from "@/domain/statistics/confidence-level";
 
 export type { ConfidenceLevel };
 export { Z_VALUES, zForConfidenceLevel };

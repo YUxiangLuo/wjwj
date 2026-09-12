@@ -15,7 +15,7 @@ mock.module("@/components/ui/alert-dialog", () => ({
     AlertDialogAction: ModalButton, AlertDialogCancel: ModalButton,
 }));
 
-mock.module("../components/RichTextEditor", () => ({
+mock.module("@/components/RichTextEditor", () => ({
     RichTextEditor: ({ value, editorTestId }: { value: string; editorTestId?: string }) => <div data-testid={editorTestId} dangerouslySetInnerHTML={{ __html: value }} />,
 }));
 const { ExperimentLayout } = await import("./ExperimentLayout");

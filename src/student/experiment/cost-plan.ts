@@ -1,4 +1,4 @@
-import { isConfidenceLevel } from "./confidence-level";
+import { isConfidenceLevel } from "@/domain/statistics/confidence-level";
 import { calculateSampleSizeMetrics } from "./sample-plan";
 import type { AdvancedPlanSnapshot } from "../../domain/experiment/planning-types";
 

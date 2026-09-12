@@ -24,7 +24,7 @@ import {
     INVALID_SAMPLING_STORAGE_MESSAGE,
 } from "../experiment/sampling-storage";
 import { parseStoredJson } from "../experiment/serialization";
-import { ExperimentStatus } from "../experiment/status";
+import { ExperimentStatus } from "@/domain/experiment/status";
 import { submitStudentExperiment } from "../experiment/submit-service";
 import { getTargetSampleSizeFromSamplePlan } from "../experiment/submit-validation";
 import { resolveAnalysisTarget, resolveStudyContract } from "../../lib/analysis-target";

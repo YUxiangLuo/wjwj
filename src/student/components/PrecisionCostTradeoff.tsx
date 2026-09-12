@@ -17,7 +17,7 @@ import {
     Info,
     ChevronRight
 } from "lucide-react";
-import { zForConfidenceLevel } from "../experiment/confidence-level";
+import { zForConfidenceLevel } from "@/domain/statistics/confidence-level";
 import { finitePopulationVarianceFactor } from "../experiment/sample-plan";
 import { primarySliderClassName } from "./sample-planning-styles";
 

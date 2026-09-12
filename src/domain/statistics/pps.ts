@@ -3,17 +3,6 @@ import { createSafeRecord } from "../../lib/safe-record";
 import { preparePPSSampling } from "./sampling";
 import { exactPpsStandardErrors } from "./pps-exact";
 
-export const DEFAULT_PPS_MONTE_CARLO_REPLICATES = 512;
-
-/** @deprecated 仅供旧调用方解析历史配置；当前精确积分不使用模拟次数。 */
-export function resolvePpsMonteCarloReplicates(rawValue?: string): number {
-    if (rawValue == null || rawValue.trim() === "") return DEFAULT_PPS_MONTE_CARLO_REPLICATES;
-    const parsed = Number(rawValue);
-    return Number.isInteger(parsed) && parsed >= 32 && parsed <= 1024
-        ? parsed
-        : DEFAULT_PPS_MONTE_CARLO_REPLICATES;
-}
-
 export interface PpsStandardErrorContext {
     standardErrors: Record<string, number | null>;
     mode: "systematic_exact" | "census_exact";

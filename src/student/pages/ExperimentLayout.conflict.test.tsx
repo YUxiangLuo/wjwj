@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { installDomGlobals } from "@/test-utils/dom";
 import type { ComponentProps, ReactNode } from "react";
 
-mock.module("../components/RichTextEditor", () => ({
+mock.module("@/components/RichTextEditor", () => ({
     RichTextEditor: ({ value, dataTestId, editorTestId }: { value: string; dataTestId?: string; editorTestId?: string }) => (
         <div data-testid={dataTestId}>
             <div data-testid={editorTestId} dangerouslySetInnerHTML={{ __html: value }} />

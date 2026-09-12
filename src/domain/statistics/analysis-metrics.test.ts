@@ -1,25 +1,12 @@
 import { expect, test } from "bun:test";
-import {
-    DEFAULT_PPS_MONTE_CARLO_REPLICATES,
-    buildAnalysisMetrics,
-    computeFinitePopulationEquivalentSampleSize,
-    resolvePpsMonteCarloReplicates,
-} from "./analysis-metrics";
+import { buildAnalysisMetrics } from "@/domain/statistics/analysis";
+import { computeFinitePopulationEquivalentSampleSize } from "@/domain/statistics/srs";
 import {
     createSeededRandom,
     performPPSSampling,
     performSystematicSampling,
     preparePPSSampling,
-} from "../sampling";
-
-test("PPS Monte Carlo replicate configuration is bounded and defaults safely", () => {
-    expect(DEFAULT_PPS_MONTE_CARLO_REPLICATES).toBe(512);
-    expect(resolvePpsMonteCarloReplicates(undefined)).toBe(DEFAULT_PPS_MONTE_CARLO_REPLICATES);
-    expect(resolvePpsMonteCarloReplicates("512")).toBe(512);
-    expect(resolvePpsMonteCarloReplicates("31")).toBe(DEFAULT_PPS_MONTE_CARLO_REPLICATES);
-    expect(resolvePpsMonteCarloReplicates("1025")).toBe(DEFAULT_PPS_MONTE_CARLO_REPLICATES);
-    expect(resolvePpsMonteCarloReplicates("not-a-number")).toBe(DEFAULT_PPS_MONTE_CARLO_REPLICATES);
-});
+} from "@/domain/statistics/sampling";
 
 test("finite-population equivalent SRS sample size never exceeds the population", () => {
     const populationVariance = 100;

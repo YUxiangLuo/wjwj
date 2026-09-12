@@ -85,7 +85,7 @@ mock.module("@/components/ui/dialog", () => ({
     DialogDescription: ({ children, ...props }: ComponentProps<"div">) => <div {...props}>{children}</div>,
 }));
 
-mock.module("../../components/RichTextEditor", () => ({
+mock.module("@/components/RichTextEditor", () => ({
     RichTextEditor: ({
         dataTestId,
         editorTestId,

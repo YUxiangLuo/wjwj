@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import {
     normalizeConfidenceLevel,
     zForConfidenceLevel,
-} from "./confidence-level";
+} from "@/domain/statistics/confidence-level";
 
 test("normalizeConfidenceLevel 仅接受 90/95/99", () => {
     expect(normalizeConfidenceLevel("95")).toBe("95");
