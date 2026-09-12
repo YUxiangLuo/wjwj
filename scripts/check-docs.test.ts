@@ -20,8 +20,8 @@ test("documentation gate rejects removed demo accounts", () => {
     expect(collectDocumentationIssues(`${demo}\nT004`, teaching).some(issue => issue.includes("已移除"))).toBe(true);
 });
 
-test("documentation gate preserves required learning checks after README simplification", () => {
-    const missingRule = teaching.replace("猜测可跳过", "猜测");
-    expect(collectDocumentationIssues(demo, missingRule)).toContain("docs/TEACHING.md 缺少流程规则：猜测可跳过");
-    expect(collectDocumentationIssues(demo, `${teaching}\n自检可跳过`)).toContain("docs/TEACHING.md 不得声称自检可跳过");
+test("documentation gate describes ungated planning and rejects obsolete quiz rules", () => {
+    const missingRule = teaching.replace("无需答题", "直接操作");
+    expect(collectDocumentationIssues(demo, missingRule)).toContain("docs/TEACHING.md 缺少流程规则：无需答题");
+    expect(collectDocumentationIssues(demo, `${teaching}\n快速自检须答对每题`)).toContain("docs/TEACHING.md 不得保留样本量规划答题解锁规则");
 });

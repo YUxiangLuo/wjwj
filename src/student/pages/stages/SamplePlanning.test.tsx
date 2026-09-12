@@ -103,8 +103,7 @@ mock.module("../../components/immersive-sample-planning", () => ({
                     data-testid="mock-planning-progress"
                     onClick={() => props.onDraftChange?.({
                         navigation: {
-                            phase: { type: "quiz", questionIndex: 1 },
-                            challenge: { guess: 48, revealed: true },
+                            phase: { type: "decision" },
                         },
                         confidenceLevel: "99",
                         marginOfError: 3,
@@ -131,10 +130,6 @@ mock.module("../../components/immersive-sample-planning", () => ({
             </div>
         );
     },
-}));
-
-mock.module("../../components/ImmersiveExperimentLaunch", () => ({
-    ImmersiveExperimentLaunch: () => null,
 }));
 
 const { SamplePlanning } = await import("./SamplePlanning");
@@ -202,7 +197,7 @@ test("mean-locked first visit waits for target variance then opens overlay with 
 
     const view = render(<SamplePlanning onPrev={() => undefined} />);
     expect(view.queryByTestId("mock-immersive-planning")).toBeNull();
-    expect(view.getByTestId("student-sample-plan-start").textContent).toContain("正在加载对照变量方差");
+    expect(view.getByTestId("student-sample-plan-start").textContent).toContain("正在加载规划数据");
 
     releaseStats?.();
 
@@ -211,6 +206,47 @@ test("mean-locked first visit waits for target variance then opens overlay with 
     expect(lastPlanningProps?.initialPopulationVariance).toBeCloseTo(66.7924, 10);
     expect(lastPlanningProps?.initialEstimationType).toBe("mean");
     expect(view.container.textContent).toContain("200 个总体单位");
+});
+
+test("exiting an unfinished plan offers an explicit resume action with the existing draft", async () => {
+    const view = render(<SamplePlanning onPrev={() => undefined} />);
+    await waitFor(() => expect(view.getByTestId("mock-immersive-planning")).toBeTruthy());
+    fireEvent.click(view.getByTestId("mock-planning-progress"));
+    fireEvent.click(view.getByTestId("mock-planning-close"));
+    expect(view.getByTestId("student-sample-plan-start").textContent).toBe("继续规划样本量");
+    fireEvent.click(view.getByTestId("student-sample-plan-start"));
+    expect(lastPlanningProps?.initialDraft).toMatchObject({ finalSampleSize: 75, confidenceLevel: "99", marginOfError: 3 });
+});
+
+test("failed save retains the plan and retries immediately without replaying an animation", async () => {
+    const completeStage = mock(async (_stage: number, _data: Record<string, unknown>) => false);
+    mockExperimentContext.completeStage = completeStage;
+    const view = render(<SamplePlanning onPrev={() => undefined} />);
+    await waitFor(() => expect(view.getByTestId("mock-immersive-planning")).toBeTruthy());
+    fireEvent.click(view.getByTestId("mock-planning-complete"));
+    await waitFor(() => expect(completeStage).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect((view.getByTestId("student-sample-plan-next") as HTMLButtonElement).disabled).toBe(false));
+    expect(view.getByTestId("student-sample-plan-summary").textContent).toContain("49");
+    completeStage.mockResolvedValueOnce(true);
+    fireEvent.click(view.getByTestId("student-sample-plan-next"));
+    await waitFor(() => expect(completeStage).toHaveBeenCalledTimes(2));
+    expect(completeStage.mock.calls[1]![1]).toEqual(completeStage.mock.calls[0]![1]);
+});
+
+test("in-flight stage save prevents duplicate requests and disables navigation", async () => {
+    let release!: (ok: boolean) => void;
+    const completeStage = mock(() => new Promise<boolean>(resolve => { release = resolve; }));
+    mockExperimentContext.completeStage = completeStage;
+    const view = render(<SamplePlanning onPrev={() => undefined} />);
+    await waitFor(() => expect(view.getByTestId("mock-immersive-planning")).toBeTruthy());
+    const complete = lastPlanningProps!.onComplete!;
+    const result: SampleParams = { populationSize: 200, estimationType: "mean", confidenceLevel: "95", marginOfError: 2, populationVariance: 66.7924, designEffect: 1, nonResponseRate: 0, recommendedSize: 49, finalSampleSize: 49 };
+    complete(result);
+    complete(result);
+    await waitFor(() => expect(completeStage).toHaveBeenCalledTimes(1));
+    expect((view.getByTestId("student-sample-plan-next") as HTMLButtonElement).disabled).toBe(true);
+    release(true);
+    await waitFor(() => expect((view.getByTestId("student-sample-plan-next") as HTMLButtonElement).disabled).toBe(false));
 });
 
 test("completing the overlay persists the variance used to compute n, not a later parent fetch", async () => {

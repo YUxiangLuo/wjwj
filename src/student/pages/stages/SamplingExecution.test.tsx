@@ -96,10 +96,6 @@ mock.module("../../components/ImmersiveSamplingAnimation", () => ({
     ),
 }));
 
-mock.module("../../components/ImmersiveExperimentLaunch", () => ({
-    ImmersiveExperimentLaunch: () => null,
-}));
-
 mock.module("../../components/SamplingSuccessState", () => ({
     SamplingSuccessState: ({ summary }: { summary: string }) => <div>{summary}</div>,
 }));

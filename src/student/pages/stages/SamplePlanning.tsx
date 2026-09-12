@@ -18,7 +18,6 @@ import { finitePopulationS2ToSigma2 } from "../../experiment/sample-plan";
 import { getRequiredStratifiedMinimum } from "../../experiment/final-sample-bounds";
 import { resolveSamplingPolicy } from "@/lib/sampling-policy";
 import { ImmersiveSamplePlanning } from "../../components/immersive-sample-planning";
-import { ImmersiveExperimentLaunch } from "../../components/ImmersiveExperimentLaunch";
 import {
     getFinalSampleSizeBounds,
     type SampleParams,
@@ -112,10 +111,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
     }, [experiment?.analysisTarget, experiment?.taskId, experiment?.samplingPolicy, needsStats, needsTargetVariance, requiresStratification, N, varianceReloadKey]);
 
     const [confirmNextSaving, setConfirmNextSaving] = useState(false);
-    // 进入抽样执行前的启动动画：点击“确认进入”后先播放，动画结束再保存。
-    // 若保存失败，重试时不再重复播放。
-    const [launching, setLaunching] = useState(false);
-    const launchPlayedRef = useRef(false);
+    const saveInFlight = useRef(false);
 
     // Display state — updated from planning flow completion or loaded from saved data
     const [displayData, setDisplayData] = useState<SamplePlanData | null>(initialData);
@@ -137,10 +133,14 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
     const [immersiveOpen, setImmersiveOpen] = useState(false);
     const autoOpenedRef = useRef(false);
     const planningTriggerRef = useRef<HTMLButtonElement>(null);
+    const summaryRef = useRef<HTMLDivElement>(null);
 
     const closeImmersivePlanning = useCallback(() => {
         setImmersiveOpen(false);
-        requestAnimationFrame(() => planningTriggerRef.current?.focus());
+        requestAnimationFrame(() => {
+            if (planningTriggerRef.current?.disabled) summaryRef.current?.focus();
+            else planningTriggerRef.current?.focus();
+        });
     }, []);
 
     useEffect(() => {
@@ -163,6 +163,8 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             toast.error("实验数据未就绪，请稍后重试");
             return;
         }
+        if (saveInFlight.current) return;
+        saveInFlight.current = true;
         setConfirmNextSaving(true);
         try {
             if (clearDraft.save({ samplePlan: plan, wizard: null }) === "conflict") return;
@@ -173,6 +175,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                 clearDraft.clear();
             }
         } finally {
+            saveInFlight.current = false;
             setConfirmNextSaving(false);
         }
     }, [clearDraft, completeStage, displayData, experiment, targetVarianceReady, targetVarianceError]);
@@ -217,18 +220,8 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             toast.error("实验数据未就绪，请稍后重试");
             return;
         }
-        if (launchPlayedRef.current) {
-            void saveStage();
-            return;
-        }
-        setLaunching(true);
-    };
-
-    const handleLaunchFinished = useCallback(() => {
-        launchPlayedRef.current = true;
-        setLaunching(false);
         void saveStage();
-    }, [saveStage]);
+    };
 
     if (targetVarianceError) return (
         <div className="space-y-4" data-testid="student-stage-sample-plan">
@@ -259,6 +252,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                     initialEstimationType={lockedEstimationType ?? displayData?.estimationType ?? "proportion"}
                     initialPopulationVariance={targetVariance ?? displayData?.populationVariance ?? 100}
                     initialAdvancedPlanSource={displayData?.advancedPlanSource ?? null}
+                    initialAdvancedPlans={displayData?.advancedPlans}
                     estimationLocked={Boolean(lockedEstimationType)}
                     initialDraft={wizardDraft}
                     onDraftChange={handleImmersiveDraftChange}
@@ -302,7 +296,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                                 参数摘要
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="px-4 pb-2 pt-3" data-testid="student-sample-plan-summary">
+                        <CardContent ref={summaryRef} tabIndex={-1} className="px-4 pb-2 pt-3 outline-none" data-testid="student-sample-plan-summary">
                             <div className="grid gap-x-6 gap-y-0 grid-cols-2">
                                 <SummaryRow
                                     label="估计类型"
@@ -342,7 +336,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                             type="button"
                             variant="outline"
                             onClick={() => setImmersiveOpen(true)}
-                            disabled={!targetVarianceReady}
+                            disabled={!targetVarianceReady || confirmNextSaving}
                             className="border-primary text-primary hover:bg-primary-muted"
                         >
                             <Sparkles className="w-4 h-4 mr-1.5" />
@@ -365,9 +359,9 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                             <Sparkles className="w-7 h-7 text-primary" />
                         </div>
                         <div className="space-y-1">
-                            <h3 className="text-subheading font-semibold text-foreground">开始样本量规划</h3>
+                            <h3 className="text-subheading font-semibold text-foreground">{wizardDraft ? "继续样本量规划" : "开始样本量规划"}</h3>
                             <p className="text-label text-muted-foreground max-w-sm">
-                                通过分步引导，逐步理解样本量计算原理并确定最终样本量。
+                                直接调整参数并查看预期精度，确认样本量后保存。计算原理可按需查看，无需答题。
                             </p>
                         </div>
                         <Button
@@ -383,7 +377,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                             ) : (
                                 <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
                             )}
-                            {targetVarianceReady ? "开始规划样本量" : "正在加载对照变量方差…"}
+                            {targetVarianceReady ? wizardDraft ? "继续规划样本量" : "开始规划样本量" : "正在加载规划数据…"}
                         </Button>
                     </CardContent>
                 </Card>
@@ -394,6 +388,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                 <Button
                     variant="outline"
                     onClick={onPrev}
+                    disabled={confirmNextSaving}
                     data-testid="student-sample-plan-prev"
                     className="border-input bg-muted text-foreground hover:bg-muted hover:text-foreground"
                 >
@@ -404,7 +399,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                     <Button
                         type="button"
                         onClick={handleConfirmNext}
-                        disabled={clearDraft.status === "conflict" || !targetVarianceReady || !isValidFinalSize || confirmNextSaving || launching}
+                        disabled={clearDraft.status === "conflict" || !targetVarianceReady || !isValidFinalSize || confirmNextSaving}
                         data-testid="student-sample-plan-next"
                         className="bg-primary text-primary-foreground hover:bg-primary-hover disabled:border-border disabled:bg-muted disabled:text-muted-foreground"
                     >
@@ -417,18 +412,6 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                 )}
             </div>
 
-            {/* 进入抽样执行前的启动动画 */}
-            {launching && displayData && (
-                <ImmersiveExperimentLaunch
-                    populationSize={N}
-                    sampleSize={displayData.finalSampleSize}
-                    estimationType={displayData.estimationType}
-                    confidenceLevel={displayData.confidenceLevel}
-                    marginOfError={displayData.marginOfError}
-                    onComplete={handleLaunchFinished}
-                    onClose={handleLaunchFinished}
-                />
-            )}
 
         </div>
     );

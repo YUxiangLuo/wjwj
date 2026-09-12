@@ -14,8 +14,8 @@ import {
 import { ChevronRight, RotateCcw, Info, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { calculatePlannedPrecision, formatPlanningError } from "../../../experiment/planned-precision";
-import { PlanningHeading, PlanningOutcome, PlanningAssumptions } from "../PlanningShared";
+import { calculatePlannedPrecision } from "../../../experiment/planned-precision";
+import { PlanningOutcome, PlanningAssumptions } from "../PlanningShared";
 import { primarySliderClassName } from "../../sample-planning-styles";
 import {
     calculateMeanSampleSizeMetrics,
@@ -48,7 +48,7 @@ import { SensitivityAnalysisCard } from "../../../components/SensitivityAnalysis
 
 /** 成本/CV/整群等非标准路径：仅写最终 n；左侧常规建议继续显示，但解释该 n 时以本工具为准 */
 const TOAST_APPLY_SAMPLE_SIZE_ONLY_DESC =
-    "已将最终样本量更新为工具结果。左侧仍显示常规公式建议；若继续调整参数或最终样本量，将自动切回常规规划。";
+    "已将最终样本量更新为工具结果。常规公式建议仍供对照；若继续调整参数或最终样本量，将自动切回常规规划。";
 
 /** 多变量表为会话内状态（P0），不入持久化 samplePlan */
 const TOAST_APPLY_MULTIVAR_DESC =
@@ -190,7 +190,6 @@ export function DecisionPhase({
     );
 
     const currentMarginLabel = getMarginOfErrorLabel(params.estimationType);
-    const currentMarginValue = formatPlanningError(isMeanEstimation ? params.marginOfError : params.marginOfError / 100, params.estimationType);
     /** 高级工具弹层：仅在点击「应用」后写回父级状态，并关闭弹层 */
     const closeAdvancedDialog = useCallback(() => {
         setActiveAdvancedTab(null);
@@ -256,14 +255,12 @@ export function DecisionPhase({
 
     return (
         <div className="space-y-6">
-            <PlanningHeading title="把精度要求，变成可执行的方案" description="左侧调整目标和调查假设，右侧决定实际样本量。每次改动都会立即更新预期精度。"/>
-
             {hasAdvancedSource && (
                 <div className="rounded-surface border border-warning-border bg-warning-muted px-4 py-3 flex flex-row items-center justify-between gap-3">
                     <div className="flex items-start gap-2 text-label text-warning">
                         <Info className="w-4 h-4 shrink-0 mt-0.5 text-warning" />
                         <span>
-                            当前最终样本量正在使用高级工具「<span className="font-semibold">{sourceLabel}</span>」的结果；左侧继续显示常规公式建议值。若继续修改参数或最终样本量，将自动切回常规规划；解释当前 n 时请以该工具内推演为准。
+                            当前最终样本量正在使用高级工具「<span className="font-semibold">{sourceLabel}</span>」的结果；常规公式建议值仍供对照。若继续修改参数或最终样本量，将自动切回常规规划；解释当前 n 时请以该工具内推演为准。
                         </span>
                     </div>
                     <Button
@@ -278,18 +275,19 @@ export function DecisionPhase({
                 </div>
             )}
 
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,24rem),1fr))] items-start gap-5">
-                {/* Left: Parameter controls */}
-                <div className="rounded-surface border border-border bg-card p-5 space-y-5 transition-colors">
-                    <h3 className="text-label font-semibold text-foreground">设置目标与假设</h3>
+            <div className="grid grid-cols-2 items-start gap-5" data-testid="planning-workspace">
+                {/* Keep controls and live results side by side, without a separate navigation rail. */}
+                <section aria-label="规划参数" className="rounded-surface border border-border bg-card p-5 space-y-4">
+                    <h2 tabIndex={-1} className="text-subheading font-semibold text-foreground outline-none">设置目标与假设</h2>
 
-                    <div className="space-y-1.5">
-                        <Label className="text-meta text-muted-foreground">置信水平</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label className="text-label text-foreground">置信水平</Label>
                         <Select
                             value={params.confidenceLevel}
                             onValueChange={onConfidenceLevelChange}
                         >
-                            <SelectTrigger aria-label="常规公式置信水平" className="min-h-11 text-label bg-background border-input">
+                            <SelectTrigger aria-label="常规公式置信水平" className="w-full min-h-11 text-label bg-background border-input">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -300,43 +298,20 @@ export function DecisionPhase({
                         </Select>
                     </div>
 
-                    <div className="space-y-1.5">
-                        <div className="flex justify-between">
-                            <Label className="text-meta text-muted-foreground">{currentMarginLabel}</Label>
-                            <span className="text-meta font-bold text-info tabular-nums">
-                                {currentMarginValue}
-                            </span>
-                        </div>
-                        {isMeanEstimation ? (
-                            <div className="space-y-2">
-                                <Input
-                                    aria-label="绝对误差限"
-                                    type="number"
-                                    value={params.marginOfError || ""}
-                                    onChange={(e) => onMarginOfErrorChange(Number.parseFloat(e.target.value) || 0)}
-                                    min={0.01}
-                                    step={0.1}
-                                    className="h-11 bg-background border-input"
-                                />
-                                <p className="text-meta text-muted-foreground">
-                                    均值估计使用与指标同单位的绝对误差，不使用百分比滑块。
-                                </p>
-                            </div>
-                        ) : (
-                            <Slider
-                                aria-label="比例估计允许误差"
-                                value={[params.marginOfError]}
-                                onValueChange={([v]) => v != null && onMarginOfErrorChange(v)}
-                                min={1} max={10} step={1}
-                                className={primarySliderClassName}
-                            />
-                        )}
+                    <div className="space-y-2">
+                        <Label htmlFor={`${finalSizeId}-error`} className="text-label text-foreground">{currentMarginLabel}</Label>
+                        <Input id={`${finalSizeId}-error`} aria-label={isMeanEstimation ? "绝对误差限" : "比例估计允许误差"}
+                            type="number" value={params.marginOfError || ""} min={isMeanEstimation ? undefined : 1} max={isMeanEstimation ? undefined : 10} step="any"
+                            onChange={event => onMarginOfErrorChange(Number(event.target.value))}
+                            aria-invalid={!Number.isFinite(params.marginOfError) || params.marginOfError <= 0 || (!isMeanEstimation && (params.marginOfError < 1 || params.marginOfError > 10))}
+                            className="h-11 bg-background border-input"/>
                     </div>
-
-                    <p className="text-meta text-muted-foreground">{isMeanEstimation ? "误差与研究指标同单位。" : "比例误差以百分点计。1 个百分点更严格，10 个百分点更宽松。"}</p>
+                    </div>
+                    <p className="text-meta text-muted-foreground">{isMeanEstimation ? "误差限必须为正数，与研究指标同单位；数值越小，要求越严格。" : "误差限以百分点计，可输入 1～10 之间的小数；数值越小，要求越严格。"}</p>
+                    <div className="grid grid-cols-2 gap-5 border-t border-border pt-4">
                     <div className="space-y-1.5">
                         <div className="flex justify-between">
-                            <Label className="text-meta text-muted-foreground">设计效应</Label>
+                            <Label className="text-label text-foreground">设计效应</Label>
                             <span className="text-meta font-bold text-warning tabular-nums">{params.designEffect.toFixed(1)}</span>
                         </div>
                         <Slider
@@ -346,12 +321,11 @@ export function DecisionPhase({
                             min={0.5} max={5} step={0.1}
                             className={primarySliderClassName}
                         />
+                        <p className="pt-2 text-meta text-muted-foreground">1 为简单随机抽样基准；范围 0.5～5。</p>
                     </div>
-
-                    <p className="text-meta text-muted-foreground">1 表示简单随机抽样基准。分层、PPS 等方法的实际效率取决于研究变量和设计，可用高级工具辅助判断。</p>
                     <div className="space-y-1.5">
                         <div className="flex justify-between">
-                            <Label className="text-meta text-muted-foreground">无回答率</Label>
+                            <Label className="text-label text-foreground">预期无回答率</Label>
                             <span className="text-meta font-bold text-destructive tabular-nums">{Math.round(params.nonResponseRate * 100)}%</span>
                         </div>
                         <Slider
@@ -361,10 +335,16 @@ export function DecisionPhase({
                             min={0} max={50} step={5}
                             className={primarySliderClassName}
                         />
+                        <p className="pt-2 text-meta text-muted-foreground">0 表示全部回答；范围 0～50%。</p>
                     </div>
-                </div>
+                    </div>
+                    <details className="border-t border-border pt-3 text-meta">
+                        <summary className="cursor-pointer font-medium text-foreground">当前规划假设与适用范围</summary>
+                        <div className="pt-3"><PlanningAssumptions params={params}/></div>
+                    </details>
+                </section>
 
-                <div className="space-y-4">
+                <div className="sticky top-4 space-y-4">
             {/* Final sample size */}
             <div
                 className={cn(
@@ -374,14 +354,14 @@ export function DecisionPhase({
                         : "border-destructive bg-destructive-muted",
                 )}
             >
-                <h3 className="text-label font-semibold text-foreground">你准备采用的样本量</h3>
+                <h3 className="text-subheading font-semibold text-foreground">你准备采用的样本量</h3>
                 {minSize > 1 && <p className="text-meta text-info">本课题要求完成分层抽样。至少需要 {minSize} 个样本，才能在一个可用分层方案中覆盖每个非空层；分层更细时还需相应增加样本量。</p>}
                 <div className="flex flex-wrap items-end gap-3">
                     <div className="w-full flex-1 space-y-2">
                         <div className="flex flex-wrap justify-between gap-2 text-meta">
                             <Label htmlFor={finalSizeId} className="text-meta text-muted-foreground">最终样本量</Label>
                             <span className="text-success font-medium">
-                                建议值 {recommendedSize.toLocaleString()}
+                                建议值 {recommendedSize > 0 ? Math.max(minSize, recommendedSize).toLocaleString() : "—"}
                             </span>
                         </div>
                         <div className="relative">
@@ -399,7 +379,7 @@ export function DecisionPhase({
                                 max={maxSize}
                                 data-testid="immersive-sp-final-size"
                                 className={cn(
-                                    "h-14 pr-24 text-section-title font-semibold bg-background border-input",
+                                    "h-11 pr-24 text-section-title font-semibold bg-background border-input",
                                     isValidSize ? "text-primary" : "text-destructive",
                                 )}
                             />
@@ -409,18 +389,19 @@ export function DecisionPhase({
                     <Button
                         type="button"
                         variant="outline"
+                        disabled={recommendedSize <= 0}
                         onClick={() => {
                             if (hasAdvancedSource) onClearAdvancedSource();
                             onResetFinalSize();
                         }}
-                        className="border-input text-muted-foreground shrink-0"
+                        className="min-h-11 border-input text-foreground shrink-0"
                     >
                         <RotateCcw className="w-4 h-4 mr-1" />
                         采用建议值
                     </Button>
                 </div>
                 <p className="text-meta text-muted-foreground">
-                    这里确认的 n 会作为下一阶段抽样执行的目标样本量。
+                    样本量自动跟随建议；手动输入后保留你的选择。
                 </p>
                 {hasAdvancedSource && (
                     <p className="text-meta text-warning">
@@ -437,7 +418,6 @@ export function DecisionPhase({
             </div>
 
 
-                    <PlanningAssumptions params={params}/>
                 </div>
             </div>
 
@@ -462,8 +442,8 @@ export function DecisionPhase({
 
             {/* Advanced tools */}
             <details className="rounded-surface border border-border bg-background p-5 ">
-                <summary className="flex cursor-pointer list-none items-center gap-2 text-label font-semibold text-foreground">
-                    <Wrench className="w-4 h-4 text-muted-foreground" />
+                <summary className="cursor-pointer text-label font-semibold text-foreground">
+                    <Wrench className="mx-2 inline h-4 w-4 text-muted-foreground" />
                     高级工具（可选）
                 </summary>
                 <div className="mt-3 space-y-3">
@@ -763,7 +743,7 @@ export function DecisionPhase({
                     data-testid="immersive-sp-decision-next"
                     className="rounded-surface bg-primary px-8 py-5 text-primary-foreground hover:bg-primary-hover disabled:border-border disabled:bg-muted disabled:text-muted-foreground"
                 >
-                    继续：完成理解自检
+                    检查并确认方案
                     <ChevronRight className="w-5 h-5 ml-2" />
                 </Button>
             </div>}

@@ -36,7 +36,7 @@ export function PlanningOutcome({ params, sampleSize = params.finalSampleSize }:
                 {precision.meetsTarget ? "预计达到目标" : "预计未达到目标"}
             </StatusBadge>
         </div>
-        <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-3">
+        <dl className="grid grid-cols-2 gap-3">
             <div className="rounded-surface bg-muted p-3">
                 <dt className="text-meta text-muted-foreground">预期误差限 · {params.confidenceLevel}% 置信</dt>
                 <dd className="mt-1 text-subheading font-semibold tabular-nums text-foreground">{formatPlanningError(precision.marginOfError, params.estimationType)}</dd>

@@ -3,10 +3,8 @@ import { cleanup, render } from "@testing-library/react";
 import { installDomGlobals } from "@/test-utils/dom";
 import type { SampleParams } from "../types";
 import { PrecisionPhase } from "./PrecisionPhase";
-import { ChallengePhase } from "./ChallengePhase";
 import { FactorsPhase } from "./FactorsPhase";
-import { FormulaPhase } from "./FormulaPhase";
-import { QuizPhase } from "./QuizPhase";
+import { FourStepPhase } from "./FourStepPhase";
 
 // Smoke coverage for the teaching phases. Copy/presentational assertions were
 // removed; the remaining tests check the computational rules that the phases
@@ -58,32 +56,14 @@ function proportionParams(overrides: Partial<SampleParams> = {}): SampleParams {
 }
 
 test("planning phases render for mean and proportion targets", () => {
-    const challenge = render(
-        <ChallengePhase
-            populationSize={18}
-            estimationType="mean"
-            confidenceLevel="95"
-            marginOfError={2}
-            recommendedSize={11}
-            guess={null}
-            revealed={false}
-            onCommitGuess={() => undefined}
-            onNext={() => undefined}
-        />,
-    );
-    expect(challenge.getByLabelText("你准备调查多少个单位？")).toBeTruthy();
-    challenge.unmount();
-
     const formula = render(
-        <FormulaPhase
-            step="summary"
+        <FourStepPhase
+            scenario="summary"
             params={meanParams({ populationSize: 200, populationVariance: 100, marginOfError: 2 })}
             estimationType="mean"
             populationVariance={100}
-            onEstimationTypeChange={() => {}}
-            onPopulationVarianceChange={() => {}}
-            onConfidenceLevelChange={() => {}}
-            onMarginOfErrorChange={() => {}}
+            onDesignEffectChange={() => {}}
+            onNonResponseRateChange={() => {}}
             onNext={() => {}}
         />,
     );
@@ -92,8 +72,6 @@ test("planning phases render for mean and proportion targets", () => {
 
     expect(render(<PrecisionPhase params={meanParams()} onNext={() => {}} />).container.textContent).toContain("σ² = 100");
 
-    const quiz = render(<QuizPhase questionIndex={0} completed={false} onComplete={() => {}} onNext={() => {}} />);
-    expect(quiz.container.textContent).toContain("标准误差");
 });
 
 test("FactorsPhase nonresponse inflates invites by 1/(1-r) and caps at N", () => {

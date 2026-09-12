@@ -20,10 +20,10 @@ export function collectDocumentationIssues(demo: string, teaching: string) {
     if (/T004|S019|停用教师|停用学生/.test(demo)) {
         issues.push("docs/DEMO.md 不得描述已移除的演示账号或账号停用状态");
     }
-    for (const fragment of ["猜测可跳过", "快速自检须答对每题", "理解检查"]) {
+    for (const fragment of ["无需答题", "计算依据与原理", "旧草稿保留参数"]) {
         if (!teaching.includes(fragment)) issues.push(`docs/TEACHING.md 缺少流程规则：${fragment}`);
     }
-    if (/自检可跳过/.test(teaching)) issues.push("docs/TEACHING.md 不得声称自检可跳过");
+    if (/快速自检须答对|理解检查[」”]?解锁下一步/.test(teaching)) issues.push("docs/TEACHING.md 不得保留样本量规划答题解锁规则");
     return issues;
 }
 
