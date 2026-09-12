@@ -59,6 +59,16 @@ test("completing the current stage saves it and advances once", () => {
     expect(result.updates.samplePlan).toMatchObject({ finalSampleSize: 50 });
 });
 
+test("new stage-1 saves reject repeated options before any stage update", () => {
+    const result = buildStageCompletionUpdates({
+        experimentRecord: record({ currentStage: 1, stage1CompletedAt: null }), stage: 1,
+        payload: { questionnaire: { title: "调查", welcomeText: "欢迎参加本次调查，请认真填写所有问题，感谢配合。", endingText: "感谢您完成本次调查，您的回答仅用于课堂教学研究。",
+            questions: Array.from({ length: 5 }, (_, i) => ({ id: `q${i}`, type: "single", content: "请选择", options: i === 0 ? ["同意", " 同意 "] : ["是", "否"] })),
+        } }, populationSize: 200, deadlinePassed: false,
+    });
+    expect(result).toMatchObject({ ok: false, message: "第1题选项内容重复，请修改后重试" });
+});
+
 test("stage 2 rejects a proportion plan on a mean-locked topic", () => {
     const result = buildStageCompletionUpdates({
         experimentRecord: record(),

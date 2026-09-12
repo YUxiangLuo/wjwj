@@ -84,6 +84,20 @@ test("submit overwrites the same experiment and stores a grading snapshot", asyn
     expect(condition.params).toEqual([9, 4, "rejected", 4]);
 });
 
+test("already-completed legacy questions are submitted unchanged without forcing stage-1 rework", async () => {
+    const { db, operations } = createMockDb({ update: [[{ id: 9 }]] });
+    mock.module("../../db", () => ({ db }));
+    const { submitStudentExperiment } = await import(`./submit-service.ts?legacy-options=${crypto.randomUUID()}`);
+    const record = validRecord();
+    record.questionnaire.questions[0] = { id: "q0", type: "single", content: "旧题目", options: ["同意", "同意"] };
+    const result = await submitStudentExperiment({ experimentRecord: record, observedVersion: 4,
+        taskInfo: { topicName: "抽样调查", populationSize: 200 }, student: { studentId: "S001", name: "学生一" } });
+    expect(result).toMatchObject({ ok: true });
+    const update = operations.find(operation => operation.kind === "update");
+    expect(update?.set).not.toHaveProperty("questionnaire");
+    expect(update?.set).toMatchObject({ submissionSnapshot: { questionnaire: record.questionnaire } });
+});
+
 test("submit rejects a stale experiment record when the conditional update changes no rows", async () => {
     const { db } = createMockDb({ update: [[]] });
     mock.module("../../db", () => ({ db }));

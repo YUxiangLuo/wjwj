@@ -12,7 +12,7 @@ export function isSubmissionCompleteResponse(response: { success: boolean; error
 }
 
 export function getPreviewSubmitBlocker(experiment: Pick<ExperimentData, "questionnaire" | "samplePlan" | "samplingResults" | "reportContent" | "populationSize" | "analysisTarget"> & Pick<ExperimentData, "samplingPolicy">) {
-    const questionnaireError = validateQuestionnaireForSubmit(experiment.questionnaire);
+    const questionnaireError = validateQuestionnaireForSubmit(experiment.questionnaire, { allowLegacyDuplicateOptions: true });
     if (questionnaireError) return questionnaireError;
 
     const samplePlanError = validateSamplePlanForSubmit(

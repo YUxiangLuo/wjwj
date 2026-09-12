@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import { parseNumericText } from "./numeric-text";
 import { createSafeRecord } from "./safe-record";
+import { decodeCsvBytes } from "./csv-encoding";
 
 export const MAX_SPREADSHEET_UPLOAD_BYTES = 20 * 1024 * 1024;
 export const MAX_SPREADSHEET_MULTIPART_BYTES = MAX_SPREADSHEET_UPLOAD_BYTES + 1024 * 1024;
@@ -274,7 +275,7 @@ export async function parseSpreadsheetFile(
 ): Promise<SpreadsheetParseResult> {
     const normalizedName = fileName?.toLowerCase() ?? "";
     if (normalizedName.endsWith(".csv")) {
-        const parsed = parseCsvText(new TextDecoder("utf-8", { fatal: true }).decode(buffer));
+        const parsed = parseCsvText(decodeCsvBytes(buffer));
         // Convert only declared numeric roles: IDs and numeric-looking categories
         // must retain their displayed text (including leading zeros).
         const rows: Array<Record<string, unknown>> = parsed.rows;

@@ -61,7 +61,8 @@ export function buildSamplingResultsCsvExport(value: unknown, type: SamplingExpo
     if (data.length === 0) return null;
 
     return {
-        csv: recordsToCsv(data),
+        // 下载文件不携带 HTTP 编码信息；BOM 帮助 Excel/WPS 识别 UTF-8 中文。
+        csv: "\uFEFF" + recordsToCsv(data),
         filename,
         rowCount: data.length,
     };

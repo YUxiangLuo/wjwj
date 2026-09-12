@@ -4,6 +4,7 @@ import { class_, experiment, samplingAttempt, semester, student, userSession } f
 import { isValidOptionalEmail } from "../../lib/email";
 import { containsNul, identityKey, normalizeIdentityText } from "../../lib/identity-text";
 import { parseSpreadsheetFile, spreadsheetRequestExceedsLimit, validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
+import { CsvEncodingError, normalizeSpreadsheetUpload } from "../../lib/csv-encoding";
 import { hashPassword, mapWithConcurrency } from "../../server/password-work";
 import { deleteAuditEventsForActor, deleteAuditEventsForEntities, hashEntityIdentifier, writeAuditEvent } from "../../server/audit-event";
 import { error, getPositiveRouteId, getSearchParams, json, parseBody, parseFormData, parsePagination, stringValue } from "../../server/http";
@@ -297,14 +298,16 @@ const classStudentsImportRoutes: RouteDefinition = {
         let rows: Array<Record<string, unknown>>;
         let rowNumbers: number[] | undefined;
         try {
-            const buffer = await file.arrayBuffer();
+            const buffer = normalizeSpreadsheetUpload(await file.arrayBuffer(), file.name);
+            const normalizedError = validateSpreadsheetUploadFile({ name: file.name, size: buffer.byteLength });
+            if (normalizedError) return error(normalizedError.message, normalizedError.code, normalizedError.status);
             const parsedFile = await parseSpreadsheetFile(buffer, file.name, { includeColumnValues: false });
             if (parsedFile.malformed) return error("表格行列结构不一致或引号未闭合", "INVALID_FILE", 400);
             if (parsedFile.duplicateColumns.length) return error("表格存在重复列名，请确保每个字段只有一列", "INVALID_FILE", 400);
             rows = parsedFile.rows;
             rowNumbers = parsedFile.rowNumbers;
-        } catch {
-            return error("无法读取表格文件", "INVALID_FILE", 400);
+        } catch (cause) {
+            return error(cause instanceof CsvEncodingError ? cause.message : "无法读取表格文件", "INVALID_FILE", 400);
         }
 
         if (rows.length === 0) return error("文件内容为空", "VALIDATION_ERROR", 400);

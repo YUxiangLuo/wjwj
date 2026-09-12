@@ -76,6 +76,26 @@ afterEach(async () => {
     restoreDom = null;
 });
 
+test("CSV replacement waits for local preview confirmation before calling upload", async () => {
+    const upload = mock((_file: File) => {});
+    const view = render(<TopicWizardDialog {...makeProps({ currentStep: 2, onExcelUpload: upload })} />);
+    fireEvent.change(view.getByTestId("teacher-topic-excel-file"), { target: { files: [new File(["编号,等待分钟\n0001,10\n"], "population.csv")] } });
+    await view.findByText("0001");
+    expect(upload).not.toHaveBeenCalled();
+    fireEvent.click(view.getByTestId("csv-review-confirm"));
+    expect(upload).toHaveBeenCalledTimes(1);
+    expect([...new Uint8Array(await upload.mock.calls[0]![0].arrayBuffer()).slice(0, 3)]).toEqual([239, 187, 191]);
+});
+
+test("XLSX upload keeps the existing binary workbook path without CSV encoding review", () => {
+    const upload = mock((_file: File) => {});
+    const view = render(<TopicWizardDialog {...makeProps({ currentStep: 2, onExcelUpload: upload })} />);
+    const file = new File(["workbook fixture"], "population.xlsx");
+    fireEvent.change(view.getByTestId("teacher-topic-excel-file"), { target: { files: [file] } });
+    expect(upload).toHaveBeenCalledWith(file);
+    expect(view.queryByTestId("csv-file-review")).toBeNull();
+});
+
 test("non-stratified categories are selectable and roles remain exclusive", () => {
     let mapping: FieldMappingState = { ...completeMapping, stratified: ["cat"] };
     const props = makeProps({ currentStep: 3, columns: ["id", "score", "cat"], fieldMapping: mapping,

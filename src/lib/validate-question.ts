@@ -1,4 +1,10 @@
 import type { Question, QuestionSection, QuestionType } from "./questionnaire-types";
+import { getDuplicateOptionIndexes } from "./questionnaire-options";
+
+export interface QuestionValidationOptions {
+    /** Only for already-persisted stage-1 work; new/edit saves must use strict validation. */
+    allowLegacyDuplicateOptions?: boolean;
+}
 
 function toTrimmedString(value: unknown) {
     return typeof value === "string" ? value.trim() : "";
@@ -15,7 +21,7 @@ const QUESTION_SECTIONS = new Set<QuestionSection>(["screening", "main", "backgr
  * Parse one payload object into {@link Question}, or return an error message (same rules as questionnaire submit).
  * @param index 1-based label for error messages
  */
-export function parseRecommendQuestionFromPayload(rawQuestion: unknown, index: number): Question | string {
+export function parseRecommendQuestionFromPayload(rawQuestion: unknown, index: number, validationOptions: QuestionValidationOptions = {}): Question | string {
     if (!rawQuestion || typeof rawQuestion !== "object") {
         return `第${index}题配置无效`;
     }
@@ -64,6 +70,10 @@ export function parseRecommendQuestionFromPayload(rawQuestion: unknown, index: n
             return `第${index}题选项内容不能超过200字`;
         }
 
+        if (!validationOptions.allowLegacyDuplicateOptions && getDuplicateOptionIndexes(options).length > 0) {
+            return `第${index}题选项内容重复，请修改后重试`;
+        }
+
         const q: Question = { ...base, options };
 
         if (type === "multiple") {
@@ -101,8 +111,8 @@ export function parseRecommendQuestionFromPayload(rawQuestion: unknown, index: n
  * Validates one question object (same rules as questionnaire submit per-question checks).
  * @param index 1-based label for error messages
  */
-export function validateQuestionAtIndex(rawQuestion: unknown, index: number): string | null {
-    const r = parseRecommendQuestionFromPayload(rawQuestion, index);
+export function validateQuestionAtIndex(rawQuestion: unknown, index: number, validationOptions: QuestionValidationOptions = {}): string | null {
+    const r = parseRecommendQuestionFromPayload(rawQuestion, index, validationOptions);
     return typeof r === "string" ? r : null;
 }
 

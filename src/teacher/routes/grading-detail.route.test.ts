@@ -102,6 +102,7 @@ test("teacher sampling export returns every row from the immutable submission sn
         new Request("https://example.com/api/teacher/grading/99/sampling-export?type=all"),
         "99",
     ));
+    expect([...new Uint8Array(await response.clone().arrayBuffer()).slice(0, 3)]).toEqual([239, 187, 191]);
     const csv = await response.text();
 
     expect(response.status).toBe(200);

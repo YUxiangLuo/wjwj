@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId } from "react";
 import {
     Dialog,
     DialogContent,
@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Trash2, GripVertical } from "lucide-react";
 import type { Question, QuestionSection, QuestionType } from "@/lib/questionnaire-types";
 import { QUESTION_SECTION_LABELS } from "@/lib/questionnaire-templates";
+import { getDuplicateOptionIndexes } from "@/lib/questionnaire-options";
 
 interface QuestionEditorProps {
     open: boolean;
@@ -61,6 +62,7 @@ function generateId(): string {
 
 export function QuestionEditor({ open, onOpenChange, question, onSave }: QuestionEditorProps) {
     const isEditing = !!question;
+    const optionErrorId = useId();
 
     const [type, setType] = useState<QuestionType>(question?.type ?? "single");
     const [content, setContent] = useState(question?.content ?? "");
@@ -117,12 +119,15 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
         setOptions(newOptions);
     };
 
+    const duplicateOptions = type === "single" || type === "multiple" ? getDuplicateOptionIndexes(options) : [];
+    const duplicateMessage = `第 ${duplicateOptions.join("、")} 个选项内容重复，请修改后保存。`;
+
     const isValid = () => {
         if (!content.trim() || content.length > 500) return false;
 
         if (type === "single" || type === "multiple") {
             const validOptions = options.filter((o) => o.trim());
-            if (validOptions.length < 2) return false;
+            if (validOptions.length < 2 || duplicateOptions.length > 0) return false;
         }
 
         if (type === "multiple") {
@@ -260,6 +265,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                     添加选项
                                 </Button>
                             </div>
+                            {duplicateOptions.length > 0 && <p id={optionErrorId} role="alert" className="text-meta text-destructive" data-testid="question-option-error">{duplicateMessage}</p>}
                             <div className="space-y-2">
                                 {options.map((option, index) => (
                                     <div key={index} className="flex items-center gap-2">
@@ -269,6 +275,8 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                         </span>
                                         <Input
                                             placeholder={`选项 ${index + 1}`}
+                                            aria-invalid={duplicateOptions.includes(index + 1) || undefined}
+                                            aria-describedby={duplicateOptions.includes(index + 1) ? optionErrorId : undefined}
                                             value={option}
                                             onChange={(e) => updateOption(index, e.target.value)}
                                             maxLength={200}

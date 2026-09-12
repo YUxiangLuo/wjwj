@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { CsvFileReviewDialog } from "@/components/CsvFileReviewDialog";
 import { Download, FileWarning, Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -35,6 +37,8 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
         onDownloadErrors,
         onImport,
     } = props;
+    const [csvReviewFile, setCsvReviewFile] = useState<File | null>(null);
+    useEffect(() => { if (!open) setCsvReviewFile(null); }, [open]);
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="bg-card border-border text-foreground max-w-[500px] max-h-[calc(100dvh-2rem)] overflow-y-auto">
@@ -48,7 +52,7 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                     <div className="border-2 border-dashed border-input bg-background rounded-surface p-8 text-center hover:border-primary-border transition-none">
                         <Upload className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                         <label htmlFor="teacher-student-import-file" className="mb-2 block text-label text-muted-foreground">选择文件上传</label>
-                        <p className="text-meta text-muted-foreground">支持 .xlsx, .csv 格式</p>
+                        <p className="text-meta text-muted-foreground">支持 .xlsx、.csv；CSV 须先选择编码并核对预览。建议使用下载的模板填写</p>
                         <Input
                             id="teacher-student-import-file"
                             type="file"
@@ -56,7 +60,13 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                             accept=".xlsx,.csv"
                             disabled={importing}
                             className="mt-6 bg-card border-input text-foreground text-label file:bg-muted file:text-foreground file:border-0 file:rounded-control file:mr-4 file:px-3 file:py-1 cursor-pointer"
-                            onChange={(e) => onImportFileChange(e.target.files?.[0] ?? null)}
+                            onChange={(e) => {
+                                const file = e.target.files?.[0] ?? null;
+                                e.target.value = "";
+                                onImportFileChange(null);
+                                if (file?.name.toLowerCase().endsWith(".csv")) setCsvReviewFile(file);
+                                else onImportFileChange(file);
+                            }}
                         />
                         {importFile && (
                             <div className="text-meta text-success mt-3 break-all font-mono">已选择：{importFile.name}</div>
@@ -113,6 +123,10 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                     </Button>
                 </DialogFooter>
             </DialogContent>
+            {open && csvReviewFile && <CsvFileReviewDialog file={csvReviewFile} onCancel={() => setCsvReviewFile(null)} onConfirm={file => {
+                setCsvReviewFile(null);
+                onImportFileChange(file);
+            }} />}
         </Dialog>
     );
 }

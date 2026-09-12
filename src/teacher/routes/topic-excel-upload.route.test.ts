@@ -107,6 +107,48 @@ test("topic excel upload stores parsed metadata and writes workbook to storage",
     }
 });
 
+test("declared UTF-16 population upload persists canonical UTF-8 bytes and exact metadata", async () => {
+    const { module, operations } = await loadTopicRoutes({ select: [[{ id: 12, status: 0 }], [{ excelFilePath: null, status: 0 }], []] });
+    const content = "编号,姓名\n001,𠮷\n";
+    const bytes = Buffer.from("\uFEFF" + content, "utf16le");
+    const form = new FormData();
+    form.append("file", new File([bytes], "population.csv"));
+    const response = await module.topicExcelUploadRoutes.POST!(withRouteParam(new Request("https://example.com", { method: "POST", body: form }), "12"));
+    const storedPath = (operations.find(operation => operation.kind === "update")?.set as { excelFilePath?: string } | undefined)?.excelFilePath;
+    try {
+        expect(response.status).toBe(200);
+        expect(await response.json()).toMatchObject({ data: { columns: ["编号", "姓名"], rowCount: 1 } });
+        expect(storedPath).toStartWith("/storage/uploads/");
+        const saved = await Bun.file(`${process.cwd()}${storedPath}`).bytes();
+        expect([...saved]).toEqual([...new TextEncoder().encode("\uFEFF" + content)]);
+        const { parseSpreadsheetFile } = await import("../../lib/spreadsheet");
+        expect((await parseSpreadsheetFile(Uint8Array.from(saved).buffer, storedPath)).rows).toEqual([{ 编号: "001", 姓名: "𠮷" }]);
+    } finally {
+        if (storedPath?.startsWith("/storage/uploads/")) await Bun.file(`${process.cwd()}${storedPath}`).delete();
+    }
+});
+
+for (const hex of ["e5bc", "d5c5c8fd"]) {
+    test(`population upload rejects unconfirmed bytes ${hex} without changing the stored file`, async () => {
+        const { module, operations } = await loadTopicRoutes({ select: [[{ id: 12, status: 0 }]] });
+        const form = new FormData();
+        form.append("file", new File(["id,name\n001,", Buffer.from(hex, "hex"), "\n"], "population.csv"));
+        const response = await module.topicExcelUploadRoutes.POST!(withRouteParam(new Request("https://example.com", { method: "POST", body: form }), "12"));
+        expect(response.status).toBe(400);
+        expect(operations.some(operation => operation.kind === "update")).toBe(false);
+    });
+}
+
+test("invalid population encoding returns actionable guidance before writing", async () => {
+    const { module, operations } = await loadTopicRoutes({ select: [[{ id: 12, status: 0 }]] });
+    const form = new FormData();
+    form.append("file", new File([Buffer.from([0xef, 0xbb, 0xbf, 0xff])], "population.csv"));
+    const response = await module.topicExcelUploadRoutes.POST!(withRouteParam(new Request("https://example.com", { method: "POST", body: form }), "12"));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ error: { code: "INVALID_FILE", message: expect.stringContaining("CSV UTF-8") } });
+    expect(operations.some(operation => operation.kind === "update")).toBe(false);
+});
+
 test("topic excel upload rejects workbooks with fewer than two columns", async () => {
     const { module, operations } = await loadTopicRoutes({
         select: [[{ id: 12, status: 0 }]],

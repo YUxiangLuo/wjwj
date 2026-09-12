@@ -8,6 +8,7 @@ import { buildDefaultSamplingPolicy, parseSamplingPolicy, validateSamplingPolicy
 import { validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
 import { createStorageUploadPath, deleteStorageFileIfExists, resolveStoragePath, writeStorageFile } from "../../server/storage-files";
 import { parseExcelFile, sanitizeUploadFileName } from "./file-utils";
+import { CsvEncodingError, normalizeSpreadsheetUpload } from "../../lib/csv-encoding";
 import { deleteTopicStorageFileIfUnreferenced } from "./storage-cleanup";
 import { getPpsEligibleNumericFields, parseTopicFieldMapping } from "@/domain/statistics/population";
 import { canonicalizeRichTextHtmlForStorage } from "../../server/rich-text";
@@ -232,10 +233,12 @@ export async function replaceTopicExcelData(params: {
     let buffer: ArrayBuffer;
     let parsed: Awaited<ReturnType<typeof parseExcelFile>>;
     try {
-        buffer = await params.file.arrayBuffer();
+        buffer = normalizeSpreadsheetUpload(await params.file.arrayBuffer(), params.file.name);
+        const normalizedError = validateSpreadsheetUploadFile({ name: params.file.name, size: buffer.byteLength });
+        if (normalizedError) return fail(normalizedError.message, normalizedError.code, normalizedError.status);
         parsed = await parseExcelFile(buffer, params.file.name);
-    } catch {
-        return fail("无法读取表格文件，请上传有效的 CSV 或 XLSX 文件", "INVALID_FILE");
+    } catch (error) {
+        return fail(error instanceof CsvEncodingError ? error.message : "无法读取表格文件，请上传有效的 CSV 或 XLSX 文件", "INVALID_FILE");
     }
     const validationError = validateParsedExcelUpload(parsed);
     if (validationError) return fail(validationError);

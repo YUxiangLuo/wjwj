@@ -1,5 +1,5 @@
 import { getRichTextPlainLength, getRichTextPlainText } from "../../utils/rich-text";
-import { validateQuestionAtIndex } from "../../lib/validate-question";
+import { validateQuestionAtIndex, type QuestionValidationOptions } from "../../lib/validate-question";
 import { normalizeSamplePlanEstimationType } from "./sample-plan-display";
 import { getFinalSampleSizeBounds } from "./final-sample-bounds";
 import { getSamplingAcceptedRange } from "./sampling-tolerance";
@@ -29,7 +29,7 @@ export function getTargetSampleSizeFromSamplePlan(samplePlan: unknown) {
     return size;
 }
 
-export function validateQuestionnaireForSubmit(questionnaire: unknown): string | null {
+export function validateQuestionnaireForSubmit(questionnaire: unknown, options: QuestionValidationOptions = {}): string | null {
     if (!questionnaire || typeof questionnaire !== "object") {
         return "请先完成问卷设计";
     }
@@ -57,7 +57,7 @@ export function validateQuestionnaireForSubmit(questionnaire: unknown): string |
     }
 
     for (let index = 0; index < questions.length; index += 1) {
-        const err = validateQuestionAtIndex(questions[index], index + 1);
+        const err = validateQuestionAtIndex(questions[index], index + 1, options);
         if (err) return err;
     }
 

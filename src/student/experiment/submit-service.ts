@@ -88,7 +88,7 @@ export function validateExperimentSubmission(params: {
     const populationSize = normalizePopulationSize(params.taskInfo.populationSize);
 
     const validationError =
-        validateQuestionnaireForSubmit(questionnaire) ??
+        validateQuestionnaireForSubmit(questionnaire, { allowLegacyDuplicateOptions: true }) ??
         validateSamplePlanForSubmit(
             samplePlan,
             populationSize,

@@ -162,7 +162,11 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
         return () => window.clearTimeout(timer);
     }, [answersByIndex, exitConfirmOpen, goNext, isCurrentAnswered, page, pendingAutoAdvance, questions]);
 
-    useEffect(() => { setPendingAutoAdvance(null); }, [questions]);
+    useEffect(() => {
+        setPendingAutoAdvance(null);
+        // 题目或选项改变后，不能将旧位置的作答套到新内容上。
+        setAnswersByIndex({});
+    }, [questions]);
 
     // 从结束语提交进入完成页时通知父组件（避免在 setState updater 里调副作用，也避免 goNext 闭包读到陈旧 page）
     useEffect(() => {
@@ -342,14 +346,16 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                     <div className="grid grid-cols-2 gap-3">
                         {multiple && <p className="col-span-2 text-label text-muted-foreground">请选择 {question.minSelect ?? 1} ~ {maxSelect} 项</p>}
                         {opts.map((option, i) => {
-                            const selected = multiple ? selectedArr.includes(option) : answer === option;
+                            // 试填答案只在本组件内使用；按选项位置区分历史同名选项。
+                            const optionKey = String(i);
+                            const selected = multiple ? selectedArr.includes(optionKey) : answer === optionKey;
                             const disabled = multiple && !selected && selectedArr.length >= maxSelect;
                             return (
                                 <button
                                     key={`${question.id}-opt-${i}`}
                                     type="button"
                                     data-preview-answer
-                                    onClick={() => multiple ? toggleMultipleAnswer(qIndex, question, option) : setChoiceAnswer(qIndex, option)}
+                                    onClick={() => multiple ? toggleMultipleAnswer(qIndex, question, optionKey) : setChoiceAnswer(qIndex, optionKey)}
                                     disabled={disabled}
                                     aria-pressed={selected}
                                     className={`flex min-w-0 items-center gap-3 rounded-surface border-2 p-3 text-left ${selected

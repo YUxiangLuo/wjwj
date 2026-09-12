@@ -33,6 +33,35 @@ test("import validates canonical lengths and NUL per row before hashing or inser
     expect(await Bun.password.verify("VALID", inserted[0].password)).toBe(true);
 });
 
+test("confirmed Windows GBK roster preserves Chinese names and leading-zero student IDs", async () => {
+    const { routes, operations } = await load(["000001"]);
+    const { decodeCsvUpload } = await import("../../lib/csv-encoding");
+    const original = Buffer.concat([Buffer.from("studentId,name\r\n000001,"), Buffer.from("d5c5c8fd", "hex"), Buffer.from("\r\n")]);
+    const confirmed = "\uFEFF" + decodeCsvUpload(Uint8Array.from(original).buffer, "gb18030");
+    const response = await routes.classStudentsImportRoutes.POST!(upload(new File([confirmed], "roster.csv")));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ data: { successCount: 1, failureCount: 0 } });
+    expect(operations.find(op => op.kind === "insert" && op.table === student)?.values).toMatchObject([{ studentId: "000001", name: "张三" }]);
+});
+
+for (const hex of ["e5bc", "d5c5c8fd"]) {
+    test(`unconfirmed CSV bytes ${hex} cannot trigger a silent encoding fallback or account insert`, async () => {
+        const { routes, operations } = await load();
+        const response = await routes.classStudentsImportRoutes.POST!(upload(new File(["studentId,name\n000001,", Buffer.from(hex, "hex"), "\n"], "roster.csv")));
+        expect(response.status).toBe(400);
+        expect(await response.json()).toMatchObject({ error: { code: "INVALID_FILE" } });
+        expect(operations.some(op => op.kind === "insert")).toBe(false);
+    });
+}
+
+test("invalid roster encoding explains how to re-save and writes no accounts", async () => {
+    const { routes, operations } = await load();
+    const response = await routes.classStudentsImportRoutes.POST!(upload(new File([Buffer.from([0xff])], "roster.csv")));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ error: { code: "INVALID_FILE", message: expect.stringContaining("CSV UTF-8") } });
+    expect(operations.some(op => op.kind === "insert")).toBe(false);
+});
+
 for (const extension of ["csv", "xlsx"] as const) {
     test(`import rejects ambiguous duplicate ${extension} headers before writing`, async () => {
         const { routes, operations } = await load();

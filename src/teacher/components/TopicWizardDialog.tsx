@@ -1,3 +1,4 @@
+import { CsvFileReviewDialog } from "@/components/CsvFileReviewDialog";
 import { RequestError } from "@/components/RequestError";
 import { parseNumericText } from "@/lib/numeric-text";
 import { assignFieldRole } from "../topic/field-roles";
@@ -112,15 +113,16 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
     } = props;
 
     // Recommend question editor state
+    const [csvReviewFile, setCsvReviewFile] = useState<File | null>(null);
     const [pending, setPending] = useState(false);
     const pendingRef = useRef(false);
     const [actionError, setActionError] = useState<string | null>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const stepRef = useRef<HTMLDivElement>(null);
-    const busy = pending || uploadingExcel || uploadingAttachment;
+    const busy = pending || uploadingExcel || uploadingAttachment || Boolean(csvReviewFile);
     const displayedError = actionError ?? saveError;
     useLayoutEffect(() => {
-        if (!open) return;
+        if (!open) { setCsvReviewFile(null); return; }
         if (contentRef.current) contentRef.current.scrollTop = 0;
         stepRef.current?.focus({ preventScroll: true });
         setActionError(null);
@@ -355,7 +357,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     <p className="text-label text-muted-foreground mb-2">
                                         {isPublishedTopic ? "已上传的数据文件（不可更换）" : "点击或拖拽上传 Excel 文件"}
                                     </p>
-                                    <p className="text-meta text-muted-foreground mb-4">支持 .xlsx, .csv 格式，数据行数 1-100,000</p>
+                                    <p className="text-meta text-muted-foreground mb-4">支持 .xlsx、.csv，数据行数 1-100,000；CSV 须先选择编码并核对预览，再确认上传</p>
                                     {!isPublishedTopic && (
                                         <>
                                             <Input
@@ -367,7 +369,9 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 id="excel-upload"
                                                 onChange={(e) => {
                                                     const file = e.target.files?.[0];
-                                                    if (file) onExcelUpload(file);
+                                                    e.target.value = "";
+                                                    if (file?.name.toLowerCase().endsWith(".csv")) setCsvReviewFile(file);
+                                                    else if (file) onExcelUpload(file);
                                                 }}
                                             />
                                             <div className="flex items-center justify-center gap-3">
@@ -943,6 +947,10 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                     </div>
                 </DialogFooter>
             </DialogContent>
+            {open && csvReviewFile && <CsvFileReviewDialog file={csvReviewFile} onCancel={() => setCsvReviewFile(null)} onConfirm={file => {
+                setCsvReviewFile(null);
+                onExcelUpload(file);
+            }} />}
         </Dialog>
     );
 }

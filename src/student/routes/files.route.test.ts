@@ -133,6 +133,7 @@ test("export route reads serialized sampling results and returns csv", async () 
     );
 
     const response = await module.exportRoutes.GET!(request);
+    expect([...new Uint8Array(await response.clone().arrayBuffer()).slice(0, 3)]).toEqual([239, 187, 191]);
     const body = await response.text();
 
     expect(response.status).toBe(200);

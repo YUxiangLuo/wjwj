@@ -1,5 +1,6 @@
 import { getRichTextPlainText } from "@/utils/rich-text";
 import type { Question } from "@/lib/questionnaire-types";
+import { getDuplicateOptionIndexes } from "@/lib/questionnaire-options";
 
 export type ScoreStatus = "pass" | "warning" | "fail";
 
@@ -27,10 +28,6 @@ interface ValidationState {
     answerConfiguration: boolean;
 }
 
-function normalizeOptionText(value: string) {
-    return value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
-}
-
 export function getInvalidOptionQuestionIndexes(questions: Question[]) {
     const invalidIndexes: number[] = [];
 
@@ -41,7 +38,7 @@ export function getInvalidOptionQuestionIndexes(questions: Question[]) {
             ? question.options.map((option) => option.trim()).filter((option) => option.length > 0)
             : [];
 
-        if (options.length < 2 || options.length > 10 || options.some((option) => option.length > 200)) {
+        if (options.length < 2 || options.length > 10 || options.some((option) => option.length > 200) || getDuplicateOptionIndexes(options).length > 0) {
             invalidIndexes.push(index + 1);
             return;
         }
@@ -63,10 +60,8 @@ function getDuplicateOptionQuestionIndexes(questions: Question[]) {
 
     questions.forEach((question, index) => {
         if (question.type !== "single" && question.type !== "multiple") return;
-        const options = Array.isArray(question.options)
-            ? question.options.map(normalizeOptionText).filter((option) => option.length > 0)
-            : [];
-        if (options.length > 0 && new Set(options).size !== options.length) {
+        const options = Array.isArray(question.options) ? question.options : [];
+        if (getDuplicateOptionIndexes(options).length > 0) {
             duplicateIndexes.push(index + 1);
         }
     });
@@ -139,7 +134,7 @@ export function calculateQuestionnaireScoreSummary(input: QuestionnaireScoreInpu
         endingText: endingText.length >= 20 && endingText.length <= 1000,
         questionCount: input.questions.length >= 5 && input.questions.length <= 50,
         questionStructure: invalidStructureQuestions.length === 0,
-        answerConfiguration: invalidOptionQuestions.length === 0 && invalidScaleQuestions.length === 0,
+        answerConfiguration: invalidOptionQuestions.length === 0 && invalidScaleQuestions.length === 0 && duplicateOptionQuestions.length === 0,
     };
 
     const scoreItems: ScoreItem[] = [
@@ -183,15 +178,14 @@ export function calculateQuestionnaireScoreSummary(input: QuestionnaireScoreInpu
             points: 20,
             valid: validation.answerConfiguration,
             passMessage: "选项、多选上下限和评分范围有效",
-            failMessage: `Q${Array.from(new Set([...invalidOptionQuestions, ...invalidScaleQuestions])).slice(0, 5).join("、")} 的作答配置无效`,
+            failMessage: `Q${Array.from(new Set([...invalidOptionQuestions, ...invalidScaleQuestions, ...duplicateOptionQuestions])).slice(0, 5).join("、")} 的作答配置无效`,
         }),
     ];
 
-    if (validation.answerConfiguration && duplicateOptionQuestions.length > 0) {
+    if (duplicateOptionQuestions.length > 0) {
         const answerItem = scoreItems.find((scoreItem) => scoreItem.label === "作答配置");
         if (answerItem) {
-            answerItem.status = "warning";
-            answerItem.message = `结构有效；Q${duplicateOptionQuestions.slice(0, 5).join("、")} 存在重复选项，请人工复核`;
+            answerItem.message += `；Q${duplicateOptionQuestions.slice(0, 5).join("、")} 存在重复选项，请修改后试填`;
         }
     }
 

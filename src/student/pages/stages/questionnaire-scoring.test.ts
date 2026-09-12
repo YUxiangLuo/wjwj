@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { Question } from "../../api-client";
-import { calculateQuestionnaireScoreSummary } from "./questionnaire-scoring";
+import { calculateQuestionnaireScoreSummary, getInvalidOptionQuestionIndexes } from "./questionnaire-scoring";
 
 function createQuestion(id: string, overrides: Partial<Question> = {}): Question {
     return {
@@ -82,16 +82,17 @@ test("基础格式不合格只扣对应的结构分", () => {
     ]);
 });
 
-test("重复选项产生人工复核警告但不冒充效度评分", () => {
+test("重复选项阻止试填并明确提示对应题号", () => {
     const questions = Array.from({ length: 5 }, (_, index) => createQuestion(`q${index + 1}`));
     questions[1] = createQuestion("q2", { options: ["同意", " 同意 "] });
 
     const summary = calculateQuestionnaireScoreSummary({ ...validBase, questions });
     const answerItem = summary.scoreItems.find((item) => item.label === "作答配置");
 
-    expect(summary.structureScore).toBe(100);
-    expect(answerItem?.status).toBe("warning");
-    expect(answerItem?.message).toContain("重复选项");
+    expect(summary.structureScore).toBe(80);
+    expect(answerItem?.status).toBe("fail");
+    expect(answerItem?.message).toContain("Q2 存在重复选项，请修改后试填");
+    expect(getInvalidOptionQuestionIndexes(questions)).toEqual([2]);
 });
 
 test("无效量表范围和重复题目ID会被结构检查发现", () => {

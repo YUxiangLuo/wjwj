@@ -60,6 +60,12 @@ test("preview submit blocker returns null for a complete valid experiment", () =
     expect(getPreviewSubmitBlocker(validExperiment)).toBeNull();
 });
 
+test("preview permits unchanged legacy duplicate options just like final server submission", () => {
+    expect(getPreviewSubmitBlocker({ ...validExperiment, questionnaire: { ...validExperiment.questionnaire,
+        questions: validExperiment.questionnaire.questions.map((question, index) => index === 0 ? { ...question, options: ["重复", "重复"] } : question),
+    } })).toBeNull();
+});
+
 test("preview submit blocker requires estimation type to match the analysis target", () => {
     expect(getPreviewSubmitBlocker({
         ...validExperiment,

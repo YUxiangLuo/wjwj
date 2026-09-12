@@ -275,6 +275,39 @@ describe("ImmersiveQuestionnairePreview", () => {
         expect((view.getByTestId("immersive-preview-submit") as HTMLButtonElement).disabled).toBe(false);
     });
 
+    for (const type of ["single", "multiple"] as const) {
+        test(`${type}: legacy same-label choices are independently selected`, () => {
+            const onComplete = mock(() => {});
+            const view = render(<ImmersiveQuestionnairePreview questionnaire={baseQuestionnaire({ questions: [
+                { id: "duplicate-labels", type, content: "选择", options: ["重复", "重复", "第三项"], minSelect: 2, maxSelect: 2 },
+            ] })} onComplete={onComplete} onClose={() => {}} />);
+            fireEvent.click(view.getByTestId("immersive-preview-start"));
+            const choices = [...document.querySelectorAll<HTMLButtonElement>("[data-preview-answer]")];
+            const selected = () => choices.filter(button => button.getAttribute("aria-pressed") === "true").length;
+            expect(selected()).toBe(0);
+            fireEvent.click(choices[0]!);
+            expect(selected()).toBe(1);
+            fireEvent.click(choices[1]!);
+            expect(selected()).toBe(type === "single" ? 1 : 2);
+            if (type === "multiple") {
+                expect(choices[2]!.disabled).toBe(true);
+                fireEvent.click(choices[0]!);
+                expect(selected()).toBe(1);
+                expect(choices[2]!.disabled).toBe(false);
+            }
+            expect(onComplete).not.toHaveBeenCalled();
+        });
+    }
+
+    test("changed option ordering never reuses a previous positional answer", () => {
+        const questionnaire = baseQuestionnaire({ questions: [{ id: "q", type: "single", content: "选择", options: ["甲", "乙"] }] });
+        const view = render(<ImmersiveQuestionnairePreview questionnaire={questionnaire} onComplete={() => {}} onClose={() => {}} />);
+        fireEvent.click(view.getByTestId("immersive-preview-start"));
+        fireEvent.click(document.querySelector("[data-preview-answer]")!);
+        view.rerender(<ImmersiveQuestionnairePreview questionnaire={{ ...questionnaire, questions: [{ ...questionnaire.questions[0]!, options: ["乙", "甲"] }] }} onComplete={() => {}} onClose={() => {}} />);
+        expect(document.querySelectorAll('[data-preview-answer][aria-pressed="true"]').length).toBe(0);
+    });
+
     test("replacing the questions cancels a pending advance", async () => {
         const onComplete = mock(() => {});
         const view = render(<ImmersiveQuestionnairePreview questionnaire={twoQuestions()} onComplete={onComplete} onClose={() => {}} />);

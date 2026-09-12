@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { buildSamplingResultsCsvExport } from "./sampling-results-export";
+import * as XLSX from "xlsx";
 
 test("PPS export includes aligned inclusion probabilities and design weights", () => {
     const result = buildSamplingResultsCsvExport({
@@ -15,8 +16,23 @@ test("PPS export includes aligned inclusion probabilities and design weights", (
 
 test("legacy PPS export keeps working when no probability vector is stored", () => {
     const result = buildSamplingResultsCsvExport({ pps: { data: [{ id: 1 }] } }, "pps");
-    expect(result?.csv).toBe("id\n1");
+    expect(result?.csv).toBe("\uFEFFid\n1");
 });
+
+for (const method of ["simple", "systematic", "pps", "stratified", "all"] as const) {
+    test(`${method} CSV carries one UTF-8 BOM and preserves Chinese and every source column`, () => {
+        const row = { 编号: "001", 城市: "上海", 备注: '含逗号,引号"与\n换行', 未映射字段: "也保留" };
+        const results = { simple: { data: [row] }, systematic: { data: [row] }, pps: { data: [row], inclusionProbabilities: [0.5] }, stratified: { data: [row] } };
+        const exported = buildSamplingResultsCsvExport(results, method)!;
+        const bytes = new TextEncoder().encode(exported.csv);
+        expect([...bytes.slice(0, 3)]).toEqual([239, 187, 191]);
+        expect(exported.csv.startsWith("\uFEFF\uFEFF")).toBe(false);
+        const book = XLSX.read(bytes, { type: "array", raw: true });
+        const records = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]!]!) as Record<string, unknown>[];
+        expect(records).toHaveLength(method === "all" ? 4 : 1);
+        for (const record of records) expect(record).toMatchObject(row);
+    });
+}
 
 test("sampling export preserves colliding legacy metadata and neutralizes formulas", () => {
     const result = buildSamplingResultsCsvExport({

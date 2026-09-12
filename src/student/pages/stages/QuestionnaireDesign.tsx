@@ -815,7 +815,7 @@ export function QuestionnaireDesign() {
                                         <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
                                     )}
                                     <span className={`text-label ${validation.optionCount ? "text-success" : "text-destructive"}`}>
-                                        选项数量：{validation.optionCount ? "配置有效" : `Q${invalidOptionQuestions.slice(0, 5).join("、")} 需检查`}
+                                        选项配置：{validation.optionCount ? "配置有效" : `Q${invalidOptionQuestions.slice(0, 5).join("、")} 需检查`}
                                     </span>
                                 </div>
                                 <div className={`flex items-center gap-2.5 px-3 py-2 rounded-surface border ${validation.endingText ? "bg-success-muted border-success-border" : "bg-destructive-muted border-destructive-border"}`}>
