@@ -117,6 +117,8 @@ export const topic = pgTable(
         excelFilePath: varchar("excel_file_path", { length: 500 }),
         excelRowCount: integer("excel_row_count").notNull().default(0),
         fieldMapping: nativeJsonb("field_mapping"),
+        variableDictionary: nativeJsonb("variable_dictionary").$type<import("../domain/variables/types").VariableDictionary>(),
+        variableRevision: integer("variable_revision").notNull().default(0),
         samplingPolicy: nativeJsonb("sampling_policy").notNull().default(sql`'{"version":1,"methods":{"simple":"required","systematic":"optional","pps":"optional","stratified":"optional"}}'::jsonb`),
         weightConfig: nativeJsonb("weight_config"),
         recommendQuestions: nativeJsonb("recommend_questions"),
@@ -189,6 +191,8 @@ export const experiment = pgTable(
         studentId: bigint("student_id", { mode: "number" }).notNull().references(() => student.id, { onDelete: "cascade" }),
         taskId: bigint("task_id", { mode: "number" }).notNull().references(() => task.id, { onDelete: "cascade" }),
         version: integer("version").notNull().default(1),
+        samplingGeneration: integer("sampling_generation").notNull().default(0),
+        analysisReferences: nativeJsonb("analysis_references").$type<number[]>().notNull().default(sql`'[]'::jsonb`),
         currentStage: smallint("current_stage").notNull().default(1),
         status: varchar("status", { length: 20 }).$type<ExperimentStatus>().notNull().default("in_progress"),
         questionnaire: nativeJsonb("questionnaire"),
@@ -248,6 +252,26 @@ export const experiment = pgTable(
         ),
     }),
 );
+
+export const savedAnalysis = pgTable("saved_analysis", {
+    id: bigint("id", { mode: "number" }).generatedByDefaultAsIdentity().primaryKey(),
+    experimentId: bigint("experiment_id", { mode: "number" }).notNull().references(() => experiment.id, { onDelete: "cascade" }),
+    requestId: varchar("request_id", { length: 80 }).notNull(),
+    requestFingerprint: text("request_fingerprint").notNull(),
+    samplingGeneration: integer("sampling_generation").notNull(),
+    source: varchar("source", { length: 64 }).notNull(),
+    dictionaryRevision: integer("dictionary_revision").notNull(),
+    config: nativeJsonb("config").$type<import("../domain/variables/types").AnalysisConfig>().notNull(),
+    variable: nativeJsonb("variable").$type<import("../domain/variables/types").VariableDefinition>().notNull(),
+    result: nativeJsonb("result").$type<import("../domain/variables/types").AnalysisResult>().notNull(),
+    evidence: nativeJsonb("evidence").notNull(),
+    algorithmVersion: varchar("algorithm_version", { length: 80 }).notNull(),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+    requestUnique: uniqueIndex("saved_analysis_uk_request").on(table.experimentId, table.requestId),
+    experimentIdx: index("saved_analysis_idx_experiment").on(table.experimentId),
+    generationCheck: check("saved_analysis_ck_generation", sql`${table.samplingGeneration} >= 0`),
+}));
 
 export const samplingAttempt = pgTable(
     "sampling_attempt",

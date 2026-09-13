@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect, useRef, useId } from "react"
 import { createPortal } from "react-dom";
 import { X, ChevronLeft, ChevronRight, Check, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -24,6 +25,17 @@ const FOCUSABLE_SELECTOR =
 
 type AnswerValue = string | string[] | number;
 
+function isValidNumericAnswer(question: Question, answer: unknown) {
+    if (typeof answer !== "string" || answer === "") return false;
+    const places = question.decimalPlaces ?? 0;
+    const pattern = places === 0 ? /^-?\d+$/ : new RegExp(`^-?\\d+\\.\\d{${places}}$`);
+    if (!pattern.test(answer)) return false;
+    const value = Number(answer);
+    return Number.isFinite(value)
+        && (question.numericMin === undefined || value >= question.numericMin)
+        && (question.numericMax === undefined || value <= question.numericMax);
+}
+
 function isQuestionAnswered(question: Question, answer: unknown): boolean {
     if (answer === undefined || answer === null) return false;
     switch (question.type) {
@@ -36,6 +48,8 @@ function isQuestionAnswered(question: Question, answer: unknown): boolean {
         }
         case "scale":
             return typeof answer === "number";
+        case "numeric":
+            return isValidNumericAnswer(question, answer);
         default:
             return false;
     }
@@ -318,6 +332,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
         single: "请选择一项",
         multiple: "可选择多项",
         scale: "请在量表上选择",
+        numeric: "请输入数值",
     };
 
     const cardClass =
@@ -327,6 +342,28 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
         const answer = answersByIndex[qIndex];
 
         switch (question.type) {
+            case "numeric": {
+                const valid = isValidNumericAnswer(question, answer);
+                const range = question.numericMin === undefined && question.numericMax === undefined ? ""
+                    : `范围：${question.numericMin ?? "不限"} 至 ${question.numericMax ?? "不限"}（含边界）`;
+                return <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                        <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={typeof answer === "string" ? answer : ""}
+                            onChange={event => setAnswersByIndex(prev => ({ ...prev, [qIndex]: event.target.value }))}
+                            aria-invalid={typeof answer === "string" && answer !== "" && !valid}
+                            data-preview-answer
+                            data-testid="questionnaire-preview-numeric"
+                            className="bg-card border-input"
+                        />
+                        {question.unit && <span className="text-label text-foreground">{question.unit}</span>}
+                    </div>
+                    <p className="text-meta text-muted-foreground">{range}{range && "；"}需填写 {question.decimalPlaces ?? 0} 位小数</p>
+                    {typeof answer === "string" && answer !== "" && !valid && <p role="alert" className="text-meta text-destructive">请输入范围内且小数位数严格匹配的数值</p>}
+                </div>;
+            }
             case "boolean":
             case "single":
             case "multiple": {

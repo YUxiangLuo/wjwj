@@ -24,6 +24,9 @@ import { Plus, GripVertical, Trash2, Edit2, CheckCircle, AlertCircle, Copy, Arro
 import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
 import { QuestionEditor } from "@/components/questionnaire/QuestionEditor";
+import { VariableBindingDialog } from "@/components/questionnaire/VariableBindingDialog";
+import { createApiClient } from "@/lib/api-client";
+import type { VariableDictionary } from "@/domain/variables/types";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { ImmersiveQuestionnairePreview } from "../../components/ImmersiveQuestionnairePreview";
 import { tasksApi } from "../../api-client";
@@ -35,11 +38,14 @@ import {
 } from "../../experiment/experiment-draft";
 import { QUESTIONNAIRE_TEMPLATES, QUESTION_SECTION_LABELS, type QuestionnaireTemplate } from "@/lib/questionnaire-templates";
 
+const questionnaireApi = createApiClient("student");
+
 const questionTypeLabels: Record<QuestionType, string> = {
     boolean: "是/否题",
     single: "单选题",
     multiple: "多选题",
     scale: "评分题",
+    numeric: "数值题",
 };
 
 const questionTypeColors: Record<QuestionType, string> = {
@@ -47,6 +53,7 @@ const questionTypeColors: Record<QuestionType, string> = {
     single: "bg-info-muted text-info border-info-border",
     multiple: "bg-success-muted text-success border-success-border",
     scale: "bg-warning-muted text-warning border-warning-border",
+    numeric: "bg-auxiliary-muted text-auxiliary-strong border-auxiliary-border",
 };
 
 interface QuestionnaireStepValidation {
@@ -120,6 +127,8 @@ export function QuestionnaireDesign() {
     const [dragOverId, setDragOverId] = useState<string | null>(null);
     const [recommendQuestions, setRecommendQuestions] = useState<Question[]>([]);
     const [recommendCollapsed, setRecommendCollapsed] = useState(false);
+    const [dictionary, setDictionary] = useState<VariableDictionary | null>(null);
+    const [bindingQuestion, setBindingQuestion] = useState<Question | null>(null);
 
     // Immersive preview state
     const [previewOpen, setPreviewOpen] = useState(false);
@@ -142,6 +151,14 @@ export function QuestionnaireDesign() {
         }
         loadRecommendQuestions();
     }, [experiment?.taskId]);
+    useEffect(() => {
+        if (!experiment?.taskId) return;
+        const controller = new AbortController();
+        questionnaireApi.request<{ dictionary: VariableDictionary | null }>(`/api/student/tasks/${experiment.taskId}/variables`, { signal: controller.signal })
+            .then(response => { if (response.success) setDictionary(response.data?.dictionary ?? null); })
+            .catch(() => undefined);
+        return () => controller.abort();
+    }, [experiment?.taskId]);
     const questionnaireData = useMemo<QuestionnaireData>(() => ({
         title,
         welcomeText,
@@ -157,6 +174,7 @@ export function QuestionnaireDesign() {
             + (q.minSelect ?? "") + (q.maxSelect ?? "")
             + (q.scaleMin ?? "") + (q.scaleMax ?? "")
             + (q.scaleMinLabel ?? "") + (q.scaleMaxLabel ?? "")
+            + (q.unit ?? "") + (q.numericMin ?? "") + (q.numericMax ?? "") + (q.decimalPlaces ?? "")
         ).join(",")}`,
         [title, welcomeText, endingText, questions],
     );
@@ -200,6 +218,7 @@ export function QuestionnaireDesign() {
 
     const handleSaveQuestion = (question: Question) => {
         if (editingQuestion) {
+            if (editingQuestion.variableBinding && !question.variableBinding) toast.info("题意或作答规则已修改，原变量关联已清除，请重新确认");
             // Update existing
             setQuestions(questions.map((q) => (q.id === question.id ? question : q)));
         } else {
@@ -227,6 +246,7 @@ export function QuestionnaireDesign() {
             id: generateId(),
             content: question.content + " (复制)",
             recommendSourceId: undefined,
+            variableBinding: undefined,
         };
         const index = questions.findIndex((q) => q.id === question.id);
         const newQuestions = [...questions];
@@ -512,6 +532,7 @@ export function QuestionnaireDesign() {
                                                             <Badge variant="outline" className={`${questionTypeColors[q.type]} px-2 py-0.5 text-meta whitespace-nowrap`}>
                                                                 {questionTypeLabels[q.type]}
                                                             </Badge>
+                                                            {q.variableBinding && <Badge variant="outline" className="border-success-border bg-success-muted text-success">已关联变量</Badge>}
                                                             <Badge variant="outline" className="whitespace-nowrap border-border bg-card px-2 py-0.5 text-meta text-muted-foreground">
                                                                 {QUESTION_SECTION_LABELS[q.section ?? "main"]}
                                                             </Badge>
@@ -519,6 +540,7 @@ export function QuestionnaireDesign() {
                                                         {q.options && q.options.length > 0 && <p className="text-meta leading-relaxed text-muted-foreground">选项：{q.options.join("；")}</p>}
                                                     </div>
                                                     <div className="ml-auto flex shrink-0 flex-wrap gap-1">
+                                                        {dictionary && <Button variant="ghost" size="sm" onClick={() => setBindingQuestion(q)}>{q.variableBinding ? "修改关联" : "关联变量"}</Button>}
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
@@ -968,6 +990,14 @@ export function QuestionnaireDesign() {
                 question={editingQuestion}
                 onSave={handleSaveQuestion}
             />
+            {bindingQuestion && dictionary && experiment?.taskId && <VariableBindingDialog
+                open
+                onOpenChange={open => { if (!open) setBindingQuestion(null); }}
+                question={bindingQuestion}
+                dictionary={dictionary}
+                taskId={experiment.taskId}
+                onConfirm={question => setQuestions(current => current.map(item => item.id === question.id ? question : item))}
+            />}
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>

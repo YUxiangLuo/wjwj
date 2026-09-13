@@ -271,7 +271,7 @@ function assertXlsxArchiveBudget(bytes: Uint8Array) {
 export async function parseSpreadsheetFile(
     buffer: ArrayBuffer,
     fileName?: string | null,
-    options: { includeColumnValues?: boolean; numericFields?: string[] } = {},
+    options: { includeColumnValues?: boolean; numericFields?: string[]; preserveRawValues?: boolean } = {},
 ): Promise<SpreadsheetParseResult> {
     const normalizedName = fileName?.toLowerCase() ?? "";
     if (normalizedName.endsWith(".csv")) {
@@ -279,7 +279,7 @@ export async function parseSpreadsheetFile(
         // Convert only declared numeric roles: IDs and numeric-looking categories
         // must retain their displayed text (including leading zeros).
         const rows: Array<Record<string, unknown>> = parsed.rows;
-        for (const field of options.numericFields ?? []) {
+        for (const field of options.preserveRawValues ? [] : options.numericFields ?? []) {
             for (const row of rows) {
                 if (Object.hasOwn(row, field)) row[field] = parseNumericText(row[field]) ?? row[field];
             }
@@ -302,13 +302,13 @@ export async function parseSpreadsheetFile(
     if (!sheet) return { rows: [], columns: [], duplicateColumns: [], blankColumnIndexes: [], rowCount: 0, colCount: 0, preview: [], columnValues: {}, columnValuesTruncated: [], malformed: false };
 
     const displayedRows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "", raw: false });
-    const rawRows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "", raw: true });
+    const rawRows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: options.preserveRawValues ? null : "", raw: true });
     const numericFields = new Set(options.numericFields ?? []);
     const rows = displayedRows.map((displayed, rowIndex) => {
         const raw = rawRows[rowIndex] ?? {};
         return Object.fromEntries(Object.keys(displayed).map((field) => [
             field,
-            numericFields.has(field) ? parseNumericText(raw[field]) ?? raw[field] : displayed[field],
+            options.preserveRawValues ? raw[field] : numericFields.has(field) ? parseNumericText(raw[field]) ?? raw[field] : displayed[field],
         ]));
     });
     const columns = Object.keys(rows[0] ?? {});

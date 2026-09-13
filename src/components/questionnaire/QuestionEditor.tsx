@@ -30,6 +30,7 @@ const questionTypeLabels: Record<QuestionType, string> = {
     single: "单选题",
     multiple: "多选题",
     scale: "评分题",
+    numeric: "数值题",
 };
 
 const questionTypeDescriptions: Record<QuestionType, string> = {
@@ -37,6 +38,7 @@ const questionTypeDescriptions: Record<QuestionType, string> = {
     single: "从多个选项中选择一个",
     multiple: "从多个选项中选择多个",
     scale: "有序评分题，可选择常用的 Likert 型题项或一般评分预设",
+    numeric: "输入指定单位和精度的数值",
 };
 
 interface LikertPreset {
@@ -74,6 +76,10 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
     const [scaleMax, setScaleMax] = useState(question?.scaleMax ?? 5);
     const [scaleMinLabel, setScaleMinLabel] = useState(question?.scaleMinLabel ?? "非常不同意");
     const [scaleMaxLabel, setScaleMaxLabel] = useState(question?.scaleMaxLabel ?? "非常同意");
+    const [unit, setUnit] = useState(question?.unit ?? "");
+    const [numericMin, setNumericMin] = useState(question?.numericMin?.toString() ?? "");
+    const [numericMax, setNumericMax] = useState(question?.numericMax?.toString() ?? "");
+    const [decimalPlaces, setDecimalPlaces] = useState(question?.decimalPlaces ?? 0);
 
     useEffect(() => {
         if (question) {
@@ -87,6 +93,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
             setScaleMax(question.scaleMax ?? 5);
             setScaleMinLabel(question.scaleMinLabel ?? "非常不同意");
             setScaleMaxLabel(question.scaleMaxLabel ?? "非常同意");
+            setUnit(question.unit ?? ""); setNumericMin(question.numericMin?.toString() ?? ""); setNumericMax(question.numericMax?.toString() ?? ""); setDecimalPlaces(question.decimalPlaces ?? 0);
         } else {
             setType("single");
             setContent("");
@@ -98,6 +105,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
             setScaleMax(5);
             setScaleMinLabel("非常不同意");
             setScaleMaxLabel("非常同意");
+            setUnit(""); setNumericMin(""); setNumericMax(""); setDecimalPlaces(0);
         }
     }, [question, open]);
 
@@ -135,6 +143,13 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
             if (minSelect < 1 || maxSelect < minSelect || maxSelect > validCount) return false;
         }
 
+        if (type === "numeric") {
+            if (!Number.isSafeInteger(decimalPlaces) || decimalPlaces < 0 || decimalPlaces > 10) return false;
+            if (numericMin !== "" && !Number.isFinite(Number(numericMin))) return false;
+            if (numericMax !== "" && !Number.isFinite(Number(numericMax))) return false;
+            if (numericMin !== "" && numericMax !== "" && Number(numericMin) > Number(numericMax)) return false;
+        }
+
         return true;
     };
 
@@ -166,6 +181,17 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
             savedQuestion.scaleMax = scaleMax;
             savedQuestion.scaleMinLabel = scaleMinLabel;
             savedQuestion.scaleMaxLabel = scaleMaxLabel;
+        }
+        if (type === "numeric") {
+            savedQuestion.unit = unit.trim();
+            savedQuestion.decimalPlaces = decimalPlaces;
+            if (numericMin !== "") savedQuestion.numericMin = Number(numericMin);
+            if (numericMax !== "") savedQuestion.numericMax = Number(numericMax);
+        }
+        if (question?.variableBinding) {
+            const oldSemantic = { ...question, id: savedQuestion.id, variableBinding: undefined };
+            const nextSemantic = { ...savedQuestion, variableBinding: undefined };
+            if (JSON.stringify(oldSemantic) === JSON.stringify(nextSemantic)) savedQuestion.variableBinding = question.variableBinding;
         }
 
         onSave(savedQuestion);
@@ -203,7 +229,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                         <div className="space-y-2">
                             <Label className="text-muted-foreground">题目类型</Label>
                             <Tabs value={type} onValueChange={(v) => setType(v as QuestionType)}>
-                                <TabsList className="grid grid-cols-4 w-full bg-background border border-border p-1" data-testid="student-question-type-list">
+                                <TabsList className="grid grid-cols-5 w-full bg-background border border-border p-1" data-testid="student-question-type-list">
                                     {(Object.keys(questionTypeLabels) as QuestionType[]).map((t) => (
                                         <TabsTrigger
                                             key={t}
@@ -420,6 +446,17 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                     />
                                 </div>
                             </div>
+                        </div>
+                    )}
+                    {type === "numeric" && (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2"><Label htmlFor="numericMin">最小值（可选）</Label><Input id="numericMin" type="number" value={numericMin} onChange={e => setNumericMin(e.target.value)} data-testid="student-question-numeric-min" /></div>
+                                <div className="space-y-2"><Label htmlFor="numericMax">最大值（可选）</Label><Input id="numericMax" type="number" value={numericMax} onChange={e => setNumericMax(e.target.value)} data-testid="student-question-numeric-max" /></div>
+                                <div className="space-y-2"><Label htmlFor="numericUnit">单位（不自动换算）</Label><Input id="numericUnit" value={unit} onChange={e => setUnit(e.target.value)} maxLength={50} data-testid="student-question-numeric-unit" /></div>
+                                <div className="space-y-2"><Label htmlFor="decimalPlaces">小数位数</Label><Input id="decimalPlaces" type="number" min={0} max={10} value={decimalPlaces} onChange={e => setDecimalPlaces(Number(e.target.value))} data-testid="student-question-decimal-places" /></div>
+                            </div>
+                            <p className="text-meta text-muted-foreground">上下限均包含；必须严格按指定小数位填写，留空不会视为 0。</p>
                         </div>
                     )}
                 </div>

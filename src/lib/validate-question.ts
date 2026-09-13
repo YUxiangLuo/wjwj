@@ -14,7 +14,7 @@ function generateQuestionId(): string {
     return `q_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
-const QUESTION_TYPES = new Set<string>(["boolean", "single", "multiple", "scale"]);
+const QUESTION_TYPES = new Set<string>(["boolean", "single", "multiple", "scale", "numeric"]);
 const QUESTION_SECTIONS = new Set<QuestionSection>(["screening", "main", "background"]);
 
 /**
@@ -101,6 +101,23 @@ export function parseRecommendQuestionFromPayload(rawQuestion: unknown, index: n
         const maxLabel = typeof question.scaleMaxLabel === "string" ? question.scaleMaxLabel.trim() : "";
         if (minLabel) q.scaleMinLabel = minLabel;
         if (maxLabel) q.scaleMaxLabel = maxLabel;
+        return q;
+    }
+
+    if (type === "numeric") {
+        const unit = toTrimmedString(question.unit);
+        const decimalPlaces = Number(question.decimalPlaces);
+        if (!Number.isSafeInteger(decimalPlaces) || decimalPlaces < 0 || decimalPlaces > 10) return `第${index}题小数位数需为0-10的整数`;
+        const q: Question = { ...base, unit, decimalPlaces };
+        if (question.numericMin !== undefined && question.numericMin !== "") {
+            if (!Number.isFinite(Number(question.numericMin))) return `第${index}题数值下限无效`;
+            q.numericMin = Number(question.numericMin);
+        }
+        if (question.numericMax !== undefined && question.numericMax !== "") {
+            if (!Number.isFinite(Number(question.numericMax))) return `第${index}题数值上限无效`;
+            q.numericMax = Number(question.numericMax);
+        }
+        if (q.numericMin !== undefined && q.numericMax !== undefined && q.numericMin > q.numericMax) return `第${index}题数值范围无效`;
         return q;
     }
 

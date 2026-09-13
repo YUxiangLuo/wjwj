@@ -35,6 +35,13 @@ describe("validateQuestionAtIndex", () => {
         ).toBeNull();
     });
 
+    test("normalizes numeric bounds without treating empty bounds as zero", () => {
+        const result = parseRecommendQuestionFromPayload({ type: "numeric", content: "身高", unit: "cm", numericMin: "", numericMax: 250, decimalPlaces: 1 }, 1);
+        expect(result).toMatchObject({ type: "numeric", unit: "cm", numericMax: 250, decimalPlaces: 1 });
+        expect(result).not.toHaveProperty("numericMin");
+        expect(validateQuestionAtIndex({ type: "numeric", content: "身高", decimalPlaces: 1, numericMin: 2, numericMax: 1 }, 1)).toMatch(/数值范围/);
+    });
+
     test("rejects empty content", () => {
         expect(validateQuestionAtIndex({ type: "boolean", content: "   " }, 3)).toMatch(/第3题/);
     });

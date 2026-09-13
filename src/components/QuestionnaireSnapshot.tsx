@@ -7,6 +7,7 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
     single: "单选题",
     multiple: "多选题",
     scale: "评分题",
+    numeric: "数值题",
 };
 
 export function QuestionnaireSnapshot({

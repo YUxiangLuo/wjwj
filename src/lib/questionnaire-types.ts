@@ -2,7 +2,9 @@
  * Shared questionnaire / question shapes (student experiment & teacher recommend questions).
  */
 
-export type QuestionType = "boolean" | "single" | "multiple" | "scale";
+import type { RawValue } from "@/domain/variables/types";
+
+export type QuestionType = "boolean" | "single" | "multiple" | "scale" | "numeric";
 export type QuestionSection = "screening" | "main" | "background";
 
 export interface Question {
@@ -20,6 +22,21 @@ export interface Question {
     scaleMax?: number;
     scaleMinLabel?: string;
     scaleMaxLabel?: string;
+    unit?: string;
+    numericMin?: number;
+    numericMax?: number;
+    decimalPlaces?: number;
+    variableBinding?: {
+        taskId: number;
+        source: string;
+        revision: number;
+        signature: string;
+        mappings: Array<{
+            field: string;
+            option?: string;
+            answers: Array<{ answer: string; value: RawValue }>;
+        }>;
+    };
 }
 
 export interface QuestionnaireData {
