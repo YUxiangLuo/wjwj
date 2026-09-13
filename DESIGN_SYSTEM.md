@@ -1,60 +1,28 @@
 # Design system
 
-The application uses an institutional-blue, light-only design system built with Tailwind CSS v4 and locally owned shadcn-style primitives. `styles/theme.css` is the single source of truth for all three SPAs; application code must use semantic tokens rather than Tailwind palette colors or opacity-composed colors.
+`styles/theme.css` 是三个 SPA 的唯一主题源。项目仅支持浅色桌面界面；页面组合本地维护的 `src/components/ui` primitives 和共享模式，不创建主题副本。
 
-## Layers
+## 必须遵守的规则
 
-1. **Theme tokens** — color, shape, elevation, type, motion, and desktop-only rules in `styles/theme.css`.
-2. **UI primitives** — locally maintained Radix/shadcn forks in `src/components/ui`.
-3. **Shared patterns** — `StatusBadge`, `IconTile`, `PageHeader`, `AuthLoginScreen`, `DatetimePicker24`, and the workspace shell/sidebar.
-4. **Pages and features** — compose primitives and patterns; they do not define new theme copies.
+- 颜色使用语义 token：`background`、`foreground`、`card`、`muted`、`primary`、`success`、`warning`、`info`、`destructive`、`auxiliary`。导航使用配套 `navigation-*`；图表和热力图使用专用 token。
+- 不使用 Tailwind palette、`dark:`、渐变、模糊/光晕、颜色透明度组合、彩色阴影、hover 缩放/位移或 `transition-all`。
+- 填充背景上的文字使用 `X-foreground`；普通背景上的辅助强调文字使用 `auxiliary-strong`。状态和操作按语义意图选色。
+- 字体仅用 `text-display`、`text-page-title`、`text-section-title`、`text-subheading`、`text-body`、`text-label`、`text-meta`。普通 HTML 文本不得小于 14px；12px 只用于 SVG 图表刻度。
+- 圆角使用 `rounded-control`、`rounded-surface`、`rounded-overlay`；`rounded-circle` 只用于真正的圆，`rounded-toggle` 只用于开关轨道。普通表面用边框分隔，`shadow-floating` 只用于浮层；不用原始 radius/shadow utilities。
+- 默认、紧凑、强调控件高度分别为 40、36、44px；禁用态使用明确的 muted 颜色，不对整个控件降透明度。
+- 重复状态徽章、图标统计块和页面标题分别使用 `StatusBadge`、`IconTile`、`PageHeader`。
 
-## Color and typography
+## 本地 shadcn fork
 
-- `background` is the pale blue-gray application canvas; `card` and `popover` are solid white surfaces.
-- `navigation` is the dark institutional-blue shell surface. Use its `navigation-foreground`, `navigation-muted`, `navigation-active`, and `navigation-border` companions inside navigation chrome.
-- `primary`, `success`, `warning`, `info`, `destructive`, and `auxiliary` each have explicit `*-muted` and `*-border` tones. Do not construct those tones with `/10` or `/20` opacity modifiers.
-- Chart colors are the only intentionally multihued palette. Status and actions must use semantic intent tokens instead. Heatmaps use the explicit `heatmap-low`, `heatmap-moderate`, `heatmap-high`, and `heatmap-maximum` bands so data intensity never depends on opacity composition.
+`src/components/ui` 包含行为和无障碍修改，不是可覆盖的生成文件。严禁用 shadcn `--overwrite`；用 `bun run audit:shadcn [component ...]` 查看上游变化并手工移植，保留语义 token、浅色桌面和无障碍合同。不要在纯样式改动中迁移到 `radix-ui` 聚合包。
 
-Use semantic type utilities instead of the Tailwind T-shirt scale:
+## 验证
 
-| Role | Size / line height | Typical use |
-| --- | --- | --- |
-| `text-display` | 32 / 42px | login or immersive-stage display titles |
-| `text-page-title` | 24 / 32px | page titles and primary numeric values |
-| `text-section-title` | 20 / 28px | section headings |
-| `text-subheading` | 18 / 26px | card and dialog headings |
-| `text-body` | 16 / 26px | normal reading text |
-| `text-label` | 15 / 22px | controls, labels, and navigation |
-| `text-meta` | 14 / 20px | timestamps, identifiers, and short supporting text |
+样式修改后运行：
 
-Normal HTML text must never be smaller than 14px. Twelve-pixel text is reserved for SVG chart ticks. Labels use foreground text; `muted-foreground` is for genuinely supporting information, not primary instructions.
+```sh
+bun run check:styles
+bun run verify
+```
 
-## Shape and elevation
-
-Use role-based utilities in maintained components:
-
-| Role | Radius | Typical use |
-| --- | --- | --- |
-| `rounded-control` | 2px | buttons, inputs, tabs, badges, and navigation items |
-| `rounded-surface` | 2px | cards and grouped surfaces |
-| `rounded-overlay` | 4px | dialogs, popovers, and select menus |
-| `rounded-circle` | circle | avatars, status dots, chart points, and slider thumbs only |
-| `rounded-toggle` | pill | switch tracks only |
-
-Regular controls and surfaces are separated with borders rather than shadows. `shadow-floating` is reserved for dialogs, menus, popovers, and other content that physically floats above the page. Do not use raw radius/shadow utilities, colored shadows, gradients, glow/blur effects, hover scaling, or `transition-all`.
-
-Default controls are 40px high, compact controls are 36px, and prominent controls are 44px. Disabled controls use explicit muted colors instead of whole-element opacity.
-
-## Local shadcn fork policy
-
-The primitives are not disposable generated files. Dialog and AlertDialog restore focus for controlled use, and AlertDialog accepts a `fallbackFocusRef` for openers that unmount before it closes (for example a logout item inside an account menu); Button exports `IconButton`; `TableHead` declares `scope="col"` by default so every table associates its headers with cells; Select mirrors Radix's hidden background state to native `inert` and enforces accessible names; Slider and Progress enforce accessible names. `DatetimePicker24` is a shared composite outside the registry directory and owns application timezone behavior.
-
-- Inspect all upstream changes with `bun run audit:shadcn`, or a focused subset with `bun run audit:shadcn button select`. The audit pins CLI behavior while still exposing upstream registry changes; update the pin deliberately in `scripts/audit-shadcn.ts`.
-- Never run shadcn with `--overwrite` against this repository.
-- Port useful upstream changes manually while preserving the light-only, desktop-only, semantic-token, and accessibility contracts.
-- Do not migrate to the `radix-ui` aggregate package as part of a style-only change.
-
-## Validation
-
-Run `bun run check:styles` after style changes. The guard rejects palette utilities, dark or responsive variants, opacity-composed semantic colors, unsafe semantic color combinations, raw type/radius/shadow utilities, and decorative effects. It also validates the theme's WCAG text/status contrast and non-text input-boundary contrast. Finish with `bun run verify` and agent-browser screenshots of the three portals. `audit:shadcn` is a network-backed maintenance command and intentionally remains outside `verify`.
+并用 agent-browser 检查三个入口。`audit:shadcn` 依赖网络，不属于 `verify`。
