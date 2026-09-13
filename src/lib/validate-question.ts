@@ -1,5 +1,5 @@
 import type { Question, QuestionSection, QuestionType } from "./questionnaire-types";
-import { getDuplicateOptionIndexes } from "./questionnaire-options";
+import { getDuplicateOptionIndexes, validateOptionIdentities } from "./questionnaire-options";
 
 export interface QuestionValidationOptions {
     /** Only for already-persisted stage-1 work; new/edit saves must use strict validation. */
@@ -74,7 +74,12 @@ export function parseRecommendQuestionFromPayload(rawQuestion: unknown, index: n
             return `第${index}题选项内容重复，请修改后重试`;
         }
 
+        const identityError = validateOptionIdentities(question);
+        if (identityError) return `第${index}题${identityError}`;
+        // Identity-bearing options must not be filtered, shifting another option's identity.
+        if (question.optionIds !== undefined && options.length !== (question.options as unknown[]).length) return `第${index}题选项内容不能为空`;
         const q: Question = { ...base, options };
+        if (question.optionIds !== undefined) q.optionIds = [...question.optionIds as string[]];
 
         if (type === "multiple") {
             const minSelect = Number.isFinite(Number(question.minSelect)) ? Math.floor(Number(question.minSelect)) : 1;

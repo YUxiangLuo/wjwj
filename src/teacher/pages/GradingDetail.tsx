@@ -168,7 +168,7 @@ export function GradingDetail() {
                             <TabsTrigger value="sampling">抽样结果</TabsTrigger>
                             <TabsTrigger value="report">报告</TabsTrigger>
                         </TabsList>
-                        <TabsContent value="questionnaire" className="mt-4"><QuestionnaireSnapshot questionnaire={data.questionnaire} /></TabsContent>
+                        <TabsContent value="questionnaire" className="mt-4"><QuestionnaireSnapshot questionnaire={data.questionnaire} variableDictionary={data.variableDictionary} /></TabsContent>
                         <TabsContent value="plan" className="mt-4"><SamplePlanSnapshot value={data.samplePlan} populationSize={data.populationSize} /></TabsContent>
                         <TabsContent value="sampling" className="mt-4 space-y-4">
                             {data.samplingResults && (

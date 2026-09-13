@@ -11,6 +11,7 @@ mock.module("@/components/RichTextEditor", () => ({
 }));
 mock.module("@/components/questionnaire/QuestionEditor", () => ({ QuestionEditor: () => null }));
 mock.module("../api-client", () => ({ teacherApi: { deleteAttachment: async () => ({ success: true }) } }));
+mock.module("./VariableDictionaryDialog", () => ({ VariableDictionaryDialog: ({ topicId, onClose }: { topicId: number; onClose: () => void }) => <div data-testid="dictionary-session">{topicId}<button onClick={onClose}>关闭字典测试会话</button></div> }));
 
 const { TopicWizardDialog } = await import("./TopicWizardDialog");
 bootstrapDom.restore();
@@ -274,4 +275,34 @@ test("uploading blocks step changes until population processing finishes", () =>
     expect((view.getByTestId("teacher-topic-next") as HTMLButtonElement).disabled).toBe(true);
     expect((view.getByTestId("teacher-topic-prev") as HTMLButtonElement).disabled).toBe(true);
     expect(view.getByText(/正在上传…/)).toBeTruthy();
+});
+
+
+for (const success of [true, false]) {
+    test(`dictionary entry opens only after an explicit successful mapping save (${success})`, async () => {
+        let resolve!: (value: boolean) => void;
+        const save = mock(() => new Promise<boolean>(r => { resolve = r; }));
+        const advance = mock(() => {});
+        const view = render(<TopicWizardDialog {...makeProps({ currentStep: 3, editingTopicId: 14, columns: ["id", "score"], fieldMapping: completeMapping, onSaveFieldMapping: save, setCurrentStep: advance })} />);
+        fireEvent.click(view.getByTestId("teacher-topic-dictionary"));
+        expect(save).toHaveBeenCalledWith({ advance: false });
+        expect(view.queryByTestId("dictionary-session")).toBeNull();
+        expect((view.getByTestId("teacher-topic-next") as HTMLButtonElement).disabled).toBe(true);
+        await act(async () => resolve(success));
+        expect(Boolean(view.queryByTestId("dictionary-session"))).toBe(success);
+        expect(advance).not.toHaveBeenCalled();
+        if (success) {
+            expect(view.getByTestId("dictionary-session").textContent).toContain("14");
+            fireEvent.click(view.getByTestId("dictionary-session").querySelector("button")!);
+            expect(view.queryByTestId("dictionary-session")).toBeNull();
+            expect((view.getByTestId("teacher-topic-next") as HTMLButtonElement).disabled).toBe(false);
+        }
+    });
+}
+test("published wizard opens a server-controlled read-only dictionary without writing field mapping", async () => {
+    const save = mock(() => true);
+    const view = render(<TopicWizardDialog {...makeProps({ currentStep: 3, editingTopicId: 14, isPublishedTopic: true, columns: ["id", "score"], fieldMapping: completeMapping, onSaveFieldMapping: save })} />);
+    fireEvent.click(view.getByTestId("teacher-topic-dictionary"));
+    await view.findByTestId("dictionary-session");
+    expect(save).not.toHaveBeenCalled();
 });

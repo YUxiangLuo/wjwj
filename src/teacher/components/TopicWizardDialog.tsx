@@ -1,4 +1,5 @@
 import { CsvFileReviewDialog } from "@/components/CsvFileReviewDialog";
+import { VariableDictionaryDialog } from "./VariableDictionaryDialog";
 import { RequestError } from "@/components/RequestError";
 import { parseNumericText } from "@/lib/numeric-text";
 import { assignFieldRole } from "../topic/field-roles";
@@ -66,7 +67,7 @@ interface TopicWizardDialogProps {
     samplingPolicy: SamplingPolicyV1;
     setSamplingPolicy: (value: SamplingPolicyV1 | ((prev: SamplingPolicyV1) => SamplingPolicyV1)) => void;
     onSubmitTopic: () => void;
-    onSaveFieldMapping: () => void;
+    onSaveFieldMapping: (options?: { advance?: boolean }) => boolean | void | Promise<boolean | void>;
     onSaveSamplingPolicy: () => void;
     onSaveRecommendQuestions: () => void;
     onSaveWeights: () => void;
@@ -114,20 +115,22 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
     // Recommend question editor state
     const [csvReviewFile, setCsvReviewFile] = useState<File | null>(null);
+    const [dictionaryTopicId, setDictionaryTopicId] = useState<number | null>(null);
+    const dictionaryOpen = editingTopicId !== null && dictionaryTopicId === editingTopicId;
     const [pending, setPending] = useState(false);
     const pendingRef = useRef(false);
     const [actionError, setActionError] = useState<string | null>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const stepRef = useRef<HTMLDivElement>(null);
-    const busy = pending || uploadingExcel || uploadingAttachment || Boolean(csvReviewFile);
+    const busy = pending || uploadingExcel || uploadingAttachment || Boolean(csvReviewFile) || dictionaryOpen;
     const displayedError = actionError ?? saveError;
     useLayoutEffect(() => {
-        if (!open) { setCsvReviewFile(null); return; }
+        if (!open) { setCsvReviewFile(null); setDictionaryTopicId(null); return; }
         if (contentRef.current) contentRef.current.scrollTop = 0;
         stepRef.current?.focus({ preventScroll: true });
         setActionError(null);
     }, [currentStep, open]);
-    async function runAction(action: () => void | Promise<void>) {
+    async function runAction(action: () => unknown) {
         if (pendingRef.current || busy || loadingDetail) return;
         pendingRef.current = true;
         setPending(true);
@@ -465,6 +468,13 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         总体只有 {excelInfo.rowCount} 个单位：按常用精度规划时很可能直接抽满总体（普查），各抽样方法会得到相同估计且没有抽样误差差异，不适合做方法比较。若教学目标是比较抽样方法，请把总体规模增加到至少数百个单位。
                                     </div>
                                 )}
+
+                                <div className="flex items-center justify-between gap-4 rounded-surface border border-border bg-background p-4">
+                                    <div className="space-y-1"><h3 className="text-label font-semibold">数据变量字典（可选）</h3><p className="text-meta text-muted-foreground">基于已保存字段配置，逐项确认变量类型、类别标签与缺失编码；此处不设置问卷答案。</p></div>
+                                    <Button variant="outline" className="shrink-0" data-testid="teacher-topic-dictionary" disabled={busy || loadingDetail || !editingTopicId || (!isPublishedTopic && !canProceedMapping)} onClick={() => void runAction(async () => {
+                                        if (isPublishedTopic || await onSaveFieldMapping({ advance: false }) === true) setDictionaryTopicId(editingTopicId);
+                                    })}>{isPublishedTopic ? "查看变量字典" : "保存字段并配置字典"}</Button>
+                                </div>
 
                                 <div className="space-y-2">
                                     <Label className="text-foreground">标识符（必选 1 个）</Label>
@@ -903,7 +913,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         </div>
                     ) : null}
                     <div className="flex items-center justify-between w-full">
-                        <div className="text-meta text-muted-foreground" role="status">步骤 {currentStep} / 7{pending ? " · 正在保存…" : busy ? " · 正在上传…" : ""}</div>
+                        <div className="text-meta text-muted-foreground" role="status">步骤 {currentStep} / 7{pending ? " · 正在保存…" : dictionaryOpen ? " · 正在配置变量字典" : busy ? " · 正在上传…" : ""}</div>
                         <div className="flex gap-2">
                             {currentStep > 1 && (
                                 <Button data-testid="teacher-topic-prev" variant="outline" disabled={busy || loadingDetail} onClick={() => setCurrentStep(prev => prev - 1)} className="border-input bg-muted text-foreground hover:text-foreground hover:bg-muted">上一步</Button>
@@ -947,6 +957,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                     </div>
                 </DialogFooter>
             </DialogContent>
+            {open && dictionaryOpen && <VariableDictionaryDialog topicId={editingTopicId!} onClose={() => setDictionaryTopicId(null)} />}
             {open && csvReviewFile && <CsvFileReviewDialog file={csvReviewFile} onCancel={() => setCsvReviewFile(null)} onConfirm={file => {
                 setCsvReviewFile(null);
                 onExcelUpload(file);

@@ -1,4 +1,7 @@
 import { DraftSaveStatus } from "../../components/DraftSaveStatus";
+import { QuestionVariableBindingDialog } from "../../components/QuestionVariableBindingDialog";
+import { keepUnchangedQuestionBinding } from "@/domain/experiment/question-variable-binding";
+import { StatusBadge } from "@/components/StatusBadge";
 import { StageActions } from "../../components/StageActions";
 import { PageHeader } from "@/components/PageHeader";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -110,6 +113,7 @@ export function QuestionnaireDesign() {
     // Editor state
     const [editorOpen, setEditorOpen] = useState(false);
     const [editingQuestion, setEditingQuestion] = useState<Question | undefined>();
+    const [bindingQuestion, setBindingQuestion] = useState<Question | null>(null);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [questionToDelete, setQuestionToDelete] = useState<string | null>(null);
     const [isCompleting, setIsCompleting] = useState(false);
@@ -201,7 +205,9 @@ export function QuestionnaireDesign() {
     const handleSaveQuestion = (question: Question) => {
         if (editingQuestion) {
             // Update existing
-            setQuestions(questions.map((q) => (q.id === question.id ? question : q)));
+            const next = keepUnchangedQuestionBinding(editingQuestion, question);
+            if (editingQuestion.variableBinding && !next.variableBinding) toast.info("题目已修改，原数据关联已清除，请重新核对");
+            setQuestions(questions.map((q) => (q.id === question.id ? next : q)));
         } else {
             // Add new
             setQuestions([...questions, question]);
@@ -227,6 +233,7 @@ export function QuestionnaireDesign() {
             id: generateId(),
             content: question.content + " (复制)",
             recommendSourceId: undefined,
+            variableBinding: undefined,
         };
         const index = questions.findIndex((q) => q.id === question.id);
         const newQuestions = [...questions];
@@ -517,6 +524,10 @@ export function QuestionnaireDesign() {
                                                             </Badge>
                                                         </div>
                                                         {q.options && q.options.length > 0 && <p className="text-meta leading-relaxed text-muted-foreground">选项：{q.options.join("；")}</p>}
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <StatusBadge intent={q.variableBinding ? "info" : "neutral"}>{q.variableBinding ? "已声明变量关联（语义对应）" : "仅认知预试，不参与变量分析"}</StatusBadge>
+                                                            <Button variant="outline" size="sm" disabled={isCompleting} data-testid={`student-question-binding-${q.id}`} onClick={() => setBindingQuestion(q)}>{q.variableBinding ? "查看 / 调整关联" : "关联已有变量"}</Button>
+                                                        </div>
                                                     </div>
                                                     <div className="ml-auto flex shrink-0 flex-wrap gap-1">
                                                         <Button
@@ -960,6 +971,10 @@ export function QuestionnaireDesign() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {bindingQuestion && experiment && <QuestionVariableBindingDialog taskId={experiment.taskId} question={bindingQuestion} onClose={() => setBindingQuestion(null)} onApply={question => {
+                setQuestions(previous => previous.map(q => q.id === question.id ? question : q));
+            }} />}
 
             {/* Question Editor Dialog */}
             <QuestionEditor

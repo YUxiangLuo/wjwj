@@ -270,35 +270,37 @@ export function TopicManagement() {
         }
     }
 
-    async function handleSaveFieldMapping() {
-        if (!editingTopicId) return;
+    async function handleSaveFieldMapping({ advance = true }: { advance?: boolean } = {}) {
+        if (!editingTopicId) return false;
         if (editingTopicPublished) {
             setSaveError(null);
-            setCurrentStep(4);
-            return;
+            if (advance) setCurrentStep(4);
+            return true;
         }
         if (!fieldMapping.identifier) {
             toast.error("请选择标识符字段");
-            return;
+            return false;
         }
         // 新课题要求研究合同完整；仅有旧版对照变量的历史课题保持可保存（兼容）。
         if (parseStudyContract(fieldMapping) !== null || fieldMapping.studyContract !== undefined) {
             if (!isStudyContractComplete(fieldMapping.studyContract)) {
                 toast.error("请完成研究合同：研究问题、目标总体、分析单位和对照变量");
-                return;
+                return false;
             }
         } else if (!fieldMapping.analysisTarget?.field || (fieldMapping.analysisTarget.kind === "proportion" && !fieldMapping.analysisTarget.value)) {
             toast.error("请指定对照变量");
-            return;
+            return false;
         }
         const res = await teacherApi.updateFieldMapping(editingTopicId, fieldMapping);
         if (res.success) {
             await loadTopicDetail(editingTopicId);
             setSaveError(null);
-            setCurrentStep(4);
-        } else {
-            toast.error("保存失败: " + res.error?.message);
+            if (advance) setCurrentStep(4);
+            return true;
         }
+        setSaveError(res.error?.message || "保存字段配置失败，请重试");
+        toast.error("保存失败: " + res.error?.message);
+        return false;
     }
 
     async function handleSaveSamplingPolicy() {

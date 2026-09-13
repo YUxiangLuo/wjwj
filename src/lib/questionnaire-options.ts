@@ -17,3 +17,16 @@ export function getDuplicateOptionIndexes(options: readonly string[]): number[] 
     });
     return [...duplicates].sort((a, b) => a - b);
 }
+
+/** getRandomValues also works on ordinary intranet HTTP; randomUUID requires a secure context. */
+export function generateOptionIdentity(): string {
+    return `o_${Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, "0")).join("")}`;
+}
+
+export function validateOptionIdentities(question: { options?: unknown; optionIds?: unknown }): string | null {
+    if (question.optionIds === undefined) return null;
+    const ids = question.optionIds;
+    return !Array.isArray(ids) || !Array.isArray(question.options) || ids.length !== question.options.length
+        || ids.some(id => typeof id !== "string" || !id.trim().length || id.length > 200 || id.includes("\0"))
+        || new Set(ids).size !== ids.length ? "选项身份无效或重复，请重新编辑题目" : null;
+}

@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { validateQuestionnaireBindings } from "@/domain/experiment/question-variable-binding";
 import { db } from "../../db";
 import { experiment } from "../../db/schema";
 import { validateObservedVersion } from "../../lib/observed-version";
@@ -147,6 +148,8 @@ export async function submitStudentExperiment(params: {
         || dictionary.value.datasetRevision !== dictionaryDatasetRevisionFromHash(populationFileHash, params.taskInfo.excelFilePath, params.taskInfo.fieldMapping))) {
         return fail("总体数据与变量字典不一致，请联系教师检查", "DATASET_CHANGED", 409);
     }
+    const bindingError = validateQuestionnaireBindings(questionnaire, dictionary.value, params.experimentRecord.taskId);
+    if (bindingError) return fail(bindingError, "INVALID_VARIABLE_BINDING", 409);
     const snapshot: SubmissionSnapshot = {
         topicName: params.taskInfo.topicName ?? "未命名实验模板",
         studentName: params.student.name || params.student.studentId,

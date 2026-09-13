@@ -72,6 +72,7 @@ const submissionByTaskRoutes: RouteDefinition = {
             reportContent?: string;
             weightConfig?: unknown;
             samplingPolicy?: unknown;
+            variableDictionary?: import("@/domain/experiment/variable-dictionary").VariableDictionaryV1;
         }>(row.submissionSnapshot);
         const storedSamplingResults = snapshot?.samplingResults ?? parseStoredJson(row.samplingResults);
         const inspection = inspectSamplingResultsStorage(storedSamplingResults);
@@ -90,6 +91,7 @@ const submissionByTaskRoutes: RouteDefinition = {
             studentName: snapshot?.studentName ?? auth.student.name,
             populationSize: snapshot?.populationSize ?? row.populationSize,
             questionnaire: snapshot?.questionnaire ?? parseStoredJson(row.questionnaire),
+            ...(snapshot?.variableDictionary ? { variableDictionary: snapshot.variableDictionary } : {}),
             samplePlan: snapshot?.samplePlan ?? parseStoredJson(row.samplePlan),
             samplingResults: previewSamplingResults(samplingResults),
             samplingPolicy: resolveSamplingPolicy(snapshot?.samplingPolicy ?? row.samplingPolicy),

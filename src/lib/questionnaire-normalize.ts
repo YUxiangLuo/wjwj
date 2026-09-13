@@ -1,4 +1,5 @@
 import type { Question, QuestionSection, QuestionType } from "./questionnaire-types";
+import { validateOptionIdentities } from "./questionnaire-options";
 
 const QUESTION_TYPES = new Set<QuestionType>(["boolean", "single", "multiple", "scale"]);
 const QUESTION_SECTIONS = new Set<QuestionSection>(["screening", "main", "background"]);
@@ -70,6 +71,13 @@ export function normalizeRecommendQuestionsFromDb(value: unknown): Question[] {
             if (opts.length < 2) {
                 warnSkipped("single/multiple needs at least 2 non-empty options", item);
                 continue;
+            }
+            if (o.optionIds !== undefined) {
+                if (validateOptionIdentities(o) || opts.length !== o.options.length) {
+                    warnSkipped("invalid option identities", item);
+                    continue;
+                }
+                q.optionIds = [...o.optionIds as string[]];
             }
             q.options = opts;
         }

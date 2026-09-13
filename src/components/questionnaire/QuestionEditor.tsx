@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Trash2, GripVertical } from "lucide-react";
 import type { Question, QuestionSection, QuestionType } from "@/lib/questionnaire-types";
 import { QUESTION_SECTION_LABELS } from "@/lib/questionnaire-templates";
-import { getDuplicateOptionIndexes } from "@/lib/questionnaire-options";
+import { generateOptionIdentity, getDuplicateOptionIndexes } from "@/lib/questionnaire-options";
 
 interface QuestionEditorProps {
     open: boolean;
@@ -68,6 +68,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
     const [content, setContent] = useState(question?.content ?? "");
     const [section, setSection] = useState<QuestionSection>(question?.section ?? "main");
     const [options, setOptions] = useState<string[]>(question?.options ?? ["", ""]);
+    const [optionIds, setOptionIds] = useState<string[]>([]);
     const [minSelect, setMinSelect] = useState(question?.minSelect ?? 1);
     const [maxSelect, setMaxSelect] = useState(question?.maxSelect ?? 3);
     const [scaleMin, setScaleMin] = useState(question?.scaleMin ?? 1);
@@ -81,6 +82,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
             setContent(question.content);
             setSection(question.section ?? "main");
             setOptions(question.options ?? ["", ""]);
+            setOptionIds(question.optionIds ?? (question.options ?? ["", ""]).map(() => generateOptionIdentity()));
             setMinSelect(question.minSelect ?? 1);
             setMaxSelect(question.maxSelect ?? 3);
             setScaleMin(question.scaleMin ?? 1);
@@ -92,6 +94,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
             setContent("");
             setSection("main");
             setOptions(["", ""]);
+            setOptionIds([generateOptionIdentity(), generateOptionIdentity()]);
             setMinSelect(1);
             setMaxSelect(3);
             setScaleMin(1);
@@ -104,12 +107,14 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
     const addOption = () => {
         if (options.length < 10) {
             setOptions([...options, ""]);
+            setOptionIds([...optionIds, generateOptionIdentity()]);
         }
     };
 
     const removeOption = (index: number) => {
         if (options.length > 2) {
             setOptions(options.filter((_, i) => i !== index));
+            setOptionIds(optionIds.filter((_, i) => i !== index));
         }
     };
 
@@ -153,6 +158,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
 
         if (type === "single" || type === "multiple") {
             savedQuestion.options = options.filter((o) => o.trim());
+            savedQuestion.optionIds = optionIds.filter((_, index) => options[index]?.trim());
         }
 
         if (type === "multiple") {
@@ -175,10 +181,11 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
-                className="max-h-[85vh] max-w-2xl overflow-y-auto bg-card text-foreground"
+                className="flex max-h-[85vh] max-w-2xl flex-col overflow-hidden bg-card text-foreground"
                 data-testid="student-question-editor"
+                onInteractOutside={event => event.preventDefault()}
             >
-                <DialogHeader>
+                <DialogHeader className="shrink-0">
                     <DialogTitle className="text-section-title font-semibold text-foreground">
                         {isEditing ? "编辑题目" : "添加题目"}
                     </DialogTitle>
@@ -187,7 +194,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-6 py-4">
+                <div className="min-h-0 space-y-6 overflow-y-auto py-4 pr-2" data-testid="question-editor-fields">
                     <div className="space-y-2">
                         <Label className="text-foreground">问卷部分</Label>
                         <Select value={section} onValueChange={(value) => setSection(value as QuestionSection)}>
@@ -424,7 +431,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                     )}
                 </div>
 
-                <DialogFooter className="gap-2">
+                <DialogFooter className="shrink-0 gap-2">
                     <Button
                         variant="outline"
                         onClick={() => onOpenChange(false)}

@@ -1,4 +1,7 @@
 import { experiment } from "../../db/schema";
+import { parseQuestionVariableBinding, validateQuestionnaireBindings } from "@/domain/experiment/question-variable-binding";
+import type { VariableDictionaryV1 } from "@/domain/experiment/variable-dictionary";
+import type { QuestionnaireData } from "@/lib/questionnaire-types";
 import { attachCalculatedSampleSize } from "./sample-plan";
 import { parseStoredJson } from "./serialization";
 import { ExperimentStatus } from "@/domain/experiment/status";
@@ -46,6 +49,7 @@ export function buildStageCompletionUpdates(params: {
     deadlinePassed: boolean;
     fieldMapping?: unknown;
     samplingPolicy?: unknown;
+    variableDictionary?: VariableDictionaryV1 | null;
     stratifiedStats?: Record<string, Record<string, number>>;
 }) {
     const { experimentRecord: record, stage, payload } = params;
@@ -74,7 +78,14 @@ export function buildStageCompletionUpdates(params: {
             : rawQuestionnaire;
         const validationError = validateQuestionnaireForSubmit(questionnaire);
         if (validationError) return fail(validationError);
-        updates.questionnaire = questionnaire;
+        const bindingError = validateQuestionnaireBindings(questionnaire, params.variableDictionary ?? null, record.taskId);
+        if (bindingError) return fail(bindingError, "INVALID_VARIABLE_BINDING");
+        const data = questionnaire as QuestionnaireData;
+        updates.questionnaire = { ...data, questions: data.questions.map(question => {
+            if (question.variableBinding === undefined) return question;
+            const parsed = parseQuestionVariableBinding(question.variableBinding, question, params.variableDictionary ?? null, record.taskId);
+            return parsed.ok ? { ...question, variableBinding: parsed.value } : question;
+        }) };
         updates.stage1CompletedAt = now;
         updates.currentStage = 2;
     }

@@ -1,4 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
+import { hasQuestionVariableBindings } from "@/domain/experiment/question-variable-binding";
+import { readStudentVariableDictionary } from "../experiment/variable-dictionary";
 import { db } from "../../db";
 import { jsonbNullSafeEquals } from "../../db/native-jsonb";
 import { experiment, samplingAttempt } from "../../db/schema";
@@ -355,6 +357,9 @@ const stageCompleteRoutes: RouteDefinition = {
             completionRecord = prepared.record;
             payload = {};
         }
+        const bindingSource = stage === 1 && hasQuestionVariableBindings(payload.questionnaire)
+            ? await readStudentVariableDictionary(taskId, auth.student.classId) : null;
+        if (bindingSource && !bindingSource.ok) return error(bindingSource.message, bindingSource.code, bindingSource.status);
         const result = buildStageCompletionUpdates({
             experimentRecord: completionRecord,
             stage,
@@ -363,6 +368,7 @@ const stageCompleteRoutes: RouteDefinition = {
             deadlinePassed,
             fieldMapping,
             samplingPolicy: stageTaskInfo?.samplingPolicy,
+            variableDictionary: bindingSource?.ok ? bindingSource.dictionary : null,
             stratifiedStats,
         });
         if (!result.ok) return error(result.message, result.code, result.status);
@@ -560,6 +566,8 @@ const submitRoutes: RouteDefinition = {
                 topicName: taskInfo?.topicName ?? null,
                 populationSize: taskInfo?.populationSize ?? null,
                 weightConfig: taskInfo?.weightConfig,
+                variableDictionary: taskInfo?.variableDictionary,
+                variableDictionaryRevision: taskInfo?.variableDictionaryRevision,
                 fieldMapping: taskInfo?.fieldMapping,
                 samplingPolicy: taskInfo?.samplingPolicy,
                 excelFilePath: taskInfo?.excelFilePath,

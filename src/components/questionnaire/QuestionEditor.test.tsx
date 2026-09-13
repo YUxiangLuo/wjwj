@@ -37,3 +37,12 @@ for (const type of ["single", "multiple"] as const) {
         expect(save).toHaveBeenCalledWith(expect.objectContaining({ options: ["同一选项", "另一个选项"] }));
     });
 }
+
+test("editing and deleting options preserve the surviving option identities", () => {
+    const save = mock((_question: import("@/lib/questionnaire-types").Question) => {});
+    const view = render(<QuestionEditor open onOpenChange={() => {}} onSave={save} question={{ id: "stable", type: "single", content: "选择", options: ["甲", "乙", "丙"], optionIds: ["a", "b", "c"] }} />);
+    fireEvent.change(view.getByTestId("student-question-option-3"), { target: { value: "丙改名" } });
+    fireEvent.click(view.getByRole("button", { name: "删除选项 2" }));
+    fireEvent.click(view.getByTestId("student-question-save"));
+    expect(save.mock.calls[0]![0]).toMatchObject({ options: ["甲", "丙改名"], optionIds: ["a", "c"] });
+});

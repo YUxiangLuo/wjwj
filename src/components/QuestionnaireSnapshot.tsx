@@ -1,4 +1,7 @@
 import { RichTextContent } from "@/components/RichTextContent";
+import { parseQuestionVariableBinding, questionAnswers } from "@/domain/experiment/question-variable-binding";
+import { parseVariableDictionary, type VariableDictionaryV1 } from "@/domain/experiment/variable-dictionary";
+import type { Question } from "@/lib/questionnaire-types";
 import type { QuestionnaireData, QuestionType } from "@/lib/questionnaire-types";
 import { QUESTION_SECTION_LABELS } from "@/lib/questionnaire-templates";
 
@@ -11,9 +14,11 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
 
 export function QuestionnaireSnapshot({
     questionnaire,
+    variableDictionary,
     emptyText = "暂无问卷内容",
 }: {
     questionnaire: QuestionnaireData | null | undefined;
+    variableDictionary?: VariableDictionaryV1 | null;
     emptyText?: string;
 }) {
     if (!questionnaire) {
@@ -48,6 +53,7 @@ export function QuestionnaireSnapshot({
                                 </span>
                             </div>
 
+                            <QuestionBindingSnapshot question={question} dictionary={variableDictionary} />
                             {question.options?.length ? (
                                 <ul className="mt-3 list-disc space-y-1 pl-5 text-label text-muted-foreground">
                                     {question.options.map((option, optionIndex) => (
@@ -84,4 +90,19 @@ export function QuestionnaireSnapshot({
             />
         </div>
     );
+}
+
+function QuestionBindingSnapshot({ question, dictionary }: { question: Question; dictionary?: VariableDictionaryV1 | null }) {
+    if (question.variableBinding === undefined) return <p className="mt-2 text-meta text-muted-foreground">仅认知预试，未关联已有变量。</p>;
+    if (!dictionary) return <p className="mt-2 text-meta text-info">存在变量关联声明；请在关联编辑器或包含字典的提交快照中核对。</p>;
+    const source = parseVariableDictionary(dictionary);
+    if (!source.ok) return <p role="alert" className="mt-2 text-meta text-destructive">提交字典版本无法核对，请联系教师检查。</p>;
+    dictionary = source.value;
+    const parsed = parseQuestionVariableBinding(question.variableBinding, question, dictionary);
+    if (!parsed.ok) return <p role="alert" className="mt-2 text-meta text-destructive">关联无法核对：{parsed.error}</p>;
+    const answers = questionAnswers(question);
+    return <div className="mt-3 space-y-1 border-t border-border pt-2 text-meta">
+        <p className="font-medium">语义对应 · 提交字典修订 {dictionary.revision}（不是采集来源）</p>
+        {parsed.value.answers.map((entry, index) => <p key={entry.answerId} className="break-words text-muted-foreground">{answers[index]!.label} → {JSON.stringify(dictionary.variables.find(v => v.id === entry.variableId)!.sourceField)} · {typeof entry.value === "string" ? "文本" : typeof entry.value === "number" ? "数值" : "布尔"} {JSON.stringify(entry.value)}</p>)}
+    </div>;
 }

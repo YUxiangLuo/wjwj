@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { VariableDictionaryDialog } from "./VariableDictionaryDialog";
 import { BookOpen, FileText, Layers, ListChecks, PieChart, Table2, ExternalLink, CheckCircle2, Eye, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,10 +53,12 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
     const [detail, setDetail] = useState<TopicDetail | null>(null);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<TabKey>("basic");
+    const [dictionaryOpen, setDictionaryOpen] = useState(false);
 
     const topicId = topic?.id ?? null;
 
     useEffect(() => {
+        setDictionaryOpen(false);
         if (open && topicId !== null) {
             setActiveTab("basic");
             loadDetail(topicId);
@@ -99,7 +102,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
     if (!topic) return null;
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={value => { if (!dictionaryOpen) onOpenChange(value); }}>
             <DialogContent
                 className="max-w-5xl h-[80vh] flex flex-col bg-card border-border text-foreground"
                 showCloseButton={false}
@@ -235,6 +238,10 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                             {/* Field Mapping Tab */}
                             {activeTab === "mapping" && (
                                 <div className="space-y-4 py-4 animate-in fade-in duration-300">
+                                    <div className="flex items-center justify-between gap-4 rounded-surface border border-border bg-background p-4">
+                                        <div className="space-y-1"><h3 className="text-label font-semibold">数据变量字典</h3><p className="text-meta text-muted-foreground">查看字段含义、类别及缺失编码；未确认的建议不会自动保存。</p></div>
+                                        <Button variant="outline" disabled={!detail?.hasExcelFile || !fieldMapping.identifier} onClick={() => setDictionaryOpen(true)}>查看变量字典</Button>
+                                    </div>
                                     {resolvedStudyContract && (
                                         <div
                                             className="space-y-3 rounded-surface border border-primary-border bg-primary-muted p-4"
@@ -469,9 +476,10 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                 </div>
 
                 <DialogFooter className="border-t border-border pt-4 flex-shrink-0">
-                    <Button onClick={() => onOpenChange(false)} className="bg-muted hover:bg-input text-foreground">关闭</Button>
+                    <Button disabled={dictionaryOpen} onClick={() => onOpenChange(false)} className="bg-muted hover:bg-input text-foreground">关闭</Button>
                 </DialogFooter>
             </DialogContent>
+            {open && dictionaryOpen && <VariableDictionaryDialog topicId={topic.id} readOnly onClose={() => setDictionaryOpen(false)} />}
         </Dialog>
     );
 }

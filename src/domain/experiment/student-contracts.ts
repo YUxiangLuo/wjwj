@@ -60,6 +60,7 @@ export interface SubmissionDetail {
         studentName: string;
         populationSize: number | null;
         questionnaire: QuestionnaireData | null;
+        variableDictionary?: import("./variable-dictionary").VariableDictionaryV1;
         samplePlan: SamplePlanData | null;
         samplingResults: SamplingResultsData | null;
         samplingPolicy: SamplingPolicyV1;

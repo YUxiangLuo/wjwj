@@ -1,5 +1,7 @@
 import type { Question, QuestionnaireData } from "@/lib/questionnaire-types";
 import type { SamplingPolicyV1 } from "@/lib/sampling-policy";
+import type { VariableDictionaryV1 } from "@/domain/experiment/variable-dictionary";
+export interface TopicVariableDictionary { dictionary: VariableDictionaryV1; confirmed: boolean; editable: boolean }
 import { createApiClient } from "@/lib/api-client";
 export type { ApiResponse } from "@/lib/api-client";
 const { request, download: downloadTeacherFile, resourceUrl: teacherResourceUrl } = createApiClient("teacher");
@@ -48,6 +50,7 @@ export interface SubmissionDetail extends GradingItem {
     reportContent: string;
     samplePlan: SamplePlanData | null;
     questionnaire: QuestionnaireData | null;
+    variableDictionary?: VariableDictionaryV1 | null;
     samplingResults?: SamplingResultsData | null;
     samplingPolicy?: SamplingPolicyV1;
     samplingAttempts?: Array<{
@@ -105,6 +108,8 @@ export const teacherApi = {
     getClasses: () => request<TeacherClass[]>("/api/teacher/classes"),
     getTopics: () => request<Topic[]>("/api/teacher/topics"),
     getTopicDetail: (id: number) => request<TopicDetail>(`/api/teacher/topics/${id}/detail`),
+    getVariableDictionary: (id: number, signal?: AbortSignal) => request<TopicVariableDictionary>(`/api/teacher/topics/${id}/variables`, { signal }),
+    updateVariableDictionary: (id: number, dictionary: VariableDictionaryV1) => request<TopicVariableDictionary>(`/api/teacher/topics/${id}/variables`, { method: "PUT", body: JSON.stringify({ dictionary }) }),
     createTopic: (data: { name: string; description?: string }) => request<{ id: number }>("/api/teacher/topics", { method: "POST", body: JSON.stringify(data) }),
     updateTopic: (id: number, data: { name?: string; description?: string; status?: number }) => request<{ success: boolean }>(`/api/teacher/topics/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     deleteTopic: (id: number) => request<{ success: boolean }>(`/api/teacher/topics/${id}`, { method: "DELETE" }),

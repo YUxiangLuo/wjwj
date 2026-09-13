@@ -32,6 +32,7 @@ export const authApi = {
 export const tasksApi = {
     list: () => request<StudentTask[]>("/api/student/tasks"),
     get: (taskId: number) => request<TaskDetail>(`/api/student/tasks/${taskId}`),
+    getVariables: (taskId: number, signal?: AbortSignal) => request<{ dictionary: import("@/domain/experiment/variable-dictionary").VariableDictionaryV1 | null }>(`/api/student/tasks/${taskId}/variables`, { signal }),
 };
 
 export const experimentApi = {

@@ -12,6 +12,7 @@ import { attachmentDownloadRoutes, exportRoutes } from "./routes/files";
 import { announcementsRoutes } from "./routes/announcements";
 import { submissionByTaskRoutes } from "./routes/submissions";
 import { taskDetailRoutes, tasksRoutes } from "./routes/tasks";
+import { studentVariableDictionaryRoutes } from "./routes/variable-dictionary";
 
 export const studentApiRoutes = {
     "/api/student/login": loginRoutes,
@@ -21,6 +22,7 @@ export const studentApiRoutes = {
 
     "/api/student/tasks": tasksRoutes,
     "/api/student/tasks/:id": taskDetailRoutes,
+    "/api/student/tasks/:id/variables": studentVariableDictionaryRoutes,
     "/api/student/tasks/:id/experiment": experimentRoutes,
     "/api/student/tasks/:id/experiment/stages/:stage/complete": stageCompleteRoutes,
     "/api/student/tasks/:id/experiment/stages/:stage/reopen": stageReopenRoutes,
