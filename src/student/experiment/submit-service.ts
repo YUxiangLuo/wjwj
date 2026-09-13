@@ -10,7 +10,7 @@ import { resolveStoragePath } from "../../server/storage-files";
 import { dictionaryDatasetRevisionFromHash, readStoredVariableDictionary } from "../../server/variable-dictionary";
 import type { VariableDictionaryV1 } from "../../domain/experiment/variable-dictionary";
 import { normalizeSamplePlanData } from "./sample-plan-display";
-import { parseStoredJson } from "./serialization";
+import { readStoredDocument } from "@/lib/stored-document";
 import { compactSamplingResults } from "./sampling-storage";
 import { ExperimentStatus } from "@/domain/experiment/status";
 import {
@@ -88,9 +88,9 @@ export function validateExperimentSubmission(params: {
     if (record.status === ExperimentStatus.GRADED) return fail("实验已批改完成", "ALREADY_GRADED");
     if (record.currentStage !== 4 || !record.stage4CompletedAt) return fail("请完成所有实验阶段后再提交", "INCOMPLETE");
 
-    const questionnaire = parseStoredJson(record.questionnaire);
-    const samplePlan = parseStoredJson(record.samplePlan);
-    const samplingResults = parseStoredJson(record.samplingResults);
+    const questionnaire = readStoredDocument(record.questionnaire);
+    const samplePlan = readStoredDocument(record.samplePlan);
+    const samplingResults = readStoredDocument(record.samplingResults);
     const populationSize = normalizePopulationSize(params.taskInfo.populationSize);
 
     const validationError =
@@ -132,13 +132,13 @@ export async function submitStudentExperiment(params: {
     if (!validation.ok) return validation;
 
     const populationSize = normalizePopulationSize(params.taskInfo.populationSize);
-    const questionnaire = parseStoredJson<Record<string, unknown>>(params.experimentRecord.questionnaire);
+    const questionnaire = readStoredDocument<Record<string, unknown>>(params.experimentRecord.questionnaire);
     const samplePlan = normalizeSamplePlanData(
-        parseStoredJson<Record<string, unknown>>(params.experimentRecord.samplePlan),
+        readStoredDocument<Record<string, unknown>>(params.experimentRecord.samplePlan),
         populationSize,
     );
     const samplingResults = compactSamplingResults(
-        parseStoredJson<Record<string, unknown>>(params.experimentRecord.samplingResults),
+        readStoredDocument<Record<string, unknown>>(params.experimentRecord.samplingResults),
     );
     const populationFileHash = await populationFileSha256(params.taskInfo.excelFilePath);
     const dictionary = readStoredVariableDictionary(params.taskInfo.variableDictionary, params.taskInfo.variableDictionaryRevision);

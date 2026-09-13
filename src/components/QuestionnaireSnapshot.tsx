@@ -1,3 +1,4 @@
+import { questionnaireOptionFormatError } from "@/lib/questionnaire-options";
 import { NumericQuestionSummary } from "@/components/questionnaire/NumericQuestionSummary";
 import { RichTextContent } from "@/components/RichTextContent";
 import { parseQuestionVariableBinding, questionAnswers } from "@/domain/experiment/question-variable-binding";
@@ -27,6 +28,8 @@ export function QuestionnaireSnapshot({
         return <p className="text-label text-muted-foreground">{emptyText}</p>;
     }
 
+    const formatError = questionnaireOptionFormatError(questionnaire);
+    if (formatError) return <p role="alert" className="text-label text-destructive">问卷快照格式无效：{formatError}。原记录未修改，请联系管理员检查。</p>;
     const questions = Array.isArray(questionnaire.questions) ? questionnaire.questions : [];
 
     return (
@@ -59,8 +62,8 @@ export function QuestionnaireSnapshot({
                             <QuestionBindingSnapshot question={question} dictionary={variableDictionary} />
                             {question.options?.length ? (
                                 <ul className="mt-3 list-disc space-y-1 pl-5 text-label text-muted-foreground">
-                                    {question.options.map((option, optionIndex) => (
-                                        <li key={`${question.id}-${optionIndex}`}>{option}</li>
+                                    {question.options.map(option => (
+                                        <li key={option.id}>{option.label}</li>
                                     ))}
                                 </ul>
                             ) : null}

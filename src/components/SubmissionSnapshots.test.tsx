@@ -24,8 +24,8 @@ test("questionnaire snapshot renders question types, options, constraints, and c
             welcomeText: "<p>欢迎参与</p>",
             endingText: "<p>感谢作答</p>",
             questions: [
-                { id: "q1", type: "single", content: "你的年级？", options: ["大一", "大二"] },
-                { id: "q2", type: "multiple", content: "常用设施？", options: ["图书馆", "食堂", "操场"], minSelect: 1, maxSelect: 2 },
+                { id: "q1", type: "single", content: "你的年级？", options: [{ id: "o_1", label: "大一" }, { id: "o_2", label: "大二" }] },
+                { id: "q2", type: "multiple", content: "常用设施？", options: [{ id: "o_1", label: "图书馆" }, { id: "o_2", label: "食堂" }, { id: "o_3", label: "操场" }], minSelect: 1, maxSelect: 2 },
                 { id: "q3", type: "scale", content: "总体满意度", scaleMin: 1, scaleMax: 5, scaleMinLabel: "不满意", scaleMaxLabel: "满意" },
                 { id: "q4", type: "boolean", content: "是否愿意推荐？" },
             ],

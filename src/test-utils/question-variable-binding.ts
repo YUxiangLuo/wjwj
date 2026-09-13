@@ -10,7 +10,7 @@ export function bindingDictionary(): VariableDictionaryV1 {
         variable("v_5", "连续金额", [], { storageType: "number", measurementLevel: "continuous" }),
     ] };
 }
-export function bindingQuestion(): Question { return { id: "q1", type: "single", content: "请选择类别", options: ["甲类", "乙类"], optionIds: ["o_a", "o_b"] }; }
+export function bindingQuestion(): Question { return { id: "q1", type: "single", content: "请选择类别", options: [{ id: "o_a", label: "甲类" }, { id: "o_b", label: "乙类" }] }; }
 export function bindingFor(question = bindingQuestion(), dictionary = bindingDictionary(), variableId = "v_2"): CategoricalQuestionBinding {
     return { schemaVersion: 1, taskId: 3, datasetRevision: dictionary.datasetRevision, dictionaryRevision: dictionary.revision,
         questionSignature: questionBindingSignature(question), kind: question.type === "multiple" ? "multiple-binary" : "categorical",

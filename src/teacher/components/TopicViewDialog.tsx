@@ -419,7 +419,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                                 <div className="text-label text-foreground pl-9">{q.content || "（无内容）"}</div>
                                                 {(q.type === "single" || q.type === "multiple") && q.options && q.options.length > 0 && (
                                                     <div className="pl-9 text-meta text-muted-foreground">
-                                                        选项：{q.options.join("；")}
+                                                        选项：{q.options.map(option => option.label).join("；")}
                                                     </div>
                                                 )}
                                                 <NumericQuestionSummary question={q} />

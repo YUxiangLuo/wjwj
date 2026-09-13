@@ -10,7 +10,7 @@ import {
     INVALID_SAMPLING_STORAGE_CODE,
     INVALID_SAMPLING_STORAGE_MESSAGE,
 } from "../experiment/sampling-storage";
-import { parseStoredJson } from "../experiment/serialization";
+import { readStoredDocument } from "@/lib/stored-document";
 import { error, getPositiveRouteId, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { getStudentTaskAccessError } from "../experiment/task-access";
@@ -62,7 +62,7 @@ const submissionByTaskRoutes: RouteDefinition = {
             .where(and(eq(experiment.studentId, auth.student.id), eq(experiment.taskId, taskId)));
 
         if (!row || row.status === "in_progress") return error("尚未提交实验", "NOT_FOUND", 404);
-        const snapshot = parseStoredJson<{
+        const snapshot = readStoredDocument<{
             topicName?: string;
             studentName?: string;
             populationSize?: number | null;
@@ -74,7 +74,7 @@ const submissionByTaskRoutes: RouteDefinition = {
             samplingPolicy?: unknown;
             variableDictionary?: import("@/domain/experiment/variable-dictionary").VariableDictionaryV1;
         }>(row.submissionSnapshot);
-        const storedSamplingResults = snapshot?.samplingResults ?? parseStoredJson(row.samplingResults);
+        const storedSamplingResults = snapshot?.samplingResults ?? readStoredDocument(row.samplingResults);
         const inspection = inspectSamplingResultsStorage(storedSamplingResults);
         if (!inspection.ok) return error(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
         let samplingResults = storedSamplingResults;
@@ -90,9 +90,9 @@ const submissionByTaskRoutes: RouteDefinition = {
             topicName: snapshot?.topicName ?? row.topicName,
             studentName: snapshot?.studentName ?? auth.student.name,
             populationSize: snapshot?.populationSize ?? row.populationSize,
-            questionnaire: snapshot?.questionnaire ?? parseStoredJson(row.questionnaire),
+            questionnaire: snapshot?.questionnaire ?? readStoredDocument(row.questionnaire),
             ...(snapshot?.variableDictionary ? { variableDictionary: snapshot.variableDictionary } : {}),
-            samplePlan: snapshot?.samplePlan ?? parseStoredJson(row.samplePlan),
+            samplePlan: snapshot?.samplePlan ?? readStoredDocument(row.samplePlan),
             samplingResults: previewSamplingResults(samplingResults),
             samplingPolicy: resolveSamplingPolicy(snapshot?.samplingPolicy ?? row.samplingPolicy),
             reportContent: snapshot?.reportContent ?? row.reportContent ?? "",

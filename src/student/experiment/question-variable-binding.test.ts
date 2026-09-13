@@ -31,6 +31,17 @@ test("stage 1 removes untrusted binding extras without modifying unbound questio
         expect((result.updates.questionnaire as any).questions[1]).toEqual(questionnaire.questions[1]);
     }
 });
+test("stage 1 rejects answer data at questionnaire and question levels without preparing a write", () => {
+    for (const level of ["questionnaire", "question"]) {
+        const questionnaire = boundQuestionnaire();
+        if (level === "questionnaire") (questionnaire as any).answersByIndex = { 0: "o_a" };
+        else (questionnaire.questions[0] as any).responses = [0, false];
+        const saved = record(), before = structuredClone(saved), input = structuredClone(questionnaire);
+        const result = buildStageCompletionUpdates({ experimentRecord: saved, stage: 1, payload: { questionnaire }, populationSize: 100, deadlinePassed: false, variableDictionary: bindingDictionary() });
+        expect(result).toMatchObject({ ok: false, code: "VALIDATION_ERROR" });
+        expect(result).not.toHaveProperty("updates"); expect(saved).toEqual(before); expect(questionnaire).toEqual(input);
+    }
+});
 test("no binding remains optional even on a dictionary-enabled task", () => {
     const questionnaire = boundQuestionnaire(); delete questionnaire.questions[0]!.variableBinding;
     const result = buildStageCompletionUpdates({ experimentRecord: record(), stage: 1, payload: { questionnaire }, populationSize: 100, deadlinePassed: false });

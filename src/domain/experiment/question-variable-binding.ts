@@ -1,6 +1,5 @@
 import type { Question } from "@/lib/questionnaire-types";
 import { validateQuestionAtIndex } from "@/lib/validate-question";
-import { validateOptionIdentities } from "@/lib/questionnaire-options";
 import { variableValueKey, type VariableDictionaryV1, type VariableValue } from "./variable-dictionary";
 
 /** Optional, versioned semantic correspondence. Never a questionnaire response or collection provenance. */
@@ -28,14 +27,15 @@ export function questionAnswers(question: Question): Array<{ id: string; label: 
         if (!Number.isInteger(min) || !Number.isInteger(max) || min < 1 || max > 10 || min >= max) return [];
         return Array.from({ length: max - min + 1 }, (_, index) => ({ id: `score_${min + index}`, label: String(min + index) }));
     }
-    return (question.options ?? []).map((label, index) => ({ id: question.optionIds?.[index] ?? "", label }));
+    return (question.options ?? []).map(option => ({ id: option.id, label: option.label }));
 }
 /** Deterministic semantic snapshot: reordering questions does not invalidate a link; editing its meaning does. */
 export function questionBindingSignature(question: Question): string {
     if (question.type === "numeric") return JSON.stringify([question.id, question.type, question.content, question.section ?? "main",
         question.numberRule?.unit, question.numberRule?.min, question.numberRule?.max, question.numberRule?.decimalPlaces]);
+    // Canonical labels/identities are independent of storage layout; existing claims need no signature rewrite.
     return JSON.stringify([question.id, question.type, question.content, question.section ?? "main",
-        question.options ?? null, question.optionIds ?? null, question.minSelect ?? null, question.maxSelect ?? null,
+        question.options?.map(option => option.label) ?? null, question.options?.map(option => option.id) ?? null, question.minSelect ?? null, question.maxSelect ?? null,
         question.scaleMin ?? null, question.scaleMax ?? null, question.scaleMinLabel ?? null, question.scaleMaxLabel ?? null]);
 }
 function identity(value: unknown): value is string {
@@ -50,7 +50,7 @@ export function parseQuestionVariableBinding(raw: unknown, question: Question, d
     if (value.schemaVersion !== 1) return fail("题目变量关联版本暂不支持");
     if (!Number.isSafeInteger(value.taskId) || Number(value.taskId) < 1 || (taskId !== undefined && value.taskId !== taskId)) return fail("关联不属于当前实验任务，请重新核对");
     if (value.datasetRevision !== dictionary.datasetRevision || value.dictionaryRevision !== dictionary.revision) return fail("关联所用变量字典已改变，请重新核对关联");
-    if (!identity(question.id) || validateQuestionAtIndex(question, 1) || validateOptionIdentities(question)) return fail("关联题目或选项身份无效，请先修正题目");
+    if (!identity(question.id) || validateQuestionAtIndex(question, 1)) return fail("关联题目或选项身份无效，请先修正题目");
     if (value.questionSignature !== questionBindingSignature(question)) return fail("题目含义或作答规则已改变，请重新核对关联");
     if (question.type === "numeric") {
         if (value.kind !== "continuous" || value.answers !== undefined) return fail("数值题须直接关联连续变量，不能附带选项编码或作答数据");
@@ -61,7 +61,7 @@ export function parseQuestionVariableBinding(raw: unknown, question: Question, d
             dictionaryRevision: dictionary.revision, questionSignature: value.questionSignature as string, kind: "continuous", variableId: variable.id } };
     }
     const answers = questionAnswers(question);
-    if (answers.length < 2 || answers.some(answer => !identity(answer.id))) return fail("选项缺少独立身份，请先编辑并保存题目，再确认关联");
+    if (answers.length < 2 || answers.some(answer => !identity(answer.id))) return fail("题目的可选答案身份无效，不能确认关联");
     const expectedKind = question.type === "multiple" ? "multiple-binary" : "categorical";
     if (value.kind !== expectedKind || !Array.isArray(value.answers) || value.answers.length !== answers.length) return fail("每个选项都需明确对应真实编码；多选需独立二值字段");
     const result: CategoricalQuestionBinding["answers"] = [];

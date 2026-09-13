@@ -1,3 +1,4 @@
+import { validateQuestionAtIndex } from "@/lib/validate-question";
 import * as XLSX from "xlsx";
 import { questionAnswers, validateQuestionnaireBindings } from "@/domain/experiment/question-variable-binding";
 import { variableValueKey, type VariableDictionaryV1 } from "@/domain/experiment/variable-dictionary";
@@ -22,6 +23,10 @@ function requireValue(ok: unknown, message: string): asserts ok { if (!ok) throw
 /** Only authoritative source rows enter data sheets. Metadata lives in separate sheets. */
 export function buildCodebookWorkbook(input: CodebookInput): Uint8Array {
     const { dictionary, questionnaire, population, results } = input;
+    for (const [index, question] of questionnaire.questions.entries()) {
+        const error = validateQuestionAtIndex(question, index + 1);
+        requireValue(!error, error ?? "题目配置无效");
+    }
     const bindingError = validateQuestionnaireBindings(questionnaire, dictionary, input.taskId);
     requireValue(!bindingError, bindingError ?? "题目关联无效");
     requireValue(object(results), "暂无可导出的抽样记录");
@@ -47,7 +52,7 @@ export function buildCodebookWorkbook(input: CodebookInput): Uint8Array {
         ["来源边界", "题目关联仅表示语义对应，不表示既有数据由本问卷采集。认知试填答案不会写入样本。"],
         ["读取方式", "样本使用原抽样字段配置读取，保留全部源字段。字典必须与此读取方式一致，不自动转换编码、截断范围或换算单位。"],
         ["缺失规则", "空单元格、空白文本及字典明确声明的原值为缺失；0/false 不自动视为缺失。数据表保留原值，不替换缺失编码。"],
-        ["选项身份", "未配置的选项身份保持空白，不在导出时补造。"], ["权重", "简单随机/系统抽样按实际 N/n，分层按实际 N_h/n_h，PPS 使用保存的入样概率及其倒数。不是有效案例数校正；不据此输出回归检验或通用标准误。"],
+        ["选项身份", "单选/多选的身份和标签来自已保存的选项对象；缺失或重复时拒绝导出，不补造身份。"], ["权重", "简单随机/系统抽样按实际 N/n，分层按实际 N_h/n_h，PPS 使用保存的入样概率及其倒数。不是有效案例数校正；不据此输出回归检验或通用标准误。"],
         ["记录位置", "抽样记录用方法和样本序号对应各样本表的数据行；总体行序号指解析后的总体行，不是原 Excel 物理行号。"],
         ["Excel安全", "文本单元格按文本写入，不创建公式、宏或链接，不给原值添加防公式前缀。"]]);
     table("变量", [["变量ID", "精确源字段", "标签", "存储类型", "测量层级", "单位"], ...dictionary.variables.map(v => [v.id, v.sourceField, v.label, v.storageType, v.measurementLevel, v.unit])]);

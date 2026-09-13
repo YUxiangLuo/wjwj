@@ -3,7 +3,7 @@ import { parseQuestionVariableBinding, validateQuestionnaireBindings } from "@/d
 import type { VariableDictionaryV1 } from "@/domain/experiment/variable-dictionary";
 import type { QuestionnaireData } from "@/lib/questionnaire-types";
 import { attachCalculatedSampleSize } from "./sample-plan";
-import { parseStoredJson } from "./serialization";
+import { readStoredDocument } from "@/lib/stored-document";
 import { ExperimentStatus } from "@/domain/experiment/status";
 import { getRequiredStratifiedMinimum } from "./final-sample-bounds";
 import { resolveAnalysisTarget } from "../../lib/analysis-target";
@@ -110,9 +110,9 @@ export function buildStageCompletionUpdates(params: {
     }
 
     if (stage === 3) {
-        const samplePlan = parseStoredJson(record.samplePlan);
+        const samplePlan = readStoredDocument(record.samplePlan);
         const validationError = validateSamplingResultsForSubmit(
-            parseStoredJson(record.samplingResults),
+            readStoredDocument(record.samplingResults),
             getTargetSampleSizeFromSamplePlan(samplePlan),
             params.populationSize,
             params.samplingPolicy,

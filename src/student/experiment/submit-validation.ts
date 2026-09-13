@@ -1,4 +1,5 @@
 import { getRichTextPlainLength, getRichTextPlainText } from "../../utils/rich-text";
+import { QUESTIONNAIRE_CONFIG_FIELDS } from "../../lib/questionnaire-types";
 import { validateQuestionAtIndex } from "../../lib/validate-question";
 import { normalizeSamplePlanEstimationType } from "./sample-plan-display";
 import { getFinalSampleSizeBounds } from "./final-sample-bounds";
@@ -30,11 +31,12 @@ export function getTargetSampleSizeFromSamplePlan(samplePlan: unknown) {
 }
 
 export function validateQuestionnaireForSubmit(questionnaire: unknown): string | null {
-    if (!questionnaire || typeof questionnaire !== "object") {
+    if (!questionnaire || typeof questionnaire !== "object" || Array.isArray(questionnaire)) {
         return "请先完成问卷设计";
     }
 
     const data = questionnaire as Record<string, unknown>;
+    if (Object.keys(data).some(key => !(QUESTIONNAIRE_CONFIG_FIELDS as readonly string[]).includes(key))) return "问卷包含未知配置，不接受作答数据";
     const title = toTrimmedString(data.title);
     const welcomeText = getRichTextPlainText(data.welcomeText);
     const endingText = getRichTextPlainText(data.endingText);

@@ -1,3 +1,5 @@
+import { questionnaireOptionFormatError } from "@/lib/questionnaire-options";
+import { InvalidQuestionnaireDraft } from "../../components/InvalidQuestionnaireDraft";
 import { DraftSaveStatus } from "../../components/DraftSaveStatus";
 import { QuestionVariableBindingDialog } from "../../components/QuestionVariableBindingDialog";
 import { NumericQuestionSummary } from "@/components/questionnaire/NumericQuestionSummary";
@@ -36,6 +38,7 @@ import type { Question, QuestionType, QuestionnaireData } from "@/lib/questionna
 import { calculateQuestionnaireScoreSummary, getInvalidOptionQuestionIndexes } from "./questionnaire-scoring";
 import {
     readExperimentDraft,
+    clearExperimentDraft,
     useExperimentDraft,
 } from "../../experiment/experiment-draft";
 import { QUESTIONNAIRE_TEMPLATES, QUESTION_SECTION_LABELS, type QuestionnaireTemplate } from "@/lib/questionnaire-templates";
@@ -90,19 +93,26 @@ function generateId(): string {
     return `q_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
-export function QuestionnaireDesign() {
-    const { experiment, completeStage } = useExperiment();
+interface QuestionnaireDraft {
+    questionnaire: QuestionnaireData;
+    step: 1 | 2 | 3 | 4;
+    previewCompleted: boolean;
+    previewContentHash: string;
+}
 
-    const restoredDraft = useMemo(() => readExperimentDraft<{
-        questionnaire: QuestionnaireData;
-        step: 1 | 2 | 3 | 4;
-        previewCompleted: boolean;
-        previewContentHash: string;
-    }>({
-        experimentId: experiment?.id,
-        experimentVersion: experiment?.version,
-        stage: 1,
-    }), [experiment?.id, experiment?.version]);
+export function QuestionnaireDesign() {
+    const { experiment } = useExperiment();
+    const identity = { experimentId: experiment?.id, experimentVersion: experiment?.version, stage: 1 };
+    const restoredDraft = useMemo(() => readExperimentDraft<QuestionnaireDraft>(identity), [experiment?.id, experiment?.version]);
+    const draftError = questionnaireOptionFormatError(restoredDraft?.questionnaire);
+    if (draftError) return <InvalidQuestionnaireDraft error={draftError} draft={{ ...identity, data: restoredDraft }} onDiscard={() => { clearExperimentDraft(identity); window.location.reload(); }} />;
+    const serverError = questionnaireOptionFormatError(experiment?.questionnaire);
+    if (serverError) return <InvalidQuestionnaireDraft error={serverError} />;
+    return <QuestionnaireWorkspace key={`${experiment?.id}:${experiment?.version}`} restoredDraft={restoredDraft} />;
+}
+
+function QuestionnaireWorkspace({ restoredDraft }: { restoredDraft: QuestionnaireDraft | null }) {
+    const { experiment, completeStage } = useExperiment();
 
     // Prefer the version-matched browser draft, then fall back to server data.
     const initialData = restoredDraft?.questionnaire
@@ -519,7 +529,7 @@ export function QuestionnaireDesign() {
                                                                 {QUESTION_SECTION_LABELS[q.section ?? "main"]}
                                                             </Badge>
                                                         </div>
-                                                        {q.options && q.options.length > 0 && <p className="text-meta leading-relaxed text-muted-foreground">选项：{q.options.join("；")}</p>}
+                                                        {q.options && q.options.length > 0 && <p className="text-meta leading-relaxed text-muted-foreground">选项：{q.options.map(option => option.label).join("；")}</p>}
                                                         <div className="flex flex-wrap items-center gap-2">
                                                             <StatusBadge intent={q.variableBinding ? "info" : "neutral"}>{q.variableBinding ? "已声明变量关联（语义对应）" : "仅认知预试，不参与变量分析"}</StatusBadge>
                                                             <Button variant="outline" size="sm" disabled={isCompleting} data-testid={`student-question-binding-${q.id}`} onClick={() => setBindingQuestion(q)}>{q.variableBinding ? "查看 / 调整关联" : "关联已有变量"}</Button>

@@ -378,7 +378,7 @@ describe("topic validation helpers", () => {
         ).toBe("推荐题目数量不能超过30");
 
         expect(
-            validateRecommendQuestionsPayload([{ type: "single", id: "a", content: "Question", options: ["A"] }])
+            validateRecommendQuestionsPayload([{ type: "single", id: "a", content: "Question", options: [{ id: "o_1", label: "A" }] }])
         ).toBe("第1题选项数量需在2-10个之间");
     });
 

@@ -15,10 +15,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, GripVertical } from "lucide-react";
-import type { Question, QuestionSection, QuestionType } from "@/lib/questionnaire-types";
+import { Plus, Trash2, GripVertical, ArrowUp, ArrowDown } from "lucide-react";
+import type { Question, QuestionOption, QuestionSection, QuestionType } from "@/lib/questionnaire-types";
 import { QUESTION_SECTION_LABELS } from "@/lib/questionnaire-templates";
-import { generateOptionIdentity, getDuplicateOptionIndexes } from "@/lib/questionnaire-options";
+import { generateOptionIdentity, getDuplicateOptionIndexes, validateOptionStructure, questionnaireOptionFormatError } from "@/lib/questionnaire-options";
 
 interface QuestionEditorProps {
     open: boolean;
@@ -64,7 +64,17 @@ function generateId(): string {
     return `q_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
-export function QuestionEditor({ open, onOpenChange, question, onSave }: QuestionEditorProps) {
+function createBlankOptions(): QuestionOption[] {
+    return ["", ""].map(label => ({ id: generateOptionIdentity(), label }));
+}
+
+export function QuestionEditor(props: QuestionEditorProps) {
+    const error = props.question ? questionnaireOptionFormatError({ questions: [props.question] }) : null;
+    if (error) return <Dialog open={props.open} onOpenChange={props.onOpenChange}><DialogContent><DialogHeader><DialogTitle>题目格式需要处理</DialogTitle><DialogDescription>不能用旧形态或损坏的选项启动编辑器。</DialogDescription></DialogHeader><p role="alert" className="text-label text-destructive">{error}。不会自动转换或补充身份，请关闭并检查原记录。</p><DialogFooter><Button variant="outline" onClick={() => props.onOpenChange(false)}>关闭</Button><Button disabled data-testid="student-question-save">保存</Button></DialogFooter></DialogContent></Dialog>;
+    return <QuestionEditorForm {...props} />;
+}
+
+function QuestionEditorForm({ open, onOpenChange, question, onSave }: QuestionEditorProps) {
     const isEditing = !!question;
     const optionErrorId = useId();
     const ruleErrorId = useId();
@@ -73,8 +83,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
     const [type, setType] = useState<QuestionType>(question?.type ?? "single");
     const [content, setContent] = useState(question?.content ?? "");
     const [section, setSection] = useState<QuestionSection>(question?.section ?? "main");
-    const [options, setOptions] = useState<string[]>(question?.options ?? ["", ""]);
-    const [optionIds, setOptionIds] = useState<string[]>([]);
+    const [options, setOptions] = useState<QuestionOption[]>(() => question?.options ?? createBlankOptions());
     const [minSelect, setMinSelect] = useState<number | string>(question?.minSelect ?? 1);
     const [maxSelect, setMaxSelect] = useState<number | string>(question?.maxSelect ?? 3);
     const [scaleMin, setScaleMin] = useState<number | string>(question?.scaleMin ?? 1);
@@ -88,8 +97,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
             setType(question.type);
             setContent(question.content);
             setSection(question.section ?? "main");
-            setOptions(question.options ?? ["", ""]);
-            setOptionIds(question.optionIds ?? (question.options ?? ["", ""]).map(() => generateOptionIdentity()));
+            setOptions(question.options ?? createBlankOptions());
             setMinSelect(question.minSelect ?? 1);
             setMaxSelect(question.maxSelect ?? 3);
             setScaleMin(question.scaleMin ?? 1);
@@ -100,8 +108,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
             setType("single");
             setContent("");
             setSection("main");
-            setOptions(["", ""]);
-            setOptionIds([generateOptionIdentity(), generateOptionIdentity()]);
+            setOptions(createBlankOptions());
             setMinSelect(1);
             setMaxSelect(3);
             setScaleMin(1);
@@ -113,37 +120,41 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
 
     const addOption = () => {
         if (options.length < 10) {
-            setOptions([...options, ""]);
-            setOptionIds([...optionIds, generateOptionIdentity()]);
+            setOptions([...options, { id: generateOptionIdentity(), label: "" }]);
         }
     };
 
     const removeOption = (index: number) => {
         if (options.length > 2) {
             setOptions(options.filter((_, i) => i !== index));
-            setOptionIds(optionIds.filter((_, i) => i !== index));
         }
     };
 
+    const moveOption = (index: number, direction: -1 | 1) => {
+        const target = index + direction;
+        if (target < 0 || target >= options.length) return;
+        const moved = [...options];
+        [moved[index], moved[target]] = [moved[target]!, moved[index]!];
+        setOptions(moved);
+    };
+
     const updateOption = (index: number, value: string) => {
-        const newOptions = [...options];
-        newOptions[index] = value;
-        setOptions(newOptions);
+        setOptions(options.map((option, i) => i === index ? { ...option, label: value } : option));
     };
 
     const numberValue = (value: number | string) => typeof value === "string" && !/^(?:0|[1-9]\d*)$/.test(value) ? NaN : Number(value);
     const minCount = numberValue(minSelect), maxCount = numberValue(maxSelect);
     const minScore = numberValue(scaleMin), maxScore = numberValue(scaleMax);
-    const validOptionCount = options.filter(option => option.trim()).length;
+    const validOptionCount = options.filter(option => option.label.trim()).length;
     const numericRule = buildNumericRule(numberDraft);
     const ruleError = type === "numeric" && !numericRule.ok ? numericRule.error : type === "multiple" && (!Number.isInteger(minCount) || !Number.isInteger(maxCount) || minCount < 1 || maxCount < minCount || maxCount > validOptionCount)
         ? "选择数量需为整数格式（不使用小数或科学计数法），且满足 1 ≤ 最少选择数 ≤ 最多选择数 ≤ 有效选项数。"
         : type === "scale" && (!Number.isInteger(minScore) || !Number.isInteger(maxScore) || minScore < 1 || maxScore > 10 || minScore >= maxScore)
             ? "评分范围需为 1–10 内的整数格式，且最小值小于最大值；不使用小数或科学计数法，不会自动取整。" : null;
-    const duplicateOptions = type === "single" || type === "multiple" ? getDuplicateOptionIndexes(options) : [];
-    const emptyOptions = options.flatMap((option, index) => option.trim() ? [] : [index + 1]);
-    const optionMessage = duplicateOptions.length ? `第 ${duplicateOptions.join("、")} 个选项内容重复，请修改后保存。`
-        : emptyOptions.length ? `第 ${emptyOptions.join("、")} 个选项为空，请填写或明确删除，不会自动忽略。` : null;
+    const duplicateOptions = type === "single" || type === "multiple" ? getDuplicateOptionIndexes(options.map(option => option.label)) : [];
+    const emptyOptions = options.flatMap((option, index) => option.label.trim() ? [] : [index + 1]);
+    const optionMessage = validateOptionStructure(options) ?? (duplicateOptions.length ? `第 ${duplicateOptions.join("、")} 个选项内容重复，请修改后保存。`
+        : emptyOptions.length ? `第 ${emptyOptions.join("、")} 个选项为空，请填写或明确删除，不会自动忽略。` : null);
 
     const isValid = () => {
         if (!content.trim() || content.length > 500) return false;
@@ -171,8 +182,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
         }
 
         if (type === "single" || type === "multiple") {
-            savedQuestion.options = [...options];
-            savedQuestion.optionIds = [...optionIds];
+            savedQuestion.options = options.map(option => ({ ...option }));
         }
 
         if (type === "multiple") {
@@ -293,7 +303,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                             {optionMessage && <p id={optionErrorId} role="alert" className="text-meta text-destructive" data-testid="question-option-error">{optionMessage}</p>}
                             <div className="space-y-2">
                                 {options.map((option, index) => (
-                                    <div key={index} className="flex items-center gap-2">
+                                    <div key={option.id} className="flex items-center gap-2">
                                         <GripVertical className="w-4 h-4 text-muted-foreground" />
                                         <span className="text-label text-muted-foreground w-6 font-mono">
                                             {String.fromCharCode(65 + index)}.
@@ -302,12 +312,14 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                             placeholder={`选项 ${index + 1}`}
                                             aria-invalid={duplicateOptions.includes(index + 1) || emptyOptions.includes(index + 1) || undefined}
                                             aria-describedby={duplicateOptions.includes(index + 1) || emptyOptions.includes(index + 1) ? optionErrorId : undefined}
-                                            value={option}
+                                            value={option.label}
                                             onChange={(e) => updateOption(index, e.target.value)}
                                             maxLength={200}
                                             data-testid={`student-question-option-${index + 1}`}
                                             className="flex-1 bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring"
                                         />
+                                        <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label={`上移选项 ${index + 1}`} disabled={index === 0} onClick={() => moveOption(index, -1)}><ArrowUp className="h-4 w-4" /></Button>
+                                        <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label={`下移选项 ${index + 1}`} disabled={index === options.length - 1} onClick={() => moveOption(index, 1)}><ArrowDown className="h-4 w-4" /></Button>
                                         <Button
                                             variant="ghost"
                                             size="icon"

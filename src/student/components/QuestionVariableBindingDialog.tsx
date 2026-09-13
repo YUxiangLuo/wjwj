@@ -1,3 +1,4 @@
+import { validateQuestionAtIndex } from "@/lib/validate-question";
 import { numericQuestionDescription } from "@/lib/numeric-question";
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,6 +11,8 @@ import { parseQuestionVariableBinding, questionAnswers, questionBindingSignature
 interface Props { taskId: number; question: Question; onApply: (question: Question) => void; onClose: () => void }
 const selectClass = "h-10 w-full min-w-0 rounded-control border border-input bg-card px-3 text-label text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 export function QuestionVariableBindingDialog(props: Props) {
+    const error = validateQuestionAtIndex(props.question, 1);
+    if (error) return <Dialog open onOpenChange={open => { if (!open) props.onClose(); }}><DialogContent><DialogHeader><DialogTitle>题目与已有变量关联</DialogTitle><DialogDescription>题目配置无效，不能确认关联。</DialogDescription></DialogHeader><p role="alert" className="text-label text-destructive">{error}。请先编辑并保存题目，再确认关联；不会自动补充身份。</p><DialogFooter><Button variant="outline" onClick={props.onClose}>关闭</Button><Button disabled data-testid="question-binding-apply">确认关联到问卷草稿</Button></DialogFooter></DialogContent></Dialog>;
     return <BindingSession key={`${props.taskId}:${questionBindingSignature(props.question)}`} {...props} />;
 }
 function BindingSession({ taskId, question: original, onApply, onClose }: Props) {
@@ -46,7 +49,6 @@ function BindingSession({ taskId, question: original, onApply, onClose }: Props)
         return () => controller.abort();
     }, [taskId, question, reload]);
     const answers = questionAnswers(question);
-    const invalidIdentity = answers.some(answer => !answer.id) || new Set(answers.map(answer => answer.id)).size !== answers.length;
     const multiple = question.type === "multiple";
     const numeric = question.type === "numeric";
     const variables = dictionary?.variables.filter(v => numeric ? v.measurementLevel === "continuous" && v.storageType === "number" : (v.measurementLevel === "nominal" || v.measurementLevel === "ordinal")
@@ -74,7 +76,7 @@ function BindingSession({ taskId, question: original, onApply, onClose }: Props)
             <div className="min-h-0 space-y-4 overflow-y-auto">
                 {loading ? <p role="status" className="text-label text-muted-foreground">正在读取教师确认的变量字典…</p> : <>
                     {error && <p role="alert" className="break-words text-label text-destructive">{error}</p>}
-                    {!dictionary ? <p className="text-label text-muted-foreground">{error ? "读取失败时不能建立数据关联。" : "教师尚未确认变量字典。"}可以保持仅认知预试，不影响完成实验。</p> : invalidIdentity ? <p role="alert" className="text-label text-destructive">选项缺少独立身份或身份重复，请先编辑并保存题目，再确认关联。</p> : <>
+                    {!dictionary ? <p className="text-label text-muted-foreground">{error ? "读取失败时不能建立数据关联。" : "教师尚未确认变量字典。"}可以保持仅认知预试，不影响完成实验。</p> : <>
                         <p className="text-meta text-muted-foreground">字典修订 {dictionary.revision} · 来源 {dictionary.datasetRevision.slice(0, 12)}。{numeric ? "直接关联连续变量，不产生选项编码。题目范围和小数位仅约束试填，不筛选或修改已有数据。" : multiple ? "每个选项对应独立的二值字段；另一有效编码表示未选中，缺失仍为缺失。" : "选项必须与同一个变量的全部有效类别一一对应；缺失编码不能充当答案。"}</p>
                         {numeric && <p className="text-label text-muted-foreground">{numericQuestionDescription(question.numberRule)}双方未声明单位时仍需自行核对。</p>}
                         {!variables.length && <p role="status" className="text-label text-warning">{numeric ? "没有已确认的连续数值变量，请联系教师配置字典或保持认知预试。" : "没有与本题匹配的已确认变量。连续数值不能强行关联为选项；评分题需有序类别，多选题需逐选项二值列。"}</p>}

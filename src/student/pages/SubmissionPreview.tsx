@@ -68,10 +68,10 @@ function QuestionPreview({ question, index }: { question: Question; index: numbe
                         )}
                         {(question.type === "single" || question.type === "multiple") && (
                             <ul className="text-label text-muted-foreground space-y-1 mt-2">
-                                {(question.options ?? []).map((opt, i) => (
-                                    <li key={`${question.id}-opt-${i}`} className="flex items-center gap-2">
+                                {(question.options ?? []).map(opt => (
+                                    <li key={opt.id} className="flex items-center gap-2">
                                         <div className="w-1.5 h-1.5 rounded-circle bg-input" />
-                                        {opt}
+                                        {opt.label}
                                     </li>
                                 ))}
                             </ul>

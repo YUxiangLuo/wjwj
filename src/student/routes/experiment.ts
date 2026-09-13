@@ -25,7 +25,7 @@ import {
     INVALID_SAMPLING_STORAGE_CODE,
     INVALID_SAMPLING_STORAGE_MESSAGE,
 } from "../experiment/sampling-storage";
-import { parseStoredJson } from "../experiment/serialization";
+import { readStoredDocument } from "@/lib/stored-document";
 import { ExperimentStatus } from "@/domain/experiment/status";
 import { submitStudentExperiment } from "../experiment/submit-service";
 import { getTargetSampleSizeFromSamplePlan } from "../experiment/submit-validation";
@@ -68,7 +68,7 @@ async function resolveExperimentSamplingResults(
     taskId: number,
     classId: number,
 ) {
-    const stored = parseStoredJson(record.samplingResults);
+    const stored = readStoredDocument(record.samplingResults);
     const inspection = inspectSamplingResultsStorage(stored);
     if (!inspection.ok) {
         return {
@@ -110,8 +110,8 @@ async function buildExperimentResponse(
         currentStage: record.currentStage,
         status: record.status,
         rejectReason: record.status === ExperimentStatus.REJECTED ? record.rejectReason : null,
-        questionnaire: parseStoredJson(record.questionnaire),
-        samplePlan: normalizeSamplePlanData(parseStoredJson(record.samplePlan), populationSize),
+        questionnaire: readStoredDocument(record.questionnaire),
+        samplePlan: normalizeSamplePlanData(readStoredDocument(record.samplePlan), populationSize),
         samplingResults: previewSamplingResults(resolvedSamplingResults.value),
         reportContent: record.reportContent,
         stage1CompletedAt: iso(record.stage1CompletedAt),
@@ -160,7 +160,7 @@ async function persistSamplingMethodResult(
     result: Record<string, unknown>,
     attempt?: SamplingAttemptWrite,
 ) {
-    const observedResults = parseStoredJson<StoredSamplingResults>(record.samplingResults) ?? {};
+    const observedResults = readStoredDocument<StoredSamplingResults>(record.samplingResults) ?? {};
     const observedMethodResult = observedResults[method] ?? null;
     return db.transaction(async (tx) => {
         const [persisted] = await tx
@@ -221,7 +221,7 @@ async function prepareStoredSamplingResultsForCompletion(params: {
     signal?: AbortSignal;
 }) {
     let authoritativeRecord = params.record;
-    let stored = parseStoredJson<StoredSamplingResults>(authoritativeRecord.samplingResults) ?? {};
+    let stored = readStoredDocument<StoredSamplingResults>(authoritativeRecord.samplingResults) ?? {};
     const policy = resolveSamplingPolicy(params.taskInfo?.samplingPolicy);
 
     if (policy.methods.pps !== "disabled" && !isServerGeneratedResult(stored.pps)) {
@@ -255,7 +255,7 @@ async function prepareStoredSamplingResultsForCompletion(params: {
                 };
             }
             authoritativeRecord = persisted;
-            stored = parseStoredJson<StoredSamplingResults>(authoritativeRecord.samplingResults) ?? {};
+            stored = readStoredDocument<StoredSamplingResults>(authoritativeRecord.samplingResults) ?? {};
         }
     }
 
@@ -484,7 +484,7 @@ const samplingActionRoutes: RouteDefinition = {
         const result = await executeSamplingAction({
             method: body.method,
             rawParams: body.params,
-            targetSampleSize: getTargetSampleSizeFromSamplePlan(parseStoredJson(record.samplePlan)),
+            targetSampleSize: getTargetSampleSizeFromSamplePlan(readStoredDocument(record.samplePlan)),
             population,
             fieldMapping: taskInfo.fieldMapping,
         });

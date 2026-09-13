@@ -114,17 +114,21 @@ test("compact export returns READ_FAILED when population storage is missing", as
     }
 });
 
-test("export route reads serialized sampling results and returns csv", async () => {
+test("export route reads native indices and restores all CSV rows from the source", async () => {
+    const { resolveStoragePath } = await import("../../server/storage-files");
+    const filename = `/storage/native-export-${crypto.randomUUID()}.csv`;
+    const absolutePath = resolveStoragePath(filename)!;
+    await Bun.write(absolutePath, "id,city,group\n001,北京,a\n002,上海,a\n003,广州,b\n");
+    try {
     const module = await loadFilesRoutes({
-        select: [
-            [{
-                samplingResults: JSON.stringify({
-                    simple: { data: [{ id: 1, city: "北京" }] },
-                    systematic: { data: [{ id: 2, city: "上海" }] },
-                    stratified: { data: [{ id: 3, city: "广州" }] },
-                }),
-            }],
-        ],
+        select: [[{
+            excelFilePath: filename, fieldMapping: { identifier: "id", numeric: [], others: ["city"], stratified: ["group"] },
+            samplingResults: {
+                simple: { completed: true, sampleCount: 1, indices: [0] },
+                systematic: { completed: true, sampleCount: 1, indices: [1] },
+                stratified: { completed: true, sampleCount: 2, indices: [1, 2], stratifyBy: "group", layers: [{ name: "a", count: 2, sampleCount: 1 }, { name: "b", count: 1, sampleCount: 1 }] },
+            },
+        }]],
     });
 
     const request = withRouteParam(
@@ -146,4 +150,11 @@ test("export route reads serialized sampling results and returns csv", async () 
     expect(body).toContain("北京");
     expect(body).toContain("上海");
     expect(body).toContain("广州");
+    expect(body).toContain("001");
+    } finally { await unlink(absolutePath); }
+});
+
+test("CSV export rejects string-shaped storage instead of interpreting it", async () => {
+    const module = await loadFilesRoutes({ select: [[{ samplingResults: '{"simple":{"data":[{"secret":"must-not-leak"}]}}' }]] });
+    await expect(module.exportRoutes.GET!(withRouteParam(createRequest("https://example.com/api/student/tasks/40/export"), "40"))).rejects.toThrow("JSONB 存储格式无效");
 });

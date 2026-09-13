@@ -38,7 +38,7 @@ test("ImmersiveReportPreview shows persisted sample plan semantics in overview",
                     title: "问卷",
                     welcomeText: "<p>欢迎</p>",
                     endingText: "<p>结束</p>",
-                    questions: [{ id: "q1", type: "single", content: "题目", options: ["A", "B"] }],
+                    questions: [{ id: "q1", type: "single", content: "题目", options: [{ id: "o_1", label: "A" }, { id: "o_2", label: "B" }] }],
                 },
                 samplePlan: {
                     estimationType: "mean",

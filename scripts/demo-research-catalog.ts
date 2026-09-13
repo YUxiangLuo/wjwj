@@ -126,9 +126,9 @@ export function buildDemoResearchCatalog() {
         const samplingPolicy: SamplingPolicyV1 = { version: 1, methods: { simple: "required", systematic: spec.systematicRequired ? "required" : "optional", pps: spec.pps ?? "disabled", stratified: spec.stratifiedRequired ? "required" : "optional" } };
         const recommendQuestions: Question[] = [
             { id: `${spec.key}-scope`, section: "screening", type: "boolean", content: spec.person ? "您提供的信息是否属于本课题规定的调查总体和参考期？" : "本条记录是否属于研究合同规定的总体和参考期？" },
-            { id: `${spec.key}-group`, section: "background", type: "single", content: `本调查单位属于哪个${spec.groupField}？`, options: spec.groups },
-            { id: `${spec.key}-measure`, section: "main", type: "single", content: spec.measureQuestion, options: spec.measureOptions },
-            { id: `${spec.key}-drivers`, section: "main", type: "multiple", content: "您认为哪些因素需要在分析或核验时重点考虑？（可多选）", options: spec.drivers, minSelect: 1, maxSelect: 3 },
+            { id: `${spec.key}-group`, section: "background", type: "single", content: `本调查单位属于哪个${spec.groupField}？`, options: spec.groups.map((label, i) => ({ id: `group-${i + 1}`, label })) },
+            { id: `${spec.key}-measure`, section: "main", type: "single", content: spec.measureQuestion, options: spec.measureOptions.map((label, i) => ({ id: `measure-${i + 1}`, label })) },
+            { id: `${spec.key}-drivers`, section: "main", type: "multiple", content: "您认为哪些因素需要在分析或核验时重点考虑？（可多选）", options: spec.drivers.map((label, i) => ({ id: `driver-${i + 1}`, label })), minSelect: 1, maxSelect: 3 },
             { id: `${spec.key}-clarity`, section: "main", type: "scale", content: "您对本次调查问题和记录口径的理解程度如何？", scaleMin: 1, scaleMax: 5, scaleMinLabel: "尚不清楚", scaleMaxLabel: "非常清楚" },
             { id: `${spec.key}-check`, section: "background", type: "boolean", content: "您是否已经核对本次信息的统计口径和参考范围？" },
         ];

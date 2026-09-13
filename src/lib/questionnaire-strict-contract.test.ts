@@ -7,13 +7,13 @@ import { buildStageCompletionUpdates } from "@/student/experiment/update-service
 
 for (const value of ["2", null, 1.5, NaN, Infinity]) {
     test(`selection limits are not rounded, coerced or defaulted: ${String(value)}`, () => {
-        expect(validateQuestionAtIndex({ id: "q", type: "multiple", content: "请选择", options: ["甲", "乙"], minSelect: value }, 1)).toContain("多选数量限制");
+        expect(validateQuestionAtIndex({ id: "q", type: "multiple", content: "请选择", options: [{ id: "o_1", label: "甲" }, { id: "o_2", label: "乙" }], minSelect: value }, 1)).toContain("多选数量限制");
         expect(validateQuestionAtIndex({ id: "q", type: "scale", content: "评分", scaleMin: value, scaleMax: 5 }, 1)).toContain("量表范围");
     });
 }
 for (const options of [["甲", 1], ["甲", false], ["甲", {}], ["甲", " ", "乙"]]) {
     test(`invalid option entries are rejected rather than silently removed: ${JSON.stringify(options)}`, () => {
-        expect(validateQuestionAtIndex({ id: "q", type: "single", content: "请选择", options }, 1)).toBe("第1题选项需为非空文本");
+        expect(validateQuestionAtIndex({ id: "q", type: "single", content: "请选择", options: options.map((label, i) => ({ id: `o_${i}`, label })) }, 1)).toBe(options.every(label => typeof label === "string") ? "第1题选项需为非空文本" : "第1题选项必须为仅包含 id 和 label 的对象，不接受旧文本数组或额外配置");
     });
 }
 test("creation never accepts an identity that strict storage cannot read", () => {

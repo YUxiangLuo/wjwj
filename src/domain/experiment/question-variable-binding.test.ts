@@ -54,23 +54,22 @@ test("multiple response requires separate actual binary columns and explicit sel
 test("option identities work on ordinary HTTP without secure-context randomUUID", () => {
     const unavailable = spyOn(crypto, "randomUUID").mockImplementation(() => { throw new Error("unavailable on HTTP"); });
     try {
-        const question = bindingQuestion(); delete question.optionIds;
-        const adapted = instantiateQuestion(question, "new-question");
-        expect(new Set(adapted.optionIds).size).toBe(2);
-        expect(adapted.optionIds![0]).toMatch(/^o_[a-f0-9]{32}$/);
+        const created = instantiateQuestion(bindingQuestion(), "new-question");
+        expect(new Set(created.options!.map(option => option.id)).size).toBe(2);
+        expect(created.options![0]!.id).toMatch(/^o_[a-f0-9]{32}$/);
     } finally { unavailable.mockRestore(); }
 });
 
 test("binding never repairs a stored question with missing option identities", () => {
-    const question = bindingQuestion(); delete question.optionIds;
+    const question = bindingQuestion(); question.options![0]!.id = "";
     const before = structuredClone(question);
-    expect(parseQuestionVariableBinding(bindingFor(question), question, bindingDictionary())).toMatchObject({ ok: false, error: expect.stringContaining("独立身份") });
+    expect(parseQuestionVariableBinding(bindingFor(question), question, bindingDictionary())).toMatchObject({ ok: false, error: expect.stringContaining("身份无效") });
     expect(question).toEqual(before);
 });
 test("meaning edits/copies clear bindings while unchanged saves and questionnaire reorder preserve them", () => {
     const question = { ...bindingQuestion(), variableBinding: bindingFor() };
     expect(keepUnchangedQuestionBinding(question, { ...question }).variableBinding).toEqual(question.variableBinding);
-    for (const patch of [{ content: "新含义" }, { id: "copied" }, { options: ["乙类", "甲类"], optionIds: ["o_b", "o_a"] }]) expect(keepUnchangedQuestionBinding(question, { ...question, ...patch }).variableBinding).toBeUndefined();
+    for (const patch of [{ content: "新含义" }, { id: "copied" }, { options: [{ id: "o_b", label: "乙类" }, { id: "o_a", label: "甲类" }] }]) expect(keepUnchangedQuestionBinding(question, { ...question, ...patch }).variableBinding).toBeUndefined();
     const form = boundQuestionnaire(); form.questions.reverse();
     expect(validateQuestionnaireBindings(form, bindingDictionary(), 3)).toBeNull();
 });
@@ -82,14 +81,14 @@ test("optional binding checks do not replace the required questionnaire validati
 });
 test("declared malformed option identities are rejected rather than guessed", () => {
     for (const optionIds of [["same", "same"], ["one"], ["", "two"], [" ", "two"]]) {
-        const question = { ...bindingQuestion(), optionIds };
+        const question = { ...bindingQuestion(), options: bindingQuestion().options!.map((option, i) => ({ ...option, id: optionIds[i] })) };
         expect(typeof parseRecommendQuestionFromPayload(question, 1)).toBe("string");
     }
     const question = bindingQuestion();
-    expect(parseRecommendQuestionFromPayload(question, 1)).toMatchObject({ optionIds: question.optionIds });
-    expect(readStoredRecommendQuestions([question])[0]!.optionIds).toEqual(question.optionIds);
+    expect(parseRecommendQuestionFromPayload(question, 1)).toMatchObject({ options: question.options });
+    expect(readStoredRecommendQuestions([question])[0]!.options).toEqual(question.options);
 });
 test("bindings to incomplete ordinal score ranges cannot be inferred", () => {
     expect(questionAnswers({ id: "q", type: "scale", content: "评分", scaleMin: 1.5, scaleMax: 4 })).toEqual([]);
-    expect(questionBindingSignature(bindingQuestion())).not.toBe(questionBindingSignature({ ...bindingQuestion(), options: ["甲类;乙类"] }));
+    expect(questionBindingSignature(bindingQuestion())).not.toBe(questionBindingSignature({ ...bindingQuestion(), options: [{ id: "o_1", label: "甲类;乙类" }] }));
 });

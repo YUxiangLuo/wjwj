@@ -8,11 +8,11 @@ const validExperiment = {
         welcomeText: "欢迎参加本次抽样调查实验，请根据实际情况认真填写问卷内容，谢谢配合。",
         endingText: "问卷到此结束，感谢你的参与和配合，祝你学习顺利。",
         questions: [
-            { id: "q1", type: "single" as const, content: "你是否了解抽样调查？", options: ["了解", "不了解"] },
-            { id: "q2", type: "multiple" as const, content: "你常用哪些数据分析工具？", options: ["Excel", "SPSS", "R"], minSelect: 1, maxSelect: 2 },
+            { id: "q1", type: "single" as const, content: "你是否了解抽样调查？", options: [{ id: "o_1", label: "了解" }, { id: "o_2", label: "不了解" }] },
+            { id: "q2", type: "multiple" as const, content: "你常用哪些数据分析工具？", options: [{ id: "o_1", label: "Excel" }, { id: "o_2", label: "SPSS" }, { id: "o_3", label: "R" }], minSelect: 1, maxSelect: 2 },
             { id: "q3", type: "scale" as const, content: "你对统计课程的兴趣程度如何？", scaleMin: 1, scaleMax: 5 },
             { id: "q4", type: "boolean" as const, content: "你是否做过问卷调查？" },
-            { id: "q5", type: "single" as const, content: "你认为样本量规划是否重要？", options: ["重要", "一般"] },
+            { id: "q5", type: "single" as const, content: "你认为样本量规划是否重要？", options: [{ id: "o_1", label: "重要" }, { id: "o_2", label: "一般" }] },
         ],
     },
     samplePlan: {
@@ -62,7 +62,7 @@ test("preview submit blocker returns null for a complete valid experiment", () =
 
 test("final preview rejects duplicate options even when the questionnaire was already saved", () => {
     expect(getPreviewSubmitBlocker({ ...validExperiment, questionnaire: { ...validExperiment.questionnaire,
-        questions: validExperiment.questionnaire.questions.map((question, index) => index === 0 ? { ...question, options: ["重复", "重复"] } : question),
+        questions: validExperiment.questionnaire.questions.map((question, index) => index === 0 ? { ...question, options: [{ id: "o_1", label: "重复" }, { id: "o_2", label: "重复" }] } : question),
     } })).toBe("第1题选项内容重复，请修改后重试");
 });
 

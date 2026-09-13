@@ -777,8 +777,8 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                         {(q.type === "single" || q.type === "multiple") && optionsArr.length > 0 && (
                                                             <div className="flex flex-wrap gap-1.5 mt-2">
                                                                 {optionsArr.map((opt, i) => (
-                                                                    <span key={i} className="text-meta px-2 py-0.5 bg-muted text-muted-foreground rounded-control border border-input">
-                                                                        {String.fromCharCode(65 + i)}. {opt}
+                                                                    <span key={opt.id} className="text-meta px-2 py-0.5 bg-muted text-muted-foreground rounded-control border border-input">
+                                                                        {String.fromCharCode(65 + i)}. {opt.label}
                                                                     </span>
                                                                 ))}
                                                             </div>

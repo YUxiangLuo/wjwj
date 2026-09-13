@@ -47,7 +47,7 @@ test("recommend questions reject more than thirty items before opening a transac
         id: `q${index}`,
         type: "single" as const,
         content: "题目",
-        options: ["A", "B"],
+        options: [{ id: "o_1", label: "A" }, { id: "o_2", label: "B" }],
     }));
 
     const result = await module.replaceTopicRecommendQuestions({ teacherId: 9, topicId: 12, items: tooMany });

@@ -1,6 +1,6 @@
 import { parseNumericQuestionRule } from "./numeric-question";
-import type { Question, QuestionSection, QuestionType } from "./questionnaire-types";
-import { getDuplicateOptionIndexes, validateOptionIdentities } from "./questionnaire-options";
+import { QUESTION_CONFIG_FIELDS, type Question, type QuestionSection, type QuestionType } from "./questionnaire-types";
+import { getDuplicateOptionIndexes, validateOptionStructure } from "./questionnaire-options";
 
 function toTrimmedString(value: unknown) {
     return typeof value === "string" ? value.trim() : "";
@@ -34,6 +34,9 @@ export function parseRecommendQuestionFromPayload(rawQuestion: unknown, index: n
     }
 
     const type = typeRaw as QuestionType;
+    if (Object.hasOwn(question, "optionIds")) return `第${index}题不接受平行 optionIds 字段，请使用统一选项对象`;
+    if (Object.keys(question).some(key => !(QUESTION_CONFIG_FIELDS as readonly string[]).includes(key))) return `第${index}题包含未知配置，不接受作答数据`;
+    if (type !== "single" && type !== "multiple" && Object.hasOwn(question, "options")) return `第${index}题只有单选/多选题可以配置选项对象`;
     if (question.id !== undefined && (typeof question.id !== "string" || !question.id.trim() || question.id.length > 200 || question.id.includes("\0"))) {
         return `第${index}题题目身份无效`;
     }
@@ -53,7 +56,7 @@ export function parseRecommendQuestionFromPayload(rawQuestion: unknown, index: n
     }
 
     if (type === "numeric") {
-        if (["options", "optionIds", "minSelect", "maxSelect", "scaleMin", "scaleMax", "scaleMinLabel", "scaleMaxLabel"].some(key => question[key] !== undefined)) return `第${index}题数值题不能混用选项或评分配置`;
+        if (["minSelect", "maxSelect", "scaleMin", "scaleMax", "scaleMinLabel", "scaleMaxLabel"].some(key => question[key] !== undefined)) return `第${index}题数值题不能混用选项或评分配置`;
         if (Object.keys(question).some(key => !["id", "type", "content", "section", "recommendSourceId", "numberRule", "variableBinding"].includes(key))) return `第${index}题数值题包含未知配置，不接受作答数据`;
         const rule = parseNumericQuestionRule(question.numberRule);
         return rule.ok ? { ...base, numberRule: rule.value } : `第${index}题${rule.error}`;
@@ -65,27 +68,24 @@ export function parseRecommendQuestionFromPayload(rawQuestion: unknown, index: n
     }
 
     if (type === "single" || type === "multiple") {
-        if (!Array.isArray(question.options) || question.options.some(option => typeof option !== "string" || !option.trim())) {
-            return `第${index}题选项需为非空文本`;
-        }
-        const options = question.options.map(option => option.trim());
+        const structureError = validateOptionStructure(question.options);
+        if (structureError) return `第${index}题${structureError}`;
+        const options = (question.options as NonNullable<Question["options"]>).map(option => ({ id: option.id, label: option.label }));
+        if (options.some(option => !option.label.trim())) return `第${index}题选项需为非空文本`;
 
         if (options.length < 2 || options.length > 10) {
             return `第${index}题选项数量需在2-10个之间`;
         }
 
-        if (options.some((option) => option.length > 200)) {
+        if (options.some((option) => option.label.length > 200)) {
             return `第${index}题选项内容不能超过200字`;
         }
 
-        if (getDuplicateOptionIndexes(options).length > 0) {
+        if (getDuplicateOptionIndexes(options.map(option => option.label)).length > 0) {
             return `第${index}题选项内容重复，请修改后重试`;
         }
 
-        const identityError = validateOptionIdentities(question);
-        if (identityError) return `第${index}题${identityError}`;
         const q: Question = { ...base, options };
-        if (question.optionIds !== undefined) q.optionIds = [...question.optionIds as string[]];
 
         if (type === "multiple") {
             const minSelect = question.minSelect === undefined ? 1 : question.minSelect;

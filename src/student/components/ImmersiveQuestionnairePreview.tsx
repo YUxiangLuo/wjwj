@@ -339,7 +339,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
             case "boolean":
             case "single":
             case "multiple": {
-                const opts = question.type === "boolean" ? ["是", "否"] : question.options ?? [];
+                const opts = question.type === "boolean" ? [{ id: "yes", label: "是" }, { id: "no", label: "否" }] : question.options ?? [];
                 const multiple = question.type === "multiple";
                 const selectedArr = Array.isArray(answer) ? answer : [];
                 const maxSelect = question.maxSelect ?? opts.length;
@@ -356,12 +356,12 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                         {multiple && <p className="col-span-2 text-label text-muted-foreground">请选择 {question.minSelect ?? 1} ~ {maxSelect} 项</p>}
                         {opts.map((option, i) => {
                             // 试填答案只在本组件内使用，不写入样本数据。
-                            const optionKey = String(i);
+                            const optionKey = option.id;
                             const selected = multiple ? selectedArr.includes(optionKey) : answer === optionKey;
                             const disabled = multiple && !selected && selectedArr.length >= maxSelect;
                             return (
                                 <button
-                                    key={`${question.id}-opt-${i}`}
+                                    key={option.id}
                                     type="button"
                                     data-preview-answer
                                     onClick={() => multiple ? toggleMultipleAnswer(qIndex, question, optionKey) : setChoiceAnswer(qIndex, optionKey)}
@@ -375,7 +375,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-control text-label font-bold ${selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
                                         {multiple && selected ? <Check className="h-4 w-4" /> : OPTION_LETTERS[i]}
                                     </span>
-                                    <span className="min-w-0 break-words text-body">{option}</span>
+                                    <span className="min-w-0 break-words text-body">{option.label}</span>
                                     {!multiple && selected && <Check className="ml-auto h-5 w-5 shrink-0" />}
                                 </button>
                             );

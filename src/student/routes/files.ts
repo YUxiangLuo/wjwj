@@ -14,7 +14,7 @@ import {
     INVALID_SAMPLING_STORAGE_CODE,
     INVALID_SAMPLING_STORAGE_MESSAGE,
 } from "../experiment/sampling-storage";
-import { parseStoredJson } from "../experiment/serialization";
+import { readStoredDocument } from "@/lib/stored-document";
 import {
     buildSamplingResultsCsvExport,
     parseSamplingExportType,
@@ -105,7 +105,7 @@ const exportRoutes: RouteDefinition = {
             return error("暂无抽样结果", "NO_DATA", 404);
         }
 
-        const storedResults = parseStoredJson(exp.samplingResults);
+        const storedResults = readStoredDocument(exp.samplingResults);
         const inspection = inspectSamplingResultsStorage(storedResults);
         if (!inspection.ok) return error(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
         let results = storedResults;

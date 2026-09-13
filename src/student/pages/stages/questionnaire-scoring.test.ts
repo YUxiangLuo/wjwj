@@ -7,7 +7,7 @@ function createQuestion(id: string, overrides: Partial<Question> = {}): Question
         id,
         type: "single",
         content: `题目${id}`,
-        options: ["是", "否"],
+        options: [{ id: "o_1", label: "是" }, { id: "o_2", label: "否" }],
         ...overrides,
     };
 }
@@ -84,7 +84,7 @@ test("基础格式不合格只扣对应的结构分", () => {
 
 test("重复选项阻止试填并明确提示对应题号", () => {
     const questions = Array.from({ length: 5 }, (_, index) => createQuestion(`q${index + 1}`));
-    questions[1] = createQuestion("q2", { options: ["同意", " 同意 "] });
+    questions[1] = createQuestion("q2", { options: [{ id: "o_1", label: "同意" }, { id: "o_2", label: " 同意 " }] });
 
     const summary = calculateQuestionnaireScoreSummary({ ...validBase, questions });
     const answerItem = summary.scoreItems.find((item) => item.label === "作答配置");

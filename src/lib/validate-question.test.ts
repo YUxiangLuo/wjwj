@@ -13,7 +13,7 @@ describe("validateQuestionAtIndex", () => {
 
     test("accepts valid single with options", () => {
         expect(
-            validateQuestionAtIndex({ type: "single", content: "选一项", options: ["A", "B"] }, 1)
+            validateQuestionAtIndex({ type: "single", content: "选一项", options: [{ id: "o_1", label: "A" }, { id: "o_2", label: "B" }] }, 1)
         ).toBeNull();
     });
 
@@ -22,7 +22,7 @@ describe("validateQuestionAtIndex", () => {
             validateQuestionAtIndex({
                 type: "multiple",
                 content: "多选",
-                options: ["a", "b", "c"],
+                options: [{ id: "o_1", label: "a" }, { id: "o_2", label: "b" }, { id: "o_3", label: "c" }],
                 minSelect: 1,
                 maxSelect: 2,
             }, 1)
@@ -44,7 +44,7 @@ describe("validateQuestionAtIndex", () => {
     });
 
     test("rejects single with one option", () => {
-        expect(validateQuestionAtIndex({ type: "single", content: "?", options: ["only"] }, 1)).toMatch(/选项数量/);
+        expect(validateQuestionAtIndex({ type: "single", content: "?", options: [{ id: "o_1", label: "only" }] }, 1)).toMatch(/选项数量/);
     });
 
     test("rejects scale with invalid range", () => {
@@ -95,14 +95,14 @@ describe("parseRecommendQuestionsPayload", () => {
     test("returns normalized Question[] with generated ids when missing", () => {
         const r = parseRecommendQuestionsPayload([
             { type: "boolean", content: "是否？" },
-            { type: "single", content: "选一", options: ["A", "B"] },
+            { type: "single", content: "选一", options: [{ id: "o_1", label: "A" }, { id: "o_2", label: "B" }] },
         ]);
         expect(r.ok).toBe(true);
         if (!r.ok) return;
         expect(r.questions).toHaveLength(2);
         expect(r.questions[0]!.id).toMatch(/^q_/);
         expect(r.questions[0]!.type).toBe("boolean");
-        expect(r.questions[1]!.options).toEqual(["A", "B"]);
+        expect(r.questions[1]!.options).toEqual([{ id: "o_1", label: "A" }, { id: "o_2", label: "B" }]);
     });
 
     test("preserves explicit id and multiple bounds", () => {
@@ -111,7 +111,7 @@ describe("parseRecommendQuestionsPayload", () => {
                 id: "rq_1",
                 type: "multiple",
                 content: "多选",
-                options: ["a", "b", "c"],
+                options: [{ id: "o_1", label: "a" }, { id: "o_2", label: "b" }, { id: "o_3", label: "c" }],
                 minSelect: 1,
                 maxSelect: 2,
             },

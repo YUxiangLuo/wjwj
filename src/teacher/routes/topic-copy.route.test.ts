@@ -35,7 +35,7 @@ test("topic copy duplicates the topic and related resources under the current te
     await Bun.write(sourceAttachmentAbsolutePath, "attachment-content");
 
     const recommendQuestions = [
-        { id: "q1", type: "single" as const, content: "你最关注哪项指标？", options: ["价格", "质量"] },
+        { id: "q1", type: "single" as const, content: "你最关注哪项指标？", options: [{ id: "o_1", label: "价格" }, { id: "o_2", label: "质量" }] },
     ];
     const analysisTarget = { kind: "mean" as const, field: "score" };
     const { module, operations } = await loadTopicRoutes({

@@ -304,10 +304,10 @@ function QuestionnaireSection({ questionnaire }: { questionnaire: ExperimentData
                                 )}
                                 {(q.type === "single" || q.type === "multiple") && (
                                     <ul className="space-y-1">
-                                        {(q.options ?? []).map((opt, j) => (
-                                            <li key={j} className="flex items-center gap-2 text-label text-muted-foreground">
+                                        {(q.options ?? []).map(opt => (
+                                            <li key={opt.id} className="flex items-center gap-2 text-label text-muted-foreground">
                                                 <div className="w-1.5 h-1.5 rounded-circle bg-input" />
-                                                {opt}
+                                                {opt.label}
                                             </li>
                                         ))}
                                     </ul>

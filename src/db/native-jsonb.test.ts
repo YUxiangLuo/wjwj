@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test";
 import { sql } from "drizzle-orm";
+import { readStoredDocument } from "../lib/stored-document";
 import { PgDialect } from "drizzle-orm/pg-core";
 import {
-    decodeNativeJsonDocument,
     encodeNativeJsonDocument,
     jsonbNullSafeEquals,
 } from "./native-jsonb";
@@ -15,11 +15,9 @@ test("native JSONB codec passes objects and arrays to Bun SQL without stringifyi
     expect(encodeNativeJsonDocument(array)).toBe(array);
 });
 
-test("native JSONB codec decodes the historical JSON-string shape", () => {
-    expect(decodeNativeJsonDocument('{"nested":{"ok":true}}')).toEqual({
-        nested: { ok: true },
-    });
-    expect(decodeNativeJsonDocument('[{"id":1}]')).toEqual([{ id: 1 }]);
+test("native JSONB reads reject JSON-string shapes rather than decode them", () => {
+    expect(() => readStoredDocument('{"nested":{"ok":true}}')).toThrow("JSONB 存储格式无效");
+    expect(() => readStoredDocument('[{"id":1}]')).toThrow("JSONB 存储格式无效");
 });
 
 test("native JSONB codec rejects top-level primitives and unsupported objects", () => {

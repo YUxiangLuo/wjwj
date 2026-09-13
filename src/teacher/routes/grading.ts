@@ -20,7 +20,7 @@ import {
     INVALID_SAMPLING_STORAGE_CODE,
     INVALID_SAMPLING_STORAGE_MESSAGE,
 } from "../../student/experiment/sampling-storage";
-import { parseStoredJson } from "../../student/experiment/serialization";
+import { readStoredDocument } from "@/lib/stored-document";
 import { getTeacherUser } from "./auth";
 import { resolveSamplingPolicy } from "../../lib/sampling-policy";
 import { writeAuditEvent } from "../../server/audit-event";
@@ -111,7 +111,7 @@ const gradingRoutes: RouteDefinition = {
         ]);
         return json({
             items: rows.map((row) => {
-                const snapshot = parseStoredJson<{ studentName?: string; topicName?: string }>(row.submissionSnapshot);
+                const snapshot = readStoredDocument<{ studentName?: string; topicName?: string }>(row.submissionSnapshot);
                 const {
                     submissionSnapshot: _,
                     ...item
@@ -192,7 +192,7 @@ const gradingDetailRoutes: RouteDefinition = {
         if (!experimentId) return error("无效的实验ID", "INVALID_ID");
         const row = await findOwnedExperiment(experimentId, current.id);
         if (!row) return error("提交记录不存在", "NOT_FOUND", 404);
-        const snapshot = parseStoredJson<{
+        const snapshot = readStoredDocument<{
             studentName?: string;
             topicName?: string;
             populationSize?: number | null;
@@ -219,7 +219,7 @@ const gradingDetailRoutes: RouteDefinition = {
             .where(eq(samplingAttempt.experimentId, experimentId))
             .orderBy(desc(samplingAttempt.createdAt), desc(samplingAttempt.id))
             .limit(100);
-        const storedSamplingResults = snapshot?.samplingResults ?? parseStoredJson(row.samplingResults);
+        const storedSamplingResults = snapshot?.samplingResults ?? readStoredDocument(row.samplingResults);
         const inspection = inspectSamplingResultsStorage(storedSamplingResults);
         if (!inspection.ok) return error(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
         let samplingResults: unknown = storedSamplingResults;
@@ -245,11 +245,11 @@ const gradingDetailRoutes: RouteDefinition = {
             topic: snapshot?.topicName ?? row.topic,
             topicName: snapshot?.topicName ?? row.topicName,
             populationSize,
-            questionnaire: snapshot?.questionnaire ?? parseStoredJson(row.questionnaire),
+            questionnaire: snapshot?.questionnaire ?? readStoredDocument(row.questionnaire),
             // Never attach current metadata retroactively to a historical submission.
             variableDictionary: snapshot?.variableDictionary ?? null,
             samplePlan: normalizeSamplePlanData(
-                snapshot?.samplePlan ?? parseStoredJson(row.samplePlan),
+                snapshot?.samplePlan ?? readStoredDocument(row.samplePlan),
                 populationSize,
             ),
             samplingResults: previewSamplingResults(samplingResults),
@@ -291,7 +291,7 @@ const gradingDetailRoutes: RouteDefinition = {
         }
         const comment = stringValue(body.comment).trim();
         if (comment.length > 2_000) return error("教师评语不能超过2000字", "VALIDATION_ERROR", 400);
-        const snapshot = parseStoredJson<{ weightConfig?: unknown }>(row.submissionSnapshot);
+        const snapshot = readStoredDocument<{ weightConfig?: unknown }>(row.submissionSnapshot);
         const weights = scoringWeightsFrom(snapshot?.weightConfig ?? row.weightConfig);
         const total = (
             body.scoreQuestionnaire! * weights.questionnaire
@@ -358,8 +358,8 @@ const gradingSamplingExportRoutes: RouteDefinition = {
             submissionSnapshot: row.submissionSnapshot, questionnaire: row.questionnaire, samplingResults: row.samplingResults,
             populationSize: row.populationSize, excelFilePath: row.excelFilePath, fieldMapping: row.fieldMapping, type }, req.signal,
             async () => await findOwnedExperiment(experimentId, current.id) ? null : error("提交记录不存在", "NOT_FOUND", 404));
-        const snapshot = parseStoredJson<{ samplingResults?: unknown }>(row.submissionSnapshot);
-        const storedSamplingResults = snapshot?.samplingResults ?? parseStoredJson(row.samplingResults);
+        const snapshot = readStoredDocument<{ samplingResults?: unknown }>(row.submissionSnapshot);
+        const storedSamplingResults = snapshot?.samplingResults ?? readStoredDocument(row.samplingResults);
         if (!storedSamplingResults) return error("暂无抽样结果", "NO_DATA", 404);
 
         const inspection = inspectSamplingResultsStorage(storedSamplingResults);

@@ -89,12 +89,12 @@ test("already-completed questions with duplicates are rejected without changing 
     mock.module("../../db", () => ({ db }));
     const { submitStudentExperiment } = await import(`./submit-service.ts?legacy-options=${crypto.randomUUID()}`);
     const record = validRecord();
-    record.questionnaire.questions[0] = { id: "q0", type: "single", content: "旧题目", options: ["同意", "同意"] };
+    record.questionnaire.questions[0] = { id: "q0", type: "single", content: "旧题目", options: [{ id: "o_1", label: "同意" }, { id: "o_2", label: "同意" }] };
     const result = await submitStudentExperiment({ experimentRecord: record, observedVersion: 4,
         taskInfo: { topicName: "抽样调查", populationSize: 200 }, student: { studentId: "S001", name: "学生一" } });
     expect(result).toMatchObject({ ok: false, message: "第1题选项内容重复，请修改后重试" });
     expect(operations.some(operation => operation.kind === "update")).toBe(false);
-    expect(record.questionnaire.questions[0]!.options).toEqual(["同意", "同意"]);
+    expect(record.questionnaire.questions[0]!.options).toEqual([{ id: "o_1", label: "同意" }, { id: "o_2", label: "同意" }]);
 });
 
 test("submit rejects a stale experiment record when the conditional update changes no rows", async () => {

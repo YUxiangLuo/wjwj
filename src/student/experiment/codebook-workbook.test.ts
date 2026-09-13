@@ -8,7 +8,7 @@ function fixture(): CodebookInput {
     questionnaire.questions.push({ id: "amount", type: "numeric", content: "实际金额？", numberRule: { unit: "", min: 0, max: 200, decimalPlaces: 2 } });
     const numeric = questionnaire.questions.at(-1)!;
     numeric.variableBinding = { schemaVersion: 1, taskId: 3, datasetRevision: dictionary.datasetRevision, dictionaryRevision: dictionary.revision, questionSignature: questionBindingSignature(numeric), kind: "continuous", variableId: "v_5" };
-    const multiple = { id: "multi", type: "multiple" as const, content: "哪些项符合？", options: ["二值选项", "二级指标"], optionIds: ["m_a", "m_b"], minSelect: 1, maxSelect: 2 };
+    const multiple = { id: "multi", type: "multiple" as const, content: "哪些项符合？", options: [{ id: "m_a", label: "二值选项" }, { id: "m_b", label: "二级指标" }], minSelect: 1, maxSelect: 2 };
     questionnaire.questions.push({ ...multiple, variableBinding: { schemaVersion: 1, taskId: 3, datasetRevision: dictionary.datasetRevision, dictionaryRevision: dictionary.revision, questionSignature: questionBindingSignature(multiple), kind: "multiple-binary", answers: [{ answerId: "m_a", variableId: "v_3", value: false }, { answerId: "m_b", variableId: "v_4", value: 1 }] } });
     const scale = { id: "scale", type: "scale" as const, content: "有序评分？", scaleMin: 1, scaleMax: 2 }; questionnaire.questions.push({ ...scale, variableBinding: bindingFor(scale, dictionary, "v_4") });
     const fields = dictionary.variables.map(v => v.sourceField);
@@ -22,6 +22,14 @@ function fixture(): CodebookInput {
 }
 const read = (input: CodebookInput) => XLSX.read(buildCodebookWorkbook(input), { type: "buffer" });
 const rows = (book: XLSX.WorkBook, name: string) => XLSX.utils.sheet_to_json<any[]>(book.Sheets[name]!, { header: 1, defval: null, raw: true });
+test("unbound questions still require current option objects; exports never fill missing identities", () => {
+    const input = fixture();
+    delete input.questionnaire.questions[0]!.variableBinding;
+    delete input.questionnaire.questions[0]!.options;
+    const before = structuredClone(input);
+    expect(() => buildCodebookWorkbook(input)).toThrow("选项必须为包含 id 和 label 的对象数组");
+    expect(input).toEqual(before);
+});
 test("codebook keeps every source field, typed raw values and genuine selected row order, separate from metadata", () => {
     const input = fixture(), before = structuredClone(input), book = read(input);
     expect(input).toEqual(before);

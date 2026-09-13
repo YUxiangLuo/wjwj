@@ -28,16 +28,16 @@ test("reading metadata makes no guesses and applies exact typed codes only on co
     expect(apply).not.toHaveBeenCalled(); fireEvent.click(view.getByTestId("question-binding-apply"));
     const question = apply.mock.calls[0]![0];
     expect(parseQuestionVariableBinding(question.variableBinding, question, bindingDictionary(), 3).ok).toBe(true);
-    expect(question.optionIds).toEqual(original.optionIds); expect(new Set(question.optionIds).size).toBe(2);
+    expect(question.options).toEqual(original.options); expect(new Set(question.options!.map(option => option.id)).size).toBe(2);
 });
 test("opening a stored question cannot silently supply missing identities", async () => {
-    const question = bindingQuestion(); delete question.optionIds;
+    const question = bindingQuestion(); question.options![0]!.id = "";
     const apply = mock(() => {});
     const view = render(<QuestionVariableBindingDialog taskId={3} question={question} onApply={apply} onClose={() => {}} />);
     await view.findByText(/请先编辑并保存题目/);
     expect(view.queryByLabelText("关联变量")).toBeNull();
     expect((view.getByTestId("question-binding-apply") as HTMLButtonElement).disabled).toBe(true);
-    expect(question.optionIds).toBeUndefined(); expect(apply).not.toHaveBeenCalled();
+    expect(question.options![0]!.id).toBe(""); expect(apply).not.toHaveBeenCalled();
 });
 test("numeric association selects one continuous variable without generating option or response rows", async () => {
     const question: Question = { id: "amount", type: "numeric", content: "实际金额？", numberRule: { unit: "", min: 0, max: null, decimalPlaces: 2 } };

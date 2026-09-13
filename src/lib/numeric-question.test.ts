@@ -28,5 +28,5 @@ test("teacher writes and stored reads use the same quantitative question, never 
     const question = { id: "numeric", type: "numeric" as const, content: "等候时长？", numberRule: rule };
     expect(parseRecommendQuestionFromPayload(question, 1)).toEqual(question);
     expect(readStoredRecommendQuestions([question])).toEqual([question] as any);
-    for (const patch of [{ numberRule: undefined }, { type: "scale" }, { options: ["1","2"] }, { scaleMin: 1 }, { answer: 12 }]) expect(typeof parseRecommendQuestionFromPayload({ ...question, ...patch }, 1)).toBe("string");
+    for (const patch of [{ numberRule: undefined }, { type: "scale" }, { options: [{ id: "o_1", label: "1" }, { id: "o_2", label: "2" }] }, { scaleMin: 1 }, { answer: 12 }]) expect(typeof parseRecommendQuestionFromPayload({ ...question, ...patch }, 1)).toBe("string");
 });

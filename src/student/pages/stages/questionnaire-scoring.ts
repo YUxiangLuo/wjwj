@@ -1,7 +1,7 @@
 import { validateQuestionAtIndex } from "@/lib/validate-question";
 import { getRichTextPlainText } from "@/utils/rich-text";
 import type { Question } from "@/lib/questionnaire-types";
-import { getDuplicateOptionIndexes } from "@/lib/questionnaire-options";
+import { getDuplicateOptionIndexes, validateOptionStructure } from "@/lib/questionnaire-options";
 
 export type ScoreStatus = "pass" | "warning" | "fail";
 
@@ -35,22 +35,7 @@ export function getInvalidOptionQuestionIndexes(questions: Question[]) {
     questions.forEach((question, index) => {
         if (question.type !== "single" && question.type !== "multiple") return;
 
-        const options = Array.isArray(question.options)
-            ? question.options.map((option) => option.trim()).filter((option) => option.length > 0)
-            : [];
-
-        if (options.length < 2 || options.length > 10 || options.some((option) => option.length > 200) || getDuplicateOptionIndexes(options).length > 0) {
-            invalidIndexes.push(index + 1);
-            return;
-        }
-
-        if (question.type === "multiple") {
-            const minSelect = question.minSelect ?? 1;
-            const maxSelect = question.maxSelect ?? options.length;
-            if (minSelect < 1 || maxSelect < minSelect || maxSelect > options.length) {
-                invalidIndexes.push(index + 1);
-            }
-        }
+        if (validateQuestionAtIndex(question, index + 1)) invalidIndexes.push(index + 1);
     });
 
     return invalidIndexes;
@@ -61,8 +46,8 @@ function getDuplicateOptionQuestionIndexes(questions: Question[]) {
 
     questions.forEach((question, index) => {
         if (question.type !== "single" && question.type !== "multiple") return;
-        const options = Array.isArray(question.options) ? question.options : [];
-        if (getDuplicateOptionIndexes(options).length > 0) {
+        if (validateOptionStructure(question.options)) return;
+        if (getDuplicateOptionIndexes(question.options!.map(option => option.label)).length > 0) {
             duplicateIndexes.push(index + 1);
         }
     });

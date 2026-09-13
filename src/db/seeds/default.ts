@@ -58,13 +58,13 @@ const studyQuestionnaire = {
     welcomeText: "您好！本问卷属于「2026 校园学习与生活状况调查」的学习投入子课题，用于课堂受访者视角试填。预试答案不进入抽样或统计分析，请按真实情况体验作答。",
     endingText: "感谢您的认真作答。正式研究将以总体数据估计每周学习时长均值，本问卷只用于检查措辞与选项设置。",
     questions: [
-        { id: "q1", type: "single", content: "您每天用于自主学习的时间？", options: ["1小时以内", "1-2小时", "2-3小时", "3小时以上"] },
+        { id: "q1", type: "single", content: "您每天用于自主学习的时间？", options: [{ id: "o_1", label: "1小时以内" }, { id: "o_2", label: "1-2小时" }, { id: "o_3", label: "2-3小时" }, { id: "o_4", label: "3小时以上" }] },
         { id: "q2", type: "scale", content: "您对目前学习状态的满意程度？", scaleMin: 1, scaleMax: 5, scaleMinLabel: "非常不满意", scaleMaxLabel: "非常满意" },
-        { id: "q3", type: "multiple", content: "您常用的学习资源有哪些？", options: ["教材", "课程视频", "在线题库", "同伴讨论"], minSelect: 1, maxSelect: 4 },
+        { id: "q3", type: "multiple", content: "您常用的学习资源有哪些？", options: [{ id: "o_1", label: "教材" }, { id: "o_2", label: "课程视频" }, { id: "o_3", label: "在线题库" }, { id: "o_4", label: "同伴讨论" }], minSelect: 1, maxSelect: 4 },
         { id: "q4", type: "boolean", content: "您是否制定每周学习计划？" },
-        { id: "q5", type: "single", content: "您更喜欢哪种课堂组织方式？", options: ["讲授", "讨论", "实验", "混合式"] },
+        { id: "q5", type: "single", content: "您更喜欢哪种课堂组织方式？", options: [{ id: "o_1", label: "讲授" }, { id: "o_2", label: "讨论" }, { id: "o_3", label: "实验" }, { id: "o_4", label: "混合式" }] },
         { id: "q6", type: "scale", content: "课程作业负担是否合适？", scaleMin: 1, scaleMax: 5, scaleMinLabel: "过轻", scaleMaxLabel: "过重" },
-        { id: "q7", type: "single", content: "您通常在哪里上自习？", options: ["图书馆", "教室", "宿舍", "其他"] },
+        { id: "q7", type: "single", content: "您通常在哪里上自习？", options: [{ id: "o_1", label: "图书馆" }, { id: "o_2", label: "教室" }, { id: "o_3", label: "宿舍" }, { id: "o_4", label: "其他" }] },
         { id: "q8", type: "boolean", content: "您是否参加过统计调查实习？" },
     ],
 };
@@ -74,11 +74,11 @@ const readingQuestionnaire = {
     welcomeText: "您好！本问卷属于「2026 校园学习与生活状况调查」的阅读行为子课题，用于课堂受访者视角试填。",
     endingText: "感谢您的参与。正式研究将估计每周课外阅读时长均值，并说明总体中零值较多的处理方式。",
     questions: [
-        { id: "rq1", type: "single", content: "您平均每周课外阅读时长？", options: ["几乎不阅读", "1小时以内", "1-3小时", "3-5小时", "5小时以上"] },
-        { id: "rq2", type: "multiple", content: "您主要阅读哪类材料？", options: ["专业教材", "学术论文", "文学读物", "新闻资讯", "其他"], minSelect: 1, maxSelect: 3 },
+        { id: "rq1", type: "single", content: "您平均每周课外阅读时长？", options: [{ id: "o_1", label: "几乎不阅读" }, { id: "o_2", label: "1小时以内" }, { id: "o_3", label: "1-3小时" }, { id: "o_4", label: "3-5小时" }, { id: "o_5", label: "5小时以上" }] },
+        { id: "rq2", type: "multiple", content: "您主要阅读哪类材料？", options: [{ id: "o_1", label: "专业教材" }, { id: "o_2", label: "学术论文" }, { id: "o_3", label: "文学读物" }, { id: "o_4", label: "新闻资讯" }, { id: "o_5", label: "其他" }], minSelect: 1, maxSelect: 3 },
         { id: "rq3", type: "scale", content: "您对自己阅读量的满意程度？", scaleMin: 1, scaleMax: 5, scaleMinLabel: "很不满意", scaleMaxLabel: "很满意" },
         { id: "rq4", type: "boolean", content: "您是否使用图书馆纸质藏书？" },
-        { id: "rq5", type: "single", content: "您更常在哪里阅读？", options: ["图书馆", "宿舍", "教室", "通勤途中", "其他"] },
+        { id: "rq5", type: "single", content: "您更常在哪里阅读？", options: [{ id: "o_1", label: "图书馆" }, { id: "o_2", label: "宿舍" }, { id: "o_3", label: "教室" }, { id: "o_4", label: "通勤途中" }, { id: "o_5", label: "其他" }] },
     ],
 };
 
@@ -87,11 +87,11 @@ const graduateQuestionnaire = {
     welcomeText: "您好！本问卷用于了解毕业生发展意向与就业准备情况。课堂预试答案不会进入正式估计，请按真实想法体验作答。",
     endingText: "感谢您的参与。您的反馈将帮助完善毕业发展服务，也将用于检查问题措辞和选项设置是否清晰。",
     questions: [
-        { id: "gq1", type: "single", content: "您目前首选的毕业去向是？", options: ["直接就业", "考研", "考公", "出国深造", "灵活就业"] },
+        { id: "gq1", type: "single", content: "您目前首选的毕业去向是？", options: [{ id: "o_1", label: "直接就业" }, { id: "o_2", label: "考研" }, { id: "o_3", label: "考公" }, { id: "o_4", label: "出国深造" }, { id: "o_5", label: "灵活就业" }] },
         { id: "gq2", type: "boolean", content: "您是否有过三个月以上的实习经历？" },
         { id: "gq3", type: "scale", content: "您对当前就业准备程度的评价？", scaleMin: 1, scaleMax: 5, scaleMinLabel: "尚未准备", scaleMaxLabel: "准备充分" },
-        { id: "gq4", type: "multiple", content: "您最需要哪些就业支持？", options: ["职业测评", "简历辅导", "实习信息", "面试训练", "行业讲座"], minSelect: 1, maxSelect: 3 },
-        { id: "gq5", type: "single", content: "您获取招聘信息的主要渠道是？", options: ["学校就业平台", "招聘网站", "社交媒体", "老师同学推荐", "企业宣讲会"] },
+        { id: "gq4", type: "multiple", content: "您最需要哪些就业支持？", options: [{ id: "o_1", label: "职业测评" }, { id: "o_2", label: "简历辅导" }, { id: "o_3", label: "实习信息" }, { id: "o_4", label: "面试训练" }, { id: "o_5", label: "行业讲座" }], minSelect: 1, maxSelect: 3 },
+        { id: "gq5", type: "single", content: "您获取招聘信息的主要渠道是？", options: [{ id: "o_1", label: "学校就业平台" }, { id: "o_2", label: "招聘网站" }, { id: "o_3", label: "社交媒体" }, { id: "o_4", label: "老师同学推荐" }, { id: "o_5", label: "企业宣讲会" }] },
         { id: "gq6", type: "boolean", content: "您是否已经形成明确的毕业发展计划？" },
     ],
 };
@@ -101,10 +101,10 @@ const diningQuestionnaire = {
     welcomeText: "您好！本问卷用于课堂演练食堂午间服务调查。预试回答只帮助检查问卷可理解性，不会进入等待时间估计。",
     endingText: "感谢您完成体验。正式研究将以服务时段观测记录估计等待时间，并结合客流量和开放窗口数解释结果。",
     questions: [
-        { id: "dq1", type: "single", content: "您最常在哪个校区的食堂就餐？", options: ["东校区", "西校区"] },
-        { id: "dq2", type: "single", content: "您通常到达食堂的时间？", options: ["11:30前", "11:30-12:00", "12:00-12:30", "12:30后"] },
+        { id: "dq1", type: "single", content: "您最常在哪个校区的食堂就餐？", options: [{ id: "o_1", label: "东校区" }, { id: "o_2", label: "西校区" }] },
+        { id: "dq2", type: "single", content: "您通常到达食堂的时间？", options: [{ id: "o_1", label: "11:30前" }, { id: "o_2", label: "11:30-12:00" }, { id: "o_3", label: "12:00-12:30" }, { id: "o_4", label: "12:30后" }] },
         { id: "dq3", type: "scale", content: "您对午间排队秩序的满意程度？", scaleMin: 1, scaleMax: 5, scaleMinLabel: "很不满意", scaleMaxLabel: "很满意" },
-        { id: "dq4", type: "multiple", content: "哪些因素最影响您的食堂选择？", options: ["等待时间", "价格", "口味", "距离", "座位"], minSelect: 1, maxSelect: 3 },
+        { id: "dq4", type: "multiple", content: "哪些因素最影响您的食堂选择？", options: [{ id: "o_1", label: "等待时间" }, { id: "o_2", label: "价格" }, { id: "o_3", label: "口味" }, { id: "o_4", label: "距离" }, { id: "o_5", label: "座位" }], minSelect: 1, maxSelect: 3 },
         { id: "dq5", type: "boolean", content: "您是否愿意错峰就餐以减少等待？" },
     ],
 };
@@ -115,9 +115,9 @@ const digitalLiteracyQuestionnaire = {
     endingText: "感谢您的参与。本模板尚未上传总体数据，因此不会发布为实验任务。",
     questions: [
         { id: "lq1", type: "scale", content: "您对常用学习平台的熟练程度？", scaleMin: 1, scaleMax: 5, scaleMinLabel: "不熟练", scaleMaxLabel: "非常熟练" },
-        { id: "lq2", type: "multiple", content: "您使用过哪些数据工具？", options: ["电子表格", "统计软件", "在线问卷", "数据可视化工具"], minSelect: 1, maxSelect: 3 },
+        { id: "lq2", type: "multiple", content: "您使用过哪些数据工具？", options: [{ id: "o_1", label: "电子表格" }, { id: "o_2", label: "统计软件" }, { id: "o_3", label: "在线问卷" }, { id: "o_4", label: "数据可视化工具" }], minSelect: 1, maxSelect: 3 },
         { id: "lq3", type: "boolean", content: "您是否了解学术引用规范？" },
-        { id: "lq4", type: "single", content: "您获取信息的主要渠道？", options: ["图书馆资源", "搜索引擎", "社交媒体", "课程平台", "同学交流"] },
+        { id: "lq4", type: "single", content: "您获取信息的主要渠道？", options: [{ id: "o_1", label: "图书馆资源" }, { id: "o_2", label: "搜索引擎" }, { id: "o_3", label: "社交媒体" }, { id: "o_4", label: "课程平台" }, { id: "o_5", label: "同学交流" }] },
     ],
 };
 

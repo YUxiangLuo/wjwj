@@ -191,7 +191,7 @@ describe("ImmersiveQuestionnairePreview", () => {
 
     for (const question of [
         { id: "choice", type: "boolean", content: "选择题？" },
-        { id: "choice", type: "single", content: "选择题？", options: ["是", "否"] },
+        { id: "choice", type: "single", content: "选择题？", options: [{ id: "o_1", label: "是" }, { id: "o_2", label: "否" }] },
         { id: "choice", type: "scale", content: "选择题？", scaleMin: 1, scaleMax: 5 },
     ] satisfies QuestionnaireData["questions"]) {
         test(`${question.type} advances after its first answer without completing the preview`, async () => {
@@ -227,7 +227,7 @@ describe("ImmersiveQuestionnairePreview", () => {
 
     test("multiple choice keeps its limits, stays on the question, and supports Enter beside the answers", async () => {
         const view = render(<ImmersiveQuestionnairePreview questionnaire={baseQuestionnaire({ questions: [
-            { id: "multi", type: "multiple", content: "选两项", options: ["甲", "乙", "丙"], minSelect: 2, maxSelect: 2 },
+            { id: "multi", type: "multiple", content: "选两项", options: [{ id: "o_1", label: "甲" }, { id: "o_2", label: "乙" }, { id: "o_3", label: "丙" }], minSelect: 2, maxSelect: 2 },
             { id: "next", type: "boolean", content: "下一道题" },
         ] })} onComplete={() => {}} onClose={() => {}} />);
         fireEvent.click(view.getByTestId("immersive-preview-start"));
@@ -324,7 +324,7 @@ describe("ImmersiveQuestionnairePreview", () => {
         test(`${type}: valid choices are independently selected`, () => {
             const onComplete = mock(() => {});
             const view = render(<ImmersiveQuestionnairePreview questionnaire={baseQuestionnaire({ questions: [
-                { id: "choices", type, content: "选择", options: ["第一项", "第二项", "第三项"], minSelect: 2, maxSelect: 2 },
+                { id: "choices", type, content: "选择", options: [{ id: "o_1", label: "第一项" }, { id: "o_2", label: "第二项" }, { id: "o_3", label: "第三项" }], minSelect: 2, maxSelect: 2 },
             ] })} onComplete={onComplete} onClose={() => {}} />);
             fireEvent.click(view.getByTestId("immersive-preview-start"));
             const choices = [...document.querySelectorAll<HTMLButtonElement>("[data-preview-answer]")];
@@ -347,7 +347,7 @@ describe("ImmersiveQuestionnairePreview", () => {
     for (const type of ["single", "multiple"] as const) {
         test(`${type}: duplicate labels block even a previously saved questionnaire trial`, () => {
             const complete = mock(() => {});
-            const view = render(<ImmersiveQuestionnairePreview questionnaire={baseQuestionnaire({ questions: [{ id: "q", type, content: "选择", options: ["重复", " 重复 "] }] })} onComplete={complete} onClose={() => {}} />);
+            const view = render(<ImmersiveQuestionnairePreview questionnaire={baseQuestionnaire({ questions: [{ id: "q", type, content: "选择", options: [{ id: "o_1", label: "重复" }, { id: "o_2", label: " 重复 " }] }] })} onComplete={complete} onClose={() => {}} />);
             expect(view.getByRole("alert").textContent).toContain("选项内容重复");
             fireEvent.click(view.getByTestId("immersive-preview-start"));
             expect(view.queryByTestId("immersive-preview-submit")).toBeNull(); expect(complete).not.toHaveBeenCalled();
@@ -355,11 +355,11 @@ describe("ImmersiveQuestionnairePreview", () => {
     }
 
     test("changed option ordering never reuses a previous positional answer", () => {
-        const questionnaire = baseQuestionnaire({ questions: [{ id: "q", type: "single", content: "选择", options: ["甲", "乙"] }] });
+        const questionnaire = baseQuestionnaire({ questions: [{ id: "q", type: "single", content: "选择", options: [{ id: "o_1", label: "甲" }, { id: "o_2", label: "乙" }] }] });
         const view = render(<ImmersiveQuestionnairePreview questionnaire={questionnaire} onComplete={() => {}} onClose={() => {}} />);
         fireEvent.click(view.getByTestId("immersive-preview-start"));
         fireEvent.click(document.querySelector("[data-preview-answer]")!);
-        view.rerender(<ImmersiveQuestionnairePreview questionnaire={{ ...questionnaire, questions: [{ ...questionnaire.questions[0]!, options: ["乙", "甲"] }] }} onComplete={() => {}} onClose={() => {}} />);
+        view.rerender(<ImmersiveQuestionnairePreview questionnaire={{ ...questionnaire, questions: [{ ...questionnaire.questions[0]!, options: [{ id: "o_1", label: "乙" }, { id: "o_2", label: "甲" }] }] }} onComplete={() => {}} onClose={() => {}} />);
         expect(document.querySelectorAll('[data-preview-answer][aria-pressed="true"]').length).toBe(0);
     });
 
