@@ -1,3 +1,5 @@
+import { buildNumericRule, numericRuleDraft } from "@/lib/numeric-question-form";
+import { NumericRuleEditor } from "./NumericRuleEditor";
 import { useState, useEffect, useId } from "react";
 import {
     Dialog,
@@ -30,6 +32,7 @@ const questionTypeLabels: Record<QuestionType, string> = {
     single: "单选题",
     multiple: "多选题",
     scale: "评分题",
+    numeric: "数值题",
 };
 
 const questionTypeDescriptions: Record<QuestionType, string> = {
@@ -37,6 +40,7 @@ const questionTypeDescriptions: Record<QuestionType, string> = {
     single: "从多个选项中选择一个",
     multiple: "从多个选项中选择多个",
     scale: "有序评分题，可选择常用的 Likert 型题项或一般评分预设",
+    numeric: "输入实际数值，明确单位、范围和小数位，不强行编码为评分选项",
 };
 
 interface LikertPreset {
@@ -65,6 +69,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
     const optionErrorId = useId();
     const ruleErrorId = useId();
 
+    const [numberDraft, setNumberDraft] = useState(() => numericRuleDraft(question?.numberRule));
     const [type, setType] = useState<QuestionType>(question?.type ?? "single");
     const [content, setContent] = useState(question?.content ?? "");
     const [section, setSection] = useState<QuestionSection>(question?.section ?? "main");
@@ -78,6 +83,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
     const [scaleMaxLabel, setScaleMaxLabel] = useState(question?.scaleMaxLabel ?? "非常同意");
 
     useEffect(() => {
+        setNumberDraft(numericRuleDraft(question?.numberRule));
         if (question) {
             setType(question.type);
             setContent(question.content);
@@ -129,7 +135,8 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
     const minCount = numberValue(minSelect), maxCount = numberValue(maxSelect);
     const minScore = numberValue(scaleMin), maxScore = numberValue(scaleMax);
     const validOptionCount = options.filter(option => option.trim()).length;
-    const ruleError = type === "multiple" && (!Number.isInteger(minCount) || !Number.isInteger(maxCount) || minCount < 1 || maxCount < minCount || maxCount > validOptionCount)
+    const numericRule = buildNumericRule(numberDraft);
+    const ruleError = type === "numeric" && !numericRule.ok ? numericRule.error : type === "multiple" && (!Number.isInteger(minCount) || !Number.isInteger(maxCount) || minCount < 1 || maxCount < minCount || maxCount > validOptionCount)
         ? "选择数量需为整数格式（不使用小数或科学计数法），且满足 1 ≤ 最少选择数 ≤ 最多选择数 ≤ 有效选项数。"
         : type === "scale" && (!Number.isInteger(minScore) || !Number.isInteger(maxScore) || minScore < 1 || maxScore > 10 || minScore >= maxScore)
             ? "评分范围需为 1–10 内的整数格式，且最小值小于最大值；不使用小数或科学计数法，不会自动取整。" : null;
@@ -180,6 +187,10 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
             savedQuestion.scaleMaxLabel = scaleMaxLabel;
         }
 
+        if (type === "numeric") {
+            if (!numericRule.ok) return;
+            savedQuestion.numberRule = numericRule.value;
+        }
         onSave(savedQuestion);
         onOpenChange(false);
     };
@@ -216,7 +227,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                         <div className="space-y-2">
                             <Label className="text-muted-foreground">题目类型</Label>
                             <Tabs value={type} onValueChange={(v) => setType(v as QuestionType)}>
-                                <TabsList className="grid grid-cols-4 w-full bg-background border border-border p-1" data-testid="student-question-type-list">
+                                <TabsList className="grid grid-cols-5 w-full bg-background border border-border p-1" data-testid="student-question-type-list">
                                     {(Object.keys(questionTypeLabels) as QuestionType[]).map((t) => (
                                         <TabsTrigger
                                             key={t}
@@ -254,6 +265,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                         </p>
                     </div>
 
+                    {type === "numeric" && <NumericRuleEditor value={numberDraft} onChange={setNumberDraft} errorId={ruleError ? ruleErrorId : undefined} />}
                     {type === "boolean" && (
                         <div className="p-4 bg-muted rounded-surface border border-input">
                             <p className="text-label text-muted-foreground">

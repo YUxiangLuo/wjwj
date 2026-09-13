@@ -39,6 +39,27 @@ test("opening a stored question cannot silently supply missing identities", asyn
     expect((view.getByTestId("question-binding-apply") as HTMLButtonElement).disabled).toBe(true);
     expect(question.optionIds).toBeUndefined(); expect(apply).not.toHaveBeenCalled();
 });
+test("numeric association selects one continuous variable without generating option or response rows", async () => {
+    const question: Question = { id: "amount", type: "numeric", content: "实际金额？", numberRule: { unit: "", min: 0, max: null, decimalPlaces: 2 } };
+    const { view, apply } = await setup(question);
+    expect(apply).not.toHaveBeenCalled();
+    fireEvent.change(view.getByLabelText("关联变量"), { target: { value: "v_5" } });
+    expect(view.queryByLabelText("选项 1 对应原值")).toBeNull();
+    fireEvent.click(view.getByTestId("question-binding-apply"));
+    const bound = apply.mock.calls[0]![0];
+    expect(bound.variableBinding).toMatchObject({ kind: "continuous", variableId: "v_5" });
+    expect(bound.variableBinding).not.toHaveProperty("answers"); expect(bound).not.toHaveProperty("optionIds");
+    expect(parseQuestionVariableBinding(bound.variableBinding, bound, bindingDictionary(), 3).ok).toBe(true);
+});
+test("numeric unit mismatch is visible, not silently converted", async () => {
+    const question: Question = { id: "amount", type: "numeric", content: "实际金额？", numberRule: { unit: "元", min: null, max: null, decimalPlaces: null } };
+    const { view, apply } = await setup(question);
+    fireEvent.change(view.getByLabelText("关联变量"), { target: { value: "v_5" } });
+    expect(view.getByRole("alert").textContent).toContain("单位");
+    expect((view.getByTestId("question-binding-apply") as HTMLButtonElement).disabled).toBe(true);
+    expect(apply).not.toHaveBeenCalled(); expect(question.numberRule!.unit).toBe("元");
+});
+
 test("duplicate code choices cannot be applied", async () => {
     const { view, apply } = await setup();
     fireEvent.change(view.getByLabelText("关联变量"), { target: { value: "v_2" } });
@@ -56,7 +77,9 @@ test("multiresponse selection requires a different actual binary field per optio
     fireEvent.change(view.getByLabelText("选项 2 的二值变量"), { target: { value: "v_3" } });
     fireEvent.change(view.getByLabelText("选项 2 对应原值"), { target: { value: variableValueKey(false) } });
     fireEvent.click(view.getByTestId("question-binding-apply"));
-    expect(apply.mock.calls[0]![0].variableBinding!.answers[1]!.value).toBe(false);
+    const binding = apply.mock.calls[0]![0].variableBinding!;
+    expect(binding.kind !== "continuous" && binding.answers[1]!.value).toBe(false);
+    expect(binding.kind).toBe("multiple-binary");
 });
 test("canceling edited selections requires explicit discard and can retain local choices", async () => {
     const { view, apply, close } = await setup();

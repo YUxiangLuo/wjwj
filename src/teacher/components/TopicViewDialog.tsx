@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { NumericQuestionSummary } from "@/components/questionnaire/NumericQuestionSummary";
 import { RichTextContent } from "@/components/RichTextContent";
 import { teacherApi, teacherResourceUrl, type TopicDetail, type Topic } from "../api-client";
 import { questionTypeLabels } from "@/lib/questionnaire-labels";
@@ -421,6 +422,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                                         选项：{q.options.join("；")}
                                                     </div>
                                                 )}
+                                                <NumericQuestionSummary question={q} />
                                                 {q.type === "scale" && (
                                                     <div className="pl-9 text-meta text-muted-foreground">
                                                         量表 {q.scaleMin ?? 1}–{q.scaleMax ?? 10}

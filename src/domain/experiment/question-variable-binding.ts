@@ -4,16 +4,24 @@ import { validateOptionIdentities } from "@/lib/questionnaire-options";
 import { variableValueKey, type VariableDictionaryV1, type VariableValue } from "./variable-dictionary";
 
 /** Optional, versioned semantic correspondence. Never a questionnaire response or collection provenance. */
-export interface QuestionVariableBindingV1 {
+interface QuestionBindingScope {
     schemaVersion: 1;
     taskId: number;
     datasetRevision: string;
     dictionaryRevision: number;
     questionSignature: string;
+}
+export interface CategoricalQuestionBinding extends QuestionBindingScope {
     kind: "categorical" | "multiple-binary";
     answers: Array<{ answerId: string; variableId: string; value: VariableValue }>;
 }
+export interface ContinuousQuestionBinding extends QuestionBindingScope {
+    kind: "continuous";
+    variableId: string;
+}
+export type QuestionVariableBindingV1 = CategoricalQuestionBinding | ContinuousQuestionBinding;
 export function questionAnswers(question: Question): Array<{ id: string; label: string }> {
+    if (question.type === "numeric") return [];
     if (question.type === "boolean") return [{ id: "yes", label: "是" }, { id: "no", label: "否" }];
     if (question.type === "scale") {
         const min = question.scaleMin ?? 1, max = question.scaleMax ?? 10;
@@ -24,6 +32,8 @@ export function questionAnswers(question: Question): Array<{ id: string; label: 
 }
 /** Deterministic semantic snapshot: reordering questions does not invalidate a link; editing its meaning does. */
 export function questionBindingSignature(question: Question): string {
+    if (question.type === "numeric") return JSON.stringify([question.id, question.type, question.content, question.section ?? "main",
+        question.numberRule?.unit, question.numberRule?.min, question.numberRule?.max, question.numberRule?.decimalPlaces]);
     return JSON.stringify([question.id, question.type, question.content, question.section ?? "main",
         question.options ?? null, question.optionIds ?? null, question.minSelect ?? null, question.maxSelect ?? null,
         question.scaleMin ?? null, question.scaleMax ?? null, question.scaleMinLabel ?? null, question.scaleMaxLabel ?? null]);
@@ -41,12 +51,20 @@ export function parseQuestionVariableBinding(raw: unknown, question: Question, d
     if (!Number.isSafeInteger(value.taskId) || Number(value.taskId) < 1 || (taskId !== undefined && value.taskId !== taskId)) return fail("关联不属于当前实验任务，请重新核对");
     if (value.datasetRevision !== dictionary.datasetRevision || value.dictionaryRevision !== dictionary.revision) return fail("关联所用变量字典已改变，请重新核对关联");
     if (!identity(question.id) || validateQuestionAtIndex(question, 1) || validateOptionIdentities(question)) return fail("关联题目或选项身份无效，请先修正题目");
+    if (value.questionSignature !== questionBindingSignature(question)) return fail("题目含义或作答规则已改变，请重新核对关联");
+    if (question.type === "numeric") {
+        if (value.kind !== "continuous" || value.answers !== undefined) return fail("数值题须直接关联连续变量，不能附带选项编码或作答数据");
+        const variable = dictionary.variables.find(v => v.id === value.variableId);
+        if (!variable || variable.measurementLevel !== "continuous" || variable.storageType !== "number") return fail("数值题只能关联已确认的连续数值变量，不能将分类编码或标识符当作数值量");
+        if (variable.unit !== question.numberRule!.unit) return fail("题目单位与变量字典不一致，请核对后修改；不会自动换算");
+        return { ok: true, value: { schemaVersion: 1, taskId: value.taskId as number, datasetRevision: dictionary.datasetRevision,
+            dictionaryRevision: dictionary.revision, questionSignature: value.questionSignature as string, kind: "continuous", variableId: variable.id } };
+    }
     const answers = questionAnswers(question);
     if (answers.length < 2 || answers.some(answer => !identity(answer.id))) return fail("选项缺少独立身份，请先编辑并保存题目，再确认关联");
-    if (value.questionSignature !== questionBindingSignature(question)) return fail("题目含义或选项已改变，请重新核对关联");
     const expectedKind = question.type === "multiple" ? "multiple-binary" : "categorical";
     if (value.kind !== expectedKind || !Array.isArray(value.answers) || value.answers.length !== answers.length) return fail("每个选项都需明确对应真实编码；多选需独立二值字段");
-    const result: QuestionVariableBindingV1["answers"] = [];
+    const result: CategoricalQuestionBinding["answers"] = [];
     for (let index = 0; index < answers.length; index++) {
         const entry = value.answers[index];
         if (!entry || typeof entry !== "object" || Array.isArray(entry) || entry.answerId !== answers[index]!.id) return fail("关联选项身份或顺序不一致");

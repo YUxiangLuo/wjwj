@@ -1,3 +1,4 @@
+import { parseNumericQuestionRule } from "./numeric-question";
 import type { Question, QuestionSection, QuestionType } from "./questionnaire-types";
 import { getDuplicateOptionIndexes, validateOptionIdentities } from "./questionnaire-options";
 
@@ -9,7 +10,7 @@ function generateQuestionId(): string {
     return `q_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
-const QUESTION_TYPES = new Set<string>(["boolean", "single", "multiple", "scale"]);
+const QUESTION_TYPES = new Set<string>(["boolean", "single", "multiple", "scale", "numeric"]);
 const QUESTION_SECTIONS = new Set<QuestionSection>(["screening", "main", "background"]);
 
 /**
@@ -50,6 +51,14 @@ export function parseRecommendQuestionFromPayload(rawQuestion: unknown, index: n
             base.recommendSourceId = sid;
         }
     }
+
+    if (type === "numeric") {
+        if (["options", "optionIds", "minSelect", "maxSelect", "scaleMin", "scaleMax", "scaleMinLabel", "scaleMaxLabel"].some(key => question[key] !== undefined)) return `第${index}题数值题不能混用选项或评分配置`;
+        if (Object.keys(question).some(key => !["id", "type", "content", "section", "recommendSourceId", "numberRule", "variableBinding"].includes(key))) return `第${index}题数值题包含未知配置，不接受作答数据`;
+        const rule = parseNumericQuestionRule(question.numberRule);
+        return rule.ok ? { ...base, numberRule: rule.value } : `第${index}题${rule.error}`;
+    }
+    if (question.numberRule !== undefined) return `第${index}题只有数值题可以配置数值规则`;
 
     if (type === "boolean") {
         return base;

@@ -16,6 +16,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { NumericQuestionSummary } from "@/components/questionnaire/NumericQuestionSummary";
 import { RichTextContent } from "@/components/RichTextContent";
 import { LoadingStatus } from "@/components/LoadingStatus";
 import { experimentApi, tasksApi } from "../api-client";
@@ -59,6 +60,7 @@ function QuestionPreview({ question, index }: { question: Question; index: numbe
                         <div className="text-label font-medium text-foreground">
                             {question.content}
                         </div>
+                        <NumericQuestionSummary question={question} />
                         {question.type === "boolean" && (
                             <div className="text-meta text-muted-foreground bg-card inline-block px-2 py-1 rounded-control border border-input">
                                 选项：是 / 否

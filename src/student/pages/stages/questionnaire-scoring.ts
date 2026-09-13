@@ -1,3 +1,4 @@
+import { validateQuestionAtIndex } from "@/lib/validate-question";
 import { getRichTextPlainText } from "@/utils/rich-text";
 import type { Question } from "@/lib/questionnaire-types";
 import { getDuplicateOptionIndexes } from "@/lib/questionnaire-options";
@@ -87,14 +88,18 @@ function getInvalidQuestionStructureIndexes(questions: Question[]) {
     return invalidIndexes;
 }
 
-function getInvalidScaleQuestionIndexes(questions: Question[]) {
+function getInvalidNumericRuleQuestionIndexes(questions: Question[]) {
     const invalidIndexes: number[] = [];
 
     questions.forEach((question, index) => {
+        if (question.type === "numeric") {
+            if (validateQuestionAtIndex(question, index + 1)) invalidIndexes.push(index + 1);
+            return;
+        }
         if (question.type !== "scale") return;
         const min = question.scaleMin ?? 1;
         const max = question.scaleMax ?? 10;
-        if (!Number.isFinite(min) || !Number.isFinite(max) || min < 1 || max > 10 || min >= max) {
+        if (!Number.isInteger(min) || !Number.isInteger(max) || min < 1 || max > 10 || min >= max) {
             invalidIndexes.push(index + 1);
         }
     });
@@ -122,7 +127,7 @@ function item(params: {
  */
 export function calculateQuestionnaireScoreSummary(input: QuestionnaireScoreInput) {
     const invalidOptionQuestions = input.invalidOptionQuestions ?? getInvalidOptionQuestionIndexes(input.questions);
-    const invalidScaleQuestions = getInvalidScaleQuestionIndexes(input.questions);
+    const invalidNumericRules = getInvalidNumericRuleQuestionIndexes(input.questions);
     const invalidStructureQuestions = getInvalidQuestionStructureIndexes(input.questions);
     const duplicateOptionQuestions = getDuplicateOptionQuestionIndexes(input.questions);
     const welcomeText = getRichTextPlainText(input.welcomeText);
@@ -134,7 +139,7 @@ export function calculateQuestionnaireScoreSummary(input: QuestionnaireScoreInpu
         endingText: endingText.length >= 20 && endingText.length <= 1000,
         questionCount: input.questions.length >= 5 && input.questions.length <= 50,
         questionStructure: invalidStructureQuestions.length === 0,
-        answerConfiguration: invalidOptionQuestions.length === 0 && invalidScaleQuestions.length === 0 && duplicateOptionQuestions.length === 0,
+        answerConfiguration: invalidOptionQuestions.length === 0 && invalidNumericRules.length === 0 && duplicateOptionQuestions.length === 0,
     };
 
     const scoreItems: ScoreItem[] = [
@@ -178,7 +183,7 @@ export function calculateQuestionnaireScoreSummary(input: QuestionnaireScoreInpu
             points: 20,
             valid: validation.answerConfiguration,
             passMessage: "选项、多选上下限和评分范围有效",
-            failMessage: `Q${Array.from(new Set([...invalidOptionQuestions, ...invalidScaleQuestions, ...duplicateOptionQuestions])).slice(0, 5).join("、")} 的作答配置无效`,
+            failMessage: `Q${Array.from(new Set([...invalidOptionQuestions, ...invalidNumericRules, ...duplicateOptionQuestions])).slice(0, 5).join("、")} 的作答配置无效`,
         }),
     ];
 

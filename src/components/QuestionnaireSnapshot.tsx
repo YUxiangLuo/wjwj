@@ -1,3 +1,4 @@
+import { NumericQuestionSummary } from "@/components/questionnaire/NumericQuestionSummary";
 import { RichTextContent } from "@/components/RichTextContent";
 import { parseQuestionVariableBinding, questionAnswers } from "@/domain/experiment/question-variable-binding";
 import { parseVariableDictionary, type VariableDictionaryV1 } from "@/domain/experiment/variable-dictionary";
@@ -10,6 +11,7 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
     single: "单选题",
     multiple: "多选题",
     scale: "评分题",
+    numeric: "数值题",
 };
 
 export function QuestionnaireSnapshot({
@@ -53,6 +55,7 @@ export function QuestionnaireSnapshot({
                                 </span>
                             </div>
 
+                            <NumericQuestionSummary question={question} />
                             <QuestionBindingSnapshot question={question} dictionary={variableDictionary} />
                             {question.options?.length ? (
                                 <ul className="mt-3 list-disc space-y-1 pl-5 text-label text-muted-foreground">
@@ -101,8 +104,9 @@ function QuestionBindingSnapshot({ question, dictionary }: { question: Question;
     const parsed = parseQuestionVariableBinding(question.variableBinding, question, dictionary);
     if (!parsed.ok) return <p role="alert" className="mt-2 text-meta text-destructive">关联无法核对：{parsed.error}</p>;
     const answers = questionAnswers(question);
+    const binding = parsed.value;
     return <div className="mt-3 space-y-1 border-t border-border pt-2 text-meta">
         <p className="font-medium">语义对应 · 提交字典修订 {dictionary.revision}（不是采集来源）</p>
-        {parsed.value.answers.map((entry, index) => <p key={entry.answerId} className="break-words text-muted-foreground">{answers[index]!.label} → {JSON.stringify(dictionary.variables.find(v => v.id === entry.variableId)!.sourceField)} · {typeof entry.value === "string" ? "文本" : typeof entry.value === "number" ? "数值" : "布尔"} {JSON.stringify(entry.value)}</p>)}
+        {binding.kind === "continuous" ? <p className="break-words text-muted-foreground">连续变量 → {JSON.stringify(dictionary.variables.find(v => v.id === binding.variableId)!.sourceField)}；原数据未按试填规则裁剪或换算。</p> : binding.answers.map((entry, index) => <p key={entry.answerId} className="break-words text-muted-foreground">{answers[index]!.label} → {JSON.stringify(dictionary.variables.find(v => v.id === entry.variableId)!.sourceField)} · {typeof entry.value === "string" ? "文本" : typeof entry.value === "number" ? "数值" : "布尔"} {JSON.stringify(entry.value)}</p>)}
     </div>;
 }

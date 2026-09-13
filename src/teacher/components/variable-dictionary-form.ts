@@ -1,3 +1,4 @@
+import { decimalIdentity } from "@/lib/decimal-input";
 import {
     parseVariableDictionary, type DictionaryParseResult, type VariableDefinition,
     type VariableDictionaryV1, type VariableValue,
@@ -16,16 +17,6 @@ export function dictionaryDraft(dictionary: VariableDictionaryV1): VariableDraft
         categories: variable.categories.map(c => ({ ...codeDraft(c.value), label: c.label })),
         missingValues: variable.missingValues.map(codeDraft),
     }));
-}
-// Compare decimal meaning to the canonical JS number, not its formatting. This
-// accepts 1.0 / 1e3 but rejects category identity precision loss and underflow to zero.
-function decimalIdentity(text: string): string {
-    const [mantissa, exponent = "0"] = text.toLowerCase().split("e");
-    const [whole, fraction = ""] = mantissa!.replace(/^-/, "").split(".");
-    const digits = `${whole}${fraction}`.replace(/^0+/, "");
-    if (!digits) return "0";
-    const coefficient = digits.replace(/0+$/, "");
-    return `${text.startsWith("-") ? "-" : ""}${coefficient}e${Number(exponent) - fraction.length + digits.length - coefficient.length}`;
 }
 export function readCodeDraft(draft: CodeDraft): VariableValue {
     if (draft.kind === "string") return draft.text; // Never trim or normalize an original code.

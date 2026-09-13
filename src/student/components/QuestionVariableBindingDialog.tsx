@@ -1,3 +1,4 @@
+import { numericQuestionDescription } from "@/lib/numeric-question";
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -18,11 +19,12 @@ function BindingSession({ taskId, question: original, onApply, onClose }: Props)
     const [error, setError] = useState<string | null>(null);
     const [reload, setReload] = useState(0);
     const [selection, setSelection] = useState<Record<string, { variableId: string; codeKey: string }>>({});
+    const [numericVariable, setNumericVariable] = useState("");
     const [dirty, setDirty] = useState(false);
     const [discard, setDiscard] = useState(false);
     useEffect(() => {
         const controller = new AbortController();
-        setLoading(true); setError(null); setDictionary(null); setSelection({}); setDirty(false);
+        setLoading(true); setError(null); setDictionary(null); setSelection({}); setNumericVariable(""); setDirty(false);
         void (async () => {
             const response = await tasksApi.getVariables(taskId, controller.signal);
             if (controller.signal.aborted) return;
@@ -33,7 +35,10 @@ function BindingSession({ taskId, question: original, onApply, onClose }: Props)
             setDictionary(parsed.value);
             if (question.variableBinding) {
                 const binding = parseQuestionVariableBinding(question.variableBinding, question, parsed.value, taskId);
-                if (binding.ok) setSelection(Object.fromEntries(binding.value.answers.map(entry => [entry.answerId, { variableId: entry.variableId, codeKey: variableValueKey(entry.value) }])));
+                if (binding.ok) {
+                    if (binding.value.kind === "continuous") setNumericVariable(binding.value.variableId);
+                    else setSelection(Object.fromEntries(binding.value.answers.map(entry => [entry.answerId, { variableId: entry.variableId, codeKey: variableValueKey(entry.value) }])));
+                }
                 else setError(`${binding.error}；不会沿用旧映射，请重新选择，或取消数据关联。`);
             }
         })().catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "读取失败，请重试"); })
@@ -43,17 +48,18 @@ function BindingSession({ taskId, question: original, onApply, onClose }: Props)
     const answers = questionAnswers(question);
     const invalidIdentity = answers.some(answer => !answer.id) || new Set(answers.map(answer => answer.id)).size !== answers.length;
     const multiple = question.type === "multiple";
-    const variables = dictionary?.variables.filter(v => (v.measurementLevel === "nominal" || v.measurementLevel === "ordinal")
+    const numeric = question.type === "numeric";
+    const variables = dictionary?.variables.filter(v => numeric ? v.measurementLevel === "continuous" && v.storageType === "number" : (v.measurementLevel === "nominal" || v.measurementLevel === "ordinal")
         && (multiple ? v.categories.length === 2 : v.categories.length === answers.length)
         && (question.type !== "scale" || v.measurementLevel === "ordinal")) ?? [];
     const candidate = dictionary ? parseQuestionVariableBinding({
         schemaVersion: 1, taskId, datasetRevision: dictionary.datasetRevision, dictionaryRevision: dictionary.revision,
-        questionSignature: questionBindingSignature(question), kind: multiple ? "multiple-binary" : "categorical",
-        answers: answers.map(answer => {
+        questionSignature: questionBindingSignature(question),
+        ...(numeric ? { kind: "continuous", variableId: numericVariable } : { kind: multiple ? "multiple-binary" : "categorical", answers: answers.map(answer => {
             const chosen = selection[answer.id];
             const variable = dictionary.variables.find(v => v.id === chosen?.variableId);
             return { answerId: answer.id, variableId: chosen?.variableId, value: variable?.categories.find(c => variableValueKey(c.value) === chosen?.codeKey)?.value };
-        }),
+        }) }),
     }, question, dictionary, taskId) : null;
     function chooseVariable(answerId: string, variableId: string) {
         setDirty(true);
@@ -69,10 +75,11 @@ function BindingSession({ taskId, question: original, onApply, onClose }: Props)
                 {loading ? <p role="status" className="text-label text-muted-foreground">正在读取教师确认的变量字典…</p> : <>
                     {error && <p role="alert" className="break-words text-label text-destructive">{error}</p>}
                     {!dictionary ? <p className="text-label text-muted-foreground">{error ? "读取失败时不能建立数据关联。" : "教师尚未确认变量字典。"}可以保持仅认知预试，不影响完成实验。</p> : invalidIdentity ? <p role="alert" className="text-label text-destructive">选项缺少独立身份或身份重复，请先编辑并保存题目，再确认关联。</p> : <>
-                        <p className="text-meta text-muted-foreground">字典修订 {dictionary.revision} · 来源 {dictionary.datasetRevision.slice(0, 12)}。{multiple ? "每个选项对应独立的二值字段；另一有效编码表示未选中，缺失仍为缺失。" : "选项必须与同一个变量的全部有效类别一一对应；缺失编码不能充当答案。"}</p>
-                        {!variables.length && <p role="status" className="text-label text-warning">没有与本题兼容的已确认变量。连续数值不能强行关联为选项；评分题需有序类别，多选题需逐选项二值列。</p>}
-                        {!multiple && <label className="block space-y-2 text-label"><span>已有变量</span><select aria-label="关联变量" className={selectClass} value={selection[answers[0]?.id ?? ""]?.variableId ?? ""} onChange={e => chooseVariable("", e.target.value)}>
-                            <option value="">请选择变量，不自动猜测</option>{variables.map(v => <option key={v.id} value={v.id}>{v.label} · 源字段 {JSON.stringify(v.sourceField)}</option>)}
+                        <p className="text-meta text-muted-foreground">字典修订 {dictionary.revision} · 来源 {dictionary.datasetRevision.slice(0, 12)}。{numeric ? "直接关联连续变量，不产生选项编码。题目范围和小数位仅约束试填，不筛选或修改已有数据。" : multiple ? "每个选项对应独立的二值字段；另一有效编码表示未选中，缺失仍为缺失。" : "选项必须与同一个变量的全部有效类别一一对应；缺失编码不能充当答案。"}</p>
+                        {numeric && <p className="text-label text-muted-foreground">{numericQuestionDescription(question.numberRule)}双方未声明单位时仍需自行核对。</p>}
+                        {!variables.length && <p role="status" className="text-label text-warning">{numeric ? "没有已确认的连续数值变量，请联系教师配置字典或保持认知预试。" : "没有与本题匹配的已确认变量。连续数值不能强行关联为选项；评分题需有序类别，多选题需逐选项二值列。"}</p>}
+                        {!multiple && <label className="block space-y-2 text-label"><span>已有变量</span><select aria-label="关联变量" className={selectClass} value={numeric ? numericVariable : selection[answers[0]?.id ?? ""]?.variableId ?? ""} onChange={e => { if (numeric) { setDirty(true); setNumericVariable(e.target.value); } else chooseVariable("", e.target.value); }}>
+                            <option value="">请选择变量，不自动猜测</option>{variables.map(v => <option key={v.id} value={v.id}>{v.label} · 源字段 {JSON.stringify(v.sourceField)}{numeric ? ` · 单位：${v.unit || "未声明"}` : ""}</option>)}
                         </select></label>}
                         {answers.map((answer, index) => {
                             const chosen = selection[answer.id]; const variable = variables.find(v => v.id === chosen?.variableId);

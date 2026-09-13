@@ -1,6 +1,6 @@
 import type { Question, QuestionnaireData } from "@/lib/questionnaire-types";
 import type { VariableDictionaryV1, VariableDefinition, VariableValue } from "@/domain/experiment/variable-dictionary";
-import { questionAnswers, questionBindingSignature, type QuestionVariableBindingV1 } from "@/domain/experiment/question-variable-binding";
+import { questionAnswers, questionBindingSignature, type CategoricalQuestionBinding } from "@/domain/experiment/question-variable-binding";
 export function bindingDictionary(): VariableDictionaryV1 {
     const variable = (id: string, sourceField: string, values: VariableValue[], extra: Partial<VariableDefinition> = {}): VariableDefinition => ({ id, sourceField, label: sourceField, storageType: "text", measurementLevel: "nominal", unit: "", missingValues: ["N/A"], categories: values.map(value => ({ value, label: String(value) })), ...extra });
     return { schemaVersion: 1, revision: 3, datasetRevision: "a".repeat(64), parserVersion: "spreadsheet-v2", variables: [
@@ -11,7 +11,7 @@ export function bindingDictionary(): VariableDictionaryV1 {
     ] };
 }
 export function bindingQuestion(): Question { return { id: "q1", type: "single", content: "请选择类别", options: ["甲类", "乙类"], optionIds: ["o_a", "o_b"] }; }
-export function bindingFor(question = bindingQuestion(), dictionary = bindingDictionary(), variableId = "v_2"): QuestionVariableBindingV1 {
+export function bindingFor(question = bindingQuestion(), dictionary = bindingDictionary(), variableId = "v_2"): CategoricalQuestionBinding {
     return { schemaVersion: 1, taskId: 3, datasetRevision: dictionary.datasetRevision, dictionaryRevision: dictionary.revision,
         questionSignature: questionBindingSignature(question), kind: question.type === "multiple" ? "multiple-binary" : "categorical",
         answers: questionAnswers(question).map((answer, index) => ({ answerId: answer.id, variableId, value: dictionary.variables.find(v => v.id === variableId)!.categories[index]!.value })),

@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-import { act, cleanup, fireEvent, render, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { installDomGlobals } from "@/test-utils/dom";
 import type { QuestionnaireData } from "../api-client";
+const bootstrap = installDomGlobals();
+const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 
 mock.module("@/components/ui/alert-dialog", () => ({
     AlertDialog: ({ children, open }: { children: ReactNode; open?: boolean }) =>
@@ -51,6 +52,7 @@ mock.module("@/components/ui/alert-dialog", () => ({
 }));
 
 const { ImmersiveQuestionnairePreview } = await import("./ImmersiveQuestionnairePreview");
+bootstrap.restore();
 
 function baseQuestionnaire(overrides: Partial<QuestionnaireData> = {}): QuestionnaireData {
     return {
@@ -106,6 +108,48 @@ describe("ImmersiveQuestionnairePreview", () => {
         expect(view.getByTestId("immersive-preview-submit")).toBeTruthy();
         fireEvent.click(view.getByTestId("immersive-preview-submit"));
         expect(onComplete).toHaveBeenCalled();
+    });
+
+    test("numeric answers stay local, never auto-advance while typing, and require valid rules and explicit ending", async () => {
+        const onComplete = mock(() => {});
+        const view = render(<ImmersiveQuestionnairePreview questionnaire={baseQuestionnaire({ questions: [
+            { id: "n", type: "numeric", content: "实际时长？", numberRule: { unit: "分钟", min: 0, max: 10, decimalPlaces: 2 } },
+            { id: "b", type: "boolean", content: "继续吗？" },
+        ] })} onComplete={onComplete} onClose={() => {}} />);
+        fireEvent.click(view.getByTestId("immersive-preview-start"));
+        const input = view.getByTestId("preview-numeric-answer") as HTMLInputElement;
+        for (const value of ["", "NaN", "1e-400", "1.001", "11"]) {
+            fireEvent.change(input, { target: { value } }); expect(input.value).toBe(value);
+            expect((view.getByTestId("immersive-preview-next") as HTMLButtonElement).disabled).toBe(true);
+        }
+        fireEvent.change(input, { target: { value: "0" } }); await settleAutoAdvance();
+        expect(view.getByText("实际时长？")).toBeTruthy(); expect(onComplete).not.toHaveBeenCalled();
+        expect((view.getByTestId("immersive-preview-next") as HTMLButtonElement).disabled).toBe(false);
+        fireEvent.click(view.getByTestId("immersive-preview-next")); fireEvent.click(view.getByText("是")); await settleAutoAdvance();
+        expect(onComplete).not.toHaveBeenCalled(); fireEvent.click(view.getByTestId("immersive-preview-submit"));
+        expect(onComplete).toHaveBeenCalledWith();
+    });
+
+    test("numeric Enter continues only for a valid, non-composing, unrepeated explicit key press", () => {
+        const onComplete = mock(() => {});
+        const view = render(<ImmersiveQuestionnairePreview questionnaire={baseQuestionnaire({ questions: [{ id: "n", type: "numeric", content: "数值？", numberRule: { unit: "", min: 0, max: 10, decimalPlaces: 0 } }] })} onComplete={onComplete} onClose={() => {}} />);
+        fireEvent.click(view.getByTestId("immersive-preview-start")); const input = view.getByTestId("preview-numeric-answer");
+        fireEvent.keyDown(input, { key: "Enter" }); expect(view.queryByTestId("immersive-preview-submit")).toBeNull();
+        fireEvent.change(input, { target: { value: "0" } });
+        for (const guard of [{ isComposing: true }, { repeat: true }, { ctrlKey: true }, { altKey: true }, { metaKey: true }]) {
+            fireEvent.keyDown(input, { key: "Enter", ...guard }); expect(view.queryByTestId("immersive-preview-submit")).toBeNull();
+        }
+        fireEvent.keyDown(input, { key: "Enter" }); expect(view.getByTestId("immersive-preview-submit")).toBeTruthy(); expect(onComplete).not.toHaveBeenCalled();
+    });
+
+    test("changing numeric rules discards previous local trial answers rather than carrying them over", () => {
+        const questionnaire = baseQuestionnaire({ questions: [{ id: "n", type: "numeric", content: "数值？", numberRule: { unit: "", min: 0, max: 10, decimalPlaces: 0 } }] });
+        const view = render(<ImmersiveQuestionnairePreview questionnaire={questionnaire} onComplete={() => {}} onClose={() => {}} />);
+        fireEvent.click(view.getByTestId("immersive-preview-start")); fireEvent.change(view.getByTestId("preview-numeric-answer"), { target: { value: "0" } });
+        const changed = structuredClone(questionnaire); changed.questions[0]!.numberRule!.min = 1;
+        view.rerender(<ImmersiveQuestionnairePreview questionnaire={changed} onComplete={() => {}} onClose={() => {}} />);
+        expect((view.getByTestId("preview-numeric-answer") as HTMLInputElement).value).toBe("");
+        expect((view.getByTestId("immersive-preview-next") as HTMLButtonElement).disabled).toBe(true);
     });
 
     test("duplicate question ids block the trial rather than falling back to positional identities", () => {

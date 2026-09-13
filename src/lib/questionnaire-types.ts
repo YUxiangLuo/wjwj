@@ -4,7 +4,7 @@
 
 import type { QuestionVariableBindingV1 } from "@/domain/experiment/question-variable-binding";
 
-export type QuestionType = "boolean" | "single" | "multiple" | "scale";
+export type QuestionType = "boolean" | "single" | "multiple" | "scale" | "numeric";
 export type QuestionSection = "screening" | "main" | "background";
 
 export interface Question {
@@ -26,6 +26,8 @@ export interface Question {
     scaleMax?: number;
     scaleMinLabel?: string;
     scaleMaxLabel?: string;
+    /** Required for numeric questions; never treated as an ordinal score. */
+    numberRule?: import("./numeric-question").NumericQuestionRule;
 }
 
 export interface QuestionnaireData {

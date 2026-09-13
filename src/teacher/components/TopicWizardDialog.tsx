@@ -3,6 +3,7 @@ import { VariableDictionaryDialog } from "./VariableDictionaryDialog";
 import { RequestError } from "@/components/RequestError";
 import { parseNumericText } from "@/lib/numeric-text";
 import { assignFieldRole } from "../topic/field-roles";
+import { NumericQuestionSummary } from "@/components/questionnaire/NumericQuestionSummary";
 import { useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, CheckCircle2, ChevronRight, Download, FileText, HelpCircle, Loader2, Pencil, Play, School, Sparkles, Trash2, Upload, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -782,6 +783,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                                 ))}
                                                             </div>
                                                         )}
+                                                        <NumericQuestionSummary question={q} />
                                                         {q.type === "boolean" && (
                                                             <p className="text-meta text-muted-foreground mt-1">选项：是 / 否</p>
                                                         )}

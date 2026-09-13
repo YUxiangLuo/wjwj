@@ -1,7 +1,8 @@
 import { DraftSaveStatus } from "../../components/DraftSaveStatus";
 import { QuestionVariableBindingDialog } from "../../components/QuestionVariableBindingDialog";
+import { NumericQuestionSummary } from "@/components/questionnaire/NumericQuestionSummary";
 import { instantiateQuestion } from "@/lib/instantiate-question";
-import { keepUnchangedQuestionBinding } from "@/domain/experiment/question-variable-binding";
+import { keepUnchangedQuestionBinding, questionBindingSignature } from "@/domain/experiment/question-variable-binding";
 import { StatusBadge } from "@/components/StatusBadge";
 import { StageActions } from "../../components/StageActions";
 import { PageHeader } from "@/components/PageHeader";
@@ -44,6 +45,7 @@ const questionTypeLabels: Record<QuestionType, string> = {
     single: "单选题",
     multiple: "多选题",
     scale: "评分题",
+    numeric: "数值题",
 };
 
 const questionTypeColors: Record<QuestionType, string> = {
@@ -51,6 +53,7 @@ const questionTypeColors: Record<QuestionType, string> = {
     single: "bg-info-muted text-info border-info-border",
     multiple: "bg-success-muted text-success border-success-border",
     scale: "bg-warning-muted text-warning border-warning-border",
+    numeric: "bg-primary-muted text-primary border-primary-border",
 };
 
 interface QuestionnaireStepValidation {
@@ -156,13 +159,7 @@ export function QuestionnaireDesign() {
 
     // Content fingerprint for detecting changes after preview completion
     const contentFingerprint = useMemo(
-        () => `${title}|${welcomeText}|${endingText}|${questions.map(q =>
-            q.id + q.type + (q.section ?? "main") + q.content
-            + (q.options ?? []).join(";")
-            + (q.minSelect ?? "") + (q.maxSelect ?? "")
-            + (q.scaleMin ?? "") + (q.scaleMax ?? "")
-            + (q.scaleMinLabel ?? "") + (q.scaleMaxLabel ?? "")
-        ).join(",")}`,
+        () => JSON.stringify([title, welcomeText, endingText, questions.map(questionBindingSignature)]),
         [title, welcomeText, endingText, questions],
     );
     const isPreviewValid = previewCompleted && previewContentHash === contentFingerprint;
@@ -513,6 +510,7 @@ export function QuestionnaireDesign() {
                                                     <span className="mt-0.5 w-8 shrink-0 text-label font-semibold text-muted-foreground">Q{index + 1}</span>
                                                     <div className="min-w-0 flex-[1_1_24rem] space-y-2">
                                                         <button type="button" onClick={() => handleEditQuestion(q)} className="w-full break-words text-left text-body font-semibold text-foreground hover:text-primary">{q.content}</button>
+                                                        <NumericQuestionSummary question={q} />
                                                         <div className="flex flex-wrap gap-2">
                                                             <Badge variant="outline" className={`${questionTypeColors[q.type]} px-2 py-0.5 text-meta whitespace-nowrap`}>
                                                                 {questionTypeLabels[q.type]}
@@ -639,6 +637,7 @@ export function QuestionnaireDesign() {
                                                     <div className="text-label font-medium text-foreground line-clamp-2">{rq.content}</div>
                                                     <div className="text-meta text-muted-foreground">
                                                         类型：{questionTypeLabels[rq.type]}
+                                                        <NumericQuestionSummary question={rq} />
                                                     </div>
                                                 </div>
                                                 <Button

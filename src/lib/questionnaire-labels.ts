@@ -5,6 +5,7 @@ export const questionTypeLabels: Record<QuestionType, string> = {
     single: "单选题",
     multiple: "多选题",
     scale: "评分题",
+    numeric: "数值题",
 };
 
 export const questionTypeBadgeColors: Record<QuestionType, string> = {
@@ -12,4 +13,5 @@ export const questionTypeBadgeColors: Record<QuestionType, string> = {
     single: "bg-info-muted text-info border-info-border",
     multiple: "bg-warning-muted text-warning border-warning-border",
     scale: "bg-auxiliary-muted text-auxiliary border-auxiliary-border",
+    numeric: "bg-primary-muted text-primary border-primary-border",
 };

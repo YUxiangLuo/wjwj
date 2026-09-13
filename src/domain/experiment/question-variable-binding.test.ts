@@ -10,7 +10,7 @@ test("typed categorical bindings roundtrip and strip untrusted extras", () => {
     const binding = bindingFor(); const before = structuredClone(binding);
     const result = parseQuestionVariableBinding({ ...binding, fakeResponses: [1, 2] }, bindingQuestion(), bindingDictionary(), 3);
     expect(result).toEqual({ ok: true, value: binding }); expect(binding).toEqual(before);
-    expect(result.ok && result.value.answers.map(a => a.value)).toEqual(["01", 1]);
+    expect(result.ok && result.value.kind !== "continuous" && result.value.answers.map(a => a.value)).toEqual(["01", 1]);
 });
 for (const [name, patch] of Object.entries({ future: { schemaVersion: 2 }, foreignTask: { taskId: 4 }, stale: { dictionaryRevision: 2 }, source: { datasetRevision: "b".repeat(64) }, signature: { questionSignature: "old meaning" }, fakeMultiple: { kind: "multiple-binary" } })) {
     test(`binding rejects ${name}`, () => expect(parseQuestionVariableBinding({ ...bindingFor(), ...patch }, bindingQuestion(), bindingDictionary(), 3).ok).toBe(false));

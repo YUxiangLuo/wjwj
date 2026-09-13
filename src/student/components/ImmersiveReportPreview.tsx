@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X, FileText, Users, BarChart3, Layers, ChevronDown } from "lucide-react";
+import { NumericQuestionSummary } from "@/components/questionnaire/NumericQuestionSummary";
 import { RichTextContent } from "@/components/RichTextContent";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import type { ExperimentData, MethodKey } from "@/domain/experiment/types";
@@ -297,6 +298,7 @@ function QuestionnaireSection({ questionnaire }: { questionnaire: ExperimentData
                             </span>
                             <div className="flex-1 space-y-2">
                                 <p className="text-label font-medium text-foreground">{q.content}</p>
+                                <NumericQuestionSummary question={q} />
                                 {q.type === "boolean" && (
                                     <span className="text-meta text-muted-foreground bg-muted px-2 py-1 rounded-control">是 / 否</span>
                                 )}

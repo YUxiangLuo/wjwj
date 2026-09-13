@@ -1,3 +1,5 @@
+import { Input } from "@/components/ui/input";
+import { numericQuestionDescription, readNumericAnswer } from "@/lib/numeric-question";
 import { useState, useMemo, useCallback, useEffect, useRef, useId } from "react";
 import { createPortal } from "react-dom";
 import { X, ChevronLeft, ChevronRight, Check, ClipboardList } from "lucide-react";
@@ -37,6 +39,8 @@ function isQuestionAnswered(question: Question, answer: unknown): boolean {
         }
         case "scale":
             return typeof answer === "number";
+        case "numeric":
+            return typeof answer === "string" && readNumericAnswer(answer, question.numberRule).ok;
         default:
             return false;
     }
@@ -293,7 +297,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
         if (e.repeat) { e.preventDefault(); return; }
         const target = e.target instanceof HTMLElement ? e.target : null;
         // 不抢占未选选项、链接、题号或关闭按钮的原生键盘操作。
-        if (isCurrentAnswered && (target === overlayRef.current || target?.closest('[data-preview-answer][aria-pressed="true"]'))) {
+        if (isCurrentAnswered && (target === overlayRef.current || target?.closest('[data-preview-answer][aria-pressed="true"]') || target?.matches('[data-preview-number]'))) {
             e.preventDefault();
             goNext();
         }
@@ -322,6 +326,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
         single: "请选择一项",
         multiple: "可选择多项",
         scale: "请在量表上选择",
+        numeric: "请输入数值，核对后明确继续",
     };
 
     const cardClass =
@@ -379,6 +384,21 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                 );
             }
 
+            case "numeric": {
+                const text = typeof answer === "string" ? answer : "";
+                const parsed = readNumericAnswer(text, question.numberRule);
+                const errorId = `${titleId}-number-error`;
+                const hintId = `${titleId}-number-hint`;
+                return <div className="space-y-3">
+                    <label className="block space-y-2 text-body"><span>数值答案{question.numberRule?.unit ? `（${question.numberRule.unit}）` : "（单位未声明）"}</span>
+                        <Input inputMode="decimal" data-preview-answer data-preview-number data-testid="preview-numeric-answer" maxLength={200} value={text}
+                            aria-invalid={answer !== undefined && !parsed.ok} aria-describedby={`${hintId}${answer !== undefined && !parsed.ok ? ` ${errorId}` : ""}`}
+                            onChange={e => { setPendingAutoAdvance(null); setAnswersByIndex(prev => ({ ...prev, [qIndex]: e.target.value })); }} />
+                    </label>
+                    <p id={hintId} className="text-label text-muted-foreground">{numericQuestionDescription(question.numberRule)}末尾零不改变数值；试填答案不写入样本。</p>
+                    {answer !== undefined && !parsed.ok && <p id={errorId} role="alert" className="text-label text-destructive">{parsed.error}</p>}
+                </div>;
+            }
             case "scale": {
                 const min = question.scaleMin ?? 1;
                 const max = question.scaleMax ?? 10;
