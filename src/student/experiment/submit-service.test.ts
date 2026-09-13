@@ -17,6 +17,7 @@ function validRecord(status: "in_progress" | "rejected" = "in_progress") {
     const now = new Date();
     return {
         id: 9,
+        analysisReferences: [],
         studentId: 2,
         taskId: 3,
         version: 4,

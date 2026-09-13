@@ -1,3 +1,5 @@
+import { ResearchWorkbench } from "../../components/ResearchWorkbench";
+import { parseResearchReferences } from "@/domain/experiment/research-analysis";
 import { SamplingObservationNotice } from "../../components/SamplingObservationNotice";
 import { DraftSaveStatus } from "../../components/DraftSaveStatus";
 import { useSectionNavigation } from "@/hooks/useSectionNavigation";
@@ -49,7 +51,7 @@ interface AnalysisReportProps {
 }
 
 type ZoomChartType = "mean" | "dist" | "error" | "represent" | null;
-type AnalysisWorkspace = "overview" | "charts" | "records" | "report";
+type AnalysisWorkspace = "overview" | "charts" | "records" | "research" | "report";
 
 // ---------------------------------------------------------------------------
 // ChartBars — horizontal bar chart component
@@ -201,7 +203,7 @@ function FieldSelect({
 export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const { experiment, populationSize, completeStage } = useExperiment();
 
-    const restoredDraft = useMemo(() => readExperimentDraft<{ reportContent: string; workspace?: AnalysisWorkspace }>({
+    const restoredDraft = useMemo(() => readExperimentDraft<{ reportContent: string; workspace?: AnalysisWorkspace; analysisReferences?: unknown }>({
         experimentId: experiment?.id,
         experimentVersion: experiment?.version,
         stage: 4,
@@ -209,8 +211,10 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const [reportContent, setReportContent] = useState(
         restoredDraft?.reportContent ?? experiment?.reportContent ?? "",
     );
-    const [workspace, setWorkspace, workspaceNavigationRef] = useSectionNavigation<AnalysisWorkspace>(restoredDraft?.workspace && ["overview", "charts", "records", "report"].includes(restoredDraft.workspace) ? restoredDraft.workspace : "overview", '[data-testid="student-experiment-navigation"]');
-    const reportDraft = useMemo(() => ({ reportContent, workspace }), [reportContent, workspace]);
+    const [workspace, setWorkspace, workspaceNavigationRef] = useSectionNavigation<AnalysisWorkspace>(restoredDraft?.workspace && ["overview", "charts", "records", "research", "report"].includes(restoredDraft.workspace) ? restoredDraft.workspace : "overview", '[data-testid="student-experiment-navigation"]');
+    const [analysisReferences, setAnalysisReferences] = useState<unknown>(restoredDraft?.analysisReferences === undefined ? experiment?.analysisReferences : restoredDraft.analysisReferences);
+    const [researchOpened, setResearchOpened] = useState(workspace === "research");
+    const reportDraft = useMemo(() => ({ reportContent, workspace, analysisReferences }), [reportContent, workspace, analysisReferences]);
     const clearDraft = useExperimentDraft({
         experimentId: experiment?.id,
         experimentVersion: experiment?.version,
@@ -505,8 +509,10 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         if (!isValidLength || isSubmitting || clearDraft.status === "conflict") return;
         setIsSubmitting(true);
         try {
-            if (clearDraft.save({ reportContent, workspace }) === "conflict") return;
-            const success = await completeStage(4, { reportContent });
+            const references = parseResearchReferences(analysisReferences);
+            if (typeof references === "string") { toast.error(references); setResearchOpened(true); setWorkspace("research"); return; }
+            if (clearDraft.save(reportDraft) === "conflict") return;
+            const success = await completeStage(4, { reportContent, analysisReferences: references });
             if (!success) return;
             clearDraft.clear();
             onSubmit();
@@ -545,7 +551,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     // ---- Render ----
     const target = analysisMetrics?.target;
-    const switchWorkspace = (value: string) => setWorkspace(value as AnalysisWorkspace);
+    const switchWorkspace = (value: string) => { if (value === "research") setResearchOpened(true); setWorkspace(value as AnalysisWorkspace); };
 
     return <div className="min-w-0 space-y-5" data-testid="student-stage-analysis-report">
         <Tabs value={workspace} onValueChange={switchWorkspace} className="min-w-0 space-y-5">
@@ -553,6 +559,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 <TabsList aria-label="分析与报告工作区" className="flex h-auto flex-wrap gap-1 rounded-surface border border-border bg-card p-1" data-testid="student-analysis-workspace-tabs">
                     <TabsTrigger value="overview" className="min-h-11 px-4" data-testid="student-analysis-workspace-overview">研究结果</TabsTrigger>
                     <TabsTrigger value="charts" className="min-h-11 px-4" data-testid="student-analysis-section-tab-charts">图表探索</TabsTrigger>
+                    <TabsTrigger value="research" className="min-h-11 px-4" data-testid="student-analysis-workspace-research">自主分析</TabsTrigger>
                     <TabsTrigger value="records" className="min-h-11 px-4" data-testid="student-analysis-workspace-records">规划与抽样记录</TabsTrigger>
                     <TabsTrigger value="report" className="min-h-11 gap-2 px-4" data-testid="student-analysis-workspace-report"><FileText className="h-4 w-4"/>撰写报告</TabsTrigger>
                 </TabsList>
@@ -679,11 +686,13 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 </details>
             </TabsContent>
 
+            <TabsContent value="research" forceMount className="min-w-0 data-[state=inactive]:hidden">{researchOpened && experiment && <ResearchWorkbench taskId={experiment.taskId} observedVersion={experiment.version} references={analysisReferences} onReferencesChange={setAnalysisReferences} />}</TabsContent>
             <TabsContent value="report" forceMount className="min-w-0 data-[state=inactive]:hidden">
                 <div className="flex flex-wrap items-start gap-5">
                     <Card className="min-w-0 flex-[3_1_36rem] gap-0 rounded-surface border-border bg-card py-0">
                         <CardHeader className="border-b border-border p-3"><CardTitle><h2 className="text-section-title font-semibold">用数据回答研究问题</h2></CardTitle><CardDescription>报告需 {minLength}–{maxLength} 字。先写结论，再用估计值、误差和抽样设计说明理由。</CardDescription></CardHeader>
                         <CardContent className="px-3 pb-3 pt-1">
+                            <div className="mb-3 flex flex-wrap items-center gap-3 text-label"><span>自主分析引用：{Array.isArray(analysisReferences) ? analysisReferences.length : "格式需检查"} 条（可选，作为可核查附录保存）</span><Button variant="outline" onClick={() => switchWorkspace("research")}>查看或调整引用</Button></div>
                             <Label htmlFor="report" className="sr-only">报告正文</Label>
                             <RichTextEditor dataTestId="student-analysis-report" editorTestId="student-analysis-report-editor" id="report" ariaLabel="报告正文" showWordCount={false}
                                 placeholder="这次调查要回答什么问题？各方法得到了什么结果？请引用具体数值，并说明结论的适用范围。"

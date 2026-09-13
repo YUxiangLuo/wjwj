@@ -28,7 +28,7 @@ function NavigationProbe() {
 
 function experiment(taskId: number, overrides: Record<string, unknown> = {}) {
     return {
-        id: taskId * 100, taskId, version: 5, currentStage: 4, status: "in_progress",
+        id: taskId * 100, taskId, version: 5, currentStage: 4, status: "in_progress", analysisReferences: [],
         questionnaire: { title: `问卷${taskId}`, welcomeText: "欢迎", endingText: "感谢", questions: [] },
         reportContent: `<p>${`任务${taskId}的报告`.repeat(30)}</p>`, samplingResults: {}, populationSize: 1000,
         stage1CompletedAt: "2026-03-01T00:00:00Z", stage2CompletedAt: "2026-03-01T00:00:00Z", stage3CompletedAt: "2026-03-01T00:00:00Z", stage4CompletedAt: null,

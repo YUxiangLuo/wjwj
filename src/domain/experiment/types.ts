@@ -84,6 +84,7 @@ export interface ExperimentData {
     samplePlan: SamplePlanData | null;
     samplingResults: SamplingResultsData | null;
     reportContent: string | null;
+    analysisReferences: string[];
     stage1CompletedAt: string | null;
     stage2CompletedAt: string | null;
     stage3CompletedAt: string | null;

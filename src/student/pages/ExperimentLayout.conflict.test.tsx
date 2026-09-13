@@ -59,6 +59,7 @@ function experiment(version: number, reportContent: string, overrides: Record<st
         questionnaire: { title: "问卷", welcomeText: "欢迎参与本次抽样调查实验。", endingText: "感谢参与本次抽样调查实验。", questions: [] },
         samplePlan: { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 100, finalSampleSize: 100 },
         samplingResults: {},
+        analysisReferences: [],
         reportContent,
         stage1CompletedAt: "2026-03-01T00:00:00.000Z",
         stage2CompletedAt: "2026-03-01T00:00:00.000Z",

@@ -1,3 +1,4 @@
+import { ResearchAppendix } from "@/components/ResearchResult";
 import { CodebookDownloadButton } from "@/components/CodebookDownloadButton";
 import { StudentStatusPage } from "../components/StudentStatusPage";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
@@ -107,6 +108,7 @@ export function SubmissionDetailPage() {
                                 </TabsList>
                                 <TabsContent value="report" className="mt-4 rounded-surface bg-muted p-5">
                                     <RichTextContent html={detail.snapshot.reportContent} className="text-label leading-relaxed" emptyFallback="暂无报告内容" />
+                                    <ResearchAppendix runs={detail.snapshot.analysisRuns} />
                                 </TabsContent>
                                 <TabsContent value="questionnaire" className="mt-4"><QuestionnaireSnapshot questionnaire={detail.snapshot.questionnaire} variableDictionary={detail.snapshot.variableDictionary} /></TabsContent>
                                 <TabsContent value="plan" className="mt-4"><SamplePlanSnapshot value={detail.snapshot.samplePlan} populationSize={detail.snapshot.populationSize} /></TabsContent>

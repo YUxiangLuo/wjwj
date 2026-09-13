@@ -1,3 +1,4 @@
+import { ResearchAppendix } from "@/components/ResearchResult";
 import { RequestError } from "@/components/RequestError";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -212,7 +213,7 @@ export function GradingDetail() {
                                 ) : <p className="mt-3 text-label text-muted-foreground">暂无执行记录（旧提交不会补记历史尝试）。</p>}
                             </div>
                         </TabsContent>
-                        <TabsContent value="report" className="mt-4 rounded-surface border border-border p-5"><RichTextContent html={data.reportContent} /></TabsContent>
+                        <TabsContent value="report" className="mt-4 rounded-surface border border-border p-5"><RichTextContent html={data.reportContent} /><ResearchAppendix runs={data.analysisRuns} /></TabsContent>
                     </Tabs>
                 </CardContent>
             </Card>

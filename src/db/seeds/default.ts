@@ -693,6 +693,7 @@ async function seed() {
 
     const learningCompletedBase = {
         currentStage: 4,
+        samplingRevision: 1,
         questionnaire: studyQuestionnaire,
         samplePlan: learningPlan,
         samplingResults: compactLearningResults,
@@ -713,6 +714,7 @@ async function seed() {
     });
     const graduateCompletedBase = {
         currentStage: 4,
+        samplingRevision: 1,
         questionnaire: graduateQuestionnaire,
         samplePlan: graduatePlan,
         samplingResults: compactGraduateResults,
@@ -734,6 +736,7 @@ async function seed() {
     });
     const diningCompletedBase = {
         currentStage: 4,
+        samplingRevision: 1,
         questionnaire: diningQuestionnaire,
         samplePlan: diningPlan,
         samplingResults: compactDiningResults,
@@ -768,6 +771,7 @@ async function seed() {
             studentId: studentsById[DOGFOOD_ANCHORS.submitted]!.id,
             taskId: taskFor(DOGFOOD_NAMES.topicB, DOGFOOD_NAMES.mainClass).id,
             currentStage: 4,
+            samplingRevision: 1,
             status: "submitted",
             questionnaire: readingQuestionnaire,
             samplePlan: readingPlan,

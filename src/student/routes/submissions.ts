@@ -1,3 +1,4 @@
+import { readResearchAppendix } from "../experiment/research-records";
 import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment, task, teacher, topic } from "../../db/schema";
@@ -70,6 +71,7 @@ const submissionByTaskRoutes: RouteDefinition = {
             samplePlan?: unknown;
             samplingResults?: unknown;
             reportContent?: string;
+            analysisRuns?: unknown;
             weightConfig?: unknown;
             samplingPolicy?: unknown;
             variableDictionary?: import("@/domain/experiment/variable-dictionary").VariableDictionaryV1;
@@ -96,6 +98,7 @@ const submissionByTaskRoutes: RouteDefinition = {
             samplingResults: previewSamplingResults(samplingResults),
             samplingPolicy: resolveSamplingPolicy(snapshot?.samplingPolicy ?? row.samplingPolicy),
             reportContent: snapshot?.reportContent ?? row.reportContent ?? "",
+            analysisRuns: readResearchAppendix(snapshot?.analysisRuns),
         };
         return json({
             id: row.id,

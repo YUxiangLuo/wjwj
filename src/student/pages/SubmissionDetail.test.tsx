@@ -43,6 +43,7 @@ test("student result renders the immutable submission snapshot", async () => {
             graderName: null,
             weights: { questionnaire: 30, process: 30, report: 40 },
             snapshot: {
+                analysisRuns: [],
                 topicName: "提交时课题",
                 studentName: "提交时姓名",
                 populationSize: 900,

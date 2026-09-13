@@ -1,4 +1,5 @@
 import { WorkerServiceError } from "./worker-service";
+import { ResearchAnalysisError } from "../domain/experiment/research-analysis";
 import { InvalidJsonbStorageError } from "../lib/stored-document";
 import { InvalidQuestionnaireStorageError } from "../lib/questionnaire-storage";
 
@@ -166,6 +167,7 @@ export async function parseBody<T extends Record<string, unknown>>(req: Request)
 }
 
 export function handleServerError(cause: unknown): Response {
+    if (cause instanceof ResearchAnalysisError) return error(cause.message, cause.code, cause.status);
     if (cause instanceof InvalidJsonbStorageError) return error(cause.message, "INVALID_JSONB_STORAGE", 409);
     if (cause instanceof InvalidQuestionnaireStorageError) {
         return error(cause.message, "INVALID_QUESTIONNAIRE_STORAGE", 409);

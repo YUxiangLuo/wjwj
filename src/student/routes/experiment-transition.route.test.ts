@@ -276,6 +276,7 @@ test("submission forwards the task sampling policy into the immutable snapshot",
         questions: Array.from({ length: 5 }, (_, index) => ({ id: `q${index}`, type: "boolean", content: `这是第${index + 1}个调查问题吗？` })),
     };
     const complete = experimentRecord({
+        analysisReferences: [],
         currentStage: 4,
         questionnaire,
         samplePlan: { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 132, finalSampleSize: 50 },

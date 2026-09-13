@@ -19,6 +19,6 @@ export function describeCascadeImpact(impact: CascadeImpact, subject: "student" 
     ];
     if (impact.submitted > 0) details.push(`已提交 ${impact.submitted} 条`);
     if (impact.graded > 0) details.push(`已批改 ${impact.graded} 条`);
-    const suffix = subject === "student" ? "及其成绩与抽样记录。" : "及对应成绩与抽样记录。";
+    const suffix = subject === "student" ? "及其成绩、抽样记录与自主分析成果。" : "及对应成绩、抽样记录与自主分析成果。";
     return `将同时永久删除 ${details.join("、")}${suffix}`;
 }

@@ -34,6 +34,7 @@ test("submission previews distinguish selected, unselected, and disabled samplin
             systematic: { completed: true, sampleCount: 50, interval: 4 },
         },
         reportContent: "",
+        analysisReferences: [],
         samplingPolicy: {
             version: 1,
             methods: { simple: "required", systematic: "optional", pps: "optional", stratified: "disabled" },

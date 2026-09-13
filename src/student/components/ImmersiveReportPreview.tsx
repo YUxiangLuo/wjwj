@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { ResearchAppendix } from "@/components/ResearchResult";
+import type { ResearchRun } from "@/domain/experiment/research-analysis";
 import { X, FileText, Users, BarChart3, Layers, ChevronDown } from "lucide-react";
 import { NumericQuestionSummary } from "@/components/questionnaire/NumericQuestionSummary";
 import { RichTextContent } from "@/components/RichTextContent";
@@ -22,19 +24,21 @@ interface Props {
     open: boolean;
     experiment: ExperimentData;
     taskName: string;
+    analysisRuns: ResearchRun[];
     onClose: () => void;
 }
 
-type Section = "overview" | "questionnaire" | "sampling" | "report";
+type Section = "overview" | "questionnaire" | "sampling" | "report" | "research";
 
 const SECTIONS: { key: Section; label: string; icon: typeof FileText }[] = [
     { key: "overview", label: "实验概览", icon: Users },
     { key: "questionnaire", label: "问卷设计", icon: FileText },
     { key: "sampling", label: "抽样结果", icon: BarChart3 },
     { key: "report", label: "分析报告", icon: Layers },
+    { key: "research", label: "分析附录", icon: BarChart3 },
 ];
 
-export function ImmersiveReportPreview({ open, experiment, taskName, onClose }: Props) {
+export function ImmersiveReportPreview({ open, experiment, taskName, analysisRuns, onClose }: Props) {
     return (
         <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}>
             <DialogContent
@@ -46,13 +50,13 @@ export function ImmersiveReportPreview({ open, experiment, taskName, onClose }: 
             >
                 <DialogTitle className="sr-only">{taskName}实验报告全屏预览</DialogTitle>
                 <DialogDescription className="sr-only">查看实验概览、问卷设计、抽样结果和分析报告。</DialogDescription>
-                <ImmersiveReportPreviewContent experiment={experiment} taskName={taskName} onClose={onClose} />
+                <ImmersiveReportPreviewContent experiment={experiment} taskName={taskName} analysisRuns={analysisRuns} onClose={onClose} />
             </DialogContent>
         </Dialog>
     );
 }
 
-export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }: Omit<Props, "open">) {
+export function ImmersiveReportPreviewContent({ experiment, taskName, analysisRuns, onClose }: Omit<Props, "open">) {
     const [activeSection, setActiveSection] = useState<Section>("overview");
     const questionnaire = experiment.questionnaire;
     const samplePlan = experiment.samplePlan;
@@ -82,7 +86,7 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
             <div className="flex h-[calc(100vh-49px)]">
                 {/* sidebar nav */}
                 <nav className="w-48 border-r border-border p-3 space-y-1">
-                    {SECTIONS.map((s) => {
+                    {SECTIONS.filter(s => s.key !== "research" || analysisRuns.length > 0).map((s) => {
                         const Icon = s.icon;
                         const isActive = activeSection === s.key;
                         return (
@@ -128,6 +132,7 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
                         {activeSection === "report" && (
                             <ReportSection content={reportContent} />
                         )}
+                        {activeSection === "research" && <ResearchAppendix runs={analysisRuns} />}
                     </div>
                 </main>
             </div>

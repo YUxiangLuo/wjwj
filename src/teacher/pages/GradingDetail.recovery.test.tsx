@@ -12,7 +12,7 @@ beforeEach(() => { restore = installDomGlobals().restore; });
 afterEach(async () => { cleanup(); await new Promise(resolve => setTimeout(resolve, 0)); globalThis.fetch = originalFetch; restore(); });
 function record(version = 1) {
     return { id: 7, version, studentName: "学生", studentId: "S1", topic: "实验", className: "班级", status: "submitted",
-        submittedAt: null, reportContent: "报告", questionnaire: null, samplePlan: null, samplingResults: null,
+        submittedAt: null, analysisRuns: [], reportContent: "报告", questionnaire: null, samplePlan: null, samplingResults: null,
         scoreQuestionnaire: 10, scoreProcess: 20, scoreReport: 30, teacherComment: "初始评语", weights: { questionnaire: 30, process: 30, report: 40 } };
 }
 function ListLocation() { const location = useLocation(); return <p data-testid="list-location">{location.pathname + location.search}</p>; }

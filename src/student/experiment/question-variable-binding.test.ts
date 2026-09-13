@@ -5,7 +5,7 @@ import { dictionaryDatasetRevision } from "@/server/variable-dictionary";
 import { createMockDb } from "@/test-utils/mock-db";
 
 function record() {
-    return { id: 9, taskId: 3, studentId: 2, version: 4, status: "in_progress", currentStage: 1, stage1CompletedAt: null } as any;
+    return { id: 9, taskId: 3, studentId: 2, version: 4, analysisReferences: [], status: "in_progress", currentStage: 1, stage1CompletedAt: null } as any;
 }
 for (const mode of ["valid", "no-dictionary", "foreign-task", "changed-question", "duplicate-id"] as const) {
     test(`stage 1 validates optional bindings against authoritative metadata: ${mode}`, () => {

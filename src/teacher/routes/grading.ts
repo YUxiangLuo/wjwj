@@ -1,3 +1,4 @@
+import { readResearchAppendix } from "../../student/experiment/research-records";
 import { codebookDownload } from "../../student/experiment/codebook-service";
 import { and, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { db } from "../../db";
@@ -201,6 +202,7 @@ const gradingDetailRoutes: RouteDefinition = {
             samplePlan?: unknown;
             samplingResults?: unknown;
             reportContent?: string;
+            analysisRuns?: unknown;
             weightConfig?: unknown;
             samplingPolicy?: unknown;
         }>(row.submissionSnapshot);
@@ -255,6 +257,7 @@ const gradingDetailRoutes: RouteDefinition = {
             samplingResults: previewSamplingResults(samplingResults),
             samplingPolicy: resolveSamplingPolicy(snapshot?.samplingPolicy ?? row.samplingPolicy),
             reportContent: snapshot?.reportContent ?? row.reportContent ?? "",
+            analysisRuns: readResearchAppendix(snapshot?.analysisRuns),
             scoreQuestionnaire: numeric(row.scoreQuestionnaire),
             scoreProcess: numeric(row.scoreProcess),
             scoreReport: numeric(row.scoreReport),

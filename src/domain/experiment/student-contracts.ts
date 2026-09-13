@@ -65,5 +65,6 @@ export interface SubmissionDetail {
         samplingResults: SamplingResultsData | null;
         samplingPolicy: SamplingPolicyV1;
         reportContent: string;
+        analysisRuns: import("./research-analysis").ResearchRun[];
     };
 }

@@ -1,3 +1,4 @@
+import { collectResearchReferences } from "../experiment/research-records";
 import { and, eq, sql } from "drizzle-orm";
 import { hasQuestionVariableBindings } from "@/domain/experiment/question-variable-binding";
 import { readStudentVariableDictionary } from "../experiment/variable-dictionary";
@@ -114,6 +115,7 @@ async function buildExperimentResponse(
         samplePlan: normalizeSamplePlanData(readStoredDocument(record.samplePlan), populationSize),
         samplingResults: previewSamplingResults(resolvedSamplingResults.value),
         reportContent: record.reportContent,
+        analysisReferences: record.analysisReferences,
         stage1CompletedAt: iso(record.stage1CompletedAt),
         stage2CompletedAt: iso(record.stage2CompletedAt),
         stage3CompletedAt: iso(record.stage3CompletedAt),
@@ -372,6 +374,11 @@ const stageCompleteRoutes: RouteDefinition = {
             stratifiedStats,
         });
         if (!result.ok) return error(result.message, result.code, result.status);
+        if (stage === 4 && (result.updates.analysisReferences as string[]).length) {
+            const source = await readStudentVariableDictionary(taskId, auth.student.classId);
+            if (!source.ok) return error(source.message, source.code, source.status);
+            await collectResearchReferences(completionRecord, source.dictionary, result.updates.analysisReferences);
+        }
         if (stage === 2 && resolveSamplingPolicy(stageTaskInfo?.samplingPolicy).methods.pps === "required") {
             if (!stageTaskInfo?.excelFilePath) return error("必做 PPS 缺少总体数据文件", "NO_DATA_FILE");
             try {

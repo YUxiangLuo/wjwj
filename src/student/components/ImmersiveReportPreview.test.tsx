@@ -1,6 +1,8 @@
 import { afterAll, afterEach, beforeAll, expect, test } from "bun:test";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { installDomGlobals } from "@/test-utils/dom";
+import { researchFixture } from "@/test-utils/research-analysis";
+import { ResearchAppendix } from "@/components/ResearchResult";
 
 let restoreDom: (() => void) | null = null;
 let ImmersiveReportPreviewContent: typeof import("./ImmersiveReportPreview").ImmersiveReportPreviewContent;
@@ -23,12 +25,25 @@ afterAll(async () => {
     restoreDom = null;
 });
 
+test("fullscreen exposes selected immutable results and does not replace them with a new computation", () => {
+    const { run } = researchFixture();
+    const view = render(<ImmersiveReportPreviewContent taskName="已保存实验" onClose={() => {}} analysisRuns={[run]} experiment={{ id: 9, taskId: 3, version: 7, currentStage: 4, status: "in_progress", analysisReferences: [run.id], populationSize: 4, questionnaire: null, samplePlan: null, samplingResults: null, reportContent: "学生解释" } as any} />);
+    fireEvent.click(view.getByRole("button", { name: "分析附录" }));
+    expect(view.getByTestId(`research-result-${run.id}`).textContent).toContain(run.spec.question);
+    expect(view.getAllByText("2.500000")).toHaveLength(2);
+});
+test("a missing response appendix is visibly invalid, not silently an empty appendix", () => {
+    const view = render(<ResearchAppendix runs={undefined as any} />);
+    expect(view.getByRole("alert").textContent).toContain("不会自动补为空列表");
+});
 test("ImmersiveReportPreview shows persisted sample plan semantics in overview", async () => {
     const view = render(
         <ImmersiveReportPreviewContent
+            analysisRuns={[]}
             taskName="抽样调查"
             onClose={() => undefined}
             experiment={{
+                analysisReferences: [],
                 id: 88,
                 taskId: 2,
                 version: 4,

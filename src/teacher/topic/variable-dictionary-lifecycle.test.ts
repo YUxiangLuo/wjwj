@@ -72,7 +72,7 @@ test("copy and publication reject corrupt or stale dictionaries before writes", 
 function completedExperiment() {
     const now = new Date();
     return {
-        id: 1, version: 4, status: "in_progress", currentStage: 4, stage4CompletedAt: now,
+        id: 1, version: 4, status: "in_progress", currentStage: 4, stage4CompletedAt: now, analysisReferences: [],
         questionnaire: { title: "教学问卷", welcomeText: "欢迎参与本次抽样调查课堂认知预试，请根据实际情况认真作答。", endingText: "感谢参与本次抽样调查课堂认知预试，您的预试现已结束。", questions: Array.from({ length: 5 }, (_, i) => ({ id: `q${i}`, type: "boolean", content: `第${i + 1}个调查问题？` })) },
         samplePlan: { estimationType: "mean", populationVariance: 25, confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 2, finalSampleSize: 2 },
         samplingResults: { simple: { completed: true, sampleCount: 2 }, systematic: { completed: true, sampleCount: 2, interval: 1 } },

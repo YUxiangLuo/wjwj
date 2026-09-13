@@ -119,6 +119,7 @@ beforeEach(() => {
             currentStage: 4,
             populationSize: 8000,
             reportContent: "<p>服务器基线报告。</p>",
+            analysisReferences: [],
             samplePlan: {
                 finalSampleSize: 400,
             },

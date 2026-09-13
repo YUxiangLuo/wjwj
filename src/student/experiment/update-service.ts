@@ -1,3 +1,4 @@
+import { parseResearchReferences } from "@/domain/experiment/research-analysis";
 import { experiment } from "../../db/schema";
 import { parseQuestionVariableBinding, validateQuestionnaireBindings } from "@/domain/experiment/question-variable-binding";
 import type { VariableDictionaryV1 } from "@/domain/experiment/variable-dictionary";
@@ -119,10 +120,14 @@ export function buildStageCompletionUpdates(params: {
         );
         if (validationError) return fail(validationError);
         updates.stage3CompletedAt = now;
+        // A monotone generation, not a wall-clock timestamp: identical seeded
+        // re-sampling must not revive an analysis from a previous completion.
+        updates.samplingRevision = record.version + 1;
         updates.currentStage = 4;
     }
 
     if (stage === 4) {
+        if (Object.keys(payload).some(key => key !== "reportContent" && key !== "analysisReferences")) return fail("报告只接受正文与已保存分析的引用身份，不接受客户端结果或作答数据");
         // 报告只接受富文本 HTML 字符串：结构化对象会被规范化成空内容，报"字数不足"会误导
         if (payload.reportContent !== undefined && payload.reportContent !== null && typeof payload.reportContent !== "string") {
             return fail("报告内容格式无效，请重新编辑后再提交", "VALIDATION_ERROR", 400);
@@ -130,6 +135,9 @@ export function buildStageCompletionUpdates(params: {
         const reportContent = canonicalizeRichTextHtmlForStorage(payload.reportContent);
         const validationError = validateReportForSubmit(reportContent);
         if (validationError) return fail(validationError);
+        const references = parseResearchReferences(payload.analysisReferences === undefined ? record.analysisReferences : payload.analysisReferences);
+        if (typeof references === "string") return fail(references);
+        updates.analysisReferences = references;
         updates.reportContent = reportContent;
         updates.stage4CompletedAt = now;
         updates.currentStage = 4;
@@ -155,6 +163,7 @@ export function buildStageReopenUpdates(params: {
         updatedAt: new Date(),
     };
 
+    if (stage <= 3) updates.analysisReferences = [];
     if (stage <= 1) {
         updates.stage1CompletedAt = null;
         updates.samplePlan = null;

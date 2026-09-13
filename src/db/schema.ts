@@ -207,6 +207,8 @@ export const experiment = pgTable(
         samplePlan: nativeJsonb("sample_plan"),
         samplingResults: nativeJsonb("sampling_results"),
         reportContent: text("report_content"),
+        analysisReferences: nativeJsonb("analysis_references").notNull().default(sql`'[]'::jsonb`),
+        samplingRevision: integer("sampling_revision").notNull().default(0),
         stage1CompletedAt: timestamp("stage1_completed_at", { mode: "date", withTimezone: true }),
         stage2CompletedAt: timestamp("stage2_completed_at", { mode: "date", withTimezone: true }),
         stage3CompletedAt: timestamp("stage3_completed_at", { mode: "date", withTimezone: true }),
@@ -242,6 +244,8 @@ export const experiment = pgTable(
                 and (${table.scoreReport} is null or ${table.scoreReport} between 0 and 100)
                 and (${table.totalScore} is null or ${table.totalScore} between 0 and 100)`,
         ),
+        samplingRevisionCheck: check("experiment_ck_sampling_revision", sql`${table.samplingRevision} >= 0 and ${table.samplingRevision} <= ${table.version}`),
+        analysisReferencesArray: check("experiment_ck_analysis_references", sql`jsonb_typeof(${table.analysisReferences}) = 'array' and jsonb_array_length(${table.analysisReferences}) <= 10`),
         questionnaireObject: check(
             "experiment_ck_questionnaire_object",
             sql`${table.questionnaire} is null or jsonb_typeof(${table.questionnaire}) = 'object'`,
@@ -260,6 +264,21 @@ export const experiment = pgTable(
         ),
     }),
 );
+
+export const researchAnalysisRun = pgTable("research_analysis_run", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    experimentId: bigint("experiment_id", { mode: "number" }).notNull().references(() => experiment.id, { onDelete: "cascade" }),
+    requestKey: varchar("request_key", { length: 34 }).notNull(),
+    inputVersion: integer("input_version").notNull(),
+    specHash: varchar("spec_hash", { length: 64 }).notNull(),
+    document: nativeJsonb("document").notNull(),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+}, table => ({
+    requestUnique: uniqueIndex("research_analysis_run_uk_request").on(table.experimentId, table.requestKey),
+    identityCheck: check("research_analysis_run_ck_identity", sql`${table.id} ~ '^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$' and ${table.requestKey} ~ '^r_[a-f0-9]{32}$' and ${table.specHash} ~ '^[a-f0-9]{64}$'`),
+    inputVersionCheck: check("research_analysis_run_ck_version", sql`${table.inputVersion} >= 1`),
+    documentCheck: check("research_analysis_run_ck_document", sql`(jsonb_typeof(${table.document}) = 'object' and ${table.document} ?& array['id','schemaVersion','algorithmVersion','createdAt','spec','variable','source','result'] and ${table.document}->>'id' = ${table.id} and ${table.document}->'schemaVersion' = '1'::jsonb and ${table.document}->>'algorithmVersion' = 'descriptive-v1' and octet_length(${table.document}::text) <= 65536) is true`),
+}));
 
 export const samplingAttempt = pgTable(
     "sampling_attempt",

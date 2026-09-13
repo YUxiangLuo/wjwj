@@ -4,6 +4,7 @@ import { buildStageCompletionUpdates, buildStageReopenUpdates } from "./update-s
 function record(overrides: Record<string, unknown> = {}) {
     return {
         id: 1,
+        analysisReferences: [],
         studentId: 2,
         taskId: 3,
         version: 4,

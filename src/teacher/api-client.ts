@@ -48,6 +48,7 @@ export interface SubmissionDetail extends GradingItem {
     version: number;
     topicDesc: string | null;
     reportContent: string;
+    analysisRuns: import("@/domain/experiment/research-analysis").ResearchRun[];
     samplePlan: SamplePlanData | null;
     questionnaire: QuestionnaireData | null;
     variableDictionary?: VariableDictionaryV1 | null;

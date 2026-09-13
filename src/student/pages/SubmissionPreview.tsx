@@ -1,3 +1,5 @@
+import { ResearchReferencesPreview, type ResearchReferenceValidation } from "../components/ResearchReferencesPreview";
+import { parseResearchReferences } from "@/domain/experiment/research-analysis";
 import { StudentStatusPage } from "../components/StudentStatusPage";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useEffect, useState } from "react";
@@ -103,6 +105,7 @@ export function SubmissionPreview() {
     const [error, setError] = useState<string | null>(null);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [showFullPreview, setShowFullPreview] = useState(false);
+    const [researchValidation, setResearchValidation] = useState<ResearchReferenceValidation | null>(null);
 
     const numericTaskId = Number(taskId);
     const loadData = () => run(async () => {
@@ -110,6 +113,7 @@ export function SubmissionPreview() {
         return { task: requireApiData(taskRes, "任务加载失败"), experiment: requireApiData(expRes, "实验加载失败") };
     }, (data) => { setTask(data.task); setExperiment(data.experiment); });
     useEffect(() => {
+        setShowFullPreview(false); setResearchValidation(null);
         if (Number.isInteger(numericTaskId) && numericTaskId > 0) void loadData();
         return cancel;
     }, [numericTaskId, cancel]);
@@ -179,7 +183,10 @@ export function SubmissionPreview() {
         analysisTarget: experiment.analysisTarget,
         samplingPolicy: experiment.samplingPolicy,
     });
-    const canSubmit = submitBlocker === null;
+    const refs = parseResearchReferences(experiment.analysisReferences);
+    const hasReferences = typeof refs === "string" || refs.length > 0;
+    const researchReady = !hasReferences || (researchValidation !== null && researchValidation.taskId === experiment.taskId && researchValidation.version === experiment.version && researchValidation.valid);
+    const canSubmit = submitBlocker === null && researchReady;
     const advancedSourceLabel = getAdvancedPlanSourceLabel(samplePlan?.advancedPlanSource);
 
     return (
@@ -199,7 +206,7 @@ export function SubmissionPreview() {
                             <FileText className="w-6 h-6 text-primary" />
                             提交前预览
                         </h1>
-                        <Button variant="outline" size="sm" className="border-primary-border bg-primary-muted text-primary hover:bg-primary-muted hover:text-primary" onClick={() => setShowFullPreview(true)}>
+                        <Button variant="outline" size="sm" className="border-primary-border bg-primary-muted text-primary hover:bg-primary-muted hover:text-primary" disabled={!researchReady} title={!researchReady ? "请先核对自主分析引用" : undefined} onClick={() => setShowFullPreview(true)}>
                             <Maximize2 className="w-4 h-4 mr-1.5" />
                             全屏预览
                         </Button>
@@ -294,6 +301,7 @@ export function SubmissionPreview() {
                                     ) : (
                                         <div className="text-label text-muted-foreground italic">暂无报告内容</div>
                                     )}
+                                    {hasReferences && <ResearchReferencesPreview key={`${experiment.id}:${experiment.version}`} taskId={experiment.taskId} version={experiment.version} references={experiment.analysisReferences} onValid={setResearchValidation} />}
                                 </div>
                             </div>
                         </TabsContent>
@@ -391,7 +399,8 @@ export function SubmissionPreview() {
             </AlertDialog>
 
             <ImmersiveReportPreview
-                open={showFullPreview}
+                open={showFullPreview && researchReady}
+                analysisRuns={researchValidation?.taskId === experiment.taskId && researchValidation.version === experiment.version && researchValidation.valid ? researchValidation.runs : []}
                 experiment={experiment}
                 taskName={task.name}
                 onClose={() => setShowFullPreview(false)}

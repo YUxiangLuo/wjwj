@@ -1,3 +1,5 @@
+import { collectResearchReferences } from "./research-records";
+import type { ResearchRun } from "@/domain/experiment/research-analysis";
 import { and, eq } from "drizzle-orm";
 import { validateQuestionnaireBindings } from "@/domain/experiment/question-variable-binding";
 import { db } from "../../db";
@@ -39,6 +41,7 @@ export interface SubmissionSnapshot {
     parserVersion?: string;
     samplingAlgorithmVersion?: string;
     variableDictionary?: VariableDictionaryV1;
+    analysisRuns?: ResearchRun[];
 }
 
 interface SubmitTaskInfo {
@@ -149,6 +152,7 @@ export async function submitStudentExperiment(params: {
     }
     const bindingError = validateQuestionnaireBindings(questionnaire, dictionary.value, params.experimentRecord.taskId);
     if (bindingError) return fail(bindingError, "INVALID_VARIABLE_BINDING", 409);
+    const analysisRuns = await collectResearchReferences(params.experimentRecord, dictionary.value);
     const snapshot: SubmissionSnapshot = {
         topicName: params.taskInfo.topicName ?? "未命名实验模板",
         studentName: params.student.name || params.student.studentId,
@@ -165,6 +169,7 @@ export async function submitStudentExperiment(params: {
         parserVersion: "spreadsheet-v2",
         samplingAlgorithmVersion: "sampling-v2",
         ...(dictionary.value ? { variableDictionary: dictionary.value } : {}),
+        ...(analysisRuns.length ? { analysisRuns } : {}),
     };
     const submittedAt = new Date();
 
