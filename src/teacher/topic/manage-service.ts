@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { task, topic, topicAttachment } from "../../db/schema";
 import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
@@ -13,6 +13,8 @@ import { deleteTopicStorageFileIfUnreferenced } from "./storage-cleanup";
 import { getPpsEligibleNumericFields, parseTopicFieldMapping } from "@/domain/statistics/population";
 import { canonicalizeRichTextHtmlForStorage } from "../../server/rich-text";
 import { deleteAuditEventsForEntities } from "../../server/audit-event";
+import { readVariableSource } from "../../server/variable-source";
+import { validateDictionary } from "../../domain/variables/dictionary";
 import {
     validateMappedPopulationData,
     validateParsedExcelUpload,
@@ -101,6 +103,7 @@ export async function updateTeacherTopicBasics(params: {
                 fieldMapping: topic.fieldMapping,
                 samplingPolicy: topic.samplingPolicy,
                 weightConfig: topic.weightConfig,
+                variableDictionary: topic.variableDictionary,
             })
             .from(topic)
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)));
@@ -151,6 +154,11 @@ export async function updateTeacherTopicBasics(params: {
             if (eligibilityError) return fail(eligibilityError);
             const populationError = validateMappedPopulationData(parsed, mapping);
             if (populationError) return fail(populationError);
+            if (topicInfo.variableDictionary) {
+                const sourceData = await readVariableSource(topicInfo.excelFilePath, effectiveMapping);
+                try { validateDictionary(topicInfo.variableDictionary, sourceData.rows, sourceData.source); }
+                catch { return fail("变量字典与当前总体不一致，请重新确认后再发布"); }
+            }
         }
 
         const [updated] = await tx
@@ -250,7 +258,7 @@ export async function replaceTopicExcelData(params: {
         const replacement = await db.transaction(async (tx) => {
             await acquireStorageMutationLock(tx);
             const [currentTopic] = await tx
-                .select({ excelFilePath: topic.excelFilePath, status: topic.status })
+                .select({ excelFilePath: topic.excelFilePath, status: topic.status, variableRevision: topic.variableRevision })
                 .from(topic)
                 .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)));
             if (!currentTopic) return fail("实验模板不存在", "NOT_FOUND", 404);
@@ -266,6 +274,8 @@ export async function replaceTopicExcelData(params: {
                     excelFilePath: filePath,
                     excelRowCount: parsed.rowCount,
                     fieldMapping: null,
+                    variableDictionary: null,
+                    variableRevision: currentTopic.variableRevision + 1,
                     updatedAt: new Date(),
                 })
                 .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)))
@@ -333,6 +343,8 @@ export async function updateTopicFieldMapping(params: {
         });
         const populationError = validateMappedPopulationData(parsed, params.fieldMapping);
         if (populationError) return fail(populationError);
+        const previousSource = await readVariableSource(topicInfo.excelFilePath, topicInfo.fieldMapping);
+        const nextSource = await readVariableSource(topicInfo.excelFilePath, params.fieldMapping);
 
         const resolvedTarget = resolveAnalysisTarget(params.fieldMapping);
         const targetField = resolvedTarget?.inferred ? undefined : resolvedTarget?.target.field;
@@ -351,6 +363,10 @@ export async function updateTopicFieldMapping(params: {
             .update(topic)
             .set({
                 fieldMapping: params.fieldMapping,
+                ...(previousSource.source !== nextSource.source ? {
+                    variableDictionary: null,
+                    variableRevision: sql`${topic.variableRevision} + 1`,
+                } : {}),
                 // Navigation through the wizard must not overwrite an existing
                 // policy. Replaced files clear fieldMapping, so they still reset.
                 ...(!preservePolicy ? {

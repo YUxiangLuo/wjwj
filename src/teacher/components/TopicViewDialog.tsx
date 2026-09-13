@@ -11,12 +11,14 @@ import type { QuestionType } from "@/lib/questionnaire-types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { resolveStudyContract } from "@/lib/analysis-target";
 import { resolveSamplingPolicy, SAMPLING_METHODS } from "@/lib/sampling-policy";
+import { VariableDictionaryEditor } from "./VariableDictionaryEditor";
 
-type TabKey = "basic" | "data" | "mapping" | "sampling" | "attachments" | "questions" | "weights";
+type TabKey = "basic" | "data" | "variables" | "mapping" | "sampling" | "attachments" | "questions" | "weights";
 
 const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { key: "basic", label: "基本信息", icon: BookOpen },
     { key: "data", label: "数据概览", icon: Table2 },
+    { key: "variables", label: "变量字典", icon: ListChecks },
     { key: "mapping", label: "字段映射", icon: Layers },
     { key: "sampling", label: "抽样策略", icon: ShieldCheck },
     { key: "attachments", label: "教学资料", icon: FileText },
@@ -230,6 +232,10 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                         <div className="text-center py-8 text-label text-muted-foreground">暂无数据预览</div>
                                     )}
                                 </div>
+                            )}
+
+                            {activeTab === "variables" && (
+                                <div className="py-4"><VariableDictionaryEditor topicId={topic.id} readOnly /></div>
                             )}
 
                             {/* Field Mapping Tab */}

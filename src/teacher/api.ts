@@ -15,6 +15,7 @@ import {
     gradingSamplingExportRoutes,
 } from "./routes/grading";
 import { teacherAnnouncementsRoutes } from "./routes/announcements";
+import { topicVariableRoutes } from "./routes/variables";
 import {
     taskDeletionPreviewRoutes,
     taskExtendRoutes,
@@ -58,6 +59,7 @@ export const teacherApiRoutes = {
     "/api/teacher/topics/:id/recommend-questions": withTeacherAuth(topicRecommendQuestionRoutes),
     "/api/teacher/topics/:id/sampling-policy": withTeacherAuth(topicSamplingPolicyRoutes),
     "/api/teacher/topics/:id/weights": withTeacherAuth(topicWeightRoutes),
+    "/api/teacher/topics/:id/variables": withTeacherAuth(topicVariableRoutes),
     "/api/teacher/topics/:id/copy": withTeacherAuth(topicCopyRoutes),
     "/api/teacher/tasks": withTeacherAuth(taskRoutes),
     "/api/teacher/tasks/:id": withTeacherAuth(taskItemRoutes),

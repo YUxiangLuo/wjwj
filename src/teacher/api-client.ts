@@ -5,6 +5,15 @@ export type { ApiResponse } from "@/lib/api-client";
 const { request, download: downloadTeacherFile, resourceUrl: teacherResourceUrl } = createApiClient("teacher");
 export { downloadTeacherFile, teacherResourceUrl };
 import type { SamplePlanData, SamplingResultsData } from "@/domain/experiment/types";
+import type { VariableDictionary } from "@/domain/variables/types";
+
+export interface VariableDictionaryResponse {
+    dictionary: VariableDictionary | null;
+    suggestion: VariableDictionary;
+    source: string;
+    revision: number;
+    locked: boolean;
+}
 
 export interface TeacherUser { id: number; employeeId: string; name: string; type: "teacher" }
 export interface TeacherStats {
@@ -115,6 +124,8 @@ export const teacherApi = {
     deleteAttachment: (topicId: number, attachmentId: number) => request<{ success: boolean }>(`/api/teacher/topics/${topicId}/attachments/${attachmentId}`, { method: "DELETE" }),
     updateRecommendQuestions: (id: number, items: Question[]) => request<{ success: boolean }>(`/api/teacher/topics/${id}/recommend-questions`, { method: "PUT", body: JSON.stringify({ items }) }),
     updateWeightConfig: (id: number, weightConfig: { questionnaire: number; process: number; report: number }) => request<{ success: boolean }>(`/api/teacher/topics/${id}/weights`, { method: "PUT", body: JSON.stringify({ weightConfig }) }),
+    getVariableDictionary: (id: number) => request<VariableDictionaryResponse>(`/api/teacher/topics/${id}/variables`),
+    updateVariableDictionary: (id: number, data: { source: string; observedRevision: number; dictionary: VariableDictionary }) => request<{ success: boolean; revision: number }>(`/api/teacher/topics/${id}/variables`, { method: "PUT", body: JSON.stringify(data) }),
     copyTopic: (id: number) => request<{ id: number }>(`/api/teacher/topics/${id}/copy`, { method: "POST" }),
 
     getTasks: () => request<Task[]>("/api/teacher/tasks"),

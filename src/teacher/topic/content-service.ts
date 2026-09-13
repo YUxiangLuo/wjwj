@@ -15,6 +15,8 @@ import type { Question } from "../../lib/questionnaire-types";
 import { parseRecommendQuestionsPayload } from "../../lib/validate-question";
 import { retitleGeneratedStudyContract } from "../../lib/analysis-target";
 import { deleteTopicStorageFileIfUnreferenced } from "./storage-cleanup";
+import { readVariableSource } from "../../server/variable-source";
+import { validateDictionary } from "../../domain/variables/dictionary";
 
 interface ServiceFailure {
     ok: false;
@@ -251,6 +253,18 @@ export async function copyTopicWithResources(params: {
             const copySuffix = " (副本)";
             const copiedName = `${Array.from(sourceTopic.name).slice(0, 200 - Array.from(copySuffix).length).join("")}${copySuffix}`;
             const sourceFieldMapping = normalizeJsonColumnValue(sourceTopic.fieldMapping);
+            const copiedFieldMapping = retitleGeneratedStudyContract(sourceFieldMapping, sourceTopic.name, copiedName);
+            let copiedVariableDictionary = null;
+            if (sourceTopic.variableDictionary && sourceTopic.excelFilePath && copiedExcelFilePath) {
+                const [before, after] = await Promise.all([
+                    readVariableSource(sourceTopic.excelFilePath, sourceFieldMapping),
+                    readVariableSource(copiedExcelFilePath, copiedFieldMapping),
+                ]);
+                if (before.source === after.source) {
+                    try { copiedVariableDictionary = validateDictionary(sourceTopic.variableDictionary, before.rows, before.source); }
+                    catch { copiedVariableDictionary = null; }
+                }
+            }
             const [created] = await tx
                 .insert(topic)
                 .values({
@@ -259,10 +273,12 @@ export async function copyTopicWithResources(params: {
                     description: sourceTopic.description ?? "",
                     excelFilePath: copiedExcelFilePath,
                     excelRowCount: sourceTopic.excelRowCount,
-                    fieldMapping: retitleGeneratedStudyContract(sourceFieldMapping, sourceTopic.name, copiedName),
+                    fieldMapping: copiedFieldMapping,
                     samplingPolicy: normalizeJsonColumnValue(sourceTopic.samplingPolicy),
                     weightConfig: normalizeJsonColumnValue(sourceTopic.weightConfig),
                     recommendQuestions: recommendQuestions ?? null,
+                    variableDictionary: copiedVariableDictionary,
+                    variableRevision: sourceTopic.variableRevision,
                     status: 0,
                 })
                 .returning({ id: topic.id });

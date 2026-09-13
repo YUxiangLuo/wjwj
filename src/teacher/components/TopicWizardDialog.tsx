@@ -18,6 +18,7 @@ import type { QuestionType } from "@/lib/questionnaire-types";
 
 import { categoricalFieldsFromMapping, parseStudyContract } from "@/lib/analysis-target";
 import { isStudyContractComplete, StudyContractEditor, type FieldMappingState } from "./StudyContractEditor";
+import { VariableDictionaryEditor } from "./VariableDictionaryEditor";
 import {
     SAMPLING_METHODS,
     validateSamplingPolicy,
@@ -605,6 +606,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     analysisCategoryValues={analysisCategoryValues}
                                     disabled={Boolean(isPublishedTopic)}
                                 />
+                                {editingTopicId && <VariableDictionaryEditor topicId={editingTopicId} readOnly={isPublishedTopic} />}
                             </div>
                         )}
 
