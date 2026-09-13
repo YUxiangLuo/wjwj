@@ -4,7 +4,7 @@ export interface VariableDefinition {
     field: string;
     label: string;
     unit: string;
-    kind: "continuous" | "nominal" | "ordinal";
+    kind: "continuous" | "nominal" | "ordinal" | "identifier";
     categories: Array<{ value: RawValue; label: string }>;
     missing: RawValue[];
 }
@@ -46,3 +46,16 @@ export interface CategoricalAnalysisResult extends AnalysisResultBase {
 }
 
 export type AnalysisResult = NumericAnalysisResult | CategoricalAnalysisResult;
+
+export interface SavedAnalysisView {
+    id: number;
+    config: AnalysisConfig;
+    variable: VariableDefinition;
+    result: AnalysisResult;
+    source: string;
+    dictionaryRevision: number;
+    samplingGeneration: number;
+    algorithmVersion: string;
+    createdAt: string;
+    stale: boolean;
+}

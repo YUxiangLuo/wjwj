@@ -18,6 +18,7 @@ test("grading detail prefers the immutable submission snapshot", async () => {
         samplingPolicy: { version: 1, methods: { simple: "required", systematic: "optional", pps: "disabled", stratified: "optional" } },
         reportContent: "提交时报告",
         weightConfig: { questionnaire: 40, process: 35, report: 25 },
+        analysisAppendices: [{ id: 8, stale: false }],
     };
     const attemptTime = new Date("2026-03-08T09:00:00Z");
     const { db } = createMockDb({ select: [
@@ -38,6 +39,7 @@ test("grading detail prefers the immutable submission snapshot", async () => {
     expect(payload.data.samplePlan).toMatchObject({ finalSampleSize: 240, designEffect: 1, nonResponseRate: 0 });
     expect(payload.data.weights).toEqual({ questionnaire: 40, process: 35, report: 25 });
     expect(payload.data.samplingPolicy).toEqual(snapshot.samplingPolicy);
+    expect(payload.data.analysisAppendices).toEqual(snapshot.analysisAppendices);
     expect(payload.data.samplingAttempts).toEqual([{
         id: 5,
         method: "simple",
@@ -49,7 +51,7 @@ test("grading detail prefers the immutable submission snapshot", async () => {
     expect(payload.data).not.toHaveProperty("pdfStatus");
 });
 
-test("compact grading detail returns READ_FAILED when population storage is missing", async () => {
+test("compact grading detail rejects hydration when the frozen source hash cannot be verified", async () => {
     const { db } = createMockDb({ select: [
         [{
             id: 99, version: 7, studentName: "当前学生", studentId: "S001", className: "统计一班", topic: "当前课题", topicName: "当前课题", topicDesc: "描述",
@@ -69,8 +71,8 @@ test("compact grading detail returns READ_FAILED when population storage is miss
     console.error = () => undefined;
     try {
         const response = await module.gradingDetailRoutes.GET!(withId(new Request("https://example.com"), "99"));
-        expect(response.status).toBe(500);
-        expect(await response.json()).toMatchObject({ error: { code: "READ_FAILED" } });
+        expect(response.status).toBe(409);
+        expect(await response.json()).toMatchObject({ error: { code: "SOURCE_CONFLICT" } });
     } finally {
         console.error = originalConsoleError;
     }

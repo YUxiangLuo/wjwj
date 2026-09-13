@@ -12,6 +12,7 @@ import { getTemplateContentDisposition, getTemplateContentType, resolveTemplateP
 import { closeDatabase } from "./db";
 import { analysisService } from "./student/experiment/analysis-service";
 import { populationStatsService } from "./student/experiment/population-stats-service";
+import { univariateService } from "./student/experiment/univariate-service";
 import { acceptsGzip, createGzipCache } from "./server/asset-gzip";
 import { buildResponseHeaders, handleServerError, validateApiRequest, withPrivateApiHeaders } from "./server/http";
 import type { RouteDefinition, RouteHandler } from "./server/route-types";
@@ -240,6 +241,7 @@ registerLongRunningProcessSignals({
         await Promise.race([drain, timeout]);
         analysisService.close();
         populationStatsService.close();
+        univariateService.close();
         await closeDatabase();
     },
 });

@@ -12,6 +12,7 @@ import { attachmentDownloadRoutes, exportRoutes } from "./routes/files";
 import { announcementsRoutes } from "./routes/announcements";
 import { submissionByTaskRoutes } from "./routes/submissions";
 import { taskDetailRoutes, tasksRoutes } from "./routes/tasks";
+import { savedAnalysisRoutes, studentVariableRoutes } from "./routes/variables";
 
 export const studentApiRoutes = {
     "/api/student/login": loginRoutes,
@@ -27,6 +28,8 @@ export const studentApiRoutes = {
     "/api/student/tasks/:id/sampling": samplingActionRoutes,
     "/api/student/tasks/:id/stats": statsRoutes,
     "/api/student/tasks/:id/analysis-metrics": analysisMetricsRoutes,
+    "/api/student/tasks/:id/variables": studentVariableRoutes,
+    "/api/student/tasks/:id/analyses": savedAnalysisRoutes,
     "/api/student/tasks/:id/submit": submitRoutes,
     "/api/student/tasks/:id/export": exportRoutes,
     "/api/student/tasks/:id/submission": submissionByTaskRoutes,

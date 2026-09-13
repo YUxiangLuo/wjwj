@@ -47,6 +47,8 @@ import { ensureTaskIsOpen, ensureTaskSubmissionWindow, hasTaskDeadlinePassed } f
 import { buildStageCompletionUpdates, buildStageReopenUpdates } from "../experiment/update-service";
 import { getOrCreateStudentExperiment } from "../experiment/workflow";
 import { requireAuth } from "./auth";
+import { AnalysisConflict, listSavedAnalyses, loadAnalysisReferences, parseAnalysisReferences } from "../experiment/saved-analysis-service";
+import { readVariableSource } from "../../server/variable-source";
 
 function getTaskId(req: Request) {
     return getPositiveRouteId(req);
@@ -101,6 +103,7 @@ async function buildExperimentResponse(
     const resolvedSamplingResults = await resolveExperimentSamplingResults(record, taskId, classId);
     if (!resolvedSamplingResults.ok) return resolvedSamplingResults;
     const taskInfo = await findStudentTaskSamplingInfo(taskId, classId);
+    const analyses = record.analysisReferences.length ? await listSavedAnalyses(record.studentId, classId, taskId) : null;
     return { ok: true as const, value: {
         id: record.id,
         taskId: record.taskId,
@@ -112,6 +115,9 @@ async function buildExperimentResponse(
         samplePlan: normalizeSamplePlanData(parseStoredJson(record.samplePlan), populationSize),
         samplingResults: previewSamplingResults(resolvedSamplingResults.value),
         reportContent: record.reportContent,
+        samplingGeneration: record.samplingGeneration,
+        analysisReferences: record.analysisReferences,
+        analysisAppendices: record.analysisReferences.flatMap(id => analyses?.records.filter(row => row.id === id) ?? []),
         stage1CompletedAt: iso(record.stage1CompletedAt),
         stage2CompletedAt: iso(record.stage2CompletedAt),
         stage3CompletedAt: iso(record.stage3CompletedAt),
@@ -170,6 +176,7 @@ async function persistSamplingMethodResult(
                     ${result}::jsonb,
                     true
                 )`,
+                samplingGeneration: sql`${experiment.samplingGeneration} + 1`,
                 updatedAt: new Date(),
             })
             .where(and(
@@ -330,9 +337,7 @@ const stageCompleteRoutes: RouteDefinition = {
         const deadlinePassed = hasTaskDeadlinePassed(schedule?.deadline);
         if (deadlinePassed) return error("任务已截止，无法完成阶段", "TASK_DEADLINE");
         const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
-        const stageTaskInfo = stage === 2 || stage === 3
-            ? await findStudentTaskSamplingInfo(taskId, auth.student.classId)
-            : undefined;
+        const stageTaskInfo = await findStudentTaskSamplingInfo(taskId, auth.student.classId);
         const fieldMapping = stage === 2 ? stageTaskInfo?.fieldMapping : undefined;
         let stratifiedStats: Record<string, Record<string, number>> | undefined;
         if (stage === 2 && resolveSamplingPolicy(stageTaskInfo?.samplingPolicy).methods.stratified === "required") {
@@ -364,8 +369,26 @@ const stageCompleteRoutes: RouteDefinition = {
             fieldMapping,
             samplingPolicy: stageTaskInfo?.samplingPolicy,
             stratifiedStats,
+            variableDictionary: stageTaskInfo?.variableDictionary,
         });
         if (!result.ok) return error(result.message, result.code, result.status);
+        try {
+            const references = stage === 4 ? parseAnalysisReferences(payload.analysisReferences ?? []) : [];
+            const bound = stage === 1 && (result.updates.questionnaire as { questions: { variableBinding?: unknown }[] }).questions.some(question => question.variableBinding);
+            if (bound || references.length) {
+                if (!stageTaskInfo?.excelFilePath || !stageTaskInfo.variableDictionary
+                    || stageTaskInfo.variableRevision !== stageTaskInfo.variableDictionary.revision
+                    || (await readVariableSource(stageTaskInfo.excelFilePath, stageTaskInfo.fieldMapping)).source !== stageTaskInfo.variableDictionary.source) {
+                    return error("变量字典来源已变化，请重新确认", "SOURCE_CONFLICT", 409);
+                }
+            }
+            if (stage === 4) {
+                await loadAnalysisReferences(completionRecord, stageTaskInfo?.variableDictionary ?? null, references);
+                result.updates.analysisReferences = references;
+            }
+        } catch (cause) {
+            return cause instanceof AnalysisConflict ? error(cause.message, cause.code, cause.status) : handleServerError(cause);
+        }
         if (stage === 2 && resolveSamplingPolicy(stageTaskInfo?.samplingPolicy).methods.pps === "required") {
             if (!stageTaskInfo?.excelFilePath) return error("必做 PPS 缺少总体数据文件", "NO_DATA_FILE");
             try {

@@ -3,7 +3,6 @@ import { calculateDesignWeights, type SamplingDesign } from "../../domain/variab
 import { validateDictionary } from "../../domain/variables/dictionary";
 import type { AnalysisConfig, AnalysisResult, VariableDictionary } from "../../domain/variables/types";
 import { readVariableSource } from "../../server/variable-source";
-import { readPopulationData } from "./population-data";
 import { executeSamplingAction } from "./sampling-service";
 import { hydrateSamplingResults } from "./sampling-storage";
 
@@ -24,21 +23,6 @@ const record = (value: unknown): value is Record<string, unknown> => !!value && 
 const sameNumbers = (a: unknown, b: unknown) => Array.isArray(a) && Array.isArray(b) && a.length === b.length
     && a.every((value, index) => typeof value === "number" && typeof b[index] === "number" && Math.abs(value - b[index]) <= 1e-12 * Math.max(1, Math.abs(value)));
 
-function sameDisplayedRows(raw: Record<string, unknown>[], current: Record<string, unknown>[]) {
-    if (raw.length !== current.length) return false;
-    return raw.every((row, index) => {
-        const other = current[index]!;
-        const keys = Object.keys(row);
-        return keys.length === Object.keys(other).length && keys.every((key) => {
-            if (!Object.prototype.hasOwnProperty.call(other, key)) return false;
-            const a = row[key], b = other[key];
-            if (a === b) return true;
-            if (typeof b === "number" && typeof a === "string" && a.trim() !== "" && Number(a) === b) return true;
-            return false;
-        });
-    });
-}
-
 export async function runUnivariateJob(job: UnivariateJob): Promise<UnivariateJobResult> {
     try {
         if (!record(job.dictionary) || !record(job.config) || !record(job.samplingResult)) return fail("INVALID_JOB", "分析任务无效");
@@ -48,13 +32,13 @@ export async function runUnivariateJob(job: UnivariateJob): Promise<UnivariateJo
         if (!["simple", "systematic", "pps", "stratified"].includes(job.config.method)
             || typeof job.config.field !== "string" || typeof job.config.weighted !== "boolean") return fail("INVALID_CONFIG", "分析配置无效");
         const matching = dictionary.variables.filter((variable) => variable.field === job.config.field);
-        if (matching.length !== 1) return fail("INVALID_VARIABLE", "所选变量不在当前字典中或不唯一");
+        if (matching.length !== 1 || matching[0]?.kind === "identifier") return fail("INVALID_VARIABLE", "所选变量不在当前字典中或不用于分析");
         const section = job.samplingResult;
         if (section.completed !== true || section.serverGenerated !== true || section.unavailable === true) {
             return fail("INVALID_SAMPLE", "必须使用已完成的服务器抽样结果");
         }
-        const current = await readPopulationData(job.populationPath, job.fieldMapping);
-        if (!current.length || !sameDisplayedRows(source.rows, current)) return fail("SOURCE_MISMATCH", "总体解析结果已变更或行序不一致");
+        // Both interpretations come from the same bytes and physical row numbers.
+        const current = source.designRows;
         const wrapped = { [job.config.method]: section };
         const hydrated = hydrateSamplingResults(wrapped, current);
         if (!hydrated.ok) return fail("INVALID_SAMPLE", "抽样结果存储无效");

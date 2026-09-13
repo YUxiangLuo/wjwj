@@ -40,6 +40,7 @@ test("submission endpoint returns the task's current experiment result", async (
             samplingResults: { simple: { completed: true, sampleCount: 60 } },
             reportContent: "<p>提交时报告</p>",
             weightConfig: { questionnaire: 40, process: 35, report: 25 },
+            analysisAppendices: [{ id: 7, stale: false }],
         },
     }]] });
     mock.module("../../db", () => ({ db }));
@@ -69,6 +70,7 @@ test("submission endpoint returns the task's current experiment result", async (
             samplePlan: { finalSampleSize: 60 },
             samplingResults: { simple: { sampleCount: 60 } },
             reportContent: "<p>提交时报告</p>",
+            analysisAppendices: [{ id: 7, stale: false }],
         },
     });
     expect(payload.data.weights).toEqual({ questionnaire: 40, process: 35, report: 25 });
@@ -82,6 +84,7 @@ test("submission endpoint hydrates compact immutable snapshot samples", async ()
     const populationPath = `/storage/compact-submission-${crypto.randomUUID()}.csv`;
     const absolutePath = `${process.cwd()}${populationPath}`;
     await Bun.write(absolutePath, "id,city\n1,北京\n2,上海\n");
+    const hash = new Bun.CryptoHasher("sha256").update(await Bun.file(absolutePath).arrayBuffer()).digest("hex");
 
     try {
         const { db } = createMockDb({ select: [[{
@@ -104,6 +107,7 @@ test("submission endpoint hydrates compact immutable snapshot samples", async ()
             populationSize: 2,
             excelFilePath: populationPath,
             submissionSnapshot: {
+                populationFileSha256: hash,
                 samplingResults: { simple: { completed: true, sampleCount: 1, indices: [1] } },
             },
         }]] });
@@ -123,7 +127,7 @@ test("submission endpoint hydrates compact immutable snapshot samples", async ()
     }
 });
 
-test("compact submission returns READ_FAILED instead of silently dropping rows when population storage is missing", async () => {
+test("compact submission rejects hydration when the frozen source hash cannot be verified", async () => {
     const { db } = createMockDb({ select: [[{
         id: 501,
         taskId: 40,
@@ -158,8 +162,8 @@ test("compact submission returns READ_FAILED instead of silently dropping rows w
     console.error = () => undefined;
     try {
         const response = await module.submissionByTaskRoutes.GET!(withId(new Request("https://example.com"), "40"));
-        expect(response.status).toBe(500);
-        expect(await response.json()).toMatchObject({ error: { code: "READ_FAILED" } });
+        expect(response.status).toBe(409);
+        expect(await response.json()).toMatchObject({ error: { code: "SOURCE_CONFLICT" } });
     } finally {
         console.error = originalConsoleError;
     }

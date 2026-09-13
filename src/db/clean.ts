@@ -23,6 +23,7 @@ const PROJECT_TABLES = [
     "system_config",
     "assistant",
     "sampling_attempt",
+    "saved_analysis",
     "experiment",
     "student",
     "task",

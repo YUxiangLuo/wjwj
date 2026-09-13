@@ -18,6 +18,8 @@ function record(overrides: Record<string, unknown> = {}) {
         studentId: 2,
         taskId: 3,
         version: 6,
+        samplingGeneration: 0,
+        analysisReferences: [],
         status: "in_progress",
         currentStage: 3,
         questionnaire: { title: "问卷" },

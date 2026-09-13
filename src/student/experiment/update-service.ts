@@ -5,6 +5,9 @@ import { ExperimentStatus } from "@/domain/experiment/status";
 import { getRequiredStratifiedMinimum } from "./final-sample-bounds";
 import { resolveAnalysisTarget } from "../../lib/analysis-target";
 import { canonicalizeRichTextHtmlForStorage } from "../../server/rich-text";
+import { validateQuestionBindings } from "../../domain/variables/question-binding";
+import type { VariableDictionary } from "../../domain/variables/types";
+import type { QuestionnaireData } from "../../lib/questionnaire-types";
 import {
     getTargetSampleSizeFromSamplePlan,
     validateQuestionnaireForSubmit,
@@ -47,6 +50,7 @@ export function buildStageCompletionUpdates(params: {
     fieldMapping?: unknown;
     samplingPolicy?: unknown;
     stratifiedStats?: Record<string, Record<string, number>>;
+    variableDictionary?: VariableDictionary | null;
 }) {
     const { experimentRecord: record, stage, payload } = params;
     if (!Number.isInteger(stage) || stage < 1 || stage > 4) return fail("阶段必须是1-4的整数");
@@ -74,6 +78,9 @@ export function buildStageCompletionUpdates(params: {
             : rawQuestionnaire;
         const validationError = validateQuestionnaireForSubmit(questionnaire);
         if (validationError) return fail(validationError);
+        try {
+            validateQuestionBindings(questionnaire as QuestionnaireData, params.variableDictionary ?? null, record.taskId);
+        } catch (cause) { return fail(cause instanceof Error ? cause.message : "变量关联无效"); }
         updates.questionnaire = questionnaire;
         updates.stage1CompletedAt = now;
         updates.currentStage = 2;
@@ -143,6 +150,10 @@ export function buildStageReopenUpdates(params: {
         currentStage: stage,
         updatedAt: new Date(),
     };
+    if (stage <= 3) {
+        updates.samplingGeneration = record.samplingGeneration + 1;
+        updates.analysisReferences = [];
+    }
 
     if (stage <= 1) {
         updates.stage1CompletedAt = null;

@@ -58,6 +58,8 @@ export async function findStudentTaskSamplingInfo(taskId: number, classId: numbe
             excelFilePath: topic.excelFilePath,
             fieldMapping: topic.fieldMapping,
             samplingPolicy: topic.samplingPolicy,
+            variableDictionary: topic.variableDictionary,
+            variableRevision: topic.variableRevision,
         })
         .from(task)
         .innerJoin(topic, eq(task.topicId, topic.id))
@@ -83,6 +85,8 @@ export async function findStudentTaskSubmitInfo(taskId: number, classId: number)
             fieldMapping: topic.fieldMapping,
             samplingPolicy: topic.samplingPolicy,
             excelFilePath: topic.excelFilePath,
+            variableDictionary: topic.variableDictionary,
+            variableRevision: topic.variableRevision,
             teacherId: class_.teacherId,
             teacherName: teacher.name,
             classId: task.classId,

@@ -22,6 +22,17 @@ import { parseStoredJson } from "../../student/experiment/serialization";
 import { getTeacherUser } from "./auth";
 import { resolveSamplingPolicy } from "../../lib/sampling-policy";
 import { writeAuditEvent } from "../../server/audit-event";
+import { resolveStoragePath } from "../../server/storage-files";
+
+async function matchesSnapshotFile(path: string, expected: unknown) {
+    if (typeof expected !== "string" || !/^[a-f0-9]{64}$/.test(expected)) return false;
+    try {
+        const bytes = await Bun.file(resolveStoragePath(path)).arrayBuffer();
+        return new Bun.CryptoHasher("sha256").update(bytes).digest("hex") === expected;
+    } catch {
+        return false;
+    }
+}
 
 function escapeLike(value: string) {
     return value.replace(/[%_\\]/g, (character) => `\\${character}`);
@@ -199,6 +210,8 @@ const gradingDetailRoutes: RouteDefinition = {
             reportContent?: string;
             weightConfig?: unknown;
             samplingPolicy?: unknown;
+            populationFileSha256?: string | null;
+            analysisAppendices?: unknown[];
         }>(row.submissionSnapshot);
         const populationSize = snapshot?.populationSize ?? row.populationSize;
         const weights = scoringWeightsFrom(snapshot?.weightConfig ?? row.weightConfig);
@@ -221,6 +234,9 @@ const gradingDetailRoutes: RouteDefinition = {
         let samplingResults: unknown = storedSamplingResults;
         if (inspection.needsPopulation) {
             if (!row.excelFilePath) return error("总体数据为空或读取失败", "READ_FAILED", 500);
+            if (!(await matchesSnapshotFile(row.excelFilePath, snapshot?.populationFileSha256))) {
+                return error("提交时总体文件已变化，无法恢复冻结样本", "SOURCE_CONFLICT", 409);
+            }
             const population = await readPopulationData(row.excelFilePath, row.fieldMapping);
             if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
             const hydrated = hydrateSamplingResults(storedSamplingResults, population);
@@ -248,6 +264,7 @@ const gradingDetailRoutes: RouteDefinition = {
             samplingResults: previewSamplingResults(samplingResults),
             samplingPolicy: resolveSamplingPolicy(snapshot?.samplingPolicy ?? row.samplingPolicy),
             reportContent: snapshot?.reportContent ?? row.reportContent ?? "",
+            analysisAppendices: snapshot?.analysisAppendices ?? [],
             scoreQuestionnaire: numeric(row.scoreQuestionnaire),
             scoreProcess: numeric(row.scoreProcess),
             scoreReport: numeric(row.scoreReport),
@@ -346,7 +363,7 @@ const gradingSamplingExportRoutes: RouteDefinition = {
 
         const row = await findOwnedExperiment(experimentId, current.id);
         if (!row) return error("提交记录不存在", "NOT_FOUND", 404);
-        const snapshot = parseStoredJson<{ samplingResults?: unknown }>(row.submissionSnapshot);
+        const snapshot = parseStoredJson<{ samplingResults?: unknown; populationFileSha256?: string | null }>(row.submissionSnapshot);
         const storedSamplingResults = snapshot?.samplingResults ?? parseStoredJson(row.samplingResults);
         if (!storedSamplingResults) return error("暂无抽样结果", "NO_DATA", 404);
 
@@ -357,6 +374,9 @@ const gradingSamplingExportRoutes: RouteDefinition = {
         let samplingResults: unknown = storedSamplingResults;
         if (inspection.needsPopulation) {
             if (!row.excelFilePath) return error("总体数据为空或读取失败", "READ_FAILED", 500);
+            if (!(await matchesSnapshotFile(row.excelFilePath, snapshot?.populationFileSha256))) {
+                return error("提交时总体文件已变化，无法恢复冻结样本", "SOURCE_CONFLICT", 409);
+            }
             const population = await readPopulationData(row.excelFilePath, row.fieldMapping);
             if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
             const hydrated = hydrateSamplingResults(storedSamplingResults, population);

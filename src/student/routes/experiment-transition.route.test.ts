@@ -42,6 +42,8 @@ function experimentRecord(overrides: Record<string, unknown> = {}) {
         studentId: 2,
         taskId: 3,
         version: 6,
+        samplingGeneration: 0,
+        analysisReferences: [],
         status: "in_progress",
         currentStage: 2,
         questionnaire: { title: "问卷" },
@@ -278,7 +280,7 @@ test("submission forwards the task sampling policy into the immutable snapshot",
     const complete = experimentRecord({
         currentStage: 4,
         questionnaire,
-        samplePlan: { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 132, finalSampleSize: 50 },
+        samplePlan: { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 132, finalSampleSize: 50, finalSampleSizeSource: "manual" },
         samplingResults: {
             simple: { completed: true, sampleCount: 50 },
             systematic: { completed: true, sampleCount: 50, interval: 4 },

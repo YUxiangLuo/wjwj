@@ -31,6 +31,34 @@ function categories(variable: VariableDefinition) {
     return variable.categories.filter(category => !missing.has(valueKey(category.value)));
 }
 
+type VariableBinding = NonNullable<Question["variableBinding"]>;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function assertBindingShape(value: unknown, label: string): asserts value is VariableBinding {
+    if (!isRecord(value)
+        || !Number.isInteger(value.taskId)
+        || typeof value.source !== "string"
+        || !Number.isInteger(value.revision)
+        || typeof value.signature !== "string"
+        || !Array.isArray(value.mappings)) throw new Error(`${label}的变量关联格式无效`);
+    for (const mapping of value.mappings) {
+        if (!isRecord(mapping)
+            || typeof mapping.field !== "string"
+            || (mapping.option !== undefined && typeof mapping.option !== "string")
+            || !Array.isArray(mapping.answers)) throw new Error(`${label}的变量关联格式无效`);
+        for (const answer of mapping.answers) {
+            if (!isRecord(answer)
+                || typeof answer.answer !== "string"
+                || !(answer.value === null || typeof answer.value === "string" || typeof answer.value === "boolean" || (typeof answer.value === "number" && Number.isFinite(answer.value)))) {
+                throw new Error(`${label}的答案映射格式无效`);
+            }
+        }
+    }
+}
+
 function assertCategoryBijection(mapping: NonNullable<Question["variableBinding"]>["mappings"][number], expectedAnswers: string[], variable: VariableDefinition, label: string) {
     const valid = categories(variable);
     if (mapping.answers.length !== expectedAnswers.length || valid.length !== expectedAnswers.length) throw new Error(`${label}与字段“${variable.field}”的有效类别数量不一致`);
@@ -43,8 +71,10 @@ function assertCategoryBijection(mapping: NonNullable<Question["variableBinding"
 export function validateQuestionBindings(questionnaire: QuestionnaireData, dictionary: VariableDictionary | null, taskId: number): void {
     questionnaire.questions.forEach((question, index) => {
         const binding = question.variableBinding;
-        if (!binding) return;
+        if (binding === undefined) return;
         const label = `第${index + 1}题`;
+        assertBindingShape(binding, label);
+        if (!["boolean", "single", "multiple", "scale", "numeric"].includes(question.type)) throw new Error(`${label}的题型不支持变量关联`);
         if (!dictionary) throw new Error(`${label}有关联变量，但当前任务没有变量字典`);
         if (binding.taskId !== taskId || binding.source !== dictionary.source || binding.revision !== dictionary.revision) throw new Error(`${label}的变量关联已过期，请重新确认`);
         if (binding.signature !== questionSignature(question)) throw new Error(`${label}题意或规则已修改，请重新确认变量关联`);
@@ -54,8 +84,10 @@ export function validateQuestionBindings(questionnaire: QuestionnaireData, dicti
         const resolve = (field: string) => {
             const variable = dictionary.variables.find(item => item.field === field);
             if (!variable) throw new Error(`${label}关联的字段“${field}”不存在`);
+            if (variable.kind === "identifier") throw new Error(`${label}不能关联标识符字段“${field}”`);
             return variable;
         };
+        if (question.type !== "multiple" && binding.mappings.some(mapping => mapping.option !== undefined)) throw new Error(`${label}只有多选题可以配置选项关联`);
         if (question.type === "numeric") {
             if (binding.mappings.length !== 1) throw new Error(`${label}数值题只能关联一个字段`);
             const mapping = binding.mappings[0]!, variable = resolve(mapping.field);
@@ -77,7 +109,10 @@ export function validateQuestionBindings(questionnaire: QuestionnaireData, dicti
             if (question.type === "scale") {
                 if (variable.kind !== "ordinal") throw new Error(`${label}评分题只能关联有序变量`);
                 const min = question.scaleMin ?? 1, max = question.scaleMax ?? 10;
-                assertCategoryBijection(mapping, Array.from({ length: max - min + 1 }, (_, i) => String(min + i)), variable, label);
+                const expectedAnswers = Array.from({ length: max - min + 1 }, (_, i) => String(min + i));
+                assertCategoryBijection(mapping, expectedAnswers, variable, label);
+                const byAnswer = new Map(mapping.answers.map(item => [item.answer, valueKey(item.value)]));
+                if (expectedAnswers.some((answer, i) => byAnswer.get(answer) !== valueKey(categories(variable)[i]!.value))) throw new Error(`${label}的评分答案必须按字段类别顺序递增`);
             } else {
                 if (variable.kind !== "nominal") throw new Error(`${label}只能关联名义变量`);
                 assertCategoryBijection(mapping, question.type === "boolean" ? ["是", "否"] : question.options ?? [], variable, label);

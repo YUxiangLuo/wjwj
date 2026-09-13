@@ -26,16 +26,14 @@ export function suggestDictionary(rows: Record<string, unknown>[], source: strin
     }
     const variables = fields.map((field): VariableDefinition => {
         const values = new Map<string, RawValue>();
-        let allNumbers = true;
         for (const row of rows) {
             if (!Object.prototype.hasOwnProperty.call(row, field)) throw new Error(`字段“${field}”在部分数据行中缺失`);
             const value = raw(row[field]);
             if (value === null) continue;
-            if (typeof value !== "number") allNumbers = false;
             values.set(valueKey(value), value);
         }
-        const kind = allNumbers ? "continuous" : "nominal";
-        return { field, label: field, unit: "", kind, categories: kind === "continuous" ? [] : [...values.values()].map(value => ({ value, label: String(value) })), missing: [null] };
+        const kind = values.size > MAX_CATEGORIES_PER_VARIABLE ? "identifier" : "nominal";
+        return { field, label: field, unit: "", kind, categories: kind === "nominal" ? [...values.values()].map(value => ({ value, label: String(value) })) : [], missing: [null] };
     });
     return { source, revision, variables };
 }
@@ -60,20 +58,20 @@ export function validateDictionary(value: unknown, rows: Record<string, unknown>
         const object = exactObject(item, ["field", "label", "unit", "kind", "categories", "missing"], "变量定义");
         if (typeof object.field !== "string" || !rowFields.has(object.field) || fields.has(object.field)) throw new Error("变量字段缺失、重复或不存在");
         fields.add(object.field);
-        if (typeof object.label !== "string" || !object.label.trim() || typeof object.unit !== "string") throw new Error(`字段“${object.field}”的标签或单位无效`);
-        if (object.kind !== "continuous" && object.kind !== "nominal" && object.kind !== "ordinal") throw new Error(`字段“${object.field}”的测量类型无效`);
+        if (typeof object.label !== "string" || !object.label.trim() || object.label.length > 120 || typeof object.unit !== "string" || object.unit.length > 60) throw new Error(`字段“${object.field}”的标签或单位无效`);
+        if (object.kind !== "continuous" && object.kind !== "nominal" && object.kind !== "ordinal" && object.kind !== "identifier") throw new Error(`字段“${object.field}”的测量类型无效`);
         if (!Array.isArray(object.categories) || !Array.isArray(object.missing)) throw new Error(`字段“${object.field}”的分类或缺失编码无效`);
         const missing = object.missing.map(raw), missingKeys = new Set(missing.map(valueKey));
         if (missingKeys.size !== missing.length) throw new Error(`字段“${object.field}”含重复缺失编码`);
         const categories = object.categories.map(entry => {
             const category = exactObject(entry, ["value", "label"], "类别定义");
             const categoryValue = raw(category.value);
-            if (typeof category.label !== "string" || !category.label.trim()) throw new Error(`字段“${object.field}”含空类别标签`);
+            if (typeof category.label !== "string" || !category.label.trim() || category.label.length > 120) throw new Error(`字段“${object.field}”含无效类别标签`);
             return { value: categoryValue, label: category.label };
         });
         const categoryKeys = new Set(categories.map(category => valueKey(category.value)));
         if (categoryKeys.size !== categories.length || [...categoryKeys].some(key => missingKeys.has(key))) throw new Error(`字段“${object.field}”的类别与缺失编码重复或冲突`);
-        if (object.kind === "continuous" && categories.length) throw new Error(`连续变量“${object.field}”不能定义类别`);
+        if ((object.kind === "continuous" || object.kind === "identifier") && categories.length) throw new Error(`非分类变量“${object.field}”不能定义类别`);
         if (object.kind !== "continuous" && categories.length > MAX_CATEGORIES_PER_VARIABLE) throw new Error(`字段“${object.field}”类别超过 ${MAX_CATEGORIES_PER_VARIABLE} 个限制`);
         const observed = new Set<string>();
         for (const row of rows) {
@@ -82,7 +80,7 @@ export function validateDictionary(value: unknown, rows: Record<string, unknown>
             const key = valueKey(cell);
             if (missingKeys.has(key)) continue;
             if (object.kind === "continuous") interpretNumeric(cell, { ...object, categories, missing } as VariableDefinition);
-            else observed.add(key);
+            else if (object.kind !== "identifier") observed.add(key);
         }
         if (object.kind !== "continuous" && [...observed].some(key => !categoryKeys.has(key))) throw new Error(`字段“${object.field}”的类别未覆盖完整总体`);
         return { field: object.field, label: object.label, unit: object.unit, kind: object.kind, categories, missing } as VariableDefinition;

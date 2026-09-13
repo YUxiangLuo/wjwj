@@ -5,8 +5,11 @@ import { validateObservedVersion } from "../../lib/observed-version";
 import { resolveAnalysisTarget } from "../../lib/analysis-target";
 import { scoringWeightsFrom, type ScoringWeights } from "../../lib/scoring-weights";
 import { resolveSamplingPolicy, type SamplingPolicyV1 } from "../../lib/sampling-policy";
-import { resolveStoragePath } from "../../server/storage-files";
+import { readVariableSource } from "../../server/variable-source";
+import { validateQuestionBindings } from "../../domain/variables/question-binding";
+import type { SavedAnalysisView, VariableDictionary } from "../../domain/variables/types";
 import { normalizeSamplePlanData } from "./sample-plan-display";
+import { analysisView, loadAnalysisReferences, parseAnalysisReferences } from "./saved-analysis-service";
 import { parseStoredJson } from "./serialization";
 import { compactSamplingResults } from "./sampling-storage";
 import { ExperimentStatus } from "@/domain/experiment/status";
@@ -30,6 +33,8 @@ export interface SubmissionSnapshot {
     reportContent: string;
     weightConfig: ScoringWeights;
     samplingPolicy: SamplingPolicyV1;
+    variableDictionary?: VariableDictionary | null;
+    analysisAppendices?: Array<SavedAnalysisView & { evidence: unknown }>;
     className?: string | null;
     teacherName?: string | null;
     populationFileSha256?: string | null;
@@ -38,6 +43,7 @@ export interface SubmissionSnapshot {
 }
 
 interface SubmitTaskInfo {
+    taskId?: number;
     topicName: string | null;
     populationSize: number | string | null;
     weightConfig?: unknown;
@@ -46,16 +52,8 @@ interface SubmitTaskInfo {
     excelFilePath?: string | null;
     className?: string | null;
     teacherName?: string | null;
-}
-
-async function populationFileSha256(filePath: string | null | undefined) {
-    if (!filePath) return null;
-    try {
-        const bytes = await Bun.file(resolveStoragePath(filePath)).arrayBuffer();
-        return new Bun.CryptoHasher("sha256").update(bytes).digest("hex");
-    } catch {
-        return null;
-    }
+    variableDictionary?: VariableDictionary | null;
+    variableRevision?: number;
 }
 
 interface SubmitStudentInfo {
@@ -88,12 +86,11 @@ export function validateExperimentSubmission(params: {
     const populationSize = normalizePopulationSize(params.taskInfo.populationSize);
 
     const validationError =
-        validateQuestionnaireForSubmit(questionnaire, { allowLegacyDuplicateOptions: true }) ??
+        validateQuestionnaireForSubmit(questionnaire) ??
         validateSamplePlanForSubmit(
             samplePlan,
             populationSize,
             resolveAnalysisTarget(params.taskInfo.fieldMapping)?.target.kind,
-            { allowLegacyAdvancedSourceWithoutSnapshot: true },
         ) ??
         validateSamplingResultsForSubmit(
             samplingResults,
@@ -128,6 +125,39 @@ export async function submitStudentExperiment(params: {
 
     const populationSize = normalizePopulationSize(params.taskInfo.populationSize);
     const questionnaire = parseStoredJson<Record<string, unknown>>(params.experimentRecord.questionnaire);
+    const dictionary = params.taskInfo.variableDictionary ?? null;
+    try {
+        validateQuestionBindings(questionnaire as any, dictionary, params.taskInfo.taskId ?? params.experimentRecord.taskId);
+    } catch (cause) {
+        return fail(cause instanceof Error ? cause.message : "问卷变量关联无效", "INVALID_BINDING", 409);
+    }
+    if (dictionary && dictionary.revision !== params.taskInfo.variableRevision) {
+        return fail("变量字典已变化，请刷新核对", "DICTIONARY_CONFLICT", 409);
+    }
+    let sourceData: Awaited<ReturnType<typeof readVariableSource>> | null = null;
+    if (params.taskInfo.excelFilePath) {
+        try {
+            sourceData = await readVariableSource(params.taskInfo.excelFilePath, params.taskInfo.fieldMapping);
+        } catch {
+            return fail("总体数据为空或读取失败", "READ_FAILED", 500);
+        }
+    }
+    if (dictionary && sourceData?.source !== dictionary.source) {
+        return fail("总体文件或字段解释已变化，请联系教师", "SOURCE_CONFLICT", 409);
+    }
+    let referenced;
+    try {
+        const ids = parseAnalysisReferences(params.experimentRecord.analysisReferences);
+        referenced = await loadAnalysisReferences(params.experimentRecord, dictionary, ids);
+    } catch (cause) {
+        const conflict = cause as { message?: string; code?: string; status?: number };
+        return fail(conflict.message ?? "分析引用无效", conflict.code ?? "INVALID_REFERENCE", conflict.status ?? 409);
+    }
+    const analysisAppendices = referenced.map(row => ({
+        ...analysisView(row, params.experimentRecord, dictionary),
+        evidence: row.evidence,
+        stale: false,
+    }));
     const samplePlan = normalizeSamplePlanData(
         parseStoredJson<Record<string, unknown>>(params.experimentRecord.samplePlan),
         populationSize,
@@ -135,7 +165,6 @@ export async function submitStudentExperiment(params: {
     const samplingResults = compactSamplingResults(
         parseStoredJson<Record<string, unknown>>(params.experimentRecord.samplingResults),
     );
-    const populationFileHash = await populationFileSha256(params.taskInfo.excelFilePath);
     const snapshot: SubmissionSnapshot = {
         topicName: params.taskInfo.topicName ?? "未命名实验模板",
         studentName: params.student.name || params.student.studentId,
@@ -146,10 +175,12 @@ export async function submitStudentExperiment(params: {
         reportContent: params.experimentRecord.reportContent ?? "",
         weightConfig: scoringWeightsFrom(params.taskInfo.weightConfig),
         samplingPolicy: resolveSamplingPolicy(params.taskInfo.samplingPolicy),
+        variableDictionary: dictionary,
+        analysisAppendices,
         className: params.taskInfo.className ?? null,
         teacherName: params.taskInfo.teacherName ?? null,
-        populationFileSha256: populationFileHash,
-        parserVersion: "spreadsheet-v2",
+        populationFileSha256: sourceData?.fileHash ?? null,
+        parserVersion: sourceData?.parserVersion ?? "raw-values-v1",
         samplingAlgorithmVersion: "sampling-v2",
     };
     const submittedAt = new Date();

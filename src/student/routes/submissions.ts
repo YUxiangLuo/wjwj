@@ -16,6 +16,17 @@ import type { RouteDefinition } from "../../server/route-types";
 import { getStudentTaskAccessError } from "../experiment/task-access";
 import { requireAuth } from "./auth";
 import { resolveSamplingPolicy } from "../../lib/sampling-policy";
+import { resolveStoragePath } from "../../server/storage-files";
+
+async function matchesSnapshotFile(path: string, expected: unknown) {
+    if (typeof expected !== "string" || !/^[a-f0-9]{64}$/.test(expected)) return false;
+    try {
+        const bytes = await Bun.file(resolveStoragePath(path)).arrayBuffer();
+        return new Bun.CryptoHasher("sha256").update(bytes).digest("hex") === expected;
+    } catch {
+        return false;
+    }
+}
 
 function score(value: string | null) {
     return value == null ? null : Number(value);
@@ -72,6 +83,8 @@ const submissionByTaskRoutes: RouteDefinition = {
             reportContent?: string;
             weightConfig?: unknown;
             samplingPolicy?: unknown;
+            populationFileSha256?: string | null;
+            analysisAppendices?: unknown[];
         }>(row.submissionSnapshot);
         const storedSamplingResults = snapshot?.samplingResults ?? parseStoredJson(row.samplingResults);
         const inspection = inspectSamplingResultsStorage(storedSamplingResults);
@@ -79,6 +92,9 @@ const submissionByTaskRoutes: RouteDefinition = {
         let samplingResults = storedSamplingResults;
         if (inspection.needsPopulation) {
             if (!row.excelFilePath) return error("总体数据为空或读取失败", "READ_FAILED", 500);
+            if (!(await matchesSnapshotFile(row.excelFilePath, snapshot?.populationFileSha256))) {
+                return error("提交时总体文件已变化，无法恢复冻结样本", "SOURCE_CONFLICT", 409);
+            }
             const population = await readPopulationData(row.excelFilePath, row.fieldMapping);
             if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
             const hydrated = hydrateSamplingResults(storedSamplingResults, population);
@@ -94,6 +110,7 @@ const submissionByTaskRoutes: RouteDefinition = {
             samplingResults: previewSamplingResults(samplingResults),
             samplingPolicy: resolveSamplingPolicy(snapshot?.samplingPolicy ?? row.samplingPolicy),
             reportContent: snapshot?.reportContent ?? row.reportContent ?? "",
+            analysisAppendices: snapshot?.analysisAppendices ?? [],
         };
         return json({
             id: row.id,
