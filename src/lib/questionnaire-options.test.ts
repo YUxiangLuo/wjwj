@@ -21,7 +21,6 @@ for (const type of ["single", "multiple"]) {
             const question = { id: "q", type, content: "请选择", options, minSelect: 1, maxSelect: 2 };
             expect(validateQuestionAtIndex(question, 3)).toBe("第3题选项内容重复，请修改后重试");
             expect(parseRecommendQuestionsPayload([question])).toEqual({ ok: false, error: "第1题选项内容重复，请修改后重试" });
-            expect(validateQuestionAtIndex(question, 3, { allowLegacyDuplicateOptions: true })).toBeNull();
         });
     }
 }
@@ -34,7 +33,7 @@ for (const type of ["single", "multiple"]) {
     });
 }
 
-test("legacy duplicate allowance does not permit invalid option counts or selection limits", () => {
-    expect(validateQuestionAtIndex({ type: "single", content: "题目", options: ["甲"] }, 1, { allowLegacyDuplicateOptions: true })).toContain("选项数量");
-    expect(validateQuestionAtIndex({ type: "multiple", content: "题目", options: ["甲", "甲"], minSelect: 3, maxSelect: 3 }, 1, { allowLegacyDuplicateOptions: true })).toContain("多选数量限制");
+test("one strict rule checks counts and selection limits", () => {
+    expect(validateQuestionAtIndex({ type: "single", content: "题目", options: ["甲"] }, 1)).toContain("选项数量");
+    expect(validateQuestionAtIndex({ type: "multiple", content: "题目", options: ["甲", "乙"], minSelect: 3, maxSelect: 3 }, 1)).toContain("多选数量限制");
 });

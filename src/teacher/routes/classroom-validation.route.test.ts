@@ -35,9 +35,9 @@ test("import validates canonical lengths and NUL per row before hashing or inser
 
 test("confirmed Windows GBK roster preserves Chinese names and leading-zero student IDs", async () => {
     const { routes, operations } = await load(["000001"]);
-    const { decodeCsvUpload } = await import("../../lib/csv-encoding");
+    const { decodeCsvText } = await import("../../lib/csv-encoding");
     const original = Buffer.concat([Buffer.from("studentId,name\r\n000001,"), Buffer.from("d5c5c8fd", "hex"), Buffer.from("\r\n")]);
-    const confirmed = "\uFEFF" + decodeCsvUpload(Uint8Array.from(original).buffer, "gb18030");
+    const confirmed = "\uFEFF" + decodeCsvText(Uint8Array.from(original).buffer, "gb18030");
     const response = await routes.classStudentsImportRoutes.POST!(upload(new File([confirmed], "roster.csv")));
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ data: { successCount: 1, failureCount: 0 } });

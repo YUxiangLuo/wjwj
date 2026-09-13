@@ -1,7 +1,7 @@
 import { and, asc, count, desc, eq, exists, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, experiment, student, task, topic, topicAttachment } from "../../db/schema";
-import { normalizeRecommendQuestionsFromDb } from "../../lib/questionnaire-normalize";
+import { readStoredRecommendQuestions } from "../../lib/questionnaire-storage";
 import { resolveStoragePath } from "../../server/storage-files";
 import { parseExcelFile } from "./file-utils";
 import { buildTaskProgressSnapshot } from "./task-progress";
@@ -43,7 +43,7 @@ export async function getTeacherTopicDetail(topicId: number) {
         .where(eq(topicAttachment.topicId, topicId))
         .orderBy(desc(topicAttachment.createdAt));
     const recommendQuestions = topicInfo?.recommendQuestions != null
-        ? normalizeRecommendQuestionsFromDb(topicInfo.recommendQuestions)
+        ? readStoredRecommendQuestions(topicInfo.recommendQuestions)
         : [];
 
     let excelInfo = null as null | { columns: string[]; preview: any[]; columnValues: Record<string, string[]>; columnValuesTruncated: string[]; ppsEligibleFields: string[] };

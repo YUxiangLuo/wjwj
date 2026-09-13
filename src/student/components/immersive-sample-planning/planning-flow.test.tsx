@@ -116,17 +116,17 @@ test("reopening a saved plan retains its chosen count and displayed precision", 
     expect(screen.getByTestId("planning-outcome").textContent).toContain("±7.77 个百分点");
 });
 
-test("old unfinished quiz drafts retain parameters but drop learning metadata and do not auto-submit", () => {
+test("unsupported navigation cannot jump straight to confirmation or auto-submit", () => {
     const first = start();
     editSize("80");
     const draft = first.onDraftChange.mock.calls.at(-1)![0];
-    draft.navigation = { phase: { type: "quiz", questionIndex: 1 }, learning: { version: 1, completed: [] }, challenge: { guess: 35, revealed: true } };
+    draft.navigation = { phase: { type: "quiz" } } as any;
     first.unmount();
     const restored = start({ initialDraft: draft });
     expect(restored.onComplete).not.toHaveBeenCalled();
-    expect(screen.getByTestId("immersive-sp-confirm")).toBeTruthy();
-    expect(restored.onDraftChange.mock.calls.at(-1)![0]).toMatchObject({ finalSampleSize: 80, navigation: { phase: { type: "confirm" } } });
-    expect(restored.onDraftChange.mock.calls.at(-1)![0].navigation).not.toHaveProperty("learning");
+    expect(screen.queryByTestId("immersive-sp-confirm")).toBeNull();
+    expect(restored.onDraftChange.mock.calls.at(-1)![0]).toMatchObject({ finalSampleSize: 80, navigation: { phase: { type: "decision" } } });
+    next(); expect(screen.getByTestId("immersive-sp-confirm")).toBeTruthy();
 });
 
 test("cross-tab draft conflicts still block progression and final submission", () => {

@@ -19,7 +19,7 @@ async function setup(question: Question = bindingQuestion()) {
     return { view, apply, close };
 }
 test("reading metadata makes no guesses and applies exact typed codes only on confirmation", async () => {
-    const original = bindingQuestion(); delete original.optionIds;
+    const original = bindingQuestion();
     const { view, apply } = await setup(original);
     expect(apply).not.toHaveBeenCalled(); expect((view.getByTestId("question-binding-apply") as HTMLButtonElement).disabled).toBe(true);
     fireEvent.change(view.getByLabelText("关联变量"), { target: { value: "v_2" } });
@@ -28,7 +28,16 @@ test("reading metadata makes no guesses and applies exact typed codes only on co
     expect(apply).not.toHaveBeenCalled(); fireEvent.click(view.getByTestId("question-binding-apply"));
     const question = apply.mock.calls[0]![0];
     expect(parseQuestionVariableBinding(question.variableBinding, question, bindingDictionary(), 3).ok).toBe(true);
-    expect(original.optionIds).toBeUndefined(); expect(new Set(question.optionIds).size).toBe(2);
+    expect(question.optionIds).toEqual(original.optionIds); expect(new Set(question.optionIds).size).toBe(2);
+});
+test("opening a stored question cannot silently supply missing identities", async () => {
+    const question = bindingQuestion(); delete question.optionIds;
+    const apply = mock(() => {});
+    const view = render(<QuestionVariableBindingDialog taskId={3} question={question} onApply={apply} onClose={() => {}} />);
+    await view.findByText(/请先编辑并保存题目/);
+    expect(view.queryByLabelText("关联变量")).toBeNull();
+    expect((view.getByTestId("question-binding-apply") as HTMLButtonElement).disabled).toBe(true);
+    expect(question.optionIds).toBeUndefined(); expect(apply).not.toHaveBeenCalled();
 });
 test("duplicate code choices cannot be applied", async () => {
     const { view, apply } = await setup();

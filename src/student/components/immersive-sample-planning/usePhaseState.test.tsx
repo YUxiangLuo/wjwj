@@ -36,20 +36,24 @@ test("reference material is always available but cannot submit a plan", () => {
     expect(result.current.phase.type).toBe("decision");
 });
 
-for (const type of ["challenge", "precision", "factors", "formula", "fpc", "fourstep", "decision", "unknown"]) {
-    test(`legacy ${type} draft resumes editable parameters without learning gates`, () => {
-        const { result } = renderHook(() => usePhaseState({ phase: { type }, learning: { version: 1, completed: [] }, challenge: { guess: 40, revealed: false } }));
+for (const type of ["challenge", "precision", "factors", "formula", "fpc", "fourstep", "unknown", "quiz", "launching"]) {
+    test(`unsupported page ${type} has no navigation alias`, () => {
+        const { result } = renderHook(() => usePhaseState({ phase: { type } } as any));
         expect(result.current.navigationSnapshot).toEqual({ phase: { type: "decision" } });
         act(() => result.current.goNext());
         expect(result.current.phase.type).toBe("confirm");
     });
 }
-for (const type of ["quiz", "confirm", "launching", "done"]) {
-    test(`legacy ${type} draft requires explicit confirmation, not answers or automatic submission`, () => {
-        const { result } = renderHook(() => usePhaseState({ phase: { type, questionIndex: 1 } }));
+for (const type of ["confirm", "done"] as const) {
+    test(`current ${type} state still requires explicit confirmation`, () => {
+        const { result } = renderHook(() => usePhaseState({ phase: { type } }));
         expect(result.current.navigationSnapshot).toEqual({ phase: { type: "confirm" } });
     });
 }
+
+test("current decision drafts restore the settings page", () => {
+    expect(renderHook(() => usePhaseState({ phase: { type: "decision" } })).result.current.phase.type).toBe("decision");
+});
 
 test("new reference drafts resume the optional reference panel", () => {
     expect(renderHook(() => usePhaseState({ phase: { type: "reference" } })).result.current.phase.type).toBe("reference");

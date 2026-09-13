@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { decodeCsvUpload, getCsvBomEncoding, type CsvEncoding } from "@/lib/csv-encoding";
+import { decodeCsvText, getCsvBomEncoding, type CsvEncoding } from "@/lib/csv-encoding";
 
 const ENCODINGS: Record<CsvEncoding, string> = {
     "utf-8": "UTF-8",
@@ -58,7 +58,7 @@ export function CsvFileReviewDialog({ file, onConfirm, onCancel }: {
         if (!source || source.file !== file) return;
         let current = true;
         void (async () => {
-            const text = decodeCsvUpload(source.buffer, encoding);
+            const text = decodeCsvText(source.buffer, encoding);
             const bytes = new TextEncoder().encode("\uFEFF" + text);
             const { parseSpreadsheetFile, validateSpreadsheetUploadFile, MAX_SPREADSHEET_ROWS, MAX_SPREADSHEET_COLUMNS } = await import("@/lib/spreadsheet");
             const normalized = new File([bytes], file.name, { type: "text/csv", lastModified: file.lastModified });

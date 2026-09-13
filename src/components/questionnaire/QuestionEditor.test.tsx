@@ -46,3 +46,31 @@ test("editing and deleting options preserve the surviving option identities", ()
     fireEvent.click(view.getByTestId("student-question-save"));
     expect(save.mock.calls[0]![0]).toMatchObject({ options: ["甲", "丙改名"], optionIds: ["a", "c"] });
 });
+
+for (const type of ["multiple", "scale"] as const) {
+    test(`${type}: invalid numeric input is retained rather than rounded or replaced by defaults`, () => {
+        const save = mock(() => {});
+        const view = render(<QuestionEditor open onOpenChange={() => {}} onSave={save} question={{ id: "rules", type, content: "规则测试", ...(type === "scale" ? { scaleMin: 1, scaleMax: 5 } : { options: ["甲", "乙"], minSelect: 1, maxSelect: 2 }) }} />);
+        const input = view.getByTestId(type === "scale" ? "student-question-scale-min" : "student-question-min-select") as HTMLInputElement;
+        const button = view.getByTestId("student-question-save") as HTMLButtonElement;
+        for (const value of ["1.5", "", "0", "1e0", "1.00000000000000001"]) {
+            fireEvent.change(input, { target: { value } });
+            expect(input.value).toBe(value); expect(input.getAttribute("aria-invalid")).toBe("true");
+            expect(view.getByRole("alert").textContent).toContain("整数");
+            expect(button.disabled).toBe(true); fireEvent.click(button); expect(save).not.toHaveBeenCalled();
+        }
+        fireEvent.change(input, { target: { value: "1" } });
+        expect(button.disabled).toBe(false); fireEvent.click(button);
+        expect(save).toHaveBeenCalledWith(expect.objectContaining(type === "scale" ? { scaleMin: 1, scaleMax: 5 } : { minSelect: 1, maxSelect: 2 }));
+    });
+}
+
+test("an empty option cannot be silently discarded on save", () => {
+    const save = mock(() => {});
+    const view = render(<QuestionEditor open onOpenChange={() => {}} onSave={save} question={{ id: "empty", type: "single", content: "请选择", options: ["甲", "乙", ""], optionIds: ["a", "b", "c"] }} />);
+    expect(view.getByRole("alert").textContent).toContain("不会自动忽略");
+    fireEvent.click(view.getByTestId("student-question-save")); expect(save).not.toHaveBeenCalled();
+    fireEvent.click(view.getByTestId("student-question-remove-option-3"));
+    fireEvent.click(view.getByTestId("student-question-save"));
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ options: ["甲", "乙"], optionIds: ["a", "b"] }));
+});

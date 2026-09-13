@@ -20,6 +20,12 @@ test("documentation gate rejects removed demo accounts", () => {
     expect(collectDocumentationIssues(`${demo}\nT004`, teaching).some(issue => issue.includes("已移除"))).toBe(true);
 });
 
+test("documentation gate requires unified validation rather than old-record exceptions", () => {
+    for (const rule of ["草稿只记录当前页面和参数", "不再放行已完成阶段中的旧重复项", "存储读取采用同一严格解码规则"]) {
+        expect(collectDocumentationIssues(demo, teaching.replace(rule, ""))).toContain(`docs/TEACHING.md 缺少流程规则：${rule}`);
+    }
+});
+
 test("documentation gate describes ungated planning and rejects obsolete quiz rules", () => {
     const missingRule = teaching.replace("无需答题", "直接操作");
     expect(collectDocumentationIssues(demo, missingRule)).toContain("docs/TEACHING.md 缺少流程规则：无需答题");

@@ -30,9 +30,7 @@ export interface SampleParams {
 }
 
 export interface PhaseNavigationSnapshot {
-    /** Accept legacy page names and metadata on read; new drafts write only the current page. */
-    phase: { type: string; [key: string]: unknown };
-    [key: string]: unknown;
+    phase: Phase;
 }
 
 /** Serializable state required to resume the immersive planning flow exactly where it stopped. */

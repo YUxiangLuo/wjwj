@@ -15,6 +15,7 @@ import {
 import { RichTextContent } from "@/components/RichTextContent";
 import type { Question, QuestionnaireData } from "@/lib/questionnaire-types";
 import { QUESTION_SECTION_LABELS } from "@/lib/questionnaire-templates";
+import { validateQuestionAtIndex } from "@/lib/validate-question";
 
 const OPTION_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -41,13 +42,15 @@ function isQuestionAnswered(question: Question, answer: unknown): boolean {
     }
 }
 
-function hasDuplicateQuestionIds(list: Question[]): boolean {
+function previewQuestionError(list: Question[]): string | null {
     const seen = new Set<string>();
-    for (const q of list) {
-        if (seen.has(q.id)) return true;
+    for (const [index, q] of list.entries()) {
+        const error = validateQuestionAtIndex(q, index + 1);
+        if (error) return error;
+        if (typeof q.id !== "string" || !q.id.trim() || q.id.length > 200 || q.id.includes("\0") || seen.has(q.id)) return "题目身份无效或重复，请关闭试填并修正问卷。";
         seen.add(q.id);
     }
-    return false;
+    return null;
 }
 
 type PageState =
@@ -65,7 +68,7 @@ interface Props {
 export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClose }: Props) {
     const { title, welcomeText, endingText, questions } = questionnaire;
     const [page, setPage] = useState<PageState>({ type: "welcome" });
-    /** 按下标存答案，避免题目 id 重复时答案串题 */
+    /** Local trial answers are discarded whenever the question list changes. */
     const [answersByIndex, setAnswersByIndex] = useState<Record<number, AnswerValue>>({});
     const [pendingAutoAdvance, setPendingAutoAdvance] = useState<number | null>(null);
     const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
@@ -77,7 +80,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
 
     const totalQuestions = questions.length;
     const estimatedMinutes = Math.max(1, Math.ceil(totalQuestions * 0.4));
-    const duplicateIds = useMemo(() => hasDuplicateQuestionIds(questions), [questions]);
+    const questionError = useMemo(() => previewQuestionError(questions), [questions]);
 
     const currentQuestion = page.type === "question" ? questions[page.index] ?? null : null;
 
@@ -114,6 +117,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
 
     const goNext = useCallback(() => {
         setPendingAutoAdvance(null);
+        if (questionError) return;
         setPage((prev) => {
             // 同一页的连点或自动推进与手动推进相遇时，只前进一次。
             if (prev !== page) return prev;
@@ -133,7 +137,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
             }
             return prev;
         });
-    }, [answeredCount, totalQuestions, page]);
+    }, [answeredCount, totalQuestions, page, questionError]);
 
     const goPrev = useCallback(() => {
         setPendingAutoAdvance(null);
@@ -346,7 +350,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                     <div className="grid grid-cols-2 gap-3">
                         {multiple && <p className="col-span-2 text-label text-muted-foreground">请选择 {question.minSelect ?? 1} ~ {maxSelect} 项</p>}
                         {opts.map((option, i) => {
-                            // 试填答案只在本组件内使用；按选项位置区分历史同名选项。
+                            // 试填答案只在本组件内使用，不写入样本数据。
                             const optionKey = String(i);
                             const selected = multiple ? selectedArr.includes(optionKey) : answer === optionKey;
                             const disabled = multiple && !selected && selectedArr.length >= maxSelect;
@@ -446,10 +450,10 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                 onKeyDown={handleKeyDown}
                 tabIndex={-1}
             >
-                {duplicateIds && (
+                {questionError && (
                     <div className="shrink-0 px-6 pt-3">
-                        <div className="mx-auto max-w-lg rounded-surface border border-warning-border bg-warning-muted px-3 py-2 text-meta text-warning">
-                            检测到题目 ID 重复，预览按题序区分答案；提交至服务器时仍依赖唯一 ID，请在设计器中修正。
+                        <div role="alert" className="mx-auto max-w-lg rounded-surface border border-destructive-border bg-destructive-muted px-3 py-2 text-meta text-destructive">
+                            {questionError}
                         </div>
                     </div>
                 )}
@@ -514,6 +518,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     type="button"
                                     onClick={goNext}
                                     size="lg"
+                                    disabled={Boolean(questionError)}
                                     data-testid="immersive-preview-start"
                                     className="bg-primary hover:bg-primary-hover text-primary-foreground text-body px-10 py-6 rounded-surface "
                                 >
@@ -543,7 +548,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                 {renderQuestionBody(currentQuestion, page.index)}
                                 <div className="flex items-center justify-between gap-3 border-t border-border pt-4" data-testid="questionnaire-preview-actions">
                                     <Button type="button" variant="outline" onClick={goPrev} aria-label="上一题"><ChevronLeft className="mr-2 h-4 w-4"/>上一题</Button>
-                                    <Button type="button" onClick={goNext} disabled={!isCurrentAnswered} data-testid={currentQuestion.type === "multiple" ? "immersive-preview-multiple-next" : "immersive-preview-next"}>
+                                    <Button type="button" onClick={goNext} disabled={!isCurrentAnswered || Boolean(questionError)} data-testid={currentQuestion.type === "multiple" ? "immersive-preview-multiple-next" : "immersive-preview-next"}>
                                         {page.index === totalQuestions - 1 ? "查看结束语" : currentQuestion.type === "multiple" ? "选好了，下一题" : "下一题"}<ChevronRight className="ml-2 h-4 w-4"/>
                                     </Button>
                                 </div>
@@ -581,7 +586,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                 <Button
                                     type="button"
                                     onClick={goNext}
-                                    disabled={answeredCount !== totalQuestions}
+                                    disabled={answeredCount !== totalQuestions || Boolean(questionError)}
                                     size="lg"
                                     data-testid="immersive-preview-submit"
                                     className="bg-primary hover:bg-primary-hover text-primary-foreground text-body px-10 py-6 rounded-surface "

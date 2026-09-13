@@ -17,8 +17,8 @@ export function getCsvBomEncoding(buffer: ArrayBuffer): CsvEncoding | null {
         : starts(0xfe, 0xff) ? "utf-16be" : null;
 }
 
-/** New uploads never guess after a decode failure. Explicit choices are for the local preview. */
-export function decodeCsvUpload(buffer: ArrayBuffer, encoding?: CsvEncoding): string {
+/** One decoder for storage and uploads. Only the local review supplies an explicit encoding; never guess after failure. */
+export function decodeCsvText(buffer: ArrayBuffer, encoding?: CsvEncoding): string {
     const declared = getCsvBomEncoding(buffer);
     if (declared && encoding && encoding !== declared) throw new CsvEncodingError();
     try {
@@ -31,27 +31,5 @@ export function decodeCsvUpload(buffer: ArrayBuffer, encoding?: CsvEncoding): st
 /** Persist the confirmed text, so all later reads use the same interpretation without DB metadata. */
 export function normalizeSpreadsheetUpload(buffer: ArrayBuffer, fileName: string): ArrayBuffer {
     if (!fileName.toLowerCase().endsWith(".csv")) return buffer;
-    return new TextEncoder().encode("\uFEFF" + decodeCsvUpload(buffer)).buffer;
-}
-
-/** Legacy stored files only: retain the earlier UTF-8/GB18030 fallback, never use for new upload acceptance. */
-export function decodeCsvBytes(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer);
-    const declared = getCsvBomEncoding(buffer);
-    if (declared) {
-        try {
-            return new TextDecoder(declared, { fatal: true }).decode(bytes);
-        } catch {
-            throw new CsvEncodingError();
-        }
-    }
-    try {
-        return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-    } catch {
-        try {
-            return new TextDecoder("gb18030", { fatal: true }).decode(bytes);
-        } catch {
-            throw new CsvEncodingError();
-        }
-    }
+    return new TextEncoder().encode("\uFEFF" + decodeCsvText(buffer)).buffer;
 }

@@ -108,7 +108,7 @@ describe("ImmersiveQuestionnairePreview", () => {
         expect(onComplete).toHaveBeenCalled();
     });
 
-    test("duplicate question ids show warning banner", () => {
+    test("duplicate question ids block the trial rather than falling back to positional identities", () => {
         const dup: QuestionnaireData = {
             ...baseQuestionnaire(),
             questions: [
@@ -117,7 +117,8 @@ describe("ImmersiveQuestionnairePreview", () => {
             ],
         };
         const view = render(<ImmersiveQuestionnairePreview questionnaire={dup} onComplete={() => {}} onClose={() => {}} />);
-        expect(view.getByText(/题目 ID 重复/)).toBeTruthy();
+        expect(view.getByRole("alert").textContent).toContain("题目身份无效或重复");
+        expect((view.getByTestId("immersive-preview-start") as HTMLButtonElement).disabled).toBe(true);
     });
 
     test("a choice can be changed during feedback and continued immediately", () => {
@@ -255,10 +256,10 @@ describe("ImmersiveQuestionnairePreview", () => {
         expect(onComplete).not.toHaveBeenCalled();
     });
 
-    test("automatic navigation keeps duplicate IDs independent and resets the content scroll", async () => {
+    test("automatic navigation keeps different questions independent and resets the content scroll", async () => {
         const view = render(<ImmersiveQuestionnairePreview questionnaire={baseQuestionnaire({ questions: [
-            { id: "same", type: "boolean", content: "第一题？" },
-            { id: "same", type: "boolean", content: "第二题？" },
+            { id: "first", type: "boolean", content: "第一题？" },
+            { id: "second", type: "boolean", content: "第二题？" },
         ] })} onComplete={() => {}} onClose={() => {}} />);
         fireEvent.click(view.getByTestId("immersive-preview-start"));
         await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
@@ -276,10 +277,10 @@ describe("ImmersiveQuestionnairePreview", () => {
     });
 
     for (const type of ["single", "multiple"] as const) {
-        test(`${type}: legacy same-label choices are independently selected`, () => {
+        test(`${type}: valid choices are independently selected`, () => {
             const onComplete = mock(() => {});
             const view = render(<ImmersiveQuestionnairePreview questionnaire={baseQuestionnaire({ questions: [
-                { id: "duplicate-labels", type, content: "选择", options: ["重复", "重复", "第三项"], minSelect: 2, maxSelect: 2 },
+                { id: "choices", type, content: "选择", options: ["第一项", "第二项", "第三项"], minSelect: 2, maxSelect: 2 },
             ] })} onComplete={onComplete} onClose={() => {}} />);
             fireEvent.click(view.getByTestId("immersive-preview-start"));
             const choices = [...document.querySelectorAll<HTMLButtonElement>("[data-preview-answer]")];
@@ -296,6 +297,16 @@ describe("ImmersiveQuestionnairePreview", () => {
                 expect(choices[2]!.disabled).toBe(false);
             }
             expect(onComplete).not.toHaveBeenCalled();
+        });
+    }
+
+    for (const type of ["single", "multiple"] as const) {
+        test(`${type}: duplicate labels block even a previously saved questionnaire trial`, () => {
+            const complete = mock(() => {});
+            const view = render(<ImmersiveQuestionnairePreview questionnaire={baseQuestionnaire({ questions: [{ id: "q", type, content: "选择", options: ["重复", " 重复 "] }] })} onComplete={complete} onClose={() => {}} />);
+            expect(view.getByRole("alert").textContent).toContain("选项内容重复");
+            fireEvent.click(view.getByTestId("immersive-preview-start"));
+            expect(view.queryByTestId("immersive-preview-submit")).toBeNull(); expect(complete).not.toHaveBeenCalled();
         });
     }
 

@@ -1,9 +1,10 @@
 import { expect, spyOn, test } from "bun:test";
 import { bindingDictionary, bindingFor, bindingQuestion, boundQuestionnaire } from "@/test-utils/question-variable-binding";
-import { hasQuestionVariableBindings, keepUnchangedQuestionBinding, parseQuestionVariableBinding, questionAnswers, questionBindingSignature, validateQuestionnaireBindings, withOptionIdentities } from "./question-variable-binding";
+import { hasQuestionVariableBindings, keepUnchangedQuestionBinding, parseQuestionVariableBinding, questionAnswers, questionBindingSignature, validateQuestionnaireBindings } from "./question-variable-binding";
 import type { Question } from "@/lib/questionnaire-types";
+import { instantiateQuestion } from "@/lib/instantiate-question";
 import { parseRecommendQuestionFromPayload } from "@/lib/validate-question";
-import { normalizeRecommendQuestionsFromDb } from "@/lib/questionnaire-normalize";
+import { readStoredRecommendQuestions } from "@/lib/questionnaire-storage";
 
 test("typed categorical bindings roundtrip and strip untrusted extras", () => {
     const binding = bindingFor(); const before = structuredClone(binding);
@@ -54,17 +55,17 @@ test("option identities work on ordinary HTTP without secure-context randomUUID"
     const unavailable = spyOn(crypto, "randomUUID").mockImplementation(() => { throw new Error("unavailable on HTTP"); });
     try {
         const question = bindingQuestion(); delete question.optionIds;
-        const adapted = withOptionIdentities(question);
+        const adapted = instantiateQuestion(question, "new-question");
         expect(new Set(adapted.optionIds).size).toBe(2);
         expect(adapted.optionIds![0]).toMatch(/^o_[a-f0-9]{32}$/);
     } finally { unavailable.mockRestore(); }
 });
 
-test("legacy adaptation is explicit, immutable and gives equal-label options distinct identities", () => {
-    const old: Question = { id: "old", type: "single", content: "历史题", options: ["重复", "重复"] };
-    const adapted = withOptionIdentities(old);
-    expect(old.optionIds).toBeUndefined(); expect(new Set(adapted.optionIds).size).toBe(2);
-    expect(withOptionIdentities(adapted)).toBe(adapted); expect(adapted.options).toEqual(old.options);
+test("binding never repairs a stored question with missing option identities", () => {
+    const question = bindingQuestion(); delete question.optionIds;
+    const before = structuredClone(question);
+    expect(parseQuestionVariableBinding(bindingFor(question), question, bindingDictionary())).toMatchObject({ ok: false, error: expect.stringContaining("独立身份") });
+    expect(question).toEqual(before);
 });
 test("meaning edits/copies clear bindings while unchanged saves and questionnaire reorder preserve them", () => {
     const question = { ...bindingQuestion(), variableBinding: bindingFor() };
@@ -73,9 +74,9 @@ test("meaning edits/copies clear bindings while unchanged saves and questionnair
     const form = boundQuestionnaire(); form.questions.reverse();
     expect(validateQuestionnaireBindings(form, bindingDictionary(), 3)).toBeNull();
 });
-test("legacy unbound duplicate labels remain outside new association requirements; bound question IDs must be unique", () => {
-    const legacy = { questions: [{ id: "same" }, { id: "same" }] };
-    expect(hasQuestionVariableBindings(legacy)).toBe(false); expect(validateQuestionnaireBindings(legacy, null)).toBeNull();
+test("optional binding checks do not replace the required questionnaire validation", () => {
+    const unbound = { questions: [{ id: "same" }, { id: "same" }] };
+    expect(hasQuestionVariableBindings(unbound)).toBe(false); expect(validateQuestionnaireBindings(unbound, null)).toBeNull();
     const form = boundQuestionnaire(); form.questions[1]!.id = form.questions[0]!.id;
     expect(validateQuestionnaireBindings(form, bindingDictionary(), 3)).toContain("身份");
 });
@@ -86,7 +87,7 @@ test("declared malformed option identities are rejected rather than guessed", ()
     }
     const question = bindingQuestion();
     expect(parseRecommendQuestionFromPayload(question, 1)).toMatchObject({ optionIds: question.optionIds });
-    expect(normalizeRecommendQuestionsFromDb([question])[0]!.optionIds).toEqual(question.optionIds);
+    expect(readStoredRecommendQuestions([question])[0]!.optionIds).toEqual(question.optionIds);
 });
 test("bindings to incomplete ordinal score ranges cannot be inferred", () => {
     expect(questionAnswers({ id: "q", type: "scale", content: "评分", scaleMin: 1.5, scaleMax: 4 })).toEqual([]);

@@ -60,10 +60,14 @@ test("preview submit blocker returns null for a complete valid experiment", () =
     expect(getPreviewSubmitBlocker(validExperiment)).toBeNull();
 });
 
-test("preview permits unchanged legacy duplicate options just like final server submission", () => {
+test("final preview rejects duplicate options even when the questionnaire was already saved", () => {
     expect(getPreviewSubmitBlocker({ ...validExperiment, questionnaire: { ...validExperiment.questionnaire,
         questions: validExperiment.questionnaire.questions.map((question, index) => index === 0 ? { ...question, options: ["重复", "重复"] } : question),
-    } })).toBeNull();
+    } })).toBe("第1题选项内容重复，请修改后重试");
+});
+
+test("final preview requires evidence for an applied advanced plan, regardless of record age", () => {
+    expect(getPreviewSubmitBlocker({ ...validExperiment, samplePlan: { ...validExperiment.samplePlan, advancedPlanSource: "cost" } })).toBe("高级样本量缺少可复核快照，请重新应用该高级规划");
 });
 
 test("preview submit blocker requires estimation type to match the analysis target", () => {

@@ -19,10 +19,10 @@ for (const mode of ["valid", "no-dictionary", "foreign-task", "changed-question"
         if (result.ok) {
             expect(result.updates.currentStage).toBe(2); expect(result.updates.version).toBe(5);
             expect((result.updates.questionnaire as any).questions[0].variableBinding).toEqual(questionnaire.questions[0]!.variableBinding);
-        } else expect(result.code).toBe("INVALID_VARIABLE_BINDING");
+        } else expect(result.code).toBe(mode === "duplicate-id" ? "VALIDATION_ERROR" : "INVALID_VARIABLE_BINDING");
     });
 }
-test("stage 1 removes untrusted binding extras but retains legacy question shape", () => {
+test("stage 1 removes untrusted binding extras without modifying unbound questions", () => {
     const questionnaire = boundQuestionnaire(); (questionnaire.questions[0]!.variableBinding as any).inventedResponses = [123];
     const result = buildStageCompletionUpdates({ experimentRecord: record(), stage: 1, payload: { questionnaire }, populationSize: 100, deadlinePassed: false, variableDictionary: bindingDictionary() });
     expect(result.ok).toBe(true);

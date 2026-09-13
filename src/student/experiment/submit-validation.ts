@@ -1,5 +1,5 @@
 import { getRichTextPlainLength, getRichTextPlainText } from "../../utils/rich-text";
-import { validateQuestionAtIndex, type QuestionValidationOptions } from "../../lib/validate-question";
+import { validateQuestionAtIndex } from "../../lib/validate-question";
 import { normalizeSamplePlanEstimationType } from "./sample-plan-display";
 import { getFinalSampleSizeBounds } from "./final-sample-bounds";
 import { getSamplingAcceptedRange } from "./sampling-tolerance";
@@ -29,7 +29,7 @@ export function getTargetSampleSizeFromSamplePlan(samplePlan: unknown) {
     return size;
 }
 
-export function validateQuestionnaireForSubmit(questionnaire: unknown, options: QuestionValidationOptions = {}): string | null {
+export function validateQuestionnaireForSubmit(questionnaire: unknown): string | null {
     if (!questionnaire || typeof questionnaire !== "object") {
         return "请先完成问卷设计";
     }
@@ -57,8 +57,12 @@ export function validateQuestionnaireForSubmit(questionnaire: unknown, options: 
     }
 
     for (let index = 0; index < questions.length; index += 1) {
-        const err = validateQuestionAtIndex(questions[index], index + 1, options);
+        const err = validateQuestionAtIndex(questions[index], index + 1);
         if (err) return err;
+    }
+    const ids = questions.map(question => question.id);
+    if (ids.some(id => typeof id !== "string" || !id.trim() || id.length > 200 || id.includes("\0")) || new Set(ids).size !== ids.length) {
+        return "题目身份无效或重复，请重新编辑问卷";
     }
 
     return null;
@@ -69,7 +73,7 @@ export function validateSamplePlanForSubmit(
     samplePlan: unknown,
     populationSize: number | null,
     analysisTargetKind?: "mean" | "proportion" | null,
-    options: { allowLegacyAdvancedSourceWithoutSnapshot?: boolean; minimumSampleSize?: number } = {},
+    options: { minimumSampleSize?: number } = {},
 ): string | null {
     if (!samplePlan || typeof samplePlan !== "object") {
         return "请先完成样本量规划";
@@ -143,13 +147,12 @@ export function validateSamplePlanForSubmit(
     if (estimationType === "proportion" && advancedSource === "cv") {
         return "CV-based 规划仅适用于具有自然零点的均值目标";
     }
-    if (advancedSource && data.advancedPlans === undefined && !options.allowLegacyAdvancedSourceWithoutSnapshot) {
+    if (advancedSource && data.advancedPlans === undefined) {
         return "高级样本量缺少可复核快照，请重新应用该高级规划";
     }
 
     // 高级规划快照：形状严格校验、逐份复算 inputs→result；
     // 当前来源种类的快照必须存在且其推荐样本量与最终样本量一致。
-    // 历史数据只有来源标记、没有快照时保持放行（grandfathered）。
     if (data.advancedPlans !== undefined) {
         const advancedPlans = parseAdvancedPlans(data.advancedPlans);
         if (!advancedPlans) return "高级规划快照格式无效";

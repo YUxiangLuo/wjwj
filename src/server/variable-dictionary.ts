@@ -26,11 +26,7 @@ export function readStoredVariableDictionary(raw: unknown, expectedRevision?: nu
         code: "INVALID_DICTIONARY_STORAGE", status: 409,
     });
     if (raw == null) return { ok: true as const, value: null };
-    let value: unknown = raw;
-    if (typeof raw === "string") {
-        try { value = JSON.parse(raw); } catch { return corrupt(); }
-    }
-    const parsed = parseVariableDictionary(value);
+    const parsed = parseVariableDictionary(raw);
     if (!parsed.ok || parsed.value.revision === 0
         || (expectedRevision !== undefined && parsed.value.revision !== expectedRevision)) return corrupt();
     return parsed;

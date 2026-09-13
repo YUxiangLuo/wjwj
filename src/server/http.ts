@@ -1,4 +1,5 @@
 import { WorkerServiceError } from "./worker-service";
+import { InvalidQuestionnaireStorageError } from "../lib/questionnaire-storage";
 
 const SECURITY_HEADERS = {
     "Content-Security-Policy": [
@@ -164,6 +165,9 @@ export async function parseBody<T extends Record<string, unknown>>(req: Request)
 }
 
 export function handleServerError(cause: unknown): Response {
+    if (cause instanceof InvalidQuestionnaireStorageError) {
+        return error(cause.message, "INVALID_QUESTIONNAIRE_STORAGE", 409);
+    }
     if (cause instanceof InvalidFormDataError) {
         return error(cause.message, "INVALID_FORM_DATA", 400);
     }

@@ -1,6 +1,6 @@
 import type { Question } from "@/lib/questionnaire-types";
 import { validateQuestionAtIndex } from "@/lib/validate-question";
-import { generateOptionIdentity, validateOptionIdentities } from "@/lib/questionnaire-options";
+import { validateOptionIdentities } from "@/lib/questionnaire-options";
 import { variableValueKey, type VariableDictionaryV1, type VariableValue } from "./variable-dictionary";
 
 /** Optional, versioned semantic correspondence. Never a questionnaire response or collection provenance. */
@@ -12,11 +12,6 @@ export interface QuestionVariableBindingV1 {
     questionSignature: string;
     kind: "categorical" | "multiple-binary";
     answers: Array<{ answerId: string; variableId: string; value: VariableValue }>;
-}
-export function withOptionIdentities(question: Question): Question {
-    if (question.type !== "single" && question.type !== "multiple") return question;
-    if (question.optionIds !== undefined) return question; // Invalid declared identities must not be silently repaired.
-    return { ...question, optionIds: (question.options ?? []).map(() => generateOptionIdentity()) };
 }
 export function questionAnswers(question: Question): Array<{ id: string; label: string }> {
     if (question.type === "boolean") return [{ id: "yes", label: "是" }, { id: "no", label: "否" }];
@@ -47,7 +42,7 @@ export function parseQuestionVariableBinding(raw: unknown, question: Question, d
     if (value.datasetRevision !== dictionary.datasetRevision || value.dictionaryRevision !== dictionary.revision) return fail("关联所用变量字典已改变，请重新核对关联");
     if (!identity(question.id) || validateQuestionAtIndex(question, 1) || validateOptionIdentities(question)) return fail("关联题目或选项身份无效，请先修正题目");
     const answers = questionAnswers(question);
-    if (answers.length < 2 || answers.some(answer => !identity(answer.id))) return fail("请先为选项建立独立身份，再确认关联");
+    if (answers.length < 2 || answers.some(answer => !identity(answer.id))) return fail("选项缺少独立身份，请先编辑并保存题目，再确认关联");
     if (value.questionSignature !== questionBindingSignature(question)) return fail("题目含义或选项已改变，请重新核对关联");
     const expectedKind = question.type === "multiple" ? "multiple-binary" : "categorical";
     if (value.kind !== expectedKind || !Array.isArray(value.answers) || value.answers.length !== answers.length) return fail("每个选项都需明确对应真实编码；多选需独立二值字段");
@@ -77,7 +72,7 @@ export function hasQuestionVariableBindings(questionnaire: unknown): boolean {
     const questions = (questionnaire as { questions?: unknown } | null)?.questions;
     return Array.isArray(questions) && questions.some(q => q && typeof q === "object" && q.variableBinding !== undefined);
 }
-/** Old questionnaires without associations are left byte-shape compatible. Call after normal questionnaire validation. */
+/** Associations are optional; questionnaire validation remains required whether bound or not. */
 export function validateQuestionnaireBindings(questionnaire: unknown, dictionary: VariableDictionaryV1 | null, taskId?: number): string | null {
     if (!hasQuestionVariableBindings(questionnaire)) return null;
     const questions = (questionnaire as { questions: Question[] }).questions;

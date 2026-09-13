@@ -25,6 +25,7 @@ test("legacy absent metadata remains absent, while unconfirmed and unknown stora
         expect(readStoredVariableDictionary(raw)).toMatchObject({ ok: false, code: "INVALID_DICTIONARY_STORAGE" });
     }
     const confirmed = { ...suggestion, revision: 1 };
-    expect(readStoredVariableDictionary(JSON.stringify(confirmed))).toEqual({ ok: true, value: confirmed });
+    expect(readStoredVariableDictionary(JSON.stringify(confirmed))).toMatchObject({ ok: false, code: "INVALID_DICTIONARY_STORAGE" });
+    expect(readStoredVariableDictionary(confirmed, 1)).toEqual({ ok: true, value: confirmed });
     expect(readStoredVariableDictionary(confirmed, 2)).toMatchObject({ ok: false, code: "INVALID_DICTIONARY_STORAGE" });
 });

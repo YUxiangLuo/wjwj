@@ -129,8 +129,7 @@ describe("validateSamplePlanForSubmit", () => {
             plan({ advancedPlanSource: "cost" }),
             200,
             "proportion",
-            { allowLegacyAdvancedSourceWithoutSnapshot: true },
-        )).toBeNull();
+        )).toBe("高级样本量缺少可复核快照，请重新应用该高级规划");
     });
 
     test("高级规划来源必须与研究估计类型相容", () => {
@@ -311,7 +310,7 @@ describe("getTargetSampleSizeFromSamplePlan", () => {
             finalSampleSize: genuineCostSize,
         }), populationSize)).toBe("每类高级规划最多保留一份快照");
 
-        // 历史数据：只有来源标记、没有快照 → 放行（grandfathered）
+        // 只有来源标记、没有可复核快照的记录一律不能提交。
         expect(validateSamplePlanForSubmit(
             plan({
                 recommendedSize: basicRecommended,
@@ -320,6 +319,5 @@ describe("getTargetSampleSizeFromSamplePlan", () => {
             }),
             populationSize,
             "proportion",
-            { allowLegacyAdvancedSourceWithoutSnapshot: true },
-        )).toBeNull();
+        )).toBe("高级样本量缺少可复核快照，请重新应用该高级规划");
     });

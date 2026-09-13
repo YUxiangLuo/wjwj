@@ -2,7 +2,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment, task, topic, topicAttachment } from "../../db/schema";
 import { experimentProgress } from "../../lib/experiment-progress";
-import { normalizeRecommendQuestionsFromDb } from "../../lib/questionnaire-normalize";
+import { readStoredRecommendQuestions } from "../../lib/questionnaire-storage";
 import { error, getPositiveRouteId, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { getStudentTaskAccessError } from "../experiment/task-access";
@@ -140,7 +140,7 @@ const taskDetailRoutes: RouteDefinition = {
                 type: item.fileType,
                 size: item.fileSize,
             })),
-            recommendQuestions: normalizeRecommendQuestionsFromDb(taskInfo.recommendQuestions),
+            recommendQuestions: readStoredRecommendQuestions(taskInfo.recommendQuestions),
             samplingPolicy: resolveSamplingPolicy(taskInfo.samplingPolicy),
             status: visibleStatus(record?.status ?? null),
             currentStage: record?.currentStage ?? 0,

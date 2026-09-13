@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { tasksApi } from "../api-client";
 import type { Question } from "@/lib/questionnaire-types";
 import { parseVariableDictionary, variableValueKey, type VariableDictionaryV1 } from "@/domain/experiment/variable-dictionary";
-import { parseQuestionVariableBinding, questionAnswers, questionBindingSignature, withOptionIdentities } from "@/domain/experiment/question-variable-binding";
+import { parseQuestionVariableBinding, questionAnswers, questionBindingSignature } from "@/domain/experiment/question-variable-binding";
 
 interface Props { taskId: number; question: Question; onApply: (question: Question) => void; onClose: () => void }
 const selectClass = "h-10 w-full min-w-0 rounded-control border border-input bg-card px-3 text-label text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -12,7 +12,7 @@ export function QuestionVariableBindingDialog(props: Props) {
     return <BindingSession key={`${props.taskId}:${questionBindingSignature(props.question)}`} {...props} />;
 }
 function BindingSession({ taskId, question: original, onApply, onClose }: Props) {
-    const [question] = useState(() => withOptionIdentities(original));
+    const [question] = useState(original);
     const [dictionary, setDictionary] = useState<VariableDictionaryV1 | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -41,6 +41,7 @@ function BindingSession({ taskId, question: original, onApply, onClose }: Props)
         return () => controller.abort();
     }, [taskId, question, reload]);
     const answers = questionAnswers(question);
+    const invalidIdentity = answers.some(answer => !answer.id) || new Set(answers.map(answer => answer.id)).size !== answers.length;
     const multiple = question.type === "multiple";
     const variables = dictionary?.variables.filter(v => (v.measurementLevel === "nominal" || v.measurementLevel === "ordinal")
         && (multiple ? v.categories.length === 2 : v.categories.length === answers.length)
@@ -67,7 +68,7 @@ function BindingSession({ taskId, question: original, onApply, onClose }: Props)
             <div className="min-h-0 space-y-4 overflow-y-auto">
                 {loading ? <p role="status" className="text-label text-muted-foreground">正在读取教师确认的变量字典…</p> : <>
                     {error && <p role="alert" className="break-words text-label text-destructive">{error}</p>}
-                    {!dictionary ? <p className="text-label text-muted-foreground">{error ? "读取失败时不能建立数据关联。" : "教师尚未确认变量字典。"}可以保持仅认知预试，不影响完成实验。</p> : <>
+                    {!dictionary ? <p className="text-label text-muted-foreground">{error ? "读取失败时不能建立数据关联。" : "教师尚未确认变量字典。"}可以保持仅认知预试，不影响完成实验。</p> : invalidIdentity ? <p role="alert" className="text-label text-destructive">选项缺少独立身份或身份重复，请先编辑并保存题目，再确认关联。</p> : <>
                         <p className="text-meta text-muted-foreground">字典修订 {dictionary.revision} · 来源 {dictionary.datasetRevision.slice(0, 12)}。{multiple ? "每个选项对应独立的二值字段；另一有效编码表示未选中，缺失仍为缺失。" : "选项必须与同一个变量的全部有效类别一一对应；缺失编码不能充当答案。"}</p>
                         {!variables.length && <p role="status" className="text-label text-warning">没有与本题兼容的已确认变量。连续数值不能强行关联为选项；评分题需有序类别，多选题需逐选项二值列。</p>}
                         {!multiple && <label className="block space-y-2 text-label"><span>已有变量</span><select aria-label="关联变量" className={selectClass} value={selection[answers[0]?.id ?? ""]?.variableId ?? ""} onChange={e => chooseVariable("", e.target.value)}>
@@ -75,7 +76,7 @@ function BindingSession({ taskId, question: original, onApply, onClose }: Props)
                         </select></label>}
                         {answers.map((answer, index) => {
                             const chosen = selection[answer.id]; const variable = variables.find(v => v.id === chosen?.variableId);
-                            return <div key={answer.id || index} className="space-y-2 rounded-surface border border-border p-3">
+                            return <div key={answer.id} className="space-y-2 rounded-surface border border-border p-3">
                                 <p className="break-words text-label">{index + 1}. {answer.label}</p>
                                 {multiple && <select aria-label={`选项 ${index + 1} 的二值变量`} className={selectClass} value={chosen?.variableId ?? ""} onChange={e => chooseVariable(answer.id, e.target.value)}><option value="">请选择独立二值字段</option>{variables.map(v => <option key={v.id} value={v.id}>{v.label} · {JSON.stringify(v.sourceField)}</option>)}</select>}
                                 <select aria-label={`选项 ${index + 1} 对应原值`} className={selectClass} value={chosen?.codeKey ?? ""} disabled={!variable} onChange={e => {

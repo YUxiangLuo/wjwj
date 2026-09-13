@@ -1,5 +1,6 @@
 import { DraftSaveStatus } from "../../components/DraftSaveStatus";
 import { QuestionVariableBindingDialog } from "../../components/QuestionVariableBindingDialog";
+import { instantiateQuestion } from "@/lib/instantiate-question";
 import { keepUnchangedQuestionBinding } from "@/domain/experiment/question-variable-binding";
 import { StatusBadge } from "@/components/StatusBadge";
 import { StageActions } from "../../components/StageActions";
@@ -229,11 +230,8 @@ export function QuestionnaireDesign() {
 
     const handleDuplicateQuestion = (question: Question) => {
         const duplicate: Question = {
-            ...question,
-            id: generateId(),
+            ...instantiateQuestion(question, generateId()),
             content: question.content + " (复制)",
-            recommendSourceId: undefined,
-            variableBinding: undefined,
         };
         const index = questions.findIndex((q) => q.id === question.id);
         const newQuestions = [...questions];
@@ -306,7 +304,7 @@ export function QuestionnaireDesign() {
                 duplicate = true;
                 return prev;
             }
-            return [...prev, { ...rq, id: generateId(), recommendSourceId: rq.id }];
+            return [...prev, { ...instantiateQuestion(rq, generateId()), recommendSourceId: rq.id }];
         });
         if (duplicate) {
             toast.error("该推荐题目已在问卷中，请勿重复添加");
@@ -317,7 +315,7 @@ export function QuestionnaireDesign() {
         setTitle(template.questionnaire.title);
         setWelcomeText(template.questionnaire.welcomeText);
         setEndingText(template.questionnaire.endingText);
-        setQuestions(template.questionnaire.questions.map((question) => ({ ...question, id: generateId() })));
+        setQuestions(template.questionnaire.questions.map((question) => instantiateQuestion(question, generateId())));
         setPreviewCompleted(false);
         setPreviewContentHash("");
         setPendingTemplate(null);

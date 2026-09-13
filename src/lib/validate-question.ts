@@ -1,11 +1,6 @@
 import type { Question, QuestionSection, QuestionType } from "./questionnaire-types";
 import { getDuplicateOptionIndexes, validateOptionIdentities } from "./questionnaire-options";
 
-export interface QuestionValidationOptions {
-    /** Only for already-persisted stage-1 work; new/edit saves must use strict validation. */
-    allowLegacyDuplicateOptions?: boolean;
-}
-
 function toTrimmedString(value: unknown) {
     return typeof value === "string" ? value.trim() : "";
 }
@@ -21,24 +16,27 @@ const QUESTION_SECTIONS = new Set<QuestionSection>(["screening", "main", "backgr
  * Parse one payload object into {@link Question}, or return an error message (same rules as questionnaire submit).
  * @param index 1-based label for error messages
  */
-export function parseRecommendQuestionFromPayload(rawQuestion: unknown, index: number, validationOptions: QuestionValidationOptions = {}): Question | string {
+export function parseRecommendQuestionFromPayload(rawQuestion: unknown, index: number): Question | string {
     if (!rawQuestion || typeof rawQuestion !== "object") {
         return `第${index}题配置无效`;
     }
 
     const question = rawQuestion as Record<string, unknown>;
-    const typeRaw = toTrimmedString(question.type);
+    const typeRaw = question.type;
     const content = toTrimmedString(question.content);
     if (content.length < 1 || content.length > 500) {
         return `第${index}题题目内容长度需在1-500字之间`;
     }
 
-    if (!QUESTION_TYPES.has(typeRaw)) {
+    if (typeof typeRaw !== "string" || !QUESTION_TYPES.has(typeRaw)) {
         return `第${index}题题型无效`;
     }
 
     const type = typeRaw as QuestionType;
-    const id = typeof question.id === "string" && question.id.trim() ? question.id.trim() : generateQuestionId();
+    if (question.id !== undefined && (typeof question.id !== "string" || !question.id.trim() || question.id.length > 200 || question.id.includes("\0"))) {
+        return `第${index}题题目身份无效`;
+    }
+    const id = typeof question.id === "string" ? question.id : generateQuestionId();
     const base: Question = { id, type, content };
     if (question.section !== undefined) {
         if (typeof question.section !== "string" || !QUESTION_SECTIONS.has(question.section as QuestionSection)) {
@@ -58,9 +56,10 @@ export function parseRecommendQuestionFromPayload(rawQuestion: unknown, index: n
     }
 
     if (type === "single" || type === "multiple") {
-        const options = Array.isArray(question.options)
-            ? question.options.map((option) => toTrimmedString(option)).filter((option) => option.length > 0)
-            : [];
+        if (!Array.isArray(question.options) || question.options.some(option => typeof option !== "string" || !option.trim())) {
+            return `第${index}题选项需为非空文本`;
+        }
+        const options = question.options.map(option => option.trim());
 
         if (options.length < 2 || options.length > 10) {
             return `第${index}题选项数量需在2-10个之间`;
@@ -70,21 +69,19 @@ export function parseRecommendQuestionFromPayload(rawQuestion: unknown, index: n
             return `第${index}题选项内容不能超过200字`;
         }
 
-        if (!validationOptions.allowLegacyDuplicateOptions && getDuplicateOptionIndexes(options).length > 0) {
+        if (getDuplicateOptionIndexes(options).length > 0) {
             return `第${index}题选项内容重复，请修改后重试`;
         }
 
         const identityError = validateOptionIdentities(question);
         if (identityError) return `第${index}题${identityError}`;
-        // Identity-bearing options must not be filtered, shifting another option's identity.
-        if (question.optionIds !== undefined && options.length !== (question.options as unknown[]).length) return `第${index}题选项内容不能为空`;
         const q: Question = { ...base, options };
         if (question.optionIds !== undefined) q.optionIds = [...question.optionIds as string[]];
 
         if (type === "multiple") {
-            const minSelect = Number.isFinite(Number(question.minSelect)) ? Math.floor(Number(question.minSelect)) : 1;
-            const maxSelect = Number.isFinite(Number(question.maxSelect)) ? Math.floor(Number(question.maxSelect)) : options.length;
-            if (minSelect < 1 || maxSelect < minSelect || maxSelect > options.length) {
+            const minSelect = question.minSelect === undefined ? 1 : question.minSelect;
+            const maxSelect = question.maxSelect === undefined ? options.length : question.maxSelect;
+            if (typeof minSelect !== "number" || typeof maxSelect !== "number" || !Number.isInteger(minSelect) || !Number.isInteger(maxSelect) || minSelect < 1 || maxSelect < minSelect || maxSelect > options.length) {
                 return `第${index}题多选数量限制无效`;
             }
             q.minSelect = minSelect;
@@ -95,9 +92,9 @@ export function parseRecommendQuestionFromPayload(rawQuestion: unknown, index: n
     }
 
     if (type === "scale") {
-        const scaleMin = Number.isFinite(Number(question.scaleMin)) ? Number(question.scaleMin) : 1;
-        const scaleMax = Number.isFinite(Number(question.scaleMax)) ? Number(question.scaleMax) : 10;
-        if (scaleMin < 1 || scaleMax > 10 || scaleMin >= scaleMax) {
+        const scaleMin = question.scaleMin === undefined ? 1 : question.scaleMin;
+        const scaleMax = question.scaleMax === undefined ? 10 : question.scaleMax;
+        if (typeof scaleMin !== "number" || typeof scaleMax !== "number" || !Number.isInteger(scaleMin) || !Number.isInteger(scaleMax) || scaleMin < 1 || scaleMax > 10 || scaleMin >= scaleMax) {
             return `第${index}题量表范围无效`;
         }
 
@@ -116,8 +113,8 @@ export function parseRecommendQuestionFromPayload(rawQuestion: unknown, index: n
  * Validates one question object (same rules as questionnaire submit per-question checks).
  * @param index 1-based label for error messages
  */
-export function validateQuestionAtIndex(rawQuestion: unknown, index: number, validationOptions: QuestionValidationOptions = {}): string | null {
-    const r = parseRecommendQuestionFromPayload(rawQuestion, index, validationOptions);
+export function validateQuestionAtIndex(rawQuestion: unknown, index: number): string | null {
+    const r = parseRecommendQuestionFromPayload(rawQuestion, index);
     return typeof r === "string" ? r : null;
 }
 
@@ -135,6 +132,7 @@ export function parseRecommendQuestionsPayload(
     for (let i = 0; i < items.length; i += 1) {
         const r = parseRecommendQuestionFromPayload(items[i], i + 1);
         if (typeof r === "string") return { ok: false, error: r };
+        if (questions.some(question => question.id === r.id)) return { ok: false, error: "推荐题目的身份不能重复" };
         questions.push(r);
     }
     return { ok: true, questions };

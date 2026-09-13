@@ -63,16 +63,17 @@ function generateId(): string {
 export function QuestionEditor({ open, onOpenChange, question, onSave }: QuestionEditorProps) {
     const isEditing = !!question;
     const optionErrorId = useId();
+    const ruleErrorId = useId();
 
     const [type, setType] = useState<QuestionType>(question?.type ?? "single");
     const [content, setContent] = useState(question?.content ?? "");
     const [section, setSection] = useState<QuestionSection>(question?.section ?? "main");
     const [options, setOptions] = useState<string[]>(question?.options ?? ["", ""]);
     const [optionIds, setOptionIds] = useState<string[]>([]);
-    const [minSelect, setMinSelect] = useState(question?.minSelect ?? 1);
-    const [maxSelect, setMaxSelect] = useState(question?.maxSelect ?? 3);
-    const [scaleMin, setScaleMin] = useState(question?.scaleMin ?? 1);
-    const [scaleMax, setScaleMax] = useState(question?.scaleMax ?? 5);
+    const [minSelect, setMinSelect] = useState<number | string>(question?.minSelect ?? 1);
+    const [maxSelect, setMaxSelect] = useState<number | string>(question?.maxSelect ?? 3);
+    const [scaleMin, setScaleMin] = useState<number | string>(question?.scaleMin ?? 1);
+    const [scaleMax, setScaleMax] = useState<number | string>(question?.scaleMax ?? 5);
     const [scaleMinLabel, setScaleMinLabel] = useState(question?.scaleMinLabel ?? "非常不同意");
     const [scaleMaxLabel, setScaleMaxLabel] = useState(question?.scaleMaxLabel ?? "非常同意");
 
@@ -124,21 +125,27 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
         setOptions(newOptions);
     };
 
+    const numberValue = (value: number | string) => typeof value === "string" && !/^(?:0|[1-9]\d*)$/.test(value) ? NaN : Number(value);
+    const minCount = numberValue(minSelect), maxCount = numberValue(maxSelect);
+    const minScore = numberValue(scaleMin), maxScore = numberValue(scaleMax);
+    const validOptionCount = options.filter(option => option.trim()).length;
+    const ruleError = type === "multiple" && (!Number.isInteger(minCount) || !Number.isInteger(maxCount) || minCount < 1 || maxCount < minCount || maxCount > validOptionCount)
+        ? "选择数量需为整数格式（不使用小数或科学计数法），且满足 1 ≤ 最少选择数 ≤ 最多选择数 ≤ 有效选项数。"
+        : type === "scale" && (!Number.isInteger(minScore) || !Number.isInteger(maxScore) || minScore < 1 || maxScore > 10 || minScore >= maxScore)
+            ? "评分范围需为 1–10 内的整数格式，且最小值小于最大值；不使用小数或科学计数法，不会自动取整。" : null;
     const duplicateOptions = type === "single" || type === "multiple" ? getDuplicateOptionIndexes(options) : [];
-    const duplicateMessage = `第 ${duplicateOptions.join("、")} 个选项内容重复，请修改后保存。`;
+    const emptyOptions = options.flatMap((option, index) => option.trim() ? [] : [index + 1]);
+    const optionMessage = duplicateOptions.length ? `第 ${duplicateOptions.join("、")} 个选项内容重复，请修改后保存。`
+        : emptyOptions.length ? `第 ${emptyOptions.join("、")} 个选项为空，请填写或明确删除，不会自动忽略。` : null;
 
     const isValid = () => {
         if (!content.trim() || content.length > 500) return false;
 
         if (type === "single" || type === "multiple") {
-            const validOptions = options.filter((o) => o.trim());
-            if (validOptions.length < 2 || duplicateOptions.length > 0) return false;
+            if (options.length < 2 || options.length > 10 || optionMessage) return false;
         }
 
-        if (type === "multiple") {
-            const validCount = options.filter((o) => o.trim()).length;
-            if (minSelect < 1 || maxSelect < minSelect || maxSelect > validCount) return false;
-        }
+        if (ruleError) return false;
 
         return true;
     };
@@ -157,19 +164,18 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
         }
 
         if (type === "single" || type === "multiple") {
-            savedQuestion.options = options.filter((o) => o.trim());
-            savedQuestion.optionIds = optionIds.filter((_, index) => options[index]?.trim());
+            savedQuestion.options = [...options];
+            savedQuestion.optionIds = [...optionIds];
         }
 
         if (type === "multiple") {
-            const validCount = savedQuestion.options?.length ?? 3;
-            savedQuestion.minSelect = Math.max(1, Math.min(minSelect, validCount));
-            savedQuestion.maxSelect = Math.max(savedQuestion.minSelect, Math.min(maxSelect, validCount));
+            savedQuestion.minSelect = minCount;
+            savedQuestion.maxSelect = maxCount;
         }
 
         if (type === "scale") {
-            savedQuestion.scaleMin = scaleMin;
-            savedQuestion.scaleMax = scaleMax;
+            savedQuestion.scaleMin = minScore;
+            savedQuestion.scaleMax = maxScore;
             savedQuestion.scaleMinLabel = scaleMinLabel;
             savedQuestion.scaleMaxLabel = scaleMaxLabel;
         }
@@ -272,7 +278,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                     添加选项
                                 </Button>
                             </div>
-                            {duplicateOptions.length > 0 && <p id={optionErrorId} role="alert" className="text-meta text-destructive" data-testid="question-option-error">{duplicateMessage}</p>}
+                            {optionMessage && <p id={optionErrorId} role="alert" className="text-meta text-destructive" data-testid="question-option-error">{optionMessage}</p>}
                             <div className="space-y-2">
                                 {options.map((option, index) => (
                                     <div key={index} className="flex items-center gap-2">
@@ -282,8 +288,8 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                         </span>
                                         <Input
                                             placeholder={`选项 ${index + 1}`}
-                                            aria-invalid={duplicateOptions.includes(index + 1) || undefined}
-                                            aria-describedby={duplicateOptions.includes(index + 1) ? optionErrorId : undefined}
+                                            aria-invalid={duplicateOptions.includes(index + 1) || emptyOptions.includes(index + 1) || undefined}
+                                            aria-describedby={duplicateOptions.includes(index + 1) || emptyOptions.includes(index + 1) ? optionErrorId : undefined}
                                             value={option}
                                             onChange={(e) => updateOption(index, e.target.value)}
                                             maxLength={200}
@@ -317,7 +323,8 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                     min={1}
                                     max={options.length}
                                     value={minSelect}
-                                    onChange={(e) => setMinSelect(parseInt(e.target.value) || 1)}
+                                    onChange={(e) => setMinSelect(e.target.value)}
+                                    aria-invalid={Boolean(ruleError)} aria-describedby={ruleError ? ruleErrorId : undefined}
                                     data-testid="student-question-min-select"
                                     className="bg-card border-input text-foreground focus:border-ring"
                                 />
@@ -330,7 +337,8 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                     min={1}
                                     max={options.length}
                                     value={maxSelect}
-                                    onChange={(e) => setMaxSelect(parseInt(e.target.value) || options.length)}
+                                    onChange={(e) => setMaxSelect(e.target.value)}
+                                    aria-invalid={Boolean(ruleError)} aria-describedby={ruleError ? ruleErrorId : undefined}
                                     data-testid="student-question-max-select"
                                     className="bg-card border-input text-foreground focus:border-ring"
                                 />
@@ -355,7 +363,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                             }}
                                             data-testid={`student-question-scale-preset-${idx}`}
                                             className={`text-left px-3 py-2 text-meta rounded-surface border transition-none ${
-                                                scaleMin === preset.scaleMin && scaleMax === preset.scaleMax && scaleMinLabel === preset.scaleMinLabel && scaleMaxLabel === preset.scaleMaxLabel
+                                                minScore === preset.scaleMin && maxScore === preset.scaleMax && scaleMinLabel === preset.scaleMinLabel && scaleMaxLabel === preset.scaleMaxLabel
                                                     ? "border-primary bg-primary-muted text-primary"
                                                     : "border-border text-muted-foreground hover:border-input"
                                             }`}
@@ -372,9 +380,10 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                         id="scaleMin"
                                         type="number"
                                         min={1}
-                                        max={scaleMax - 1}
+                                        max={Number.isFinite(maxScore) ? maxScore - 1 : 9}
                                         value={scaleMin}
-                                        onChange={(e) => setScaleMin(parseInt(e.target.value) || 1)}
+                                        onChange={(e) => setScaleMin(e.target.value)}
+                                        aria-invalid={Boolean(ruleError)} aria-describedby={ruleError ? ruleErrorId : undefined}
                                         data-testid="student-question-scale-min"
                                         className="bg-card border-input text-foreground focus:border-ring"
                                     />
@@ -384,10 +393,11 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                     <Input
                                         id="scaleMax"
                                         type="number"
-                                        min={scaleMin + 1}
+                                        min={Number.isFinite(minScore) ? minScore + 1 : 2}
                                         max={10}
                                         value={scaleMax}
-                                        onChange={(e) => setScaleMax(parseInt(e.target.value) || 10)}
+                                        onChange={(e) => setScaleMax(e.target.value)}
+                                        aria-invalid={Boolean(ruleError)} aria-describedby={ruleError ? ruleErrorId : undefined}
                                         data-testid="student-question-scale-max"
                                         className="bg-card border-input text-foreground focus:border-ring"
                                     />
@@ -396,7 +406,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                             <p className="text-label text-muted-foreground">
                                 评分范围：{scaleMin} - {scaleMax} 分
                             </p>
-                            {(scaleMax - scaleMin + 1) % 2 === 0 && (
+                            {!ruleError && (maxScore - minScore + 1) % 2 === 0 && (
                                 <p className="rounded-surface border border-warning-border bg-warning-muted px-3 py-2 text-meta text-warning">
                                     当前为偶数个评分点。典型 Likert 型题项通常使用 5 点或 7 点以保留中立选项；10 点一般评分可以使用，但应明确它不是典型 Likert 型题项。
                                 </p>
@@ -429,6 +439,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                             </div>
                         </div>
                     )}
+                    {ruleError && <p id={ruleErrorId} role="alert" className="text-label text-destructive">{ruleError}</p>}
                 </div>
 
                 <DialogFooter className="shrink-0 gap-2">

@@ -1,10 +1,10 @@
 import { useState, useCallback, useMemo } from "react";
 import { type Phase, type PhaseNavigationSnapshot, type PhaseType } from "./types";
 
-/** Old lesson/quiz drafts keep their parameters, never their answer gates or auto-submit state. */
+/** Restore current pages only. A completed local state still requires explicit confirmation. */
 function restorePhase(initial?: PhaseNavigationSnapshot | null): Phase {
     const type = initial?.phase?.type;
-    if (type === "confirm" || type === "quiz" || type === "launching" || type === "done") return { type: "confirm" };
+    if (type === "confirm" || type === "done") return { type: "confirm" };
     return { type: type === "reference" ? "reference" : "decision" };
 }
 
