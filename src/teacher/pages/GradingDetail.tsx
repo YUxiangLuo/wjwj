@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDateTimeDisplay } from "@/utils/format";
 import { teacherApi, teacherResourceUrl, type SubmissionDetail } from "../api-client";
+import { AnalysisAppendices } from "@/components/AnalysisAppendices";
 
 function parseScoreField(value: string) {
     if (value.trim() === "") return null;
@@ -210,7 +211,7 @@ export function GradingDetail() {
                                 ) : <p className="mt-3 text-label text-muted-foreground">暂无执行记录（旧提交不会补记历史尝试）。</p>}
                             </div>
                         </TabsContent>
-                        <TabsContent value="report" className="mt-4 rounded-surface border border-border p-5"><RichTextContent html={data.reportContent} /></TabsContent>
+                        <TabsContent value="report" className="mt-4 rounded-surface border border-border p-5"><RichTextContent html={data.reportContent} /><AnalysisAppendices records={data.analysisAppendices ?? []} /></TabsContent>
                     </Tabs>
                 </CardContent>
             </Card>

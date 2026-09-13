@@ -16,6 +16,7 @@ import {
     getStoredSystematicInterval,
 } from "../experiment/systematic-sampling";
 import { getSamplingMethodState, resolveSamplingPolicy } from "@/lib/sampling-policy";
+import { AnalysisAppendices } from "@/components/AnalysisAppendices";
 
 interface Props {
     open: boolean;
@@ -125,7 +126,7 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
                             />
                         )}
                         {activeSection === "report" && (
-                            <ReportSection content={reportContent} />
+                            <><ReportSection content={reportContent} /><AnalysisAppendices records={experiment.analysisAppendices ?? []} /></>
                         )}
                     </div>
                 </main>

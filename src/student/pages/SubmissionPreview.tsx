@@ -39,6 +39,7 @@ import {
     type SamplingMethod,
 } from "@/lib/sampling-policy";
 import { getSamplingResultCount } from "../experiment/sampling-results";
+import { AnalysisAppendices } from "@/components/AnalysisAppendices";
 
 const SAMPLING_METHOD_LABELS: Record<SamplingMethod, string> = {
     simple: "简单随机抽样",
@@ -292,6 +293,7 @@ export function SubmissionPreview() {
                                     ) : (
                                         <div className="text-label text-muted-foreground italic">暂无报告内容</div>
                                     )}
+                                    <AnalysisAppendices records={experiment.analysisAppendices ?? []} />
                                 </div>
                             </div>
                         </TabsContent>

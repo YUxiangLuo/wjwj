@@ -1,6 +1,7 @@
 import type { Question, QuestionnaireData } from "../../lib/questionnaire-types";
 import type { SamplingPolicyV1 } from "../../lib/sampling-policy";
 import type { ExperimentStatus, TaskStatus, SamplePlanData, SamplingResultsData } from "./types";
+import type { SavedAnalysisView, VariableDictionary } from "../variables/types";
 
 export interface CurrentStudent {
     id: number;
@@ -64,5 +65,9 @@ export interface SubmissionDetail {
         samplingResults: SamplingResultsData | null;
         samplingPolicy: SamplingPolicyV1;
         reportContent: string;
+        analysisReferences?: number[];
+        analysisAppendices?: SavedAnalysisView[];
+        variableDictionary?: VariableDictionary | null;
+        samplingGeneration?: number;
     };
 }

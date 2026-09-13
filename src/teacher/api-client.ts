@@ -5,7 +5,7 @@ export type { ApiResponse } from "@/lib/api-client";
 const { request, download: downloadTeacherFile, resourceUrl: teacherResourceUrl } = createApiClient("teacher");
 export { downloadTeacherFile, teacherResourceUrl };
 import type { SamplePlanData, SamplingResultsData } from "@/domain/experiment/types";
-import type { VariableDictionary } from "@/domain/variables/types";
+import type { SavedAnalysisView, VariableDictionary } from "@/domain/variables/types";
 
 export interface VariableDictionaryResponse {
     dictionary: VariableDictionary | null;
@@ -55,6 +55,8 @@ export interface SubmissionDetail extends GradingItem {
     version: number;
     topicDesc: string | null;
     reportContent: string;
+    analysisAppendices?: SavedAnalysisView[];
+    variableDictionary?: VariableDictionary | null;
     samplePlan: SamplePlanData | null;
     questionnaire: QuestionnaireData | null;
     samplingResults?: SamplingResultsData | null;

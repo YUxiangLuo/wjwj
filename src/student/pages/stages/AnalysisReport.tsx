@@ -42,6 +42,7 @@ import {
     useExperimentDraft,
 } from "../../experiment/experiment-draft";
 import { isCompletedSamplingResult, SAMPLING_METHODS, resolveSamplingPolicy } from "@/lib/sampling-policy";
+import { UnivariateWorkspace } from "../../components/UnivariateWorkspace";
 
 interface AnalysisReportProps {
     onPrev: () => void;
@@ -49,7 +50,7 @@ interface AnalysisReportProps {
 }
 
 type ZoomChartType = "mean" | "dist" | "error" | "represent" | null;
-type AnalysisWorkspace = "overview" | "charts" | "records" | "report";
+type AnalysisWorkspace = "overview" | "charts" | "univariate" | "records" | "report";
 
 // ---------------------------------------------------------------------------
 // ChartBars — horizontal bar chart component
@@ -201,7 +202,7 @@ function FieldSelect({
 export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const { experiment, populationSize, completeStage } = useExperiment();
 
-    const restoredDraft = useMemo(() => readExperimentDraft<{ reportContent: string; workspace?: AnalysisWorkspace }>({
+    const restoredDraft = useMemo(() => readExperimentDraft<{ reportContent: string; analysisReferences?: number[]; workspace?: AnalysisWorkspace }>({
         experimentId: experiment?.id,
         experimentVersion: experiment?.version,
         stage: 4,
@@ -209,8 +210,10 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const [reportContent, setReportContent] = useState(
         restoredDraft?.reportContent ?? experiment?.reportContent ?? "",
     );
-    const [workspace, setWorkspace, workspaceNavigationRef] = useSectionNavigation<AnalysisWorkspace>(restoredDraft?.workspace && ["overview", "charts", "records", "report"].includes(restoredDraft.workspace) ? restoredDraft.workspace : "overview", '[data-testid="student-experiment-navigation"]');
-    const reportDraft = useMemo(() => ({ reportContent, workspace }), [reportContent, workspace]);
+    const [analysisReferences, setAnalysisReferences] = useState<number[]>(restoredDraft?.analysisReferences ?? experiment?.analysisReferences ?? []);
+    const [staleAnalysisReferences, setStaleAnalysisReferences] = useState<number[]>([]);
+    const [workspace, setWorkspace, workspaceNavigationRef] = useSectionNavigation<AnalysisWorkspace>(restoredDraft?.workspace && ["overview", "charts", "univariate", "records", "report"].includes(restoredDraft.workspace) ? restoredDraft.workspace : "overview", '[data-testid="student-experiment-navigation"]');
+    const reportDraft = useMemo(() => ({ reportContent, analysisReferences, workspace }), [reportContent, analysisReferences, workspace]);
     const clearDraft = useExperimentDraft({
         experimentId: experiment?.id,
         experimentVersion: experiment?.version,
@@ -501,11 +504,11 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     // ---- Handlers ----
 
     const handleSubmit = async () => {
-        if (!isValidLength || isSubmitting || clearDraft.status === "conflict") return;
+        if (!isValidLength || staleAnalysisReferences.length > 0 || isSubmitting || clearDraft.status === "conflict") return;
         setIsSubmitting(true);
         try {
-            if (clearDraft.save({ reportContent, workspace }) === "conflict") return;
-            const success = await completeStage(4, { reportContent });
+            if (clearDraft.save({ reportContent, analysisReferences, workspace }) === "conflict") return;
+            const success = await completeStage(4, { reportContent, analysisReferences });
             if (!success) return;
             clearDraft.clear();
             onSubmit();
@@ -550,6 +553,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 <TabsList aria-label="分析与报告工作区" className="flex h-auto flex-wrap gap-1 rounded-surface border border-border bg-card p-1" data-testid="student-analysis-workspace-tabs">
                     <TabsTrigger value="overview" className="min-h-11 px-4" data-testid="student-analysis-workspace-overview">研究结果</TabsTrigger>
                     <TabsTrigger value="charts" className="min-h-11 px-4" data-testid="student-analysis-section-tab-charts">图表探索</TabsTrigger>
+                    <TabsTrigger value="univariate" className="min-h-11 px-4" data-testid="student-analysis-workspace-univariate">单变量分析</TabsTrigger>
                     <TabsTrigger value="records" className="min-h-11 px-4" data-testid="student-analysis-workspace-records">规划与抽样记录</TabsTrigger>
                     <TabsTrigger value="report" className="min-h-11 gap-2 px-4" data-testid="student-analysis-workspace-report"><FileText className="h-4 w-4"/>撰写报告</TabsTrigger>
                 </TabsList>
@@ -676,6 +680,10 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 </details>
             </TabsContent>
 
+            <TabsContent value="univariate" className="min-w-0">
+                {experiment?.taskId && <UnivariateWorkspace taskId={experiment.taskId} observedVersion={experiment.version} completedMethods={completedAnalysisMethods} references={analysisReferences} onReferencesChange={setAnalysisReferences} onStaleReferencesChange={setStaleAnalysisReferences} />}
+            </TabsContent>
+
             <TabsContent value="report" forceMount className="min-w-0 data-[state=inactive]:hidden">
                 <div className="flex flex-wrap items-start gap-5">
                     <Card className="min-w-0 flex-[3_1_36rem] gap-0 rounded-surface border-border bg-card py-0">
@@ -716,10 +724,11 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         <StageActions>
             <div className="space-y-2"><DraftSaveStatus status={clearDraft.status === "saved" && workspace !== "report" ? "idle" : clearDraft.status} onRetry={clearDraft.retry} savedLabel="报告草稿保存在当前浏览器，提交预览时才写入服务器"/><Button variant="outline" onClick={onPrev} data-testid="student-analysis-prev">查看抽样记录</Button></div>
             {workspace === "report" ? <div className="flex flex-col items-end gap-1">
+                {staleAnalysisReferences.length > 0 && <p role="alert" className="text-meta text-warning">有 {staleAnalysisReferences.length} 条已引用分析来源过期。请到“单变量分析”明确移除或重新运行后再保存。</p>}
                 <p className={`text-meta ${reportTextLength > maxLength ? "text-destructive" : isValidLength ? "text-success" : "text-muted-foreground"}`} role="status" data-testid="student-analysis-length-status">
                     <span className="tabular-nums">{reportTextLength} / {maxLength} 字</span> · {reportLengthHint}
                 </p>
-                <Button onClick={handleSubmit} disabled={!isValidLength || isSubmitting || clearDraft.status === "conflict"} data-testid="student-analysis-preview">
+                <Button onClick={handleSubmit} disabled={!isValidLength || staleAnalysisReferences.length > 0 || isSubmitting || clearDraft.status === "conflict"} data-testid="student-analysis-preview">
                     {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>正在保存报告…</> : <><Send className="mr-2 h-4 w-4"/>保存并预览报告</>}
                 </Button>
             </div> : <Button onClick={() => setWorkspace("report")} data-testid="student-analysis-write">继续：撰写报告<ArrowRight className="ml-2 h-4 w-4"/></Button>}
