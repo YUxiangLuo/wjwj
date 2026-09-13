@@ -1,6 +1,7 @@
+import { codebookDownload } from "../experiment/codebook-service";
 import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
-import { experiment, task, topic, topicAttachment } from "../../db/schema";
+import { experiment, student, task, topic, topicAttachment } from "../../db/schema";
 import { error, getPositiveRouteId, getSearchParams } from "../../server/http";
 import { buildAttachmentDownloadResponse } from "../../server/attachment-download";
 import type { RouteDefinition } from "../../server/route-types";
@@ -17,6 +18,7 @@ import { parseStoredJson } from "../experiment/serialization";
 import {
     buildSamplingResultsCsvExport,
     parseSamplingExportType,
+    parseSamplingExportFormat,
 } from "../experiment/sampling-results-export";
 import { requireAuth } from "./auth";
 
@@ -74,12 +76,17 @@ const exportRoutes: RouteDefinition = {
         if (taskAccessError) return taskAccessError;
 
         const type = parseSamplingExportType(getSearchParams(req).get("type"));
-        if (!type) {
+        const format = parseSamplingExportFormat(getSearchParams(req).get("format"));
+        if (!type || !format) {
             return error("无效的导出类型", "VALIDATION_ERROR", 400);
         }
 
         const [exp] = await db
             .select({
+                id: experiment.id, version: experiment.version, status: experiment.status,
+                submissionSnapshot: experiment.submissionSnapshot, questionnaire: experiment.questionnaire,
+                variableDictionary: topic.variableDictionary, variableDictionaryRevision: topic.variableDictionaryRevision,
+                populationSize: topic.excelRowCount,
                 samplingResults: experiment.samplingResults,
                 excelFilePath: topic.excelFilePath,
                 fieldMapping: topic.fieldMapping,
@@ -88,6 +95,11 @@ const exportRoutes: RouteDefinition = {
             .innerJoin(task, eq(experiment.taskId, task.id))
             .innerJoin(topic, eq(task.topicId, topic.id))
             .where(and(eq(experiment.studentId, currentStudent.id), eq(experiment.taskId, taskId)));
+
+        if (exp && format === "xlsx") return codebookDownload({ ...exp, experimentId: exp.id, taskId, type }, req.signal, async () => {
+            const [current] = await db.select({ classId: student.classId }).from(student).where(eq(student.id, currentStudent.id));
+            return current ? getStudentTaskAccessError(taskId, current.classId) : error("账户不存在", "ACCOUNT_NOT_FOUND", 401);
+        });
 
         if (!exp?.samplingResults) {
             return error("暂无抽样结果", "NO_DATA", 404);

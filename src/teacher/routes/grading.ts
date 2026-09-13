@@ -1,3 +1,4 @@
+import { codebookDownload } from "../../student/experiment/codebook-service";
 import { and, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, experiment, samplingAttempt, student, task, teacher, topic } from "../../db/schema";
@@ -11,6 +12,7 @@ import { previewSamplingResults } from "../../student/experiment/sampling-result
 import {
     buildSamplingResultsCsvExport,
     parseSamplingExportType,
+    parseSamplingExportFormat,
 } from "../../student/experiment/sampling-results-export";
 import {
     hydrateSamplingResults,
@@ -131,6 +133,7 @@ const gradingRoutes: RouteDefinition = {
 async function findOwnedExperiment(experimentId: number, teacherId: number) {
     const [row] = await db.select({
         id: experiment.id,
+        taskId: experiment.taskId,
         version: experiment.version,
         studentName: student.name,
         studentId: student.studentId,
@@ -230,6 +233,7 @@ const gradingDetailRoutes: RouteDefinition = {
         }
         const {
             excelFilePath: _excelFilePath,
+            taskId: _taskId,
             submissionSnapshot: _submissionSnapshot,
             weightConfig: _weightConfig,
             samplingPolicy: _samplingPolicy,
@@ -345,10 +349,15 @@ const gradingSamplingExportRoutes: RouteDefinition = {
             return error("无效的实验ID", "INVALID_ID");
         }
         const type = parseSamplingExportType(getSearchParams(req).get("type"));
-        if (!type) return error("无效的导出类型", "VALIDATION_ERROR", 400);
+        const format = parseSamplingExportFormat(getSearchParams(req).get("format"));
+        if (!type || !format) return error("无效的导出类型", "VALIDATION_ERROR", 400);
 
         const row = await findOwnedExperiment(experimentId, current.id);
         if (!row) return error("提交记录不存在", "NOT_FOUND", 404);
+        if (format === "xlsx") return codebookDownload({ experimentId, taskId: row.taskId, version: row.version, status: row.status,
+            submissionSnapshot: row.submissionSnapshot, questionnaire: row.questionnaire, samplingResults: row.samplingResults,
+            populationSize: row.populationSize, excelFilePath: row.excelFilePath, fieldMapping: row.fieldMapping, type }, req.signal,
+            async () => await findOwnedExperiment(experimentId, current.id) ? null : error("提交记录不存在", "NOT_FOUND", 404));
         const snapshot = parseStoredJson<{ samplingResults?: unknown }>(row.submissionSnapshot);
         const storedSamplingResults = snapshot?.samplingResults ?? parseStoredJson(row.samplingResults);
         if (!storedSamplingResults) return error("暂无抽样结果", "NO_DATA", 404);

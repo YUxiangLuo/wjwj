@@ -11,6 +11,10 @@ interface SamplingResultSection {
 
 type SamplingResultsExportData = Partial<Record<Exclude<SamplingExportType, "all">, SamplingResultSection>>;
 
+export function parseSamplingExportFormat(value: string | null): "csv" | "xlsx" | null {
+    return value === null || value === "csv" ? "csv" : value === "xlsx" ? "xlsx" : null;
+}
+
 export function parseSamplingExportType(value: string | null): SamplingExportType | null {
     const candidate = value ?? "all";
     return (SAMPLING_EXPORT_TYPES as readonly string[]).includes(candidate)

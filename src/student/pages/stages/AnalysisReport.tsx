@@ -1,7 +1,7 @@
 import { SamplingObservationNotice } from "../../components/SamplingObservationNotice";
 import { DraftSaveStatus } from "../../components/DraftSaveStatus";
 import { useSectionNavigation } from "@/hooks/useSectionNavigation";
-import { useState, useEffect, useMemo, type ReactNode } from "react";
+import { useState, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -222,6 +222,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const [exportType, setExportType] = useState<MethodKey | "all">("all");
     const [exportOpen, setExportOpen] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
+    const exportPending = useRef(false);
     const [exportError, setExportError] = useState<string | null>(null);
     const [zoomChart, setZoomChart] = useState<ZoomChartType>(null);
     const [analysisMetrics, setAnalysisMetrics] = useState<AnalysisMetricsData | null>(null);
@@ -514,16 +515,18 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         }
     };
 
-    const handleExport = async (type: MethodKey | "all") => {
-        if (!experiment?.taskId || isExporting) return;
+    const handleExport = async (type: MethodKey | "all", format: "csv" | "xlsx" = "csv") => {
+        if (!experiment?.taskId || exportPending.current) return;
+        exportPending.current = true;
         setIsExporting(true);
         setExportError(null);
         try {
-            await downloadStudentFile(`/api/student/tasks/${experiment.taskId}/export?type=${type}`, `sampling_${type}.csv`);
+            await downloadStudentFile(`/api/student/tasks/${experiment.taskId}/export?type=${type}&format=${format}`, `${format === "xlsx" ? "codebook" : "sampling"}_${type}.${format}`);
         } catch (error) {
             console.error("Export failed:", error);
-            setExportError("数据导出失败，请检查网络后重试。报告草稿已保留。");
+            setExportError(`数据导出失败：${error instanceof Error ? error.message : "请稍后重试"}。报告草稿已保留。`);
         } finally {
+            exportPending.current = false;
             setIsExporting(false);
         }
     };
@@ -731,10 +734,12 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 <Select value={exportType} onValueChange={value => setExportType(value as MethodKey | "all")} disabled={isExporting}><SelectTrigger aria-label="选择导出范围"><SelectValue/></SelectTrigger><SelectContent>
                     <SelectItem value="all">全部抽样数据</SelectItem>{completedAnalysisMethods.map(method => <SelectItem key={method} value={method}>{METHOD_META[method].label}结果</SelectItem>)}
                 </SelectContent></Select>
+                <p className="text-meta text-muted-foreground">XLSX 码本需已确认且与抽样读取方式一致的字典，包含全部原始字段、编码/缺失规则、题目语义关联及实际抽样记录；不生成试填答案列。最多 100 万个单元格，超限不会截断，可选择单一方法或使用 CSV。</p>
                 {exportError && <p role="alert" className="text-label text-destructive">{exportError}</p>}
                 <Button onClick={() => handleExport(exportType)} disabled={isExporting || completedAnalysisMethods.length === 0}>
                     {isExporting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>正在导出…</> : <><Download className="mr-2 h-4 w-4"/>导出 CSV</>}
                 </Button>
+                <Button variant="outline" data-testid="student-codebook-export" onClick={() => handleExport(exportType, "xlsx")} disabled={isExporting || completedAnalysisMethods.length === 0}>导出 XLSX 码本</Button>
             </DialogContent>
         </Dialog>
         <Dialog open={zoomChart !== null} onOpenChange={open => {if (!open) setZoomChart(null);}}>

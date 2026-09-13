@@ -81,6 +81,14 @@ test("only same-role storage notifications replace the page; pending results and
     await expect(client.download("/api/student/download", "data.csv")).rejects.toThrow("正在重新加载页面");
 });
 
+test("downloads expose bounded server business errors without creating a file", async () => {
+    setup(); const client = createApiClient("student");
+    globalThis.fetch = (async () => Response.json({ error: { code: "NO_DICTIONARY", message: "请教师先确认变量字典" } }, { status: 409 })) as unknown as typeof fetch;
+    await expect(client.download("/api/student/export", "codebook.xlsx")).rejects.toThrow("请教师先确认变量字典");
+    globalThis.fetch = (async () => Response.json({ error: { message: "x".repeat(501) } }, { status: 409 })) as unknown as typeof fetch;
+    await expect(client.download("/api/student/export", "codebook.xlsx")).rejects.toThrow("下载失败");
+});
+
 test("old 401 after successful login cannot cause a second navigation", async () => {
     const navigate = setup(), client = createApiClient("student");
     let release!: (response: Response) => void;
@@ -99,7 +107,7 @@ for (const [status, code] of [[401, "UNAUTHORIZED"], [401, "ACCOUNT_NOT_FOUND"],
         globalThis.fetch = (async () => fail(status, code)) as unknown as typeof fetch;
         expect((await client.request("/api/student/me")).error?.code).toBe(code);
         expect(navigate).not.toHaveBeenCalled();
-        await expect(client.download("/api/student/download", "data.csv")).rejects.toThrow("下载失败");
+        await expect(client.download("/api/student/download", "data.csv")).rejects.toThrow("正在重新加载页面");
         expect(navigate).toHaveBeenCalledWith("/student/login");
     });
 }

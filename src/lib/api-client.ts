@@ -109,7 +109,12 @@ export function createApiClient(role: AuthRole) {
     /** Own the whole async read and publish boundary; never expose a raw Response. */
     async function download(path: string, filename: string): Promise<void> {
         const response = await send(path);
-        if (!response.ok) throw new Error("下载失败");
+        if (!response.ok) {
+            const body = await response.json().catch(() => null);
+            ensureActive();
+            const message = body?.error?.message;
+            throw new Error(typeof message === "string" && message.trim() && message.length <= 500 ? message : "下载失败");
+        }
         const blob = await response.blob();
         ensureActive();
         const url = URL.createObjectURL(blob);

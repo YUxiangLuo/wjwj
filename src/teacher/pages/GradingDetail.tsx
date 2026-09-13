@@ -18,7 +18,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDateTimeDisplay } from "@/utils/format";
-import { teacherApi, teacherResourceUrl, type SubmissionDetail } from "../api-client";
+import { CodebookDownloadButton } from "@/components/CodebookDownloadButton";
+import { teacherApi, teacherResourceUrl, downloadTeacherFile, type SubmissionDetail } from "../api-client";
 
 function parseScoreField(value: string) {
     if (value.trim() === "") return null;
@@ -186,6 +187,7 @@ export function GradingDetail() {
                                     </Button>
                                 </div>
                             )}
+                            <CodebookDownloadButton key={id} path={`/api/teacher/grading/${id}/sampling-export?type=all&format=xlsx`} download={downloadTeacherFile} />
                             <SamplingResultsSnapshot value={data.samplingResults} samplingPolicy={data.samplingPolicy} />
                             <div className="rounded-surface border border-border bg-card p-4">
                                 <h3 className="flex items-center gap-2 font-medium"><History className="h-4 w-4 text-primary" />抽样执行记录</h3>

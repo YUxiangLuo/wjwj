@@ -1,3 +1,4 @@
+import { CodebookDownloadButton } from "@/components/CodebookDownloadButton";
 import { StudentStatusPage } from "../components/StudentStatusPage";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useEffect, useState } from "react";
@@ -14,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { formatDateTimeDisplay } from "@/utils/format";
-import { submissionsApi } from "../api-client";
+import { submissionsApi, downloadStudentFile } from "../api-client";
 import type { SubmissionDetail } from "@/domain/experiment/student-contracts";
 
 const statusConfig: Record<SubmissionDetail["status"], { label: string; intent: StatusBadgeIntent }> = {
@@ -109,7 +110,7 @@ export function SubmissionDetailPage() {
                                 </TabsContent>
                                 <TabsContent value="questionnaire" className="mt-4"><QuestionnaireSnapshot questionnaire={detail.snapshot.questionnaire} variableDictionary={detail.snapshot.variableDictionary} /></TabsContent>
                                 <TabsContent value="plan" className="mt-4"><SamplePlanSnapshot value={detail.snapshot.samplePlan} populationSize={detail.snapshot.populationSize} /></TabsContent>
-                                <TabsContent value="sampling" className="mt-4"><SamplingResultsSnapshot value={detail.snapshot.samplingResults} samplingPolicy={detail.snapshot.samplingPolicy} /></TabsContent>
+                                <TabsContent value="sampling" className="mt-4 space-y-4"><CodebookDownloadButton key={numericTaskId} path={`/api/student/tasks/${numericTaskId}/export?type=all&format=xlsx`} download={downloadStudentFile} /><SamplingResultsSnapshot value={detail.snapshot.samplingResults} samplingPolicy={detail.snapshot.samplingPolicy} /></TabsContent>
                             </Tabs>
                         </div>
                     </section>
