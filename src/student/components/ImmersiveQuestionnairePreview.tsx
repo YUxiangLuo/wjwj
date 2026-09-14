@@ -303,7 +303,8 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
         if (e.repeat) { e.preventDefault(); return; }
         const target = e.target instanceof HTMLElement ? e.target : null;
         // 不抢占未选选项、链接、题号或关闭按钮的原生键盘操作。
-        if (isCurrentAnswered && (target === overlayRef.current || target?.closest('[data-preview-answer][aria-pressed="true"]'))) {
+        // 数值输入在答案有效时也支持 Enter（与题下提示一致）；无效输入不做任何事。
+        if (isCurrentAnswered && (target === overlayRef.current || target?.closest('[data-preview-answer][aria-pressed="true"], [data-testid="questionnaire-preview-numeric"]'))) {
             e.preventDefault();
             goNext();
         }

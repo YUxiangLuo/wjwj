@@ -92,6 +92,28 @@ test("preview answers stay client-side and never mutate the questionnaire defini
     }
 });
 
+// 提示承诺“按 Enter 继续”，键盘路径必须真的成立（docs/VARIABLE_ANALYSIS_TEST_PLAN.md Q01）。
+test("Enter continues a valid numeric answer and leaves invalid input untouched", () => {
+    const view = render(<ImmersiveQuestionnairePreview questionnaire={{ ...questionnaire, questions: [
+        { id: "numeric", type: "numeric", content: "时长？", unit: "小时", numericMin: 0, numericMax: 10, decimalPlaces: 1 },
+        questionnaire.questions[1]!,
+    ] }} onComplete={() => {}} onClose={() => {}} />);
+    fireEvent.click(view.getByTestId("immersive-preview-start"));
+    const input = view.getByTestId("questionnaire-preview-numeric");
+    // 空值：Enter 不得前进
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(view.getByText("时长？")).toBeTruthy();
+    // 小数位不符：Enter 不得前进，也不得吞掉输入
+    fireEvent.change(input, { target: { value: "1.23" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(view.getByText("时长？")).toBeTruthy();
+    expect((input as HTMLInputElement).value).toBe("1.23");
+    // 合法值：Enter 明确前进
+    fireEvent.change(input, { target: { value: "10.0" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(view.getByText("最后一题？")).toBeTruthy();
+});
+
 test("skipping a question blocks completion until every answer is supplied", () => {
     const onComplete = mock(() => {});
     const view = render(<ImmersiveQuestionnairePreview questionnaire={questionnaire} onComplete={onComplete} onClose={() => {}} />);
