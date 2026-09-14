@@ -1,6 +1,6 @@
 import { SQL } from "bun";
 import { afterAll, afterEach, beforeAll, expect, test } from "bun:test";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import * as schema from "./schema";
 import { assertTestDatabaseIsMigrated } from "./test-database-guard";
 
@@ -13,6 +13,8 @@ let application: typeof import("./index");
 let service: typeof import("../student/experiment/saved-analysis-service");
 let sampling: typeof import("../student/experiment/sampling-service");
 let variableSource: typeof import("../server/variable-source");
+let submitService: typeof import("../student/experiment/submit-service");
+let updateService: typeof import("../student/experiment/update-service");
 let raw: SQL;
 const fixtures: Array<{ semester: number; teacher: number; cls: number; topic: number; task: number; students: number[] }> = [];
 const files: string[] = [];
@@ -23,10 +25,12 @@ beforeAll(async () => {
     application = await import("./index");
     raw = new SQL(url!);
     await assertTestDatabaseIsMigrated(raw);
-    [service, sampling, variableSource] = await Promise.all([
+    [service, sampling, variableSource, submitService, updateService] = await Promise.all([
         import("../student/experiment/saved-analysis-service"),
         import("../student/experiment/sampling-service"),
         import("../server/variable-source"),
+        import("../student/experiment/submit-service"),
+        import("../student/experiment/update-service"),
     ]);
 });
 
@@ -449,6 +453,150 @@ pgTest("A06 an interrupted commit is recoverable by retrying the same request ex
     expect(retried.id).toBe(recovered.id);
     expect(await application.db.select().from(schema.savedAnalysis).where(eq(schema.savedAnalysis.experimentId, f.experiment.id))).toHaveLength(1);
 }, 20_000);
+
+/** Complete, submittable experiment built on the shared fixture (plan R05/R07). */
+async function submittableFixture() {
+    const f = await fixture();
+    // 真实保存一条分析，用于验证附录不参与正文长度且随提交冻结
+    const saved = await service.createSavedAnalysis(f.students[0]!.id, f.cls.id, f.task.id, f.body(`r07-seed-${crypto.randomUUID()}`));
+    await application.db.update(schema.savedAnalysis).set({ evidence: { analysisNote: "用于验证长附录的冻结与字数隔离。".repeat(300) } }).where(eq(schema.savedAnalysis.id, saved.id));
+
+    const target = 4;
+    const replay = async (method: "simple" | "systematic") => {
+        const loaded = await variableSource.readVariableSource(f.storagePath, f.mapping);
+        const result = await sampling.executeSamplingAction({ method, population: loaded.designRows, fieldMapping: f.mapping, targetSampleSize: target, rawParams: { seed: 1701, sampleSize: target } });
+        if (!result.ok) throw new Error(result.errorMessage);
+        const { data: _data, ...stored } = result.result;
+        return { ...stored, serverGenerated: true };
+    };
+    const questionnaire = {
+        title: "空功能预试",
+        welcomeText: "欢迎参加本次调查，请根据真实情况回答所有问题，答案仅用于课堂试填与理解题目。",
+        endingText: "感谢您的参与，本次试填到此结束，结果不会进入估计与报告。",
+        questions: Array.from({ length: 5 }, (_, index) => ({ id: `q${index}`, type: "boolean", content: `第${index + 1}题是否完成？` })),
+    };
+    const samplePlan = { estimationType: "mean", confidenceLevel: "95", marginOfError: 10, populationVariance: 250, designEffect: 1, nonResponseRate: 0, recommendedSize: 4, finalSampleSize: 4 };
+    const [record] = await application.db.update(schema.experiment).set({
+        status: "in_progress", currentStage: 4, version: f.experiment.version + 1,
+        questionnaire, samplePlan,
+        samplingResults: { simple: await replay("simple"), systematic: await replay("systematic") },
+        reportContent: `<p>${"报告正文用于验证冻结与提交路径。".repeat(9)}</p>`,
+        analysisReferences: [], submissionSnapshot: null, submittedAt: null,
+        stage1CompletedAt: new Date(), stage2CompletedAt: new Date(), stage3CompletedAt: new Date(), stage4CompletedAt: new Date(),
+    }).where(eq(schema.experiment.id, f.experiment.id)).returning();
+    // 与已保存分析共用同一字段解释，来源哈希必须一致，否则引用会被判过期
+    const fieldMapping = f.mapping;
+    const taskInfo = {
+        taskId: f.task.id, topicName: "变量分析", populationSize: 5,
+        weightConfig: { questionnaire: 30, process: 30, report: 40 }, fieldMapping,
+        excelFilePath: f.storagePath, variableDictionary: f.dictionary, variableRevision: 1,
+        className: "分析班级", teacherName: "分析教师",
+    };
+    return { ...f, record: record!, taskInfo, student: { studentId: "s-r05", name: "学生0" }, savedAnalysisId: saved.id };
+}
+
+pgTest("R05 a submit and an upstream reopen serialise into exactly one legal state", async () => {
+    for (let round = 0; round < 10; round += 1) {
+        const f = await submittableFixture();
+        const lock = await holdExperimentRow(f.experiment.id);
+        const submitOutcome = submitService.submitStudentExperiment({
+            experimentRecord: f.record, observedVersion: f.record.version, taskInfo: f.taskInfo, student: f.student,
+        }).then(value => ({ value, error: null }), error => ({ value: null, error }));
+        const reopen = updateService.buildStageReopenUpdates({ experimentRecord: f.record, stage: 3, deadlinePassed: false });
+        if (!reopen.ok) throw new Error(reopen.message);
+        const reopenOutcome = application.db.update(schema.experiment).set(reopen.updates).where(and(
+            eq(schema.experiment.id, f.record.id), eq(schema.experiment.version, f.record.version),
+            eq(schema.experiment.status, f.record.status), eq(schema.experiment.currentStage, f.record.currentStage),
+        )).returning().then(rows => ({ value: rows, error: null }), error => ({ value: null, error }));
+        try {
+            await waitForBlocked(lock.holderPid);
+        } finally {
+            await lock.commit();
+        }
+        const [submitResult, reopenResult] = await Promise.all([submitOutcome, reopenOutcome]);
+        const [state] = await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, f.experiment.id));
+        const submitWon = submitResult.error === null && (submitResult.value as { ok: boolean }).ok === true;
+        const reopenWon = reopenResult.error === null && (reopenResult.value as unknown[]).length === 1;
+        expect([submitWon, reopenWon].filter(Boolean), `round ${round}`).toHaveLength(1);
+        if (submitWon) {
+            expect(state!.status, `round ${round}`).toBe("submitted");
+            expect(state!.submissionSnapshot, `round ${round}`).toBeTruthy();
+            expect(state!.samplingGeneration, `round ${round}`).toBe(f.record.samplingGeneration);
+        } else {
+            expect(state!.status, `round ${round}`).toBe("in_progress");
+            expect(state!.currentStage, `round ${round}`).toBe(3);
+            expect(state!.analysisReferences, `round ${round}`).toEqual([]);
+            expect(state!.samplingGeneration, `round ${round}`).toBe(f.record.samplingGeneration + 1);
+            expect(state!.submissionSnapshot, `round ${round}`).toBeNull();
+        }
+    }
+}, 40_000);
+
+pgTest("R05 an admitted reopen invalidates a later submit and a committed submit blocks the reopen", async () => {
+    // 顺序一：重开先提交完成，随后以旧版本提交必须失败
+    const first = await submittableFixture();
+    const lock = await holdExperimentRow(first.experiment.id);
+    const reopen = updateService.buildStageReopenUpdates({ experimentRecord: first.record, stage: 3, deadlinePassed: false });
+    if (!reopen.ok) throw new Error(reopen.message);
+    const reopenPending = (async () => application.db.update(schema.experiment).set(reopen.updates).where(eq(schema.experiment.id, first.record.id)))();
+    try {
+        await waitForBlocked(lock.holderPid);
+    } finally {
+        await lock.commit();
+    }
+    await reopenPending;
+    const staleSubmit = await submitService.submitStudentExperiment({ experimentRecord: first.record, observedVersion: first.record.version, taskInfo: first.taskInfo, student: first.student });
+    expect(staleSubmit).toMatchObject({ ok: false });
+    const [afterReopen] = await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, first.experiment.id));
+    expect(afterReopen!.status).toBe("in_progress");
+    expect(afterReopen!.submissionSnapshot).toBeNull();
+
+    // 顺序二：提交先完成，随后的重开（基于旧版本）不能产生任何状态
+    const second = await submittableFixture();
+    const submitted = await submitService.submitStudentExperiment({ experimentRecord: second.record, observedVersion: second.record.version, taskInfo: second.taskInfo, student: second.student });
+    expect(submitted).toMatchObject({ ok: true });
+    const lateReopen = updateService.buildStageReopenUpdates({ experimentRecord: second.record, stage: 3, deadlinePassed: false });
+    if (!lateReopen.ok) throw new Error(lateReopen.message);
+    const lateRows = await application.db.update(schema.experiment).set(lateReopen.updates).where(and(
+        eq(schema.experiment.id, second.record.id), eq(schema.experiment.version, second.record.version),
+        eq(schema.experiment.status, second.record.status), eq(schema.experiment.currentStage, second.record.currentStage),
+    )).returning();
+    expect(lateRows).toHaveLength(0);
+    const [afterSubmit] = await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, second.experiment.id));
+    expect(afterSubmit!.status).toBe("submitted");
+    expect((afterSubmit!.submissionSnapshot as { reportContent?: string }).reportContent).toContain("报告正文用于验证冻结与提交路径");
+}, 30_000);
+
+pgTest("R07 the frozen appendix never counts toward report length and reference-free submits stay valid", async () => {
+    const f = await submittableFixture();
+    const reload = async () => (await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, f.experiment.id)))[0]!;
+
+    // 正文 99 字 + 长附录：必须以正文字数拒绝，不以附录补齐
+    await application.db.update(schema.experiment).set({ reportContent: `<p>${"字".repeat(99)}</p>`, analysisReferences: [f.savedAnalysisId] }).where(eq(schema.experiment.id, f.experiment.id));
+    const shortRecord = await reload();
+    expect(await submitService.submitStudentExperiment({ experimentRecord: shortRecord, observedVersion: shortRecord.version, taskInfo: f.taskInfo, student: f.student })).toMatchObject({ ok: false, code: "INCOMPLETE" });
+    const [short] = await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, f.experiment.id));
+    expect(short!.status).toBe("in_progress");
+    expect(short!.submissionSnapshot).toBeNull();
+
+    // 正文 100 字 + 同一长附录：提交成功且附录随快照冻结
+    await application.db.update(schema.experiment).set({ reportContent: `<p>${"字".repeat(100)}</p>` }).where(eq(schema.experiment.id, f.experiment.id));
+    const record = await reload();
+    expect(await submitService.submitStudentExperiment({ experimentRecord: record, observedVersion: record.version, taskInfo: f.taskInfo, student: f.student })).toMatchObject({ ok: true });
+    const [submitted] = await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, f.experiment.id));
+    const snapshot = submitted!.submissionSnapshot as { reportContent: string; analysisAppendices: Array<{ id: number; evidence: unknown }> };
+    expect(snapshot.reportContent).toBe(`<p>${"字".repeat(100)}</p>`);
+    expect(snapshot.analysisAppendices.map(item => item.id)).toEqual([f.savedAnalysisId]);
+    expect(JSON.stringify(snapshot.analysisAppendices[0]!.evidence)).toContain("长附录");
+
+    // 不引用任何分析仍可提交
+    const empty = await submittableFixture();
+    await application.db.update(schema.experiment).set({ analysisReferences: [] }).where(eq(schema.experiment.id, empty.experiment.id));
+    const [emptyRecord] = await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, empty.experiment.id));
+    expect(await submitService.submitStudentExperiment({ experimentRecord: emptyRecord!, observedVersion: emptyRecord!.version, taskInfo: empty.taskInfo, student: empty.student })).toMatchObject({ ok: true });
+    const [emptySubmitted] = await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, empty.experiment.id));
+    expect((emptySubmitted!.submissionSnapshot as { analysisAppendices: unknown[] }).analysisAppendices).toEqual([]);
+}, 30_000);
 
 pgTest("a version change while analysis waits for its write lock rejects the result", async () => {
     const f = await fixture();
