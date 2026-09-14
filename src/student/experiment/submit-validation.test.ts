@@ -54,10 +54,12 @@ describe("validateMeanPlanVariance", () => {
         expect(validateMeanPlanVariance(null, "mean", 35)).toBeNull();
     });
 
-    test("keeps a relative tolerance for JSON round-tripped values", () => {
-        const actual = 35.123456789;
+    test("accepts 4-decimal UI rounding and rejects larger mismatches", () => {
+        const actual = 66.792364721;
+        // 规划界面展示/保存 4 位小数
+        expect(validateMeanPlanVariance({ populationVariance: 66.7924 }, "mean", actual)).toBeNull();
         expect(validateMeanPlanVariance({ populationVariance: actual + 1e-12 }, "mean", actual)).toBeNull();
-        expect(validateMeanPlanVariance({ populationVariance: actual * (1 + 1e-6) }, "mean", actual)).toMatch(/总体方差与当前总体不一致/);
+        expect(validateMeanPlanVariance({ populationVariance: actual + 1e-3 }, "mean", actual)).toMatch(/总体方差与当前总体不一致/);
     });
 });
 

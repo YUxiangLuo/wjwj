@@ -475,7 +475,7 @@ async function submittableFixture() {
         endingText: "感谢您的参与，本次试填到此结束，结果不会进入估计与报告。",
         questions: Array.from({ length: 5 }, (_, index) => ({ id: `q${index}`, type: "boolean", content: `第${index + 1}题是否完成？` })),
     };
-    const samplePlan = { estimationType: "mean", confidenceLevel: "95", marginOfError: 10, populationVariance: 250, designEffect: 1, nonResponseRate: 0, recommendedSize: 4, finalSampleSize: 4 };
+    const samplePlan = { estimationType: "mean", confidenceLevel: "95", marginOfError: 10, populationVariance: 200, designEffect: 1, nonResponseRate: 0, recommendedSize: 4, finalSampleSize: 4 };
     const [record] = await application.db.update(schema.experiment).set({
         status: "in_progress", currentStage: 4, version: f.experiment.version + 1,
         questionnaire, samplePlan,
@@ -617,7 +617,8 @@ pgTest("F-R1-01 mean planning variance is verified against the current populatio
     const { calculateMeanEstimationSampleSize } = await import("../student/experiment/sample-plan");
     const reload = async () => (await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, f.experiment.id)))[0]!;
     const loaded = await variableSource.readVariableSource(f.storagePath, f.mapping);
-    const actualVariance = buildPopulationNumericStats(loaded.rows, ["value"])["value"]!.variance;
+    const rawVariance = buildPopulationNumericStats(loaded.rows, ["value"])["value"]!;
+    const actualVariance = rawVariance.variance * (rawVariance.count - 1) / rawVariance.count;
     const planFor = (variance: number) => {
         const recommendedSize = calculateMeanEstimationSampleSize({ confidenceLevel: "95", marginOfError: 10, populationSize: 5, populationVariance: variance, designEffect: 1, nonResponseRate: 0 })!;
         return { estimationType: "mean", confidenceLevel: "95", marginOfError: 10, populationVariance: variance, designEffect: 1, nonResponseRate: 0, recommendedSize, finalSampleSize: recommendedSize };

@@ -6,6 +6,7 @@ import { resolveAnalysisTarget } from "../../lib/analysis-target";
 import { scoringWeightsFrom, type ScoringWeights } from "../../lib/scoring-weights";
 import { resolveSamplingPolicy, type SamplingPolicyV1 } from "../../lib/sampling-policy";
 import { readVariableSource } from "../../server/variable-source";
+import { finitePopulationS2ToSigma2 } from "./sample-plan";
 import { buildPopulationNumericStats } from "../../domain/statistics/population";
 import { validateQuestionBindings } from "../../domain/variables/question-binding";
 import type { SavedAnalysisView, VariableDictionary } from "../../domain/variables/types";
@@ -150,11 +151,13 @@ export async function submitStudentExperiment(params: {
     // 提交时用同一份总体再复核一次：阶段完成后的换源或伪造方差不得通过。
     const resolvedTarget = resolveAnalysisTarget(params.taskInfo.fieldMapping);
     if (resolvedTarget?.target.kind === "mean" && sourceData) {
-        const actualVariance = buildPopulationNumericStats(sourceData.rows, [resolvedTarget.target.field])[resolvedTarget.target.field]?.variance;
+        // 与阶段完成一致：把总体 S²（分母 N−1）换成规划使用的 σ²（分母 N）。
+        const stat = buildPopulationNumericStats(sourceData.rows, [resolvedTarget.target.field])[resolvedTarget.target.field];
+        const actualVariance = stat ? finitePopulationS2ToSigma2(stat.variance, stat.count) : null;
         const varianceError = validateMeanPlanVariance(
             parseStoredJson(params.experimentRecord.samplePlan),
             resolvedTarget.target.kind,
-            actualVariance ?? null,
+            actualVariance,
         );
         if (varianceError) return fail(varianceError, "INCOMPLETE");
     }

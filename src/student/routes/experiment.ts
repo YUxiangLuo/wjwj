@@ -45,6 +45,7 @@ import {
 } from "../experiment/task-info";
 import { ensureTaskIsOpen, ensureTaskSubmissionWindow, hasTaskDeadlinePassed } from "../experiment/task-timing";
 import { buildStageCompletionUpdates, buildStageReopenUpdates } from "../experiment/update-service";
+import { finitePopulationS2ToSigma2 } from "../experiment/sample-plan";
 import { getOrCreateStudentExperiment } from "../experiment/workflow";
 import { requireAuth } from "./auth";
 import { AnalysisConflict, listSavedAnalyses, loadAnalysisReferences, parseAnalysisReferences } from "../experiment/saved-analysis-service";
@@ -355,7 +356,10 @@ const stageCompleteRoutes: RouteDefinition = {
                 }, req.signal);
                 if (stratifiedRequired) stratifiedStats = stats.stats;
                 if (meanVarianceRequired && resolvedTarget) {
-                    expectedPopulationVariance = stats.populationNumericStats[resolvedTarget.target.field]?.variance ?? null;
+                    // 学生规划保存的是分母为 N 的有限总体方差 σ²（与规划公式一致），
+                    // 而总体统计给出的是分母 N−1 的 S²，必须先换算再比对。
+                    const stat = stats.populationNumericStats[resolvedTarget.target.field];
+                    expectedPopulationVariance = stat ? finitePopulationS2ToSigma2(stat.variance, stat.count) : null;
                 }
             } catch (cause) { return handleServerError(cause); }
         }

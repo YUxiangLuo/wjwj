@@ -221,8 +221,8 @@ test("mean planning variance is rechecked against the current population", async
     expect(await forged.json()).toMatchObject({ error: { message: expect.stringContaining("总体方差与当前总体不一致") } });
     expect(operations.filter(op => op.kind === "update")).toHaveLength(0);
     expect(readStats).toHaveBeenCalled();
-    // 与总体一致的方差通过
-    const accepted = await module.stageCompleteRoutes.POST!(postPlan(35));
+    // 与总体一致的 σ²（S²=35、N=200 → 34.825）通过
+    const accepted = await module.stageCompleteRoutes.POST!(postPlan(35 * 199 / 200));
     expect(accepted.status).toBe(200);
     expect(operations.filter(op => op.kind === "update")).toHaveLength(1);
 });
