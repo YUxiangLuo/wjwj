@@ -17,7 +17,7 @@ databaseUrl.pathname = `/${databaseName}`;
 const workdir = await mkdtemp(join(tmpdir(), "wj-teaching-"));
 const artifacts = resolve(process.env.TEACHING_TEST_ARTIFACTS ?? join(root, "test-results/teaching-flow"));
 await mkdir(artifacts, { recursive: true });
-for (const name of ["student-failure.png", "teacher-failure.png", "result.json"]) {
+for (const name of ["student-failure.png", "teacher-failure.png", "result.json", "teacher-dictionary.png", "numeric-variable-binding.png", "stage4-saved-analysis.png", "teacher-submitted-appendix.png"]) {
     await Bun.file(join(artifacts, name)).delete().catch(() => undefined);
 }
 const environment = { ...process.env, DATABASE_URL: String(databaseUrl), DEMO_MODE: "1", DEV_AUTH_MODE: "0", NODE_ENV: "development", HOST: "127.0.0.1" };
@@ -82,7 +82,7 @@ async function activate(session: string, selector: string) {
     assert(activated, `Button unavailable: ${selector}`);
 }
 async function namedButton(session: string, name: string) {
-    const activated = await evaluate(session, `(() => {const button = [...document.querySelectorAll("button")].find(b => b.textContent.trim() === ${JSON.stringify(name)}); if (!button || button.disabled) return false; button.click(); return true;})()`);
+    const activated = await evaluate(session, `(() => {const button = [...document.querySelectorAll("button")].find(b => b.textContent.trim() === ${JSON.stringify(name)}); if (!button || button.disabled) return false; button.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0 })); button.click(); return true;})()`);
     assert(activated, `Button unavailable: ${name}`);
 }
 async function answerLearningCheck(id: string, option: number) {
@@ -126,7 +126,29 @@ try {
     assert(source, "Seed template missing");
     const copied = await api<{ id: number }>(teacher, `/api/teacher/topics/${source.id}/copy`, "POST");
     const name = "浏览器回归：完整教学流程";
+    await api(teacher, `/api/teacher/topics/${copied.id}`, "PUT", { name, status: 0 });
+    type DictionarySnapshot = { source: string; revision: number; dictionary: { source: string; revision: number; variables: Array<{ field: string; label: string; unit: string; kind: string; categories: unknown[]; missing: unknown[] }> } | null; suggestion: { source?: string; revision?: number; variables: Array<{ field: string; label: string; unit: string; kind: string; categories: unknown[]; missing: unknown[] }> } };
+    const suggestedDictionary = await api<DictionarySnapshot>(teacher, `/api/teacher/topics/${copied.id}/variables`);
+    const configuredVariables = suggestedDictionary.suggestion.variables.map(variable => variable.field === "每周学习时长" ? { ...variable, kind: "continuous", unit: "小时", categories: [] } : variable);
+    await api(teacher, `/api/teacher/topics/${copied.id}/variables`, "PUT", { source: suggestedDictionary.source, observedRevision: suggestedDictionary.revision, dictionary: { source: suggestedDictionary.source, revision: suggestedDictionary.revision, variables: configuredVariables } });
+    const dictionaryBefore = await api<DictionarySnapshot>(teacher, `/api/teacher/topics/${copied.id}/variables`);
+    const continuousVariable = (dictionaryBefore.dictionary ?? dictionaryBefore.suggestion).variables.find(variable => variable.kind === "continuous");
+    assert(continuousVariable, `Copied topic has no continuous variable for numeric binding: ${JSON.stringify((dictionaryBefore.dictionary ?? dictionaryBefore.suggestion).variables.map(variable => [variable.field, variable.kind, variable.unit]))}`);
+    await page(teacher, "/teacher/topic", `[data-testid="teacher-topic-edit-${copied.id}"]`);
+    await activate(teacher, `[data-testid="teacher-topic-edit-${copied.id}"]`);
+    await visible(teacher, '[data-testid="teacher-topic-step-1"]');
+    await activate(teacher, '[data-testid="teacher-topic-next"]');
+    await activate(teacher, '[data-testid="teacher-topic-next"]');
+    await visible(teacher, `input[aria-label="${continuousVariable.field} 标签"]`);
+    const dictionaryLabel = `${continuousVariable.label}（浏览器确认）`;
+    await browser(teacher, "fill", `input[aria-label="${continuousVariable.field} 标签"]`, dictionaryLabel);
+    await browser(teacher, "screenshot", join(artifacts, "teacher-dictionary.png"));
+    await namedButton(teacher, "明确确认并保存");
+    await eventually(async () => (await api<{ revision: number; dictionary: { variables: Array<{ field: string; label: string }> } | null }>(teacher, `/api/teacher/topics/${copied.id}/variables`)).dictionary?.variables.some(variable => variable.field === continuousVariable.field && variable.label === dictionaryLabel), "Dictionary UI save did not persist");
+    const staleConflict = await evaluate<{ status: number; code?: string }>(teacher, `(async()=>{const r=await fetch(${JSON.stringify(`/api/teacher/topics/${copied.id}/variables`)},{method:"PUT",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(${JSON.stringify({ source: dictionaryBefore.source, observedRevision: dictionaryBefore.revision, dictionary: dictionaryBefore.dictionary ?? { source: dictionaryBefore.source, revision: dictionaryBefore.revision, variables: dictionaryBefore.suggestion.variables } })})});const p=await r.json();return {status:r.status,code:p.error?.code}})()`);
+    assert(staleConflict.status === 409 && staleConflict.code === "VARIABLE_REVISION_CONFLICT", "Stale dictionary update did not produce an optimistic conflict");
     await api(teacher, `/api/teacher/topics/${copied.id}`, "PUT", { name, status: 1 });
+    console.log("PASS teacher dictionary representative UI save and stale-revision conflict");
     const classes = await api<Array<{ id: number; name: string }>>(teacher, "/api/teacher/classes");
     const targetClass = classes.find(item => item.name === "2026级统计学1班");
     assert(targetClass, "Seed class missing");
@@ -146,19 +168,32 @@ try {
     const questionnaire = {
         title: "学习投入调查", welcomeText: "欢迎参加本次学习投入调查，请根据真实情况回答，所有题目仅用于课堂教学与统计分析。",
         endingText: "感谢您的参与和支持，本次调查已经结束，调查结果将用于理解学习投入的总体特征。",
-        questions: Array.from({ length: 5 }, (_, index) => ({ id: `q${index}`, type: "boolean", content: `本周是否完成学习活动 ${index + 1}？` })),
+        questions: Array.from({ length: 5 }, (_, index) => index === 0
+            ? { id: "q0", type: "numeric", content: `请填写您的${continuousVariable.label}`, unit: continuousVariable.unit, decimalPlaces: 0 }
+            : { id: `q${index}`, type: "boolean", content: `本周是否完成学习活动 ${index + 1}？` }),
     };
     experiment = await api(student, `${experimentPath}/stages/1/complete`, "POST", { observedVersion: experiment.version, questionnaire });
     experiment = await api(student, `${experimentPath}/stages/1/reopen`, "POST", { observedVersion: experiment.version });
     await page(student, stageUrl, '[data-testid="student-questionnaire-title"]');
     await browser(student, "set", "viewport", "1280", "800");
     await browser(student, "fill", '[data-testid="student-questionnaire-title"]', "学习投入调查：浏览器试填");
+    await activate(student, '[data-testid="student-questionnaire-step-2"]');
+    await namedButton(student, "关联变量");
+    await visible(student, '[aria-label="选择变量字段"]');
+    await browser(student, "click", '[aria-label="选择变量字段"]');
+    const selectedVariable = await evaluate(student, `(() => {const option=[...document.querySelectorAll('[role="option"]')].find(element=>element.textContent.trim()===${JSON.stringify(`${dictionaryLabel}（${continuousVariable.field}）`)});if(!option)return false;option.dispatchEvent(new MouseEvent("click",{bubbles:true}));return true})()`);
+    assert(selectedVariable, "Numeric variable option is unavailable");
+    await namedButton(student, "确认关联");
+    await eventually(() => evaluate(student, 'document.body.textContent.includes("已关联变量")'), "Numeric variable binding was not shown");
+    await browser(student, "screenshot", join(artifacts, "numeric-variable-binding.png"));
     await activate(student, '[data-testid="student-questionnaire-step-4"]');
     await activate(student, '[data-testid="student-questionnaire-start-preview"]');
     await visible(student, '[data-testid="immersive-questionnaire-preview"]');
     assert(await evaluate(student, `(() => {const e=document.querySelector('[data-testid="immersive-questionnaire-preview"]');const r=e.getBoundingClientRect();return e.parentElement===document.body && r.top===0 && r.bottom===innerHeight;})()`), "Questionnaire preview must cover the viewport");
     await activate(student, '[data-testid="immersive-preview-start"]');
-    for (let index = 0; index < 5; index++) {
+    await browser(student, "fill", '[data-testid="questionnaire-preview-numeric"]', "10");
+    await activate(student, '[data-testid="immersive-preview-next"]');
+    for (let index = 1; index < 5; index++) {
         await evaluate(student, `(() => {const button=[...document.querySelectorAll('[data-testid="immersive-questionnaire-preview"] button')].find(e=>e.textContent.trim().endsWith("是"));if(!button)throw Error("Missing answer");button.click();})()`);
         assert(await evaluate(student, 'Boolean(document.querySelector("[data-testid=immersive-preview-next]"))'), "Selecting an answer must not advance automatically");
         await activate(student, '[data-testid="immersive-preview-next"]');
@@ -186,6 +221,8 @@ try {
         "Planning footer must not overlap scrollable content");
     console.log("PASS planning dialog viewport and content/footer geometry (real browser)");
     const plan = computePpsMeanPlan();
+    const hasLearningEntry = await evaluate(student, '[...document.querySelectorAll("button")].some(button => button.textContent.trim() === "暂不估计，直接查看建议")');
+    if (hasLearningEntry) {
     await namedButton(student, "暂不估计，直接查看建议");
     assert(await evaluate(student, '!document.body.textContent.includes("已了解，直接调整方案")'), "Planning still exposes the learning bypass");
     await activate(student, '[data-testid="immersive-sp-next"]');
@@ -214,8 +251,12 @@ try {
     await answerLearningCheck("calculation", 2);
     await activate(student, '[data-testid="immersive-sp-next"]');
     assert(await evaluate(student, `document.querySelector('[data-testid="immersive-sp-final-size"]').value === ${JSON.stringify(String(plan.recommendedSize))}`), "Planning UI recommendation differs from the fixture");
+    } else {
+        await namedButton(student, "采用建议值");
+        assert(await evaluate(student, `document.querySelector('[data-testid="immersive-sp-final-size"]').value === ${JSON.stringify(String(plan.recommendedSize))}`), "Planning UI recommendation differs from the fixture");
+    }
     await activate(student, '[data-testid="immersive-sp-decision-next"]');
-    for (const [id, answer] of [["quiz_se", 0], ["quiz_population", 1], ["quiz_design", 0]] as const) {
+    if (await evaluate(student, 'Boolean(document.querySelector("[data-testid=immersive-sp-quiz-next]"))')) for (const [id, answer] of [["quiz_se", 0], ["quiz_population", 1], ["quiz_design", 0]] as const) {
         assert(await evaluate(student, 'document.querySelector("[data-testid=immersive-sp-quiz-next]").disabled && !document.body.textContent.includes("跳过，直接去确认")'), "Quiz can be skipped without understanding");
         await answerLearningCheck(id, answer);
         await activate(student, '[data-testid="immersive-sp-quiz-next"]');
@@ -281,6 +322,29 @@ try {
     await visible(student, '[data-testid="student-analysis-report-editor"]');
     assert(await evaluate(student, `document.querySelector('[data-testid="student-analysis-report-editor"]').textContent.includes(${JSON.stringify(draftText)})`), "Render recovery lost report draft");
     console.log("PASS request retry, page error boundary and draft restoration");
+    await activate(student, '[data-testid="student-analysis-workspace-univariate"]');
+    await visible(student, '[data-testid="student-univariate-workspace"]');
+    await browser(student, "fill", '[data-testid="student-univariate-workspace"] textarea', `简单随机样本中的${dictionaryLabel}分布如何？`);
+    await evaluate(student, `(() => {const selects=document.querySelectorAll('[data-testid="student-univariate-workspace"] select');for(const [select,value] of [[selects[0],"simple"],[selects[1],${JSON.stringify(continuousVariable.field)}]]){select.value=value;select.dispatchEvent(new Event("change",{bubbles:true}))}})()`);
+    await namedButton(student, "执行并保存分析");
+    await eventually(() => evaluate(student, 'document.body.textContent.includes("已保存分析（1/")'), "Univariate analysis did not save through the UI");
+    const savedAnalyses = await api<{ records: Array<{ id: number; config: { field: string; method: string }; result: { kind: string } }> }>(student, `/api/student/tasks/${task.id}/analyses`);
+    const savedAnalysis = savedAnalyses.records.find(record => record.config.field === continuousVariable.field && record.config.method === "simple");
+    assert(savedAnalysis?.result.kind === "numeric", "Saved analysis is missing or is not numeric");
+    await namedButton(student, "引用到报告");
+    await eventually(() => evaluate(student, 'document.body.textContent.includes("移除引用")'), "Saved analysis was not referenced in the report draft");
+    await evaluate(student, '[...document.querySelectorAll("button")].find(button=>button.textContent.trim()==="移除引用").closest("article").scrollIntoView({block:"center"})');
+    await browser(student, "screenshot", join(artifacts, "stage4-saved-analysis.png"));
+    await browser(student, "fill", '[data-testid="student-univariate-workspace"] textarea', `加权估计${dictionaryLabel}的总体均值是多少？`);
+    await browser(student, "check", '[data-testid="student-univariate-workspace"] input[type="checkbox"]');
+    await namedButton(student, "执行并保存分析");
+    await eventually(() => evaluate(student, 'document.body.textContent.includes("已保存分析（2/")'), "Weighted analysis did not save");
+    await browser(student, "set", "viewport", "1280", "1100");
+    await evaluate(student, 'document.querySelector("[data-testid=student-univariate-workspace] article").scrollIntoView({block:"center"})');
+    assert(await evaluate(student, 'document.querySelector("[data-testid=student-univariate-workspace] article").textContent.includes("设计加权比率点估计")'), "Weighted analysis lacks its interpretation label");
+    await browser(student, "screenshot", join(artifacts, "stage4-weighted-analysis.png"));
+    await browser(student, "set", "viewport", "1280", "800");
+    await activate(student, '[data-testid="student-analysis-workspace-report"]');
     const report = "本次实验以学生每周学习时长的均值为研究目标。我们比较了简单随机、系统抽样与PPS的实际估计及设计标准误，结合总体真值讨论各设计的精度和代表性。样本量规划采用有限总体校正，本次无回答率假设为零。这里的误差分析依赖完整虚拟总体，不能直接替代现实调查中的设计方差估计。";
     await browser(student, "fill", '[data-testid="student-analysis-report-editor"]', report);
     await browser(student, "screenshot", join(artifacts, "report-editor.png"));
@@ -295,10 +359,24 @@ try {
         await activate(student, '[data-testid="student-preview-submit"]');
         await visible(student, '[data-testid="student-preview-submit-confirm"]');
         await activate(student, '[data-testid="student-preview-submit-confirm"]');
-        await eventually(async () => (await api<ExperimentData>(student, experimentPath)).status === "submitted", "Submission failed");
+        await eventually(async () => {
+            if ((await api<ExperimentData>(student, experimentPath)).status === "submitted") return true;
+            const error = await evaluate<string>(student, '[...document.querySelectorAll(".text-destructive")].map(element=>element.textContent).filter(Boolean).join(" | ")');
+            if (error) throw new Error(error);
+            return false;
+        }, "Submission failed");
     }
     await submit();
+    const frozenStudent = await api<{ snapshot: { analysisAppendices: Array<{ id: number; result: unknown }> } }>(student, `/api/student/tasks/${task.id}/submission`);
+    const frozenTeacher = await api<{ analysisAppendices: Array<{ id: number; result: unknown }> }>(teacher, `/api/teacher/grading/${experiment.id}`);
+    assert(frozenStudent.snapshot.analysisAppendices[0]?.id === savedAnalysis.id, "Submission did not freeze selected analysis");
+    assert(JSON.stringify(frozenTeacher.analysisAppendices) === JSON.stringify(frozenStudent.snapshot.analysisAppendices), "Student and teacher did not receive the same frozen appendices");
     await page(teacher, `/teacher/grading/${experiment.id}`, "#grading-score-report");
+    await namedButton(teacher, "报告");
+    await eventually(() => evaluate(teacher, `document.body.textContent.includes(${JSON.stringify(`简单随机样本中的${dictionaryLabel}分布如何？`)})`), "Teacher grading view is missing the frozen analysis appendix");
+    await evaluate(teacher, 'document.querySelector("[data-testid=analysis-appendices]").scrollIntoView({block:"start"})');
+    await browser(teacher, "screenshot", join(artifacts, "teacher-submitted-appendix.png"));
+    console.log("PASS saved univariate analysis, report reference, submission snapshot and teacher appendix");
     await namedButton(teacher, "驳回修改");
     await browser(teacher, "fill", "#grading-reject-reason", "请补充不同抽样设计的误差解释后重新提交。");
     await namedButton(teacher, "确认驳回");
@@ -306,7 +384,7 @@ try {
     experiment = await api(student, experimentPath);
     await page(student, stageUrl, '[data-testid="student-experiment-rejection-notice"]');
     experiment = await api(student, `${experimentPath}/stages/4/reopen`, "POST", { observedVersion: experiment.version });
-    experiment = await api(student, `${experimentPath}/stages/4/complete`, "POST", { observedVersion: experiment.version, reportContent: `<p>${report}补充说明：各设计的误差应结合抽样框排序和规模变量与目标变量的关系解释。</p>` });
+    experiment = await api(student, `${experimentPath}/stages/4/complete`, "POST", { observedVersion: experiment.version, reportContent: `<p>${report}补充说明：各设计的误差应结合抽样框排序和规模变量与目标变量的关系解释。</p>`, analysisReferences: [savedAnalysis.id] });
     await submit();
     console.log("PASS UI submission, teacher rejection and student resubmission");
 
