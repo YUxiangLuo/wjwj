@@ -79,11 +79,12 @@ for (const extension of ["csv", "xlsx"] as const) {
 for (const field of ["studentId", "name", "email"] as const) {
     test(`single creation rejects NUL in ${field} without writing`, async () => {
         const { routes, operations } = await load();
-        const response = await routes.classStudentsRoutes.POST!(Object.assign(new Request("https://example.com", {
+        const failure = await routes.classStudentsRoutes.POST!(Object.assign(new Request("https://example.com", {
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ studentId: "VALID", name: "学生", email: "", [field]: "bad\0value" }),
-        }), { params: { classId: "3" } }));
-        expect(response.status).toBe(400);
+        }), { params: { classId: "3" } })).catch((cause: unknown) => cause);
+        // 共享请求体守卫在路由逻辑之前拒绝 NUL，且不触发任何写入
+        expect((failure as Error).message).toContain("空字符");
         expect(operations.some(op => op.kind === "insert")).toBe(false);
     });
 }

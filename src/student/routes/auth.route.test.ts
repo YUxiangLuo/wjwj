@@ -39,7 +39,6 @@ test(`student login canonicalizes ${studentId} and creates an independent fixed 
 test("student login rejects invalid fields before querying", async () => {
     for (const body of [
         { studentId: 123, password: "wrong" },
-        { studentId: "S\0ID", password: "wrong" },
         { studentId: "S001", password: 123 },
     ]) {
         const { module, operations } = await load();
@@ -48,6 +47,11 @@ test("student login rejects invalid fields before querying", async () => {
         expect(await response.json()).toMatchObject({ error: { code: "VALIDATION_ERROR" } });
         expect(operations).toHaveLength(0);
     }
+    // NUL 由共享的请求体守卫在路由逻辑之前拒绝，不再到达字段校验
+    const nul = await load();
+    const failure = await nul.module.loginRoutes.POST!(request("POST", { studentId: "S\0ID", password: "wrong" })).catch((cause: unknown) => cause);
+    expect((failure as Error).message).toContain("空字符");
+    expect(nul.operations).toHaveLength(0);
 });
 
 test("wrong student passwords never create lockout state", async () => {
