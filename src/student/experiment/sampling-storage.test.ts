@@ -145,3 +145,13 @@ test("stratified hydration rejects missing population coverage and mismatched Nh
         stratified: { ...base, layers: [{ name: "A", count: 2, sampleCount: 1 }] },
     }, [...stratifiedPopulation, { id: 4, group: "" }])).toMatchObject({ ok: false, method: "stratified" });
 });
+
+test("a completed section without indices or embedded rows is invalid storage", () => {
+    const corrupted = { simple: { completed: true, serverCount: 1 } };
+    const inspection = inspectSamplingResultsStorage(corrupted);
+    expect(inspection).toMatchObject({ ok: false, method: "simple" });
+    expect(inspection.ok ? "" : inspection.reason).toBe("completed result has no sampled rows");
+    // 旧格式（带 data）与服务器结果（带 indices）仍然有效
+    expect(inspectSamplingResultsStorage({ simple: { completed: true, data: [] } })).toMatchObject({ ok: true });
+    expect(inspectSamplingResultsStorage({ simple: { completed: true, serverGenerated: true, sampleCount: 1, seed: 1, indices: [0], data: [{}] } })).toMatchObject({ ok: true });
+});

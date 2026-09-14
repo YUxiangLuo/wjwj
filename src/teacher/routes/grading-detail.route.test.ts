@@ -14,7 +14,7 @@ test("grading detail prefers the immutable submission snapshot", async () => {
         populationSize: 7200,
         questionnaire: { title: "提交时问卷", questions: [] },
         samplePlan: { confidenceLevel: "90", marginOfError: 4, recommendedSize: 210, finalSampleSize: 240 },
-        samplingResults: { simple: { completed: true, sampleCount: 240 } },
+        samplingResults: { simple: { completed: true, sampleCount: 240, data: Array.from({ length: 240 }, () => ({})) } },
         samplingPolicy: { version: 1, methods: { simple: "required", systematic: "optional", pps: "disabled", stratified: "optional" } },
         reportContent: "提交时报告",
         weightConfig: { questionnaire: 40, process: 35, report: 25 },

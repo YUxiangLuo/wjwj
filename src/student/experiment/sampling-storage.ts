@@ -177,7 +177,14 @@ export function inspectSamplingResultsStorage(value: unknown): SamplingStorageIn
             if (metadataError) return { ok: false, method, reason: metadataError };
             continue;
         }
-        if (section.serverGenerated === true && section.completed === true) {
+        // A completed method with neither replay indices nor embedded rows is
+        // corrupt storage (e.g. a truncated JSONB update). Treating it as an
+        // empty legacy sample would silently hide the corruption behind an
+        // "unavailable" analysis instead of reporting invalid storage.
+        if (section.completed === true) {
+            return { ok: false, method, reason: "completed result has no sampled rows" };
+        }
+        if (section.serverGenerated === true) {
             return { ok: false, method, reason: "server-generated result has no replay indices" };
         }
     }

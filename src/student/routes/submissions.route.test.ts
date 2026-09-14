@@ -29,7 +29,7 @@ test("submission endpoint returns the task's current experiment result", async (
         populationSize: 1000,
         questionnaire: { title: "实时问卷" },
         samplePlan: { finalSampleSize: 80 },
-        samplingResults: { simple: { completed: true, sampleCount: 80 } },
+        samplingResults: { simple: { completed: true, sampleCount: 80, data: Array.from({ length: 80 }, () => ({})) } },
         reportContent: "<p>实时报告</p>",
         submissionSnapshot: {
             topicName: "提交时课题",
@@ -37,7 +37,7 @@ test("submission endpoint returns the task's current experiment result", async (
             populationSize: 900,
             questionnaire: { title: "提交时问卷", questions: [] },
             samplePlan: { finalSampleSize: 60 },
-            samplingResults: { simple: { completed: true, sampleCount: 60 } },
+            samplingResults: { simple: { completed: true, sampleCount: 60, data: Array.from({ length: 60 }, () => ({})) } },
             reportContent: "<p>提交时报告</p>",
             weightConfig: { questionnaire: 40, process: 35, report: 25 },
             analysisAppendices: [{ id: 7, stale: false }],
