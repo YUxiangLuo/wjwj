@@ -267,11 +267,13 @@
         @apply border-border;
     }
 
-    /* The three application shells intentionally support desktop viewports only. */
+    /* The three application shells intentionally support desktop viewports only;
+       the supported floor is 1024px (64rem). Wider content scrolls inside its own
+       container instead of widening the document. */
     html,
     body,
     #root {
-        min-width: 80rem;
+        min-width: 64rem;
     }
 
     body {

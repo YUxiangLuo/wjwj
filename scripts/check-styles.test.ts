@@ -34,7 +34,7 @@ describe("style guard", () => {
         ]);
 
         expect(themeCss).toContain("--breakpoint-*: initial;");
-        expect(themeCss).toMatch(/html,\s*\n\s*body,\s*\n\s*#root\s*\{\s*\n\s*min-width:\s*80rem;/m);
+        expect(themeCss).toMatch(/html,\s*\n\s*body,\s*\n\s*#root\s*\{\s*\n\s*min-width:\s*64rem;/m);
         expect(themeCss).not.toMatch(/@media\s*[^\{]*(?:(?:min|max)-width|orientation|(?:any-)?pointer|hover)|@container\b/i);
         for (const html of appHtml) expect(html).not.toMatch(/<meta\s+name=["']viewport["']/i);
     });

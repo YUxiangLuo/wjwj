@@ -1,6 +1,6 @@
 # Design system
 
-`styles/theme.css` 是三个 SPA 的唯一主题源。项目仅支持浅色桌面界面；页面组合本地维护的 `src/components/ui` primitives 和共享模式，不创建主题副本。
+`styles/theme.css` 是三个 SPA 的唯一主题源。项目仅支持浅色桌面界面（支持下限 1024×768，更宽内容在自身容器内滚动）；页面组合本地维护的 `src/components/ui` primitives 和共享模式，不创建主题副本。
 
 ## 必须遵守的规则
 

@@ -564,6 +564,25 @@ try {
     await evaluate(student, 'document.querySelector("[data-testid=student-analysis-report-editor]").scrollIntoView({block:"end"})');
     const narrow = await evaluate<{ scrollWidth: number; innerWidth: number; editorWidth: number; left: number; right: number }>(student, `(() => {const editor = document.querySelector('[data-testid=student-analysis-report-editor]');const rect = editor.getBoundingClientRect();return { scrollWidth: document.documentElement.scrollWidth, innerWidth, editorWidth: rect.width, left: rect.left, right: rect.right };})()`);
     assert(narrow.editorWidth > 0 && narrow.left >= 0 && narrow.right <= narrow.innerWidth, `Narrow viewport hides or overflows the report editor: ${JSON.stringify(narrow)}`);
+    // 1024px 是产品支持的桌面下限：整页不得横向溢出，阶段主操作必须完整可见且可获得焦点
+    const narrowPage = await evaluate<{ scrollWidth: number; innerWidth: number; action: { right: number; bottom: number; width: number } }>(student, `(() => {
+        const actions = document.querySelector('[data-testid=student-stage-actions]');
+        const buttons = actions ? [...actions.querySelectorAll('button')].filter(button => button.offsetParent !== null) : [];
+        const primary = buttons[buttons.length - 1];
+        const rect = primary ? primary.getBoundingClientRect() : { right: -1, bottom: -1, width: 0 };
+        return { scrollWidth: document.documentElement.scrollWidth, innerWidth, action: { right: rect.right, bottom: rect.bottom, width: rect.width } };
+    })()`);
+    assert(narrowPage.scrollWidth <= narrowPage.innerWidth, `1024px viewport overflows the document: ${JSON.stringify(narrowPage)}`);
+    assert(narrowPage.action.width > 0 && narrowPage.action.right <= narrowPage.innerWidth && narrowPage.action.bottom <= 800, `1024px viewport hides the primary stage action: ${JSON.stringify(narrowPage)}`);
+    const narrowFocusable = await evaluate<boolean>(student, `(() => {
+        const actions = document.querySelector('[data-testid=student-stage-actions]');
+        const buttons = actions ? [...actions.querySelectorAll('button')].filter(button => button.offsetParent !== null) : [];
+        const primary = buttons[buttons.length - 1];
+        if (!primary) return false;
+        primary.focus();
+        return document.activeElement === primary;
+    })()`);
+    assert(narrowFocusable, "1024px primary stage action is not focusable");
     await browser(student, "screenshot", join(artifacts, "empty-path-narrow.png"));
     await browser(student, "set", "viewport", "1280", "800");
     const emptyCsv = await evaluate<{ status: number; text: string }>(student, `(async () => {const response = await fetch(${JSON.stringify(`/api/student/tasks/${emptyTask.id}/export?type=all`)});return { status: response.status, text: await response.text() };})()`);

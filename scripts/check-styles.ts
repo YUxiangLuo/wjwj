@@ -662,8 +662,8 @@ async function main() {
     if (!themeCss.includes("--breakpoint-*: initial;")) {
         failures.push("styles/theme.css must disable Tailwind's viewport breakpoints.");
     }
-    if (!/html,\s*\n\s*body,\s*\n\s*#root\s*\{\s*\n\s*min-width:\s*80rem;/m.test(themeCss)) {
-        failures.push("styles/theme.css must enforce the 80rem desktop minimum width on html, body, and #root.");
+    if (!/html,\s*\n\s*body,\s*\n\s*#root\s*\{\s*\n\s*min-width:\s*64rem;/m.test(themeCss)) {
+        failures.push("styles/theme.css must enforce the 64rem (1024px) desktop minimum width on html, body, and #root.");
     }
     if (/@media\s*[^\{]*(?:(?:min|max)-width|orientation|(?:any-)?pointer|hover)|@container\b/i.test(themeCss)) {
         failures.push("styles/theme.css must not contain device-responsive media or container queries; the frontend is desktop-only.");
