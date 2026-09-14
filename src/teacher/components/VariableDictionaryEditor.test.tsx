@@ -30,8 +30,10 @@ beforeEach(() => {
     getVariableDictionary.mockClear();
     updateVariableDictionary.mockClear();
 });
-afterEach(() => {
+afterEach(async () => {
     cleanup();
+    // Let React/scheduler deferred work run before the document is torn down.
+    await new Promise(resolve => setTimeout(resolve, 0));
     restoreDom?.();
     restoreDom = null;
 });

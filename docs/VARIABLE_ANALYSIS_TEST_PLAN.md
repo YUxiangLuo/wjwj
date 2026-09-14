@@ -1,6 +1,6 @@
 # 变量分析前四阶段：最近八次提交的深度测试规划
 
-状态：待执行的增补测试规划。本文不是测试通过报告，不修改[原开发计划](VARIABLE_ANALYSIS_PLAN.md)。
+状态：T1–T4 已按本文执行，结果、修复与未覆盖项见[测试报告](VARIABLE_ANALYSIS_TEST_REPORT.md)。本文仍是测试规划，不修改[原开发计划](VARIABLE_ANALYSIS_PLAN.md)。
 
 ## 1. 范围与验收口径
 
