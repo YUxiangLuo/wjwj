@@ -123,16 +123,16 @@ export function Dashboard() {
                 if (announcements.length === 0) return null;
                 const latest = announcements[0]!;
                 return (
-                    <div className="flex items-center gap-3 px-4 py-3 bg-warning-muted border border-warning-border rounded-surface">
-                        <Megaphone className="w-5 h-5 text-warning shrink-0" />
+                    <div className="flex items-center gap-3 px-4 py-3 bg-info-muted border border-info-border rounded-surface">
+                        <Megaphone className="w-5 h-5 text-info shrink-0" />
                         <div className="flex-1 min-w-0">
-                            <span className="text-label text-warning font-medium truncate block">{latest.title}</span>
+                            <span className="text-label text-info font-medium truncate block">{latest.title}</span>
                         </div>
-                        <span className="text-meta text-warning shrink-0">{announcements.length} 条公告</span>
+                        <span className="text-meta text-info shrink-0">{announcements.length} 条公告</span>
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="text-warning hover:text-warning hover:bg-warning-muted h-7 text-meta px-2 shrink-0"
+                            className="text-info hover:text-info hover:bg-info-muted h-7 text-meta px-2 shrink-0"
                             onClick={() => setShowAnnouncements(true)}
                         >
                             查看详情
@@ -194,7 +194,7 @@ export function Dashboard() {
                 <DialogContent className="bg-card border-border text-foreground max-w-lg max-h-[80vh] flex flex-col">
                     <DialogHeader>
                         <DialogTitle className="text-foreground flex items-center gap-2">
-                            <Megaphone className="w-5 h-5 text-warning" />
+                            <Megaphone className="w-5 h-5 text-info" />
                             系统公告
                         </DialogTitle>
                         <DialogDescription className="sr-only">
@@ -212,7 +212,7 @@ export function Dashboard() {
                                     onClick={() => handleAnnouncementClick(item)}
                                 >
                                     <div className="flex items-start gap-2">
-                                        <Circle className="w-2 h-2 mt-1.5 text-warning fill-warning shrink-0" />
+                                        <Circle className="w-2 h-2 mt-1.5 text-info fill-info shrink-0" />
                                         <div className="flex-1 min-w-0">
                                             <div className="text-label font-medium truncate text-foreground">
                                                 {item.title}

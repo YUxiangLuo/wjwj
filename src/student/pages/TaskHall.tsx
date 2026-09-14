@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
     LayoutDashboard, FileText,
-    ChevronRight, Clock, AlertCircle, Trophy, BookOpen
+    ChevronRight, Clock, AlertCircle, Info, Trophy, BookOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, type StatusBadgeIntent } from "@/components/StatusBadge";
@@ -362,17 +362,17 @@ export function TaskHall() {
                 <p className="mt-1 text-label text-muted-foreground">查看实验任务、截止时间与学习进度（中国标准时间 UTC+8）。</p>
             </div>
             {latestAnnouncement && (
-                <div className="rounded-surface border border-warning-border bg-warning-muted p-4 flex items-center justify-between gap-4">
+                <div className="rounded-surface border border-info-border bg-info-muted p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <div className="p-2 rounded-control bg-warning-muted text-warning shrink-0">
-                            <AlertCircle className="w-5 h-5" />
+                        <div className="p-2 rounded-control bg-info-muted text-info shrink-0">
+                            <Info className="w-5 h-5" />
                         </div>
                         <div>
-                            <div className="text-label text-warning font-medium font-mono tracking-wider uppercase text-meta mb-0.5">最新公告</div>
-                            <div className="text-label text-warning font-medium line-clamp-1">{latestAnnouncement.title}</div>
+                            <div className="text-label text-info font-medium font-mono tracking-wider uppercase text-meta mb-0.5">最新公告</div>
+                            <div className="text-label text-info font-medium line-clamp-1">{latestAnnouncement.title}</div>
                         </div>
                     </div>
-                    <Button variant="ghost" size="sm" className="rounded-control text-warning hover:text-warning hover:bg-warning-muted shrink-0" onClick={() => setShowAnnouncements(true)}>
+                    <Button variant="ghost" size="sm" className="rounded-control text-info hover:text-info hover:bg-info-muted shrink-0" onClick={() => setShowAnnouncements(true)}>
                         查看详情
                     </Button>
                 </div>
