@@ -5,7 +5,7 @@ import { suggestDictionary, validateDictionary } from "../domain/variables/dicti
 import type { VariableDefinition } from "../domain/variables/types";
 import { readVariableSource } from "./variable-source";
 
-// docs/VARIABLE_ANALYSIS_TEST_PLAN.md §4 阶段一：D01 真实解析 + 字典确认，D03 来源标识，D07 限额。
+// 覆盖真实解析、字典确认、来源标识与文件限额。
 
 const created: string[] = [];
 async function writeStorage(fileName: string, bytes: ArrayBuffer | Uint8Array | string) {

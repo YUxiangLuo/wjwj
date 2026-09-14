@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { calculateUnivariate } from "./analysis";
 import type { NumericAnalysisResult, VariableDefinition } from "./types";
 
-// docs/VARIABLE_ANALYSIS_TEST_PLAN.md §6 补充属性测试（P1）。
+// 变量分析属性回归。
 // 输入生成器带独立 mulberry32，与生产随机流无关；断言失败时带上种子与迭代号。
 
 function mulberry32(seed: number) {

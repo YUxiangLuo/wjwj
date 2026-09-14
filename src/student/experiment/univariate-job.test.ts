@@ -52,7 +52,7 @@ test("worker replays all four designs and refuses forged indices, probabilities 
     } finally { await Bun.file(absolute).delete(); }
 });
 
-// docs/VARIABLE_ANALYSIS_TEST_PLAN.md A03：四设计真实文件重放。
+// 四种抽样设计的真实文件重放回归。
 test("worker rejects forged seeds, indices, layer identity, probabilities and changed source bytes", async () => {
     const fixture = await buildTrustedFixture();
     try {

@@ -49,7 +49,7 @@ describe("question variable binding", () => {
         expect(() => validateQuestionBindings(data({ ...q, variableBinding: binding(["low", "mid", "high"]) }), dictionary, 3)).not.toThrow();
         expect(() => validateQuestionBindings(data({ ...q, variableBinding: binding(["high", "mid", "low"]) }), dictionary, 3)).toThrow(/类别顺序递增/);
     });
-    // docs/VARIABLE_ANALYSIS_TEST_PLAN.md Q03。
+    // 单值题关联必须保持完整双射。
     test("boolean and single mappings require a complete bijection with valid category values", () => {
         const q: Question = { id: "b", type: "boolean", content: "是否使用图书馆？" };
         const withAnswers = (answers: NonNullable<Question["variableBinding"]>["mappings"][number]["answers"]): NonNullable<Question["variableBinding"]> => ({
@@ -84,7 +84,7 @@ describe("question variable binding", () => {
         expect(() => validateQuestionBindings(data({ ...q, variableBinding: make([{ ...binary("uses_library", 1, 0), option: "图书馆" }]) }), dictionary, 3)).toThrow(/每个多选选项必须关联独立字段/);
     });
 
-    // docs/VARIABLE_ANALYSIS_TEST_PLAN.md Q04：逐项语义变更都使旧签名失效。
+    // 逐项语义变更都使旧签名失效。
     test.each([
         ["题干", { content: "新的题干？" }],
         ["题型", { type: "multiple" as const, options: ["男", "女"] }],
@@ -126,7 +126,7 @@ describe("question variable binding", () => {
         expect(() => validateQuestionBindings({ title: "t", welcomeText: "w", endingText: "e", questions: [copied] }, dictionary, 3)).not.toThrow();
     });
 
-    // docs/VARIABLE_ANALYSIS_TEST_PLAN.md Q05。
+    // 跨任务、来源和修订的关联均无效。
     test("cross-task, source and revision bindings are rejected", () => {
         const q: Question = { id: "q", type: "single", content: "性别", options: ["男", "女"] };
         const binding = (overrides: Record<string, unknown>) => ({ taskId: 3, source: dictionary.source, revision: 2, signature: questionSignature(q), mappings: [{ field: "sex", answers: [{ answer: "男", value: 1 }, { answer: "女", value: 2 }] }], ...overrides });

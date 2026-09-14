@@ -42,7 +42,7 @@ describe("validateQuestionAtIndex", () => {
         expect(validateQuestionAtIndex({ type: "numeric", content: "身高", decimalPlaces: 1, numericMin: 2, numericMax: 1 }, 1)).toMatch(/数值范围/);
     });
 
-    // docs/VARIABLE_ANALYSIS_TEST_PLAN.md Q02：布尔/数组/对象/null 不得经 Number() 强转成 0/1。
+    // 布尔、数组、对象和 null 不得经 Number() 强转成 0/1。
     test.each([
         ["下限布尔 true", { numericMin: true, numericMax: 5 }],
         ["上限布尔 false", { numericMin: 0, numericMax: false }],

@@ -31,3 +31,20 @@
 3. 用 `bun run start` 启动；不要用未构建的生产模式上课。
 4. 由反向代理终止 TLS；仅在全部流量强制 HTTPS 后开启 HSTS。仅在代理可信且应用不接受直连时启用 `TRUST_PROXY=1`；代理超时须允许服务端 30 秒期限后的错误响应返回。
 5. 验证三个入口、深链、总体/附件下载和登录—抽样—提交—批改闭环。
+
+## 内部演示
+
+**演示模式公开演示凭据，不得对外部署。** 只在独立空库运行：
+
+```sh
+bun run db:migrate
+bun run db:seed:demo
+bun run db:seed:check
+bun run start:demo
+```
+
+`start:demo` 启用账号预填和随机学生凭据端点，普通 `start` 不包含演示密码。默认管理员是 `admin` / `admin123`，教师和学生初始密码分别为工号、学号。
+
+Seed 非幂等且仅支持空库；失败后不要直接重跑。确认数据库可丢弃后，按 [DATABASE.md](../DATABASE.md) 的保护流程运行 `db:reset:demo`，该命令不清理 `storage/`。`SEED_NOW` 可指定带时区的 ISO 时间锚点。演示内容以 `src/db/seeds/default.ts` 和 `dogfood-fixtures.ts` 为准，使用 `bun run db:seed:check` 验证，不在文档维护数量或状态快照。
+
+扩充课题使用 `scripts/add-demo-research-topics.ts`，并提供 `DEMO_BASE_URL` 和持久保存的 `DEMO_CATALOG_MANIFEST`；中断续跑必须沿用同一清单。

@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import * as schema from "./schema";
 import { assertTestDatabaseIsMigrated } from "./test-database-guard";
 
-// docs/VARIABLE_ANALYSIS_TEST_PLAN.md D02/D04/D05：字典保存、冻结、换源与复制的实库竞争。
+// 字典保存、冻结、换源与复制的真实数据库竞争回归。
 const required = process.env.REQUIRE_TEST_DATABASE === "1";
 const url = process.env.TEST_DATABASE_URL?.trim();
 if (required && !url) throw new Error("TEST_DATABASE_URL is required for bun run test:db");

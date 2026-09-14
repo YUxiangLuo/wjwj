@@ -8,8 +8,8 @@ import { installDomGlobals } from "@/test-utils/dom";
 const bootstrapDom = installDomGlobals("http://localhost/student");
 const { cleanup, fireEvent, render, waitFor } = await import("@testing-library/react");
 
-// docs/VARIABLE_ANALYSIS_TEST_PLAN.md A08：切换报告标签保留未执行的分析配置，
-// 隐藏面板不可交互且切换本身不发起分析请求。使用真实 Tabs（forceMount + hidden）。
+// 切换报告标签保留未执行的分析配置；隐藏面板不可交互且切换本身不发起分析请求。
+// 使用真实 Tabs（forceMount + hidden）。
 
 const mockExperimentApi = {
     getAnalysisMetrics: mock(async () => ({

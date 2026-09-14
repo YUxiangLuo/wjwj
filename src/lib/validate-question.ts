@@ -16,7 +16,7 @@ function generateQuestionId(): string {
 
 /**
  * 只接受有限数字或可解析的数字文本；布尔、数组、对象、null 不得经 `Number()`
- * 静默变成 0/1（docs/VARIABLE_ANALYSIS_TEST_PLAN.md Q02）。
+ * 静默变成 0/1。
  */
 function isFiniteNumberOption(value: unknown): boolean {
     if (typeof value === "number") return Number.isFinite(value);

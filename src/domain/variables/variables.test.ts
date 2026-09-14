@@ -60,7 +60,7 @@ test("weighted analysis rejects population missingness and numeric overflow is e
 });
 
 // ---------------------------------------------------------------------------
-// docs/VARIABLE_ANALYSIS_TEST_PLAN.md §3 夹具 F1–F4、F7 与 §6 A01–A02。
+// 类型、非对称连续、非等权及全总体夹具。
 // 期望值全部由夹具定义独立推导，未调用被测函数生成。
 // ---------------------------------------------------------------------------
 
@@ -184,7 +184,7 @@ test("A02 extreme scales are reliable or explicitly rejected, never NaN/Infinity
 });
 
 // ---------------------------------------------------------------------------
-// docs/VARIABLE_ANALYSIS_TEST_PLAN.md D02 / D06：全总体字典校验与类别上限。
+// 全总体字典校验与类别上限。
 // ---------------------------------------------------------------------------
 
 const baseVariable = (overrides: Partial<VariableDefinition> = {}): VariableDefinition => ({

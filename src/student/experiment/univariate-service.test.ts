@@ -4,7 +4,7 @@ import type { UnivariateJob } from "./univariate-job";
 import type { UnivariateData } from "./univariate-service";
 import type { WorkerReply } from "../../server/worker-service";
 
-// docs/VARIABLE_ANALYSIS_TEST_PLAN.md §8 Worker 到持久化的失败链路（P1）。
+// Worker 到持久化的失败链路回归。
 const job = (index: number): UnivariateJob => ({
     populationPath: "unused",
     fieldMapping: { index },

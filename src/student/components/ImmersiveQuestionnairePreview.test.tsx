@@ -37,7 +37,7 @@ test("numeric questions request explicit continuation before and after valid inp
     expect(view.getByText("最后一题？")).toBeTruthy();
 });
 
-// docs/VARIABLE_ANALYSIS_TEST_PLAN.md Q01：范围 −1.5～2.5、恰好 1 位小数。
+// 数值预试边界：范围 −1.5～2.5、恰好 1 位小数。
 test("numeric preview enforces inclusive bounds and exactly one decimal digit without rounding", () => {
     const numeric: QuestionnaireData = { ...questionnaire, questions: [
         { id: "numeric", type: "numeric", content: "温度？", unit: "℃", numericMin: -1.5, numericMax: 2.5, decimalPlaces: 1 },
@@ -65,7 +65,7 @@ test("numeric preview enforces inclusive bounds and exactly one decimal digit wi
     expect(view.getByText("最后一题？")).toBeTruthy();
 });
 
-// docs/VARIABLE_ANALYSIS_TEST_PLAN.md Q06：试填答案只存在于组件状态，不进入网络或问卷定义。
+// 试填答案只存在于组件状态，不进入网络或问卷定义。
 test("preview answers stay client-side and never mutate the questionnaire definition", () => {
     const originalFetch = globalThis.fetch;
     const fetchSpy = mock(() => { throw new Error("preview must not call the network"); });
@@ -92,7 +92,7 @@ test("preview answers stay client-side and never mutate the questionnaire defini
     }
 });
 
-// 提示承诺“按 Enter 继续”，键盘路径必须真的成立（docs/VARIABLE_ANALYSIS_TEST_PLAN.md Q01）。
+// 提示承诺“按 Enter 继续”，键盘路径必须真的成立。
 test("Enter continues a valid numeric answer and leaves invalid input untouched", () => {
     const view = render(<ImmersiveQuestionnairePreview questionnaire={{ ...questionnaire, questions: [
         { id: "numeric", type: "numeric", content: "时长？", unit: "小时", numericMin: 0, numericMax: 10, decimalPlaces: 1 },

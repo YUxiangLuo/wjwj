@@ -3,8 +3,7 @@ import { createStudentAuthModuleMock } from "../../test-utils/mock-auth-modules"
 import { createMockDb } from "../../test-utils/mock-db";
 import type { RouteDefinition } from "../../server/route-types";
 
-// docs/VARIABLE_ANALYSIS_TEST_PLAN.md A04：分析 POST 不得接受可信来源字段，
-// 畸形配置必须在任何数据库读写之前被拒绝。
+// 分析 POST 不得接受可信来源字段；畸形配置必须在任何数据库读写之前被拒绝。
 
 const validConfig = { question: "这个变量的平均水平是多少？", method: "simple", field: "score", weighted: false };
 const validBody = () => ({ requestId: "req-12345678", observedVersion: 6, config: validConfig });

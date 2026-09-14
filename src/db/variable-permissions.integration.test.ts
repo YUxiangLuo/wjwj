@@ -4,7 +4,7 @@ import { eq, inArray } from "drizzle-orm";
 import * as schema from "./schema";
 import { assertTestDatabaseIsMigrated } from "./test-database-guard";
 
-// docs/VARIABLE_ANALYSIS_TEST_PLAN.md §8：真实 Cookie/路由的权限与输入攻击面。
+// 使用真实 Cookie 和路由覆盖权限与输入攻击面。
 const required = process.env.REQUIRE_TEST_DATABASE === "1";
 const url = process.env.TEST_DATABASE_URL?.trim();
 if (required && !url) throw new Error("TEST_DATABASE_URL is required for bun run test:db");

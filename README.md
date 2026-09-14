@@ -28,7 +28,7 @@ bun run dev
 
 访问 `http://127.0.0.1:3000/student`、`/teacher` 或 `/admin`。生产运行 `bun run start`。
 
-**已有数据库先读 [DATABASE.md](DATABASE.md)，绝不能用 reset 升级。** 开发环境默认开启开发鉴权；真实账号验收设 `DEV_AUTH_MODE=0`。演示模式会公开凭据，只能按[演示指南](docs/DEMO.md)用于内部演示。
+**已有数据库先读 [DATABASE.md](DATABASE.md)，绝不能用 reset 升级。** 开发环境默认开启开发鉴权；真实账号验收设 `DEV_AUTH_MODE=0`。演示模式会公开凭据，只能按[运行与部署](docs/OPERATIONS.md)中的内部演示流程使用。
 
 ## 验证
 
@@ -59,6 +59,5 @@ bun run test:teaching      # 浏览器教学闭环；需测试角色可创建临
 | 主题、样式与共享组件 | [设计系统](DESIGN_SYSTEM.md) |
 | 发布前高风险人工验收 | [高风险测试检查清单](docs/TESTER_RISK_CHECKLIST.md) |
 | 统计公式、抽样设计与解释验收 | [统计学专业验收清单](docs/STATISTICAL_TEST_CHECKLIST.md) |
-| 内部演示 | [演示指南](docs/DEMO.md) |
 
 开发约定见 [AGENTS.md](AGENTS.md)。专题文档是对应规则的唯一事实来源，不维护历史测试快照。

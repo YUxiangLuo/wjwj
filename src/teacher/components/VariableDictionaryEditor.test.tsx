@@ -2,8 +2,8 @@ import { afterEach, beforeEach, expect, mock, test } from "bun:test";
 import { installDomGlobals } from "@/test-utils/dom";
 import type { VariableDictionary } from "@/domain/variables/types";
 
-// docs/VARIABLE_ANALYSIS_TEST_PLAN.md D06：缺失编码非法 JSON 与网络失败保留输入，
-// 不静默覆盖服务端版本；等价保存仍走显式确认。
+// 缺失编码非法 JSON 与网络失败时保留输入，不静默覆盖服务端版本；
+// 等价保存仍走显式确认。
 
 const bootstrapDom = installDomGlobals("http://localhost/teacher");
 const { cleanup, fireEvent, render, waitFor } = await import("@testing-library/react");
