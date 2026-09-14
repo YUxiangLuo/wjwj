@@ -21,6 +21,11 @@ export const METHOD_META: Record<MethodKey, { label: string; color: string }> = 
 
 export const POPULATION_SERIES: ChartSeries = { key: "population", label: "总体", color: "var(--chart-1)" };
 
+/** 记录来源是 64 位内容哈希；列表只显示前 8 位，完整值放在 title 中供核对。 */
+export function shortSourceHash(source: string) {
+    return source.slice(0, 8);
+}
+
 /** Keep a valid user choice; otherwise fall back to the analysis-target field, then the first field. */
 export function preferAnalysisField(fields: string[], current: string, preferred: string): string {
     if (current && fields.includes(current)) return current;
