@@ -264,6 +264,16 @@ pgTest("A06 replacing the population while the write lock is held rejects the an
     expect(await application.db.select().from(schema.savedAnalysis).where(eq(schema.savedAnalysis.experimentId, f.experiment.id))).toHaveLength(0);
 }, 15_000);
 
+pgTest("A06 replacing the population before the request maps to a 409 source conflict", async () => {
+    const f = await fixture();
+    // 请求前就换掉字节：此时工作线程内的来源校验先于事务校验触发，必须同样返回 409 SOURCE_CONFLICT。
+    await Bun.write(`${process.cwd()}${f.storagePath}`, "id,value,group\n1,11,A\n2,20,A\n3,30,B\n4,40,B\n5,50,B\n");
+    const outcome = await service.createSavedAnalysis(f.students[0]!.id, f.cls.id, f.task.id, f.body(`a06-src-early-${crypto.randomUUID()}`))
+        .then(value => ({ value, error: null }), error => ({ value: null, error }));
+    expect(outcome.error).toMatchObject({ code: "SOURCE_CONFLICT", status: 409 });
+    expect(await application.db.select().from(schema.savedAnalysis).where(eq(schema.savedAnalysis.experimentId, f.experiment.id))).toHaveLength(0);
+}, 15_000);
+
 pgTest("A06 a successful request can be retried after the task closes, while a new request is rejected", async () => {
     const f = await fixture();
     const body = f.body(`a06-retry-${crypto.randomUUID()}`);

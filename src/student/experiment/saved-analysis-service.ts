@@ -5,6 +5,7 @@ import type { AnalysisConfig, SavedAnalysisView, VariableDictionary } from "../.
 import { canonicalJson, readVariableSource } from "../../server/variable-source";
 import { ensureTaskIsOpen, hasTaskDeadlinePassed } from "./task-timing";
 import { univariateService } from "./univariate-service";
+import { WorkerServiceError } from "../../server/worker-service";
 
 export const ANALYSIS_CAPACITY = 20;
 export const MAX_ANALYSIS_REFERENCES = 10;
@@ -96,9 +97,19 @@ export async function createSavedAnalysis(studentId: number, classId: number, ta
     if (!variable || variable.kind === "identifier") throw new AnalysisConflict("所选变量不可用于分析");
     const samplingResult = (initial.record.samplingResults as Record<string, Record<string, unknown>> | null)?.[request.config.method];
     if (!samplingResult) throw new AnalysisConflict("请先完成所选抽样方法");
-    const data = await univariateService.run({ populationPath: initial.template.excelFilePath, fieldMapping: initial.template.fieldMapping, dictionary, config: request.config, samplingResult }, {
-        key: `${initial.record.id}:${request.requestId}:${fingerprint}`, signal,
-    });
+    let data: Awaited<ReturnType<typeof univariateService.run>>;
+    try {
+        data = await univariateService.run({ populationPath: initial.template.excelFilePath, fieldMapping: initial.template.fieldMapping, dictionary, config: request.config, samplingResult }, {
+            key: `${initial.record.id}:${request.requestId}:${fingerprint}`, signal,
+        });
+    } catch (cause) {
+        // 工作线程内的来源校验与下面事务内的校验是同一条件；统一为 409 来源冲突，
+        // 避免同一用户操作因检查时序不同而返回 500。
+        if (cause instanceof WorkerServiceError && cause.code === "SOURCE_MISMATCH") {
+            throw new AnalysisConflict("总体文件或字段解释已变化，请联系教师重新确认来源", "SOURCE_CONFLICT", 409);
+        }
+        throw cause;
+    }
     return db.transaction(async tx => {
         const current = await ownedAnalysisContext(studentId, classId, taskId, tx, true);
         const duplicate = await existing(tx);
