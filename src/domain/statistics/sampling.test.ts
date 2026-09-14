@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { estimateWeightedMean } from "./pps";
 import { createSeededRandom, drawPreparedPPSSample, performPPSSampling, performSimpleSampling, performStratifiedSampling, performSystematicSampling, preparePPSSampling } from "./sampling";
 
 const population = Array.from({ length: 30 }, (_, i) => ({ id: i + 1, group: i % 3 === 0 ? "A" : "B" }));
@@ -286,4 +287,78 @@ test("prepared PPS sampling reproduces direct PPS sampling with the same seed", 
     const fromPrepared = drawPreparedPPSSample(prepared, createSeededRandom(seed));
 
     expect(fromPrepared).toEqual(direct);
+});
+
+// ---------------------------------------------------------------------------
+// docs/VARIABLE_ANALYSIS_TEST_PLAN.md §3：小型非等规模总体的已手算合法设计。
+// 期望区间/概率/估计值由定义独立推导，未用被测抽样函数生成。
+// ---------------------------------------------------------------------------
+
+// N=4，size=[1,2,3,4]，n=2 → π=[0.2,0.4,0.6,0.8]，累积区间
+// [0,0.2) [0.2,0.6) [0.6,1.2) [1.2,2)；两个系统点 u、u+1。
+const handPpsData = [10, 20, 30, 40].map((y, index) => ({ id: index + 1, y, size: index + 1 }));
+const drawWithStart = (u: number) => {
+    const sampled = performPPSSampling(handPpsData, "size", 2, () => u);
+    return {
+        indices: sampled.indices,
+        probabilities: sampled.inclusionProbabilities,
+        estimate: estimateWeightedMean(sampled.data, "y", sampled.inclusionProbabilities),
+    };
+};
+const expectSelection = (u: number, indices: number[], probabilities: number[]) => {
+    const { indices: actualIndices, probabilities: actualProbabilities } = drawWithStart(u);
+    expect(actualIndices).toEqual(indices);
+    // π 由 (n/Σs)·sᵢ 浮点乘出，按计划 §3 的容差比较，不锁定末位
+    expect(actualProbabilities).toHaveLength(probabilities.length);
+    probabilities.forEach((probability, position) => expect(actualProbabilities[position]).toBeCloseTo(probability, 12));
+};
+
+test("PPS fixed-π systematic matches hand-computed intervals and Hájek estimates", () => {
+    // u=0.19 落在单元 0，u+1=1.19 落在单元 2；Hájek (10·5+30·5/3)/(5+5/3)=15
+    expectSelection(0, [0, 2], [0.2, 0.6]);
+    expectSelection(0.19, [0, 2], [0.2, 0.6]);
+    expect(drawWithStart(0.19).estimate).toBeCloseTo(15, 12);
+    // u=0.2 正好落在第 1/2 单元边界。累计 π 以浮点相加，边界本身是测度零事件；
+    // 两侧 1e-9 偏移必须给出确定选择：左侧 [0,2]，右侧 [1,3]。
+    expectSelection(0.2 - 1e-9, [0, 2], [0.2, 0.6]);
+    expectSelection(0.2 + 1e-9, [1, 3], [0.4, 0.8]);
+    expectSelection(0.59, [1, 3], [0.4, 0.8]);
+    expect(drawWithStart(0.59).estimate).toBeCloseTo(80 / 3, 12);
+    // u=0.61：系统点同时落入后两个单元；(30·5/3+40·1.25)/(5/3+1.25) = 240/7
+    expectSelection(0.61, [2, 3], [0.6, 0.8]);
+    expect(drawWithStart(0.61).estimate).toBeCloseTo(240 / 7, 12);
+    expectSelection(0.99, [2, 3], [0.6, 0.8]);
+});
+
+test("PPS certainty units keep π=1 and leave the random frame at n-1", () => {
+    const data = [
+        { id: 1, y: 1, size: 100 },
+        { id: 2, y: 2, size: 1 },
+        { id: 3, y: 3, size: 1 },
+        { id: 4, y: 4, size: 1 },
+    ];
+    // π₁ = 2·100/103 > 1 → 必入；剩余 3 个等规模单位再抽 1 个，π = 1/3
+    const sampled = performPPSSampling(data, "size", 2, () => 0);
+    const certaintyPosition = sampled.indices.indexOf(0);
+    expect(sampled.indices).toHaveLength(2);
+    expect(certaintyPosition).toBeGreaterThanOrEqual(0);
+    expect(sampled.inclusionProbabilities[certaintyPosition]).toBe(1);
+    const randomPosition = certaintyPosition === 0 ? 1 : 0;
+    expect(sampled.inclusionProbabilities[randomPosition]).toBeCloseTo(1 / 3, 12);
+    expect(sampled.probabilitySummary).toMatchObject({ populationCount: 4, certaintyUnitCount: 1 });
+    expect(sampled.probabilitySummary!.probabilitySum).toBeCloseTo(2, 12);
+    expect(sampled.probabilitySummary!.maxInclusionProbability).toBe(1);
+});
+
+test("PPS design rejects an unresolved probability frame instead of faking a zero standard error", () => {
+    // n=N 时为普查：全部单位必入
+    const census = performPPSSampling(handPpsData, "size", 4, () => 0);
+    expect(census.indices).toEqual([0, 1, 2, 3]);
+    expect(census.inclusionProbabilities).toEqual([1, 1, 1, 1]);
+    expect(census.probabilitySummary).toMatchObject({ certaintyUnitCount: 4, probabilitySum: 4 });
+    // n>N 在抽样层被封顶为普查（路由在更早处拒绝），无正规模值则无可用设计
+    const clamped = performPPSSampling(handPpsData, "size", 5, () => 0);
+    expect(clamped.indices).toEqual([0, 1, 2, 3]);
+    expect(clamped.inclusionProbabilities).toEqual([1, 1, 1, 1]);
+    expect(performPPSSampling([{ y: 1, size: 0 }], "size", 1, () => 0).data).toEqual([]);
 });

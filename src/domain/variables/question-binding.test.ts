@@ -1,13 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import { questionSignature, validateQuestionBindings } from "./question-binding";
 import type { Question, QuestionnaireData } from "../../lib/questionnaire-types";
-import type { VariableDictionary } from "./types";
+import type { RawValue, VariableDictionary } from "./types";
 
 const dictionary: VariableDictionary = { source: "population.csv", revision: 2, variables: [
     { field: "sex", label: "性别", unit: "", kind: "nominal", categories: [{ value: 1, label: "男" }, { value: 2, label: "女" }], missing: [null] },
     { field: "age", label: "年龄", unit: "岁", kind: "continuous", categories: [], missing: [null] },
     { field: "rating", label: "评分", unit: "", kind: "ordinal", categories: [{ value: "low", label: "低" }, { value: "mid", label: "中" }, { value: "high", label: "高" }], missing: [] },
     { field: "student_id", label: "学号", unit: "", kind: "identifier", categories: [], missing: [] },
+    { field: "uses_library", label: "使用图书馆", unit: "", kind: "nominal", categories: [{ value: 1, label: "是" }, { value: 0, label: "否" }], missing: [] },
+    { field: "uses_lab", label: "使用实验室", unit: "", kind: "nominal", categories: [{ value: "Y", label: "是" }, { value: "N", label: "否" }], missing: [] },
+    { field: "three_way", label: "三分类", unit: "", kind: "nominal", categories: [{ value: "a", label: "a" }, { value: "b", label: "b" }, { value: "c", label: "c" }], missing: [] },
 ] };
 const data = (question: Question): QuestionnaireData => ({ title: "t", welcomeText: "w", endingText: "e", questions: [question] });
 
@@ -46,6 +49,95 @@ describe("question variable binding", () => {
         expect(() => validateQuestionBindings(data({ ...q, variableBinding: binding(["low", "mid", "high"]) }), dictionary, 3)).not.toThrow();
         expect(() => validateQuestionBindings(data({ ...q, variableBinding: binding(["high", "mid", "low"]) }), dictionary, 3)).toThrow(/类别顺序递增/);
     });
+    // docs/VARIABLE_ANALYSIS_TEST_PLAN.md Q03。
+    test("boolean and single mappings require a complete bijection with valid category values", () => {
+        const q: Question = { id: "b", type: "boolean", content: "是否使用图书馆？" };
+        const withAnswers = (answers: NonNullable<Question["variableBinding"]>["mappings"][number]["answers"]): NonNullable<Question["variableBinding"]> => ({
+            taskId: 3, source: dictionary.source, revision: 2, signature: questionSignature(q),
+            mappings: [{ field: "uses_library", answers }],
+        });
+        expect(() => validateQuestionBindings(data({ ...q, variableBinding: withAnswers([{ answer: "是", value: 1 }, { answer: "否", value: 0 }]) }), dictionary, 3)).not.toThrow();
+        // 缺项 / 重复答案 / 多余答案均不得通过
+        expect(() => validateQuestionBindings(data({ ...q, variableBinding: withAnswers([{ answer: "是", value: 1 }]) }), dictionary, 3)).toThrow(/有效类别数量不一致/);
+        expect(() => validateQuestionBindings(data({ ...q, variableBinding: withAnswers([{ answer: "是", value: 1 }, { answer: "是", value: 0 }]) }), dictionary, 3)).toThrow(/答案映射不完整/);
+        expect(() => validateQuestionBindings(data({ ...q, variableBinding: withAnswers([{ answer: "是", value: 1 }, { answer: "否", value: 0 }, { answer: "不确定", value: 1 }]) }), dictionary, 3)).toThrow(/有效类别数量不一致/);
+        // 映射值不在字段有效类别中（把答案文本当编码写入）
+        expect(() => validateQuestionBindings(data({ ...q, variableBinding: withAnswers([{ answer: "是", value: "是" }, { answer: "否", value: "否" }]) }), dictionary, 3)).toThrow(/一一对应/);
+    });
+
+    test("multiple choice requires one distinct binary field per option", () => {
+        const q: Question = { id: "m", type: "multiple", content: "使用哪些设施？", options: ["图书馆", "实验室"], minSelect: 1, maxSelect: 2 };
+        const make = (mappings: NonNullable<Question["variableBinding"]>["mappings"]): NonNullable<Question["variableBinding"]> => ({ taskId: 3, source: dictionary.source, revision: 2, signature: questionSignature(q), mappings });
+        const binary = (field: string, yes: RawValue, no: RawValue) => ({ field, answers: [{ answer: "是", value: yes }, { answer: "否", value: no }] });
+        expect(() => validateQuestionBindings(data({ ...q, variableBinding: make([
+            { ...binary("uses_library", 1, 0), option: "图书馆" }, { ...binary("uses_lab", "Y", "N"), option: "实验室" },
+        ]) }), dictionary, 3)).not.toThrow();
+        // 复用同一列不能伪装成多个响应列
+        expect(() => validateQuestionBindings(data({ ...q, variableBinding: make([
+            { ...binary("uses_library", 1, 0), option: "图书馆" }, { ...binary("uses_library", 1, 0), option: "实验室" },
+        ]) }), dictionary, 3)).toThrow(/不能重复关联同一字段/);
+        // 非二值列不能作为多选选项
+        expect(() => validateQuestionBindings(data({ ...q, variableBinding: make([
+            { ...binary("uses_library", 1, 0), option: "图书馆" }, { ...binary("three_way", "a", "b"), option: "实验室" },
+        ]) }), dictionary, 3)).toThrow(/有效类别数量不一致/);
+        // 每个选项必须有独立映射
+        expect(() => validateQuestionBindings(data({ ...q, variableBinding: make([{ ...binary("uses_library", 1, 0), option: "图书馆" }]) }), dictionary, 3)).toThrow(/每个多选选项必须关联独立字段/);
+    });
+
+    // docs/VARIABLE_ANALYSIS_TEST_PLAN.md Q04：逐项语义变更都使旧签名失效。
+    test.each([
+        ["题干", { content: "新的题干？" }],
+        ["题型", { type: "multiple" as const, options: ["男", "女"] }],
+        ["选项", { options: ["男", "女性"] }],
+        ["选项顺序", { options: ["女", "男"] }],
+    ] as Array<[string, Partial<Question>]>)("semantic edit invalidates the stored signature: %s", (_label, patch) => {
+        const q: Question = { id: "q", type: "single", content: "性别", options: ["男", "女"] };
+        q.variableBinding = { taskId: 3, source: dictionary.source, revision: 2, signature: questionSignature(q), mappings: [{ field: "sex", answers: [{ answer: "男", value: 1 }, { answer: "女", value: 2 }] }] };
+        const edited = { ...q, ...patch } as Question;
+        expect(() => validateQuestionBindings(data(edited), dictionary, 3)).toThrow(/题意或规则已修改|重新确认/);
+    });
+
+    test.each([
+        ["数值单位", { unit: "月" }],
+        ["数值下限", { numericMin: 0 }],
+        ["数值上限", { numericMax: 200 }],
+        ["小数位数", { decimalPlaces: 2 }],
+    ] as Array<[string, Partial<Question>]>)("numeric semantic edit invalidates the stored signature: %s", (_label, patch) => {
+        const q: Question = { id: "n", type: "numeric", content: "年龄", unit: "岁", decimalPlaces: 0 };
+        q.variableBinding = { taskId: 3, source: dictionary.source, revision: 2, signature: questionSignature(q), mappings: [{ field: "age", answers: [] }] };
+        expect(() => validateQuestionBindings(data({ ...q, ...patch }), dictionary, 3)).toThrow(/题意或规则已修改|重新确认/);
+    });
+
+    test("scale endpoint edits invalidate the signature", () => {
+        const q: Question = { id: "s", type: "scale", content: "评分", scaleMin: 1, scaleMax: 3 };
+        q.variableBinding = { taskId: 3, source: dictionary.source, revision: 2, signature: questionSignature(q), mappings: [{ field: "rating", answers: [{ answer: "1", value: "low" }, { answer: "2", value: "mid" }, { answer: "3", value: "high" }] }] };
+        expect(() => validateQuestionBindings(data({ ...q, scaleMax: 4 }), dictionary, 3)).toThrow(/重新确认/);
+    });
+
+    test("reordering questions preserves bindings while copying without a binding stays unbound", () => {
+        const first: Question = { id: "q1", type: "single", content: "性别", options: ["男", "女"] };
+        first.variableBinding = { taskId: 3, source: dictionary.source, revision: 2, signature: questionSignature(first), mappings: [{ field: "sex", answers: [{ answer: "男", value: 1 }, { answer: "女", value: 2 }] }] };
+        const second: Question = { id: "q2", type: "boolean", content: "是否使用图书馆？" };
+        second.variableBinding = { taskId: 3, source: dictionary.source, revision: 2, signature: questionSignature(second), mappings: [{ field: "uses_library", answers: [{ answer: "是", value: 1 }, { answer: "否", value: 0 }] }] };
+        const reordered: QuestionnaireData = { title: "t", welcomeText: "w", endingText: "e", questions: [second, first] };
+        expect(() => validateQuestionBindings(reordered, dictionary, 3)).not.toThrow();
+        // 复制题目不继承关联：副本没有 variableBinding 时按未关联题目通过
+        const copied: Question = { ...first, id: "q1-copy", variableBinding: undefined };
+        expect(() => validateQuestionBindings({ title: "t", welcomeText: "w", endingText: "e", questions: [copied] }, dictionary, 3)).not.toThrow();
+    });
+
+    // docs/VARIABLE_ANALYSIS_TEST_PLAN.md Q05。
+    test("cross-task, source and revision bindings are rejected", () => {
+        const q: Question = { id: "q", type: "single", content: "性别", options: ["男", "女"] };
+        const binding = (overrides: Record<string, unknown>) => ({ taskId: 3, source: dictionary.source, revision: 2, signature: questionSignature(q), mappings: [{ field: "sex", answers: [{ answer: "男", value: 1 }, { answer: "女", value: 2 }] }], ...overrides });
+        for (const overrides of [{ taskId: 4 }, { source: "other.csv" }, { revision: 1 }]) {
+            expect(() => validateQuestionBindings(data({ ...q, variableBinding: binding(overrides) as Question["variableBinding"] }), dictionary, 3)).toThrow(/变量关联已过期/);
+        }
+        expect(() => validateQuestionBindings(data({ ...q, variableBinding: binding({ mappings: [] }) as Question["variableBinding"] }), dictionary, 3)).toThrow(/不能为空/);
+        expect(() => validateQuestionBindings(data({ ...q, variableBinding: binding({ mappings: [{ field: "sex" }] }) as Question["variableBinding"] }), dictionary, 3)).toThrow(/格式无效/);
+        expect(() => validateQuestionBindings(data({ ...q, variableBinding: binding({ signature: "forged" }) as Question["variableBinding"] }), dictionary, 3)).toThrow(/重新确认/);
+    });
+
     test("rejects unsupported bindings and option metadata outside multiple questions", () => {
         const q: Question = { id: "q", type: "single", content: "性别", options: ["男", "女"] };
         const makeBinding = (field: string, option?: string) => ({ taskId: 3, source: dictionary.source, revision: 2, signature: questionSignature(q), mappings: [{ field, ...(option === undefined ? {} : { option }), answers: [{ answer: "男", value: 1 }, { answer: "女", value: 2 }] }] });

@@ -37,6 +37,61 @@ test("numeric questions request explicit continuation before and after valid inp
     expect(view.getByText("最后一题？")).toBeTruthy();
 });
 
+// docs/VARIABLE_ANALYSIS_TEST_PLAN.md Q01：范围 −1.5～2.5、恰好 1 位小数。
+test("numeric preview enforces inclusive bounds and exactly one decimal digit without rounding", () => {
+    const numeric: QuestionnaireData = { ...questionnaire, questions: [
+        { id: "numeric", type: "numeric", content: "温度？", unit: "℃", numericMin: -1.5, numericMax: 2.5, decimalPlaces: 1 },
+        questionnaire.questions[1]!,
+    ] };
+    const view = render(<ImmersiveQuestionnairePreview questionnaire={numeric} onComplete={() => {}} onClose={() => {}} />);
+    fireEvent.click(view.getByTestId("immersive-preview-start"));
+    const input = view.getByTestId("questionnaire-preview-numeric") as HTMLInputElement;
+    const next = view.getByTestId("immersive-preview-next") as HTMLButtonElement;
+
+    const invalid = ["", " ", "-1.6", "0", "2.6", "1.00", "1.25", "-0.55"];
+    for (const value of invalid) {
+        fireEvent.change(input, { target: { value } });
+        // 空值不得当成 0；位数不符不得静默舍入；越界不得放行
+        expect(next.disabled).toBe(true);
+        expect(view.getByText("温度？")).toBeTruthy();
+    }
+    for (const value of ["-1.5", "0.0", "2.5", "-0.5"]) {
+        fireEvent.change(input, { target: { value } });
+        expect(next.disabled).toBe(false);
+    }
+    // 合法值仍需明确点击，不会自动进入下一题
+    expect(view.getByText("温度？")).toBeTruthy();
+    fireEvent.click(next);
+    expect(view.getByText("最后一题？")).toBeTruthy();
+});
+
+// docs/VARIABLE_ANALYSIS_TEST_PLAN.md Q06：试填答案只存在于组件状态，不进入网络或问卷定义。
+test("preview answers stay client-side and never mutate the questionnaire definition", () => {
+    const originalFetch = globalThis.fetch;
+    const fetchSpy = mock(() => { throw new Error("preview must not call the network"); });
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+    try {
+        const definition: QuestionnaireData = { ...questionnaire, questions: [
+            { id: "numeric", type: "numeric", content: "时长？", unit: "小时", numericMin: 0, numericMax: 10, decimalPlaces: 1 },
+            { id: "last", type: "boolean", content: "最后一题？" },
+        ] };
+        const snapshot = JSON.stringify(definition);
+        const onComplete = mock(() => {});
+        const view = render(<ImmersiveQuestionnairePreview questionnaire={definition} onComplete={onComplete} onClose={() => {}} />);
+        fireEvent.click(view.getByTestId("immersive-preview-start"));
+        fireEvent.change(view.getByTestId("questionnaire-preview-numeric"), { target: { value: "3.5" } });
+        fireEvent.click(view.getByTestId("immersive-preview-next"));
+        fireEvent.click(view.getByText("是"));
+        fireEvent.click(view.getByTestId("immersive-preview-next"));
+        fireEvent.click(view.getByTestId("immersive-preview-submit"));
+        expect(onComplete).toHaveBeenCalledTimes(1);
+        expect(fetchSpy).not.toHaveBeenCalled();
+        expect(JSON.stringify(definition)).toBe(snapshot);
+    } finally {
+        globalThis.fetch = originalFetch;
+    }
+});
+
 test("skipping a question blocks completion until every answer is supplied", () => {
     const onComplete = mock(() => {});
     const view = render(<ImmersiveQuestionnairePreview questionnaire={questionnaire} onComplete={onComplete} onClose={() => {}} />);
