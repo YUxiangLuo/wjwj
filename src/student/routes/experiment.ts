@@ -339,13 +339,24 @@ const stageCompleteRoutes: RouteDefinition = {
         const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
         const stageTaskInfo = await findStudentTaskSamplingInfo(taskId, auth.student.classId);
         const fieldMapping = stage === 2 ? stageTaskInfo?.fieldMapping : undefined;
+        // 均值规划的总体方差必须来自当前总体，而不是客户端提交值（见 submit-validation）。
+        const resolvedTarget = stage === 2 ? resolveAnalysisTarget(fieldMapping) : null;
+        const stratifiedRequired = stage === 2 && resolveSamplingPolicy(stageTaskInfo?.samplingPolicy).methods.stratified === "required";
+        const meanVarianceRequired = stage === 2 && resolvedTarget?.target.kind === "mean";
         let stratifiedStats: Record<string, Record<string, number>> | undefined;
-        if (stage === 2 && resolveSamplingPolicy(stageTaskInfo?.samplingPolicy).methods.stratified === "required") {
-            if (!stageTaskInfo?.excelFilePath) return error("必做分层抽样缺少总体数据文件", "NO_DATA_FILE");
+        let expectedPopulationVariance: number | null = null;
+        if (stratifiedRequired || meanVarianceRequired) {
+            if (!stageTaskInfo?.excelFilePath) {
+                return error(stratifiedRequired ? "必做分层抽样缺少总体数据文件" : "均值规划需要读取总体数据文件", "NO_DATA_FILE");
+            }
             try {
-                stratifiedStats = (await populationStatsService.run({
+                const stats = await populationStatsService.run({
                     populationPath: stageTaskInfo.excelFilePath, fieldMapping,
-                }, req.signal)).stats;
+                }, req.signal);
+                if (stratifiedRequired) stratifiedStats = stats.stats;
+                if (meanVarianceRequired && resolvedTarget) {
+                    expectedPopulationVariance = stats.populationNumericStats[resolvedTarget.target.field]?.variance ?? null;
+                }
             } catch (cause) { return handleServerError(cause); }
         }
         let payload = clientPayload;
@@ -369,6 +380,7 @@ const stageCompleteRoutes: RouteDefinition = {
             fieldMapping,
             samplingPolicy: stageTaskInfo?.samplingPolicy,
             stratifiedStats,
+            populationVariance: expectedPopulationVariance,
             variableDictionary: stageTaskInfo?.variableDictionary,
         });
         if (!result.ok) return error(result.message, result.code, result.status);

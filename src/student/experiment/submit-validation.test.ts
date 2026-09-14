@@ -1,5 +1,11 @@
 import { expect, test, describe } from "bun:test";
-import { getTargetSampleSizeFromSamplePlan, validateReportForSubmit, validateSamplePlanForSubmit, validateSamplingResultsForSubmit } from "./submit-validation";
+import {
+    getTargetSampleSizeFromSamplePlan,
+    validateMeanPlanVariance,
+    validateReportForSubmit,
+    validateSamplePlanForSubmit,
+    validateSamplingResultsForSubmit,
+} from "./submit-validation";
 import { calculateFinitePopulationSampleSize } from "./sample-plan";
 
 /** 与复算路径同源的 cost 推荐样本量（95%、5%、N=1000、deff=1、nrr=0.1）。 */
@@ -27,6 +33,33 @@ function plan(overrides: Record<string, unknown>) {
         ...overrides,
     };
 }
+
+describe("validateMeanPlanVariance", () => {
+    test("accepts a variance matching the current population", () => {
+        expect(validateMeanPlanVariance({ populationVariance: 35 }, "mean", 35)).toBeNull();
+        expect(validateMeanPlanVariance({ populationVariance: 1e-6 }, "mean", 1e-6)).toBeNull();
+    });
+
+    test("rejects forged or stale variances for mean targets", () => {
+        expect(validateMeanPlanVariance({ populationVariance: 1e-6 }, "mean", 35)).toMatch(/总体方差与当前总体不一致/);
+        expect(validateMeanPlanVariance({ populationVariance: 49900 }, "mean", 35)).toMatch(/总体方差与当前总体不一致/);
+        expect(validateMeanPlanVariance({ populationVariance: 0 }, "mean", 35)).toMatch(/正的总体方差/);
+    });
+
+    test("skips non-mean targets, unknown targets and unavailable actual variance", () => {
+        expect(validateMeanPlanVariance({ populationVariance: 1 }, "proportion", 35)).toBeNull();
+        expect(validateMeanPlanVariance({ populationVariance: 1 }, null, 35)).toBeNull();
+        expect(validateMeanPlanVariance({ populationVariance: 1 }, "mean", null)).toBeNull();
+        expect(validateMeanPlanVariance({ populationVariance: 1 }, "mean", 0)).toBeNull();
+        expect(validateMeanPlanVariance(null, "mean", 35)).toBeNull();
+    });
+
+    test("keeps a relative tolerance for JSON round-tripped values", () => {
+        const actual = 35.123456789;
+        expect(validateMeanPlanVariance({ populationVariance: actual + 1e-12 }, "mean", actual)).toBeNull();
+        expect(validateMeanPlanVariance({ populationVariance: actual * (1 + 1e-6) }, "mean", actual)).toMatch(/总体方差与当前总体不一致/);
+    });
+});
 
 test("report validation does not count content swallowed by an unclosed script element", () => {
     expect(validateReportForSubmit(`<p>可见内容很短</p><script>${"不可见内容".repeat(40)}`))

@@ -10,6 +10,7 @@ import type { VariableDictionary } from "../../domain/variables/types";
 import type { QuestionnaireData } from "../../lib/questionnaire-types";
 import {
     getTargetSampleSizeFromSamplePlan,
+    validateMeanPlanVariance,
     validateQuestionnaireForSubmit,
     validateReportForSubmit,
     validateSamplePlanForSubmit,
@@ -50,6 +51,8 @@ export function buildStageCompletionUpdates(params: {
     fieldMapping?: unknown;
     samplingPolicy?: unknown;
     stratifiedStats?: Record<string, Record<string, number>>;
+    /** 服务端按当前总体计算的目标字段方差（均值目标时必填，比例/未知时为空）。 */
+    populationVariance?: number | null;
     variableDictionary?: VariableDictionary | null;
 }) {
     const { experimentRecord: record, stage, payload } = params;
@@ -100,6 +103,8 @@ export function buildStageCompletionUpdates(params: {
         }
         const validationError = validateSamplePlanForSubmit(samplePlan, params.populationSize, analysisTargetKind, { minimumSampleSize });
         if (validationError) return fail(validationError);
+        const varianceError = validateMeanPlanVariance(samplePlan, analysisTargetKind, params.populationVariance);
+        if (varianceError) return fail(varianceError);
         updates.samplePlan = samplePlan;
         updates.stage2CompletedAt = now;
         updates.currentStage = 3;

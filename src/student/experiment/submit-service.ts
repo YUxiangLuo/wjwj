@@ -6,6 +6,7 @@ import { resolveAnalysisTarget } from "../../lib/analysis-target";
 import { scoringWeightsFrom, type ScoringWeights } from "../../lib/scoring-weights";
 import { resolveSamplingPolicy, type SamplingPolicyV1 } from "../../lib/sampling-policy";
 import { readVariableSource } from "../../server/variable-source";
+import { buildPopulationNumericStats } from "../../domain/statistics/population";
 import { validateQuestionBindings } from "../../domain/variables/question-binding";
 import type { SavedAnalysisView, VariableDictionary } from "../../domain/variables/types";
 import { normalizeSamplePlanData } from "./sample-plan-display";
@@ -15,6 +16,7 @@ import { compactSamplingResults } from "./sampling-storage";
 import { ExperimentStatus } from "@/domain/experiment/status";
 import {
     getTargetSampleSizeFromSamplePlan,
+    validateMeanPlanVariance,
     validateQuestionnaireForSubmit,
     validateReportForSubmit,
     validateSamplePlanForSubmit,
@@ -144,6 +146,17 @@ export async function submitStudentExperiment(params: {
     }
     if (dictionary && sourceData?.source !== dictionary.source) {
         return fail("总体文件或字段解释已变化，请联系教师", "SOURCE_CONFLICT", 409);
+    }
+    // 提交时用同一份总体再复核一次：阶段完成后的换源或伪造方差不得通过。
+    const resolvedTarget = resolveAnalysisTarget(params.taskInfo.fieldMapping);
+    if (resolvedTarget?.target.kind === "mean" && sourceData) {
+        const actualVariance = buildPopulationNumericStats(sourceData.rows, [resolvedTarget.target.field])[resolvedTarget.target.field]?.variance;
+        const varianceError = validateMeanPlanVariance(
+            parseStoredJson(params.experimentRecord.samplePlan),
+            resolvedTarget.target.kind,
+            actualVariance ?? null,
+        );
+        if (varianceError) return fail(varianceError, "INCOMPLETE");
     }
     let referenced;
     try {

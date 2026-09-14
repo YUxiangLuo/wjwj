@@ -65,6 +65,29 @@ export function validateQuestionnaireForSubmit(questionnaire: unknown, options: 
 }
 
 /** 校验持久化后的 samplePlan 形状；不包含子总体/多变量等仅前端的辅助字段（那些字段也不会写入存储）。 */
+/**
+ * 均值规划的总体方差必须来自当前总体。客户端值只用于展示与公式推导，
+ * 阶段完成与提交都会用服务端读取的总体方差复核，防止伪造或换源后的过期计划。
+ * 比例目标与无法取得总体方差的旧数据不在此处拦截。
+ */
+export function validateMeanPlanVariance(
+    samplePlan: unknown,
+    analysisTargetKind: "mean" | "proportion" | null | undefined,
+    actualPopulationVariance: number | null | undefined,
+): string | null {
+    if (analysisTargetKind !== "mean") return null;
+    const actual = Number(actualPopulationVariance);
+    if (!Number.isFinite(actual) || actual <= 0) return null;
+    if (!samplePlan || typeof samplePlan !== "object") return null;
+    const planned = Number((samplePlan as Record<string, unknown>).populationVariance);
+    if (!Number.isFinite(planned) || planned <= 0) return "均值估计时需提供正的总体方差估计";
+    const tolerance = 1e-9 * Math.max(1, Math.abs(actual));
+    if (Math.abs(planned - actual) > tolerance) {
+        return "总体方差与当前总体不一致，请按当前总体重新计算样本量";
+    }
+    return null;
+}
+
 export function validateSamplePlanForSubmit(
     samplePlan: unknown,
     populationSize: number | null,

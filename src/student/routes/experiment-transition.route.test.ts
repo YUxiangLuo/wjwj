@@ -3,6 +3,7 @@ import type { PopulationStats } from "../experiment/population-stats-job";
 import { PPS_UNAVAILABLE_REASON } from "../experiment/sampling-messages";
 import type { SQL } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
+import { calculateMeanEstimationSampleSize } from "../experiment/sample-plan";
 import { createStudentAuthModuleMock } from "../../test-utils/mock-auth-modules";
 import { createMockDb } from "../../test-utils/mock-db";
 
@@ -61,13 +62,14 @@ function experimentRecord(overrides: Record<string, unknown> = {}) {
 }
 
 async function load(record: Record<string, unknown>, options: {
+    select?: unknown[];
     update?: unknown[];
     submitInfo?: Record<string, unknown> | null;
     samplingInfo?: Record<string, unknown>;
     schedule?: { openTime: Date | null; deadline: Date | null };
     readStats?: () => Promise<PopulationStats>;
 } = {}) {
-    const { db, operations } = createMockDb({ select: [[record]], update: options.update ?? [[]] });
+    const { db, operations } = createMockDb({ select: options.select ?? [[record]], update: options.update ?? [[]] });
     const readStats = mock(options.readStats ?? (async () => {
         throw new Error("Unexpected population statistics work");
     }));
@@ -195,6 +197,35 @@ for (const feasible of [false, true]) {
         }
     });
 }
+
+test("mean planning variance is rechecked against the current population", async () => {
+    const fixture = statsCompletionFixture(2);
+    fixture.options.samplingInfo.samplingPolicy.methods.stratified = "disabled";
+    (fixture.options.samplingInfo as Record<string, unknown>).fieldMapping = { numeric: ["value"], analysisTarget: { kind: "mean", field: "value" } };
+    const stats = { ...fixture.stats, populationNumericStats: { value: { mean: 10, variance: 35, stdDev: Math.sqrt(35), count: 200 } } };
+    const { module, operations, readStats } = await load(fixture.record, { ...fixture.options, select: [[fixture.record], [fixture.record]], readStats: async () => stats });
+    const planFor = (variance: number) => ({
+        estimationType: "mean", confidenceLevel: "95", marginOfError: 1, populationVariance: variance,
+        designEffect: 1, nonResponseRate: 0,
+        recommendedSize: calculateMeanEstimationSampleSize({ confidenceLevel: "95", marginOfError: 1, populationSize: 200, populationVariance: variance, designEffect: 1, nonResponseRate: 0 }),
+        finalSampleSize: 1,
+    });
+    const postPlan = (variance: number) => {
+        const request = new Request(post(2), { body: JSON.stringify({ observedVersion: 6, samplePlan: planFor(variance) }) });
+        (request as Request & { params: Record<string, string> }).params = { id: "3", stage: "2" };
+        return request;
+    };
+    // 自洽的伪造方差（真实 35）必须在写入前拒绝
+    const forged = await module.stageCompleteRoutes.POST!(postPlan(1e-6));
+    expect(forged.status).toBe(400);
+    expect(await forged.json()).toMatchObject({ error: { message: expect.stringContaining("总体方差与当前总体不一致") } });
+    expect(operations.filter(op => op.kind === "update")).toHaveLength(0);
+    expect(readStats).toHaveBeenCalled();
+    // 与总体一致的方差通过
+    const accepted = await module.stageCompleteRoutes.POST!(postPlan(35));
+    expect(accepted.status).toBe(200);
+    expect(operations.filter(op => op.kind === "update")).toHaveLength(1);
+});
 
 test("invalid planning inputs reject before required PPS worker work", async () => {
     const fixture = statsCompletionFixture(2);

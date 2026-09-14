@@ -598,6 +598,63 @@ pgTest("R07 the frozen appendix never counts toward report length and reference-
     expect((emptySubmitted!.submissionSnapshot as { analysisAppendices: unknown[] }).analysisAppendices).toEqual([]);
 }, 30_000);
 
+pgTest("F-R1-01 mean planning variance is verified against the current population at stage 2", async () => {
+    const f = await fixture();
+    // 回到可完成阶段 2 的状态（阶段 1 已完成），随后走真实路由。
+    await application.db.update(schema.experiment).set({
+        currentStage: 2, status: "in_progress", version: f.experiment.version + 1,
+        stage1CompletedAt: new Date(), stage2CompletedAt: null, stage3CompletedAt: null, stage4CompletedAt: null,
+        samplePlan: null, samplingResults: null, reportContent: null, analysisReferences: [],
+        questionnaire: {
+            title: "方差复核", welcomeText: "欢迎参加本次方差复核预试，请按真实情况回答所有问题，答案只用于课堂试填。",
+            endingText: "感谢参与本次试填，结果不会进入估计或报告。",
+            questions: Array.from({ length: 5 }, (_, index) => ({ id: `q${index}`, type: "boolean", content: `第${index + 1}题是否完成？` })),
+        },
+    }).where(eq(schema.experiment.id, f.experiment.id));
+    const token = await session(3, f.students[0]!.id);
+    const { stageCompleteRoutes } = await import("../student/routes/experiment");
+    const { buildPopulationNumericStats } = await import("../domain/statistics/population");
+    const { calculateMeanEstimationSampleSize } = await import("../student/experiment/sample-plan");
+    const reload = async () => (await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, f.experiment.id)))[0]!;
+    const loaded = await variableSource.readVariableSource(f.storagePath, f.mapping);
+    const actualVariance = buildPopulationNumericStats(loaded.rows, ["value"])["value"]!.variance;
+    const planFor = (variance: number) => {
+        const recommendedSize = calculateMeanEstimationSampleSize({ confidenceLevel: "95", marginOfError: 10, populationSize: 5, populationVariance: variance, designEffect: 1, nonResponseRate: 0 })!;
+        return { estimationType: "mean", confidenceLevel: "95", marginOfError: 10, populationVariance: variance, designEffect: 1, nonResponseRate: 0, recommendedSize, finalSampleSize: recommendedSize };
+    };
+    const complete = async (variance: number) => {
+        const current = await reload();
+        return stageCompleteRoutes.POST!(routeRequest("POST", { id: String(f.task.id), stage: "2" }, { cookie: `student_session=${token}`, body: { observedVersion: current.version, samplePlan: planFor(variance) } }));
+    };
+    const forged = await complete(1e-6);
+    expect(forged.status).toBe(400);
+    expect(await forged.json()).toMatchObject({ error: { message: expect.stringContaining("总体方差与当前总体不一致") } });
+    expect((await reload()).stage2CompletedAt).toBeNull();
+    const accepted = await complete(actualVariance);
+    expect(accepted.status).toBe(200);
+    expect((await reload()).stage2CompletedAt).not.toBeNull();
+}, 30_000);
+
+pgTest("F-R1-01 submit re-checks the mean planning variance after a forged update", async () => {
+    const f = await submittableFixture();
+    const { calculateMeanEstimationSampleSize } = await import("../student/experiment/sample-plan");
+    const reload = async () => (await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, f.experiment.id)))[0]!;
+    const original = await reload();
+    const truePlan = original.samplePlan as Record<string, unknown>;
+    const forgedRecommended = calculateMeanEstimationSampleSize({ confidenceLevel: "95", marginOfError: 10, populationSize: 5, populationVariance: 1e-6, designEffect: 1, nonResponseRate: 0 })!;
+    // 保留真实目标样本量（抽样结果需与其一致），只伪造方差与建议样本量。
+    await application.db.update(schema.experiment).set({ samplePlan: { ...truePlan, populationVariance: 1e-6, recommendedSize: forgedRecommended, finalSampleSize: truePlan.finalSampleSize } }).where(eq(schema.experiment.id, f.experiment.id));
+    const forgedRecord = await reload();
+    const rejected = await submitService.submitStudentExperiment({ experimentRecord: forgedRecord, observedVersion: forgedRecord.version, taskInfo: f.taskInfo, student: f.student });
+    expect(rejected).toMatchObject({ ok: false, code: "INCOMPLETE" });
+    if (rejected.ok) throw new Error("expected the forged plan to be rejected");
+    expect(rejected.message).toContain("总体方差与当前总体不一致");
+    expect((await reload()).status).toBe("in_progress");
+    await application.db.update(schema.experiment).set({ samplePlan: truePlan }).where(eq(schema.experiment.id, f.experiment.id));
+    const restoredRecord = await reload();
+    expect(await submitService.submitStudentExperiment({ experimentRecord: restoredRecord, observedVersion: restoredRecord.version, taskInfo: f.taskInfo, student: f.student })).toMatchObject({ ok: true });
+}, 30_000);
+
 pgTest("a version change while analysis waits for its write lock rejects the result", async () => {
     const f = await fixture();
     const acquired = Promise.withResolvers<void>();
