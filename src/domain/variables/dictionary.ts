@@ -26,14 +26,24 @@ export function suggestDictionary(rows: Record<string, unknown>[], source: strin
     }
     const variables = fields.map((field): VariableDefinition => {
         const values = new Map<string, RawValue>();
+        const blankValues = new Map<string, RawValue>();
         for (const row of rows) {
             if (!Object.prototype.hasOwnProperty.call(row, field)) throw new Error(`字段“${field}”在部分数据行中缺失`);
             const value = raw(row[field]);
-            if (value === null) continue;
+            // CSV 的空单元是 ""、XLSX 是 null；纯空白文本按缺失处理，否则会生成
+            // 空标签类别，并被 validateDictionary 以“无效类别标签”拒绝。
+            if (value === null || (typeof value === "string" && value.trim() === "")) {
+                if (value !== null) blankValues.set(valueKey(value), value);
+                continue;
+            }
             values.set(valueKey(value), value);
         }
         const kind = values.size > MAX_CATEGORIES_PER_VARIABLE ? "identifier" : "nominal";
-        return { field, label: field, unit: "", kind, categories: kind === "nominal" ? [...values.values()].map(value => ({ value, label: String(value) })) : [], missing: [null] };
+        return {
+            field, label: field, unit: "", kind,
+            categories: kind === "nominal" ? [...values.values()].map(value => ({ value, label: String(value) })) : [],
+            missing: [...blankValues.values(), null],
+        };
     });
     return { source, revision, variables };
 }
