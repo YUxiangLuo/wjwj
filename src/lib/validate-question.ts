@@ -14,6 +14,16 @@ function generateQuestionId(): string {
     return `q_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
+/**
+ * 只接受有限数字或可解析的数字文本；布尔、数组、对象、null 不得经 `Number()`
+ * 静默变成 0/1（docs/VARIABLE_ANALYSIS_TEST_PLAN.md Q02）。
+ */
+function isFiniteNumberOption(value: unknown): boolean {
+    if (typeof value === "number") return Number.isFinite(value);
+    if (typeof value === "string") return value.trim() !== "" && Number.isFinite(Number(value));
+    return false;
+}
+
 const QUESTION_TYPES = new Set<string>(["boolean", "single", "multiple", "scale", "numeric"]);
 const QUESTION_SECTIONS = new Set<QuestionSection>(["screening", "main", "background"]);
 
@@ -77,9 +87,12 @@ export function parseRecommendQuestionFromPayload(rawQuestion: unknown, index: n
         const q: Question = { ...base, options };
 
         if (type === "multiple") {
-            const minSelect = Number.isFinite(Number(question.minSelect)) ? Math.floor(Number(question.minSelect)) : 1;
-            const maxSelect = Number.isFinite(Number(question.maxSelect)) ? Math.floor(Number(question.maxSelect)) : options.length;
-            if (minSelect < 1 || maxSelect < minSelect || maxSelect > options.length) {
+            const minSelect = question.minSelect === undefined ? 1
+                : isFiniteNumberOption(question.minSelect) ? Math.floor(Number(question.minSelect)) : Number.NaN;
+            const maxSelect = question.maxSelect === undefined ? options.length
+                : isFiniteNumberOption(question.maxSelect) ? Math.floor(Number(question.maxSelect)) : Number.NaN;
+            if (!Number.isSafeInteger(minSelect) || !Number.isSafeInteger(maxSelect)
+                || minSelect < 1 || maxSelect < minSelect || maxSelect > options.length) {
                 return `第${index}题多选数量限制无效`;
             }
             q.minSelect = minSelect;
@@ -90,9 +103,12 @@ export function parseRecommendQuestionFromPayload(rawQuestion: unknown, index: n
     }
 
     if (type === "scale") {
-        const scaleMin = Number.isFinite(Number(question.scaleMin)) ? Number(question.scaleMin) : 1;
-        const scaleMax = Number.isFinite(Number(question.scaleMax)) ? Number(question.scaleMax) : 10;
-        if (scaleMin < 1 || scaleMax > 10 || scaleMin >= scaleMax) {
+        const scaleMin = question.scaleMin === undefined ? 1
+            : isFiniteNumberOption(question.scaleMin) ? Number(question.scaleMin) : Number.NaN;
+        const scaleMax = question.scaleMax === undefined ? 10
+            : isFiniteNumberOption(question.scaleMax) ? Number(question.scaleMax) : Number.NaN;
+        if (!Number.isFinite(scaleMin) || !Number.isFinite(scaleMax)
+            || scaleMin < 1 || scaleMax > 10 || scaleMin >= scaleMax) {
             return `第${index}题量表范围无效`;
         }
 
@@ -106,15 +122,16 @@ export function parseRecommendQuestionFromPayload(rawQuestion: unknown, index: n
 
     if (type === "numeric") {
         const unit = toTrimmedString(question.unit);
+        if (question.decimalPlaces === undefined || !isFiniteNumberOption(question.decimalPlaces)) return `第${index}题小数位数需为0-10的整数`;
         const decimalPlaces = Number(question.decimalPlaces);
         if (!Number.isSafeInteger(decimalPlaces) || decimalPlaces < 0 || decimalPlaces > 10) return `第${index}题小数位数需为0-10的整数`;
         const q: Question = { ...base, unit, decimalPlaces };
         if (question.numericMin !== undefined && question.numericMin !== "") {
-            if (!Number.isFinite(Number(question.numericMin))) return `第${index}题数值下限无效`;
+            if (!isFiniteNumberOption(question.numericMin)) return `第${index}题数值下限无效`;
             q.numericMin = Number(question.numericMin);
         }
         if (question.numericMax !== undefined && question.numericMax !== "") {
-            if (!Number.isFinite(Number(question.numericMax))) return `第${index}题数值上限无效`;
+            if (!isFiniteNumberOption(question.numericMax)) return `第${index}题数值上限无效`;
             q.numericMax = Number(question.numericMax);
         }
         if (q.numericMin !== undefined && q.numericMax !== undefined && q.numericMin > q.numericMax) return `第${index}题数值范围无效`;

@@ -42,6 +42,41 @@ describe("validateQuestionAtIndex", () => {
         expect(validateQuestionAtIndex({ type: "numeric", content: "身高", decimalPlaces: 1, numericMin: 2, numericMax: 1 }, 1)).toMatch(/数值范围/);
     });
 
+    // docs/VARIABLE_ANALYSIS_TEST_PLAN.md Q02：布尔/数组/对象/null 不得经 Number() 强转成 0/1。
+    test.each([
+        ["下限布尔 true", { numericMin: true, numericMax: 5 }],
+        ["上限布尔 false", { numericMin: 0, numericMax: false }],
+        ["下限空数组", { numericMin: [], numericMax: 5 }],
+        ["上限单元素数组", { numericMin: 0, numericMax: [5] }],
+        ["下限 null", { numericMin: null, numericMax: 5 }],
+        ["上限 null", { numericMin: 0, numericMax: null }],
+        ["下限对象", { numericMin: {}, numericMax: 5 }],
+        ["上限对象", { numericMin: 0, numericMax: { valueOf: () => 5 } }],
+        ["小数位布尔", { decimalPlaces: true }],
+        ["小数位数组", { decimalPlaces: [1] }],
+        ["小数位 null", { decimalPlaces: null }],
+        ["小数位缺失", { decimalPlaces: undefined }],
+        ["小数位 11", { decimalPlaces: 11 }],
+        ["小数位 −1", { decimalPlaces: -1 }],
+        ["小数位 1.5", { decimalPlaces: 1.5 }],
+        ["量程布尔", { type: "scale", scaleMin: true, scaleMax: 5 }],
+        ["量程数组", { type: "scale", scaleMin: 1, scaleMax: [5] }],
+        ["多选下限布尔", { type: "multiple", options: ["甲", "乙"], minSelect: true, maxSelect: 2 }],
+        ["多选上限 null", { type: "multiple", options: ["甲", "乙"], minSelect: 1, maxSelect: null }],
+    ] as Array<[string, Record<string, unknown>]>)("rejects malformed numeric config: %s", (_label, overrides) => {
+        const payload = { type: "numeric" as const, content: "试填", unit: "", decimalPlaces: 1, ...overrides };
+        expect(typeof parseRecommendQuestionFromPayload(payload as Record<string, unknown>, 1)).toBe("string");
+    });
+
+    test("accepts lexical numeric strings but keeps scientific notation explicit", () => {
+        const lexical = parseRecommendQuestionFromPayload({ type: "numeric", content: "试填", decimalPlaces: "1", numericMin: "-1.5", numericMax: "2.5" }, 1);
+        expect(lexical).toMatchObject({ numericMin: -1.5, numericMax: 2.5, decimalPlaces: 1 });
+        // 科学计数法是合法数值文本，必须解析为同一数值而非静默改写
+        const scientific = parseRecommendQuestionFromPayload({ type: "numeric", content: "试填", decimalPlaces: "1", numericMin: "1e-3" }, 1);
+        expect(scientific).toMatchObject({ numericMin: 0.001 });
+        expect(validateQuestionAtIndex({ type: "numeric", content: "试填", decimalPlaces: 1, numericMin: "  " }, 1)).toMatch(/数值下限无效/);
+    });
+
     test("rejects empty content", () => {
         expect(validateQuestionAtIndex({ type: "boolean", content: "   " }, 3)).toMatch(/第3题/);
     });
