@@ -17,7 +17,7 @@ databaseUrl.pathname = `/${databaseName}`;
 const workdir = await mkdtemp(join(tmpdir(), "wj-teaching-"));
 const artifacts = resolve(process.env.TEACHING_TEST_ARTIFACTS ?? join(root, "test-results/teaching-flow"));
 await mkdir(artifacts, { recursive: true });
-for (const name of ["student-failure.png", "teacher-failure.png", "result.json", "teacher-dictionary.png", "numeric-variable-binding.png", "stage4-saved-analysis.png", "teacher-submitted-appendix.png"]) {
+for (const name of ["student-failure.png", "teacher-failure.png", "result.json", "teacher-dictionary.png", "numeric-variable-binding.png", "stage4-saved-analysis.png", "teacher-submitted-appendix.png", "stale-analysis-warning.png"]) {
     await Bun.file(join(artifacts, name)).delete().catch(() => undefined);
 }
 const environment = { ...process.env, DATABASE_URL: String(databaseUrl), DEMO_MODE: "1", DEV_AUTH_MODE: "0", NODE_ENV: "development", HOST: "127.0.0.1" };
@@ -292,8 +292,8 @@ try {
     assert(experiment.currentStage === 4 && experiment.stage3CompletedAt, "Stage 3 did not persist");
     await page(student, stageUrl, '[data-testid="student-stage-analysis-report"]');
     await eventually(() => evaluate(student, 'document.body.textContent.includes("研究目标结果") && document.body.textContent.includes("PPS")'), "Analysis results missing");
-    assert(await evaluate(student, `(() => {const panel=document.querySelector('[data-testid="student-target-metrics"]');const table=panel?.querySelector('table');return panel && table && table.getBoundingClientRect().width<=panel.getBoundingClientRect().width && document.documentElement.scrollWidth<=innerWidth;})()`), "Target comparison table must fit the full-width result panel");
-    assert(await evaluate(student, `(() => {const rows=document.querySelectorAll('[data-testid="student-target-metrics"] tbody tr');const footer=document.querySelector('[data-testid="student-stage-actions"]');return rows.length>=2 && rows[1].getBoundingClientRect().bottom<=footer.getBoundingClientRect().top;})()`), "The first two comparison results must be fully visible above the footer at 1280×800");
+    await eventually(() => evaluate(student, `(() => {const panel=document.querySelector('[data-testid="student-target-metrics"]');const table=panel?.querySelector('table');return panel && table && table.getBoundingClientRect().width<=panel.getBoundingClientRect().width && document.documentElement.scrollWidth<=innerWidth;})()`), "Target comparison table must fit the full-width result panel");
+    await eventually(() => evaluate(student, `(() => {const rows=document.querySelectorAll('[data-testid="student-target-metrics"] tbody tr');const footer=document.querySelector('[data-testid="student-stage-actions"]');return rows.length>=2 && rows[1].getBoundingClientRect().bottom<=footer.getBoundingClientRect().top;})()`), "The first two comparison results must be fully visible above the footer at 1280×800");
     await browser(student, "screenshot", join(artifacts, "analysis-results.png"));
     const metrics = await api<AnalysisMetricsResult>(student, `/api/student/tasks/${task.id}/analysis-metrics`);
     assert(metrics.ppsStandardErrorMode === "systematic_exact" && metrics.ppsMonteCarloReplicates === 0,
@@ -348,6 +348,7 @@ try {
     assert(savedAnalysis?.result.kind === "numeric", "Saved analysis is missing or is not numeric");
     await namedButton(student, "引用到报告");
     await eventually(() => evaluate(student, 'document.body.textContent.includes("移除引用")'), "Saved analysis was not referenced in the report draft");
+    let referencedAnalysisId = savedAnalysis.id;
     await evaluate(student, '[...document.querySelectorAll("button")].find(button=>button.textContent.trim()==="移除引用").closest("article").scrollIntoView({block:"center"})');
     await browser(student, "screenshot", join(artifacts, "stage4-saved-analysis.png"));
     await browser(student, "fill", '[data-testid="student-univariate-workspace"] textarea', `加权估计${dictionaryLabel}的总体均值是多少？`);
@@ -359,6 +360,44 @@ try {
     assert(await evaluate(student, 'document.querySelector("[data-testid=student-univariate-workspace] article").textContent.includes("设计加权比率点估计")'), "Weighted analysis lacks its interpretation label");
     await browser(student, "screenshot", join(artifacts, "stage4-weighted-analysis.png"));
     await browser(student, "set", "viewport", "1280", "800");
+
+    // P0 上游失效：保存引用后重开阶段 3，同种子重抽使历史分析永久过期
+    const beforeReopen = await api<ExperimentData>(student, experimentPath);
+    experiment = await api<ExperimentData>(student, `${experimentPath}/stages/3/reopen`, "POST", { observedVersion: beforeReopen.version });
+    assert(experiment.currentStage === 3 && experiment.stage3CompletedAt === null, "Stage 3 reopen did not roll back");
+    assert((experiment.analysisReferences ?? []).length === 0, "Reopening upstream kept report references");
+    assert((experiment.samplingGeneration ?? 0) === (beforeReopen.samplingGeneration ?? 0) + 1, "Reopening upstream did not advance the sampling generation");
+    const staleRecords = await api<{ records: Array<{ id: number; stale: boolean }> }>(student, `/api/student/tasks/${task.id}/analyses`);
+    assert(staleRecords.records.length === 2 && staleRecords.records.every(record => record.stale), "Reopening upstream did not mark saved analyses stale");
+    for (const method of ["simple", "systematic", "pps"] as const) {
+        await api(student, `/api/student/tasks/${task.id}/sampling`, "POST", { method, params: { sampleSize: 49, seed: 1701, ...(method === "pps" ? { sizeField: "月生活费" } : {}) } });
+    }
+    experiment = await api<ExperimentData>(student, `${experimentPath}/stages/3/complete`, "POST", { observedVersion: (await api<ExperimentData>(student, experimentPath)).version });
+    assert(experiment.currentStage === 4, "Stage 3 recompletion failed");
+    // 保存报告与提交共用引用校验；此处以阶段四保存触发 STALE_REFERENCE
+    const staleReport = "上游重开后旧引用不得保存，必须重新运行或明确移除。" .repeat(6);
+    const staleSave = await evaluate<{ status: number; code?: string }>(student, `(async()=>{const r=await fetch(${JSON.stringify(`${experimentPath}/stages/4/complete`)},{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({observedVersion:${experiment.version},reportContent:${JSON.stringify(`<p>${staleReport}</p>`)},analysisReferences:[${savedAnalysis.id}]})});const p=await r.json();return {status:r.status,code:p.error?.code}})()`);
+    const debugState = await api<ExperimentData>(student, experimentPath);
+    assert(staleSave.status === 409 && staleSave.code === "STALE_REFERENCE", `Stale reference report save was not rejected: ${JSON.stringify(staleSave)} local=${JSON.stringify({ version: experiment.version, stage: experiment.currentStage, s3: experiment.stage3CompletedAt, s4: experiment.stage4CompletedAt })} server=${JSON.stringify({ version: debugState.version, stage: debugState.currentStage, s3: debugState.stage3CompletedAt, s4: debugState.stage4CompletedAt })}`);
+    await page(student, stageUrl, '[data-testid="student-analysis-report"]');
+    await activate(student, '[data-testid="student-analysis-workspace-univariate"]');
+    await eventually(() => evaluate(student, 'document.querySelector("[data-testid=student-univariate-workspace] article")?.textContent.includes("来源已过期")'), "Stale analysis warning missing in the student UI");
+    assert(await evaluate(student, `[...document.querySelectorAll("button")].filter(button=>button.textContent.trim()==="引用到报告").every(button=>button.disabled)`), "Stale analyses must not be newly referenceable");
+    await evaluate(student, 'document.querySelector("[data-testid=student-univariate-workspace] article").scrollIntoView({block:"center"})');
+    await browser(student, "screenshot", join(artifacts, "stale-analysis-warning.png"));
+    // 页面重载后组件状态清空：重新填写研究问题与变量后再运行（草稿契约不含分析配置）
+    await browser(student, "fill", '[data-testid="student-univariate-workspace"] textarea', `重开后简单随机样本中的${dictionaryLabel}分布如何？`);
+    await evaluate(student, `(() => {const selects=document.querySelectorAll('[data-testid="student-univariate-workspace"] select');for(const [select,value] of [[selects[0],"simple"],[selects[1],${JSON.stringify(continuousVariable.field)}]]){select.value=value;select.dispatchEvent(new Event("change",{bubbles:true}))}})()`);
+    await namedButton(student, "执行并保存分析");
+    await eventually(() => evaluate(student, 'document.body.textContent.includes("已保存分析（3/")'), "Analysis after reopen did not save");
+    const refreshedRecords = await api<{ records: Array<{ id: number; stale: boolean; config: { field: string; method: string } }> }>(student, `/api/student/tasks/${task.id}/analyses`);
+    const freshAnalysis = refreshedRecords.records.find(record => !record.stale && record.config.field === continuousVariable.field);
+    assert(freshAnalysis, "Fresh analysis after reopen is missing");
+    await namedButton(student, "引用到报告");
+    await eventually(() => evaluate(student, 'document.body.textContent.includes("移除引用")'), "Fresh analysis was not referenced");
+    referencedAnalysisId = freshAnalysis.id;
+    console.log("PASS upstream reopen, stale reference gate, resample and re-analysis (real browser)");
+
     await activate(student, '[data-testid="student-analysis-workspace-report"]');
     const report = "本次实验以学生每周学习时长的均值为研究目标。我们比较了简单随机、系统抽样与PPS的实际估计及设计标准误，结合总体真值讨论各设计的精度和代表性。样本量规划采用有限总体校正，本次无回答率假设为零。这里的误差分析依赖完整虚拟总体，不能直接替代现实调查中的设计方差估计。";
     await browser(student, "fill", '[data-testid="student-analysis-report-editor"]', report);
@@ -384,7 +423,7 @@ try {
     await submit();
     const frozenStudent = await api<{ snapshot: { analysisAppendices: Array<{ id: number; result: unknown }> } }>(student, `/api/student/tasks/${task.id}/submission`);
     const frozenTeacher = await api<{ analysisAppendices: Array<{ id: number; result: unknown }> }>(teacher, `/api/teacher/grading/${experiment.id}`);
-    assert(frozenStudent.snapshot.analysisAppendices[0]?.id === savedAnalysis.id, "Submission did not freeze selected analysis");
+    assert(frozenStudent.snapshot.analysisAppendices[0]?.id === referencedAnalysisId, "Submission did not freeze selected analysis");
     assert(JSON.stringify(frozenTeacher.analysisAppendices) === JSON.stringify(frozenStudent.snapshot.analysisAppendices), "Student and teacher did not receive the same frozen appendices");
     await page(teacher, `/teacher/grading/${experiment.id}`, "#grading-score-report");
     await namedButton(teacher, "报告");
@@ -399,7 +438,7 @@ try {
     experiment = await api(student, experimentPath);
     await page(student, stageUrl, '[data-testid="student-experiment-rejection-notice"]');
     experiment = await api(student, `${experimentPath}/stages/4/reopen`, "POST", { observedVersion: experiment.version });
-    experiment = await api(student, `${experimentPath}/stages/4/complete`, "POST", { observedVersion: experiment.version, reportContent: `<p>${report}补充说明：各设计的误差应结合抽样框排序和规模变量与目标变量的关系解释。</p>`, analysisReferences: [savedAnalysis.id] });
+    experiment = await api(student, `${experimentPath}/stages/4/complete`, "POST", { observedVersion: experiment.version, reportContent: `<p>${report}补充说明：各设计的误差应结合抽样框排序和规模变量与目标变量的关系解释。</p>`, analysisReferences: [referencedAnalysisId] });
     await submit();
     console.log("PASS UI submission, teacher rejection and student resubmission");
 
