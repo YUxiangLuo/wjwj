@@ -344,3 +344,44 @@ test("AnalysisReport excludes unselected methods from every analysis chart", asy
         expect(chart.queryByText("分层抽样")).toBeNull();
     }
 });
+
+test("the mean chart plots the population truth beside every estimate", async () => {
+    mockExperimentApi.getAnalysisMetrics.mockResolvedValueOnce({
+        success: true,
+        data: {
+            numericFields: ["数值"],
+            categoricalFields: [],
+            numeric: {
+                数值: {
+                    populationMean: 10,
+                    populationVariance: 4,
+                    methods: {
+                        simple: { estimate: 9.5, standardError: 1 },
+                        systematic: { estimate: 11, standardError: 1.1 },
+                    },
+                },
+            },
+            categorical: {},
+            target: null,
+        } as never,
+    });
+    mockExperimentContext.experiment = {
+        ...mockExperimentContext.experiment,
+        samplingPolicy: {
+            version: 1,
+            methods: { simple: "required", systematic: "optional", pps: "optional", stratified: "optional" },
+        },
+        samplingResults: {
+            simple: { completed: true, sampleCount: 400, data: [] },
+            systematic: { completed: true, sampleCount: 400, data: [] },
+        },
+    };
+
+    const view = render(<AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />);
+    await waitFor(() => expect(within(view.getByTestId("student-analysis-mean-chart")).getByText("简单随机")).toBeTruthy());
+
+    const chart = within(view.getByTestId("student-analysis-mean-chart"));
+    // 每个方法行都配一条“总体真值”，其数值为 populationMean。
+    expect(chart.getAllByText("总体真值")).toHaveLength(2);
+    expect(chart.getAllByText("10.00")).toHaveLength(2);
+});

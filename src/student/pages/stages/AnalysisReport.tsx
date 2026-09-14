@@ -347,14 +347,19 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     // ---- Chart data (memoized) ----
 
+    // 均值对比：每个已完成方法一行，同时给出已知虚拟总体真值，兑现“真值对照”的说明。
     const meanRows = useMemo<ChartRow[]>(() => {
         const fieldMetrics = selectedNumericField ? analysisMetrics?.numeric[selectedNumericField] : null;
         if (!fieldMetrics) return [];
 
+        const populationMean = Number.isFinite(fieldMetrics.populationMean) ? fieldMetrics.populationMean : null;
         return completedAnalysisMethods.reduce<ChartRow[]>((rows, method) => {
             const estimate = fieldMetrics.methods[method].estimate;
             if (estimate !== null) {
-                rows.push({ label: METHOD_META[method].label, values: { value: estimate } });
+                rows.push({
+                    label: METHOD_META[method].label,
+                    values: populationMean === null ? { value: estimate } : { value: estimate, population: populationMean },
+                });
             }
             return rows;
         }, []);
@@ -443,9 +448,11 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         })),
     [completedAnalysisMethods]);
 
-    const meanSeries = useMemo<ChartSeries[]>(() => [
-        { key: "value", label: selectedNumericField ? `${selectedNumericField} 估计均值` : "估计均值", color: "var(--chart-2)" },
-    ], [selectedNumericField]);
+    const meanSeries = useMemo<ChartSeries[]>(() => {
+        const estimateSeries: ChartSeries = { key: "value", label: selectedNumericField ? `${selectedNumericField} 估计均值` : "估计均值", color: "var(--chart-2)" };
+        const hasPopulation = meanRows.some((row) => Object.prototype.hasOwnProperty.call(row.values, "population"));
+        return hasPopulation ? [estimateSeries, { ...POPULATION_SERIES, label: "总体真值" }] : [estimateSeries];
+    }, [meanRows, selectedNumericField]);
 
     const errorSeries = useMemo<ChartSeries[]>(() => [
         { key: "value", label: `${selectedNumericField || "字段"} 设计标准误`, color: "var(--chart-5)" },
