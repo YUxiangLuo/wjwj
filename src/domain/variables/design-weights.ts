@@ -20,6 +20,10 @@ export function calculateDesignWeights(
         weights = indices.map(() => design.populationSize / design.sampleCount);
     } else if (design.method === "pps") {
         if (design.inclusionProbabilities.length !== indices.length) throw new Error("PPS 入样概率与样本不一致");
+        // π 是入样概率，必入单元为 1；π>1 只可能来自伪造或损坏的设计元数据。
+        if (design.inclusionProbabilities.some((probability) => !Number.isFinite(probability) || probability <= 0 || probability > 1)) {
+            throw new Error("PPS 入样概率必须为 (0,1] 内的有限正数");
+        }
         weights = design.inclusionProbabilities.map((probability) => 1 / probability);
     } else {
         const layerMap = new Map<string, { count: number; sampleCount: number }>();
