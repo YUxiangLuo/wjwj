@@ -415,6 +415,41 @@ pgTest("R04 submitted details read the frozen snapshot after dictionary and anal
     expect(missingTeacher.status).toBe(409);
 }, 30_000);
 
+pgTest("A06 a worker failure is surfaced and never persisted as a saved analysis", async () => {
+    const f = await fixture();
+    // 存储水合合法但重演不匹配的抽样记录（伪造种子）：失败必须来自 Worker
+    await application.db.update(schema.experiment).set({
+        samplingResults: { simple: { ...f.storedResult, serverGenerated: true, seed: 999_999 } },
+    }).where(eq(schema.experiment.id, f.experiment.id));
+    const [current] = await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, f.experiment.id));
+    await expect(service.createSavedAnalysis(f.students[0]!.id, f.cls.id, f.task.id, {
+        requestId: `a06-fail-${crypto.randomUUID()}`, observedVersion: current!.version,
+        config: { question: "失败的 Worker 结果不能落库？", field: "value", method: "simple", weighted: false },
+    })).rejects.toMatchObject({ code: "REPLAY_MISMATCH" });
+    expect(await application.db.select().from(schema.savedAnalysis).where(eq(schema.savedAnalysis.experimentId, f.experiment.id))).toHaveLength(0);
+}, 20_000);
+
+pgTest("A06 an interrupted commit is recoverable by retrying the same request exactly once", async () => {
+    const f = await fixture();
+    const body = f.body(`a06-interrupt-${crypto.randomUUID()}`);
+    const trigger = `test_fail_saved_analysis_${crypto.randomUUID().slice(0, 8)}`;
+    await raw.unsafe(`CREATE FUNCTION ${trigger}() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'simulated commit interruption'; END; $$ LANGUAGE plpgsql`);
+    await raw.unsafe(`CREATE TRIGGER ${trigger} BEFORE INSERT ON saved_analysis FOR EACH ROW EXECUTE FUNCTION ${trigger}()`);
+    try {
+        // 计算完成但写入失败：请求必须以错误结束且无半条记录
+        await expect(service.createSavedAnalysis(f.students[0]!.id, f.cls.id, f.task.id, body)).rejects.toThrow();
+        expect(await application.db.select().from(schema.savedAnalysis).where(eq(schema.savedAnalysis.experimentId, f.experiment.id))).toHaveLength(0);
+    } finally {
+        await raw.unsafe(`DROP TRIGGER IF EXISTS ${trigger} ON saved_analysis`);
+        await raw.unsafe(`DROP FUNCTION IF EXISTS ${trigger}()`);
+    }
+    // 相同请求重试可恢复，且最终最多一条
+    const recovered = await service.createSavedAnalysis(f.students[0]!.id, f.cls.id, f.task.id, body);
+    const retried = await service.createSavedAnalysis(f.students[0]!.id, f.cls.id, f.task.id, body);
+    expect(retried.id).toBe(recovered.id);
+    expect(await application.db.select().from(schema.savedAnalysis).where(eq(schema.savedAnalysis.experimentId, f.experiment.id))).toHaveLength(1);
+}, 20_000);
+
 pgTest("a version change while analysis waits for its write lock rejects the result", async () => {
     const f = await fixture();
     const acquired = Promise.withResolvers<void>();
