@@ -150,9 +150,17 @@ export async function parseBody<T extends Record<string, unknown>>(req: Request)
         offset += chunk.byteLength;
     }
 
+    const text = new TextDecoder().decode(bytes);
+    // PostgreSQL text/jsonb cannot store NUL, and a JSON body containing it is
+    // never a legitimate teaching input: reject it here instead of surfacing a
+    // database error as an empty 500 from whichever route stored the string.
+    if (text.includes("\u0000") || text.includes("\\u0000")) {
+        throw new InvalidJsonError("请求体包含无效的空字符");
+    }
+
     let parsed: unknown;
     try {
-        parsed = JSON.parse(new TextDecoder().decode(bytes));
+        parsed = JSON.parse(text);
     } catch {
         throw new InvalidJsonError();
     }

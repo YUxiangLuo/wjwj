@@ -220,3 +220,20 @@ test("trusted proxy origin validation reconstructs the public HTTPS origin", () 
         else process.env.TRUST_PROXY = previous;
     }
 });
+
+test("parseBody rejects NUL characters before any route stores them", async () => {
+    const request = new Request("https://example.com", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "NUL\u0000name" }),
+    });
+    const failure = await parseBody(request).catch((cause: unknown) => cause);
+    expect(failure).toBeInstanceOf(InvalidJsonError);
+    expect((failure as Error).message).toContain("空字符");
+    const plain = new Request("https://example.com", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "正常" }),
+    });
+    await expect(parseBody(plain)).resolves.toEqual({ name: "正常" });
+});
