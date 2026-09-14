@@ -344,7 +344,7 @@ export function SubmissionPreview() {
                     </div>
                 )}
                 {error && (
-                    <div className="text-label text-destructive bg-destructive-muted px-4 py-2 rounded-surface border border-destructive-border">
+                    <div role="alert" data-testid="student-preview-submit-error" className="text-label text-destructive bg-destructive-muted px-4 py-2 rounded-surface border border-destructive-border">
                         {error}
                     </div>
                 )}

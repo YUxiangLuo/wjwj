@@ -258,7 +258,6 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     <div
                                         ref={isCurrent ? stepRef : undefined}
                                         tabIndex={isCurrent ? -1 : undefined}
-                                        aria-label={`步骤 ${idx + 1}：${step}`}
                                         aria-current={isCurrent ? "step" : undefined}
                                         data-testid={`teacher-topic-step-${idx + 1}`}
                                         className={`w-7 h-7 rounded-control flex items-center justify-center text-meta font-medium transition-colors ${isCurrent

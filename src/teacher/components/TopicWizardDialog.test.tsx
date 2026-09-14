@@ -231,6 +231,10 @@ test("changing steps resets scrolling and focuses the step, but editing does not
     expect(content.scrollTop).toBe(0);
     expect(document.activeElement).toBe(view.getByTestId("teacher-topic-step-3"));
     expect(document.activeElement?.getAttribute("aria-current")).toBe("step");
+    // 步骤圆点是通用 div，禁止使用 aria-label（axe: aria-prohibited-attr）；
+    // 可读名称来自紧邻的可见步骤文字。
+    expect(view.container.querySelector('[aria-label^="步骤"]')).toBeNull();
+    expect(view.getByTestId("teacher-topic-step-3").textContent).toBe("3");
 });
 
 test("the introductory flow is optional instead of pushing the first fields down", () => {
