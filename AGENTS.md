@@ -12,6 +12,7 @@ Prefer built-ins over dependencies: `Bun.serve` (not Express), `bun:sqlite`,
 - Database operations: [DATABASE.md](DATABASE.md)
 - Security, production headers, dependency audit: [SECURITY.md](SECURITY.md)
 - Theme tokens and the local shadcn fork: [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md)
+- Release acceptance, risk hotspots and statistics baselines: [TESTER_RISK_CHECKLIST.md](docs/TESTER_RISK_CHECKLIST.md), [STATISTICAL_TEST_CHECKLIST.md](docs/STATISTICAL_TEST_CHECKLIST.md)
 
 ## Style System
 

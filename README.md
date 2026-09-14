@@ -57,6 +57,8 @@ bun run test:teaching      # 浏览器教学闭环；需测试角色可创建临
 | 迁移、危险操作、备份恢复 | [数据库操作](DATABASE.md) |
 | 鉴权、数据披露与依赖风险 | [安全边界](SECURITY.md) |
 | 主题、样式与共享组件 | [设计系统](DESIGN_SYSTEM.md) |
+| 发布前高风险人工验收 | [高风险测试检查清单](docs/TESTER_RISK_CHECKLIST.md) |
+| 统计公式、抽样设计与解释验收 | [统计学专业验收清单](docs/STATISTICAL_TEST_CHECKLIST.md) |
 | 内部演示 | [演示指南](docs/DEMO.md) |
 
 开发约定见 [AGENTS.md](AGENTS.md)。专题文档是对应规则的唯一事实来源，不维护历史测试快照。
