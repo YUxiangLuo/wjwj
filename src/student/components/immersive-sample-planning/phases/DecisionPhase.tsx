@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { calculatePlannedPrecision } from "../../../experiment/planned-precision";
 import { PlanningOutcome, PlanningAssumptions } from "../PlanningShared";
-import { primarySliderClassName } from "../../sample-planning-styles";
+import { designEffectValueTone, nonResponseRateValueTone, primarySliderClassName } from "../../sample-planning-styles";
 import {
     calculateMeanSampleSizeMetrics,
     calculateSampleSizeMetrics,
@@ -312,7 +312,7 @@ export function DecisionPhase({
                     <div className="space-y-1.5">
                         <div className="flex justify-between">
                             <Label className="text-label text-foreground">设计效应</Label>
-                            <span className="text-meta font-bold text-warning tabular-nums">{params.designEffect.toFixed(1)}</span>
+                            <span className={`text-meta font-bold tabular-nums ${designEffectValueTone(params.designEffect)}`}>{params.designEffect.toFixed(1)}</span>
                         </div>
                         <Slider
                             aria-label="设计效应"
@@ -326,7 +326,7 @@ export function DecisionPhase({
                     <div className="space-y-1.5">
                         <div className="flex justify-between">
                             <Label className="text-label text-foreground">预期无回答率</Label>
-                            <span className="text-meta font-bold text-destructive tabular-nums">{Math.round(params.nonResponseRate * 100)}%</span>
+                            <span className={`text-meta font-bold tabular-nums ${nonResponseRateValueTone(params.nonResponseRate)}`}>{Math.round(params.nonResponseRate * 100)}%</span>
                         </div>
                         <Slider
                             aria-label="预期无回答率"
