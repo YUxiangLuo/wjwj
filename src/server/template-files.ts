@@ -10,6 +10,8 @@ export function resolveTemplatePath(rawName: string): string | null {
         return null;
     }
     if (!decodedName) return null;
+    // 控制字符（含解码后的 NUL）会让路径 API 抛错，按无效名称处理而不是 500。
+    if (/[\u0000-\u001f]/.test(decodedName)) return null;
     if (decodedName.includes("/") || decodedName.includes("\\")) return null;
 
     const fullPath = resolve(templatesDir, decodedName);

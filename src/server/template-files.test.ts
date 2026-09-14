@@ -17,6 +17,13 @@ test("resolveTemplatePath rejects empty or traversal names", () => {
     expect(resolveTemplatePath("a\\b.csv")).toBeNull();
 });
 
+test("resolveTemplatePath rejects control characters instead of throwing", () => {
+    // 回归：解码后的 NUL 曾让 /templates/:name 抛出并返回 500（应为 404）。
+    expect(resolveTemplatePath("csv-template.csv%00.png")).toBeNull();
+    expect(resolveTemplatePath("数据模板.csv\u0000")).toBeNull();
+    expect(resolveTemplatePath("a\u001fb.csv")).toBeNull();
+});
+
 test("getTemplateContentType infers known template mime types", () => {
     expect(getTemplateContentType("数据模板.csv")).toBe("text/csv; charset=utf-8");
     expect(getTemplateContentType("数据上传规范.pdf")).toBe("application/pdf");
