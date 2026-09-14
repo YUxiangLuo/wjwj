@@ -131,6 +131,8 @@ n_invite = 88
 
 样本：`[0, 2, 9, 21, null]`。
 
+实现注记（2026-09 实测）：数值列的**空单元格会被映射校验拒绝**（含非目标数值列），先确认字典也不行；缺失必须用字典声明的**缺失码**表示（例如 `-1`）。用缺失码替换 `null` 后，分析仍应得到 `validCount=4 / missingCount=1`，且 `0` 计入有效值。
+
 ```text
 sampleCount=5, validCount=4, missingCount=1
 mean=8
