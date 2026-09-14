@@ -56,7 +56,10 @@ export async function listSavedAnalyses(studentId: number, classId: number, task
     const { record, template } = await ownedAnalysisContext(studentId, classId, taskId);
     const rows = await db.select().from(savedAnalysis).where(eq(savedAnalysis.experimentId, record.id)).orderBy(desc(savedAnalysis.id)).limit(ANALYSIS_CAPACITY);
     let dictionary = template.variableDictionary;
-    if (dictionary && (!template.excelFilePath || (await readVariableSource(template.excelFilePath, template.fieldMapping)).source !== dictionary.source)) dictionary = null;
+    try {
+        if (dictionary && (template.variableRevision !== dictionary.revision || !template.excelFilePath
+            || (await readVariableSource(template.excelFilePath, template.fieldMapping)).source !== dictionary.source)) dictionary = null;
+    } catch { dictionary = null; } // Saved results remain readable when their source is unavailable.
     return { records: rows.map(row => analysisView(row, record, dictionary)), capacity: ANALYSIS_CAPACITY };
 }
 

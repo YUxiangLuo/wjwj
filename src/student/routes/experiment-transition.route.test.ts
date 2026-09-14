@@ -280,7 +280,7 @@ test("submission forwards the task sampling policy into the immutable snapshot",
     const complete = experimentRecord({
         currentStage: 4,
         questionnaire,
-        samplePlan: { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 132, finalSampleSize: 50, finalSampleSizeSource: "manual" },
+        samplePlan: { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 132, finalSampleSize: 50 },
         samplingResults: {
             simple: { completed: true, sampleCount: 50 },
             systematic: { completed: true, sampleCount: 50, interval: 4 },

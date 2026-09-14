@@ -29,10 +29,12 @@ export function UnivariateWorkspace({ taskId, observedVersion, completedMethods,
             client.request<{ records: SavedAnalysisView[]; capacity: number }>(`/api/student/tasks/${taskId}/analyses`),
         ]);
         setLoading(false);
-        if (!dictionaryResponse.success || !analysesResponse.success) return setError(dictionaryResponse.error?.message ?? analysesResponse.error?.message ?? "分析工作区加载失败");
         setDictionary(dictionaryResponse.data?.dictionary ?? null);
-        setRecords(analysesResponse.data?.records ?? []);
-        setCapacity(analysesResponse.data?.capacity ?? 20);
+        if (analysesResponse.success) {
+            setRecords(analysesResponse.data?.records ?? []);
+            setCapacity(analysesResponse.data?.capacity ?? 20);
+        }
+        if (!dictionaryResponse.success || !analysesResponse.success) setError(dictionaryResponse.error?.message ?? analysesResponse.error?.message ?? "分析工作区加载失败");
     };
     useEffect(() => { void load(); }, [taskId]);
     useEffect(() => {
@@ -72,6 +74,6 @@ export function UnivariateWorkspace({ taskId, observedVersion, completedMethods,
             <Button onClick={() => void run()} disabled={running || config.question.trim().length < 5 || config.question.trim().length > 500 || !config.field || records.length >= capacity}>{running ? "正在执行…" : "执行并保存分析"}</Button>
         </section>}
         {records.length >= capacity && <p className="rounded-surface border border-warning-border bg-warning-muted p-3 text-label text-warning">已达到 {capacity} 条容量上限。历史记录会保留且不能删除；如需继续分析，请联系教师处理。</p>}
-        <section className="space-y-3"><h2 className="text-section-title font-semibold">已保存分析（{records.length}/{capacity}）</h2>{records.length === 0 ? <p className="text-label text-muted-foreground">暂无分析记录。</p> : records.map(record => <article key={record.id} className="rounded-surface border border-border bg-card p-4"><div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold">{record.config.question}</h3><p className="text-meta text-muted-foreground">{record.variable.label} · {methods[record.config.method]} · 来源 {record.source} · revision {record.dictionaryRevision} · generation {record.samplingGeneration} · {record.algorithmVersion}</p></div><Button variant="outline" onClick={() => toggleReference(record)} disabled={!references.includes(record.id) && (record.stale || references.length >= 10)}>{references.includes(record.id) ? "移除引用" : "引用到报告"}</Button></div>{record.stale && <p className="my-2 text-label text-warning">来源已过期，不可新选；若已引用，请明确移除或重新运行。</p>}<div className="mt-3 overflow-x-auto"><AnalysisResultTable record={record} /></div></article>)}</section>
+        <section className="space-y-3"><h2 className="text-section-title font-semibold">已保存分析（{records.length}/{capacity}）</h2>{records.length === 0 ? <p className="text-label text-muted-foreground">暂无分析记录。</p> : records.map(record => <article key={record.id} className="rounded-surface border border-border bg-card p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 flex-1"><h3 className="font-semibold">{record.config.question}</h3><p className="break-all text-meta text-muted-foreground">{record.variable.label} · {methods[record.config.method]} · 来源 {record.source} · 修订 {record.dictionaryRevision} · 抽样代次 {record.samplingGeneration} · {record.algorithmVersion}</p></div><Button variant="outline" onClick={() => toggleReference(record)} disabled={!references.includes(record.id) && (record.stale || references.length >= 10)}>{references.includes(record.id) ? "移除引用" : "引用到报告"}</Button></div>{record.stale && <p className="my-2 text-label text-warning">来源已过期，不可新选；若已引用，请明确移除或重新运行。</p>}<div className="mt-3 overflow-x-auto"><AnalysisResultTable record={record} /></div></article>)}</section>
     </div>;
 }

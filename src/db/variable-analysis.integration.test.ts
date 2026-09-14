@@ -142,3 +142,42 @@ pgTest("a new sampling generation makes saved analysis stale and rejects old ref
     await expect(service.loadAnalysisReferences(current!, f.dictionary, [saved.id]))
         .rejects.toMatchObject({ code: "STALE_REFERENCE", status: 409 });
 });
+
+pgTest("a missing population keeps saved results readable but stale", async () => {
+    const f = await fixture();
+    const saved = await service.createSavedAnalysis(f.students[0]!.id, f.cls.id, f.task.id, f.body(`missing-${crypto.randomUUID()}`));
+    await Bun.file(files[0]!).delete();
+    const listed = await service.listSavedAnalyses(f.students[0]!.id, f.cls.id, f.task.id);
+    expect(listed.records[0]).toMatchObject({ id: saved.id, result: saved.result, stale: true });
+});
+
+pgTest("a version change while analysis waits for its write lock rejects the result", async () => {
+    const f = await fixture();
+    const acquired = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    let holderPid = 0;
+    const held = raw.begin(async tx => {
+        const [backend] = await tx`SELECT pg_backend_pid() AS pid`;
+        holderPid = backend.pid;
+        await tx`SELECT id FROM experiment WHERE id = ${f.experiment.id} FOR UPDATE`;
+        acquired.resolve();
+        await release.promise;
+        await tx`UPDATE experiment SET version = version + 1 WHERE id = ${f.experiment.id}`;
+    });
+    await acquired.promise;
+    const pending = service.createSavedAnalysis(f.students[0]!.id, f.cls.id, f.task.id, f.body(`race-${crypto.randomUUID()}`))
+        .then(value => ({ value, error: null }), error => ({ value: null, error }));
+    try {
+        let blocked = false;
+        const until = Date.now() + 5000;
+        while (Date.now() < until) {
+            const rows = await raw`SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND ${holderPid} = ANY(pg_blocking_pids(pid))`;
+            if (rows.length) { blocked = true; break; }
+            await Bun.sleep(10);
+        }
+        expect(blocked).toBe(true);
+    } finally { release.resolve(); await held; }
+    const outcome = await pending;
+    expect(outcome.error).toMatchObject({ code: "VERSION_CONFLICT", status: 409 });
+    expect(await application.db.select().from(schema.savedAnalysis).where(eq(schema.savedAnalysis.experimentId, f.experiment.id))).toHaveLength(0);
+}, 10_000);

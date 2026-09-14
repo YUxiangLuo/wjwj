@@ -7,6 +7,8 @@ function record(overrides: Record<string, unknown> = {}) {
         studentId: 2,
         taskId: 3,
         version: 4,
+        samplingGeneration: 7,
+        analysisReferences: [12],
         status: "in_progress",
         currentStage: 2,
         questionnaire: { title: "问卷" },
@@ -132,6 +134,20 @@ test("reopening a completed stage keeps that stage data and clears downstream da
         stage4CompletedAt: null,
     });
     expect(result.updates.samplePlan).toBeUndefined();
+});
+
+test("upstream reopens advance the sampling generation; report-only editing preserves it and references", () => {
+    const original = record({ currentStage: 4, stage2CompletedAt: new Date(), stage3CompletedAt: new Date(), stage4CompletedAt: new Date() });
+    for (const stage of [1, 2, 3, 4]) {
+        const result = buildStageReopenUpdates({ experimentRecord: original, stage, deadlinePassed: false });
+        expect(result.ok).toBe(true);
+        if (!result.ok) throw new Error(result.message);
+        if (stage < 4) expect(result.updates).toMatchObject({ samplingGeneration: 8, analysisReferences: [] });
+        else {
+            expect(result.updates).not.toHaveProperty("samplingGeneration");
+            expect(result.updates).not.toHaveProperty("analysisReferences");
+        }
+    }
 });
 
 test("required stratification blocks a saved plan below H and uses any complete available frame", () => {

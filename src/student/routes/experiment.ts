@@ -586,6 +586,8 @@ const submitRoutes: RouteDefinition = {
                 fieldMapping: taskInfo?.fieldMapping,
                 samplingPolicy: taskInfo?.samplingPolicy,
                 excelFilePath: taskInfo?.excelFilePath,
+                variableDictionary: taskInfo?.variableDictionary,
+                variableRevision: taskInfo?.variableRevision,
                 className: taskInfo?.className,
                 teacherName: taskInfo?.teacherName,
             },
