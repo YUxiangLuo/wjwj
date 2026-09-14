@@ -2,14 +2,37 @@ import { basename } from "node:path";
 
 export { parseSpreadsheetFile as parseExcelFile } from "../../lib/spreadsheet";
 
+/** 存储前缀（时间戳与短 UUID）之外的 UTF-8 字节预算，确保文件系统 255 字节限制内。 */
+const MAX_UPLOAD_FILE_NAME_BYTES = 180;
+
+function truncateUtf8(value: string, maxBytes: number) {
+    const encoder = new TextEncoder();
+    let used = 0;
+    let result = "";
+    for (const character of value) {
+        const size = encoder.encode(character).length;
+        if (used + size > maxBytes) break;
+        used += size;
+        result += character;
+    }
+    return result;
+}
+
 export function sanitizeUploadFileName(originalName: string) {
     const fileName = basename(originalName)
         .replace(/[\x00-\x1F\x7F]/g, "")
         .replace(/[\\/]/g, "_")
-        .replace(/\s+/g, "_")
-        .slice(0, 120);
+        .replace(/\s+/g, "_");
+    if (!fileName) return "upload.bin";
 
-    return fileName || "upload.bin";
+    // 先提取扩展名再截断主体：字符数上限之外还必须按 UTF-8 字节限制，
+    // 因为中文等多字节字符的 120 字符可超过文件系统 255 字节上限并导致写入 500。
+    const dot = fileName.lastIndexOf(".");
+    const extension = dot > 0 && fileName.length - dot <= 12 ? fileName.slice(dot) : "";
+    const base = extension ? fileName.slice(0, -extension.length) : fileName;
+    const baseBudget = Math.max(1, MAX_UPLOAD_FILE_NAME_BYTES - new TextEncoder().encode(extension).length);
+    const truncated = truncateUtf8(base, Math.min(120, baseBudget));
+    return `${truncated}${extension}` || "upload.bin";
 }
 
 export function isRowEmpty(row: Record<string, any>) {

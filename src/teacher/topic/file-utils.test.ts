@@ -3,12 +3,30 @@ import {
     attachmentContentMatchesExtension,
     getAttachmentContentType,
     getAttachmentType,
+    sanitizeUploadFileName,
 } from "./file-utils";
 
 test("attachment type ignores spoofed MIME and uses the filename extension allowlist", () => {
     expect(getAttachmentType("guide.pdf", "video/mp4")).toBe("document");
     expect(getAttachmentType("recording.MP4", "application/octet-stream")).toBe("video");
     expect(getAttachmentType("unknown.bin", "video/mp4")).toBe("unknown");
+});
+
+test("upload file names stay within the filesystem byte budget", () => {
+    const encoder = new TextEncoder();
+    expect(sanitizeUploadFileName("report final.csv")).toBe("report_final.csv");
+    expect(sanitizeUploadFileName("../../evil.csv")).toBe("evil.csv");
+    expect(sanitizeUploadFileName("")).toBe("upload.bin");
+    // 120 个中文字符约 360 字节，必须按字节截断且保留扩展名
+    const chinese = sanitizeUploadFileName(`${"很长的中文附件名".repeat(20)}.png`);
+    expect(chinese.endsWith(".png")).toBe(true);
+    expect(encoder.encode(chinese).length).toBeLessThanOrEqual(180);
+    const ascii = sanitizeUploadFileName(`${"a".repeat(200)}.png`);
+    expect(ascii.endsWith(".png")).toBe(true);
+    expect(ascii.length).toBeLessThanOrEqual(132);
+    expect(encoder.encode(ascii).length).toBeLessThanOrEqual(180);
+    // 无扩展名的超长中文名同样受限
+    expect(encoder.encode(sanitizeUploadFileName("中".repeat(120))).length).toBeLessThanOrEqual(180);
 });
 
 test("attachment content type is derived from the allowlisted extension", () => {
