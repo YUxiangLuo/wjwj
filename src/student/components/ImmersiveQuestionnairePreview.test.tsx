@@ -1,8 +1,11 @@
 import { afterEach, beforeEach, expect, mock, test } from "bun:test";
-import { cleanup, fireEvent, render } from "@testing-library/react";
 import { installDomGlobals } from "@/test-utils/dom";
 import type { QuestionnaireData } from "../api-client";
-import { ImmersiveQuestionnairePreview } from "./ImmersiveQuestionnairePreview";
+
+const bootstrapDom = installDomGlobals();
+const { cleanup, fireEvent, render } = await import("@testing-library/react");
+const { ImmersiveQuestionnairePreview } = await import("./ImmersiveQuestionnairePreview");
+bootstrapDom.restore();
 
 let restoreDom: (() => void) | undefined;
 beforeEach(() => { restoreDom = installDomGlobals("http://localhost/student").restore; });
@@ -17,6 +20,22 @@ const questionnaire: QuestionnaireData = {
         { id: "last", type: "boolean", content: "最后一题？" },
     ],
 };
+
+test("numeric questions request explicit continuation before and after valid input", () => {
+    const view = render(<ImmersiveQuestionnairePreview questionnaire={{ ...questionnaire, questions: [
+        { id: "numeric", type: "numeric", content: "时长？", unit: "小时", numericMin: 0, numericMax: 10, decimalPlaces: 1 },
+        questionnaire.questions[1]!,
+    ] }} onComplete={() => {}} onClose={() => {}} />);
+    fireEvent.click(view.getByTestId("immersive-preview-start"));
+    expect(view.getByText("请输入符合范围和小数位要求的数值，确认后点击下方按钮或按 Enter 继续。")).toBeTruthy();
+    expect(view.queryByText(/首次选择后自动继续/)).toBeNull();
+    fireEvent.change(view.getByTestId("questionnaire-preview-numeric"), { target: { value: "10.0" } });
+    expect(view.getByText("时长？")).toBeTruthy();
+    expect(view.queryByText(/首次选择后自动继续/)).toBeNull();
+    expect((view.getByTestId("immersive-preview-next") as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(view.getByTestId("immersive-preview-next"));
+    expect(view.getByText("最后一题？")).toBeTruthy();
+});
 
 test("skipping a question blocks completion until every answer is supplied", () => {
     const onComplete = mock(() => {});

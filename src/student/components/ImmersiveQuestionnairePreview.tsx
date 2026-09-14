@@ -574,6 +574,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                 <p className="text-label text-muted-foreground" role="status">
                                     {pendingAutoAdvance === page.index ? "已选择，即将继续；可返回上一题修改。"
                                         : currentQuestion.type === "multiple" ? "选好后点击下方按钮或按 Enter 继续；空格可切换选项。"
+                                            : currentQuestion.type === "numeric" ? "请输入符合范围和小数位要求的数值，确认后点击下方按钮或按 Enter 继续。"
                                             : isCurrentAnswered ? "可在本题修改答案，确认后点击下方按钮或按 Enter 继续。"
                                                 : "首次选择后自动继续，无需点击下一题；可随时返回修改。"}
                                 </p>

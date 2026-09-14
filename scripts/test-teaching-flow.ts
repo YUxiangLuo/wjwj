@@ -142,6 +142,13 @@ try {
     await visible(teacher, `input[aria-label="${continuousVariable.field} 标签"]`);
     const dictionaryLabel = `${continuousVariable.label}（浏览器确认）`;
     await browser(teacher, "fill", `input[aria-label="${continuousVariable.field} 标签"]`, dictionaryLabel);
+    const missingBefore = await evaluate<string>(teacher, 'document.querySelector("#missing-0").value');
+    await browser(teacher, "fill", "#missing-0", "[broken");
+    await namedButton(teacher, "明确确认并保存");
+    await eventually(() => evaluate(teacher, 'document.querySelector("[role=alert]")?.textContent.includes("请填写 JSON 数组")'), "Invalid missing values lack actionable Chinese feedback");
+    assert(await evaluate(teacher, `document.querySelector("#missing-0").value === "[broken" && document.querySelector(${JSON.stringify(`input[aria-label="${continuousVariable.field} 标签"]`)}).value === ${JSON.stringify(dictionaryLabel)}`), "Validation failure lost dictionary inputs");
+    assert((await api<DictionarySnapshot>(teacher, `/api/teacher/topics/${copied.id}/variables`)).revision === dictionaryBefore.revision, "Invalid JSON changed the saved dictionary");
+    await browser(teacher, "fill", "#missing-0", missingBefore);
     await browser(teacher, "screenshot", join(artifacts, "teacher-dictionary.png"));
     await namedButton(teacher, "明确确认并保存");
     await eventually(async () => (await api<{ revision: number; dictionary: { variables: Array<{ field: string; label: string }> } | null }>(teacher, `/api/teacher/topics/${copied.id}/variables`)).dictionary?.variables.some(variable => variable.field === continuousVariable.field && variable.label === dictionaryLabel), "Dictionary UI save did not persist");
@@ -326,6 +333,14 @@ try {
     await visible(student, '[data-testid="student-univariate-workspace"]');
     await browser(student, "fill", '[data-testid="student-univariate-workspace"] textarea', `简单随机样本中的${dictionaryLabel}分布如何？`);
     await evaluate(student, `(() => {const selects=document.querySelectorAll('[data-testid="student-univariate-workspace"] select');for(const [select,value] of [[selects[0],"simple"],[selects[1],${JSON.stringify(continuousVariable.field)}]]){select.value=value;select.dispatchEvent(new Event("change",{bubbles:true}))}})()`);
+    await browser(student, "check", '[data-testid="student-univariate-workspace"] input[type="checkbox"]');
+    await activate(student, '[data-testid="student-analysis-workspace-report"]');
+    assert(await evaluate(student, 'document.querySelector("[data-testid=student-univariate-workspace]").getBoundingClientRect().height === 0'), "Inactive analysis workspace remains visible");
+    await activate(student, '[data-testid="student-analysis-workspace-univariate"]');
+    await visible(student, '[data-testid="student-univariate-workspace"] textarea');
+    assert(await evaluate(student, `document.querySelector('[data-testid="student-univariate-workspace"] textarea').value === ${JSON.stringify(`简单随机样本中的${dictionaryLabel}分布如何？`)} && document.querySelectorAll('[data-testid="student-univariate-workspace"] select')[1].value === ${JSON.stringify(continuousVariable.field)} && document.querySelector('[data-testid="student-univariate-workspace"] input[type="checkbox"]').checked`), "Tab switching lost the analysis question, variable or weighting choice");
+    assert((await api<{ records: unknown[] }>(student, `/api/student/tasks/${task.id}/analyses`)).records.length === 0, "Changing tabs ran analysis implicitly");
+    await browser(student, "uncheck", '[data-testid="student-univariate-workspace"] input[type="checkbox"]');
     await namedButton(student, "执行并保存分析");
     await eventually(() => evaluate(student, 'document.body.textContent.includes("已保存分析（1/")'), "Univariate analysis did not save through the UI");
     const savedAnalyses = await api<{ records: Array<{ id: number; config: { field: string; method: string }; result: { kind: string } }> }>(student, `/api/student/tasks/${task.id}/analyses`);

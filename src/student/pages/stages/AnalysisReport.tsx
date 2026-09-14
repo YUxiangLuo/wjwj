@@ -680,7 +680,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 </details>
             </TabsContent>
 
-            <TabsContent value="univariate" className="min-w-0">
+            <TabsContent value="univariate" forceMount className="min-w-0 data-[state=inactive]:hidden">
                 {experiment?.taskId && <UnivariateWorkspace taskId={experiment.taskId} observedVersion={experiment.version} completedMethods={completedAnalysisMethods} references={analysisReferences} onReferencesChange={setAnalysisReferences} onStaleReferencesChange={setStaleAnalysisReferences} />}
             </TabsContent>
 

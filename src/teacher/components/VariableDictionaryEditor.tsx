@@ -54,7 +54,11 @@ export function VariableDictionaryEditor({ topicId, readOnly = false }: { topicI
             const result = await teacherApi.updateVariableDictionary(topicId, { source: snapshot.source, observedRevision: snapshot.revision, dictionary: { ...draft, variables } });
             if (result.success) await load();
             else setError(result.error?.message ?? "保存失败；输入已保留");
-        } catch (cause) { setError(cause instanceof Error ? cause.message : "缺失编码格式无效；输入已保留"); }
+        } catch (cause) {
+            setError(cause instanceof SyntaxError
+                ? '缺失编码格式无效，请填写 JSON 数组，例如 [null, "NA"]；文本编码需用双引号包围。输入已保留。'
+                : cause instanceof Error ? cause.message : "缺失编码格式无效；输入已保留");
+        }
         finally { setSaving(false); }
     }
     if (loading) return <div role="status" className="text-label text-muted-foreground">正在读取变量字典…</div>;
