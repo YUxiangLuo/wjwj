@@ -236,6 +236,7 @@ export function GradingDetail() {
                                             min={0}
                                             max={100}
                                             value={scores[key]}
+                                            placeholder="0–100"
                                             disabled={!canGrade}
                                             onChange={(event) => setScores({ ...scores, [key]: event.target.value })}
                                         />

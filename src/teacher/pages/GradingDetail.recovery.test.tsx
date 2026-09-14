@@ -52,6 +52,15 @@ test("version conflict keeps scoring inputs until an explicit refresh", async ()
     expect((view.getByLabelText("实验报告（40%）") as HTMLInputElement).value).toBe("30");
 });
 
+test("score inputs hint the expected 0–100 range", async () => {
+    globalThis.fetch = (async () => Response.json({ success: true, data: record() })) as unknown as typeof fetch;
+    const view = page();
+    await waitFor(() => expect(view.getByLabelText("教师评语")).toBeTruthy());
+    for (const label of ["问卷设计（30%）", "实验过程（30%）", "实验报告（40%）"]) {
+        expect((view.getByLabelText(label) as HTMLInputElement).placeholder).toBe("0–100");
+    }
+});
+
 test("reading different materials keeps scores, comments and student identity in a separate panel", async () => {
     globalThis.fetch = (async () => Response.json({ success: true, data: record() })) as unknown as typeof fetch;
     const view = page();
