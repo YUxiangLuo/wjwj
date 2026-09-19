@@ -74,6 +74,10 @@ export async function readPopulationData(filePath: string, fieldMapping?: unknow
                 includeColumnValues: false,
                 numericFields,
             });
+            // Statistical contexts cache by population identity. Keep the parsed population
+            // immutable so a caller cannot silently make those derived values stale.
+            for (const row of parsed.rows) Object.freeze(row);
+            Object.freeze(parsed.rows);
             const estimatedBytes = Math.max(
                 file.size * 4,
                 parsed.rowCount * Math.max(1, parsed.colCount) * 64,

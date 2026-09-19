@@ -96,6 +96,23 @@ test("readPopulationData caches populations larger than the former 20k-row cutof
     }
 });
 
+test("readPopulationData returns an immutable population for identity-based statistics caches", async () => {
+    const storagePath = `/storage/uploads/population-immutable-${crypto.randomUUID()}.csv`;
+    await writeStorageFile(storagePath, UTF8_CSV);
+
+    try {
+        const rows = await readPopulationData(storagePath);
+
+        expect(Object.isFrozen(rows)).toBe(true);
+        expect(Object.isFrozen(rows[0])).toBe(true);
+        expect(() => rows.push({ 编号: "A004" })).toThrow();
+        expect(() => { rows[0]!.月消费 = "9999"; }).toThrow();
+        expect((await readPopulationData(storagePath))[0]?.月消费).toBe("1800");
+    } finally {
+        await deleteStorageFileIfExists(storagePath);
+    }
+});
+
 test("concurrent unreadable population requests share the failure contract", async () => {
     const originalConsoleError = console.error;
     console.error = () => undefined;

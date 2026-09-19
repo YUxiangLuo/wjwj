@@ -25,7 +25,7 @@ export interface CategoricalFieldAnalysis {
 export interface TargetMethodAnalysis {
     estimate: number | null;
     standardError: number | null;
-    /** z × 设计 SE 的教学误差半宽。 */
+    /** z × 设计 SE 的正态近似教学半宽；不表示区间覆盖率已经验证。 */
     marginOfError: number | null;
     sampleSize: number | null;
     /** 在同一有限总体方差下，与当前设计 SE 等价的简单随机样本量。 */

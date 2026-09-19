@@ -27,7 +27,7 @@ function buildEmptyTargetMethodAnalysis(): Record<MethodKey, TargetMethodAnalysi
 
 /**
  * 研究目标聚合分析：以研究合同的目标估计量（均值或比例）为中心，
- * 给出每种抽样方法的目标估计、设计标准误、教学误差半宽、有限总体等效 SRS 样本量与可靠性提示。
+ * 给出每种抽样方法的目标估计、设计标准误、正态近似教学半宽、有限总体等效 SRS 样本量与可靠性提示。
  * 比例目标通过 0/1 指示变量复用全部均值机制；均值目标的 PPS 标准误直接共享数值字段上下文。
  */
 export function buildTargetAnalysis(params: {
@@ -173,7 +173,7 @@ export function buildTargetAnalysis(params: {
                 }
                 if (params.plannedMarginOfError !== null && marginOfError !== null
                     && marginOfError > params.plannedMarginOfError * (1 + 1e-9)) {
-                    reasons.push("教学误差半宽超过规划误差限");
+                    reasons.push("正态近似教学半宽超过规划误差限");
                 }
                 analysis.reliability = { status: reasons.length > 0 ? "caution" : "ok", reasons };
             }

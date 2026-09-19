@@ -357,7 +357,7 @@ test("mean target analysis reuses numeric field estimates and shared PPS context
         expect(target!.methods[method].estimate).toBe(metrics.numeric.x!.methods[method].estimate);
         expect(target!.methods[method].standardError).toBe(metrics.numeric.x!.methods[method].standardError);
     }
-    // 教学误差半宽 = z95 × SE
+    // 正态近似教学半宽 = z95 × SE
     const simpleSe = target!.methods.simple.standardError!;
     expect(target!.methods.simple.marginOfError).toBeCloseTo(1.96 * simpleSe, 10);
     // 有限总体等效 SRS 样本量：simple 的 n_eff = n
@@ -410,9 +410,9 @@ test("proportion target analysis maps to indicator values with hand-computed SE"
     // 指示变量总体方差 = Σ(v−p)²/(N−1) = (4×0.25)/3 = 1/3；SE = √((1−n/N)·s²/n)
     expect(simple.standardError).toBeCloseTo(Math.sqrt((1 - 2 / 4) * (1 / 3) / 2), 10);
     expect(simple.marginOfError).toBeCloseTo(1.96 * simple.standardError!, 10);
-    // 教学半宽远超规划 5% → caution 原因
+    // 正态近似教学半宽远超规划 5% → caution 原因
     expect(simple.reliability.status).toBe("caution");
-    expect(simple.reliability.reasons).toContain("教学误差半宽超过规划误差限");
+    expect(simple.reliability.reasons).toContain("正态近似教学半宽超过规划误差限");
 
     // 分数间隔系统抽样：两种起点均值都是 0.5 → 精确设计 SE 为 0
     expect(target.methods.systematic.standardError).toBe(0);
