@@ -12,6 +12,10 @@ export function calculateDesignWeights(
     population: Record<string, unknown>[],
     indices: number[],
 ): number[] {
+    if (new Set(indices).size !== indices.length) throw new Error("样本索引不能重复");
+    if (indices.some((index) => !Number.isSafeInteger(index) || index < 0 || index >= population.length)) {
+        throw new Error("样本索引无效");
+    }
     let weights: number[];
     if (design.method === "simple" || design.method === "systematic") {
         if (design.populationSize !== population.length || design.sampleCount !== indices.length || design.sampleCount < 1) {
@@ -35,9 +39,24 @@ export function calculateDesignWeights(
             }
             layerMap.set(key, layer);
         }
-        const populationLayers = new Set(population.map((row) => stratumKey(row[design.stratifyBy])));
-        if (populationLayers.has("") || populationLayers.size !== layerMap.size
-            || [...populationLayers].some((key) => !layerMap.has(key))) throw new Error("分层设计未覆盖完整总体");
+        const populationCounts = new Map<string, number>();
+        for (const row of population) {
+            const key = stratumKey(row[design.stratifyBy]);
+            if (!key) throw new Error("分层设计未覆盖完整总体");
+            populationCounts.set(key, (populationCounts.get(key) ?? 0) + 1);
+        }
+        if (populationCounts.size !== layerMap.size
+            || [...populationCounts].some(([key, count]) => layerMap.get(key)?.count !== count)) {
+            throw new Error("分层设计未覆盖完整总体或与总体层容量不一致");
+        }
+        const sampleCounts = new Map<string, number>();
+        for (const index of indices) {
+            const key = stratumKey(population[index]![design.stratifyBy]);
+            sampleCounts.set(key, (sampleCounts.get(key) ?? 0) + 1);
+        }
+        if ([...layerMap].some(([key, layer]) => sampleCounts.get(key) !== layer.sampleCount)) {
+            throw new Error("分层设计与各层样本量不一致");
+        }
         weights = indices.map((index) => {
             const layer = layerMap.get(stratumKey(population[index]?.[design.stratifyBy]));
             if (!layer) throw new Error("样本单位缺少分层设计");

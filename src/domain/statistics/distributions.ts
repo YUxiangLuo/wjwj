@@ -89,8 +89,10 @@ export function truncateCategoricalDistributions(
     for (const category of preserveCategories) {
         if (!categories.includes(category) || topCategories.has(category)) continue;
         const replaceable = [...topCategories].reverse().find(value => !preserveCategories.includes(value));
-        if (replaceable) topCategories.delete(replaceable);
-        topCategories.add(category);
+        if (replaceable) {
+            topCategories.delete(replaceable);
+            topCategories.add(category);
+        }
     }
     const truncate = (distribution: Record<string, number>) => {
         const truncated = createSafeRecord<number>();

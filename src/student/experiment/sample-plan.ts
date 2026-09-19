@@ -137,6 +137,31 @@ export function finitePopulationS2ToSigma2(s2: number, populationCount: number):
     return Number.isFinite(scaled) ? scaled / populationCount : s2 * ((populationCount - 1) / populationCount);
 }
 
+function parseProportionEstimationParams(params: {
+    confidenceLevel: unknown;
+    marginOfError: unknown;
+    populationSize: number | null | undefined;
+    designEffect?: unknown;
+    nonResponseRate?: unknown;
+    p?: number;
+}) {
+    const populationSize = params.populationSize;
+    if (typeof populationSize !== "number" || !Number.isSafeInteger(populationSize) || populationSize < 1) return null;
+    const clStr = String(params.confidenceLevel);
+    if (!isConfidenceLevel(clStr)) return null;
+    const rawError = Number(params.marginOfError);
+    if (!Number.isFinite(rawError)) return null;
+    const e = normalizeMarginOfError(rawError);
+    if (!(e > 0 && e < 1)) return null;
+    const p = params.p ?? 0.5;
+    const rawDeff = params.designEffect ?? 1;
+    const rawNrr = params.nonResponseRate ?? 0;
+    if (!Number.isFinite(p) || p <= 0 || p >= 1
+        || typeof rawDeff !== "number" || !Number.isFinite(rawDeff) || !(rawDeff > 0)
+        || typeof rawNrr !== "number" || !Number.isFinite(rawNrr) || rawNrr < 0 || rawNrr >= 1) return null;
+    return { z: Z_VALUES[clStr], e, N: populationSize, p, deff: rawDeff, nrr: rawNrr };
+}
+
 export function calculateFinitePopulationSampleSize(params: {
     confidenceLevel: unknown;
     marginOfError: unknown;
@@ -145,18 +170,10 @@ export function calculateFinitePopulationSampleSize(params: {
     nonResponseRate?: unknown;
     p?: number;  // 估计比例，默认为0.5（最保守估计）
 }) {
-    if (params.populationSize == null || !(params.populationSize > 0)) {
-        return null;
-    }
-
-    const clStr = String(params.confidenceLevel);
-    if (!isConfidenceLevel(clStr)) return null;
-    const z = Z_VALUES[clStr];
-    const e = normalizeMarginOfError(Number(params.marginOfError));
-
-    const p = params.p ?? 0.5;
-    const n0 = (Math.pow(z, 2) * p * (1 - p)) / Math.pow(e, 2);
-    return applyDesignAdjustments(n0, params.populationSize, params.designEffect, params.nonResponseRate).nInvite;
+    const parsed = parseProportionEstimationParams(params);
+    if (!parsed) return null;
+    const n0 = (Math.pow(parsed.z, 2) * parsed.p * (1 - parsed.p)) / Math.pow(parsed.e, 2);
+    return applyDesignAdjustments(n0, parsed.N, parsed.deff, parsed.nrr).nInvite;
 }
 
 export function calculateSampleSizeMetrics(params: {
@@ -167,20 +184,11 @@ export function calculateSampleSizeMetrics(params: {
     nonResponseRate?: unknown;
     p?: number;
 }): SampleSizeMetrics | null {
-    if (params.populationSize == null || !(params.populationSize > 0)) {
-        return null;
-    }
-
-    const clStr = String(params.confidenceLevel);
-    if (!isConfidenceLevel(clStr)) return null;
-    const z = Z_VALUES[clStr];
-    const e = normalizeMarginOfError(Number(params.marginOfError));
-
-    const N = params.populationSize;
-    const p = params.p ?? 0.5;
-    const deff = normalizeDeff(params.designEffect);
+    const parsed = parseProportionEstimationParams(params);
+    if (!parsed) return null;
+    const { z, e, N, p, deff, nrr } = parsed;
     const n0 = (Math.pow(z, 2) * p * (1 - p)) / Math.pow(e, 2);
-    const adjusted = applyDesignAdjustments(n0, N, deff, params.nonResponseRate);
+    const adjusted = applyDesignAdjustments(n0, N, deff, nrr);
     const expectedCompleted = adjusted.expectedCompleted;
     const fpc = finitePopulationVarianceFactor(N, expectedCompleted);
     const standardError = expectedCompleted > 0
@@ -624,44 +632,54 @@ export interface ClusterSamplingResult {
  * 公式基于：deff ≈ 1 + (M-1)×ρ，其中M为群规模，ρ为群内相关系数
  */
 export function calculateClusterSamplingSize(params: ClusterSamplingParams): ClusterSamplingResult | null {
-    if (params.populationSize <= 0 || params.clusterSize <= 0) {
+    if (!Number.isSafeInteger(params.populationSize) || params.populationSize < 1
+        || !Number.isSafeInteger(params.clusterSize) || params.clusterSize < 1
+        || !isConfidenceLevel(String(params.confidenceLevel))
+        || !Number.isFinite(params.marginOfError)
+        || !Number.isFinite(params.deff) || params.deff <= 0
+        || (params.clusterSize === 1 ? params.deff !== 1 : params.deff > params.clusterSize)
+        || (params.nonResponseRate !== undefined && (!Number.isFinite(params.nonResponseRate) || params.nonResponseRate < 0 || params.nonResponseRate >= 1))) {
         return null;
     }
-
-    const z = zForConfidenceLevel(String(params.confidenceLevel));
-    
     const e = normalizeMarginOfError(params.marginOfError);
     const p = params.p ?? 0.5;
-    
-    const n0 = (Math.pow(z, 2) * p * (1 - p)) / Math.pow(e, 2);
-    const nCluster = applyDesignAdjustments(
-        n0,
-        params.populationSize,
-        params.deff,
-        params.nonResponseRate,
-    ).nInvite;
-    // Planning assumption: fixed group size with a possibly smaller final group.
-    // Rounding down would silently discard the remaining population units.
+    if (!(e > 0 && e < 1) || !Number.isFinite(p) || p <= 0 || p >= 1) return null;
+    const z = zForConfidenceLevel(String(params.confidenceLevel));
+    const nrr = params.nonResponseRate ?? 0;
     const maxClusters = Math.max(1, Math.ceil(params.populationSize / params.clusterSize));
-    const requiredClusters = Math.min(Math.max(1, Math.ceil(nCluster / params.clusterSize)), maxClusters);
-    
+
+    const resultFor = (clusterCount: number) => {
+        const sampleSize = Math.min(clusterCount * params.clusterSize, params.populationSize);
+        const completed = sampleSize * (1 - nrr);
+        // 一阶段整群抽样是在群框中抽群，FPC 必须使用群数而不是个体数。
+        // 无回答按均匀减少每个入样群的有效信息量近似；只有一个群时退回个体层 FPC。
+        const completedClusters = clusterCount * (1 - nrr);
+        const fpc = maxClusters > 1
+            ? finitePopulationVarianceFactor(maxClusters, completedClusters)
+            : finitePopulationVarianceFactor(params.populationSize, completed);
+        const marginOfError = z * Math.sqrt(params.deff * p * (1 - p) * fpc / completed);
+        return { sampleSize, marginOfError };
+    };
+
+    let low = 1;
+    let high = maxClusters;
+    while (low < high) {
+        const midpoint = Math.floor((low + high) / 2);
+        if (resultFor(midpoint).marginOfError <= e) high = midpoint;
+        else low = midpoint + 1;
+    }
+    const requiredClusters = low;
+    const planned = resultFor(requiredClusters);
+
     // 反推群内相关系数ρ（用于教育展示）
     // deff = 1 + (M-1)×ρ => ρ = (deff - 1) / (M - 1)
     const rho = params.clusterSize > 1 ? (params.deff - 1) / (params.clusterSize - 1) : 0;
-    
-    // 总样本量 = 群数 × 群规模，但不能超过总体
-    const requiredSampleSize = Math.min(requiredClusters * params.clusterSize, params.populationSize);
-    const completed = requiredSampleSize * (1 - normalizeNrr(params.nonResponseRate));
-    const marginOfError = z * Math.sqrt(
-        normalizeDeff(params.deff) * p * (1 - p)
-        * finitePopulationVarianceFactor(params.populationSize, completed) / completed,
-    );
 
     return {
-        marginOfError,
-        precisionUnreachable: marginOfError > e + 1e-12,
+        marginOfError: planned.marginOfError,
+        precisionUnreachable: planned.marginOfError > e + 1e-12,
         requiredClusters,
-        requiredSampleSize,
+        requiredSampleSize: planned.sampleSize,
         intraClassCorrelation: Math.min(rho, 1),  // ρ不超过1
         deff: params.deff,
         explanation: `按固定群规模规划，末群可不足一群；实际执行前需核对真实群框。在当前目标变量的 deff=${params.deff} 假设下补偿样本量。`,
@@ -800,26 +818,7 @@ export function calculateSquareRootAllocation(
     if (!layers.length) return [];
 
     const weights = layers.map(l => Math.sqrt(l.populationSize));
-    const totalWeight = weights.reduce((a, b) => a + b, 0);
-
-    // Largest remainder method: guarantees sum exactly equals totalSampleSize
-    const exactShares = weights.map(w => totalWeight > 0 ? totalSampleSize * w / totalWeight : 0);
-    const floored = exactShares.map(s => Math.floor(s));
-    let remainder = totalSampleSize - floored.reduce((a, b) => a + b, 0);
-
-    const indices = floored.map((_, i) => i);
-    indices.sort((a, b) => (exactShares[b]! - floored[b]!) - (exactShares[a]! - floored[a]!));
-    for (const idx of indices) {
-        if (remainder <= 0) break;
-        floored[idx] = (floored[idx] ?? 0) + 1;
-        remainder--;
-    }
-
-    return layers.map((layer, index) => ({
-        name: layer.name,
-        sampleSize: floored[index] ?? 0,
-        proportion: totalWeight > 0 ? (weights[index] ?? 0) / totalWeight : 0,
-    }));
+    return applyLargestRemainderAllocation(layers, weights, totalSampleSize);
 }
 
 // ========== 分层抽样：按规模度量的比例分配（课件第25页） ==========
@@ -855,34 +854,79 @@ export function calculateSqrtSizeMeasureAllocation(
 }
 
 /**
- * 最大余数法分配（保证合计恰好等于 totalSampleSize）。
+ * 带层覆盖和容量约束的最大余数法分配。
+ * 连续解满足 n_h=clamp(λw_h, lower_h, N_h)，再按小数余数整数化。
  * 供各种按权重比例分配方法复用。
  */
 function applyLargestRemainderAllocation(
-    layers: Array<{ name: string }>,
+    layers: Array<{ name: string; populationSize: number }>,
     weights: number[],
     totalSampleSize: number,
 ): Array<{ name: string; sampleSize: number; proportion: number }> {
     const totalWeight = weights.reduce((a, b) => a + b, 0);
-    if (totalWeight <= 0) {
+    const valid = Number.isSafeInteger(totalSampleSize) && totalSampleSize >= 0
+        && layers.every((layer) => Number.isSafeInteger(layer.populationSize) && layer.populationSize >= 0)
+        && weights.length === layers.length
+        && weights.every((weight) => Number.isFinite(weight) && weight >= 0);
+    if (!valid || totalWeight <= 0) {
         return layers.map(l => ({ name: l.name, sampleSize: 0, proportion: 0 }));
     }
 
-    const exactShares = weights.map(w => totalSampleSize * w / totalWeight);
-    const floored = exactShares.map(s => Math.floor(s));
-    let remainder = totalSampleSize - floored.reduce((a, b) => a + b, 0);
+    const totalCapacity = layers.reduce((sum, layer) => sum + layer.populationSize, 0);
+    const target = Math.min(totalSampleSize, totalCapacity);
+    const nonemptyCount = layers.filter((layer) => layer.populationSize > 0).length;
+    const lower = layers.map((layer) => target >= nonemptyCount && layer.populationSize > 0 ? 1 : 0);
+    const positiveWeightIndices = weights.map((_, index) => index).filter((index) => weights[index]! > 0);
+    const maximumWeightedTotal = layers.reduce((sum, layer, index) => (
+        sum + (weights[index]! > 0 ? layer.populationSize : lower[index]!)
+    ), 0);
+    let exact: number[];
 
-    const indices = floored.map((_, i) => i);
-    indices.sort((a, b) => (exactShares[b]! - floored[b]!) - (exactShares[a]! - floored[a]!));
-    for (const idx of indices) {
-        if (remainder <= 0) break;
-        floored[idx] = (floored[idx] ?? 0) + 1;
-        remainder--;
+    if (target <= maximumWeightedTotal) {
+        const countAt = (index: number, lambda: number) => Math.min(
+            layers[index]!.populationSize,
+            Math.max(lower[index]!, lambda * weights[index]!),
+        );
+        let low = 0;
+        let high = positiveWeightIndices.reduce((maximum, index) => (
+            Math.max(maximum, layers[index]!.populationSize / weights[index]!)
+        ), 0);
+        for (let iteration = 0; iteration < 100; iteration++) {
+            const midpoint = (low + high) / 2;
+            const allocated = layers.reduce((sum, _, index) => sum + countAt(index, midpoint), 0);
+            if (allocated <= target) low = midpoint;
+            else high = midpoint;
+        }
+        exact = layers.map((_, index) => countAt(index, low));
+    } else {
+        exact = layers.map((layer, index) => weights[index]! > 0 ? layer.populationSize : lower[index]!);
+        const remainder = target - exact.reduce((sum, value) => sum + value, 0);
+        const zeroWeightCapacity = layers.reduce((sum, layer, index) => (
+            sum + (weights[index] === 0 ? layer.populationSize - exact[index]! : 0)
+        ), 0);
+        if (remainder > 0 && zeroWeightCapacity > 0) {
+            for (let index = 0; index < layers.length; index++) {
+                if (weights[index] === 0) {
+                    exact[index]! += remainder * (layers[index]!.populationSize - exact[index]!) / zeroWeightCapacity;
+                }
+            }
+        }
+    }
+
+    const allocated = exact.map((value, index) => Math.min(layers[index]!.populationSize, Math.floor(value)));
+    let integerRemainder = target - allocated.reduce((sum, value) => sum + value, 0);
+    const fractionalOrder = exact.map((value, index) => ({ index, fraction: value - Math.floor(value) }))
+        .sort((left, right) => right.fraction - left.fraction || left.index - right.index);
+    for (const { index } of fractionalOrder) {
+        if (integerRemainder <= 0) break;
+        if (allocated[index]! >= layers[index]!.populationSize) continue;
+        allocated[index]! += 1;
+        integerRemainder -= 1;
     }
 
     return layers.map((layer, index) => ({
         name: layer.name,
-        sampleSize: floored[index] ?? 0,
+        sampleSize: allocated[index] ?? 0,
         proportion: totalWeight > 0 ? (weights[index] ?? 0) / totalWeight : 0,
     }));
 }

@@ -69,6 +69,7 @@ export function calculateUnivariate({
     if (weighted && (!weights || weights.length !== indices.length)) throw new Error("权重必须与样本索引一一对齐");
     if (!weighted && weights !== undefined) throw new Error("未加权分析不能传入权重");
     if (weights?.some(weight => !Number.isFinite(weight) || weight <= 0)) throw new Error("权重必须是有限正数");
+    if (new Set(indices).size !== indices.length) throw new Error("样本索引不能重复");
     const rows = indices.map(index => {
         if (!Number.isSafeInteger(index) || index < 0 || index >= population.length) throw new Error("样本索引无效");
         return population[index]!;
