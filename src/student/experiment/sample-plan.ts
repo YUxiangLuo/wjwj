@@ -612,7 +612,7 @@ export interface ClusterSamplingParams {
     confidenceLevel: string;
     marginOfError: number;
     clusterSize: number;           // 规划群规模（末群可不足）
-    deff: number;                  // 设计效应（整群抽样通常1.5-3.0）
+    deff: number;                  // 完整回答时，相对同样本量 SRSWOR 的方差比
     nonResponseRate?: number;
     p?: number;
 }
@@ -621,15 +621,18 @@ export interface ClusterSamplingResult {
     marginOfError: number;
     precisionUnreachable: boolean;
     requiredClusters: number;      // 所需群数
-    requiredSampleSize: number;    // 所需样本量（群数×群规模）
-    intraClassCorrelation: number; // 群内相关系数ρ（估计值）
-    deff: number;                  // 实际设计效应
+    requiredSampleSize: number;    // 计划发放量上限（末群可能不足）
+    intraClassCorrelation: number | null; // 仅等规模、多群且每群多单位时可反推
+    deff: number;                  // 输入的完整回答设计效应；单群总体不使用
     explanation: string;           // 解释说明
 }
 
 /**
- * 计算整群抽样所需群数
- * 公式基于：deff ≈ 1 + (M-1)×ρ，其中M为群规模，ρ为群内相关系数
+ * D = Var(cluster mean) / Var(SRSWOR mean)，不是直接代入 1+(M−1)ρ 的模型参数。
+ * 等规模群：B=D·v·(K−1)/(N−1) 为群均值的总体方差，W=M/(M−1)·(v−B) 为平均群内 S²。
+ * 抽 k 群、每群固定 m=M(1−r) 个随机回答者：Var=B(K−k)/(k(K−1))+rW/(kM(1−r))。
+ * m 为小数时仅作预期完成量近似，不刻画独立无回答导致空群的机制。
+ * 推导参见 https://online.stat.psu.edu/stat506/Lesson09.html （两阶段 SRS）。
  */
 export function calculateClusterSamplingSize(params: ClusterSamplingParams): ClusterSamplingResult | null {
     if (!Number.isSafeInteger(params.populationSize) || params.populationSize < 1
@@ -637,7 +640,7 @@ export function calculateClusterSamplingSize(params: ClusterSamplingParams): Clu
         || !isConfidenceLevel(String(params.confidenceLevel))
         || !Number.isFinite(params.marginOfError)
         || !Number.isFinite(params.deff) || params.deff <= 0
-        || (params.clusterSize === 1 ? params.deff !== 1 : params.deff > params.clusterSize)
+        || (params.clusterSize === 1 && params.deff !== 1)
         || (params.nonResponseRate !== undefined && (!Number.isFinite(params.nonResponseRate) || params.nonResponseRate < 0 || params.nonResponseRate >= 1))) {
         return null;
     }
@@ -647,17 +650,27 @@ export function calculateClusterSamplingSize(params: ClusterSamplingParams): Clu
     const z = zForConfidenceLevel(String(params.confidenceLevel));
     const nrr = params.nonResponseRate ?? 0;
     const maxClusters = Math.max(1, Math.ceil(params.populationSize / params.clusterSize));
+    const N = params.populationSize;
+    const meanClusterSize = N / maxClusters;
+    const responseRate = 1 - nrr;
+    const v = p * (1 - p);
+    if (maxClusters > 1 && params.deff > (N - 1) / (maxClusters - 1)) return null;
+    if ((meanClusterSize > 1 && meanClusterSize * responseRate < 1) || (N === 1 && nrr > 0)) return null;
+    const betweenFraction = maxClusters > 1 ? params.deff / ((N - 1) / (maxClusters - 1)) : 0;
+    const betweenVariance = v * betweenFraction;
+    const withinVariance = meanClusterSize > 1
+        ? meanClusterSize / (meanClusterSize - 1) * v * Math.max(0, 1 - betweenFraction)
+        : 0;
 
     const resultFor = (clusterCount: number) => {
         const sampleSize = Math.min(clusterCount * params.clusterSize, params.populationSize);
-        const completed = sampleSize * (1 - nrr);
-        // 一阶段整群抽样是在群框中抽群，FPC 必须使用群数而不是个体数。
-        // 无回答按均匀减少每个入样群的有效信息量近似；只有一个群时退回个体层 FPC。
-        const completedClusters = clusterCount * (1 - nrr);
-        const fpc = maxClusters > 1
-            ? finitePopulationVarianceFactor(maxClusters, completedClusters)
-            : finitePopulationVarianceFactor(params.populationSize, completed);
-        const marginOfError = z * Math.sqrt(params.deff * p * (1 - p) * fpc / completed);
+        // 末群不足时，以平均群规模近似方差；sampleSize 仅为发放量上限。
+        const completed = clusterCount * meanClusterSize * responseRate;
+        const variance = meanClusterSize === 1
+            ? v / completed * finitePopulationVarianceFactor(N, completed)
+            : betweenVariance / clusterCount * finitePopulationVarianceFactor(maxClusters, clusterCount)
+                + nrr * withinVariance / completed;
+        const marginOfError = z * Math.sqrt(variance);
         return { sampleSize, marginOfError };
     };
 
@@ -671,18 +684,26 @@ export function calculateClusterSamplingSize(params: ClusterSamplingParams): Clu
     const requiredClusters = low;
     const planned = resultFor(requiredClusters);
 
-    // 反推群内相关系数ρ（用于教育展示）
-    // deff = 1 + (M-1)×ρ => ρ = (deff - 1) / (M - 1)
-    const rho = params.clusterSize > 1 ? (params.deff - 1) / (params.clusterSize - 1) : 0;
+    const equalClusters = N % params.clusterSize === 0;
+    const rho = maxClusters > 1 && meanClusterSize > 1 && equalClusters
+        ? (meanClusterSize * betweenFraction - 1) / (meanClusterSize - 1)
+        : null;
+    const frameExplanation = maxClusters === 1
+        ? "总体仅有一个群，全部发放；deff 不参与计算，ICC 不适用。"
+        : meanClusterSize === 1
+            ? "每群一个单位，按 SRSWOR 的预期完成量规划，ICC 不适用。"
+            : equalClusters
+                ? "按等规模群规划；deff 为完整回答时相对同样本量 SRSWOR 的方差比。"
+                : "末群不足，按平均群规模近似方差、按上限规划发放量；不保证保守，ICC 不适用，请核对真实群框。";
 
     return {
         marginOfError: planned.marginOfError,
         precisionUnreachable: planned.marginOfError > e + 1e-12,
         requiredClusters,
         requiredSampleSize: planned.sampleSize,
-        intraClassCorrelation: Math.min(rho, 1),  // ρ不超过1
+        intraClassCorrelation: rho,
         deff: params.deff,
-        explanation: `按固定群规模规划，末群可不足一群；实际执行前需核对真实群框。在当前目标变量的 deff=${params.deff} 假设下补偿样本量。`,
+        explanation: `${frameExplanation} 无回答按群内固定比例随机减少回答者近似，非整群失访；不包含无回答偏差或空群风险。`,
     };
 }
 
@@ -863,14 +884,15 @@ function applyLargestRemainderAllocation(
     weights: number[],
     totalSampleSize: number,
 ): Array<{ name: string; sampleSize: number; proportion: number }> {
-    const totalWeight = weights.reduce((a, b) => a + b, 0);
     const valid = Number.isSafeInteger(totalSampleSize) && totalSampleSize >= 0
         && layers.every((layer) => Number.isSafeInteger(layer.populationSize) && layer.populationSize >= 0)
         && weights.length === layers.length
         && weights.every((weight) => Number.isFinite(weight) && weight >= 0);
-    if (!valid || totalWeight <= 0) {
+    const weightScale = weights.reduce((maximum, weight) => Math.max(maximum, weight), 0);
+    if (!valid || weightScale <= 0) {
         return layers.map(l => ({ name: l.name, sampleSize: 0, proportion: 0 }));
     }
+    const totalWeight = weights.reduce((sum, weight) => sum + weight / weightScale, 0);
 
     const totalCapacity = layers.reduce((sum, layer) => sum + layer.populationSize, 0);
     const target = Math.min(totalSampleSize, totalCapacity);
@@ -883,21 +905,28 @@ function applyLargestRemainderAllocation(
     let exact: number[];
 
     if (target <= maximumWeightedTotal) {
-        const countAt = (index: number, lambda: number) => Math.min(
-            layers[index]!.populationSize,
-            Math.max(lower[index]!, lambda * weights[index]!),
-        );
-        let low = 0;
-        let high = positiveWeightIndices.reduce((maximum, index) => (
-            Math.max(maximum, layers[index]!.populationSize / weights[index]!)
-        ), 0);
-        for (let iteration = 0; iteration < 100; iteration++) {
-            const midpoint = (low + high) / 2;
-            const allocated = layers.reduce((sum, _, index) => sum + countAt(index, midpoint), 0);
-            if (allocated <= target) low = midpoint;
-            else high = midpoint;
+        exact = [...lower];
+        let active = positiveWeightIndices;
+        let remaining = target - lower.reduce<number>((sum, value, index) => sum + (weights[index] === 0 ? value : 0), 0);
+        // 逐次固定确定触及的边界；每轮至少移除一层，不在跨数量级的 λ 区间中二分。
+        // 总量偏大时只能固定下界，偏小时只能固定上界，避免两侧同时固定后误分配。
+        while (active.length) {
+            const scale = active.reduce((maximum, index) => Math.max(maximum, weights[index]!), 0);
+            const sum = active.reduce((total, index) => total + weights[index]! / scale, 0);
+            const shares = active.map(index => ({ index, value: remaining * (weights[index]! / scale) / sum }));
+            let clampedTotal = 0;
+            for (const { index, value } of shares) {
+                exact[index] = Math.min(layers[index]!.populationSize, Math.max(lower[index]!, value));
+                clampedTotal += exact[index]!;
+            }
+            const fixed = shares.filter(({ index, value }) => clampedTotal > remaining
+                ? value < lower[index]!
+                : value > layers[index]!.populationSize);
+            if (!fixed.length) break;
+            const fixedIndices = new Set(fixed.map(({ index }) => index));
+            for (const { index } of fixed) remaining -= exact[index]!;
+            active = active.filter(index => !fixedIndices.has(index));
         }
-        exact = layers.map((_, index) => countAt(index, low));
     } else {
         exact = layers.map((layer, index) => weights[index]! > 0 ? layer.populationSize : lower[index]!);
         const remainder = target - exact.reduce((sum, value) => sum + value, 0);
@@ -927,7 +956,7 @@ function applyLargestRemainderAllocation(
     return layers.map((layer, index) => ({
         name: layer.name,
         sampleSize: allocated[index] ?? 0,
-        proportion: totalWeight > 0 ? (weights[index] ?? 0) / totalWeight : 0,
+        proportion: (weights[index]! / weightScale) / totalWeight,
     }));
 }
 

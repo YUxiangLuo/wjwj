@@ -8,11 +8,36 @@ const { cleanup, fireEvent, render } = await import("@testing-library/react");
 const { PrecisionCostTradeoff } = await import("./PrecisionCostTradeoff");
 const { PrecisionPhase } = await import("./immersive-sample-planning/phases/PrecisionPhase");
 const { MultiVariableSamplePlan } = await import("./MultiVariableSamplePlan");
+const { ClusterSamplingCalculator } = await import("./ClusterSamplingCalculator");
 bootstrap.restore();
 
 let restore: () => void;
 beforeEach(() => { restore = installDomGlobals().restore; });
 afterEach(() => { cleanup(); restore(); });
+
+test("cluster UI applies reachable within-cluster response plans and blocks unmet precision", () => {
+    const onSnapshot = mock(() => {});
+    const onApplyResult = mock(() => {});
+    const props = { populationSize: 40, confidenceLevel: "95", marginOfError: 5, initialNonResponseRate: 0.1, onSnapshot, onApplyResult };
+    const view = render(<ClusterSamplingCalculator {...props} />);
+    fireEvent.keyDown(view.getByRole("slider", { name: "规划群规模" }), { key: "Home" });
+    const deff = view.getByRole("slider", { name: "整群抽样设计效应" });
+    for (let step = 0; step < 6; step++) fireEvent.keyDown(deff, { key: "ArrowRight" });
+    expect(view.getByText("模型假设下的预期误差限：4.87%")).toBeTruthy();
+    const apply = view.getByRole("button", { name: "应用整群抽样方案" }) as HTMLButtonElement;
+    expect(apply.disabled).toBe(false);
+    fireEvent.click(apply);
+    expect(onApplyResult).toHaveBeenCalledWith(4, 40);
+    expect(onSnapshot).toHaveBeenCalledWith(expect.objectContaining({
+        result: expect.objectContaining({ requiredClusters: 4, requiredSampleSize: 40, intraClassCorrelation: expect.closeTo(1 / 9, 10) }),
+    }));
+    view.rerender(<ClusterSamplingCalculator {...props} marginOfError={4} />);
+    expect(apply.disabled).toBe(true);
+    expect(view.getByRole("alert").textContent).toContain("按当前模型");
+    fireEvent.change(view.getByRole("spinbutton", { name: "无回答率 (%)" }), { target: { value: "100" } });
+    expect(view.getByRole("alert").textContent).toContain("无法形成有效规划");
+    expect(view.queryByRole("button", { name: "应用整群抽样方案" })).toBeNull();
+});
 
 test("cost UI names unmet precision explicitly and saves an honest status", () => {
     const onSnapshot = mock(() => {});

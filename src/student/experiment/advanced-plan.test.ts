@@ -188,6 +188,30 @@ test("validateAdvancedPlanConsistency checks the applied plan against the final 
     expect(validateAdvancedPlanConsistency(snapshot, null, null)).toBe("缺少总体规模，无法复算高级样本量规划");
 });
 
+test("cluster snapshots preserve unavailable ICC and validate population-dependent moments", () => {
+    for (const populationSize of [40, 95, 100]) {
+        const plan = clusterSnapshot();
+        plan.inputs.clusterSize = populationSize === 100 ? 10 : 50;
+        plan.inputs.designEffect = populationSize === 100 ? 10.5 : 2;
+        const result = calculateClusterSamplingSize({
+            ...plan.inputs, populationSize, deff: plan.inputs.designEffect, nonResponseRate: plan.inputs.nonResponseRate / 100,
+        })!;
+        plan.result = { requiredClusters: result.requiredClusters, requiredSampleSize: result.requiredSampleSize, intraClassCorrelation: result.intraClassCorrelation };
+        const parsed = parseAdvancedPlans(JSON.parse(JSON.stringify([plan])))!;
+        expect(parsed).toHaveLength(1);
+        expect(validateAdvancedPlanConsistency(parsed[0]!, populationSize, plan.result.requiredSampleSize)).toBeNull();
+        const tampered = structuredClone(plan);
+        tampered.result.intraClassCorrelation = result.intraClassCorrelation === null ? 0 : null;
+        expect(validateAdvancedPlanConsistency(tampered, populationSize, plan.result.requiredSampleSize)).toContain("群内相关系数");
+        const missing = { ...plan, result: { ...plan.result, intraClassCorrelation: undefined } };
+        expect(parseAdvancedPlans([missing])).toBeNull();
+    }
+    const invalid = clusterSnapshot();
+    invalid.inputs.clusterSize = 10;
+    invalid.inputs.designEffect = 11.01;
+    expect(validateAdvancedPlanConsistency(invalid, 100, null)).toContain("无法复算");
+});
+
 test("advanced plans reject invalid domains before accepting numerically consistent results", () => {
     for (const inputs of [
         { targetMarginOfError: -.05 }, { targetMarginOfError: 0 }, { designEffect: -2 }, { designEffect: 0 },

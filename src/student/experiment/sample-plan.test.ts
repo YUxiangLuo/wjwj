@@ -472,7 +472,7 @@ test("cluster sampling includes finite population correction", () => {
 
 test("cluster sampling intra-class correlation in valid range", () => {
     const result = calculateClusterSamplingSize({
-        populationSize: 10000,
+        populationSize: 9990,
         confidenceLevel: "95",
         marginOfError: 5,
         clusterSize: 30,

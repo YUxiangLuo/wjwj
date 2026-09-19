@@ -1,5 +1,6 @@
 import { parseAdvancedPlans } from "@/student/experiment/advanced-plan";
 import { calculateCostPlan } from "@/student/experiment/cost-plan";
+import { calculateClusterSamplingSize } from "@/student/experiment/sample-plan";
 import { getAdvancedPlanSourceLabel, formatSamplePlanNumber as number } from "@/student/experiment/sample-plan-display";
 import { formatDateTimeDisplay } from "@/utils/format";
 import { StatusBadge } from "./StatusBadge";
@@ -35,10 +36,15 @@ export function AdvancedPlanDetails({ value, source, populationSize }: { value: 
                     reached = plan.result.achievedCV <= plan.inputs.targetCV / 100 + 1e-12;
                     status = reached ? "预期设计 CV 达标" : "预期设计 CV 未达标";
                     break;
-                case "cluster":
+                case "cluster": {
                     rows.push(["工具置信水平 / 目标误差限", `${plan.inputs.confidenceLevel}% / ±${number(plan.inputs.marginOfError)} 个百分点`], ["规划群规模", number(plan.inputs.clusterSize)],
-                        ["工具设计效应 / 无回答率", `${number(plan.inputs.designEffect)} / ${number(plan.inputs.nonResponseRate)}%`], ["推荐群数 / 隐含群内相关系数", `${plan.result.requiredClusters} / ${number(plan.result.intraClassCorrelation)}`]);
+                        ["工具设计效应 / 无回答率", `${number(plan.inputs.designEffect)} / ${number(plan.inputs.nonResponseRate)}%`], ["推荐群数 / 隐含群内相关系数", `${plan.result.requiredClusters} / ${plan.result.intraClassCorrelation === null ? "不适用" : number(plan.result.intraClassCorrelation)}`]);
+                    const result = populationSize ? calculateClusterSamplingSize({
+                        ...plan.inputs, populationSize, deff: plan.inputs.designEffect, nonResponseRate: plan.inputs.nonResponseRate / 100,
+                    }) : null;
+                    rows.push(["规划口径", result?.explanation ?? "deff 为完整回答时相对同样本量 SRSWOR 的方差比；无回答按群内随机减少回答者近似。缺少有效总体规模，无法复核群框。"]);
                     break;
+                }
                 case "multivar":
                     for (const variable of plan.inputs.variables) rows.push([variable.name,
                         `${variable.type === "mean" ? `均值 ${number(variable.estimatedValue)}，标准差 ${number(variable.estimatedStdDev!)}` : `比例 p=${number(variable.estimatedValue)}`}；置信水平 ${variable.confidenceLevel}%；${variable.type === "mean" ? "相对误差限" : "误差限（百分点）"} ±${number(variable.marginOfError)}${variable.type === "mean" ? "%" : ""}；n=${variable.requiredSampleSize}`]);
@@ -46,7 +52,7 @@ export function AdvancedPlanDetails({ value, source, populationSize }: { value: 
             }
             return <section key={`${plan.kind}-${plan.appliedAt}`} className="space-y-2 rounded-surface border border-border bg-background p-4">
                 <div className="flex flex-wrap items-center gap-2"><p className="text-subheading">{getAdvancedPlanSourceLabel(plan.kind)}快照</p>{plan.kind === source && <StatusBadge intent="primary">最终样本量来源</StatusBadge>}</div>
-                <p className="text-meta text-muted-foreground">应用时间：{formatDateTimeDisplay(plan.appliedAt)}；工具推荐发放量：{plan.result.requiredSampleSize.toLocaleString()}</p>
+                <p className="text-meta text-muted-foreground">应用时间：{formatDateTimeDisplay(plan.appliedAt)}；{plan.kind === "cluster" ? "计划发放量上限" : "工具推荐发放量"}：{plan.result.requiredSampleSize.toLocaleString()}</p>
                 <dl className="space-y-2">{rows.map(([label, value]) => <div key={label} className="text-label"><dt className="text-muted-foreground">{label}</dt><dd className="break-words text-foreground">{value}</dd></div>)}</dl>
                 {status && <StatusBadge intent={reached ? "success" : "warning"}>{status}</StatusBadge>}
             </section>;

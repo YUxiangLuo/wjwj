@@ -79,6 +79,6 @@ export type AdvancedPlanSnapshot =
         result: {
             requiredClusters: number;
             requiredSampleSize: number;
-            intraClassCorrelation: number;
+            intraClassCorrelation: number | null;
         };
     });

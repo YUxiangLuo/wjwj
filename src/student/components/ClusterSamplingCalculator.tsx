@@ -34,7 +34,7 @@ interface ClusterSamplingCalculatorProps {
             designEffect: number;
             nonResponseRate: number;
         };
-        result: { requiredClusters: number; requiredSampleSize: number; intraClassCorrelation: number };
+        result: { requiredClusters: number; requiredSampleSize: number; intraClassCorrelation: number | null };
     }) => void;
 }
 
@@ -170,7 +170,7 @@ export function ClusterSamplingCalculator({
                             <span>5.0（设置上限）</span>
                         </div>
                         <p className="text-meta text-muted-foreground leading-relaxed">
-                            优先采用同类历史调查中同一指标的 deff，或用预调查、设计模拟估计；不要按抽样方法套用固定区间。
+                            输入完整回答时，同一指标相对同样本量不放回简单随机抽样（SRSWOR）的方差比；无回答另行计算，不要重复计入 deff。
                         </p>
                     </div>
 
@@ -223,6 +223,8 @@ export function ClusterSamplingCalculator({
                     </div>
                 </div>
 
+                {!result && <p role="alert" className="text-label text-destructive">当前参数无法形成有效规划：请核对设计效应、总体和群规模、无回答率；多单位群的预期回答人数不能少于 1。</p>}
+
                 {/* 计算结果 */}
                 {result && (
                     <div className="rounded-surface border-2 border-primary bg-background p-4 ">
@@ -242,7 +244,7 @@ export function ClusterSamplingCalculator({
                                     <div className="text-meta text-primary">个群</div>
                                 </div>
                                 <div className="text-center p-3 rounded-surface bg-background border border-primary-border">
-                                    <div className="text-meta text-primary mb-1">总样本量</div>
+                                    <div className="text-meta text-primary mb-1">计划发放量上限</div>
                                     <div className="text-page-title font-bold tabular-nums text-info">
                                         {result.requiredSampleSize.toLocaleString()}
                                     </div>
@@ -250,13 +252,13 @@ export function ClusterSamplingCalculator({
                                 </div>
                             </div>
 
-                            <p className="text-label text-muted-foreground">规划实际可达误差限：{(result.marginOfError * 100).toFixed(2)}%</p>
-                            {result.precisionUnreachable && <p role="alert" className="text-label text-destructive">即使向全体发放，当前无回答率下仍无法达到目标精度。请调整精度或无回答率后再应用。</p>}
+                            <p className="text-label text-muted-foreground">模型假设下的预期误差限：{(result.marginOfError * 100).toFixed(2)}%</p>
+                            {result.precisionUnreachable && <p role="alert" className="text-label text-destructive">按当前模型，即使向全体发放仍无法达到目标精度。请调整精度或无回答率后再应用。</p>}
                             {/* 设计效应说明 */}
                             <div className="rounded-surface border border-primary bg-background p-3">
                                 <div className="space-y-2 text-label">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-primary">设计效应 (deff)</span>
+                                        <span className="text-primary">输入设计效应 (deff)</span>
                                         <span className="font-mono font-bold text-primary">
                                             {result.deff.toFixed(2)}
                                         </span>
@@ -264,7 +266,7 @@ export function ClusterSamplingCalculator({
                                     <div className="flex items-center justify-between">
                                         <span className="text-primary">估计群内相关系数 (ρ)</span>
                                         <span className="font-mono font-bold text-primary">
-                                            {result.intraClassCorrelation.toFixed(3)}
+                                            {result.intraClassCorrelation === null ? "不适用" : result.intraClassCorrelation.toFixed(3)}
                                         </span>
                                     </div>
                                 </div>
@@ -275,9 +277,7 @@ export function ClusterSamplingCalculator({
                                 <div className="flex items-start gap-2">
                                     <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                                     <p className="text-meta text-warning">
-                                        {result.explanation} 群内相关系数 ρ = (deff-1)/(M-1)，
-                                        其中 M={clusterSize} 为群规模。ρ 越大说明群内同质性越高，
-                                        需要的补偿样本量越大。
+                                        {result.explanation}
                                     </p>
                                 </div>
                             </div>
@@ -322,8 +322,8 @@ export function ClusterSamplingCalculator({
                 <div className="rounded-surface border border-border bg-background p-3">
                     <p className="text-meta font-medium text-foreground mb-1.5">设计效应如何取值</p>
                     <p className="text-meta text-muted-foreground leading-relaxed">
-                        SRS 的基准为 deff=1。复杂设计的 deff 应针对当前目标变量和估计量确定；不同指标即使来自同一调查，也可能有不同设计效应。
-                        若只有群规模 M 和可信的群内相关系数 ρ，可用 deff≈1+(M−1)ρ 作规划近似。
+                        可用同一有限总体上的完整回答设计模拟估计 deff。等规模多群时，设群数 K、群规模 M、总体量 N=KM，
+                        则 deff=[1+(M−1)ρ](N−1)/[M(K−1)]。不要把 1+(M−1)ρ 直接当作有限总体的方差比。
                     </p>
                 </div>
             </CardContent>

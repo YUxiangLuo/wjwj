@@ -142,12 +142,12 @@ function parseAdvancedPlan(value: unknown): AdvancedPlanSnapshot | null {
         case "cluster": {
             if (!confidence(inputs.confidenceLevel)) return null;
             if (!hasNumbers(inputs, ["marginOfError", "clusterSize", "designEffect", "nonResponseRate"])) return null;
-            if (!hasNumbers(result, ["requiredClusters", "requiredSampleSize", "intraClassCorrelation"])) return null;
+            if (!hasNumbers(result, ["requiredClusters", "requiredSampleSize"])) return null;
             if (!errorPercent(inputs.marginOfError) || !count(inputs.clusterSize) || !positive(inputs.designEffect) || !rate(inputs.nonResponseRate, 100)) return null;
-            const clusterSize = inputs.clusterSize as number;
-            const deff = inputs.designEffect as number;
-            if ((clusterSize === 1 && deff !== 1) || deff > clusterSize) return null;
-            if (!count(result.requiredClusters) || !count(result.requiredSampleSize) || (result.intraClassCorrelation as number) > 1 || (result.intraClassCorrelation as number) < (clusterSize > 1 ? -1 / (clusterSize - 1) : 0)) return null;
+            const icc = result.intraClassCorrelation;
+            if (icc !== null && (!isFiniteNumber(icc) || icc < -1 || icc > 1)) return null;
+            // 群框和 deff 上界依赖总体规模，统一交给 calculateClusterSamplingSize 复核。
+            if (!count(result.requiredClusters) || !count(result.requiredSampleSize)) return null;
             return {
                 version: 1,
                 kind: "cluster",
@@ -162,7 +162,7 @@ function parseAdvancedPlan(value: unknown): AdvancedPlanSnapshot | null {
                 result: {
                     requiredClusters: result.requiredClusters as number,
                     requiredSampleSize: result.requiredSampleSize as number,
-                    intraClassCorrelation: result.intraClassCorrelation as number,
+                    intraClassCorrelation: icc,
                 },
             };
         }
@@ -272,13 +272,13 @@ export function validateAdvancedPlanConsistency(
             if (!recomputed) return `${label}快照的输入参数无法复算，请重新应用`;
             if (recomputed.requiredClusters !== plan.result.requiredClusters) return `${label}快照的群数与输入不一致，请重新应用`;
             if (recomputed.requiredSampleSize !== plan.result.requiredSampleSize) return `${label}快照的结果与输入不一致，请重新应用`;
-            const iccError = requireEqual(
-                recomputed.intraClassCorrelation,
-                plan.result.intraClassCorrelation,
-                `${label}快照的群内相关系数与输入不一致，请重新应用`,
-                1e-6,
-            );
-            if (iccError) return iccError;
+            const actualIcc = recomputed.intraClassCorrelation;
+            const savedIcc = plan.result.intraClassCorrelation;
+            if (actualIcc === null || savedIcc === null
+                ? actualIcc !== savedIcc
+                : !approximatelyEqual(actualIcc, savedIcc, 1e-6)) {
+                return `${label}快照的群内相关系数与输入不一致，请重新应用`;
+            }
             return appliedError(recomputed.requiredSampleSize);
         }
     }

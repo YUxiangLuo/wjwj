@@ -31,3 +31,14 @@ test("saved CV plans retain an explicit unmet-target status", () => {
     expect(view.getByText("1% / 30%")).toBeTruthy();
     expect(view.getByText("3.01511%")).toBeTruthy();
 });
+
+test("partial cluster snapshots show unavailable ICC rather than zero and explain the approximation", () => {
+    const view = render(<AdvancedPlanDetails source="cluster" populationSize={95} value={[{
+        version: 1, kind: "cluster", appliedAt: "2026-09-08T00:00:00Z",
+        inputs: { confidenceLevel: "95", marginOfError: 1, clusterSize: 50, designEffect: 2, nonResponseRate: 0 },
+        result: { requiredClusters: 2, requiredSampleSize: 95, intraClassCorrelation: null },
+    }]} />);
+    expect(view.getByText("2 / 不适用")).toBeTruthy();
+    expect(view.getByText(/按平均群规模近似方差/)).toBeTruthy();
+    expect(view.getByText(/计划发放量上限：95/)).toBeTruthy();
+});
