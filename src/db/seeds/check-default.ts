@@ -120,6 +120,7 @@ async function verify() {
         .select({
             studentId: student.studentId,
             topicName: topic.name,
+            populationPath: topic.excelFilePath,
             currentStage: experiment.currentStage,
             status: experiment.status,
             results: experiment.samplingResults,
@@ -165,6 +166,7 @@ async function verify() {
         return results;
     }
 
+    const populationHashCache = new Map<string, string>();
     for (const row of authoritative) {
         const label = `${row.studentId}/${row.topicName}`;
         const hasDisabledPps = row.topicName === DOGFOOD_NAMES.topicB;
@@ -176,6 +178,21 @@ async function verify() {
             const snapshotResults = checkAuthoritativeMethods(`${label}/snapshot`, storedSnapshot.samplingResults, hasDisabledPps, hasChoicePair);
             check(JSON.stringify(snapshotResults) === JSON.stringify(liveResults), `${label} snapshot sampling results differ from the live record`);
             check(storedSnapshot.reportContent === row.reportContent, `${label} snapshot report differs from the live record`);
+            check(typeof row.populationPath === "string" && row.populationPath.length > 0, `${label} has no population file`);
+            let populationHash = populationHashCache.get(row.populationPath);
+            if (!populationHash) {
+                const file = Bun.file(resolveStoragePath(row.populationPath));
+                check(await file.exists(), `${label} population file is missing: ${row.populationPath}`);
+                populationHash = new Bun.CryptoHasher("sha256").update(await file.arrayBuffer()).digest("hex");
+                populationHashCache.set(row.populationPath, populationHash);
+            }
+            check(
+                typeof storedSnapshot.populationFileSha256 === "string" && /^[a-f0-9]{64}$/.test(storedSnapshot.populationFileSha256),
+                `${label} snapshot population hash is invalid`,
+            );
+            check(storedSnapshot.populationFileSha256 === populationHash, `${label} snapshot population hash differs from the source file`);
+            check(storedSnapshot.parserVersion === "raw-values-v1", `${label} snapshot parser version differs`);
+            check(storedSnapshot.samplingAlgorithmVersion === "sampling-v2", `${label} snapshot sampling algorithm version differs`);
             check(validateReportForSubmit(row.reportContent) === null, `${label} live report is invalid`);
             check(validateReportForSubmit(storedSnapshot.reportContent) === null, `${label} snapshot report is invalid`);
         }

@@ -291,6 +291,16 @@ async function writePopulationFixtures(
         const file = Bun.file(path);
         if (!(await file.exists()) || file.size <= 0) throw new Error(`Failed to write seed fixture: ${path}`);
     }
+
+    const sha256 = async (path: string) => new Bun.CryptoHasher("sha256")
+        .update(await Bun.file(path).arrayBuffer())
+        .digest("hex");
+    return {
+        study: await sha256(ppsTarget),
+        reading: await sha256(meanTarget),
+        employment: await sha256(graduateTarget),
+        dining: await sha256(diningTarget),
+    };
 }
 
 function guideSourceFile() {
@@ -492,6 +502,7 @@ function snapshot(params: {
     topicName: string;
     studentName: string;
     populationSize: number;
+    populationFileSha256: string;
     questionnaire: Record<string, unknown>;
     samplePlan: Record<string, unknown>;
     samplingResults: Record<string, unknown>;
@@ -508,6 +519,9 @@ function snapshot(params: {
         reportContent: params.reportContent,
         weightConfig,
         samplingPolicy: params.samplingPolicy ?? defaultSamplingPolicy,
+        populationFileSha256: params.populationFileSha256,
+        parserVersion: "raw-values-v1",
+        samplingAlgorithmVersion: "sampling-v2",
     };
 }
 
@@ -527,7 +541,7 @@ async function seed() {
     const meanPopulation = createMeanPopulation();
     const graduatePopulation = createGraduateIntentionPopulation();
     const diningPopulation = createDiningServicePopulation();
-    await writePopulationFixtures(ppsPopulation, meanPopulation, graduatePopulation, diningPopulation);
+    const populationFileHashes = await writePopulationFixtures(ppsPopulation, meanPopulation, graduatePopulation, diningPopulation);
     const { learningResults, meanResults, graduateResults, diningResults } = await buildSamplingFixtures(
         ppsPopulation,
         meanPopulation,
@@ -706,6 +720,7 @@ async function seed() {
         topicName,
         studentName: studentsById[studentId]!.name,
         populationSize: 200,
+        populationFileSha256: populationFileHashes.study,
         questionnaire: studyQuestionnaire,
         samplePlan: learningPlan,
         samplingResults: compactLearningResults,
@@ -726,6 +741,7 @@ async function seed() {
         topicName: DOGFOOD_NAMES.topicC,
         studentName: studentsById[studentId]!.name,
         populationSize: 160,
+        populationFileSha256: populationFileHashes.employment,
         questionnaire: graduateQuestionnaire,
         samplePlan: graduatePlan,
         samplingResults: compactGraduateResults,
@@ -747,6 +763,7 @@ async function seed() {
         topicName: DOGFOOD_NAMES.topicD,
         studentName: studentsById[studentId]!.name,
         populationSize: 96,
+        populationFileSha256: populationFileHashes.dining,
         questionnaire: diningQuestionnaire,
         samplePlan: diningPlan,
         samplingResults: compactDiningResults,
@@ -777,7 +794,7 @@ async function seed() {
             stage2CompletedAt: day(-4),
             stage3CompletedAt: day(-3),
             stage4CompletedAt: day(-2),
-            submissionSnapshot: snapshot({ topicName: DOGFOOD_NAMES.topicB, studentName: studentsById[DOGFOOD_ANCHORS.submitted]!.name, populationSize: 24, questionnaire: readingQuestionnaire, samplePlan: readingPlan, samplingResults: compactMeanResults, reportContent: readingReportContent, samplingPolicy: noPpsSamplingPolicy }),
+            submissionSnapshot: snapshot({ topicName: DOGFOOD_NAMES.topicB, studentName: studentsById[DOGFOOD_ANCHORS.submitted]!.name, populationSize: 24, populationFileSha256: populationFileHashes.reading, questionnaire: readingQuestionnaire, samplePlan: readingPlan, samplingResults: compactMeanResults, reportContent: readingReportContent, samplingPolicy: noPpsSamplingPolicy }),
             submittedAt: day(-1),
             createdAt: day(-6),
             updatedAt: day(-1),

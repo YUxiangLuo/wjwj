@@ -3,7 +3,7 @@ import { SQL } from "bun";
 import { mkdtemp, mkdir, symlink, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
-import { computePpsMeanPlan, DOGFOOD_NAMES } from "../src/db/seeds/dogfood-fixtures";
+import { computePpsMeanPlan, DOGFOOD_ANCHORS, DOGFOOD_NAMES } from "../src/db/seeds/dogfood-fixtures";
 import { calculateFinitePopulationSampleSize } from "../src/student/experiment/sample-plan";
 import type { ExperimentData, StudentTask } from "../src/student/api-client";
 import type { AnalysisMetricsResult } from "../src/domain/experiment/analysis-types";
@@ -26,6 +26,7 @@ const browserLauncher = join(root, "node_modules/agent-browser/bin/agent-browser
 const sessionPrefix = `wj-flow-${crypto.randomUUID().slice(0, 8)}`;
 const student = `${sessionPrefix}-student`;
 const student2 = `${sessionPrefix}-student2`;
+const seedStudent = `${sessionPrefix}-seed-student`;
 const teacher = `${sessionPrefix}-teacher`;
 const teacher2 = `${sessionPrefix}-teacher2`;
 let server: ReturnType<typeof Bun.spawn> | undefined;
@@ -148,6 +149,19 @@ try {
     }, "Test server failed to start");
 
     await login(teacher, "teacher", "T001");
+    const seededPending = await api<{ items: Array<{ id: number; topic: string }> }>(teacher, "/api/teacher/grading?status=pending&page=1&pageSize=20");
+    const seededGrading = seededPending.items.find(item => item.topic === DOGFOOD_NAMES.topicA);
+    assert(seededGrading, "Seeded pending grading item missing");
+    const seededTeacherDetail = await api<{ samplingResults: Record<string, unknown> }>(teacher, `/api/teacher/grading/${seededGrading.id}`);
+    assert(Object.keys(seededTeacherDetail.samplingResults).length > 0, "Seeded teacher grading detail did not hydrate sampling results");
+    await login(seedStudent, "student", DOGFOOD_ANCHORS.submitted);
+    const seededTasks = await api<StudentTask[]>(seedStudent, "/api/student/tasks");
+    const seededTask = seededTasks.find(item => item.name === DOGFOOD_NAMES.topicA);
+    assert(seededTask, "Seeded submitted student task missing");
+    const seededStudentDetail = await api<{ snapshot: { samplingResults: Record<string, unknown> } }>(seedStudent, `/api/student/tasks/${seededTask.id}/submission`);
+    assert(Object.keys(seededStudentDetail.snapshot.samplingResults).length > 0, "Seeded student submission did not hydrate sampling results");
+    console.log("PASS seeded teacher grading and student submission hydrate from frozen source");
+
     const templates = await api<Array<{ id: number; name: string }>>(teacher, "/api/teacher/topics");
     const source = templates.find(item => item.name === DOGFOOD_NAMES.topicA);
     assert(source, "Seed template missing");
@@ -636,7 +650,7 @@ try {
     }
     throw cause;
 } finally {
-    for (const session of [student, student2, teacher, teacher2]) await browser(session, "close").catch(() => undefined);
+    for (const session of [student, student2, seedStudent, teacher, teacher2]) await browser(session, "close").catch(() => undefined);
     if (server) {
         server.kill("SIGTERM");
         const timer = setTimeout(() => server!.kill("SIGKILL"), 7000);
