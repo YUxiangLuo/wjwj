@@ -5,6 +5,7 @@ import {
     extractAccessorValues,
     estimateSimpleValue,
     sampleVariance,
+    scaledMean,
 } from "./values";
 import { computeSimpleRandomValueSe, computeFinitePopulationEquivalentSampleSize } from "./srs";
 import { computeSystematicExactValueSe } from "./systematic";
@@ -57,7 +58,7 @@ export function buildTargetAnalysis(params: {
     if (populationValues.length === 0) return null;
     // 与数值字段的 fail-closed 约定一致：均值目标在数据不完整时不给目标分析。
     if (populationValues.length !== populationSize) return null;
-    const populationValue = populationValues.reduce((sum, value) => sum + value, 0) / populationValues.length;
+    const populationValue = scaledMean(populationValues)!;
     const populationVar = sampleVariance(populationValues);
 
     const simpleRows = (params.samplingResults?.simple?.data ?? []) as Array<Record<string, unknown>>;

@@ -4,6 +4,7 @@ import { buildPpsStandardErrorContext } from "./pps";
 import { computeSystematicExactMeanSe } from "./systematic";
 import { createSeededRandom, performSystematicSampling, preparePPSSampling, drawPreparedPPSSample, performPPSSampling } from "./sampling";
 import { computeFinitePopulationEquivalentSampleSize } from "./srs";
+import { buildPopulationNumericStats, buildStratifiedNumericStats } from "./population";
 
 test("NFKC categories match population, sample and target during a census", () => {
     const population = ["Ａ", "Ａ", "B", "B"].map(category => ({ category }));
@@ -12,6 +13,31 @@ test("NFKC categories match population, sample and target during a census", () =
     expect(metrics.categorical.category!.representativeness.simple).toBe(0);
     expect(metrics.categorical.category!.methods.simple).toEqual({ A: 50, B: 50 });
     expect(metrics.target!.methods.simple.estimate).toBe(.5);
+});
+
+test("main analysis retains a small residual when large values cancel", () => {
+    for (const scale of [1e16, 1e20, 1e150]) {
+        const population = [scale, 1, -scale].map(y => ({ group: "all", size: 1, y }));
+        const samplingResults = {
+            simple: { completed: true, sampleCount: 3, data: population },
+            systematic: { completed: true, sampleCount: 3, interval: 1, data: population },
+            pps: { completed: true, sampleCount: 3, sizeField: "size", inclusionProbabilities: [1, 1, 1], data: population },
+            stratified: { completed: true, sampleCount: 3, stratifyBy: "group", layers: [{ name: "all", count: 3, ratio: 1, sampleCount: 3 }], data: population },
+        };
+        const metrics = buildAnalysisMetrics({
+            population,
+            fieldMapping: { stratified: ["group"], numeric: ["y", "size"], analysisTarget: { kind: "mean", field: "y" } },
+            samplingResults,
+        });
+
+        expect(buildPopulationNumericStats(population, ["y"]).y?.mean, String(scale)).toBeCloseTo(1 / 3, 15);
+        expect(buildStratifiedNumericStats(population, { stratified: ["group"], numeric: ["y"] }).group?.all?.y?.mean, String(scale)).toBeCloseTo(1 / 3, 15);
+        expect(metrics.target?.populationValue, String(scale)).toBeCloseTo(1 / 3, 15);
+        for (const method of ["simple", "systematic", "pps", "stratified"] as const) {
+            expect(metrics.numeric.y?.methods[method].estimate, `${scale}:${method}`).toBeCloseTo(1 / 3, 15);
+            expect(metrics.target?.methods[method].estimate, `${scale}:${method}`).toBeCloseTo(1 / 3, 15);
+        }
+    }
 });
 
 test("chart aggregation cannot erase full-category differences and preserves the primary target", () => {

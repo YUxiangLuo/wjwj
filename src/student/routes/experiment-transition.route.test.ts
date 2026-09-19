@@ -355,19 +355,9 @@ test("a required PPS whose size field is unusable completes stage 3 instead of t
         samplingResults: stored,
     });
     const updated = { ...record, currentStage: 4, version: 7 };
-    const stats: PopulationStats = {
-        stats: { group: { A: 100, B: 100 } }, numericFields: [], categoricalFields: ["group"],
-        categoricalStats: { group: { A: 100, B: 100 } }, populationNumericStats: {},
-        ppsEligibleFields: [], stratumNumericStats: {},
-    };
-    const { db } = createMockDb({ select: [[record]], update: [[updated]] });
-    mock.module("../../db", () => ({ db }));
-    mock.module("./auth", () => createStudentAuthModuleMock());
-    mock.module("../experiment/population-stats-service", () => ({
-        populationStatsService: { run: async () => stats },
-        populationRevisionKey: () => "revision",
-    }));
-    const module = await import(`./experiment.ts?pps-required-unavailable=${crypto.randomUUID()}`);
+    const fixture = statsCompletionFixture(3);
+    fixture.options.samplingInfo.samplingPolicy.methods.pps = "required";
+    const { module } = await load(record, { ...fixture.options, update: [[updated]] });
 
     const response = await module.stageCompleteRoutes.POST!(post(3));
 

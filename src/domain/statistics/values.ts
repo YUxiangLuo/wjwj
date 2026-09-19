@@ -1,4 +1,5 @@
 import { parseNumericText } from "../../lib/numeric-text";
+import { StableSum } from "./stable-sum";
 
 export function unique<T>(values: T[]) {
     return Array.from(new Set(values));
@@ -36,10 +37,19 @@ export function extractAccessorValues(rows: Array<Record<string, unknown>>, acce
     return values;
 }
 
+/** Scale before compensated summation so finite means survive large cancellation. */
+export function scaledMean(values: number[]) {
+    if (values.length === 0) return null;
+    const scale = values.reduce((maximum, value) => Math.max(maximum, Math.abs(value)), 0);
+    if (scale === 0) return 0;
+    const sum = new StableSum();
+    for (const value of values) sum.add(value / scale);
+    return (sum.value / values.length) * scale;
+}
+
 export function estimateSimpleValue(rows: Array<Record<string, unknown>>, accessor: NumericAccessor) {
     const values = extractAccessorValues(rows, accessor);
-    if (values.length === 0) return null;
-    return values.reduce((sum, value) => sum + value, 0) / values.length;
+    return scaledMean(values);
 }
 
 export function estimateSimpleMean(rows: Array<Record<string, unknown>>, field: string) {
@@ -48,6 +58,11 @@ export function estimateSimpleMean(rows: Array<Record<string, unknown>>, field: 
 
 export function sampleVariance(values: number[]) {
     if (values.length < 2) return 0;
-    const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
-    return values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (values.length - 1);
+    const scale = values.reduce((maximum, value) => Math.max(maximum, Math.abs(value)), 0);
+    if (scale === 0) return 0;
+    const normalizedMean = scaledMean(values)! / scale;
+    const squares = new StableSum();
+    for (const value of values) squares.add((value / scale - normalizedMean) ** 2);
+    const standardDeviation = Math.sqrt(Math.max(0, squares.value) / (values.length - 1)) * scale;
+    return standardDeviation * standardDeviation;
 }

@@ -1,7 +1,8 @@
-import { type NumericAccessor, fieldAccessor, extractAccessorValues } from "./values";
+import { type NumericAccessor, fieldAccessor, extractAccessorValues, sampleVariance, scaledMean } from "./values";
 import { estimateSimpleDistribution } from "./distributions";
 import { createSafeRecord } from "../../lib/safe-record";
 import { stratumKey } from "./sampling";
+import { StableSum } from "./stable-sum";
 
 export function computeStratifiedValueEstimate(
     rows: Array<Record<string, unknown>>,
@@ -14,18 +15,18 @@ export function computeStratifiedValueEstimate(
         return null;
     }
 
-    let estimate = 0;
+    const estimate = new StableSum();
     for (const layer of layers) {
         const layerRows = rows.filter((row) => stratumKey(row[stratifyBy]) === stratumKey(layer.name));
         const values = extractAccessorValues(layerRows, accessor);
         if (values.length !== layer.sampleCount || layerRows.length !== layer.sampleCount) {
             return null;
         }
-        const layerMean = values.reduce((sum, value) => sum + value, 0) / values.length;
-        estimate += (layer.count / totalPopulation) * layerMean;
+        const layerMean = scaledMean(values)!;
+        estimate.add((layer.count / totalPopulation) * layerMean);
     }
 
-    return estimate;
+    return estimate.value;
 }
 
 function hasCompleteStratifiedDesign(
@@ -85,10 +86,7 @@ export function computeStratifiedValueSe(
             return null;
         }
 
-        const layerMean = populationValues.reduce((sum, value) => sum + value, 0) / populationValues.length;
-        const layerVariance = populationValues.length > 1
-            ? populationValues.reduce((sum, value) => sum + (value - layerMean) ** 2, 0) / (populationValues.length - 1)
-            : 0;
+        const layerVariance = sampleVariance(populationValues);
 
         const weight = layer.count / totalPopulation;
         const finiteCorrection = Math.max(0, 1 - (layer.sampleCount / layer.count));

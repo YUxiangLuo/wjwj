@@ -2,6 +2,7 @@ import { toTrimmedCategory, type NumericAccessor, fieldAccessor } from "./values
 import { createSafeRecord } from "../../lib/safe-record";
 import { preparePPSSampling } from "./sampling";
 import { exactPpsStandardErrors } from "./pps-exact";
+import { StableSum } from "./stable-sum";
 
 export interface PpsStandardErrorContext {
     standardErrors: Record<string, number | null>;
@@ -64,8 +65,7 @@ export function estimateWeightedValue(
         return null;
     }
 
-    let weightedSum = 0;
-    let totalWeight = 0;
+    const valid: Array<{ value: number; probability: number }> = [];
 
     for (let index = 0; index < rows.length; index += 1) {
         const value = accessor(rows[index]!);
@@ -73,12 +73,22 @@ export function estimateWeightedValue(
         if (value === null || !Number.isFinite(inclusionProbability) || inclusionProbability <= 0) {
             continue;
         }
-        const weight = 1 / inclusionProbability;
-        weightedSum += weight * value;
-        totalWeight += weight;
+        valid.push({ value, probability: inclusionProbability });
     }
 
-    return totalWeight > 0 ? weightedSum / totalWeight : null;
+    if (valid.length === 0) return null;
+    const valueScale = valid.reduce((maximum, item) => Math.max(maximum, Math.abs(item.value)), 0);
+    if (valueScale === 0) return 0;
+    const minimumProbability = valid.reduce((minimum, item) => Math.min(minimum, item.probability), Infinity);
+    const numerator = new StableSum();
+    const denominator = new StableSum();
+    for (const item of valid) {
+        // min(π)/π is proportional to 1/π without overflowing for tiny π.
+        const normalizedWeight = minimumProbability / item.probability;
+        numerator.add(normalizedWeight * (item.value / valueScale));
+        denominator.add(normalizedWeight);
+    }
+    return denominator.value > 0 ? (numerator.value / denominator.value) * valueScale : null;
 }
 
 export function estimateWeightedMean(

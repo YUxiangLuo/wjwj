@@ -1,4 +1,4 @@
-import { type NumericAccessor, fieldAccessor } from "./values";
+import { type NumericAccessor, fieldAccessor, sampleVariance, scaledMean } from "./values";
 import type { SamplingResultsData } from "../experiment/types";
 import { StableSum } from "./stable-sum";
 
@@ -20,13 +20,12 @@ function computeLegacySystematicValueSe(
             }
         }
         if (values.length === 0) continue;
-        startMeans.push(values.reduce((sum, value) => sum + value, 0) / values.length);
+        startMeans.push(scaledMean(values)!);
     }
 
     if (startMeans.length === 0) return null;
 
-    const meanEstimate = startMeans.reduce((sum, value) => sum + value, 0) / startMeans.length;
-    const variance = startMeans.reduce((sum, value) => sum + (value - meanEstimate) ** 2, 0) / startMeans.length;
+    const variance = sampleVariance(startMeans) * (startMeans.length - 1) / startMeans.length;
     return Math.sqrt(variance);
 }
 
