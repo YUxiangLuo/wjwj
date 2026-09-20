@@ -1,7 +1,8 @@
-import { useEffect, useRef, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Eye, ChevronLeft, ChevronRight, Loader2, RotateCcw, Search, Users } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -53,16 +54,10 @@ export function StudentManagement() {
     const [appliedSearch, setAppliedSearch] = useState("");
     const [page, setPage] = useState(1);
     const [total, setTotal] = useState(0);
-    const [loading, setLoading] = useState(true);
-    const [loadError, setLoadError] = useState<string | null>(null);
-    const requestIdRef = useRef(0);
-    const experimentRequestRef = useRef(0);
-    useEffect(() => () => { requestIdRef.current += 1; experimentRequestRef.current += 1; }, []);
+    const { loading, error: loadError, run: runList } = useAsyncLoad("学生列表加载失败");
     const [selected, setSelected] = useState<Student | null>(null);
     const [experiments, setExperiments] = useState<StudentExperiment[]>([]);
-    const [experimentsLoading, setExperimentsLoading] = useState(false);
-    const [experimentsError, setExperimentsError] = useState<string | null>(null);
-    const [refreshVersion, setRefreshVersion] = useState(0);
+    const { loading: experimentsLoading, error: experimentsError, run: runExperiments, cancel: cancelExperiments } = useAsyncLoad("实验记录加载失败");
 
     const load = async ({
         nextClassId = classId,
@@ -73,27 +68,20 @@ export function StudentManagement() {
         nextSearch?: string;
         nextPage?: number;
     } = {}) => {
-        const requestId = ++requestIdRef.current;
         setPage(nextPage);
-        setLoading(true);
-        setLoadError(null);
-        const response = await studentApi.listPaged({
-            classId: nextClassId,
-            search: nextSearch || undefined,
-            page: nextPage,
-            pageSize: PAGE_SIZE,
-        });
-        if (requestId !== requestIdRef.current) return;
-        if (response.success && response.data) {
-            setStudents(response.data.items);
-            setTotal(response.data.total);
-            setPage(response.data.page);
-        } else {
-            setStudents([]);
-            setTotal(0);
-            setLoadError(response.error?.message ?? "学生列表加载失败");
-        }
-        setLoading(false);
+        return runList(
+            async () => requireApiData(await studentApi.listPaged({
+                classId: nextClassId,
+                search: nextSearch || undefined,
+                page: nextPage,
+                pageSize: PAGE_SIZE,
+            }), "学生列表加载失败"),
+            (data) => {
+                setStudents(data.items);
+                setTotal(data.total);
+                setPage(data.page);
+            },
+        );
     };
 
     useEffect(() => {
@@ -109,12 +97,6 @@ export function StudentManagement() {
     useEffect(() => {
         void load({ nextClassId: classId, nextPage: 1 });
     }, [classId]);
-
-    // Mutation callbacks only invalidate. This render supplies the current
-    // filters/page, not the stale closure that started the mutation.
-    useEffect(() => {
-        if (refreshVersion > 0) void load();
-    }, [refreshVersion]);
 
     const filtered = students;
     const selectedClassName = classes.find((item) => String(item.id) === classId)?.name;
@@ -142,16 +124,12 @@ export function StudentManagement() {
     };
 
     const openExperiments = async (item: Student) => {
-        const requestId = ++experimentRequestRef.current;
         setSelected(item);
         setExperiments([]);
-        setExperimentsLoading(true);
-        setExperimentsError(null);
-        const response = await studentApi.getExperiments(item.id);
-        if (requestId !== experimentRequestRef.current) return;
-        if (response.success && response.data) setExperiments(response.data);
-        else setExperimentsError(response.error?.message ?? "实验记录加载失败");
-        setExperimentsLoading(false);
+        await runExperiments(
+            async () => requireApiData(await studentApi.getExperiments(item.id), "实验记录加载失败"),
+            setExperiments,
+        );
     };
 
     return (
@@ -257,7 +235,6 @@ export function StudentManagement() {
                                                     const response = await studentApi.resetPassword(item.id);
                                                     if (response.success) {
                                                         toast.success("密码已重置为学号");
-                                                        setRefreshVersion(value => value + 1);
                                                     } else {
                                                         toast.error(response.error?.message);
                                                     }
@@ -272,7 +249,7 @@ export function StudentManagement() {
                         </TableBody>
                     </Table>
                 )}
-                {!loading && total > 0 && (
+                {!loading && !loadError && total > 0 && (
                     <div className="flex items-center justify-between pt-2" data-testid="student-list-pagination">
                         <p className="text-label text-muted-foreground">
                             共 {total} 人，第 {page} / {Math.max(1, Math.ceil(total / PAGE_SIZE))} 页
@@ -304,7 +281,7 @@ export function StudentManagement() {
             </CardContent>
 
             <Dialog open={selected !== null} onOpenChange={(open) => {
-                if (!open) { experimentRequestRef.current += 1; setSelected(null); }
+                if (!open) { cancelExperiments(); setSelected(null); }
             }}>
                 <DialogContent className="max-w-3xl">
                     <DialogHeader>

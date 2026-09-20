@@ -33,25 +33,6 @@ const emptyForm = {
     targetScope: "all" as "all" | "teacher" | "student",
 };
 
-export function createAnnouncementSubmitGuard(onSubmittingChange: (submitting: boolean) => void) {
-    let submitting = false;
-
-    return {
-        isSubmitting: () => submitting,
-        async run<T>(operation: () => Promise<T>) {
-            if (submitting) return { started: false as const };
-            submitting = true;
-            onSubmittingChange(true);
-            try {
-                return { started: true as const, value: await operation() };
-            } finally {
-                submitting = false;
-                onSubmittingChange(false);
-            }
-        },
-    };
-}
-
 export function AnnouncementManagement() {
     const [rows, setRows] = useState<Announcement[]>([]);
     const { loading, error: loadError, run } = useAsyncLoad("公告加载失败");
@@ -59,8 +40,7 @@ export function AnnouncementManagement() {
     const [editing, setEditing] = useState<Announcement | null>(null);
     const [form, setForm] = useState(emptyForm);
     const [submitting, setSubmitting] = useState(false);
-    const submitGuardRef = useRef<ReturnType<typeof createAnnouncementSubmitGuard> | null>(null);
-    submitGuardRef.current ??= createAnnouncementSubmitGuard(setSubmitting);
+    const pending = useRef(false);
 
     const load = async () => {
         return run(async () => requireApiData(await announcementApi.list(), "公告加载失败"), setRows);
@@ -71,7 +51,10 @@ export function AnnouncementManagement() {
     }, []);
 
     const save = async (publish: boolean) => {
-        await submitGuardRef.current!.run(async () => {
+        if (pending.current) return;
+        pending.current = true;
+        setSubmitting(true);
+        try {
             const response = editing
                 ? await announcementApi.update(editing.id, { ...form, status: publish ? 1 : 0 })
                 : await announcementApi.create({ ...form, publish });
@@ -84,7 +67,10 @@ export function AnnouncementManagement() {
             setForm(emptyForm);
             toast.success(publish ? "公告已发布" : "草稿已保存");
             void load();
-        });
+        } finally {
+            pending.current = false;
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -180,7 +166,7 @@ export function AnnouncementManagement() {
             <Dialog
                 open={open}
                 onOpenChange={(nextOpen) => {
-                    if (!nextOpen && submitGuardRef.current!.isSubmitting()) return;
+                    if (!nextOpen && pending.current) return;
                     setOpen(nextOpen);
                 }}
             >
@@ -230,9 +216,7 @@ export function AnnouncementManagement() {
                         <Button
                             variant="outline"
                             disabled={submitting}
-                            onClick={() => {
-                                if (!submitGuardRef.current!.isSubmitting()) setOpen(false);
-                            }}
+                            onClick={() => setOpen(false)}
                         >
                             取消
                         </Button>

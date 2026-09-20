@@ -1,67 +1,38 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertCircle, Briefcase, Calendar, GraduationCap, Megaphone, RefreshCw, School, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { LoadingStatus } from "@/components/LoadingStatus";
 import { RichTextContent } from "@/components/RichTextContent";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { formatDateDisplay } from "@/utils/format";
 import { announcementApi, statsApi, type Announcement, type Stats } from "../api-client";
 
 export function Dashboard() {
     const [stats, setStats] = useState<Stats | null>(null);
     const [announcements, setAnnouncements] = useState<Announcement[] | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [loadError, setLoadError] = useState<string | null>(null);
-    const requestIdRef = useRef(0);
+    const { loading, error: loadError, run } = useAsyncLoad("首页数据加载失败");
 
-    const loadDashboard = useCallback(async () => {
-        const requestId = ++requestIdRef.current;
-        setLoading(true);
-        setLoadError(null);
-
-        try {
+    const loadDashboard = async () => {
+        return run(async () => {
             const [statsResponse, announcementsResponse] = await Promise.all([
                 statsApi.getStats(),
                 announcementApi.list(),
             ]);
-            if (requestId !== requestIdRef.current) return;
-
-            const failedSections: string[] = [];
-            let hasNetworkError = false;
-
-            if (statsResponse.success && statsResponse.data) {
-                setStats(statsResponse.data);
-            } else {
-                failedSections.push("统计数据");
-                hasNetworkError ||= statsResponse.error?.code === "NETWORK_ERROR";
-            }
-
-            if (announcementsResponse.success && announcementsResponse.data) {
-                setAnnouncements(announcementsResponse.data.filter((item) => item.status === 1).slice(0, 5));
-            } else {
-                failedSections.push("公告");
-                hasNetworkError ||= announcementsResponse.error?.code === "NETWORK_ERROR";
-            }
-
-            if (failedSections.length > 0) {
-                setLoadError(`${failedSections.join("、")}加载失败，${hasNetworkError ? "请检查网络后重试" : "请稍后重试"}`);
-            }
-        } catch {
-            if (requestId === requestIdRef.current) {
-                setLoadError("首页数据加载失败，请检查网络后重试");
-            }
-        } finally {
-            if (requestId === requestIdRef.current) setLoading(false);
-        }
-    }, []);
+            return {
+                stats: requireApiData(statsResponse, "统计数据加载失败"),
+                announcements: requireApiData(announcementsResponse, "公告加载失败"),
+            };
+        }, (data) => {
+            setStats(data.stats);
+            setAnnouncements(data.announcements.filter((item) => item.status === 1).slice(0, 5));
+        });
+    };
 
     useEffect(() => {
         void loadDashboard();
-        return () => {
-            requestIdRef.current += 1;
-        };
-    }, [loadDashboard]);
+    }, []);
 
     const cards = [
         { key: "semester", label: "当前学期", value: stats ? stats.currentSemester || "未设置" : null, icon: Calendar },

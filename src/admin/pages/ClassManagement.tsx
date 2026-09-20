@@ -78,9 +78,6 @@ export function ClassManagement() {
             } else {
                 toast.error(res.error?.message ?? "创建失败");
             }
-        } catch (error) {
-            console.error("Failed to create class:", error);
-            toast.error("创建失败");
         } finally {
             setSubmitting(false);
         }
@@ -106,9 +103,6 @@ export function ClassManagement() {
             } else {
                 toast.error(res.error?.message ?? "更新失败");
             }
-        } catch (error) {
-            console.error("Failed to update class:", error);
-            toast.error("更新失败");
         } finally {
             setSubmitting(false);
         }
@@ -140,16 +134,11 @@ export function ClassManagement() {
             return;
         }
 
-        try {
-            const res = await classApi.delete(cls.id);
-            if (res.success) {
-                loadClasses();
-            } else {
-                toast.error(res.error?.message ?? "删除失败");
-            }
-        } catch (error) {
-            console.error("Failed to delete class:", error);
-            toast.error("删除失败");
+        const res = await classApi.delete(cls.id);
+        if (res.success) {
+            loadClasses();
+        } else {
+            toast.error(res.error?.message ?? "删除失败");
         }
     }
 
@@ -358,8 +347,8 @@ export function ClassManagement() {
             </Card>
 
             {/* 创建班级弹窗 */}
-            <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-                <DialogContent className="bg-card border-border text-foreground max-w-[425px]">
+            <Dialog open={showAddModal} onOpenChange={(open) => { if (!submitting) setShowAddModal(open); }}>
+                <DialogContent className="bg-card border-border text-foreground max-w-[425px]" showCloseButton={!submitting}>
                     <DialogHeader>
                         <DialogTitle className="text-foreground">创建班级</DialogTitle>
                         <DialogDescription className="text-muted-foreground">为指定学期和教师创建一个新的教学班级。</DialogDescription>
@@ -422,8 +411,8 @@ export function ClassManagement() {
             </Dialog>
 
             {/* 编辑班级弹窗 */}
-            <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-                <DialogContent className="bg-card border-border text-foreground max-w-[425px]">
+            <Dialog open={showEditModal} onOpenChange={(open) => { if (!submitting) setShowEditModal(open); }}>
+                <DialogContent className="bg-card border-border text-foreground max-w-[425px]" showCloseButton={!submitting}>
                     <DialogHeader>
                         <DialogTitle className="text-foreground">编辑班级</DialogTitle>
                         <DialogDescription className="text-muted-foreground">更新班级名称。学期与授课教师创建后不可变更。</DialogDescription>

@@ -76,25 +76,17 @@ export function SemesterManagement() {
             } else {
                 toast.error(res.error?.message ?? "创建失败");
             }
-        } catch (error) {
-            console.error("Failed to create semester:", error);
-            toast.error("创建失败");
         } finally {
             setSubmitting(false);
         }
     }
 
     async function handleSetCurrent(id: number) {
-        try {
-            const res = await semesterApi.setCurrent(id);
-            if (res.success) {
-                loadSemesters();
-            } else {
-                toast.error(res.error?.message ?? "设置失败");
-            }
-        } catch (error) {
-            console.error("Failed to set current semester:", error);
-            toast.error("设置失败");
+        const res = await semesterApi.setCurrent(id);
+        if (res.success) {
+            loadSemesters();
+        } else {
+            toast.error(res.error?.message ?? "设置失败");
         }
     }
 
@@ -117,9 +109,6 @@ export function SemesterManagement() {
             } else {
                 toast.error(res.error?.message ?? "更新失败");
             }
-        } catch (error) {
-            console.error("Failed to update semester:", error);
-            toast.error("更新失败");
         } finally {
             setSubmitting(false);
         }
@@ -149,16 +138,11 @@ export function SemesterManagement() {
             return;
         }
 
-        try {
-            const res = await semesterApi.delete(semester.id);
-            if (res.success) {
-                loadSemesters();
-            } else {
-                toast.error(res.error?.message ?? "删除失败");
-            }
-        } catch (error) {
-            console.error("Failed to delete semester:", error);
-            toast.error("删除失败");
+        const res = await semesterApi.delete(semester.id);
+        if (res.success) {
+            loadSemesters();
+        } else {
+            toast.error(res.error?.message ?? "删除失败");
         }
     }
 
@@ -354,8 +338,8 @@ export function SemesterManagement() {
                 </CardContent>
             </Card>
 
-            <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-                <DialogContent className="bg-card border-border text-foreground max-w-[425px]">
+            <Dialog open={showAddModal} onOpenChange={(open) => { if (!submitting) setShowAddModal(open); }}>
+                <DialogContent className="bg-card border-border text-foreground max-w-[425px]" showCloseButton={!submitting}>
                     <DialogHeader>
                         <DialogTitle className="text-foreground">创建学期</DialogTitle>
                         <DialogDescription className="text-muted-foreground">创建一个新的学期用于组织班级和教学任务</DialogDescription>
@@ -398,8 +382,8 @@ export function SemesterManagement() {
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-                <DialogContent className="bg-card border-border text-foreground max-w-[425px]">
+            <Dialog open={showEditModal} onOpenChange={(open) => { if (!submitting) setShowEditModal(open); }}>
+                <DialogContent className="bg-card border-border text-foreground max-w-[425px]" showCloseButton={!submitting}>
                     <DialogHeader>
                         <DialogTitle className="text-foreground">编辑学期</DialogTitle>
                         <DialogDescription className="text-muted-foreground">修改学期名称</DialogDescription>

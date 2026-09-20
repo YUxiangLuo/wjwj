@@ -23,15 +23,16 @@ export function TeacherManagement() {
     const [saving, setSaving] = useState(false);
     const { confirm, dialog } = useConfirmDialog();
     const pending = useRef(false);
-    const editorVersion = useRef(0);
+    const mounted = useRef(true);
+    useEffect(() => {
+        mounted.current = true;
+        return () => { mounted.current = false; };
+    }, []);
     const closeEditor = () => {
-        editorVersion.current++;
-        pending.current = false;
-        setSaving(false);
+        if (pending.current) return;
         setCreating(false);
         setEditing(null);
     };
-    useEffect(() => () => { editorVersion.current++; }, []);
     function deleteBlockers(row: Teacher) {
         if (row.deleteBlockers) return row.deleteBlockers;
         const fallback: string[] = [];
@@ -69,11 +70,10 @@ export function TeacherManagement() {
         if (pending.current) return;
         pending.current = true;
         setSaving(true);
-        const version = editorVersion.current;
         const response = editing
             ? await teacherApi.update(editing.id, { name: form.name.trim() })
             : await teacherApi.create({ employeeId: form.employeeId.trim(), name: form.name.trim() });
-        if (version !== editorVersion.current) return;
+        if (!mounted.current) return;
         pending.current = false;
         setSaving(false);
         if (!response.success) return toast.error(response.error?.message ?? "保存失败");
@@ -98,7 +98,7 @@ export function TeacherManagement() {
                     ))}</TableBody></Table>
                 )}
             </CardContent>
-            <Dialog open={creating || editing !== null} onOpenChange={(open) => { if (!open) closeEditor(); }}><DialogContent><DialogHeader><DialogTitle>{editing ? "编辑教师" : "新增教师"}</DialogTitle><DialogDescription>{editing ? "修改教师姓名。工号创建后不可变更。" : "填写工号和姓名以创建教师账号。"}</DialogDescription></DialogHeader><div className="space-y-4"><div><Label htmlFor="admin-teacher-employee-id">工号</Label><Input id="admin-teacher-employee-id" value={form.employeeId} disabled={saving || !!editing} onChange={(event) => setForm({ ...form, employeeId: event.target.value })} /></div><div><Label htmlFor="admin-teacher-name">姓名</Label><Input id="admin-teacher-name" disabled={saving} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></div></div><DialogFooter><Button variant="outline" onClick={closeEditor}>取消</Button><Button aria-busy={saving} disabled={saving || !form.name.trim() || (!editing && !form.employeeId.trim())} onClick={() => void save()}>{saving ? "保存中..." : "保存"}</Button></DialogFooter></DialogContent></Dialog>
+            <Dialog open={creating || editing !== null} onOpenChange={(open) => { if (!open) closeEditor(); }}><DialogContent showCloseButton={!saving}><DialogHeader><DialogTitle>{editing ? "编辑教师" : "新增教师"}</DialogTitle><DialogDescription>{editing ? "修改教师姓名。工号创建后不可变更。" : "填写工号和姓名以创建教师账号。"}</DialogDescription></DialogHeader><div className="space-y-4"><div><Label htmlFor="admin-teacher-employee-id">工号</Label><Input id="admin-teacher-employee-id" value={form.employeeId} disabled={saving || !!editing} onChange={(event) => setForm({ ...form, employeeId: event.target.value })} /></div><div><Label htmlFor="admin-teacher-name">姓名</Label><Input id="admin-teacher-name" disabled={saving} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></div></div><DialogFooter><Button variant="outline" disabled={saving} onClick={closeEditor}>取消</Button><Button aria-busy={saving} disabled={saving || !form.name.trim() || (!editing && !form.employeeId.trim())} onClick={() => void save()}>{saving ? "保存中..." : "保存"}</Button></DialogFooter></DialogContent></Dialog>
             {dialog}
         </Card>
     );
