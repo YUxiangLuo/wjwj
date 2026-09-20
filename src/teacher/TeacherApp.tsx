@@ -17,6 +17,7 @@ import { RequestError } from "@/components/RequestError";
 import { getTeacherDocumentTitle } from "@/lib/document-title";
 import { authApi, type TeacherUser } from "./api-client";
 import { Login } from "./pages/Login";
+import { TeacherIdContext } from "./teacher-draft";
 
 const ClassManagement = lazy(async () => ({ default: (await import("./pages/ClassManagement")).ClassManagement }));
 const Dashboard = lazy(async () => ({ default: (await import("./pages/Dashboard")).Dashboard }));
@@ -61,7 +62,7 @@ function TeacherWorkspace({
     const title = menu.find((item) => item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path))?.label ?? "教师工作台";
 
     return (
-        <>
+        <TeacherIdContext.Provider value={user.id}>
             <WorkspaceShell
                 sidebarTitle="教师工作台"
                 sidebarIcon={BarChart3}
@@ -108,7 +109,7 @@ function TeacherWorkspace({
                 submitLabel="保存"
             />
             <AppToaster />
-        </>
+        </TeacherIdContext.Provider>
     );
 }
 

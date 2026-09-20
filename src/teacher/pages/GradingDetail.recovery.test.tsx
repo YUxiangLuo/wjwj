@@ -2,21 +2,23 @@ import { afterEach, beforeEach, expect, test } from "bun:test";
 import { installDomGlobals } from "@/test-utils/dom";
 const bootstrapDom = installDomGlobals();
 const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
-const { MemoryRouter, Route, Routes, useLocation } = await import("react-router-dom");
+const { MemoryRouter, Route, Routes, useLocation, useNavigate } = await import("react-router-dom");
 const { GradingDetail } = await import("./GradingDetail");
+const { TeacherIdContext } = await import("../teacher-draft");
 bootstrapDom.restore();
 
 const originalFetch = globalThis.fetch;
 let restore: () => void;
-beforeEach(() => { restore = installDomGlobals().restore; });
-afterEach(async () => { cleanup(); await new Promise(resolve => setTimeout(resolve, 0)); globalThis.fetch = originalFetch; restore(); });
+beforeEach(() => { restore = installDomGlobals().restore; localStorage.clear(); });
+afterEach(async () => { cleanup(); await new Promise(resolve => setTimeout(resolve, 0)); localStorage.clear(); globalThis.fetch = originalFetch; restore(); });
 function record(version = 1) {
     return { id: 7, version, studentName: "学生", studentId: "S1", topic: "实验", className: "班级", status: "submitted",
         submittedAt: null, reportContent: "报告", questionnaire: null, samplePlan: null, samplingResults: null,
         scoreQuestionnaire: 10, scoreProcess: 20, scoreReport: 30, teacherComment: "初始评语", weights: { questionnaire: 30, process: 30, report: 40 } };
 }
 function ListLocation() { const location = useLocation(); return <p data-testid="list-location">{location.pathname + location.search}</p>; }
-function page(entry = "/grading/7") { return render(<MemoryRouter initialEntries={[entry]}><Routes><Route path="/grading/:submissionId" element={<GradingDetail />} /><Route path="/grading" element={<ListLocation />} /></Routes></MemoryRouter>); }
+function SubmissionSwitcher() { const navigate = useNavigate(); return <button onClick={() => navigate("/grading/8")}>切换到提交 8</button>; }
+function page(entry = "/grading/7") { return render(<TeacherIdContext.Provider value={9}><MemoryRouter initialEntries={[entry]}><SubmissionSwitcher /><Routes><Route path="/grading/:submissionId" element={<GradingDetail />} /><Route path="/grading" element={<ListLocation />} /></Routes></MemoryRouter></TeacherIdContext.Provider>); }
 
 test("initial request failure is retryable rather than a missing submission", async () => {
     let requests = 0;
@@ -30,7 +32,7 @@ test("initial request failure is retryable rather than a missing submission", as
     await waitFor(() => expect(view.getByLabelText("教师评语")).toBeTruthy());
 });
 
-test("version conflict keeps scoring inputs until an explicit refresh", async () => {
+test("version conflict loads the latest record instead of replaying an old-version draft", async () => {
     let reads = 0;
     globalThis.fetch = (async (_input, init) => {
         if (init?.method === "POST") return Response.json({ success: false, error: { code: "VERSION_CONFLICT", message: "记录已更新" } }, { status: 409 });
@@ -39,16 +41,17 @@ test("version conflict keeps scoring inputs until an explicit refresh", async ()
     }) as typeof fetch;
     const view = page();
     await waitFor(() => expect(view.getByLabelText("教师评语")).toBeTruthy());
+    fireEvent.change(view.getByLabelText("教师评语"), { target: { value: "本机批改草稿" } });
     fireEvent.click(view.getByText("提交评分"));
     await waitFor(() => expect(view.getByTestId("teacher-grade-confirm")).toBeTruthy());
     fireEvent.click(view.getByTestId("teacher-grade-confirm"));
-    await waitFor(() => expect(view.getByText("加载最新记录并保留输入")).toBeTruthy());
+    await waitFor(() => expect(view.getByText("重新加载最新记录")).toBeTruthy());
     expect(reads).toBe(1);
-    expect((view.getByLabelText("教师评语") as HTMLTextAreaElement).value).toBe("保留当前输入");
-    fireEvent.click(view.getByText("加载最新记录并保留输入"));
+    expect((view.getByLabelText("教师评语") as HTMLTextAreaElement).value).toBe("本机批改草稿");
+    fireEvent.click(view.getByText("重新加载最新记录"));
     await waitFor(() => expect(reads).toBe(2));
-    await waitFor(() => expect(view.queryByText("加载最新记录并保留输入")).toBeNull());
-    expect((view.getByLabelText("教师评语") as HTMLTextAreaElement).value).toBe("保留当前输入");
+    await waitFor(() => expect(view.queryByText("重新加载最新记录")).toBeNull());
+    expect((view.getByLabelText("教师评语") as HTMLTextAreaElement).value).toBe("其他页面评语");
     expect((view.getByLabelText("实验报告（40%）") as HTMLInputElement).value).toBe("30");
 });
 
@@ -59,6 +62,38 @@ test("score inputs hint the expected 0–100 range", async () => {
     for (const label of ["问卷设计（30%）", "实验过程（30%）", "实验报告（40%）"]) {
         expect((view.getByLabelText(label) as HTMLInputElement).placeholder).toBe("0–100");
     }
+});
+
+test("viewing server grading values does not create a local draft", async () => {
+    globalThis.fetch = (async () => Response.json({ success: true, data: record() })) as unknown as typeof fetch;
+    const view = page();
+    await waitFor(() => expect((view.getByLabelText("教师评语") as HTMLTextAreaElement).value).toBe("初始评语"));
+    expect(localStorage.getItem("wj:teacher-draft:9:grading:7")).toBeNull();
+});
+
+test("switching submissions cannot copy one submission draft into another", async () => {
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+        const id = Number(new URL(String(input), "http://localhost").pathname.split("/").at(-1));
+        return Response.json({ success: true, data: {
+            ...record(),
+            id,
+            topic: `实验 ${id}`,
+            scoreQuestionnaire: id === 8 ? 40 : 10,
+            scoreProcess: id === 8 ? 50 : 20,
+            scoreReport: id === 8 ? 60 : 30,
+            teacherComment: `服务端评语 ${id}`,
+        } });
+    }) as unknown as typeof fetch;
+    const view = page();
+    await waitFor(() => expect((view.getByLabelText("教师评语") as HTMLTextAreaElement).value).toBe("服务端评语 7"));
+    fireEvent.change(view.getByLabelText("教师评语"), { target: { value: "提交 7 的本地草稿" } });
+    expect(localStorage.getItem("wj:teacher-draft:9:grading:7")).toContain("提交 7 的本地草稿");
+
+    fireEvent.click(view.getByText("切换到提交 8"));
+    await waitFor(() => expect(view.getByRole("heading", { name: "学生 · 实验 8" })).toBeTruthy());
+    expect((view.getByLabelText("教师评语") as HTMLTextAreaElement).value).toBe("服务端评语 8");
+    expect((view.getByLabelText("问卷设计（30%）") as HTMLInputElement).value).toBe("40");
+    expect(localStorage.getItem("wj:teacher-draft:9:grading:8")).toBeNull();
 });
 
 test("reading different materials keeps scores, comments and student identity in a separate panel", async () => {
@@ -85,6 +120,7 @@ test("pending grading freezes inputs; failure preserves them and retry returns t
     const view = page("/grading/7?status=graded&keyword=S1&page=2");
     await waitFor(() => expect(view.getByLabelText("教师评语")).toBeTruthy());
     fireEvent.change(view.getByLabelText("教师评语"), { target: { value: "保留这条评语" } });
+    expect(localStorage.getItem("wj:teacher-draft:9:grading:7")).toContain("保留这条评语");
     fireEvent.click(view.getByText("提交评分"));
     fireEvent.click(view.getByTestId("teacher-grade-confirm"));
     expect(writes).toHaveLength(1);
@@ -97,6 +133,18 @@ test("pending grading freezes inputs; failure preserves them and retry returns t
     fireEvent.click(view.getByTestId("teacher-grade-confirm"));
     await act(async () => writes[1]!(Response.json({ success: true })));
     await waitFor(() => expect(view.getByTestId("list-location").textContent).toBe("/grading?status=graded&keyword=S1&page=2"));
+    expect(localStorage.getItem("wj:teacher-draft:9:grading:7")).toBeNull();
+});
+
+test("a grading draft survives leaving and reopening the page", async () => {
+    globalThis.fetch = (async () => Response.json({ success: true, data: record() })) as unknown as typeof fetch;
+    const first = page();
+    await waitFor(() => expect(first.getByLabelText("教师评语")).toBeTruthy());
+    fireEvent.change(first.getByLabelText("教师评语"), { target: { value: "浏览器本地草稿" } });
+    first.unmount();
+
+    const reopened = page();
+    await waitFor(() => expect((reopened.getByLabelText("教师评语") as HTMLTextAreaElement).value).toBe("浏览器本地草稿"));
 });
 
 test("pending rejection cannot be repeated or dismissed and a failed reason remains editable", async () => {

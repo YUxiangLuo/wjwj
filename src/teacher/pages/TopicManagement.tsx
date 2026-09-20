@@ -27,8 +27,12 @@ import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { buildDefaultSamplingPolicy, resolveSamplingPolicy, type SamplingPolicyV1 } from "@/lib/sampling-policy";
+import { clearTeacherDraft, readTeacherDraft, useTeacherId, writeTeacherDraft } from "../teacher-draft";
+
+const NEW_TOPIC_DRAFT = "topic:new";
 
 export function TopicManagement() {
+    const teacherId = useTeacherId();
     const [topics, setTopics] = useState<Topic[]>([]);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
@@ -81,6 +85,15 @@ export function TopicManagement() {
     useEffect(() => {
         loadTopics();
     }, []);
+
+    useEffect(() => {
+        if (!showCreateModal || topicWizardMode !== "create" || editingTopicId !== null) return;
+        if (newTopicName || newTopicDesc) {
+            writeTeacherDraft(teacherId, NEW_TOPIC_DRAFT, { name: newTopicName, description: newTopicDesc });
+        } else {
+            clearTeacherDraft(teacherId, NEW_TOPIC_DRAFT);
+        }
+    }, [editingTopicId, newTopicDesc, newTopicName, showCreateModal, teacherId, topicWizardMode]);
 
     async function loadTopics() {
         return run(async () => requireApiData(await teacherApi.getTopics(), "模板列表加载失败"), setTopics);
@@ -135,6 +148,7 @@ export function TopicManagement() {
             return;
         }
 
+        setSaveError(null);
         let res;
         if (editingTopicId) {
             // Update
@@ -151,8 +165,10 @@ export function TopicManagement() {
         }
 
         if (res.success) {
+            setSaveError(null);
             if (!editingTopicId && res.data && typeof res.data === "object" && "id" in res.data) {
                 const newId = (res.data as { id: number }).id;
+                clearTeacherDraft(teacherId, NEW_TOPIC_DRAFT);
                 setEditingTopicId(newId);
                 setCurrentStep(2);
                 loadTopicDetail(newId);
@@ -170,12 +186,13 @@ export function TopicManagement() {
     }
 
     function openCreateModal() {
+        const draft = readTeacherDraft<{ name?: string; description?: string }>(teacherId, NEW_TOPIC_DRAFT);
         setSaveError(null);
         setEditingTopicId(null);
         setTopicWizardMode("create");
         setEditingTopicPublished(false);
-        setNewTopicName("");
-        setNewTopicDesc("");
+        setNewTopicName(typeof draft?.name === "string" ? draft.name : "");
+        setNewTopicDesc(typeof draft?.description === "string" ? draft.description : "");
         setCurrentStep(1);
         setExcelInfo(null);
         setColumns([]);

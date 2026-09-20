@@ -20,6 +20,25 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { formatDateTimeDisplay } from "@/utils/format";
 import { teacherApi, teacherResourceUrl, type SubmissionDetail } from "../api-client";
 import { AnalysisAppendices } from "@/components/AnalysisAppendices";
+import { clearTeacherDraft, readTeacherDraft, useTeacherId, writeTeacherDraft } from "../teacher-draft";
+
+interface GradingDraft {
+    version: number;
+    scores: { questionnaire: string; process: string; report: string };
+    comment: string;
+    rejectReason: string;
+}
+
+function isGradingDraft(value: GradingDraft | null): value is GradingDraft {
+    return Boolean(value
+        && Number.isInteger(value.version)
+        && value.scores
+        && typeof value.scores.questionnaire === "string"
+        && typeof value.scores.process === "string"
+        && typeof value.scores.report === "string"
+        && typeof value.comment === "string"
+        && typeof value.rejectReason === "string");
+}
 
 function parseScoreField(value: string) {
     if (value.trim() === "") return null;
@@ -36,6 +55,7 @@ function scoreFieldMessage(scores: { questionnaire: string; process: string; rep
 }
 
 export function GradingDetail() {
+    const teacherId = useTeacherId();
     const { submissionId } = useParams();
     const navigate = useNavigate();
     const { search } = useLocation();
@@ -50,34 +70,43 @@ export function GradingDetail() {
     const [rejectReason, setRejectReason] = useState("");
     const [scores, setScores] = useState({ questionnaire: "", process: "", report: "" });
     const [comment, setComment] = useState("");
+    const [draftChanged, setDraftChanged] = useState(false);
     const [gradeConfirmOpen, setGradeConfirmOpen] = useState(false);
     const id = Number(submissionId);
+    const draftScope = `grading:${id}`;
     const currentId = useRef(id);
     currentId.current = id;
-    const load = (preserveInput = false) => run(async () => requireApiData(await teacherApi.getSubmissionDetail(id), "批改记录加载失败"), (loaded) => {
+    const load = () => run(async () => requireApiData(await teacherApi.getSubmissionDetail(id), "批改记录加载失败"), (loaded) => {
         setData(loaded);
         setConflict(false);
-        if (!preserveInput) {
-            setScores({
-                questionnaire: loaded.scoreQuestionnaire == null ? "" : String(loaded.scoreQuestionnaire),
-                process: loaded.scoreProcess == null ? "" : String(loaded.scoreProcess),
-                report: loaded.scoreReport == null ? "" : String(loaded.scoreReport),
-            });
-            setComment(loaded.teacherComment ?? "");
-            setRejectReason(loaded.rejectReason ?? "");
-        }
+        const draft = readTeacherDraft<GradingDraft>(teacherId, draftScope);
+        const restored = isGradingDraft(draft) && draft.version === loaded.version ? draft : null;
+        if (draft && !restored) clearTeacherDraft(teacherId, draftScope);
+        setScores({
+            questionnaire: restored?.scores.questionnaire ?? (loaded.scoreQuestionnaire == null ? "" : String(loaded.scoreQuestionnaire)),
+            process: restored?.scores.process ?? (loaded.scoreProcess == null ? "" : String(loaded.scoreProcess)),
+            report: restored?.scores.report ?? (loaded.scoreReport == null ? "" : String(loaded.scoreReport)),
+        });
+        setComment(restored?.comment ?? loaded.teacherComment ?? "");
+        setRejectReason(restored?.rejectReason ?? loaded.rejectReason ?? "");
+        setDraftChanged(false);
     });
     useEffect(() => {
         currentId.current = id;
         setData(null);
         setConflict(false);
         setSaving(false);
+        setDraftChanged(false);
         mutationInFlight.current = false;
         setRejectOpen(false);
         setGradeConfirmOpen(false);
         if (Number.isInteger(id) && id > 0) void load();
         return () => { currentId.current = Number.NaN; cancel(); };
     }, [id, cancel]);
+    useEffect(() => {
+        if (!draftChanged || !data || data.id !== id) return;
+        writeTeacherDraft(teacherId, draftScope, { version: data.version, scores, comment, rejectReason });
+    }, [comment, data, draftChanged, draftScope, id, rejectReason, scores, teacherId]);
     const weights = data?.weights ?? { questionnaire: 30, process: 30, report: 40 };
     const parsedScores = useMemo(() => ({
         questionnaire: parseScoreField(scores.questionnaire),
@@ -113,6 +142,7 @@ export function GradingDetail() {
             return;
         }
         toast.success("评分已保存");
+        clearTeacherDraft(teacherId, draftScope);
         returnToList();
     };
     const reject = async () => {
@@ -129,6 +159,7 @@ export function GradingDetail() {
             return;
         }
         toast.success("已驳回，学生可修改后重交");
+        clearTeacherDraft(teacherId, draftScope);
         returnToList();
     };
     if (!Number.isInteger(id) || id <= 0) return <p className="py-12 text-center text-muted-foreground">未找到提交记录</p>;
@@ -143,8 +174,8 @@ export function GradingDetail() {
     };
     return (
         <div className="space-y-5">
-            {loadError && <RequestError message={loadError} onRetry={() => void load(true)} retrying={loading} />}
-            {conflict && <div role="alert" className="space-y-3 rounded-surface border border-warning-border bg-warning-muted p-4 text-label text-warning"><p>记录已在其他页面更新，当前评分和评语已保留。请加载最新记录后核对再提交。</p><Button variant="outline" disabled={loading} onClick={() => void load(true)}>加载最新记录并保留输入</Button></div>}
+            {loadError && <RequestError message={loadError} onRetry={() => void load()} retrying={loading} />}
+            {conflict && <div role="alert" className="space-y-3 rounded-surface border border-warning-border bg-warning-muted p-4 text-label text-warning"><p>记录已在其他页面更新，请加载最新记录后重新核对。</p><Button variant="outline" disabled={loading} onClick={() => void load()}>重新加载最新记录</Button></div>}
             <div className="flex items-center justify-between">
                 <Button variant="ghost" disabled={saving} onClick={returnToList}><ArrowLeft className="mr-2 h-4 w-4" />返回列表</Button>
                 <div className="flex items-center gap-2">
@@ -238,7 +269,10 @@ export function GradingDetail() {
                                             value={scores[key]}
                                             placeholder="0–100"
                                             disabled={!canGrade}
-                                            onChange={(event) => setScores({ ...scores, [key]: event.target.value })}
+                                            onChange={(event) => {
+                                                setScores((current) => ({ ...current, [key]: event.target.value }));
+                                                setDraftChanged(true);
+                                            }}
                                         />
                                     </div>
                                 );
@@ -246,7 +280,7 @@ export function GradingDetail() {
                         </div>
                         <div>
                             <Label htmlFor="grading-comment">教师评语</Label>
-                            <Textarea id="grading-comment" rows={3} value={comment} disabled={!canGrade} onChange={(event) => setComment(event.target.value)} />
+                            <Textarea id="grading-comment" rows={3} value={comment} disabled={!canGrade} onChange={(event) => { setComment(event.target.value); setDraftChanged(true); }} />
                         </div>
                         <div className="space-y-2 rounded-surface bg-muted p-3">
                             {!scoresReady && <p className="text-meta text-muted-foreground" role="status">{scoreFieldMessage(scores)}</p>}
@@ -281,7 +315,7 @@ export function GradingDetail() {
                     </DialogHeader>
                     <div>
                         <Label htmlFor="grading-reject-reason">请说明需要修改的内容</Label>
-                        <Textarea id="grading-reject-reason" rows={5} value={rejectReason} disabled={saving} onChange={(event) => setRejectReason(event.target.value)} />
+                        <Textarea id="grading-reject-reason" rows={5} value={rejectReason} disabled={saving} onChange={(event) => { setRejectReason(event.target.value); setDraftChanged(true); }} />
                     </div>
                     <DialogFooter>
                         <Button variant="outline" disabled={saving} onClick={() => setRejectOpen(false)}>取消</Button>

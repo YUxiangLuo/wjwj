@@ -14,7 +14,7 @@ mock.module("sonner", () => ({ toast: { error: toastError, success: toastSuccess
 const getTopics = mock(async () => ({ success: true, data: [] as Topic[] }));
 const updateTopic = mock(async (_id: number, _body: unknown) => ({ success: true }));
 const deleteTopic = mock(async (_id: number) => ({ success: true }));
-const createTopic = mock(async (_body: unknown) => ({ success: true, data: { id: 44 } }));
+const createTopic = mock(async (_body: unknown): Promise<{ success: boolean; data?: { id: number }; error?: { code: string; message: string } }> => ({ success: true, data: { id: 44 } }));
 const realClient = await import("../api-client");
 mock.module("../api-client", () => ({
     ...realClient,
@@ -35,6 +35,7 @@ mock.module("@/components/RichTextEditor", () => ({
 mock.module("@/components/questionnaire/QuestionEditor", () => ({ QuestionEditor: () => null }));
 
 const { TopicManagement } = await import("./TopicManagement");
+const { TeacherIdContext } = await import("../teacher-draft");
 bootstrapDom.restore();
 
 const draft: Topic = { id: 1, name: "咖啡馆调查", description: null, status: 0, dataRows: 80, hasTasks: false, createdAt: "2026-09-01T00:00:00.000Z" };
@@ -45,6 +46,7 @@ let restoreDom: (() => void) | null = null;
 
 beforeEach(() => {
     restoreDom = installDomGlobals("http://localhost/teacher").restore;
+    localStorage.clear();
     getTopics.mockClear();
     updateTopic.mockClear();
     deleteTopic.mockClear();
@@ -57,15 +59,18 @@ beforeEach(() => {
 afterEach(async () => {
     cleanup();
     await new Promise((resolve) => setTimeout(resolve, 0));
+    localStorage.clear();
     restoreDom?.();
     restoreDom = null;
 });
 
 function renderPage() {
     return render(
-        <MemoryRouter initialEntries={["/topic"]}>
-            <TopicManagement />
-        </MemoryRouter>,
+        <TeacherIdContext.Provider value={9}>
+            <MemoryRouter initialEntries={["/topic"]}>
+                <TopicManagement />
+            </MemoryRouter>
+        </TeacherIdContext.Provider>,
     );
 }
 
@@ -133,6 +138,40 @@ test("creating a topic opens the wizard and refuses an empty name", async () => 
     fireEvent.click(view.getByTestId("teacher-topic-next"));
     await waitFor(() => expect(toastError).toHaveBeenCalledWith("请输入实验模板名称"));
     expect(createTopic).not.toHaveBeenCalled();
+});
+
+test("a new topic draft survives closing and is cleared after creation", async () => {
+    getTopics.mockResolvedValue({ success: true, data: [] });
+    const view = renderPage();
+    await waitFor(() => expect(view.getByTestId("teacher-topic-create-open")).toBeTruthy());
+
+    fireEvent.click(view.getByTestId("teacher-topic-create-open"));
+    fireEvent.change(view.getByLabelText("实验模板名称"), { target: { value: "本机模板草稿" } });
+    expect(localStorage.getItem("wj:teacher-draft:9:topic:new")).toContain("本机模板草稿");
+    fireEvent.click(view.getByRole("button", { name: "关闭" }));
+    fireEvent.click(view.getByTestId("teacher-topic-create-open"));
+    expect((view.getByLabelText("实验模板名称") as HTMLInputElement).value).toBe("本机模板草稿");
+
+    fireEvent.click(view.getByTestId("teacher-topic-next"));
+    await waitFor(() => expect(view.getByText("上传总体数据（Excel）")).toBeTruthy());
+    expect(localStorage.getItem("wj:teacher-draft:9:topic:new")).toBeNull();
+});
+
+test("a successful retry clears the old network error instead of carrying recovery state forward", async () => {
+    getTopics.mockResolvedValue({ success: true, data: [] });
+    createTopic.mockResolvedValueOnce({ success: false, error: { code: "NETWORK_ERROR", message: "网络连接失败" } });
+    createTopic.mockResolvedValueOnce({ success: true, data: { id: 44 } });
+    const view = renderPage();
+    await waitFor(() => expect(view.getByTestId("teacher-topic-create-open")).toBeTruthy());
+
+    fireEvent.click(view.getByTestId("teacher-topic-create-open"));
+    fireEvent.change(view.getByLabelText("实验模板名称"), { target: { value: "重试模板" } });
+    fireEvent.click(view.getByTestId("teacher-topic-next"));
+    await waitFor(() => expect(view.getByTestId("teacher-topic-save-error").textContent).toContain("网络连接失败"));
+    fireEvent.click(view.getByTestId("teacher-topic-next"));
+
+    await waitFor(() => expect(view.getByText("上传总体数据（Excel）")).toBeTruthy());
+    expect(view.queryByTestId("teacher-topic-save-error")).toBeNull();
 });
 
 for (const source of [assigned, published]) {
