@@ -89,3 +89,16 @@ test("roster CSV selection and cancellation never make an unreviewed file import
     await waitFor(() => expect(view.queryByTestId("csv-file-review")).toBeNull());
     expect(change.mock.calls.every(([file]) => file === null)).toBe(true);
 });
+
+test("a confirmed roster shows one selected-file state and keeps a reselect action", () => {
+    const file = new File(["studentId,name\n001,张三\n"], "roster.csv");
+    const view = render(<StudentImportDialog open onOpenChange={() => {}} importFile={file} onImportFileChange={() => {}} importing={false} importResult={null} onDownloadTemplate={() => {}} onDownloadErrors={() => {}} onImport={() => {}} />);
+    const input = view.getByTestId("teacher-student-import-file") as HTMLInputElement;
+    const click = mock(() => {});
+    input.click = click;
+
+    expect(input.className).toContain("hidden");
+    expect(view.getByText("已选择：roster.csv")).toBeTruthy();
+    fireEvent.click(view.getByRole("button", { name: "重新选择文件" }));
+    expect(click).toHaveBeenCalledTimes(1);
+});

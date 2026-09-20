@@ -51,7 +51,7 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                 <div className="min-w-0 space-y-4 py-4">
                     <div className="border-2 border-dashed border-input bg-background rounded-surface p-8 text-center hover:border-primary-border transition-none">
                         <Upload className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                        <label htmlFor="teacher-student-import-file" className="mb-2 block text-label text-muted-foreground">选择文件上传</label>
+                        <p className="mb-2 text-label text-muted-foreground">选择文件上传</p>
                         <p className="text-meta text-muted-foreground">支持 .xlsx、.csv；CSV 须先选择编码并核对预览。建议使用下载的模板填写</p>
                         <Input
                             id="teacher-student-import-file"
@@ -59,7 +59,7 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                             data-testid="teacher-student-import-file"
                             accept=".xlsx,.csv"
                             disabled={importing}
-                            className="mt-6 bg-card border-input text-foreground text-label file:bg-muted file:text-foreground file:border-0 file:rounded-control file:mr-4 file:px-3 file:py-1 cursor-pointer"
+                            className="hidden"
                             onChange={(e) => {
                                 const file = e.target.files?.[0] ?? null;
                                 e.target.value = "";
@@ -68,6 +68,15 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                                 else onImportFileChange(file);
                             }}
                         />
+                        <Button
+                            type="button"
+                            variant="outline"
+                            disabled={importing}
+                            className="mt-6 border-input bg-card text-foreground hover:text-foreground"
+                            onClick={() => document.getElementById("teacher-student-import-file")?.click()}
+                        >
+                            {importFile ? "重新选择文件" : "选择文件"}
+                        </Button>
                         {importFile && (
                             <div className="text-meta text-success mt-3 break-all font-mono">已选择：{importFile.name}</div>
                         )}
