@@ -93,8 +93,7 @@ function RequirementLabel({ value }: { value: SamplingMethodRequirement }) {
 }
 
 export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
-    const { populationSize, experiment, completeStage, reloadLatestVersion } = useExperiment();
-    const [staleNotice, setStaleNotice] = useState<string | null>(null);
+    const { populationSize, experiment, completeStage, refreshRequired, requireRefresh } = useExperiment();
     const samplingPolicy = resolveSamplingPolicy(experiment?.samplingPolicy);
     const enabledMethods = (Object.keys(samplingPolicy.methods) as PolicySamplingMethod[])
         .filter((method) => samplingPolicy.methods[method] !== "disabled");
@@ -214,10 +213,9 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     };
 
 
-    /** Server-side stage/version conflicts need a way forward, not a passing toast. */
     const reportSamplingFailure = (errorCode: string | undefined, message: string | undefined, fallback: string) => {
         if (errorCode === "INVALID_STAGE_ORDER" || errorCode === "VERSION_CONFLICT") {
-            setStaleNotice(message ?? "检测到其他页面已更新，请加载最新版本后重试。");
+            requireRefresh();
             return;
         }
         toast.error(message || fallback);
@@ -236,7 +234,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
     // Execute sampling with real API
     const executeSimple = async () => {
-        if (!taskId || !hasValidSamplePlan) return;
+        if (!taskId || !hasValidSamplePlan || refreshRequired) return;
         rememberAnimationOpener();
         setExecuting("simple");
         setAnimationSampledData(null);
@@ -268,7 +266,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     };
 
     const executeSystematic = async () => {
-        if (!taskId || !hasValidSamplePlan || systematicInterval === null) return;
+        if (!taskId || !hasValidSamplePlan || systematicInterval === null || refreshRequired) return;
         rememberAnimationOpener();
         setExecuting("systematic");
         setAnimationSampledData(null);
@@ -299,7 +297,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     };
 
     const executePPS = async () => {
-        if (!taskId || !hasValidSamplePlan || !ppsSizeField || ppsEligibleFields.length === 0) return;
+        if (!taskId || !hasValidSamplePlan || !ppsSizeField || ppsEligibleFields.length === 0 || refreshRequired) return;
         rememberAnimationOpener();
         setExecuting("pps");
         setAnimationSampledData(null);
@@ -360,7 +358,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
             : `还需再完成 ${samplingProgress.minimumCompleted - completedMethodCount} 种启用方法，才能比较抽样结果。`;
 
     const handleConfirmNext = async () => {
-        if (!allCompleted || isCompleting || executing) return;
+        if (!allCompleted || isCompleting || executing || refreshRequired) return;
         setIsCompleting(true);
         try { await completeStage(3, {}); } finally { setIsCompleting(false); }
     };
@@ -477,26 +475,6 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 <TabsContent value="simple" className="mt-0 focus-visible:outline-none">
                     <div className="min-w-0 space-y-4">
                         <div className="min-w-0 space-y-4">
-                            {staleNotice && (
-                                <div
-                                    role="alert"
-                                    data-testid="student-sampling-stale-notice"
-                                    className="flex flex-wrap items-center justify-between gap-3 rounded-surface border border-warning-border bg-warning-muted p-4 text-label text-warning"
-                                >
-                                    <span>{staleNotice}</span>
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="outline"
-                                        data-testid="student-sampling-load-latest"
-                                        onClick={() => { setStaleNotice(null); void reloadLatestVersion(); }}
-                                        className="border-warning-border bg-background text-warning hover:bg-warning-muted hover:text-warning"
-                                    >
-                                        <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                                        加载最新版本
-                                    </Button>
-                                </div>
-                            )}
                             <Card className="gap-0 rounded-surface border-border bg-card py-0">
                                 <CardHeader className="flex flex-wrap items-center justify-between gap-4 p-5">
                                     <div className="min-w-0 flex-1 basis-80 space-y-2">
@@ -508,7 +486,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                         从 {N.toLocaleString()} 个总体单位中不放回抽取 {n} 个。每个单位的入样概率相等，且不会重复入样。
                                     </CardDescription>
                                     </div>
-                                    {!simpleResult?.completed && <Button onClick={() => void executeSimple()} disabled={executing !== null} data-testid="student-sampling-simple-run">
+                                    {!simpleResult?.completed && <Button onClick={() => void executeSimple()} disabled={executing !== null || refreshRequired} data-testid="student-sampling-simple-run">
                                         {executing === "simple" ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Play className="mr-2 h-4 w-4"/>}
                                         开始随机抽样
                                     </Button>}
@@ -534,7 +512,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                         <SamplingSuccessState
                                             summary={`共成功抽取 ${simpleResult.sampleCount} 个样本${executionTimes.simple !== null ? `，耗时 ${executionTimes.simple} ms` : ""}${simpleResult.seed != null ? `，随机种子 ${simpleResult.seed}` : ""}`}
                                             onRerun={() => void executeSimple()}
-                                            disabled={executing !== null}
+                                            disabled={executing !== null || refreshRequired}
                                             rerunTestId="student-sampling-simple-rerun"
                                             rerunLabel="重新执行简单随机抽样"
                                         />
@@ -625,7 +603,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 </p>
                                             )}
                                             <div className="flex justify-end">
-                                            <Button onClick={() => void executeSystematic()} disabled={executing !== null || systematicInterval === null} data-testid="student-sampling-systematic-run" className="w-auto bg-info px-8 text-info-foreground hover:bg-info-hover">
+                                            <Button onClick={() => void executeSystematic()} disabled={executing !== null || systematicInterval === null || refreshRequired} data-testid="student-sampling-systematic-run" className="w-auto bg-info px-8 text-info-foreground hover:bg-info-hover">
                                                 {executing === "systematic" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -639,7 +617,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                         <SamplingSuccessState
                                             summary={`K=${formatSystematicInterval(resultSystematicInterval)}，共抽取 ${systematicResult?.sampleCount} 个样本${executionTimes.systematic !== null ? `，耗时 ${executionTimes.systematic} ms` : ""}`}
                                             onRerun={() => void executeSystematic()}
-                                            disabled={executing !== null || systematicInterval === null}
+                                            disabled={executing !== null || systematicInterval === null || refreshRequired}
                                             rerunTestId="student-sampling-systematic-rerun"
                                             rerunLabel="重新执行系统抽样"
                                         />
@@ -760,7 +738,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
                                     {!ppsResult?.completed ? (
                                         <div className="flex justify-end">
-                                            <Button onClick={() => void executePPS()} disabled={executing !== null || !hasPpsNumericField || !ppsSizeField || !isPpsSizeValid} data-testid="student-sampling-pps-run" className="w-auto bg-auxiliary px-8 text-auxiliary-foreground hover:bg-auxiliary-hover">
+                                            <Button onClick={() => void executePPS()} disabled={executing !== null || !hasPpsNumericField || !ppsSizeField || !isPpsSizeValid || refreshRequired} data-testid="student-sampling-pps-run" className="w-auto bg-auxiliary px-8 text-auxiliary-foreground hover:bg-auxiliary-hover">
                                                 {executing === "pps" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -773,7 +751,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                         <SamplingSuccessState
                                             summary={`按 ${ppsSummaryFieldLabel} 进行PPS抽样，共抽取 ${ppsPreviewTotal} 个样本${executionTimes.pps !== null ? `，耗时 ${executionTimes.pps} ms` : ""}`}
                                             onRerun={() => void executePPS()}
-                                            disabled={executing !== null || !hasPpsNumericField || !ppsSizeField || !isPpsSizeValid}
+                                            disabled={executing !== null || !hasPpsNumericField || !ppsSizeField || !isPpsSizeValid || refreshRequired}
                                             rerunTestId="student-sampling-pps-rerun"
                                             rerunLabel="重新执行 PPS 抽样"
                                         />
@@ -834,6 +812,8 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                         buildSavePayload={() => undefined}
                         executionTime={executionTimes.stratified}
                         setExecutionTime={(ms) => setExecutionTimes(prev => ({ ...prev, stratified: ms }))}
+                        refreshRequired={refreshRequired}
+                        onRefreshRequired={requireRefresh}
                     />
                 </TabsContent>
                 )}
@@ -850,7 +830,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                     {nextMethod && nextMethod !== activeMethod && <Button variant="outline" onClick={() => setActiveMethod(nextMethod)}>继续：{METHOD_LABELS[nextMethod]}</Button>}
-                    <Button onClick={() => void handleConfirmNext()} disabled={!allCompleted || isCompleting || executing !== null} data-testid="student-sampling-next" className="w-auto">
+                    <Button onClick={() => void handleConfirmNext()} disabled={!allCompleted || isCompleting || executing !== null || refreshRequired} data-testid="student-sampling-next" className="w-auto">
                         {isCompleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ArrowRight className="mr-2 h-4 w-4"/>}进入分析与报告
                     </Button>
                 </div>

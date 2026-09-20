@@ -1,5 +1,5 @@
 import { beforeEach, afterEach, expect, mock, test } from "bun:test";
-import type { ComponentProps } from "react";
+import { StrictMode, type ComponentProps } from "react";
 import type { SampleParams, SamplePlanningWizardDraft } from "./types";
 import { installDomGlobals } from "@/test-utils/dom";
 const initialDom = installDomGlobals();
@@ -11,14 +11,22 @@ let screen: ReturnType<typeof render>;
 beforeEach(() => { restore = installDomGlobals().restore; });
 afterEach(() => { cleanup(); restore(); });
 
-function start(options: Partial<ComponentProps<typeof ImmersiveSamplePlanning>> = {}) {
+function start(options: Partial<ComponentProps<typeof ImmersiveSamplePlanning>> = {}, strict = false) {
     const onComplete = mock((_params: SampleParams) => {});
     const onDraftChange = mock((_draft: SamplePlanningWizardDraft) => {});
-    screen = render(<ImmersiveSamplePlanning populationSize={160} initialEstimationType="proportion" onClose={() => {}} {...options} onComplete={onComplete} onDraftChange={onDraftChange}/>);
+    const component = <ImmersiveSamplePlanning populationSize={160} initialEstimationType="proportion" onClose={() => {}} {...options} onComplete={onComplete} onDraftChange={onDraftChange}/>;
+    screen = render(strict ? <StrictMode>{component}</StrictMode> : component);
     return { ...screen, onComplete, onDraftChange };
 }
 function editSize(value: string) { fireEvent.change(screen.getByRole("spinbutton", { name: "最终样本量" }), { target: { value } }); }
 function next() { fireEvent.click(screen.getByTestId("immersive-sp-decision-next")); }
+
+test("opening a fresh plan does not create a draft until the student edits it", () => {
+    const { onDraftChange } = start({}, true);
+    expect(onDraftChange).not.toHaveBeenCalled();
+    editSize("80");
+    expect(onDraftChange).toHaveBeenCalledWith(expect.objectContaining({ finalSampleSize: 80 }));
+});
 
 test("first visit opens a two-column editable plan with a single persistent primary action, no guessing or questions", () => {
     start();
@@ -129,18 +137,6 @@ test("old unfinished quiz drafts retain parameters but drop learning metadata an
     expect(restored.onDraftChange.mock.calls.at(-1)![0].navigation).not.toHaveProperty("learning");
 });
 
-test("cross-tab draft conflicts still block progression and final submission", () => {
-    const first = start();
-    next();
-    const draft = first.onDraftChange.mock.calls.at(-1)![0];
-    first.unmount();
-    const { onComplete } = start({ initialDraft: draft, draftSaveStatus: "conflict" });
-    const confirm = screen.getByTestId("immersive-sp-confirm") as HTMLButtonElement;
-    expect(confirm.disabled).toBe(true);
-    fireEvent.click(confirm);
-    expect(onComplete).not.toHaveBeenCalled();
-});
-
 test("saved advanced plans survive review and an explicitly cleared draft source stays cleared", async () => {
     const snapshot: NonNullable<SampleParams["advancedPlans"]>[number] = {
         version: 1, kind: "cost", appliedAt: "2026-09-01T00:00:00Z",
@@ -162,11 +158,11 @@ test("saved advanced plans survive review and an explicitly cleared draft source
 
 test("exiting keeps draft changes and asks before closing", () => {
     const onClose = mock(() => {});
-    const { onDraftChange } = start({ onClose, draftSaveStatus: "saved" });
+    const { onDraftChange } = start({ onClose });
     editSize("80");
     fireEvent.click(screen.getByTestId("immersive-sp-close"));
     expect(onClose).not.toHaveBeenCalled();
-    expect(screen.getByRole("alertdialog").textContent).toContain("当前参数已保存到本机");
+    expect(screen.getByRole("alertdialog").textContent).toContain("如果浏览器存储不可用，退出后可能无法恢复");
     fireEvent.click(screen.getByRole("button", { name: "确定退出" }));
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onDraftChange.mock.calls.at(-1)![0].finalSampleSize).toBe(80);

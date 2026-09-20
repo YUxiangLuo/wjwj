@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect } from "react";
 
 const DRAFT_PREFIX = "wj:experiment-draft";
-const DEFAULT_SAVE_DELAY_MS = 600;
 const DRAFT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 interface ExperimentDraftEnvelope<T> {
@@ -87,21 +86,6 @@ export function readExperimentDraft<T>(identity: ExperimentDraftIdentity): T | n
     }
 }
 
-export function clearAllExperimentDrafts() {
-    const storage = getStorage();
-    if (!storage) return;
-    const keys: string[] = [];
-    try {
-        for (let index = 0; index < storage.length; index += 1) {
-            const key = storage.key(index);
-            if (key?.startsWith(`${DRAFT_PREFIX}:`)) keys.push(key);
-        }
-        keys.forEach((key) => storage.removeItem(key));
-    } catch {
-        // Storage can be unavailable in privacy modes; logout must still work.
-    }
-}
-
 export function writeExperimentDraft<T>(identity: ExperimentDraftIdentity, data: T) {
     const key = draftKey(identity);
     const storage = getStorage();
@@ -131,100 +115,28 @@ export function clearExperimentDraft(identity: ExperimentDraftIdentity) {
     }
 }
 
-export type DraftSaveState = "idle" | "saving" | "saved" | "error" | "conflict";
-
 export function useExperimentDraft<T>({
     data,
+    baseline,
     enabled = true,
-    saveDelayMs = DEFAULT_SAVE_DELAY_MS,
     ...identity
 }: ExperimentDraftIdentity & {
     data: T;
+    baseline: T;
     enabled?: boolean;
-    saveDelayMs?: number;
 }) {
-    const [status, setStatus] = useState<DraftSaveState>("idle");
-    const suspendedRef = useRef(false);
-    const latestRef = useRef({ data, enabled, identity });
-    latestRef.current = { data, enabled, identity };
-    // Compare content so status renders do not restart the debounce when callers
-    // construct their payload inline.
     const content = JSON.stringify(data);
-    const writerRef = useRef<{ key: string | null; raw: string | null; savedContent: string | null } | null>(null);
-    const key = draftKey(identity);
-    if (!writerRef.current || writerRef.current.key !== key) {
-        let raw: string | null = null;
-        let savedContent: string | null = null;
-        try {
-            raw = key ? getStorage()?.getItem(key) ?? null : null;
-            if (raw) savedContent = JSON.stringify(JSON.parse(raw).data);
-        } catch { /* Persist reports unavailable storage or an invalid draft. */ }
-        writerRef.current = { key, raw, savedContent: savedContent === content ? content : null };
-    }
-    const persist = useCallback((requireCurrent = false): DraftSaveState | null => {
-        const latest = latestRef.current;
-        if (!latest.enabled || suspendedRef.current || !hasValidIdentity(latest.identity)) return null;
-        const writer = writerRef.current;
-        if (!writer?.key) return null;
-        const nextContent = JSON.stringify(latest.data);
-        // An untouched tab must not overwrite a newer tab when it hides/unmounts.
-        if (!requireCurrent && writer.savedContent === nextContent) return "saved";
-        const storage = getStorage();
-        if (!storage) return "error";
-        try {
-            const current = storage.getItem(writer.key);
-            if (current !== writer.raw) {
-                if (!current || JSON.stringify(JSON.parse(current).data) !== nextContent) {
-                    writer.savedContent = null;
-                    return "conflict";
-                }
-                writer.raw = current;
-                writer.savedContent = nextContent;
-                return "saved";
-            }
-            const raw = JSON.stringify({ experimentVersion: Number(latest.identity.experimentVersion), updatedAt: new Date().toISOString(), data: latest.data });
-            storage.setItem(writer.key, raw);
-            writer.raw = raw;
-            writer.savedContent = nextContent;
-            return "saved";
-        } catch { return "error"; }
-    }, []);
-    const retry = useCallback(() => {
-        const next = persist();
-        if (next) setStatus(next);
-    }, [persist]);
-    const save = useCallback((nextData: T) => {
-        latestRef.current = { ...latestRef.current, data: nextData, enabled: true };
-        const next = persist(true);
-        if (next) setStatus(next);
-        return next;
-    }, [persist]);
+    const baselineContent = JSON.stringify(baseline);
 
     useEffect(() => {
-        if (!enabled || suspendedRef.current || !hasValidIdentity(identity)) return;
-        setStatus("saving");
-        const timer = window.setTimeout(retry, saveDelayMs);
-        return () => window.clearTimeout(timer);
-    }, [content, enabled, identity.experimentId, identity.experimentVersion, identity.stage, saveDelayMs, retry]);
-
-    useEffect(() => {
-        const onHidden = () => { if (document.visibilityState === "hidden") retry(); };
-        window.addEventListener("pagehide", retry);
-        document.addEventListener("visibilitychange", onHidden);
-        return () => {
-            window.removeEventListener("pagehide", retry);
-            document.removeEventListener("visibilitychange", onHidden);
-            persist();
-        };
-    }, [persist, retry]);
+        if (!enabled || !hasValidIdentity(identity)) return;
+        if (content === baselineContent) clearExperimentDraft(identity);
+        else if (JSON.stringify(readExperimentDraft<T>(identity)) !== content) writeExperimentDraft(identity, data);
+    }, [baselineContent, content, enabled, identity.experimentId, identity.experimentVersion, identity.stage]);
 
     const clear = useCallback(() => {
-        suspendedRef.current = true;
-        setStatus("idle");
         clearExperimentDraft(identity);
-        const latestIdentity = latestRef.current.identity;
-        if (draftKey(latestIdentity) !== draftKey(identity)) clearExperimentDraft(latestIdentity);
     }, [identity.experimentId, identity.experimentVersion, identity.stage]);
 
-    return { clear, status, retry, save };
+    return { clear };
 }

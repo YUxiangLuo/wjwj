@@ -101,6 +101,7 @@ export function SubmissionPreview() {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const [refreshRequired, setRefreshRequired] = useState(false);
     const [showFullPreview, setShowFullPreview] = useState(false);
 
     const numericTaskId = Number(taskId);
@@ -114,7 +115,7 @@ export function SubmissionPreview() {
     }, [numericTaskId, cancel]);
 
     const handleSubmit = async () => {
-        if (!taskId || !experiment) return;
+        if (!taskId || !experiment || refreshRequired) return;
         setConfirmOpen(false);
         setError(null);
 
@@ -125,10 +126,11 @@ export function SubmissionPreview() {
                 navigate(`/task/${taskId}/result`, { replace: true });
             }
             else {
-                setError(response.error?.message ?? "提交失败");
                 if (response.error?.code === "VERSION_CONFLICT") {
-                    const latest = await experimentApi.get(Number(taskId));
-                    if (latest.success && latest.data) setExperiment(latest.data);
+                    setRefreshRequired(true);
+                    setError("实验进度已更新，请返回实验页面刷新并确认后再提交。");
+                } else {
+                    setError(response.error?.message ?? "提交失败");
                 }
             }
         } catch (e) {
@@ -351,7 +353,7 @@ export function SubmissionPreview() {
 
                 <Button
                     onClick={() => setConfirmOpen(true)}
-                    disabled={!canSubmit || submitting}
+                    disabled={!canSubmit || submitting || refreshRequired}
                     data-testid="student-preview-submit"
                     className="w-auto h-12 px-8 text-subheading bg-primary hover:bg-primary-hover text-primary-foreground "
                 >
@@ -381,7 +383,7 @@ export function SubmissionPreview() {
                         <AlertDialogCancel>取消</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleSubmit}
-                            disabled={submitting}
+                            disabled={submitting || refreshRequired}
                             data-testid="student-preview-submit-confirm"
                         >
                             {submitting ? "提交中..." : "确认提交"}

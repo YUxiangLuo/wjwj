@@ -1,5 +1,3 @@
-import { fetchWithBusyRetry, type BusyRetryOptions } from "./busy-retry";
-
 export type AuthRole = "student" | "teacher" | "admin";
 export interface ApiResponse<T> {
     success: boolean;
@@ -48,6 +46,7 @@ export function createApiClient(role: AuthRole) {
     async function send(url: string, init: RequestInit = {}): Promise<Response> {
         initialize();
         ensureActive();
+        init.signal?.throwIfAborted();
         const headers = new Headers(init.headers);
         if (userId !== null && url.startsWith(`${api}/`) && url !== `${api}/login`) {
             headers.set("X-Expected-User-Id", String(userId));
@@ -71,9 +70,9 @@ export function createApiClient(role: AuthRole) {
         }
         return response;
     }
-    async function request<T>(url: string, init: RequestInit = {}, retry?: BusyRetryOptions): Promise<ApiResponse<T>> {
+    async function request<T>(url: string, init: RequestInit = {}): Promise<ApiResponse<T>> {
         try {
-            const response = retry ? await fetchWithBusyRetry(url, init, retry, send) : await send(url, init);
+            const response = await send(url, init);
             const payload = await response.json() as ApiResponse<T>;
             ensureActive();
             if (response.ok && payload.success) {

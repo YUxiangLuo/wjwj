@@ -10,7 +10,6 @@ const prefilledPassword = DEMO_MODE ? DEMO_STUDENT_PASSWORD : DEV_AUTH_MODE ? DE
 
 export function Login() {
     const [loading, setLoading] = useState(false);
-    const [waiting, setWaiting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [username, setUsername] = useState(prefilledUsername);
     const [password, setPassword] = useState(prefilledPassword);
@@ -41,11 +40,8 @@ export function Login() {
         const controller = new AbortController();
         loginController.current = controller;
         setLoading(true);
-        setWaiting(false);
         try {
-            const response = await authApi.login({ studentId: username.trim(), password }, {
-                signal: controller.signal, onRetry: () => setWaiting(true),
-            });
+            const response = await authApi.login({ studentId: username.trim(), password }, controller.signal);
             if (controller.signal.aborted) return;
             if (!response.success) {
                 setError(response.error?.message || "登录失败，请检查账号密码");
@@ -69,7 +65,7 @@ export function Login() {
             username={username}
             password={password}
             loading={loading}
-            loadingText={waiting ? "登录人数较多，正在等待重试…" : "正在登录，请稍候…"}
+            loadingText="正在登录，请稍候…"
             error={error}
             alternateLinks={[
                 { href: "/admin/login", label: "管理员登录" },

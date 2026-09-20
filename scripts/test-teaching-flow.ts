@@ -546,13 +546,13 @@ try {
     emptyExperiment = await api<ExperimentData>(student, `${emptyPath}/stages/1/complete`, "POST", { observedVersion: emptyExperiment.version, questionnaire: emptyQuestionnaire });
     await completeQuestionnairePreview(student2, 5);
     await activate(student2, '[data-testid="student-questionnaire-complete"]');
-    await eventually(() => evaluate(student2, 'Boolean(document.querySelector("[data-testid=student-load-latest-version]"))'), "Stale student window did not surface the version conflict");
+    await eventually(() => evaluate(student2, 'Boolean(document.querySelector("[data-testid=student-refresh-experiment]"))'), "Stale student window did not surface the version conflict");
     // 回到第一步核对草稿仍在（题意输入只在该步渲染）
     await activate(student2, '[data-testid="student-questionnaire-step-1"]');
     await eventually(() => evaluate(student2, 'document.querySelector(\'[data-testid="student-questionnaire-title"]\')?.value === "空功能路径预试"'), "Stale student window lost its questionnaire draft");
-    await activate(student2, '[data-testid="student-load-latest-version"]');
+    await activate(student2, '[data-testid="student-refresh-experiment"]');
     await visible(student2, '[data-testid="student-stage-sample-plan"]');
-    console.log("PASS dual student windows: stale version conflict, draft retention and explicit reload");
+    console.log("PASS dual student windows: stale version conflict, draft retention and explicit page refresh");
 
     const emptyPlan = { estimationType: "proportion", confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize, finalSampleSize: recommendedSize };
     emptyExperiment = await api<ExperimentData>(student, `${emptyPath}/stages/2/complete`, "POST", { observedVersion: emptyExperiment.version, samplePlan: emptyPlan });

@@ -1,4 +1,3 @@
-import { DraftSaveStatus } from "../../components/DraftSaveStatus";
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +37,7 @@ interface SamplePlanningStageDraft {
 }
 
 export function SamplePlanning({ onPrev }: SamplePlanningProps) {
-    const { populationSize, experiment, completeStage } = useExperiment();
+    const { populationSize, experiment, completeStage, refreshRequired } = useExperiment();
 
     const N = populationSize;
     const lockedEstimationType = experiment?.analysisTarget?.target.kind;
@@ -47,13 +46,21 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
         experimentVersion: experiment?.version,
         stage: 2,
     }), [experiment?.id, experiment?.version]);
-    const initialData = useMemo(
+    const serverData = useMemo(
         () => {
-            const normalized = normalizeSamplePlanData(restoredDraft?.samplePlan ?? experiment?.samplePlan, N);
+            const normalized = normalizeSamplePlanData(experiment?.samplePlan, N);
             if (!normalized || !lockedEstimationType) return normalized;
             return { ...normalized, estimationType: lockedEstimationType };
         },
-        [experiment?.samplePlan, lockedEstimationType, N, restoredDraft?.samplePlan],
+        [experiment?.samplePlan, lockedEstimationType, N],
+    );
+    const initialData = useMemo(
+        () => {
+            const normalized = normalizeSamplePlanData(restoredDraft?.samplePlan, N) ?? serverData;
+            if (!normalized || !lockedEstimationType) return normalized;
+            return { ...normalized, estimationType: lockedEstimationType };
+        },
+        [lockedEstimationType, N, restoredDraft?.samplePlan, serverData],
     );
     const [targetVariance, setTargetVariance] = useState<number | null>(
         initialData?.populationVariance ?? null,
@@ -122,11 +129,16 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
         () => ({ samplePlan: displayData, wizard: wizardDraft }),
         [displayData, wizardDraft],
     );
+    const samplePlanBaseline = useMemo<SamplePlanningStageDraft>(
+        () => ({ samplePlan: serverData, wizard: null }),
+        [serverData],
+    );
     const clearDraft = useExperimentDraft({
         experimentId: experiment?.id,
         experimentVersion: experiment?.version,
         stage: 2,
         data: samplePlanDraft,
+        baseline: samplePlanBaseline,
         enabled: Boolean(experiment && (displayData || wizardDraft)),
     });
 
@@ -152,13 +164,10 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
 
     const handleImmersiveDraftChange = useCallback((draft: SamplePlanningWizardDraft) => {
         setWizardDraft(draft);
-        clearDraft.save({
-            samplePlan: displayData,
-            wizard: draft,
-        } satisfies SamplePlanningStageDraft);
-    }, [clearDraft.save, displayData]);
+    }, []);
 
     const saveStage = useCallback(async (plan = displayData) => {
+        if (refreshRequired) return;
         if (!plan || experiment == null || !targetVarianceReady || targetVarianceError) {
             toast.error("实验数据未就绪，请稍后重试");
             return;
@@ -167,18 +176,13 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
         saveInFlight.current = true;
         setConfirmNextSaving(true);
         try {
-            if (clearDraft.save({ samplePlan: plan, wizard: null }) === "conflict") return;
             const ok = await completeStage(2, { samplePlan: plan });
-            if (!ok) {
-                toast.error("保存失败，请重试");
-            } else {
-                clearDraft.clear();
-            }
+            if (ok) clearDraft.clear();
         } finally {
             saveInFlight.current = false;
             setConfirmNextSaving(false);
         }
-    }, [clearDraft, completeStage, displayData, experiment, targetVarianceReady, targetVarianceError]);
+    }, [clearDraft, completeStage, displayData, experiment, refreshRequired, targetVarianceReady, targetVarianceError]);
 
     const handleImmersiveComplete = useCallback((result: SampleParams) => {
         const estimationType = lockedEstimationType ?? result.estimationType;
@@ -225,7 +229,6 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
 
     if (targetVarianceError) return (
         <div className="space-y-4" data-testid="student-stage-sample-plan">
-            <DraftSaveStatus status={clearDraft.status} onRetry={clearDraft.retry} />
             <div role="alert" className="space-y-3 rounded-surface border border-warning-border bg-warning-muted p-4 text-body text-warning">
                 <p>{targetVarianceError}</p>
                 <Button type="button" variant="outline" onClick={() => setVarianceReloadKey(key => key + 1)}>重新加载规划数据</Button>
@@ -236,7 +239,6 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-sample-plan">
-            <DraftSaveStatus status={clearDraft.status} onRetry={clearDraft.retry} />
             {immersiveOpen && targetVarianceReady && (
                 <ImmersiveSamplePlanning
                     populationSize={N}
@@ -256,8 +258,6 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                     estimationLocked={Boolean(lockedEstimationType)}
                     initialDraft={wizardDraft}
                     onDraftChange={handleImmersiveDraftChange}
-                    draftSaveStatus={clearDraft.status}
-                    onRetryDraftSave={clearDraft.retry}
                     onComplete={handleImmersiveComplete}
                     onClose={closeImmersivePlanning}
                 />
@@ -399,7 +399,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                     <Button
                         type="button"
                         onClick={handleConfirmNext}
-                        disabled={clearDraft.status === "conflict" || !targetVarianceReady || !isValidFinalSize || confirmNextSaving}
+                        disabled={!targetVarianceReady || !isValidFinalSize || confirmNextSaving || refreshRequired}
                         data-testid="student-sample-plan-next"
                         className="bg-primary text-primary-foreground hover:bg-primary-hover disabled:border-border disabled:bg-muted disabled:text-muted-foreground"
                     >

@@ -85,6 +85,8 @@ export interface StratifiedSamplingTabProps {
     buildSavePayload: (stratifiedResult: StratifiedResult) => void;
     executionTime: number | null;
     setExecutionTime: (ms: number) => void;
+    refreshRequired: boolean;
+    onRefreshRequired: () => void;
 }
 
 export function StratifiedSamplingTab({
@@ -103,6 +105,8 @@ export function StratifiedSamplingTab({
     buildSavePayload,
     executionTime,
     setExecutionTime,
+    refreshRequired,
+    onRefreshRequired,
 }: StratifiedSamplingTabProps) {
     const [stratifyBy, setStratifyBy] = useState(() => resolveStratifyBy(populationStats, initialResult?.stratifyBy));
     const [stratifiedSeed, setStratifiedSeed] = useState(String(initialResult?.seed ?? ""));
@@ -240,7 +244,7 @@ export function StratifiedSamplingTab({
     };
 
     const executeStratified = useCallback(async () => {
-        if (!taskId) return;
+        if (!taskId || refreshRequired) return;
         const opener = typeof document !== "undefined"
             && document.activeElement instanceof HTMLElement
             && document.activeElement !== document.body
@@ -271,14 +275,15 @@ export function StratifiedSamplingTab({
                 buildSavePayload(nextResult);
                 onAnimate(layers, stratifyBy, opener);
             } else {
-                toast.error(res.error?.message || "分层抽样执行失败");
+                if (res.error?.code === "INVALID_STAGE_ORDER" || res.error?.code === "VERSION_CONFLICT") onRefreshRequired();
+                else toast.error(res.error?.message || "分层抽样执行失败");
             }
         } catch {
             toast.error("分层抽样执行失败，请检查网络后重试");
         } finally {
             setExecuting(null);
         }
-    }, [taskId, layers, stratifiedSeed, stratifyBy, parseSeed, setExecuting, setExecutionTime, onResult, onAnimate, buildSavePayload]);
+    }, [taskId, layers, stratifiedSeed, stratifyBy, parseSeed, setExecuting, setExecutionTime, onResult, onAnimate, buildSavePayload, refreshRequired, onRefreshRequired]);
 
     const handleApplyFromComparison = (
         _method: string,
@@ -482,7 +487,7 @@ export function StratifiedSamplingTab({
                                     <p className="text-label text-muted-foreground">确认各层样本数后执行</p>
                                     <Button
                                         onClick={() => void executeStratified()}
-                                        disabled={executing !== null || !isStratifiedValid || layers.length === 0}
+                                        disabled={executing !== null || !isStratifiedValid || layers.length === 0 || refreshRequired}
                                         data-testid="student-sampling-stratified-run"
                                         className="w-full bg-warning text-warning-foreground hover:bg-warning-hover"
                                     >
@@ -498,7 +503,7 @@ export function StratifiedSamplingTab({
                                 <SamplingSuccessState
                                     summary={`按 ${FIELD_LABELS[stratifyBy] || stratifyBy} 分层，共抽取 ${getSamplingResultCount("stratified", result)} 个样本${executionTime !== null ? `，耗时 ${executionTime} ms` : ""}`}
                                     onRerun={() => void executeStratified()}
-                                    disabled={executing !== null || !isStratifiedValid || layers.length === 0}
+                                    disabled={executing !== null || !isStratifiedValid || layers.length === 0 || refreshRequired}
                                     rerunTestId="student-sampling-stratified-rerun"
                                     rerunLabel="重新执行分层抽样"
                                 />

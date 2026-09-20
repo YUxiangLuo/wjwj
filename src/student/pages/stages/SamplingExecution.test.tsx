@@ -24,12 +24,14 @@ const mockExperimentApi = {
     })),
     executeSampling: mock(async () => ({ success: true, data: { result: null as any } })),
 };
+const mockRequireRefresh = mock(() => undefined);
 
 let mockExperimentContext: {
     populationSize: number;
     experiment: Record<string, unknown> | null;
     completeStage: (stage: number, data: Record<string, unknown>) => Promise<boolean>;
-    reloadLatestVersion: () => Promise<void>;
+    refreshRequired: boolean;
+    requireRefresh: () => void;
 };
 
 mock.module("../ExperimentLayout", () => ({
@@ -114,6 +116,7 @@ beforeEach(() => {
     restoreDom = dom.restore;
     mockExperimentApi.getStats.mockClear();
     mockExperimentApi.executeSampling.mockClear();
+    mockRequireRefresh.mockClear();
     mockExperimentContext = {
         populationSize: 100,
         experiment: {
@@ -128,7 +131,8 @@ beforeEach(() => {
             samplingResults: null,
         },
         completeStage: async () => true,
-        reloadLatestVersion: async () => undefined,
+        refreshRequired: false,
+        requireRefresh: mockRequireRefresh,
     };
 });
 
@@ -313,7 +317,7 @@ test("SamplingExecution feeds the research target into Neyman allocation", async
     expect((view.getByRole("spinbutton", { name: "B层样本数" }) as HTMLInputElement).value).toBe("27");
 });
 
-test("SamplingExecution turns a stale-stage rejection into a refresh path", async () => {
+test("SamplingExecution reduces stale-stage rejection to one refresh instruction", async () => {
     mockExperimentApi.executeSampling.mockResolvedValueOnce({
         success: false,
         error: { code: "INVALID_STAGE_ORDER", message: "当前不能执行抽样" },
@@ -323,14 +327,18 @@ test("SamplingExecution turns a stale-stage rejection into a refresh path", asyn
 
     fireEvent.click(view.getByTestId("student-sampling-simple-run"));
 
-    // A passing toast would leave the student on the stale page with no way out.
-    await waitFor(() => expect(view.getByTestId("student-sampling-stale-notice")).toBeTruthy());
-    expect(view.getByTestId("student-sampling-stale-notice").textContent).toContain("当前不能执行抽样");
-    fireEvent.click(view.getByTestId("student-sampling-load-latest"));
-    await waitFor(() => expect(view.queryByTestId("student-sampling-stale-notice")).toBeNull());
+    await waitFor(() => expect(mockExperimentApi.executeSampling).toHaveBeenCalledTimes(1));
+    expect(mockRequireRefresh).toHaveBeenCalledTimes(1);
+    expect(view.queryByTestId("student-sampling-stale-notice")).toBeNull();
+    mockExperimentContext.refreshRequired = true;
+    view.rerender(<SamplingExecution onPrev={() => undefined} />);
+    const run = view.getByTestId("student-sampling-simple-run") as HTMLButtonElement;
+    expect(run.disabled).toBe(true);
+    fireEvent.click(run);
+    expect(mockExperimentApi.executeSampling).toHaveBeenCalledTimes(1);
 });
 
-test("SamplingExecution keeps a plain failure as a toast instead of a stale notice", async () => {
+test("SamplingExecution reports an ordinary sampling failure without recovery state", async () => {
     mockExperimentApi.executeSampling.mockResolvedValueOnce({
         success: false,
         error: { code: "SAMPLING_METHOD_DISABLED", message: "该抽样方法未在本实验模板中启用" },
@@ -340,6 +348,6 @@ test("SamplingExecution keeps a plain failure as a toast instead of a stale noti
 
     fireEvent.click(view.getByTestId("student-sampling-simple-run"));
 
-    await waitFor(() => expect(mockExperimentApi.executeSampling).toHaveBeenCalled());
+    await waitFor(() => expect(mockExperimentApi.executeSampling).toHaveBeenCalledTimes(1));
     expect(view.queryByTestId("student-sampling-stale-notice")).toBeNull();
 });

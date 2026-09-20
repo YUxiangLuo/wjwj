@@ -175,14 +175,3 @@ test("auth notifications work without secure-context randomUUID", async () => {
     expect(navigate).toHaveBeenCalledWith("/student/login");
     expect(localStorage.getItem("wj:auth-change:student")).toBeTruthy();
 });
-
-test("queued busy retries cannot send after a same-role auth notification", async () => {
-    const navigate = setup(), client = createApiClient("student");
-    let calls = 0;
-    globalThis.fetch = (async () => { calls++; return fail(503, "STATS_BUSY"); }) as unknown as typeof fetch;
-    await client.request("/api/student/stats", {}, {
-        codes: ["STATS_BUSY"], onRetry: () => window.dispatchEvent(new window.StorageEvent("storage", { key: "wj:auth-change:student" })),
-    });
-    expect(calls).toBe(1);
-    expect(navigate).toHaveBeenCalledWith("/student");
-});

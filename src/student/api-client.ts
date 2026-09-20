@@ -17,11 +17,11 @@ export const authApi = {
         "/api/demo/student-credential",
         { cache: "no-store", signal },
     ),
-    login: (data: { studentId: string; password: string }, options?: { signal?: AbortSignal; onRetry?: () => void }) => request<{ user: CurrentStudent }>("/api/student/login", {
+    login: (data: { studentId: string; password: string }, signal?: AbortSignal) => request<{ user: CurrentStudent }>("/api/student/login", {
         method: "POST",
         body: JSON.stringify(data),
-        signal: options?.signal,
-    }, { codes: ["AUTH_BUSY"], onRetry: options?.onRetry }),
+        signal,
+    }),
     logout: () => request<{ ok: boolean }>("/api/student/logout", { method: "POST" }),
     changePassword: (data: { currentPassword: string; newPassword: string }) => request<{ success: boolean }>("/api/student/password", {
         method: "PUT",
@@ -60,9 +60,9 @@ export const experimentApi = {
         populationNumericStats?: Record<string, { mean: number; variance: number; stdDev: number; count: number }>;
         ppsEligibleFields?: string[];
         stratumNumericStats?: Record<string, Record<string, Record<string, { mean: number; stdDev: number }>>>;
-    }>(`/api/student/tasks/${taskId}/stats`, { signal }, { codes: ["STATS_BUSY", "STATS_TIMEOUT"] }),
+    }>(`/api/student/tasks/${taskId}/stats`, { signal }),
     getAnalysisMetrics: (taskId: number, signal?: AbortSignal) => request<AnalysisMetricsData>(
-        `/api/student/tasks/${taskId}/analysis-metrics`, { signal }, { codes: ["ANALYSIS_BUSY", "ANALYSIS_TIMEOUT"] },
+        `/api/student/tasks/${taskId}/analysis-metrics`, { signal },
     ),
 };
 

@@ -4,8 +4,6 @@ import { X, ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { SamplingObservationNotice } from "../SamplingObservationNotice";
-import { DraftSaveStatus } from "../DraftSaveStatus";
-import type { DraftSaveState } from "../../experiment/experiment-draft";
 import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize } from "../../experiment/sample-plan";
 import { normalizeConfidenceLevel, type ConfidenceLevel } from "@/domain/statistics/confidence-level";
 import { calculatePlannedPrecision } from "../../experiment/planned-precision";
@@ -36,8 +34,6 @@ interface Props {
     initialAdvancedPlans?: AdvancedPlanSnapshot[];
     estimationLocked?: boolean;
     initialDraft?: SamplePlanningWizardDraft | null;
-    draftSaveStatus?: DraftSaveState;
-    onRetryDraftSave?: () => void;
     onDraftChange?: (draft: SamplePlanningWizardDraft) => void;
     onComplete: (params: SampleParams) => void;
     onClose: () => void;
@@ -49,7 +45,7 @@ export function ImmersiveSamplePlanning({
     initialDesignEffect = 1, initialNonResponseRate = 0, initialFinalSampleSize,
     initialEstimationType = "proportion", initialPopulationVariance = 100,
     initialAdvancedPlanSource = null, initialAdvancedPlans = [], estimationLocked = false, initialDraft = null,
-    onDraftChange, draftSaveStatus = "idle", onRetryDraftSave, onComplete, onClose,
+    onDraftChange, onComplete, onClose,
 }: Props) {
     const [confidenceLevel, setConfidenceLevel] = useState<ConfidenceLevel>(() => initialDraft?.confidenceLevel ?? normalizeConfidenceLevel(initialConfidenceLevel));
     const [marginOfError, setMarginOfError] = useState(initialDraft?.marginOfError ?? initialMarginOfError ?? (initialEstimationType === "mean" ? 2 : 5));
@@ -87,13 +83,17 @@ export function ImmersiveSamplePlanning({
     const { phase, navigationSnapshot, goNext, goPrev, jumpTo, finish } = usePhaseState(initialDraft?.navigation);
     const onDraftChangeRef = useRef(onDraftChange);
     onDraftChangeRef.current = onDraftChange;
+    const draftSnapshot: SamplePlanningWizardDraft = {
+        navigation: navigationSnapshot, confidenceLevel, marginOfError, designEffect, nonResponseRate,
+        estimationType, populationVariance, finalSampleSize, userTouchedFinal, advancedPlanSource,
+        advancedPlans, domains, surveyVariables,
+    };
+    const untouchedDraftJson = useRef(initialDraft == null ? JSON.stringify(draftSnapshot) : null);
     useLayoutEffect(() => {
+        if (untouchedDraftJson.current === JSON.stringify(draftSnapshot)) return;
+        untouchedDraftJson.current = null;
         if (phase.type === "done") return;
-        onDraftChangeRef.current?.({
-            navigation: navigationSnapshot, confidenceLevel, marginOfError, designEffect, nonResponseRate,
-            estimationType, populationVariance, finalSampleSize, userTouchedFinal, advancedPlanSource,
-            advancedPlans, domains, surveyVariables,
-        });
+        onDraftChangeRef.current?.(draftSnapshot);
     }, [advancedPlanSource, advancedPlans, confidenceLevel, designEffect, domains, estimationType,
         finalSampleSize, marginOfError, navigationSnapshot, nonResponseRate, phase.type, populationVariance, surveyVariables, userTouchedFinal]);
 
@@ -101,11 +101,10 @@ export function ImmersiveSamplePlanning({
         && finalSampleSize <= populationSize && recommendedSize > 0 && calculatePlannedPrecision(params, finalSampleSize) != null;
     const handleConfirm = useCallback(() => {
         const current = paramsRef.current;
-        if (draftSaveStatus === "conflict") return;
         if (Number.isInteger(current.finalSampleSize) && current.finalSampleSize >= minimumSampleSize
             && current.finalSampleSize <= populationSize && current.recommendedSize > 0 && calculatePlannedPrecision(current, current.finalSampleSize)) finish();
         else jumpTo("decision");
-    }, [draftSaveStatus, finish, jumpTo, minimumSampleSize, populationSize]);
+    }, [finish, jumpTo, minimumSampleSize, populationSize]);
     const onCompleteRef = useRef(onComplete);
     onCompleteRef.current = onComplete;
     const doneTriggered = useRef(false);
@@ -227,13 +226,12 @@ export function ImmersiveSamplePlanning({
                 <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
                     <div className="min-w-0 space-y-1">
                         <p className="text-label text-foreground">{isValidPlan ? `当前方案：${finalSampleSize.toLocaleString()} 个单位 / 总体 ${populationSize.toLocaleString()}` : "请修正参数或样本量后继续"}</p>
-                        {onRetryDraftSave && <DraftSaveStatus status={draftSaveStatus} onRetry={onRetryDraftSave}/>}
                     </div>
                     <div className="flex shrink-0 items-center gap-3">
                         {phase.type !== "decision" && <Button type="button" variant="outline" onClick={goPrev}><ChevronLeft className="mr-1 h-4 w-4"/>返回调整</Button>}
-                        {phase.type === "decision" && <Button type="button" onClick={goNext} disabled={!isValidPlan || draftSaveStatus === "conflict"}
+                        {phase.type === "decision" && <Button type="button" onClick={goNext} disabled={!isValidPlan}
                             data-testid="immersive-sp-decision-next" className="min-h-11">检查并确认方案<ChevronRight className="ml-2 h-4 w-4"/></Button>}
-                        {phase.type === "confirm" && <Button type="button" onClick={handleConfirm} disabled={!isValidPlan || draftSaveStatus === "conflict"}
+                        {phase.type === "confirm" && <Button type="button" onClick={handleConfirm} disabled={!isValidPlan}
                             data-testid="immersive-sp-confirm" className="min-h-11">保存规划并进入抽样<ChevronRight className="ml-2 h-4 w-4"/></Button>}
                     </div>
                 </div>
@@ -243,7 +241,7 @@ export function ImmersiveSamplePlanning({
             <AlertDialogContent className="z-[60]">
                 <AlertDialogHeader>
                     <AlertDialogTitle>退出样本量规划？</AlertDialogTitle>
-                    <AlertDialogDescription>{draftSaveStatus === "saved" ? "当前参数已保存到本机，下次打开本阶段时可以继续。" : draftSaveStatus === "error" ? "当前草稿保存失败，请取消退出并重试保存，以免丢失进度。" : "请确认草稿保存成功后再退出。"}</AlertDialogDescription>
+                    <AlertDialogDescription>系统会尝试将当前参数保存在本机；如果浏览器存储不可用，退出后可能无法恢复。</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel type="button">取消</AlertDialogCancel>

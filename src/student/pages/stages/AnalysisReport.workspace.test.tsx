@@ -17,7 +17,11 @@ const mockExperimentApi = {
         data: { numericFields: [], categoricalFields: [], numeric: {}, categorical: {}, target: null },
     })),
 };
-let mockContext: { experiment: Record<string, unknown> | null; populationSize: number; isSaving: boolean; completeStage: () => Promise<boolean> };
+const mockRequireRefresh = mock(() => undefined);
+let mockContext: {
+    experiment: Record<string, unknown> | null; populationSize: number; isSaving: boolean;
+    refreshRequired: boolean; requireRefresh: () => void; completeStage: () => Promise<boolean>;
+};
 
 mock.module("../ExperimentLayout", () => ({ useExperiment: () => mockContext }));
 mock.module("../../api-client", () => ({ experimentApi: mockExperimentApi, downloadStudentFile: async () => ({ success: true }) }));
@@ -40,13 +44,16 @@ const dictionary = {
     ],
 };
 const requests: Array<{ method: string; url: string }> = [];
+let analysisPostErrorCode: string | null = null;
 let restoreDom: (() => void) | null = null;
 
 beforeEach(() => {
     restoreDom = installDomGlobals("http://localhost/student/task/2/experiment").restore;
     localStorage.clear();
     requests.length = 0;
+    analysisPostErrorCode = null;
     mockExperimentApi.getAnalysisMetrics.mockClear();
+    mockRequireRefresh.mockClear();
     mockContext = {
         experiment: {
             id: 88, taskId: 2, version: 6, currentStage: 4, populationSize: 8000,
@@ -56,6 +63,8 @@ beforeEach(() => {
         },
         populationSize: 8000,
         isSaving: false,
+        refreshRequired: false,
+        requireRefresh: mockRequireRefresh,
         completeStage: async () => true,
     };
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -64,7 +73,12 @@ beforeEach(() => {
         requests.push({ method, url });
         if (url.endsWith("/variables")) return Response.json({ success: true, data: { dictionary } });
         if (url.endsWith("/analyses") && method === "GET") return Response.json({ success: true, data: { records: [], capacity: 20 } });
-        if (url.endsWith("/analyses") && method === "POST") return Response.json({ success: true, data: { id: 1 } });
+        if (url.endsWith("/analyses") && method === "POST") {
+            if (analysisPostErrorCode) {
+                return Response.json({ success: false, error: { code: analysisPostErrorCode, message: "分析数据已更新" } }, { status: 409 });
+            }
+            return Response.json({ success: true, data: { id: 1 } });
+        }
         return Response.json({ success: true, data: {} });
     }) as unknown as typeof fetch;
 });
@@ -124,4 +138,27 @@ test("the inactive analysis panel is CSS-hidden while remaining mounted", async 
     await waitFor(() => expect(panelOf(view).dataset.state).toBe("inactive"));
     // 挂载只发生一次：切换不重新加载指标
     expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(1);
+});
+
+test("an analysis conflict requires a page refresh and prevents repeated writes", async () => {
+    analysisPostErrorCode = "SOURCE_CONFLICT";
+    const view = render(<AnalysisReport onPrev={() => {}} onSubmit={() => {}} />);
+    await waitFor(() => expect(view.getByTestId("student-analysis-workspace-univariate")).toBeTruthy());
+    activate(view, "student-analysis-workspace-univariate");
+    await waitFor(() => expect(panelOf(view).dataset.state).toBe("active"));
+
+    const workspace = view.getByTestId("student-univariate-workspace");
+    fireEvent.change(workspace.querySelector("textarea")!, { target: { value: "这个变量的平均水平是多少？" } });
+    fireEvent.change(workspace.querySelectorAll("select")[1]!, { target: { value: "value" } });
+    fireEvent.click(view.getByText("执行并保存分析"));
+
+    await waitFor(() => expect(mockRequireRefresh).toHaveBeenCalledTimes(1));
+    expect(requests.filter(request => request.method === "POST" && request.url.endsWith("/analyses"))).toHaveLength(1);
+
+    mockContext = { ...mockContext, refreshRequired: true };
+    view.rerender(<AnalysisReport onPrev={() => {}} onSubmit={() => {}} />);
+    const runButton = view.getByText("执行并保存分析") as HTMLButtonElement;
+    expect(runButton.disabled).toBe(true);
+    fireEvent.click(runButton);
+    expect(requests.filter(request => request.method === "POST" && request.url.endsWith("/analyses"))).toHaveLength(1);
 });

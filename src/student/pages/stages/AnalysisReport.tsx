@@ -1,5 +1,4 @@
 import { SamplingObservationNotice } from "../../components/SamplingObservationNotice";
-import { DraftSaveStatus } from "../../components/DraftSaveStatus";
 import { useSectionNavigation } from "@/hooks/useSectionNavigation";
 import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -200,7 +199,7 @@ function FieldSelect({
 // ---------------------------------------------------------------------------
 
 export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
-    const { experiment, populationSize, completeStage } = useExperiment();
+    const { experiment, populationSize, completeStage, refreshRequired, requireRefresh } = useExperiment();
 
     const restoredDraft = useMemo(() => readExperimentDraft<{ reportContent: string; analysisReferences?: number[]; workspace?: AnalysisWorkspace }>({
         experimentId: experiment?.id,
@@ -214,11 +213,17 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const [staleAnalysisReferences, setStaleAnalysisReferences] = useState<number[]>([]);
     const [workspace, setWorkspace, workspaceNavigationRef] = useSectionNavigation<AnalysisWorkspace>(restoredDraft?.workspace && ["overview", "charts", "univariate", "records", "report"].includes(restoredDraft.workspace) ? restoredDraft.workspace : "overview", '[data-testid="student-experiment-navigation"]');
     const reportDraft = useMemo(() => ({ reportContent, analysisReferences, workspace }), [reportContent, analysisReferences, workspace]);
+    const reportBaseline = useMemo(() => ({
+        reportContent: experiment?.reportContent ?? "",
+        analysisReferences: experiment?.analysisReferences ?? [],
+        workspace: "overview" as const,
+    }), [experiment?.analysisReferences, experiment?.reportContent]);
     const clearDraft = useExperimentDraft({
         experimentId: experiment?.id,
         experimentVersion: experiment?.version,
         stage: 4,
         data: reportDraft,
+        baseline: reportBaseline,
         enabled: Boolean(experiment),
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -511,10 +516,9 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     // ---- Handlers ----
 
     const handleSubmit = async () => {
-        if (!isValidLength || staleAnalysisReferences.length > 0 || isSubmitting || clearDraft.status === "conflict") return;
+        if (!isValidLength || staleAnalysisReferences.length > 0 || isSubmitting || refreshRequired) return;
         setIsSubmitting(true);
         try {
-            if (clearDraft.save({ reportContent, analysisReferences, workspace }) === "conflict") return;
             const success = await completeStage(4, { reportContent, analysisReferences });
             if (!success) return;
             clearDraft.clear();
@@ -688,7 +692,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             </TabsContent>
 
             <TabsContent value="univariate" forceMount className="min-w-0 data-[state=inactive]:hidden">
-                {experiment?.taskId && <UnivariateWorkspace taskId={experiment.taskId} observedVersion={experiment.version} completedMethods={completedAnalysisMethods} references={analysisReferences} onReferencesChange={setAnalysisReferences} onStaleReferencesChange={setStaleAnalysisReferences} />}
+                {experiment?.taskId && <UnivariateWorkspace taskId={experiment.taskId} observedVersion={experiment.version} completedMethods={completedAnalysisMethods} references={analysisReferences} refreshRequired={refreshRequired} onReferencesChange={setAnalysisReferences} onRefreshRequired={requireRefresh} onStaleReferencesChange={setStaleAnalysisReferences} />}
             </TabsContent>
 
             <TabsContent value="report" forceMount className="min-w-0 data-[state=inactive]:hidden">
@@ -729,13 +733,13 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         </Tabs>
 
         <StageActions>
-            <div className="space-y-2"><DraftSaveStatus status={clearDraft.status === "saved" && workspace !== "report" ? "idle" : clearDraft.status} onRetry={clearDraft.retry} savedLabel="报告草稿保存在当前浏览器，提交预览时才写入服务器"/><Button variant="outline" onClick={onPrev} data-testid="student-analysis-prev">查看抽样记录</Button></div>
+            <Button variant="outline" onClick={onPrev} data-testid="student-analysis-prev">查看抽样记录</Button>
             {workspace === "report" ? <div className="flex flex-col items-end gap-1">
                 {staleAnalysisReferences.length > 0 && <p role="alert" className="text-meta text-warning">有 {staleAnalysisReferences.length} 条已引用分析来源过期。请到“单变量分析”明确移除或重新运行后再保存。</p>}
                 <p className={`text-meta ${reportTextLength > maxLength ? "text-destructive" : isValidLength ? "text-success" : "text-muted-foreground"}`} role="status" data-testid="student-analysis-length-status">
                     <span className="tabular-nums">{reportTextLength} / {maxLength} 字</span> · {reportLengthHint}
                 </p>
-                <Button onClick={handleSubmit} disabled={!isValidLength || staleAnalysisReferences.length > 0 || isSubmitting || clearDraft.status === "conflict"} data-testid="student-analysis-preview">
+                <Button onClick={handleSubmit} disabled={!isValidLength || staleAnalysisReferences.length > 0 || isSubmitting || refreshRequired} data-testid="student-analysis-preview">
                     {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>正在保存报告…</> : <><Send className="mr-2 h-4 w-4"/>保存并预览报告</>}
                 </Button>
             </div> : <Button onClick={() => setWorkspace("report")} data-testid="student-analysis-write">继续：撰写报告<ArrowRight className="ml-2 h-4 w-4"/></Button>}

@@ -164,3 +164,52 @@ test("a failed submission is announced to assistive technology", async () => {
         expect(alert.textContent).toContain("总体方差与当前总体不一致");
     });
 });
+
+test("a version conflict disables submission and prevents repeated writes", async () => {
+    let submitRequests = 0;
+    globalThis.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith("/api/student/tasks/12/experiment")) {
+            return Response.json({ success: true, data: submittableExperiment });
+        }
+        if (url.endsWith("/api/student/tasks/12")) {
+            return Response.json({
+                success: true,
+                data: {
+                    id: 12, topicId: 3, name: "策略实验", description: "",
+                    publishedAt: "2026-01-01T00:00:00.000Z", deadline: null,
+                    status: "in_progress", currentStage: 4, populationSize: 200,
+                    attachments: [], recommendQuestions: [],
+                    samplingPolicy: submittableExperiment.samplingPolicy,
+                },
+            });
+        }
+        if (url.endsWith("/api/student/tasks/12/submit") && init?.method === "POST") {
+            submitRequests += 1;
+            return Response.json({
+                success: false,
+                error: { code: "VERSION_CONFLICT", message: "实验进度已更新" },
+            }, { status: 409 });
+        }
+        throw new Error(`Unhandled fetch: ${url}`);
+    }) as unknown as typeof fetch;
+
+    const view = render(
+        <MemoryRouter initialEntries={["/task/12/preview"]}>
+            <Routes><Route path="/task/:taskId/preview" element={<SubmissionPreview />} /></Routes>
+        </MemoryRouter>,
+    );
+
+    const submitButton = await waitFor(() => view.getByTestId("student-preview-submit") as HTMLButtonElement);
+    fireEvent.click(submitButton);
+    await waitFor(() => expect(document.querySelector('[data-testid="student-preview-submit-confirm"]')).toBeTruthy());
+    fireEvent.click(document.querySelector('[data-testid="student-preview-submit-confirm"]') as HTMLElement);
+
+    await waitFor(() => {
+        expect(view.getByTestId("student-preview-submit-error").textContent).toContain("请返回实验页面刷新");
+        expect(submitButton.disabled).toBe(true);
+    });
+    expect(submitRequests).toBe(1);
+    fireEvent.click(submitButton);
+    expect(submitRequests).toBe(1);
+});

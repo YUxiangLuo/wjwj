@@ -1,4 +1,3 @@
-import { DraftSaveStatus } from "../../components/DraftSaveStatus";
 import { StageActions } from "../../components/StageActions";
 import { PageHeader } from "@/components/PageHeader";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -91,7 +90,7 @@ function generateId(): string {
 }
 
 export function QuestionnaireDesign() {
-    const { experiment, completeStage } = useExperiment();
+    const { experiment, completeStage, refreshRequired } = useExperiment();
 
     const restoredDraft = useMemo(() => readExperimentDraft<{
         questionnaire: QuestionnaireData;
@@ -104,9 +103,9 @@ export function QuestionnaireDesign() {
         stage: 1,
     }), [experiment?.id, experiment?.version]);
 
+    const serverData = experiment?.questionnaire as QuestionnaireData | null;
     // Prefer the version-matched browser draft, then fall back to server data.
-    const initialData = restoredDraft?.questionnaire
-        ?? experiment?.questionnaire as QuestionnaireData | null;
+    const initialData = restoredDraft?.questionnaire ?? serverData;
 
     const [step, setStep] = useState<1 | 2 | 3 | 4>(restoredDraft?.step ?? 1);
     const [title, setTitle] = useState(initialData?.title ?? "");
@@ -185,11 +184,23 @@ export function QuestionnaireDesign() {
         previewCompleted: isPreviewValid,
         previewContentHash: isPreviewValid ? previewContentHash : "",
     }), [isPreviewValid, previewContentHash, questionnaireData, step]);
+    const questionnaireBaseline = useMemo(() => ({
+        questionnaire: {
+            title: serverData?.title ?? "",
+            welcomeText: serverData?.welcomeText ?? "",
+            endingText: serverData?.endingText ?? "",
+            questions: serverData?.questions ?? [],
+        },
+        step: 1 as const,
+        previewCompleted: false,
+        previewContentHash: "",
+    }), [serverData]);
     const clearDraft = useExperimentDraft({
         experimentId: experiment?.id,
         experimentVersion: experiment?.version,
         stage: 1,
         data: questionnaireDraft,
+        baseline: questionnaireBaseline,
         enabled: Boolean(experiment),
     });
     const handlePreviewComplete = useCallback(() => {
@@ -395,10 +406,9 @@ export function QuestionnaireDesign() {
     const warningCount = scoreItems.filter((item) => item.status === "warning").length;
 
     const handleConfirmComplete = async () => {
-        if (!canProceed || isCompleting) return;
+        if (!canProceed || isCompleting || refreshRequired) return;
         setIsCompleting(true);
         try {
-            if (clearDraft.save(questionnaireDraft) === "conflict") return;
             const completed = await completeStage(1, { questionnaire: questionnaireData });
             if (completed) clearDraft.clear();
         } finally { setIsCompleting(false); }
@@ -955,13 +965,12 @@ export function QuestionnaireDesign() {
 
             <StageActions>
                 <div className="min-w-0 space-y-2">
-                    <DraftSaveStatus status={clearDraft.status} onRetry={clearDraft.retry}/>
                     <p className="text-meta text-muted-foreground" role="status">{stepHint}</p>
                 </div>
                 <div className="flex items-center gap-3">
                     {step > 1 && <Button type="button" variant="outline" onClick={() => setStep((step - 1) as 1 | 2 | 3 | 4)} disabled={isCompleting} data-testid="student-questionnaire-prev">上一步</Button>}
                     {step < 4 ? <Button onClick={() => setStep((step + 1) as 1 | 2 | 3 | 4)} disabled={!canAdvanceToNextStep} data-testid="student-questionnaire-next">继续：{steps[step]?.title}<ArrowRight className="ml-2 h-4 w-4"/></Button>
-                        : <Button onClick={() => void handleConfirmComplete()} disabled={!canProceed || isCompleting || clearDraft.status === "conflict"} data-testid="student-questionnaire-complete">
+                        : <Button onClick={() => void handleConfirmComplete()} disabled={!canProceed || isCompleting || refreshRequired} data-testid="student-questionnaire-complete">
                             {isCompleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>}保存并规划样本量
                         </Button>}
                 </div>

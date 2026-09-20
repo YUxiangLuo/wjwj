@@ -161,9 +161,8 @@ test("completed stages open read-only without reopening or clearing the current 
     expect(view.getByTestId("student-analysis-report-editor").textContent).toContain("当前报告草稿");
 });
 
-test("version conflict blocks retry until the student explicitly loads the latest version", async () => {
+test("version conflict asks for one full-page refresh without fetching into the current editor", async () => {
     const staleReport = `<p>${"旧标签页草稿".repeat(30)}</p>`;
-    const latestReport = `<p>${"服务器最新报告".repeat(30)}</p>`;
     let experimentGetCount = 0;
     let completeCount = 0;
 
@@ -171,7 +170,7 @@ test("version conflict blocks retry until the student explicitly loads the lates
         const url = String(input);
         if (url.endsWith("/api/student/tasks/2/experiment") && (init?.method ?? "GET") === "GET") {
             experimentGetCount += 1;
-            return Response.json({ success: true, data: experimentGetCount === 1 ? experiment(5, staleReport) : experiment(6, latestReport) });
+            return Response.json({ success: true, data: experiment(5, staleReport) });
         }
         if (url.endsWith("/api/student/tasks/2")) {
             return Response.json({
@@ -226,21 +225,11 @@ test("version conflict blocks retry until the student explicitly loads the lates
         fireEvent.click(submit);
         await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    await waitFor(() => expect(view.getByTestId("student-load-latest-version")).toBeTruthy());
-    await act(async () => {
-        fireEvent.click(view.getByTestId("student-analysis-preview"));
-        await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-
+    const refresh = await waitFor(() => view.getByTestId("student-refresh-experiment"));
+    expect(refresh.textContent).toContain("刷新页面");
+    expect(view.getByText("实验进度已更新，请刷新页面后继续。")).toBeTruthy();
+    expect((view.getByTestId("student-analysis-preview") as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(view.getByTestId("student-analysis-preview"));
     expect(completeCount).toBe(1);
     expect(experimentGetCount).toBe(1);
-
-    await act(async () => {
-        fireEvent.click(view.getByTestId("student-load-latest-version"));
-        await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-    await waitFor(() => {
-        expect(view.getByTestId("student-analysis-report-editor").textContent).toContain("服务器最新报告");
-    });
-    expect(experimentGetCount).toBe(2);
 });

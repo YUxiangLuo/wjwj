@@ -18,6 +18,7 @@ import {
 import { getRemainingDeadlineSummary } from "@/utils/format";
 import { LoadingStatus } from "@/components/LoadingStatus";
 import { PageHeader } from "@/components/PageHeader";
+import { reloadPage } from "@/lib/api-client";
 import { experimentApi, tasksApi } from "../api-client";
 import type { ExperimentData } from "@/domain/experiment/types";
 import { formatStudyContractSummary } from "@/lib/analysis-target";
@@ -42,9 +43,9 @@ interface ExperimentContextValue {
     experiment: ExperimentData | null;
     populationSize: number;
     isSaving: boolean;
+    refreshRequired: boolean;
+    requireRefresh: () => void;
     completeStage: (stage: number, data: Record<string, unknown>) => Promise<boolean>;
-    /** Server says this page is stale: refetch instead of leaving a dead end. */
-    reloadLatestVersion: () => Promise<void>;
 }
 
 const ExperimentContext = createContext<ExperimentContextValue | null>(null);
@@ -76,11 +77,13 @@ function ExperimentWorkspace() {
     const { loading, error: loadError, run, cancel } = useAsyncLoad("实验加载失败，请重试");
     const [redirect, setRedirect] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
-    const [saveError, setSaveError] = useState<string | null>(null);
-    const [versionConflict, setVersionConflict] = useState(false);
-    const [editorRevision, setEditorRevision] = useState(0);
+    const [saveError, setSaveError] = useState<{ message: string; refresh: boolean } | null>(null);
     const [reopenStage, setReopenStage] = useState<number | null>(null);
     const [inspectStage, setInspectStage] = useState<number | null>(null);
+    const refreshRequired = saveError?.refresh === true;
+    const requireRefresh = useCallback(() => {
+        setSaveError({ message: "实验进度已更新，请刷新页面后继续。", refresh: true });
+    }, []);
 
     const loadExperiment = useCallback(() => run(async () => {
         const [experimentResponse, taskResponse] = await Promise.all([experimentApi.get(numericTaskId), tasksApi.get(numericTaskId)]);
@@ -93,7 +96,6 @@ function ExperimentWorkspace() {
         setTaskName(task.name);
         setDeadline(task.deadline);
         setRedirect(getExperimentRouteRedirect({ taskId: numericTaskId, publishedAt: task.publishedAt, deadline: task.deadline, status: task.status }));
-        setVersionConflict(false);
         setSaveError(null);
     }), [numericTaskId, run]);
     useEffect(() => {
@@ -102,11 +104,7 @@ function ExperimentWorkspace() {
     }, [numericTaskId, loadExperiment, cancel]);
 
     const completeStage = useCallback(async (stage: number, data: Record<string, unknown>) => {
-        if (!mounted.current || !experiment) return false;
-        if (versionConflict) {
-            setSaveError("检测到其他页面已更新。请先复制需要保留的内容，再加载最新版本。");
-            return false;
-        }
+        if (!mounted.current || !experiment || refreshRequired) return false;
         setIsSaving(true); setSaveError(null);
         const response = await experimentApi.completeStage(numericTaskId, stage, experiment.version, data);
         // The server may have saved successfully, but a departed editor must
@@ -115,52 +113,25 @@ function ExperimentWorkspace() {
         setIsSaving(false);
         if (response.success && response.data) {
             setExperiment(response.data);
-            setVersionConflict(false);
             return true;
         }
-        setSaveError(response.error?.message ?? "阶段保存失败，请重试");
-        if (response.error?.code === "VERSION_CONFLICT") {
-            setVersionConflict(true);
-            setSaveError("检测到其他页面已更新。当前草稿尚未覆盖服务器数据；请先复制需要保留的内容，再加载最新版本。");
-        }
+        const refresh = response.error?.code === "VERSION_CONFLICT";
+        if (refresh) requireRefresh();
+        else setSaveError({ message: response.error?.message ?? "阶段保存失败，请重试", refresh: false });
         return false;
-    }, [experiment, numericTaskId, versionConflict]);
-
-    const loadLatestVersion = async () => {
-        if (!mounted.current) return;
-        setIsSaving(true);
-        const latest = await experimentApi.get(numericTaskId);
-        if (!mounted.current) return;
-        setIsSaving(false);
-        if (!latest.success || !latest.data) {
-            setSaveError(latest.error?.message ?? "加载最新版本失败，请重试");
-            return;
-        }
-        setExperiment(latest.data);
-        setEditorRevision((revision) => revision + 1);
-        setVersionConflict(false);
-        setSaveError(null);
-    };
+    }, [experiment, numericTaskId, refreshRequired, requireRefresh]);
 
     const applyReopen = async () => {
-        if (!mounted.current || reopenStage === null || !experiment) return;
-        if (versionConflict) {
-            setSaveError("检测到其他页面已更新。请先加载最新版本，再重新编辑阶段。");
-            setReopenStage(null);
-            return;
-        }
+        if (!mounted.current || reopenStage === null || !experiment || refreshRequired) return;
         const response = await experimentApi.reopenStage(numericTaskId, reopenStage, experiment.version);
         if (!mounted.current) return;
         if (response.success && response.data) {
             setExperiment(response.data);
-            setVersionConflict(false);
         }
         else {
-            setSaveError(response.error?.message ?? "无法重新编辑该阶段");
-            if (response.error?.code === "VERSION_CONFLICT") {
-                setVersionConflict(true);
-                setSaveError("检测到其他页面已更新。请先加载最新版本，再重新编辑阶段。");
-            }
+            const refresh = response.error?.code === "VERSION_CONFLICT";
+            if (refresh) requireRefresh();
+            else setSaveError({ message: response.error?.message ?? "无法重新编辑该阶段", refresh: false });
         }
         setReopenStage(null);
     };
@@ -205,7 +176,7 @@ function ExperimentWorkspace() {
                 : "分析报告内容会保留，但需要重新确认本阶段。";
 
     return (
-        <ExperimentContext.Provider value={{ experiment, populationSize: experiment.populationSize, isSaving, completeStage, reloadLatestVersion: loadLatestVersion }}>
+        <ExperimentContext.Provider value={{ experiment, populationSize: experiment.populationSize, isSaving, refreshRequired, requireRefresh, completeStage }}>
             <div className="pb-4" data-testid="student-experiment-layout">
                 <div className="sticky top-16 z-40 -mt-2 border-b border-border bg-background" data-testid="student-experiment-navigation">
                     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2">
@@ -221,7 +192,7 @@ function ExperimentWorkspace() {
                     </div>
                         {deadlineInfo && <span className={`flex shrink-0 items-center gap-1 text-meta ${deadlineInfo.urgent ? "text-destructive" : "text-muted-foreground"}`}>{deadlineInfo.urgent ? <AlertCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}{deadlineInfo.text}</span>}
                     </div>
-                    {saveError && <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-surface border border-destructive-border bg-destructive-muted px-3 py-2 text-label text-destructive"><span>{saveError}</span>{versionConflict && <Button type="button" size="sm" variant="outline" disabled={isSaving} data-testid="student-load-latest-version" onClick={() => void loadLatestVersion()} className="border-destructive-border bg-background text-destructive hover:bg-destructive-muted hover:text-destructive"><RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isSaving ? "animate-spin" : ""}`} />加载最新版本</Button>}</div>}
+                    {saveError && <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-surface border border-destructive-border bg-destructive-muted px-3 py-2 text-label text-destructive"><span>{saveError.message}</span>{saveError.refresh && <Button type="button" size="sm" variant="outline" data-testid="student-refresh-experiment" onClick={reloadPage} className="border-destructive-border bg-background text-destructive hover:bg-destructive-muted hover:text-destructive"><RefreshCw className="mr-1.5 h-3.5 w-3.5" />刷新页面</Button>}</div>}
                 </div>
                 <PageHeader border={false} className="my-4 flex-wrap items-baseline">
                     <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-2">
@@ -252,7 +223,7 @@ function ExperimentWorkspace() {
                         </div>
                     </div>
                 )}
-                <div key={editorRevision} className="min-h-[500px]">{renderStage()}</div>
+                <div className="min-h-[500px]">{renderStage()}</div>
             </div>
             <Dialog open={inspectStage !== null} onOpenChange={(open) => !open && setInspectStage(null)}>
                 <DialogContent className="max-h-[85vh] max-w-5xl overflow-y-auto" data-testid="student-stage-inspect-dialog">
@@ -281,7 +252,7 @@ function ExperimentWorkspace() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-            <AlertDialog open={reopenStage !== null} onOpenChange={(open) => !open && setReopenStage(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>重新编辑“{reopenStage ? stages[reopenStage - 1]!.name : ""}”</AlertDialogTitle><AlertDialogDescription>{reopenImpact} 此操作不可撤销，确认后才能重新编辑。</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>取消</AlertDialogCancel><AlertDialogAction variant="destructive" onClick={() => void applyReopen()}>确认重新编辑</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+            <AlertDialog open={reopenStage !== null} onOpenChange={(open) => !open && setReopenStage(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>重新编辑“{reopenStage ? stages[reopenStage - 1]!.name : ""}”</AlertDialogTitle><AlertDialogDescription>{reopenImpact} 此操作不可撤销，确认后才能重新编辑。</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>取消</AlertDialogCancel><AlertDialogAction variant="destructive" disabled={refreshRequired} onClick={() => void applyReopen()}>确认重新编辑</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
         </ExperimentContext.Provider>
     );
 }

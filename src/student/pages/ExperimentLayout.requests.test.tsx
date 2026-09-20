@@ -37,23 +37,20 @@ function experiment(taskId: number, overrides: Record<string, unknown> = {}) {
 }
 
 const conflict = () => Response.json({ success: false, error: { code: "VERSION_CONFLICT", message: "记录已变化" } }, { status: 409 });
-type Operation = "save" | "save-conflict" | "latest" | "reopen";
+type Operation = "save" | "save-conflict" | "reopen";
 
 async function setup(operation: Operation) {
     const pending = Promise.withResolvers<Response>();
     let started = false;
-    let firstTaskReads = 0;
     globalThis.fetch = (async (input: RequestInfo | URL) => {
         const url = String(input);
         const taskId = Number(url.match(/\/tasks\/(\d+)/)?.[1]);
         if (url.endsWith("/complete")) {
-            if (operation === "latest") return conflict();
             started = true;
             return pending.promise;
         }
         if (url.endsWith("/reopen")) { started = true; return pending.promise; }
         if (url.endsWith("/experiment")) {
-            if (taskId === 1 && ++firstTaskReads > 1 && operation === "latest") { started = true; return pending.promise; }
             return Response.json({ success: true, data: experiment(taskId) });
         }
         if (url.endsWith("/analysis-metrics")) return Response.json({ success: true, data: { numericFields: [], categoricalFields: [], numeric: {}, categorical: {} } });
@@ -79,7 +76,6 @@ async function setup(operation: Operation) {
         fireEvent.click(await waitFor(() => view.getByRole("button", { name: "确认重新编辑" })));
     } else {
         fireEvent.click(view.getByTestId("student-analysis-preview"));
-        if (operation === "latest") fireEvent.click(await waitFor(() => view.getByTestId("student-load-latest-version")));
     }
     await waitFor(() => expect(started).toBe(true));
     return { view, finish: async () => {
@@ -92,8 +88,7 @@ async function setup(operation: Operation) {
     } };
 }
 
-// One representative in-flight operation; the guard is shared by save,
-// conflict, latest-version and reopen responses.
+// One representative in-flight operation covers the shared mounted/task guard.
 for (const operation of ["save"] as const) {
     test(`${operation} response cannot update or navigate a different task`, async () => {
         const dom = installDomGlobals("http://localhost/student/task/1/experiment");
@@ -106,7 +101,7 @@ for (const operation of ["save"] as const) {
             await finish();
             expect(view.getByTestId("location").textContent).toBe("/task/2/experiment");
             expect(view.getByTestId("student-analysis-report-editor").textContent).toContain("任务2的报告");
-            expect(view.queryByTestId("student-load-latest-version") === null).toBe(true);
+            expect(view.queryByTestId("student-refresh-experiment") === null).toBe(true);
             expect(view.queryByText("旧任务的迟到响应不应出现") === null).toBe(true);
             expect((view.getByTestId("student-analysis-preview") as HTMLButtonElement).disabled).toBe(false);
         } finally { cleanup(); globalThis.fetch = originalFetch; dom.restore(); }
