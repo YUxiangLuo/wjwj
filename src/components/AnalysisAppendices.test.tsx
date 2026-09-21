@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { SavedAnalysisView } from "@/domain/variables/types";
-import { AnalysisResultTable } from "./AnalysisAppendices";
+import { AnalysisAppendices, AnalysisResultTable } from "./AnalysisAppendices";
 
 const base = {
     id: 1,
@@ -79,4 +79,20 @@ test("weighted numeric output leaves unimplemented dispersion and quantiles unav
     expect(html).toContain("设计加权比率点估计（不提供标准误、置信区间或加权分位数）");
     expect(html).toContain("8.2");
     expect((html.match(/>—</g) ?? [])).toHaveLength(6);
+});
+
+test("appendix uses the same user-facing sampling method names as the analysis UI", () => {
+    const record: SavedAnalysisView = {
+        ...base,
+        config: { ...base.config, method: "simple" },
+        result: {
+            kind: "numeric", weighted: false, sampleCount: 2, validCount: 2, missingCount: 0,
+            mean: 3, sampleStandardDeviation: Math.SQRT2, min: 2, max: 4,
+            q1: 2.5, median: 3, q3: 3.5,
+        },
+    };
+    const html = renderToStaticMarkup(<AnalysisAppendices records={[record]} />);
+
+    expect(html).toContain("简单随机抽样");
+    expect(html).not.toContain(" · simple · ");
 });

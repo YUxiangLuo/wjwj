@@ -42,5 +42,8 @@ test("labels z times design SE as a normal approximation rather than a validated
     expect(html).toContain("10.0000 kg");
     expect(html).toContain("±2.0000 kg");
     expect(html).toContain("设计 SE（kg）");
+    expect(html).toContain("依赖教学系统已知的完整虚拟总体");
+    expect(html).toContain("现实调查通常不知道总体真值");
     expect(html).toContain("它不表示覆盖率已经验证，也不应当作正式置信区间");
+    expect(html).toContain("不能单独证明无偏、代表性或某种方法更好");
 });

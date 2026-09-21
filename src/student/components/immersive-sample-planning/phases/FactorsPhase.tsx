@@ -181,8 +181,8 @@ function ErrorToleranceContent({ params }: { params: SampleParams }) {
                         {isMeanEstimation ? "不同绝对误差限下的样本量" : "不同误差限下的样本量"}
                         <span className="text-meta">
                             {isMeanEstimation
-                                ? ` (σ²=${formatAbsoluteErrorValue(sigma2)}, N=${params.populationSize.toLocaleString()}, ${params.confidenceLevel}% CI)`
-                                : ` (N=${params.populationSize.toLocaleString()}, ${params.confidenceLevel}% CI)`}
+                                ? ` (σ²=${formatAbsoluteErrorValue(sigma2)}, N=${params.populationSize.toLocaleString()}, 按 ${params.confidenceLevel}% 置信水平规划)`
+                                : ` (N=${params.populationSize.toLocaleString()}, 按 ${params.confidenceLevel}% 置信水平规划)`}
                         </span>
                     </p>
                 </div>
@@ -302,8 +302,8 @@ function SubpopulationContent({ params }: { params: SampleParams }) {
                 <div className="bg-card px-4 py-2.5 border-b border-border">
                     <p className="text-label text-center text-muted-foreground">
                         {isMeanEstimation
-                            ? `方案对比示例：按互斥年龄层分别估计均值 (±${formatAbsoluteErrorValue(params.marginOfError)}, σ²=${formatAbsoluteErrorValue(sigma2)}, ${params.confidenceLevel}% CI)`
-                            : `方案对比示例：按互斥年龄层分别估计 (±5%, ${params.confidenceLevel}% CI)`}
+                            ? `方案对比示例：按互斥年龄层分别估计均值 (±${formatAbsoluteErrorValue(params.marginOfError)}, σ²=${formatAbsoluteErrorValue(sigma2)}, 按 ${params.confidenceLevel}% 置信水平规划)`
+                            : `方案对比示例：按互斥年龄层分别估计 (±5%, 按 ${params.confidenceLevel}% 置信水平规划)`}
                     </p>
                 </div>
                 <div className="divide-y divide-border">
@@ -429,8 +429,8 @@ function DesignEffectContent({ params }: { params: SampleParams }) {
                         不同设计效应下的样本量
                         <span className="text-meta">
                             {isMeanEstimation
-                                ? ` (±${formatAbsoluteErrorValue(params.marginOfError)}, σ²=${formatAbsoluteErrorValue(sigma2)}, N=${params.populationSize.toLocaleString()}, ${params.confidenceLevel}% CI)`
-                                : ` (±${params.marginOfError}%, N=${params.populationSize.toLocaleString()}, ${params.confidenceLevel}% CI)`}
+                                ? ` (±${formatAbsoluteErrorValue(params.marginOfError)}, σ²=${formatAbsoluteErrorValue(sigma2)}, N=${params.populationSize.toLocaleString()}, 按 ${params.confidenceLevel}% 置信水平规划)`
+                                : ` (±${params.marginOfError}%, N=${params.populationSize.toLocaleString()}, 按 ${params.confidenceLevel}% 置信水平规划)`}
                         </span>
                     </p>
                 </div>
@@ -605,8 +605,8 @@ function CostBalanceContent({ params }: { params: SampleParams }) {
                         {isMeanEstimation ? "绝对误差限 vs 样本量" : "误差限 vs 样本量"}
                         <span className="text-meta">
                             {isMeanEstimation
-                                ? ` (σ²=${formatAbsoluteErrorValue(sigma2)}, N=${params.populationSize.toLocaleString()}, ${params.confidenceLevel}% CI)`
-                                : ` (N=${params.populationSize.toLocaleString()}, ${params.confidenceLevel}% CI)`}
+                                ? ` (σ²=${formatAbsoluteErrorValue(sigma2)}, N=${params.populationSize.toLocaleString()}, 按 ${params.confidenceLevel}% 置信水平规划)`
+                                : ` (N=${params.populationSize.toLocaleString()}, 按 ${params.confidenceLevel}% 置信水平规划)`}
                         </span>
                     </p>
                 </div>

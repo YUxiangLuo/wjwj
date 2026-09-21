@@ -1,6 +1,12 @@
 import type { SavedAnalysisView } from "@/domain/variables/types";
 
 const value = (input: number | null, digits = 4) => input == null ? "—" : input.toLocaleString("zh-CN", { maximumFractionDigits: digits });
+const methodLabels: Record<SavedAnalysisView["config"]["method"], string> = {
+    simple: "简单随机抽样",
+    systematic: "系统抽样",
+    pps: "PPS 抽样",
+    stratified: "分层抽样",
+};
 
 function rawCategoryValue(input: string | number | boolean | null) {
     if (typeof input === "string") return `文本“${input}”`;
@@ -30,7 +36,7 @@ export function AnalysisAppendices({ records }: { records: SavedAnalysisView[] }
         <div><h2 className="text-section-title font-semibold">分析附录</h2><p className="text-meta text-muted-foreground">附录位于正文之后，不计入报告正文字数。</p></div>
         {records.map((record, index) => <article className="rounded-surface border border-border bg-card p-4" key={record.id}>
             <h3 className="text-subheading font-semibold">附录 {index + 1}：{record.config.question}</h3>
-            <p className="mt-1 text-meta text-muted-foreground">{record.variable.label}（{record.variable.field}） · {record.config.method} · {record.result.weighted ? "加权" : "未加权"}</p>
+            <p className="mt-1 text-meta text-muted-foreground">{record.variable.label}（{record.variable.field}） · {methodLabels[record.config.method]} · {record.result.weighted ? "加权" : "未加权"}</p>
             <p className="mt-1 text-meta text-muted-foreground">来源 {record.source} · 字典 revision {record.dictionaryRevision} · 抽样 generation {record.samplingGeneration} · 算法 {record.algorithmVersion}</p>
             {record.stale && <p className="mt-2 text-label text-warning">此结果来源已过期，仅供查看；请移除引用或重新运行后再提交。</p>}
             <div className="mt-3 overflow-x-auto"><AnalysisResultTable record={record} /></div>

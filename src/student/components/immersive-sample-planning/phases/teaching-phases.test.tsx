@@ -117,5 +117,7 @@ test("FactorsPhase design effect explains the variance-ratio definition", () => 
     const text = view.container.textContent ?? "";
 
     expect(text).toContain("deff = 复杂设计的方差 ÷ 简单随机抽样的方差");
+    expect(text).toContain("按 95% 置信水平规划");
+    expect(text).not.toContain("95% CI");
     expect(text).toContain("分层抽样");
 });

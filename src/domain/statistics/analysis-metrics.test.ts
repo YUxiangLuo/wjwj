@@ -414,9 +414,13 @@ test("proportion target analysis maps to indicator values with hand-computed SE"
     expect(simple.reliability.status).toBe("caution");
     expect(simple.reliability.reasons).toContain("正态近似教学半宽超过规划误差限");
 
-    // 分数间隔系统抽样：两种起点均值都是 0.5 → 精确设计 SE 为 0
+    // 分数间隔系统抽样：两种起点均值都是 0.5 → 精确设计 SE 为 0；
+    // 零设计方差并不会消除小样本、稀有事件和系统抽样的解释限制。
     expect(target.methods.systematic.standardError).toBe(0);
-    expect(target.methods.systematic.reliability.status).toBe("ok");
+    expect(target.methods.systematic.reliability.status).toBe("caution");
+    expect(target.methods.systematic.reliability.reasons).toContain("实际入样量低于 30，不能仅凭等效样本量判断近似条件");
+    expect(target.methods.systematic.reliability.reasons).toContain("事件或非事件数量偏少，对称正态区间可能覆盖不足");
+    expect(target.methods.systematic.reliability.reasons).toContain("系统抽样的区间覆盖取决于排序与起点分布，尚未验证");
 
     // PPS 不可用 → unavailable
     expect(target.methods.pps.reliability.status).toBe("unavailable");

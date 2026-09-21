@@ -6,6 +6,7 @@ export function SamplingObservationNotice({ nonResponseRate = 0 }: { nonResponse
             {nonResponseRate > 0
                 ? `规划中的 ${Math.round(nonResponseRate * 100)}% 无回答率只用于发放量与预期完成量的情景计算，本阶段不模拟无回答；分析精度对应全部入样记录已观测的情景。`
                 : "无回答率属于规划情景参数；执行和分析不模拟拒访、漏答或差异回答。"}
+            回答率无论高低都不能单独证明无回答偏差已经消除，也不能保证样本无偏或具有代表性。
             覆盖完整虚拟总体时，零设计标准误也只表示没有抽样误差。
         </p>
     );

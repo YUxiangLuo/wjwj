@@ -76,7 +76,7 @@ export function TargetMetricsPanel({ target, methods = availableTargetMethods(ta
                 </tbody>
             </table>
         </div>
-        <p className="text-meta text-muted-foreground" data-testid="student-target-margin-caveat">正态近似教学半宽 = z × 设计标准误；它不表示覆盖率已经验证，也不应当作正式置信区间。半宽达标只说明这次达到规划精度，不能单独证明某种方法更好。{systematicMuchTighter ? <span data-testid="student-target-systematic-caveat"> 系统抽样半宽更小通常来自总体排序，不能推广成「系统抽样总是更准」。</span> : null}</p>
+        <p className="text-meta text-muted-foreground" data-testid="student-target-margin-caveat">这里的设计标准误依赖教学系统已知的完整虚拟总体；现实调查通常不知道总体真值，也不能仅凭当前样本直接得到这些数值。正态近似教学半宽 = z × 设计标准误；它不表示覆盖率已经验证，也不应当作正式置信区间。半宽达标只说明这次达到规划精度，不能单独证明无偏、代表性或某种方法更好。{systematicMuchTighter ? <span data-testid="student-target-systematic-caveat"> 系统抽样半宽更小通常来自总体排序，不能推广成「系统抽样总是更准」。</span> : null}</p>
         {target.contract.inferred && <p className="text-meta leading-relaxed text-muted-foreground">当前研究目标由对照变量推断：{contract.researchQuestion}</p>}
         <details className="rounded-surface border border-border bg-background p-4">
             <summary className="cursor-pointer text-label font-semibold text-foreground">查看标准误、等效样本量与近似条件</summary>

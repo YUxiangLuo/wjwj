@@ -39,6 +39,22 @@ test("PPS preserves provable zero variance for a constant target, balanced equal
     });
 });
 
+test("zero PPS design variance does not erase small-sample or ratio-estimator cautions", () => {
+    const population = [{ y: 0, size: 1 }, { y: 0, size: 1 }, { y: 1, size: 1 }, { y: 1, size: 1 }];
+    const sample = performPPSSampling(population, "size", 2, () => 0.25);
+    const result = calculateAnalysisMetrics({
+        population,
+        fieldMapping: { numeric: ["y", "size"], analysisTarget: { kind: "mean", field: "y" } },
+        samplingResults: { pps: { ...sample, completed: true, sizeField: "size", sampleCount: 2 } },
+        ppsMonteCarloReplicates: 512,
+    }).target!.methods.pps;
+
+    expect(result.standardError).toBe(0);
+    expect(result.reliability.status).toBe("caution");
+    expect(result.reliability.reasons).toContain("实际入样量低于 30，不能仅凭等效样本量判断近似条件");
+    expect(result.reliability.reasons).toContain("PPS 比估计可能有偏，设计标准误不能保证区间覆盖");
+});
+
 test("rare binary outcomes flag normal approximation even with n above thirty and accurate design SE", () => {
     const population = Array.from({ length: 1000 }, (_, i) => ({ event: i < 3 ? "yes" : "no" }));
     let coverage = 1;
