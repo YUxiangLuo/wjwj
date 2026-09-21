@@ -632,7 +632,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
                                 <TabsContent value="dist" data-testid="student-analysis-distribution-chart">
                                     <ChartTabPanel
-                                        description="比较各抽样方法在分类变量上的分布占比，并利用已知虚拟总体显示真值对照。超过 20 类时，图中合并尾部类别，保留主分析目标类别；总体对照偏差始终按完整类别计算，合并后的柱形可能隐藏类别间差异。"
+                                        description="比较各抽样方法在分类变量上的分布占比，并利用已知虚拟总体显示真值对照。主图把类别统一为去除首尾空格并经 Unicode NFKC 规范化（包括全角/半角）的文本，因此数字 1 与文本“1”会合并；空值作为“（缺失值）”并计入全部行的分母。单变量分析则按变量字典保留 JSON 原始类型，并从有效值分母排除声明的缺失编码，两处结果可能因此不同。超过 20 类时，图中合并尾部类别，保留主分析目标类别；总体对照偏差始终按完整类别计算，合并后的柱形可能隐藏类别间差异。"
                                         rows={distributionRows}
                                         series={distributionSeries}
                                         unit="%"

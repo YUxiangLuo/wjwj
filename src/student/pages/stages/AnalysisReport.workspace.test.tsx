@@ -129,6 +129,10 @@ test("switching workspace tabs keeps an unexecuted analysis config and never aut
 test("the inactive analysis panel is CSS-hidden while remaining mounted", async () => {
     const view = render(<AnalysisReport onPrev={() => {}} onSubmit={() => {}} />);
     await waitFor(() => expect(view.getByTestId("student-analysis-workspace-univariate")).toBeTruthy());
+    const categoryContract = view.getByTestId("student-univariate-category-contract");
+    expect(categoryContract.textContent).toContain("数字 1 与文本“1”不同");
+    expect(categoryContract.textContent).toContain("排除字典声明的缺失编码");
+    expect(categoryContract.textContent).toContain("两处分类比例可能不同");
     // 默认在工作区概览：单变量面板已挂载，但处于 inactive（由 data-[state=inactive]:hidden 隐藏）
     expect(panelOf(view).dataset.state).toBe("inactive");
     expect(panelOf(view).className).toContain("data-[state=inactive]:hidden");

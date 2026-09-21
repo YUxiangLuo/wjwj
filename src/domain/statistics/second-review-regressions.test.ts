@@ -5,6 +5,9 @@ import { computeSystematicExactMeanSe } from "./systematic";
 import { createSeededRandom, performSystematicSampling, preparePPSSampling, drawPreparedPPSSample, performPPSSampling } from "./sampling";
 import { computeFinitePopulationEquivalentSampleSize } from "./srs";
 import { buildPopulationNumericStats, buildStratifiedNumericStats } from "./population";
+import { calculateUnivariate } from "../variables/analysis";
+import type { VariableDefinition } from "../variables/types";
+import { computeDistributionRepresentativeness } from "./distributions";
 
 test("NFKC categories match population, sample and target during a census", () => {
     const population = ["Ａ", "Ａ", "B", "B"].map(category => ({ category }));
@@ -13,6 +16,54 @@ test("NFKC categories match population, sample and target during a census", () =
     expect(metrics.categorical.category!.representativeness.simple).toBe(0);
     expect(metrics.categorical.category!.methods.simple).toEqual({ A: 50, B: 50 });
     expect(metrics.target!.methods.simple.estimate).toBe(.5);
+});
+
+test("main charts and dictionary analysis preserve their documented category and missing-value contracts", () => {
+    const population = ["1", 1, false, "false", "Ａ", "A", null, ""].map(category => ({ category }));
+    const metrics = buildAnalysisMetrics({
+        population,
+        fieldMapping: { others: ["category"] },
+        samplingResults: {
+            simple: { completed: true, sampleCount: population.length, data: population },
+        },
+    });
+    expect(metrics.categorical.category?.population).toEqual({
+        "1": 25,
+        false: 25,
+        A: 25,
+        "（缺失值）": 25,
+    });
+
+    const variable: VariableDefinition = {
+        field: "category",
+        label: "类别",
+        unit: "",
+        kind: "nominal",
+        categories: ["1", 1, false, "false", "Ａ", "A"].map(value => ({ value, label: String(value) })),
+        missing: [null, ""],
+    };
+    const result = calculateUnivariate({
+        population,
+        indices: population.map((_, index) => index),
+        variable,
+        weighted: false,
+    });
+    if (result.kind !== "categorical") throw new Error("expected categorical analysis");
+    expect(result.validCount).toBe(6);
+    expect(result.missingCount).toBe(2);
+    expect(result.categories.map(category => category.proportion)).toEqual(Array(6).fill(1 / 6));
+});
+
+test("distribution deviation remains a descriptive mean absolute percentage-point difference", () => {
+    const population = { A: 100, B: 0 };
+    const estimate = { A: 0, B: 100 };
+    expect(computeDistributionRepresentativeness(population, estimate)).toBe(100);
+    // This is deliberately not total variation distance or a test statistic:
+    // a shared zero-frequency category changes the arithmetic-mean denominator.
+    expect(computeDistributionRepresentativeness(
+        { ...population, C: 0 },
+        { ...estimate, C: 0 },
+    )).toBeCloseTo(200 / 3, 12);
 });
 
 test("main analysis retains a small residual when large values cancel", () => {

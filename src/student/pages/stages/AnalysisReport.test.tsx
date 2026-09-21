@@ -236,6 +236,18 @@ test("AnalysisReport omits disabled methods from the export and parameter panels
     expect(view.getByTestId("student-analysis-sampling-params-systematic")).toBeTruthy();
 });
 
+test("categorical charts explain their normalization and missing-value denominator", async () => {
+    const view = render(<AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />);
+    await waitFor(() => expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(1));
+    const chart = view.getByTestId("student-analysis-distribution-chart");
+    expect(chart.textContent).toContain("数字 1 与文本“1”会合并");
+    expect(chart.textContent).toContain("空值作为“（缺失值）”并计入全部行的分母");
+    expect(chart.textContent).toContain("单变量分析则按变量字典保留 JSON 原始类型");
+    const deviation = view.getByTestId("student-analysis-representativeness-chart");
+    expect(deviation.textContent).toContain("各类占比绝对差的平均");
+    expect(deviation.textContent).toContain("不能单独证明样本无偏或具有整体代表性");
+});
+
 for (const scenario of [
     { name: "mean with exact PPS", kind: "mean", mode: "systematic_exact", ppsText: "PPS 按全部随机起点区间及其概率计算 Hájek 比估计的设计标准误" },
     { name: "mean with census PPS", kind: "mean", mode: "census_exact", ppsText: "设计标准误精确为 0，未执行 Monte Carlo 重复抽样" },
