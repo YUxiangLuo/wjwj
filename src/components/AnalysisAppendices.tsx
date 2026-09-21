@@ -17,7 +17,7 @@ function rawCategoryValue(input: string | number | boolean | null) {
 
 export function AnalysisResultTable({ record }: { record: SavedAnalysisView }) {
     const result = record.result;
-    const caption = <caption className="mb-3 text-left text-meta text-muted-foreground">{result.weighted ? "设计加权比率点估计（不提供标准误、置信区间或加权分位数）" : "未加权样本描述；分位数采用 R7，SD 不是标准误"} · 样本 {result.sampleCount} · 有效 {result.validCount} · 缺失 {result.missingCount}{record.variable.unit && ` · 单位：${record.variable.unit}`}</caption>;
+    const caption = <caption className="mb-3 text-left text-meta text-muted-foreground">{result.weighted ? "设计加权比率点估计（不提供标准误、置信区间或加权分位数）" : "未加权样本描述；分位数采用 R7，SD 不是标准误"} · 样本 {result.sampleCount} · 有效 {result.validCount} · 缺失 {result.missingCount}{record.variable.unit && ` · 单位：${record.variable.unit}`}{result.kind === "categorical" && " · 各类别比例独立四舍五入，显示合计可能不等于 100%；底层计算使用未舍入值"}</caption>;
     if (result.kind === "numeric") {
         const rows = [
             ["样本数", result.sampleCount], ["有效数", result.validCount], ["缺失数", result.missingCount], ["均值", result.mean],

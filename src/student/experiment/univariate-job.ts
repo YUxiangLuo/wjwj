@@ -3,7 +3,7 @@ import { calculateDesignWeights, type SamplingDesign } from "../../domain/variab
 import { validateDictionary } from "../../domain/variables/dictionary";
 import type { AnalysisConfig, AnalysisResult, VariableDictionary } from "../../domain/variables/types";
 import { readVariableSource } from "../../server/variable-source";
-import { executeSamplingAction } from "./sampling-service";
+import { replaySamplingSection } from "./sampling-replay";
 import { hydrateSamplingResults } from "./sampling-storage";
 
 export const UNIVARIATE_ALGORITHM_VERSION = "univariate-design-v1";
@@ -20,9 +20,6 @@ export type UnivariateJobResult = { ok: true; data: { result: AnalysisResult; ev
 
 const fail = (code: string, message: string): UnivariateJobResult => ({ ok: false, code, message });
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object" && !Array.isArray(value);
-const sameNumbers = (a: unknown, b: unknown) => Array.isArray(a) && Array.isArray(b) && a.length === b.length
-    && a.every((value, index) => typeof value === "number" && typeof b[index] === "number" && Math.abs(value - b[index]) <= 1e-12 * Math.max(1, Math.abs(value)));
-
 export async function runUnivariateJob(job: UnivariateJob): Promise<UnivariateJobResult> {
     try {
         if (!record(job.dictionary) || !record(job.config) || !record(job.samplingResult)) return fail("INVALID_JOB", "分析任务无效");
@@ -47,17 +44,14 @@ export async function runUnivariateJob(job: UnivariateJob): Promise<UnivariateJo
         if (!Array.isArray(indices) || !Number.isSafeInteger(sampleCount) || sampleCount !== indices.length || sampleCount < 1) {
             return fail("INVALID_SAMPLE", "样本索引或样本量无效");
         }
-        if (!Number.isSafeInteger(section.seed)) return fail("INVALID_SAMPLE", "抽样重演信息不完整");
-        const rawParams: Record<string, unknown> = { seed: section.seed, sampleSize: sampleCount };
-        if (job.config.method === "pps") rawParams.sizeField = section.sizeField;
-        if (job.config.method === "stratified") { rawParams.stratifyBy = section.stratifyBy; rawParams.layers = section.layers; }
-        const replay = await executeSamplingAction({ method: job.config.method, rawParams, targetSampleSize: sampleCount as number, population: current, fieldMapping: job.fieldMapping });
-        if (!replay.ok || !sameNumbers(replay.result.indices, indices)
-            || (job.config.method === "pps" && !sameNumbers(replay.result.inclusionProbabilities, section.inclusionProbabilities))) {
+        const replay = await replaySamplingSection({
+            method: job.config.method,
+            section,
+            population: current,
+            fieldMapping: job.fieldMapping,
+        });
+        if (!replay.ok) {
             return fail("REPLAY_MISMATCH", "抽样结果无法由可信设计重演");
-        }
-        if (job.config.method === "stratified" && JSON.stringify(replay.result.layers) !== JSON.stringify(section.layers)) {
-            return fail("REPLAY_MISMATCH", "分层设计与重演结果不一致");
         }
         let design: SamplingDesign;
         if (job.config.method === "pps") {

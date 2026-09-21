@@ -209,6 +209,35 @@ pgTest("a new sampling generation makes saved analysis stale and rejects old ref
         .rejects.toMatchObject({ code: "STALE_REFERENCE", status: 409 });
 });
 
+pgTest("same-seed resampling creates a new generation and makes the prior analysis stale", async () => {
+    const f = await fixture();
+    await service.createSavedAnalysis(f.students[0]!.id, f.cls.id, f.task.id, f.body(`resample-${crypto.randomUUID()}`));
+    await application.db.update(schema.experiment).set({
+        currentStage: 3,
+        samplePlan: { finalSampleSize: 3 },
+    }).where(eq(schema.experiment.id, f.experiment.id));
+
+    const token = await session(3, f.students[0]!.id);
+    const { samplingActionRoutes } = await import("../student/routes/experiment");
+    const response = await samplingActionRoutes.POST!(routeRequest(
+        "POST",
+        { id: String(f.task.id) },
+        {
+            cookie: `student_session=${token}`,
+            body: { method: "simple", params: { sampleSize: 3, seed: f.storedResult.seed } },
+        },
+    ));
+    expect(response.status).toBe(200);
+
+    const [updated] = await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, f.experiment.id));
+    const simple = (updated!.samplingResults as { simple: { indices: number[] } }).simple;
+    expect(simple.indices).toEqual(f.storedResult.indices);
+    expect(updated!.samplingGeneration).toBe(2);
+    const listed = await service.listSavedAnalyses(f.students[0]!.id, f.cls.id, f.task.id);
+    expect(listed.records).toHaveLength(1);
+    expect(listed.records[0]!.stale).toBe(true);
+});
+
 pgTest("a missing population keeps saved results readable but stale", async () => {
     const f = await fixture();
     const saved = await service.createSavedAnalysis(f.students[0]!.id, f.cls.id, f.task.id, f.body(`missing-${crypto.randomUUID()}`));
@@ -603,6 +632,16 @@ pgTest("R05 an admitted reopen invalidates a later submit and a committed submit
 pgTest("R07 the frozen appendix never counts toward report length and reference-free submits stay valid", async () => {
     const f = await submittableFixture();
     const reload = async () => (await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, f.experiment.id)))[0]!;
+    const studentToken = await session(3, f.students[0]!.id);
+    const { analysisMetricsRoutes } = await import("../student/routes/experiment");
+    const liveResponse = await analysisMetricsRoutes.GET!(routeRequest(
+        "GET",
+        { id: String(f.task.id) },
+        { cookie: `student_session=${studentToken}` },
+    ));
+    expect(liveResponse.status).toBe(200);
+    const liveBody = await liveResponse.json() as { data: { target: unknown } };
+    const liveTargetMetrics = liveBody.data.target;
 
     // 正文 99 字 + 长附录：必须以正文字数拒绝，不以附录补齐
     await application.db.update(schema.experiment).set({ reportContent: `<p>${"字".repeat(99)}</p>`, analysisReferences: [f.savedAnalysisId] }).where(eq(schema.experiment.id, f.experiment.id));
@@ -634,6 +673,7 @@ pgTest("R07 the frozen appendix never counts toward report length and reference-
     expect(snapshot.targetMetrics.confidenceLevel).toBe("95");
     expect(snapshot.targetMetrics.populationValue).toBe(30);
     expect(snapshot.targetMetrics.methods.simple.sampleSize).toBe(4);
+    expect(liveTargetMetrics).toEqual(snapshot.targetMetrics);
     const sampledValues = (f.record.samplingResults as { simple: { indices: number[] } }).simple.indices.map(index => [10, 20, 30, 40, 50][index]!);
     const expectedMean = sampledValues.reduce((sum, value) => sum + value, 0) / sampledValues.length;
     // 教学系统拥有完整虚拟总体，因此设计 SE 使用已知总体 S²=250，而不是样本方差估计。
@@ -642,7 +682,6 @@ pgTest("R07 the frozen appendix never counts toward report length and reference-
     expect(snapshot.targetMetrics.methods.simple.standardError).toBeCloseTo(expectedStandardError, 12);
     expect(snapshot.targetMetrics.methods.simple.marginOfError).toBeCloseTo(1.96 * expectedStandardError, 12);
 
-    const studentToken = await session(3, f.students[0]!.id);
     const teacherToken = await session(2, f.cls.teacherId);
     const { submissionByTaskRoutes } = await import("../student/routes/submissions");
     const { gradingDetailRoutes } = await import("../teacher/routes/grading");
@@ -664,6 +703,32 @@ pgTest("R07 the frozen appendix never counts toward report length and reference-
     const [emptySubmitted] = await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, empty.experiment.id));
     expect((emptySubmitted!.submissionSnapshot as { analysisAppendices: unknown[] }).analysisAppendices).toEqual([]);
 }, 30_000);
+
+pgTest("submission rejects changed sampling execution evidence even when indices still match", async () => {
+    const f = await submittableFixture();
+    const results = f.record.samplingResults as Record<string, Record<string, unknown>>;
+    await application.db.update(schema.experiment).set({
+        samplingResults: {
+            ...results,
+            systematic: {
+                ...results.systematic,
+                randomStart: Number(results.systematic!.randomStart) + 0.01,
+            },
+        },
+    }).where(eq(schema.experiment.id, f.experiment.id));
+    const [forgedRecord] = await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, f.experiment.id));
+
+    const rejected = await submitService.submitStudentExperiment({
+        experimentRecord: forgedRecord!,
+        observedVersion: forgedRecord!.version,
+        taskInfo: f.taskInfo,
+        student: f.student,
+    });
+    expect(rejected).toMatchObject({ ok: false, code: "INVALID_SAMPLING_STORAGE" });
+    const [unchanged] = await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, f.experiment.id));
+    expect(unchanged!.status).toBe("in_progress");
+    expect(unchanged!.submissionSnapshot).toBeNull();
+}, 20_000);
 
 pgTest("F-R1-01 mean planning variance is verified against the current population at stage 2", async () => {
     const f = await fixture();

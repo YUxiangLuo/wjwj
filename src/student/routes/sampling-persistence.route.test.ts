@@ -95,11 +95,22 @@ for (const boundary of ["not-open", "expired"] as const) {
     });
 }
 
-test("sampling action atomically persists its server-generated method result", async () => {
+test("sampling action ignores forged output fields and atomically persists its server-generated method result", async () => {
     const { module, operations } = await load(record());
     const response = await module.samplingActionRoutes.POST!(routeRequest(
         "/api/student/tasks/3/sampling",
-        { method: "simple", params: { sampleSize: 2, seed: 2026 } },
+        {
+            method: "simple",
+            params: {
+                sampleSize: 2,
+                seed: 2026,
+                data: [{ id: "forged" }],
+                indices: [3, 3],
+                inclusionProbabilities: [1, 1],
+                randomStart: -1,
+                layers: [{ name: "forged", sampleCount: 2 }],
+            },
+        },
         { id: "3" },
     ));
 
@@ -115,7 +126,11 @@ test("sampling action atomically persists its server-generated method result", a
         value !== null && typeof value === "object" && (value as { serverGenerated?: boolean }).serverGenerated === true
     )) as Record<string, unknown>;
     expect(storedResult).toMatchObject({ serverGenerated: true, indices: expect.any(Array) });
+    expect(storedResult.indices).toEqual([3, 2]);
     expect(storedResult).not.toHaveProperty("data");
+    expect(storedResult).not.toHaveProperty("inclusionProbabilities");
+    expect(storedResult).not.toHaveProperty("randomStart");
+    expect(storedResult).not.toHaveProperty("layers");
 
     const optimisticQuery = new PgDialect().sqlToQuery(update?.where as SQL);
     expect(optimisticQuery.sql).toContain("= coalesce(");

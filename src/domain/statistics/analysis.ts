@@ -164,6 +164,10 @@ export function buildAnalysisMetrics(params: {
                 ),
             };
         }
+        for (const method of METHODS) {
+            if (methods[method].estimate !== null && !Number.isFinite(methods[method].estimate)) methods[method].estimate = null;
+            if (methods[method].standardError !== null && !Number.isFinite(methods[method].standardError)) methods[method].standardError = null;
+        }
 
         numeric[field] = {
             populationMean: populationStat.mean,

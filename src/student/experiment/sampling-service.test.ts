@@ -18,13 +18,16 @@ test("PPS preserves whitespace column keys and accepts shared numeric text forma
 
 test("stratification preserves exact whitespace column keys", async () => {
     const result = await executeSamplingAction({
-        method: "stratified", rawParams: { stratifyBy: "g ", layers: [{ name: "A", sampleCount: 1 }, { name: "B", sampleCount: 1 }], seed: 2026 },
+        method: "stratified", rawParams: { stratifyBy: "g ", layers: [{ name: "A", sampleCount: 1, ratio: 999 }, { name: "B", sampleCount: 1, ratio: -1 }], seed: 2026 },
         targetSampleSize: 2,
         population: [{ "g ": "A" }, { "g ": "A" }, { "g ": "B" }, { "g ": "B" }],
         fieldMapping: { stratified: ["g "] },
     });
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.result).toMatchObject({ stratifyBy: "g ", sampleCount: 2 });
+    if (result.ok) expect(result.result).toMatchObject({
+        stratifyBy: "g ", sampleCount: 2,
+        layers: [{ name: "A", count: 2, ratio: 50, sampleCount: 1 }, { name: "B", count: 2, ratio: 50, sampleCount: 1 }],
+    });
 });
 
 test("PPS precision failure gives a recovery path without returning a completed sample", async () => {

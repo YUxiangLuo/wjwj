@@ -62,6 +62,7 @@ test("ST-B5 keeps duplicate display labels distinguishable by raw JSON type", ()
     expect(html).toContain("原值：数字 1");
     expect(html).toContain("原始频数");
     expect(html).toContain("33.33%");
+    expect(html).toContain("各类别比例独立四舍五入，显示合计可能不等于 100%；底层计算使用未舍入值");
 });
 
 test("weighted numeric output leaves unimplemented dispersion and quantiles unavailable", () => {

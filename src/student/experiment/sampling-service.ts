@@ -251,7 +251,7 @@ export async function executeSamplingAction(params: {
                     };
                 }
 
-                const ratio = Number.isFinite(Number(input?.ratio)) ? Number(input?.ratio) : 0;
+                const ratio = Number(((groupCount / params.population.length) * 100).toFixed(1));
                 layers.push({ name, count: groupCount, ratio, sampleCount });
                 totalAssigned += sampleCount;
             }

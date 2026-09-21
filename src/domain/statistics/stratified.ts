@@ -93,7 +93,8 @@ export function computeStratifiedValueSe(
         variance += weight * weight * finiteCorrection * layerVariance / layer.sampleCount;
     }
 
-    return Math.sqrt(variance);
+    const standardError = Math.sqrt(variance);
+    return Number.isFinite(standardError) ? standardError : null;
 }
 
 export function computeStratifiedMeanSe(

@@ -136,9 +136,9 @@ test("real worker preserves analysis results, file invalidation, and storage err
         populationPath,
         fieldMapping: { numeric: ["size", "score"], analysisTarget: { kind: "mean", field: "score" } },
         samplingResults: compactSamplingResults({
-            simple: { ...performSimpleSamplingWithIndices(population, 50, createSeededRandom(11)), completed: true, sampleCount: 50 },
-            systematic: { ...performSystematicSampling(population, 50, createSeededRandom(12)), completed: true, sampleCount: 50 },
-            pps: { ...pps, completed: true, sizeField: "size", sampleCount: 50 },
+            simple: { ...performSimpleSamplingWithIndices(population, 50, createSeededRandom(11)), completed: true, serverGenerated: true, seed: 11, sampleCount: 50 },
+            systematic: { ...performSystematicSampling(population, 50, createSeededRandom(12)), completed: true, serverGenerated: true, seed: 12, sampleCount: 50 },
+            pps: { ...pps, completed: true, serverGenerated: true, seed: 10, sizeField: "size", sampleCount: 50 },
         }),
         samplePlan: { confidenceLevel: "95", marginOfError: 2, finalSampleSize: 50 },
         targetUnit: "points",
@@ -151,6 +151,13 @@ test("real worker preserves analysis results, file invalidation, and storage err
         expect(expected.data.target?.unit).toBe("points");
         expect(await service.run(job)).toEqual(expected.data); 
         expect(await service.run(job)).toEqual(expected.data); 
+        expect(await runAnalysisJob({ ...job, samplingResults: JSON.stringify(job.samplingResults) })).toEqual(expected);
+        const systematic = (job.samplingResults as Record<string, Record<string, unknown>>).systematic!;
+        const tampered = await runAnalysisJob({
+            ...job,
+            samplingResults: { ...(job.samplingResults as Record<string, unknown>), systematic: { ...systematic, interval: Number(systematic.interval) + 0.25 } },
+        });
+        expect(tampered).toMatchObject({ ok: false, code: "INVALID_SAMPLING_STORAGE" });
         await Bun.write(file, `size,score\n${population.map(row => `${row.size},${row.score + 100}`).join("\n")}\n`);
         const changed = await service.run(job); 
         expect(changed.numeric.score!.populationMean).toBeCloseTo(expected.data.numeric.score!.populationMean + 100);

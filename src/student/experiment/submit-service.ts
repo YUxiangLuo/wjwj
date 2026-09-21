@@ -16,6 +16,7 @@ import { normalizeSamplePlanData } from "./sample-plan-display";
 import { analysisView, loadAnalysisReferences, parseAnalysisReferences } from "./saved-analysis-service";
 import { parseStoredJson } from "./serialization";
 import { compactSamplingResults, hydrateSamplingResults, INVALID_SAMPLING_STORAGE_CODE, INVALID_SAMPLING_STORAGE_MESSAGE } from "./sampling-storage";
+import { verifySamplingReplay } from "./sampling-replay";
 import { resolveTargetUnit } from "./target-unit";
 import { ExperimentStatus } from "@/domain/experiment/status";
 import {
@@ -182,13 +183,19 @@ export async function submitStudentExperiment(params: {
         parseStoredJson<Record<string, unknown>>(params.experimentRecord.samplePlan),
         populationSize,
     );
+    const storedSamplingResults = parseStoredJson<Record<string, unknown>>(params.experimentRecord.samplingResults);
     let targetMetrics: TargetAnalysisMetrics | null = null;
     if (sourceData) {
         const hydrated = hydrateSamplingResults(
-            parseStoredJson(params.experimentRecord.samplingResults),
+            storedSamplingResults,
             sourceData.designRows,
         );
         if (!hydrated.ok) return fail(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
+        if (!(await verifySamplingReplay({
+            samplingResults: storedSamplingResults,
+            population: sourceData.designRows,
+            fieldMapping: params.taskInfo.fieldMapping,
+        }))) return fail(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
         targetMetrics = buildAnalysisMetrics({
             population: sourceData.designRows,
             fieldMapping: parseTopicFieldMapping(params.taskInfo.fieldMapping),
@@ -198,9 +205,7 @@ export async function submitStudentExperiment(params: {
             targetUnit: resolveTargetUnit(params.taskInfo.fieldMapping, dictionary),
         }).target;
     }
-    const samplingResults = compactSamplingResults(
-        parseStoredJson<Record<string, unknown>>(params.experimentRecord.samplingResults),
-    );
+    const samplingResults = compactSamplingResults(storedSamplingResults);
     const snapshot: SubmissionSnapshot = {
         topicName: params.taskInfo.topicName ?? "未命名实验模板",
         studentName: params.student.name || params.student.studentId,

@@ -33,8 +33,14 @@ export function computeFinitePopulationEquivalentSampleSize(
     if (!Number.isFinite(standardError) || standardError < 0) return null;
     if (standardError === 0 || populationVariance === 0) return populationSize;
 
-    // Normalize before squaring so tiny but valid SE² and S²/N do not both
-    // underflow. This is 1 / ((SE/S)² + 1/N), algebraically the same inversion.
-    const relativeSe = standardError / Math.sqrt(populationVariance);
-    return Math.min(populationSize, 1 / (relativeSe * relativeSe + 1 / populationSize));
+    // Use S/SE rather than SE/S so a large relative SE cannot overflow before
+    // taking its reciprocal: n = (S/SE)² / (1 + (S/SE)²/N).
+    const informationRatio = Math.sqrt(populationVariance) / standardError;
+    if (!Number.isFinite(informationRatio)) return populationSize;
+    const information = informationRatio * informationRatio;
+    // A positive equivalent n smaller than the representable range is
+    // unavailable, not zero units of information.
+    if (information === 0) return null;
+    if (!Number.isFinite(information)) return populationSize;
+    return Math.min(populationSize, information / (1 + information / populationSize));
 }

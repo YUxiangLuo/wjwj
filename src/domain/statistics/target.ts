@@ -61,6 +61,7 @@ export function buildTargetAnalysis(params: {
     if (populationValues.length !== populationSize) return null;
     const populationValue = scaledMean(populationValues)!;
     const populationVar = sampleVariance(populationValues);
+    if (!Number.isFinite(populationValue) || !Number.isFinite(populationVar)) return null;
 
     const simpleRows = (params.samplingResults?.simple?.data ?? []) as Array<Record<string, unknown>>;
     const systematicRows = (params.samplingResults?.systematic?.data ?? []) as Array<Record<string, unknown>>;
@@ -115,8 +116,13 @@ export function buildTargetAnalysis(params: {
     const methods = buildEmptyTargetMethodAnalysis();
     for (const method of METHODS) {
         if (!isCompletedSamplingResult(params.samplingResults?.[method])) continue;
-        const { estimate, standardError, sampleSize } = methodInputs[method];
-        const marginOfError = standardError !== null ? z * standardError : null;
+        const raw = methodInputs[method];
+        const estimate = raw.estimate !== null && Number.isFinite(raw.estimate) ? raw.estimate : null;
+        const standardError = raw.standardError !== null && Number.isFinite(raw.standardError) && raw.standardError >= 0
+            ? raw.standardError : null;
+        const sampleSize = raw.sampleSize;
+        const rawMarginOfError = standardError !== null ? z * standardError : null;
+        const marginOfError = rawMarginOfError !== null && Number.isFinite(rawMarginOfError) ? rawMarginOfError : null;
         const isCensus = sampleSize !== null && sampleSize >= populationSize;
 
         let effectiveSampleSize: number | null = null;
@@ -141,7 +147,10 @@ export function buildTargetAnalysis(params: {
         if (method === "pps" && estimate !== null && standardError === null && !ppsUnavailable) {
             analysis.reliability.reasons = ["PPS 设计标准误无法可靠计算，请检查规模变量与数值精度"];
         }
-        if (estimate !== null && standardError !== null) {
+        if (estimate !== null && standardError !== null && marginOfError === null) {
+            analysis.reliability.reasons = ["正态近似教学半宽超出可靠数值范围"];
+        }
+        if (estimate !== null && standardError !== null && marginOfError !== null) {
             if (isCensus) {
                 analysis.reliability = { status: "census", reasons: ["当前方法覆盖完整虚拟总体"] };
             } else {

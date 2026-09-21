@@ -78,7 +78,7 @@ test("worker rejects forged seeds, indices, layer identity, probabilities and ch
         expect(await runUnivariateJob(jobFor("simple", { ...simple, indices: [indices[0]!, 99] }))).toMatchObject({ ok: false, code: "INVALID_SAMPLE" });
         expect(await runUnivariateJob(jobFor("simple", { ...simple, sampleCount: 1 }))).toMatchObject({ ok: false, code: "INVALID_SAMPLE" });
         // 缺少重演种子 / 非服务器生成结果
-        expect(await runUnivariateJob(jobFor("simple", { ...simple, seed: undefined }))).toMatchObject({ ok: false, code: "INVALID_SAMPLE" });
+        expect(await runUnivariateJob(jobFor("simple", { ...simple, seed: undefined }))).toMatchObject({ ok: false, code: "REPLAY_MISMATCH" });
         expect(await runUnivariateJob(jobFor("simple", { ...simple, serverGenerated: false }))).toMatchObject({ ok: false, code: "INVALID_SAMPLE" });
 
         const stratified = await replay("stratified");
@@ -93,6 +93,15 @@ test("worker rejects forged seeds, indices, layer identity, probabilities and ch
         const pps = await replay("pps");
         expect((await runUnivariateJob(jobFor("pps", pps))).ok).toBe(true);
         expect(await runUnivariateJob(jobFor("pps", { ...pps, inclusionProbabilities: (pps.inclusionProbabilities as number[]).map(() => 1) })))
+            .toMatchObject({ ok: false, code: "REPLAY_MISMATCH" });
+        expect(await runUnivariateJob(jobFor("pps", { ...pps, randomStart: Number(pps.randomStart) + 0.01 })))
+            .toMatchObject({ ok: false, code: "REPLAY_MISMATCH" });
+
+        const systematic = await replay("systematic");
+        expect((await runUnivariateJob(jobFor("systematic", systematic))).ok).toBe(true);
+        expect(await runUnivariateJob(jobFor("systematic", { ...systematic, interval: Number(systematic.interval) + 0.25 })))
+            .toMatchObject({ ok: false, code: "REPLAY_MISMATCH" });
+        expect(await runUnivariateJob(jobFor("systematic", { ...systematic, randomStart: Number(systematic.randomStart) + 0.01 })))
             .toMatchObject({ ok: false, code: "REPLAY_MISMATCH" });
 
         // 同一路径换字节：字典 source 不再对应当前来源，必须在重演前拒绝

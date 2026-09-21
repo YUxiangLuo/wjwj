@@ -58,11 +58,18 @@ export function estimateSimpleMean(rows: Array<Record<string, unknown>>, field: 
 
 export function sampleVariance(values: number[]) {
     if (values.length < 2) return 0;
-    const scale = values.reduce((maximum, value) => Math.max(maximum, Math.abs(value)), 0);
+    const minimum = values.reduce((result, value) => Math.min(result, value), Infinity);
+    const maximum = values.reduce((result, value) => Math.max(result, value), -Infinity);
+    // Midrange centering avoids losing small within-field differences merely
+    // because every value shares a large offset. Halving first avoids overflow
+    // when finite endpoints have the same sign near Number.MAX_VALUE.
+    const center = minimum / 2 + maximum / 2;
+    const deviations = values.map(value => value - center);
+    const scale = deviations.reduce((result, value) => Math.max(result, Math.abs(value)), 0);
     if (scale === 0) return 0;
-    const normalizedMean = scaledMean(values)! / scale;
+    const normalizedMean = scaledMean(deviations)! / scale;
     const squares = new StableSum();
-    for (const value of values) squares.add((value / scale - normalizedMean) ** 2);
+    for (const deviation of deviations) squares.add((deviation / scale - normalizedMean) ** 2);
     const standardDeviation = Math.sqrt(Math.max(0, squares.value) / (values.length - 1)) * scale;
     return standardDeviation * standardDeviation;
 }
