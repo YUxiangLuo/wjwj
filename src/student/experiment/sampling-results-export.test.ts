@@ -19,6 +19,18 @@ test("legacy PPS export keeps working when no probability vector is stored", () 
     expect(result?.csv).toBe("\uFEFFid\n1");
 });
 
+test("PPS export uses an auditable symbolic weight instead of Infinity", () => {
+    const result = buildSamplingResultsCsvExport({
+        pps: {
+            data: [{ id: 1, size: 1e-320 }],
+            inclusionProbabilities: [5e-321],
+        },
+    }, "pps");
+    expect(result?.csv).toContain("5e-321,1/5e-321");
+    expect(result?.csv).not.toContain("Infinity");
+    expect(result?.csv).not.toContain("NaN");
+});
+
 for (const method of ["simple", "systematic", "pps", "stratified", "all"] as const) {
     test(`${method} CSV carries one UTF-8 BOM and preserves Chinese and every source column`, () => {
         const row = { 编号: "001", 城市: "上海", 备注: '含逗号,引号"与\n换行', 未映射字段: "也保留" };

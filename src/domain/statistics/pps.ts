@@ -10,6 +10,12 @@ export interface PpsStandardErrorContext {
     replicateCount: number;
 }
 
+/** Keep the exact 1/π meaning visible even when its numeric reciprocal overflows. */
+export function inverseProbabilityWeightForDisplay(probability: number): number | string {
+    const weight = 1 / probability;
+    return Number.isFinite(weight) ? weight : `1/${probability}`;
+}
+
 const PPS_CONTEXT_CACHE_MAX_ENTRIES_PER_POPULATION = 16;
 
 const ppsStandardErrorContextCache = new WeakMap<
@@ -108,8 +114,17 @@ export function estimateWeightedDistribution(
         return {};
     }
 
-    const counts = createSafeRecord<number>();
-    let totalWeight = 0;
+    const validProbabilities = inclusionProbabilities
+        .map(Number)
+        .filter(probability => Number.isFinite(probability) && probability > 0);
+    if (validProbabilities.length === 0) return {};
+
+    const minimumProbability = validProbabilities.reduce(
+        (minimum, probability) => Math.min(minimum, probability),
+        Infinity,
+    );
+    const counts = createSafeRecord<StableSum>();
+    const totalWeight = new StableSum();
 
     for (let index = 0; index < rows.length; index += 1) {
         const category = toTrimmedCategory(rows[index]?.[field]) ?? "（缺失值）";
@@ -117,15 +132,17 @@ export function estimateWeightedDistribution(
         if (!Number.isFinite(inclusionProbability) || inclusionProbability <= 0) {
             continue;
         }
-        const weight = 1 / inclusionProbability;
-        counts[category] = (counts[category] || 0) + weight;
-        totalWeight += weight;
+        // min(π)/π is proportional to 1/π, but cannot overflow when a valid
+        // inclusion probability is too small for its reciprocal to be finite.
+        const weight = minimumProbability / inclusionProbability;
+        (counts[category] ??= new StableSum()).add(weight);
+        totalWeight.add(weight);
     }
 
-    if (totalWeight <= 0) return {};
+    if (totalWeight.value <= 0) return {};
 
     return Object.fromEntries(
-        Object.entries(counts).map(([category, weightedCount]) => [category, weightedCount / totalWeight * 100])
+        Object.entries(counts).map(([category, weightedCount]) => [category, weightedCount.value / totalWeight.value * 100])
     );
 }
 

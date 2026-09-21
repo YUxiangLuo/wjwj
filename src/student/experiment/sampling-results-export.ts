@@ -1,4 +1,5 @@
 import { collectCsvHeaders, recordsToCsv, reserveCsvMetadataHeader } from "../../lib/csv";
+import { inverseProbabilityWeightForDisplay } from "../../domain/statistics/pps";
 
 const SAMPLING_EXPORT_TYPES = ["simple", "systematic", "pps", "stratified", "all"] as const;
 
@@ -32,7 +33,7 @@ export function buildSamplingResultsCsvExport(value: unknown, type: SamplingExpo
                 ? {
                     ...row,
                     [inclusionProbabilityHeader]: inclusionProbability,
-                    [designWeightHeader]: 1 / inclusionProbability,
+                    [designWeightHeader]: inverseProbabilityWeightForDisplay(inclusionProbability),
                 }
                 : row;
         })

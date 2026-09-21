@@ -28,7 +28,15 @@ export function calculateDesignWeights(
         if (design.inclusionProbabilities.some((probability) => !Number.isFinite(probability) || probability <= 0 || probability > 1)) {
             throw new Error("PPS 入样概率必须为 (0,1] 内的有限正数");
         }
-        weights = design.inclusionProbabilities.map((probability) => 1 / probability);
+        const minimumProbability = design.inclusionProbabilities.reduce(
+            (minimum, probability) => Math.min(minimum, probability),
+            Infinity,
+        );
+        // Ratio estimates are unchanged by a common positive weight factor.
+        // Retain literal 1/π for ordinary inputs; normalize by min(π) only when
+        // an otherwise valid reciprocal would overflow to Infinity.
+        const scale = Number.isFinite(1 / minimumProbability) ? 1 : minimumProbability;
+        weights = design.inclusionProbabilities.map((probability) => scale / probability);
     } else {
         const layerMap = new Map<string, { count: number; sampleCount: number }>();
         for (const layer of design.layers) {

@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { buildAnalysisMetrics } from "./analysis";
-import { buildPpsStandardErrorContext } from "./pps";
+import { buildPpsStandardErrorContext, estimateWeightedDistribution } from "./pps";
 import { computeSystematicExactMeanSe } from "./systematic";
 import { createSeededRandom, performSystematicSampling, preparePPSSampling, drawPreparedPPSSample, performPPSSampling } from "./sampling";
 import { computeFinitePopulationEquivalentSampleSize } from "./srs";
@@ -172,6 +172,34 @@ test("PPS weighted products preserve scale when an extremely small size accompan
         expect(target.effectiveSampleSize!).toBeCloseTo(12 / 7, 10);
         expect(target.reliability.status).toBe("caution");
     }
+});
+
+test("PPS categorical weights stay finite for a selected unit with an extremely small inclusion probability", () => {
+    const population = [
+        { size: 1e-320, category: "rare" },
+        { size: 1, category: "common-a" },
+        { size: 1, category: "common-b" },
+    ];
+    const rareSample = performPPSSampling(population, "size", 1, () => 0);
+    expect(rareSample.indices).toEqual([0]);
+    expect(rareSample.inclusionProbabilities[0]).toBeGreaterThan(0);
+
+    const distribution = estimateWeightedDistribution(
+        rareSample.data,
+        "category",
+        rareSample.inclusionProbabilities,
+    );
+    expect(distribution).toEqual({ rare: 100 });
+    expect(Object.values(distribution).every(Number.isFinite)).toBe(true);
+
+    const metrics = buildAnalysisMetrics({
+        population,
+        fieldMapping: { numeric: ["size"], others: ["category"] },
+        samplingResults: {
+            pps: { ...rareSample, completed: true, sampleCount: 1, sizeField: "size" },
+        },
+    });
+    expect(metrics.categorical.category?.methods.pps).toEqual({ rare: 100 });
 });
 
 test("PPS rejects an unrepresentable weighted field without hiding valid fields", () => {

@@ -46,3 +46,15 @@ test("single-method preview also sanitizes small results", () => {
         data: [{ id: 5 }],
     })).toEqual({ completed: true, sampleCount: 1, data: [{ id: 5 }] });
 });
+
+test("PPS preview never emits Infinity for a representable tiny inclusion probability", () => {
+    const result = previewSamplingMethodResult({
+        completed: true,
+        sampleCount: 1,
+        sizeField: "size",
+        inclusionProbabilities: [5e-321],
+        data: [{ id: 1, size: 1e-320 }],
+    }) as Record<string, unknown>;
+    expect((result.probabilityPreview as any[])[0]?.designWeight).toBe("1/5e-321");
+    expect(JSON.stringify(result)).not.toContain("Infinity");
+});

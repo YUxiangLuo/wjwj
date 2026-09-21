@@ -1,3 +1,5 @@
+import { inverseProbabilityWeightForDisplay } from "../../domain/statistics/pps";
+
 export const SAMPLING_PREVIEW_ROWS = 50;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -28,7 +30,7 @@ export function previewSamplingMethodResult(value: unknown, limit = SAMPLING_PRE
                 samplePosition: index + 1,
                 sizeValue,
                 inclusionProbability: probability,
-                designWeight: 1 / probability,
+                designWeight: inverseProbabilityWeightForDisplay(probability),
             }];
         })
         : [];

@@ -2,7 +2,9 @@ import { Info } from "lucide-react";
 import type { SamplingResultsData } from "@/domain/experiment/types";
 
 function formatNumber(value: number, digits = 4) {
-    return Number.isFinite(value) ? value.toFixed(digits).replace(/\.?0+$/, "") : "—";
+    if (!Number.isFinite(value)) return "—";
+    if (value !== 0 && Math.abs(value) < 10 ** -digits) return value.toExponential(3);
+    return value.toFixed(digits).replace(/\.?0+$/, "");
 }
 
 export function PpsProbabilityExplanation({
@@ -48,7 +50,7 @@ export function PpsProbabilityExplanation({
                                     <td className="px-3 py-2">{row.samplePosition}</td>
                                     <td className="px-3 py-2 font-mono">{formatNumber(row.sizeValue, 2)}</td>
                                     <td className="px-3 py-2 font-mono">{formatNumber(row.inclusionProbability)}</td>
-                                    <td className="px-3 py-2 font-mono">{formatNumber(row.designWeight)}</td>
+                                    <td className="px-3 py-2 font-mono">{typeof row.designWeight === "number" ? formatNumber(row.designWeight) : row.designWeight}</td>
                                 </tr>
                             ))}
                         </tbody>

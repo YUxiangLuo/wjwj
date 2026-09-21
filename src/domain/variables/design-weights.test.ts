@@ -8,6 +8,17 @@ test("PPS uses nonuniform inverse inclusion probabilities", () => {
         .toEqual([4, 2, 1]);
 });
 
+test("PPS normalizes only when a valid inverse probability would overflow", () => {
+    const weights = calculateDesignWeights(
+        { method: "pps", inclusionProbabilities: [5e-321, 0.5] },
+        [{}, {}],
+        [0, 1],
+    );
+    expect(weights[0]).toBe(1);
+    expect(weights[1]).toBeGreaterThan(0);
+    expect(weights.every(Number.isFinite)).toBe(true);
+});
+
 test("unequal stratification uses Nh/nh and covers every layer", () => {
     const rows = [{ g: "A" }, { g: "A" }, { g: "A" }, { g: "B" }];
     expect(calculateDesignWeights({ method: "stratified", stratifyBy: "g", layers: [

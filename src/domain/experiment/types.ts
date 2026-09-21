@@ -57,7 +57,7 @@ export interface SamplingResultsData {
             samplePosition: number;
             sizeValue: number;
             inclusionProbability: number;
-            designWeight: number;
+            designWeight: number | string;
         }>;
         indices?: number[];
         data?: unknown[];
