@@ -383,6 +383,26 @@ pgTest("R04 submitted details read the frozen snapshot after dictionary and anal
     const saved = await service.createSavedAnalysis(f.students[0]!.id, f.cls.id, f.task.id, f.body(`r04-${crypto.randomUUID()}`));
     const [row] = await application.db.select().from(schema.savedAnalysis).where(eq(schema.savedAnalysis.id, saved.id));
     const fileHash = new Bun.CryptoHasher("sha256").update(await Bun.file(`${process.cwd()}${f.storagePath}`).arrayBuffer()).digest("hex");
+    const descriptiveBaselines = [
+        {
+            id: saved.id + 1, config: { question: "ST-B4 描述统计", method: "simple", field: "score", weighted: false },
+            variable: { field: "score", label: "得分", unit: "分", kind: "continuous", categories: [], missing: [-1] },
+            result: { kind: "numeric", weighted: false, sampleCount: 5, validCount: 4, missingCount: 1, mean: 8, sampleStandardDeviation: Math.sqrt(90), min: 0, max: 21, q1: 1.5, median: 5.5, q3: 12 },
+            source: fileHash, dictionaryRevision: 1, samplingGeneration: 1, algorithmVersion: "univariate-design-v1", createdAt: "2026-09-21T00:00:00.000Z", stale: false, evidence: { fixture: "ST-B4" },
+        },
+        {
+            id: saved.id + 2, config: { question: "ST-B5 类型化类别", method: "simple", field: "code", weighted: false },
+            variable: { field: "code", label: "编码", unit: "", kind: "nominal", categories: ["01", "1", 1, false, 0].map(value => ({ value, label: String(value) })), missing: [null] },
+            result: { kind: "categorical", weighted: false, sampleCount: 7, validCount: 6, missingCount: 1, categories: [
+                { value: "01", label: "01", count: 2, proportion: 2 / 6 },
+                { value: "1", label: "1", count: 1, proportion: 1 / 6 },
+                { value: 1, label: "1", count: 1, proportion: 1 / 6 },
+                { value: false, label: "false", count: 1, proportion: 1 / 6 },
+                { value: 0, label: "0", count: 1, proportion: 1 / 6 },
+            ] },
+            source: fileHash, dictionaryRevision: 1, samplingGeneration: 1, algorithmVersion: "univariate-design-v1", createdAt: "2026-09-21T00:00:00.000Z", stale: false, evidence: { fixture: "ST-B5" },
+        },
+    ];
     const snapshot = {
         topicName: "冻结模板", studentName: "学生0", populationSize: 5,
         questionnaire: { title: "冻结问卷", welcomeText: "w", endingText: "e", questions: [] },
@@ -392,7 +412,7 @@ pgTest("R04 submitted details read the frozen snapshot after dictionary and anal
         weightConfig: { questionnaire: 30, process: 30, report: 40 },
         samplingPolicy: { version: 1, methods: { simple: "required", systematic: "optional", pps: "disabled", stratified: "optional" } },
         variableDictionary: f.dictionary,
-        analysisAppendices: [{ ...service.analysisView(row!, f.experiment, f.dictionary), evidence: row!.evidence, stale: false }],
+        analysisAppendices: [{ ...service.analysisView(row!, f.experiment, f.dictionary), evidence: row!.evidence, stale: false }, ...descriptiveBaselines],
         className: "分析班级", teacherName: "分析教师", populationFileSha256: fileHash, parserVersion: "raw-values-v1", samplingAlgorithmVersion: "sampling-v2",
     };
     await application.db.update(schema.experiment).set({
@@ -412,14 +432,17 @@ pgTest("R04 submitted details read the frozen snapshot after dictionary and anal
     const studentResponse = await submissionByTaskRoutes.GET!(routeRequest("GET", { id: String(f.task.id) }, { cookie: `student_session=${studentToken}` }));
     expect(studentResponse.status).toBe(200);
     const studentBody = await studentResponse.json() as { data: { snapshot: { analysisAppendices: Array<{ id: number; result: unknown; variable: { label: string } }> } } };
-    expect(studentBody.data.snapshot.analysisAppendices.map(item => item.id)).toEqual([saved.id]);
+    expect(studentBody.data.snapshot.analysisAppendices.map(item => item.id)).toEqual([saved.id, saved.id + 1, saved.id + 2]);
     expect(studentBody.data.snapshot.analysisAppendices[0]!.result).toEqual(saved.result);
     expect(studentBody.data.snapshot.analysisAppendices[0]!.variable.label).toBe("Value");
+    expect(studentBody.data.snapshot.analysisAppendices.slice(1)).toEqual(descriptiveBaselines);
+    const typedValues = (studentBody.data.snapshot.analysisAppendices[2]!.result as { categories: Array<{ value: unknown }> }).categories.map(category => [typeof category.value, category.value]);
+    expect(typedValues).toEqual([["string", "01"], ["string", "1"], ["number", 1], ["boolean", false], ["number", 0]]);
 
     const gradingResponse = await withTeacherAuth(gradingDetailRoutes).GET!(routeRequest("GET", { id: String(f.experiment.id) }, { cookie: `teacher_session=${teacherToken}` }));
     expect(gradingResponse.status).toBe(200);
     const gradingBody = await gradingResponse.json() as { data: { analysisAppendices: Array<{ id: number }> } };
-    expect(gradingBody.data.analysisAppendices.map(item => item.id)).toEqual([saved.id]);
+    expect(gradingBody.data.analysisAppendices).toEqual(studentBody.data.snapshot.analysisAppendices);
 
     // 总体文件缺失：冻结样本无法恢复，明确拒绝而不是用当前字典补齐
     await Bun.file(`${process.cwd()}${f.storagePath}`).delete();

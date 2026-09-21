@@ -2,18 +2,26 @@ import type { SavedAnalysisView } from "@/domain/variables/types";
 
 const value = (input: number | null, digits = 4) => input == null ? "—" : input.toLocaleString("zh-CN", { maximumFractionDigits: digits });
 
+function rawCategoryValue(input: string | number | boolean | null) {
+    if (typeof input === "string") return `文本“${input}”`;
+    if (typeof input === "number") return `数字 ${input}`;
+    if (typeof input === "boolean") return `布尔 ${input}`;
+    return "空值 null";
+}
+
 export function AnalysisResultTable({ record }: { record: SavedAnalysisView }) {
     const result = record.result;
-    const caption = <caption className="mb-3 text-left text-meta text-muted-foreground">{result.weighted ? "设计加权比率点估计（不提供标准误、置信区间或加权分位数）" : "未加权样本描述；分位数采用 R7，SD 不是标准误"} · 有效 {result.validCount} · 缺失 {result.missingCount}{record.variable.unit && ` · 单位：${record.variable.unit}`}</caption>;
+    const caption = <caption className="mb-3 text-left text-meta text-muted-foreground">{result.weighted ? "设计加权比率点估计（不提供标准误、置信区间或加权分位数）" : "未加权样本描述；分位数采用 R7，SD 不是标准误"} · 样本 {result.sampleCount} · 有效 {result.validCount} · 缺失 {result.missingCount}{record.variable.unit && ` · 单位：${record.variable.unit}`}</caption>;
     if (result.kind === "numeric") {
         const rows = [
-            ["有效数", result.validCount], ["缺失数", result.missingCount], ["均值", result.mean],
+            ["样本数", result.sampleCount], ["有效数", result.validCount], ["缺失数", result.missingCount], ["均值", result.mean],
             ["样本标准差（SD）", result.sampleStandardDeviation], ["最小值", result.min],
             ["Q1（R7）", result.q1], ["中位数（R7）", result.median], ["Q3（R7）", result.q3], ["最大值", result.max],
         ] as const;
         return <table className="w-full text-label">{caption}<tbody>{rows.map(([label, item]) => <tr className="border-b border-border" key={label}><th className="p-2 text-left font-medium">{label}</th><td className="p-2 text-right tabular-nums">{value(item)}</td></tr>)}</tbody></table>;
     }
-    return <table className="w-full text-label">{caption}<thead><tr className="border-b border-border"><th className="p-2 text-left">类别</th><th className="p-2 text-right">原始频数</th><th className="p-2 text-right">{result.weighted ? "加权比例" : "样本比例"}</th></tr></thead><tbody>{result.categories.map((item, index) => <tr className="border-b border-border" key={`${String(item.value)}-${index}`}><td className="p-2">{item.label}</td><td className="p-2 text-right tabular-nums">{item.count}</td><td className="p-2 text-right tabular-nums">{item.proportion == null ? "—" : `${value(item.proportion * 100, 2)}%`}</td></tr>)}</tbody></table>;
+    const duplicateLabels = new Set(result.categories.filter((item, index, categories) => categories.some((other, otherIndex) => otherIndex !== index && other.label === item.label)).map(item => item.label));
+    return <table className="w-full text-label">{caption}<thead><tr className="border-b border-border"><th className="p-2 text-left">类别</th><th className="p-2 text-right">原始频数</th><th className="p-2 text-right">{result.weighted ? "加权比例" : "样本比例"}</th></tr></thead><tbody>{result.categories.map((item, index) => <tr className="border-b border-border" key={`${String(item.value)}-${index}`}><td className="p-2">{item.label}{duplicateLabels.has(item.label) && <span className="ml-1 text-meta text-muted-foreground">（原值：{rawCategoryValue(item.value)}）</span>}</td><td className="p-2 text-right tabular-nums">{item.count}</td><td className="p-2 text-right tabular-nums">{item.proportion == null ? "—" : `${value(item.proportion * 100, 2)}%`}</td></tr>)}</tbody></table>;
 }
 
 export function AnalysisAppendices({ records }: { records: SavedAnalysisView[] }) {
