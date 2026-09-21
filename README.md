@@ -37,13 +37,17 @@ bun run test:unit          # 日常回归；按文件调试用 bun test --isolat
 bun run verify             # 类型、样式、文档、单测、构建、迁移与依赖门禁
 bun run test:db            # 需独立、已迁移、可丢弃的 TEST_DATABASE_URL
 bun run test:teaching      # 浏览器教学闭环；需测试角色可创建临时库
+bun run ci:local           # 本地推送门禁；自动创建并删除一次性测试库
+bun run ci:local:full      # 发布前完整门禁；额外执行随机顺序和浏览器闭环
 ```
 
 `verify` 不代替真实数据库测试和浏览器验收。样式修改运行 `bun run check:styles`；依赖变更同时运行 `bun audit` 与 `bun run audit:applicable`。测试库准备见 [DATABASE.md](DATABASE.md)。
 
 首次运行浏览器测试先执行 `bun node_modules/agent-browser/bin/agent-browser.js install`（Linux 可加 `--with-deps`）。教学测试自动创建并删除临时库和存储，产物在 `test-results/teaching-flow/`。
 
-测试保留统计边界、权限与会话、事务并发、文件安全、草稿/提交恢复及关键无障碍行为；普通展示、文案和演示数据快照不单独锁定。端到端测试负责教学闭环，不逐页重复同一规则。PR 执行 `verify`、真实数据库和 seed 校验；nightly 执行教学闭环和随机顺序单测，后者也可用 `bun run test:unit:random` 本地运行。
+本项目不使用 GitHub Actions。执行 `bun run hooks:install` 可启用仓库内的 `pre-push` hook，在每次推送前自动运行 `ci:local`；克隆后需安装一次。`TEST_DATABASE_URL` 仅作为创建临时库的基准连接，其角色须有 `CREATE DATABASE` 权限，脚本不会迁移、清空或写入该基准库。发布前另行运行 `ci:local:full`。
+
+测试保留统计边界、权限与会话、事务并发、文件安全、草稿/提交恢复及关键无障碍行为；普通展示、文案和演示数据快照不单独锁定。端到端测试负责教学闭环，不逐页重复同一规则。
 
 ## 架构与文档
 

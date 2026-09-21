@@ -25,6 +25,16 @@ bun run test:db
 
 `test:db` 不回退到应用库。共享开发机连接耗尽时先清理闲置进程；提高 PostgreSQL `max_connections` 前评估内存与重启窗口。
 
+本地 CI 使用 `TEST_DATABASE_URL` 的角色创建随机命名的一次性数据库，并在结束时删除；不会写入连接串中指定的基准数据库：
+
+```sh
+export TEST_DATABASE_URL='postgresql://user:password@127.0.0.1:5432/postgres'
+bun run ci:local          # 原 push/PR 阻断门禁
+bun run ci:local:full     # 再执行随机顺序测试和浏览器教学闭环
+```
+
+该角色必须拥有 `CREATE DATABASE` 权限。异常中断若来不及清理，可人工删除 `wj_local_ci_` 或 `wj_browser_` 前缀的临时数据库；不要按前缀批量删除未确认归属的库。
+
 ## 危险操作与存储
 
 | 命令 | 影响 |

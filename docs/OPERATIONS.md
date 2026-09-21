@@ -1,6 +1,6 @@
 # 运行与部署
 
-启动见 [README](../README.md)，数据库恢复见 [DATABASE.md](../DATABASE.md)，安全规则见 [SECURITY.md](../SECURITY.md)。Bun 自动加载 `.env`；使用与项目和 CI 一致的 Bun 1.4.0。
+启动见 [README](../README.md)，数据库恢复见 [DATABASE.md](../DATABASE.md)，安全规则见 [SECURITY.md](../SECURITY.md)。Bun 自动加载 `.env`；本地 CI 固定使用 Bun 1.4.0。
 
 ## 关键环境变量
 
@@ -27,7 +27,7 @@
 ## 发布检查
 
 1. 确认没有 `DEMO_MODE=1`，并已演练数据库与 `storage/` 的配套恢复。
-2. 运行 `bun run verify`、`bun run test:db` 和 `bun run test:teaching`。
+2. 运行 `bun run ci:local:full`；数据库角色与浏览器前置条件见 [README](../README.md)。
 3. 用 `bun run start` 启动；不要用未构建的生产模式上课。
 4. 由反向代理终止 TLS；仅在全部流量强制 HTTPS 后开启 HSTS。仅在代理可信且应用不接受直连时启用 `TRUST_PROXY=1`；代理超时须允许服务端 30 秒期限后的错误响应返回。
 5. 验证三个入口、深链、总体/附件下载和登录—抽样—提交—批改闭环。

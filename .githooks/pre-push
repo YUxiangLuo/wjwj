@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+root=$(git rev-parse --show-toplevel)
+cd "$root"
+
+if [ -x node_modules/.bin/bun ]; then
+    exec node_modules/.bin/bun run ci:local
+fi
+exec bun run ci:local
