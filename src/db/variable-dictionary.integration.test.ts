@@ -34,7 +34,7 @@ beforeAll(async () => {
 
 afterEach(async () => {
     if (!required) return;
-    for (const step of cleanup.reverse()) await step().catch(() => undefined);
+    for (const step of cleanup) await step().catch(() => undefined);
     cleanup.length = 0;
 });
 afterAll(async () => { if (required) { await application?.closeDatabase(); await raw?.close(); } });
@@ -199,9 +199,9 @@ pgTest("D05 copying a topic validates and detaches the dictionary from later edi
     const copy = await contentService.copyTopicWithResources({ teacherId: f.teacher.id, topicId: f.topic.id });
     expect(copy.ok).toBe(true);
     if (!copy.ok) return;
-    cleanup.push(
-        async () => { await application.db.delete(schema.topic).where(eq(schema.topic.id, copy.id)); },
+    cleanup.unshift(
         async () => { const row = (await application.db.select().from(schema.topic).where(eq(schema.topic.id, copy.id)))[0]; if (row?.excelFilePath) await Bun.file(`${process.cwd()}${row.excelFilePath}`).delete(); },
+        async () => { await application.db.delete(schema.topic).where(eq(schema.topic.id, copy.id)); },
     );
     const copied = (await application.db.select().from(schema.topic).where(eq(schema.topic.id, copy.id)))[0]!;
     const original = await f.readTopic();
