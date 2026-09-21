@@ -13,6 +13,7 @@ import {
 import { parseStoredJson } from "../experiment/serialization";
 import { error, getPositiveRouteId, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
+import type { TargetAnalysisMetrics } from "../../domain/experiment/analysis-types";
 import { getStudentTaskAccessError } from "../experiment/task-access";
 import { requireAuth } from "./auth";
 import { resolveSamplingPolicy } from "../../lib/sampling-policy";
@@ -85,6 +86,7 @@ const submissionByTaskRoutes: RouteDefinition = {
             samplingPolicy?: unknown;
             populationFileSha256?: string | null;
             analysisAppendices?: unknown[];
+            targetMetrics?: TargetAnalysisMetrics | null;
         }>(row.submissionSnapshot);
         const storedSamplingResults = snapshot?.samplingResults ?? parseStoredJson(row.samplingResults);
         const inspection = inspectSamplingResultsStorage(storedSamplingResults);
@@ -111,6 +113,7 @@ const submissionByTaskRoutes: RouteDefinition = {
             samplingPolicy: resolveSamplingPolicy(snapshot?.samplingPolicy ?? row.samplingPolicy),
             reportContent: snapshot?.reportContent ?? row.reportContent ?? "",
             analysisAppendices: snapshot?.analysisAppendices ?? [],
+            targetMetrics: snapshot?.targetMetrics ?? null,
         };
         return json({
             id: row.id,

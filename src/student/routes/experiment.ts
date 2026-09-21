@@ -50,6 +50,7 @@ import { getOrCreateStudentExperiment } from "../experiment/workflow";
 import { requireAuth } from "./auth";
 import { AnalysisConflict, listSavedAnalyses, loadAnalysisReferences, parseAnalysisReferences } from "../experiment/saved-analysis-service";
 import { readVariableSource } from "../../server/variable-source";
+import { resolveTargetUnit } from "../experiment/target-unit";
 
 function getTaskId(req: Request) {
     return getPositiveRouteId(req);
@@ -557,6 +558,7 @@ const analysisMetricsRoutes: RouteDefinition = {
                 samplingResults: record.samplingResults,
                 samplePlan: record.samplePlan,
                 topicName: taskInfo.topicName,
+                targetUnit: resolveTargetUnit(taskInfo.fieldMapping, taskInfo.variableDictionary),
             };
             // Sampling writes intentionally keep the stage version. Include the
             // actual inputs as well as ownership/version in the deduplication key.

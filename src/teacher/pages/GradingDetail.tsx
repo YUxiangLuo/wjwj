@@ -20,6 +20,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { formatDateTimeDisplay } from "@/utils/format";
 import { teacherApi, teacherResourceUrl, type SubmissionDetail } from "../api-client";
 import { AnalysisAppendices } from "@/components/AnalysisAppendices";
+import { TargetMetricsPanel } from "@/student/components/TargetMetricsPanel";
 import { clearTeacherDraft, readTeacherDraft, useTeacherId, writeTeacherDraft } from "../teacher-draft";
 
 interface GradingDraft {
@@ -242,7 +243,7 @@ export function GradingDetail() {
                                 ) : <p className="mt-3 text-label text-muted-foreground">暂无执行记录（旧提交不会补记历史尝试）。</p>}
                             </div>
                         </TabsContent>
-                        <TabsContent value="report" className="mt-4 rounded-surface border border-border p-5"><RichTextContent html={data.reportContent} /><AnalysisAppendices records={data.analysisAppendices ?? []} /></TabsContent>
+                        <TabsContent value="report" className="mt-4 rounded-surface border border-border p-5"><RichTextContent html={data.reportContent} />{data.targetMetrics && <div className="mt-6"><TargetMetricsPanel target={data.targetMetrics} /></div>}<AnalysisAppendices records={data.analysisAppendices ?? []} /></TabsContent>
                     </Tabs>
                 </CardContent>
             </Card>

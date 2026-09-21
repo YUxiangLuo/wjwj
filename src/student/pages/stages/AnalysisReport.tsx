@@ -712,8 +712,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             <p className="text-meta text-muted-foreground">{target.contract.contract.researchQuestion}</p>
                             {completedAnalysisMethods.map(method => <div key={method} className="border-t border-primary-border pt-3 text-label">
                                 <p className="font-medium">{METHOD_META[method].label}</p>
-                                <p className="mt-1 tabular-nums">估计 {formatTargetEstimate(target.methods[method].estimate, target.contract.contract.target.kind)}</p>
-                                <p className="mt-1 text-meta text-muted-foreground">教学半宽 {formatTargetMargin(target.methods[method].marginOfError, target.contract.contract.target.kind)}</p>
+                                <p className="mt-1 tabular-nums">估计 {formatTargetEstimate(target.methods[method].estimate, target.contract.contract.target.kind, target.unit)}</p>
+                                <p className="mt-1 text-meta text-muted-foreground">教学半宽 {formatTargetMargin(target.methods[method].marginOfError, target.contract.contract.target.kind, target.unit)}</p>
                             </div>)}
                             <Button type="button" variant="outline" onClick={() => setWorkspace("overview")}>查看完整结果与条件</Button>
                         </section>}

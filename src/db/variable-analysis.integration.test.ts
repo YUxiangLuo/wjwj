@@ -594,10 +594,44 @@ pgTest("R07 the frozen appendix never counts toward report length and reference-
     const record = await reload();
     expect(await submitService.submitStudentExperiment({ experimentRecord: record, observedVersion: record.version, taskInfo: f.taskInfo, student: f.student })).toMatchObject({ ok: true });
     const [submitted] = await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, f.experiment.id));
-    const snapshot = submitted!.submissionSnapshot as { reportContent: string; analysisAppendices: Array<{ id: number; evidence: unknown }> };
+    const snapshot = submitted!.submissionSnapshot as {
+        reportContent: string;
+        analysisAppendices: Array<{ id: number; evidence: unknown }>;
+        targetMetrics: {
+            confidenceLevel: string;
+            unit: string;
+            populationValue: number;
+            methods: { simple: { estimate: number; standardError: number; marginOfError: number; sampleSize: number } };
+        };
+    };
     expect(snapshot.reportContent).toBe(`<p>${"字".repeat(100)}</p>`);
     expect(snapshot.analysisAppendices.map(item => item.id)).toEqual([f.savedAnalysisId]);
     expect(JSON.stringify(snapshot.analysisAppendices[0]!.evidence)).toContain("长附录");
+    expect(snapshot.targetMetrics.unit).toBe("points");
+    expect(snapshot.targetMetrics.confidenceLevel).toBe("95");
+    expect(snapshot.targetMetrics.populationValue).toBe(30);
+    expect(snapshot.targetMetrics.methods.simple.sampleSize).toBe(4);
+    const sampledValues = (f.record.samplingResults as { simple: { indices: number[] } }).simple.indices.map(index => [10, 20, 30, 40, 50][index]!);
+    const expectedMean = sampledValues.reduce((sum, value) => sum + value, 0) / sampledValues.length;
+    // 教学系统拥有完整虚拟总体，因此设计 SE 使用已知总体 S²=250，而不是样本方差估计。
+    const expectedStandardError = Math.sqrt((1 - sampledValues.length / 5) * 250 / sampledValues.length);
+    expect(snapshot.targetMetrics.methods.simple.estimate).toBeCloseTo(expectedMean, 12);
+    expect(snapshot.targetMetrics.methods.simple.standardError).toBeCloseTo(expectedStandardError, 12);
+    expect(snapshot.targetMetrics.methods.simple.marginOfError).toBeCloseTo(1.96 * expectedStandardError, 12);
+
+    const studentToken = await session(3, f.students[0]!.id);
+    const teacherToken = await session(2, f.cls.teacherId);
+    const { submissionByTaskRoutes } = await import("../student/routes/submissions");
+    const { gradingDetailRoutes } = await import("../teacher/routes/grading");
+    const { withTeacherAuth } = await import("../teacher/routes/auth");
+    const studentResponse = await submissionByTaskRoutes.GET!(routeRequest("GET", { id: String(f.task.id) }, { cookie: `student_session=${studentToken}` }));
+    expect(studentResponse.status).toBe(200);
+    const studentBody = await studentResponse.json() as { data: { snapshot: { targetMetrics: unknown } } };
+    expect(studentBody.data.snapshot.targetMetrics).toEqual(snapshot.targetMetrics);
+    const teacherResponse = await withTeacherAuth(gradingDetailRoutes).GET!(routeRequest("GET", { id: String(f.experiment.id) }, { cookie: `teacher_session=${teacherToken}` }));
+    expect(teacherResponse.status).toBe(200);
+    const teacherBody = await teacherResponse.json() as { data: { targetMetrics: unknown } };
+    expect(teacherBody.data.targetMetrics).toEqual(snapshot.targetMetrics);
 
     // 不引用任何分析仍可提交
     const empty = await submittableFixture();

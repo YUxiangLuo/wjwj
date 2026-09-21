@@ -13,6 +13,7 @@ export interface AnalysisJob {
     samplingResults: unknown;
     samplePlan: unknown;
     topicName?: string | null;
+    targetUnit?: string | null;
 }
 
 export type AnalysisResult =
@@ -35,6 +36,7 @@ export async function runAnalysisJob(job: AnalysisJob): Promise<AnalysisResult> 
             samplingResults: hydrated.value as Parameters<typeof buildAnalysisMetrics>[0]["samplingResults"],
             samplePlan: normalizeSamplePlanData(parseStoredJson(job.samplePlan), population.length),
             topicName: job.topicName,
+            targetUnit: job.targetUnit,
         }),
     };
 }

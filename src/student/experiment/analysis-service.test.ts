@@ -141,12 +141,14 @@ test("real worker preserves analysis results, file invalidation, and storage err
             pps: { ...pps, completed: true, sizeField: "size", sampleCount: 50 },
         }),
         samplePlan: { confidenceLevel: "95", marginOfError: 2, finalSampleSize: 50 },
+        targetUnit: "points",
     };
     const service = new AnalysisService();
     try {
         const expected = await runAnalysisJob(job); 
         expect(expected.ok).toBe(true);
         if (!expected.ok) throw new Error(expected.message);
+        expect(expected.data.target?.unit).toBe("points");
         expect(await service.run(job)).toEqual(expected.data); 
         expect(await service.run(job)).toEqual(expected.data); 
         await Bun.write(file, `size,score\n${population.map(row => `${row.size},${row.score + 100}`).join("\n")}\n`);

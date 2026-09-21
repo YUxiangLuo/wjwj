@@ -25,6 +25,7 @@ const target: TargetAnalysisMetrics = {
     },
     confidenceLevel: "95",
     plannedMarginOfError: 2,
+    unit: "kg",
     populationValue: 10,
     methods: {
         simple: method,
@@ -38,5 +39,8 @@ test("labels z times design SE as a normal approximation rather than a validated
     const html = renderToStaticMarkup(<TargetMetricsPanel target={target} methods={["simple"]} />);
 
     expect(html).toContain("95% 正态近似教学半宽");
+    expect(html).toContain("10.0000 kg");
+    expect(html).toContain("±2.0000 kg");
+    expect(html).toContain("设计 SE（kg）");
     expect(html).toContain("它不表示覆盖率已经验证，也不应当作正式置信区间");
 });

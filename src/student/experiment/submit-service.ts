@@ -7,13 +7,16 @@ import { scoringWeightsFrom, type ScoringWeights } from "../../lib/scoring-weigh
 import { resolveSamplingPolicy, type SamplingPolicyV1 } from "../../lib/sampling-policy";
 import { readVariableSource } from "../../server/variable-source";
 import { finitePopulationS2ToSigma2 } from "./sample-plan";
-import { buildPopulationNumericStats } from "../../domain/statistics/population";
+import { buildPopulationNumericStats, parseTopicFieldMapping } from "../../domain/statistics/population";
+import { buildAnalysisMetrics } from "../../domain/statistics/analysis";
 import { validateQuestionBindings } from "../../domain/variables/question-binding";
+import type { TargetAnalysisMetrics } from "../../domain/experiment/analysis-types";
 import type { SavedAnalysisView, VariableDictionary } from "../../domain/variables/types";
 import { normalizeSamplePlanData } from "./sample-plan-display";
 import { analysisView, loadAnalysisReferences, parseAnalysisReferences } from "./saved-analysis-service";
 import { parseStoredJson } from "./serialization";
-import { compactSamplingResults } from "./sampling-storage";
+import { compactSamplingResults, hydrateSamplingResults, INVALID_SAMPLING_STORAGE_CODE, INVALID_SAMPLING_STORAGE_MESSAGE } from "./sampling-storage";
+import { resolveTargetUnit } from "./target-unit";
 import { ExperimentStatus } from "@/domain/experiment/status";
 import {
     getTargetSampleSizeFromSamplePlan,
@@ -38,6 +41,7 @@ export interface SubmissionSnapshot {
     samplingPolicy: SamplingPolicyV1;
     variableDictionary?: VariableDictionary | null;
     analysisAppendices?: Array<SavedAnalysisView & { evidence: unknown }>;
+    targetMetrics?: TargetAnalysisMetrics | null;
     className?: string | null;
     teacherName?: string | null;
     populationFileSha256?: string | null;
@@ -178,6 +182,22 @@ export async function submitStudentExperiment(params: {
         parseStoredJson<Record<string, unknown>>(params.experimentRecord.samplePlan),
         populationSize,
     );
+    let targetMetrics: TargetAnalysisMetrics | null = null;
+    if (sourceData) {
+        const hydrated = hydrateSamplingResults(
+            parseStoredJson(params.experimentRecord.samplingResults),
+            sourceData.designRows,
+        );
+        if (!hydrated.ok) return fail(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
+        targetMetrics = buildAnalysisMetrics({
+            population: sourceData.designRows,
+            fieldMapping: parseTopicFieldMapping(params.taskInfo.fieldMapping),
+            samplingResults: hydrated.value as Parameters<typeof buildAnalysisMetrics>[0]["samplingResults"],
+            samplePlan,
+            topicName: params.taskInfo.topicName,
+            targetUnit: resolveTargetUnit(params.taskInfo.fieldMapping, dictionary),
+        }).target;
+    }
     const samplingResults = compactSamplingResults(
         parseStoredJson<Record<string, unknown>>(params.experimentRecord.samplingResults),
     );
@@ -193,6 +213,7 @@ export async function submitStudentExperiment(params: {
         samplingPolicy: resolveSamplingPolicy(params.taskInfo.samplingPolicy),
         variableDictionary: dictionary,
         analysisAppendices,
+        targetMetrics,
         className: params.taskInfo.className ?? null,
         teacherName: params.taskInfo.teacherName ?? null,
         populationFileSha256: sourceData?.fileHash ?? null,

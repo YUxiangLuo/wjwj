@@ -4,23 +4,31 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { METHOD_META, type MethodKey } from "../pages/stages/analysis-utils";
 import { formatStatistic } from "@/utils/statistic-format";
 
-export function formatTargetEstimate(value: number | null, kind: "mean" | "proportion") {
-    return value === null ? "—" : kind === "proportion" ? `${formatStatistic(value * 100, 2)}%` : formatStatistic(value);
+export function availableTargetMethods(target: TargetAnalysisMetrics): MethodKey[] {
+    return (Object.keys(METHOD_META) as MethodKey[]).filter(method => target.methods[method].sampleSize !== null);
 }
 
-export function formatTargetMargin(value: number | null, kind: "mean" | "proportion") {
-    return value === null ? "—" : kind === "proportion" ? `±${formatStatistic(value * 100, 2)} 个百分点` : `±${formatStatistic(value)}`;
+export function formatTargetEstimate(value: number | null, kind: "mean" | "proportion", unit = "") {
+    if (value === null) return "—";
+    if (kind === "proportion") return `${formatStatistic(value * 100, 2)}%`;
+    return `${formatStatistic(value)}${unit ? ` ${unit}` : ""}`;
+}
+
+export function formatTargetMargin(value: number | null, kind: "mean" | "proportion", unit = "") {
+    if (value === null) return "—";
+    if (kind === "proportion") return `±${formatStatistic(value * 100, 2)} 个百分点`;
+    return `±${formatStatistic(value)}${unit ? ` ${unit}` : ""}`;
 }
 
 /** Compare the target estimates first; keep technical diagnostics available below. */
-export function TargetMetricsPanel({ target, methods = Object.keys(METHOD_META) as MethodKey[] }: {
+export function TargetMetricsPanel({ target, methods = availableTargetMethods(target) }: {
     target: TargetAnalysisMetrics;
     methods?: MethodKey[];
 }) {
     const { contract } = target.contract;
     const kind = contract.target.kind;
-    const formatEstimate = (value: number | null) => formatTargetEstimate(value, kind);
-    const formatMargin = (value: number | null) => formatTargetMargin(value, kind);
+    const formatEstimate = (value: number | null) => formatTargetEstimate(value, kind, target.unit);
+    const formatMargin = (value: number | null) => formatTargetMargin(value, kind, target.unit);
     const simpleMargin = target.methods.simple?.marginOfError;
     const systematicMargin = target.methods.systematic?.marginOfError;
     const systematicMuchTighter = simpleMargin != null && systematicMargin != null
@@ -83,7 +91,7 @@ export function TargetMetricsPanel({ target, methods = Object.keys(METHOD_META) 
                     return <section key={method} className="space-y-3 rounded-surface border border-border bg-card p-4">
                         <h3 className="text-label font-semibold">{METHOD_META[method].label}</h3>
                         <dl className="grid grid-cols-2 gap-3 text-meta">
-                            <div><dt className="text-muted-foreground">{kind === "proportion" ? "设计 SE（百分点）" : "设计 SE"}</dt><dd className="mt-1 font-semibold tabular-nums">{metrics.standardError === null ? "—" : formatStatistic(kind === "proportion" ? metrics.standardError * 100 : metrics.standardError)}</dd></div>
+                            <div><dt className="text-muted-foreground">{kind === "proportion" ? "设计 SE（百分点）" : `设计 SE${target.unit ? `（${target.unit}）` : ""}`}</dt><dd className="mt-1 font-semibold tabular-nums">{metrics.standardError === null ? "—" : formatStatistic(kind === "proportion" ? metrics.standardError * 100 : metrics.standardError)}</dd></div>
                             <div><dt className="text-muted-foreground">等效 SRS 样本量</dt><dd className="mt-1 font-semibold tabular-nums">{metrics.effectiveSampleSize?.toFixed(0) ?? "—"}</dd></div>
                         </dl>
                         <p className={`text-meta leading-relaxed ${metrics.reliability.status === "caution" ? "text-warning" : "text-muted-foreground"}`}>{reason}</p>

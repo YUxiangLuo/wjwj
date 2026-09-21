@@ -74,6 +74,8 @@ export function buildAnalysisMetrics(params: {
     samplePlan?: { confidenceLevel?: string; marginOfError?: number | null } | null;
     /** 推断研究合同时使用的课题名。 */
     topicName?: string | null;
+    /** 研究目标变量的展示单位；比例目标由统计核心固定为百分比。 */
+    targetUnit?: string | null;
     /** @deprecated 当前精确积分不受旧模拟次数配置影响。 */
     ppsMonteCarloReplicates?: number;
 }): AnalysisMetricsResult {
@@ -246,6 +248,7 @@ export function buildAnalysisMetrics(params: {
             samplingResults: params.samplingResults,
             confidenceLevel,
             plannedMarginOfError,
+            unit: params.targetUnit,
             ppsReplicates: ppsMonteCarloReplicates,
             sharedPpsContext: ppsStandardErrorContext,
         })

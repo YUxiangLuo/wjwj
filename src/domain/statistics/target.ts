@@ -37,6 +37,7 @@ export function buildTargetAnalysis(params: {
     samplingResults: SamplingResultsData | null | undefined;
     confidenceLevel: "90" | "95" | "99";
     plannedMarginOfError: number | null;
+    unit?: string | null;
     ppsReplicates: number;
     sharedPpsContext: PpsStandardErrorContext | null;
 }): TargetAnalysis | null {
@@ -186,6 +187,7 @@ export function buildTargetAnalysis(params: {
         contract: params.contract,
         confidenceLevel: params.confidenceLevel,
         plannedMarginOfError: params.plannedMarginOfError,
+        unit: target.kind === "proportion" ? "%" : params.unit?.trim() ?? "",
         populationValue,
         methods,
     };

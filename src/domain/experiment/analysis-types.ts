@@ -40,6 +40,8 @@ export interface TargetAnalysis {
     contract: ResolvedStudyContract;
     confidenceLevel: "90" | "95" | "99";
     plannedMarginOfError: number | null;
+    /** 均值目标沿用变量字典单位；比例目标固定为百分比。 */
+    unit: string;
     /** 目标估计量的虚拟总体真值（均值或比例）。 */
     populationValue: number;
     methods: Record<MethodKey, TargetMethodAnalysis>;

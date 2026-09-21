@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
+import type { TargetAnalysisMetrics, TargetMethodMetrics } from "@/domain/experiment/analysis-types";
 import { installDomGlobals } from "@/test-utils/dom";
 const bootstrapDom = installDomGlobals();
 const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
@@ -11,6 +12,15 @@ const originalFetch = globalThis.fetch;
 let restore: () => void;
 beforeEach(() => { restore = installDomGlobals().restore; localStorage.clear(); });
 afterEach(async () => { cleanup(); await new Promise(resolve => setTimeout(resolve, 0)); localStorage.clear(); globalThis.fetch = originalFetch; restore(); });
+const unavailableTargetMethod: TargetMethodMetrics = { estimate: null, standardError: null, marginOfError: null, sampleSize: null, effectiveSampleSize: null, reliability: { status: "unavailable", reasons: [] } };
+const frozenTargetMetrics: TargetAnalysisMetrics = {
+    contract: { inferred: false, contract: { version: 1, researchQuestion: "总体平均重量是多少？", targetPopulation: "全部单位", unitOfAnalysis: "一行记录", target: { kind: "mean", field: "weight" } } },
+    confidenceLevel: "95", plannedMarginOfError: 2, unit: "kg", populationValue: 10,
+    methods: {
+        simple: { estimate: 9.5, standardError: 0.5, marginOfError: 0.98, sampleSize: 60, effectiveSampleSize: 55, reliability: { status: "ok", reasons: [] } },
+        systematic: unavailableTargetMethod, pps: unavailableTargetMethod, stratified: unavailableTargetMethod,
+    },
+};
 function record(version = 1) {
     return { id: 7, version, studentName: "学生", studentId: "S1", topic: "实验", className: "班级", status: "submitted",
         submittedAt: null, reportContent: "报告", questionnaire: null, samplePlan: null, samplingResults: null,
@@ -110,6 +120,17 @@ test("reading different materials keeps scores, comments and student identity in
     fireEvent.change(view.getByLabelText("问卷设计（30%）"), { target: { value: "101" } });
     expect((view.getByText("提交评分") as HTMLButtonElement).disabled).toBe(true);
     expect(panel.textContent).toContain("分项分数需在 0–100 之间");
+});
+
+test("report review renders the frozen target estimate, teaching half-width, and unit", async () => {
+    globalThis.fetch = (async () => Response.json({ success: true, data: { ...record(), targetMetrics: frozenTargetMetrics } })) as unknown as typeof fetch;
+    const view = page();
+    await waitFor(() => expect(view.getByLabelText("教师评语")).toBeTruthy());
+    fireEvent.keyDown(view.getByRole("tab", { name: "报告" }), { key: "Enter" });
+    expect(view.getByText("研究目标结果")).toBeTruthy();
+    expect(view.getByText("10.0000 kg")).toBeTruthy();
+    expect(view.getByText("9.5000 kg")).toBeTruthy();
+    expect(view.getByText("±0.9800 kg")).toBeTruthy();
 });
 
 test("pending grading freezes inputs; failure preserves them and retry returns to the original list", async () => {

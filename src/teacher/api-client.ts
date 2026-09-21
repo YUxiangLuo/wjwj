@@ -56,6 +56,7 @@ export interface SubmissionDetail extends GradingItem {
     topicDesc: string | null;
     reportContent: string;
     analysisAppendices?: SavedAnalysisView[];
+    targetMetrics?: import("@/domain/experiment/analysis-types").TargetAnalysisMetrics | null;
     variableDictionary?: VariableDictionary | null;
     samplePlan: SamplePlanData | null;
     questionnaire: QuestionnaireData | null;

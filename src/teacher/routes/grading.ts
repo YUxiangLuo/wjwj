@@ -23,6 +23,7 @@ import { getTeacherUser } from "./auth";
 import { resolveSamplingPolicy } from "../../lib/sampling-policy";
 import { writeAuditEvent } from "../../server/audit-event";
 import { resolveStoragePath } from "../../server/storage-files";
+import type { TargetAnalysisMetrics } from "../../domain/experiment/analysis-types";
 
 async function matchesSnapshotFile(path: string, expected: unknown) {
     if (typeof expected !== "string" || !/^[a-f0-9]{64}$/.test(expected)) return false;
@@ -212,6 +213,7 @@ const gradingDetailRoutes: RouteDefinition = {
             samplingPolicy?: unknown;
             populationFileSha256?: string | null;
             analysisAppendices?: unknown[];
+            targetMetrics?: TargetAnalysisMetrics | null;
         }>(row.submissionSnapshot);
         const populationSize = snapshot?.populationSize ?? row.populationSize;
         const weights = scoringWeightsFrom(snapshot?.weightConfig ?? row.weightConfig);
@@ -265,6 +267,7 @@ const gradingDetailRoutes: RouteDefinition = {
             samplingPolicy: resolveSamplingPolicy(snapshot?.samplingPolicy ?? row.samplingPolicy),
             reportContent: snapshot?.reportContent ?? row.reportContent ?? "",
             analysisAppendices: snapshot?.analysisAppendices ?? [],
+            targetMetrics: snapshot?.targetMetrics ?? null,
             scoreQuestionnaire: numeric(row.scoreQuestionnaire),
             scoreProcess: numeric(row.scoreProcess),
             scoreReport: numeric(row.scoreReport),
