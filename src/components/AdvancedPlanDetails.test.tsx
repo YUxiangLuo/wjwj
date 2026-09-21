@@ -21,6 +21,24 @@ test("reviewers can distinguish base assumptions from applied cost assumptions a
     expect(view.getByTestId("advanced-plan-details").textContent).toContain("应用时间：2026/09/08 07:17；");
 });
 
+test("ST-B2 frozen plan display preserves invitation count, design effect, and nonresponse", () => {
+    const view = render(<SamplePlanSnapshot populationSize={1000} value={{
+        estimationType: "proportion",
+        confidenceLevel: "95",
+        marginOfError: 5,
+        designEffect: 1.5,
+        nonResponseRate: 0.2,
+        recommendedSize: 458,
+        calculatedSampleSize: 458,
+        finalSampleSize: 458,
+    }} />);
+    const text = view.getByTestId("sample-plan-snapshot").textContent ?? "";
+    expect(text).toContain("设计效应 deff1.50");
+    expect(text).toContain("预期无回答率20%");
+    expect(text).toContain("推荐样本量458");
+    expect(text).toContain("最终样本量458");
+});
+
 test("saved CV plans retain an explicit unmet-target status", () => {
     const view = render(<AdvancedPlanDetails source="cv" populationSize={100} value={[{
         version: 1, kind: "cv", appliedAt: "2026-09-08T00:00:00Z",

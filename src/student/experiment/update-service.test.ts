@@ -61,6 +61,32 @@ test("completing the current stage saves it and advances once", () => {
     expect(result.updates.samplePlan).toMatchObject({ finalSampleSize: 50 });
 });
 
+test("ST-B2 stage completion persists the recomputed 458-unit invitation plan", () => {
+    const result = buildStageCompletionUpdates({
+        experimentRecord: record(),
+        stage: 2,
+        payload: { samplePlan: {
+            estimationType: "proportion",
+            confidenceLevel: "95",
+            marginOfError: 5,
+            designEffect: 1.5,
+            nonResponseRate: 0.2,
+            recommendedSize: 458,
+            finalSampleSize: 458,
+        } },
+        populationSize: 1000,
+        deadlinePassed: false,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.updates.samplePlan).toMatchObject({
+        recommendedSize: 458,
+        finalSampleSize: 458,
+        calculatedSampleSize: 458,
+    });
+});
+
 test("new stage-1 saves reject repeated options before any stage update", () => {
     const result = buildStageCompletionUpdates({
         experimentRecord: record({ currentStage: 1, stage1CompletedAt: null }), stage: 1,

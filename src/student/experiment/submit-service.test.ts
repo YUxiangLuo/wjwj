@@ -86,6 +86,51 @@ test("submit overwrites the same experiment and stores a grading snapshot", asyn
     expect(condition.params).toEqual([9, 4, "rejected", 4]);
 });
 
+test("ST-B2 submission freezes the validated 458-unit plan without changing its assumptions", async () => {
+    const { db, operations } = createMockDb({ update: [[{ id: 9 }]] });
+    mock.module("../../db", () => ({ db }));
+    const { submitStudentExperiment } = await import(`./submit-service.ts?st-b2=${crypto.randomUUID()}`);
+    const experimentRecord = validRecord();
+    experimentRecord.samplePlan = {
+        estimationType: "proportion",
+        confidenceLevel: "95",
+        marginOfError: 5,
+        designEffect: 1.5,
+        nonResponseRate: 0.2,
+        recommendedSize: 458,
+        calculatedSampleSize: 458,
+        finalSampleSize: 458,
+    };
+    for (const result of Object.values(experimentRecord.samplingResults) as Array<Record<string, unknown>>) {
+        result.sampleCount = 458;
+    }
+    experimentRecord.samplingResults.stratified.layers = [
+        { name: "A", sampleCount: 229 },
+        { name: "B", sampleCount: 229 },
+    ];
+
+    const result = await submitStudentExperiment({
+        experimentRecord,
+        observedVersion: 4,
+        taskInfo: { topicName: "抽样调查", populationSize: 1000 },
+        student: { studentId: "S001", name: "学生一" },
+    });
+
+    expect(result).toMatchObject({ ok: true, experimentId: 9 });
+    const update = operations.find((item) => item.kind === "update" && item.table === experiment);
+    expect(update?.set).toMatchObject({
+        submissionSnapshot: { samplePlan: {
+            confidenceLevel: "95",
+            marginOfError: 5,
+            designEffect: 1.5,
+            nonResponseRate: 0.2,
+            recommendedSize: 458,
+            calculatedSampleSize: 458,
+            finalSampleSize: 458,
+        } },
+    });
+});
+
 test("submit rejects duplicate questionnaire options without a compatibility allowance", async () => {
     const { db, operations } = createMockDb({ update: [[{ id: 9 }]] });
     mock.module("../../db", () => ({ db }));

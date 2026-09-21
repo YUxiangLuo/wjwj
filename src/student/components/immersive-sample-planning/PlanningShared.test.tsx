@@ -1,13 +1,19 @@
-import { afterAll, beforeAll, expect, test } from "bun:test";
-import { render } from "@testing-library/react";
+import { afterAll, afterEach, beforeAll, expect, test } from "bun:test";
+import { cleanup, render } from "@testing-library/react";
 import { installDomGlobals } from "@/test-utils/dom";
 import { PlanningOutcome } from "./PlanningShared";
 import type { SampleParams } from "./types";
+import { EnhancedMetricsCard } from "../EnhancedMetricsCard";
+import { calculateSampleSizeMetrics } from "../../experiment/sample-plan";
 
 let restoreDom: (() => void) | null = null;
 
 beforeAll(() => {
     restoreDom = installDomGlobals("http://localhost/").restore;
+});
+
+afterEach(() => {
+    cleanup();
 });
 
 afterAll(() => {
@@ -42,4 +48,26 @@ test("PlanningOutcome omits the census warning for a genuine sample", () => {
     const view = render(<PlanningOutcome params={params({ populationSize: 1000, finalSampleSize: 100, recommendedSize: 100 })} />);
     const text = view.getByTestId("planning-outcome").textContent ?? "";
     expect(text).not.toContain("完整普查");
+});
+
+test("ST-B2 planning views distinguish 458 invitations from 366.4 expected completions", () => {
+    const plan = params({
+        populationSize: 1000,
+        estimationType: "proportion",
+        marginOfError: 5,
+        populationVariance: undefined,
+        designEffect: 1.5,
+        nonResponseRate: 0.2,
+        finalSampleSize: 458,
+        recommendedSize: 458,
+    });
+    const outcome = render(<PlanningOutcome params={plan} />);
+    expect(outcome.getByTestId("planning-outcome").textContent).toContain("计划邀请 458 个单位，预期完成约 366.4 个有效样本");
+    outcome.unmount();
+
+    const metrics = calculateSampleSizeMetrics(plan);
+    const card = render(<EnhancedMetricsCard metrics={metrics} finalSampleSize={458} />);
+    expect(card.container.textContent).toContain("推荐邀请数 n = 458");
+    expect(card.container.textContent).toContain("预期完成约 366.4 个有效样本");
+    expect(card.container.textContent).not.toContain("预期完成约 367 个有效样本");
 });

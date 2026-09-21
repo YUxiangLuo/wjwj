@@ -85,6 +85,27 @@ test("design effect and non-response rate combine multiplicatively", () => {
     expect(withBoth).toBe(expected);
 });
 
+test("ST-B2 preserves raw design-effect and nonresponse steps until the final invitation rounding", () => {
+    const params = {
+        estimationType: "proportion" as const,
+        confidenceLevel: "95",
+        marginOfError: 5,
+        populationSize: 1000,
+        designEffect: 1.5,
+        nonResponseRate: 0.2,
+    };
+    const details = calculateSampleSizeStepDetails(params);
+    expect(details.n0Raw).toBeCloseTo(384.16, 12);
+    expect(details.n1Raw).toBeCloseTo(576.24, 12);
+    expect(details.n2Raw).toBeCloseTo(365.8109240496686, 12);
+    expect(details.n3Raw).toBeCloseTo(457.2636550620857, 12);
+    expect(details.n3).toBe(458);
+
+    const metrics = calculateSampleSizeMetrics(params);
+    expect(metrics?.n).toBe(458);
+    expect(metrics?.expectedCompleted).toBeCloseTo(366.4, 12);
+});
+
 test("returns null for invalid population size", () => {
     expect(calculateFinitePopulationSampleSize({
         confidenceLevel: "95",

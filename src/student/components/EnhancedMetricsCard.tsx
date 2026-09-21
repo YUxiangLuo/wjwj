@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Sigma, Target, Minus, Plus } from "lucide-react";
 import type { MeanSampleSizeMetrics, SampleSizeMetrics } from "../experiment/sample-plan";
-import { formatMarginOfError } from "../experiment/sample-plan-display";
+import { formatMarginOfError, formatSamplePlanNumber } from "../experiment/sample-plan-display";
 
 interface EnhancedMetricsCardProps {
     metrics: SampleSizeMetrics | MeanSampleSizeMetrics | null;
@@ -49,11 +49,11 @@ export function EnhancedMetricsCard({
                     </Badge>
                 </div>
                 <CardDescription className="text-primary">
-                    按公式推荐邀请数 n = {metrics.n.toLocaleString()} 计算；预期完成约 {Math.ceil(metrics.expectedCompleted).toLocaleString()} 个有效样本，并考虑设计效应。
+                    按公式推荐邀请数 n = {metrics.n.toLocaleString()} 计算；预期完成约 {formatSamplePlanNumber(metrics.expectedCompleted)} 个有效样本，并考虑设计效应。
                 </CardDescription>
                 {metrics.cappedAtPopulation && (
                     <p className="text-meta text-warning mt-1">
-                        邀请数已封顶为全体发放（n = {metrics.n}）；预期完成约 {Math.ceil(metrics.expectedCompleted).toLocaleString()} 个有效样本。若存在无回答，这不等于完整普查或零误差。
+                        邀请数已封顶为全体发放（n = {metrics.n}）；预期完成约 {formatSamplePlanNumber(metrics.expectedCompleted)} 个有效样本。若存在无回答，这不等于完整普查或零误差。
                     </p>
                 )}
                 {metrics.precisionUnreachable && (

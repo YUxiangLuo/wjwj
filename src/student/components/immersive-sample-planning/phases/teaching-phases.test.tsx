@@ -74,6 +74,32 @@ test("planning phases render for mean and proportion targets", () => {
 
 });
 
+test("ST-B2 four-step teaching keeps raw intermediates and rounds only the 458 invitations", () => {
+    const view = render(
+        <FourStepPhase
+            scenario="summary"
+            params={proportionParams({
+                populationSize: 1000,
+                designEffect: 1.5,
+                nonResponseRate: 0.2,
+                recommendedSize: 458,
+                finalSampleSize: 458,
+            })}
+            estimationType="proportion"
+            populationVariance={0}
+            onDesignEffectChange={() => {}}
+            onNonResponseRateChange={() => {}}
+            onNext={() => {}}
+        />,
+    );
+    const text = view.container.textContent ?? "";
+    expect(text).toContain("458 个单位，是这样算出来的");
+    expect(text).toContain("384.16");
+    expect(text).toContain("576.24");
+    expect(text).toContain("365.811");
+    expect(text).toContain("只在最后向上取整");
+});
+
 test("FactorsPhase nonresponse inflates invites by 1/(1-r) and caps at N", () => {
     const view = render(<FactorsPhase step="non_response" params={proportionParams()} onNext={() => {}} />);
     const text = view.container.textContent ?? "";
