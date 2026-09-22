@@ -93,8 +93,14 @@ mock.module("@/components/ui/alert-dialog", () => ({
 }));
 
 mock.module("../../components/ImmersiveSamplingAnimation", () => ({
-    ImmersiveSamplingAnimation: ({ sampledData }: { sampledData?: unknown[] }) => (
-        <div data-testid="mock-sampling-animation">结果 {sampledData?.length ?? 0} 条</div>
+    ImmersiveSamplingAnimation: ({ sampledData, layers }: {
+        sampledData?: unknown[];
+        layers?: Array<{ name: string; count: number; sampleCount: number }>;
+    }) => (
+        <div data-testid="mock-sampling-animation">
+            结果 {sampledData?.length ?? 0} 条
+            {layers?.map(layer => `${layer.name}:${layer.count}→${layer.sampleCount}`).join("；")}
+        </div>
     ),
 }));
 
@@ -258,6 +264,45 @@ test("SamplingExecution waits for the API result before showing the explanation 
         expect(view.getByTestId("mock-sampling-animation")).toBeTruthy();
     });
     expect(mockExperimentApi.executeSampling).toHaveBeenCalledTimes(1);
+});
+
+test("stratified animation uses the authoritative layers returned by the server", async () => {
+    mockExperimentApi.getStats.mockResolvedValueOnce({
+        success: true,
+        data: {
+            stats: { group: { A: 60, B: 40 } },
+            numericFields: [],
+            ppsEligibleFields: [],
+        },
+    });
+    mockExperimentApi.executeSampling.mockResolvedValueOnce({
+        success: true,
+        data: {
+            result: {
+                completed: true,
+                stratifyBy: "group",
+                layers: [
+                    { name: "A", count: 61, ratio: 61, sampleCount: 8 },
+                    { name: "B", count: 39, ratio: 39, sampleCount: 5 },
+                ],
+                sampleCount: 13,
+                seed: 42,
+                data: [{ id: 1 }],
+            },
+        },
+    });
+
+    const view = render(<SamplingExecution onPrev={() => undefined} />);
+    const run = await waitFor(() => {
+        const button = view.getByTestId("student-sampling-stratified-run") as HTMLButtonElement;
+        expect(button.disabled).toBe(false);
+        return button;
+    });
+    fireEvent.click(run);
+
+    const animation = await waitFor(() => view.getByTestId("mock-sampling-animation"));
+    expect(animation.textContent).toContain("A:61→8；B:39→5");
+    expect(animation.textContent).not.toContain("A:60→8");
 });
 
 test("SamplingExecution honors disabled methods and the required-method policy", async () => {
