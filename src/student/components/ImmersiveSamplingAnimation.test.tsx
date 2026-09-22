@@ -169,15 +169,64 @@ test("a twenty-layer receipt keeps the full allocation in bounded disclosure", a
     );
 
     await waitFor(() => view.getByTestId("sampling-animation-dot-grid"), { timeout: 1500 });
+    const strataLegend = view.getByTestId("sampling-animation-strata-legend");
+    expect(strataLegend.textContent).toContain("共 20 层");
+    expect(strataLegend.textContent).toContain("颜色循环仅区分相邻层");
+    expect(strataLegend.textContent).not.toContain("第1层");
+    const activeStratum = await waitFor(() => view.getByTestId("sampling-animation-active-stratum"), { timeout: 2500 });
+    expect(activeStratum.textContent).toMatch(/层 \d+\/20：第\d+层/);
+    expect(activeStratum.textContent).toContain("Nₕ 50 → nₕ 5");
     fireEvent.click(view.getByTestId("immersive-sampling-skip"));
     const receipt = view.getByTestId("sampling-animation-receipt");
     expect(receipt.textContent).toContain("分层配置20 层；1,000 → 100");
+    expect(view.queryByTestId("sampling-animation-strata-legend")).toBeNull();
     expect(view.getByTestId("sampling-animation-layer-details").hasAttribute("open")).toBe(false);
     expect(view.getByTestId("sampling-animation-layer-details").textContent).toContain("可滚动查看全部");
     const layerList = view.getByTestId("sampling-animation-layer-list");
     expect(layerList.className).toContain("max-h-24");
     expect(layerList.tabIndex).toBe(0);
     expect(layerList.getAttribute("aria-label")).toBe("各层总体与样本分配");
+});
+
+test("six strata retain their names while the seventh switches to a compact legend", async () => {
+    const buildLayers = (count: number) => Array.from({ length: count }, (_, index) => ({
+        name: `层级${index + 1}`,
+        count: 10,
+        ratio: 100 / count,
+        sampleCount: 2,
+    }));
+    const sixLayerView = render(
+        <ImmersiveSamplingAnimation
+            method="stratified"
+            populationSize={60}
+            sampleSize={12}
+            layers={buildLayers(6)}
+            sampledData={[]}
+            onClose={() => undefined}
+        />,
+    );
+    await waitFor(() => sixLayerView.getByTestId("sampling-animation-strata-legend"), { timeout: 1500 });
+    const fullLegend = sixLayerView.getByTestId("sampling-animation-strata-legend");
+    expect(fullLegend.textContent).toContain("层级1");
+    expect(fullLegend.textContent).toContain("层级6");
+    expect(fullLegend.textContent).not.toContain("颜色循环");
+    sixLayerView.unmount();
+
+    const sevenLayerView = render(
+        <ImmersiveSamplingAnimation
+            method="stratified"
+            populationSize={70}
+            sampleSize={14}
+            layers={buildLayers(7)}
+            sampledData={[]}
+            onClose={() => undefined}
+        />,
+    );
+    await waitFor(() => sevenLayerView.getByTestId("sampling-animation-strata-legend"), { timeout: 1500 });
+    const compactLegend = sevenLayerView.getByTestId("sampling-animation-strata-legend");
+    expect(compactLegend.textContent).toContain("共 7 层");
+    expect(compactLegend.textContent).toContain("颜色循环仅区分相邻层");
+    expect(compactLegend.textContent).not.toContain("层级1");
 });
 
 test("reduced-motion users go directly to results without a replay control", async () => {

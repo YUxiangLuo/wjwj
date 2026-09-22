@@ -475,8 +475,11 @@ export function ImmersiveSamplingAnimation({
             const label = FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模";
             return `按"${label}"大小赋予不同选中概率，从 ${populationSize.toLocaleString()} 个总体中抽取 ${sampleSize} 个样本。`;
         } else {
-            const layerNames = (layers ?? []).map((l) => l.name).join("、");
-            return `先按"${FIELD_LABELS[stratifyBy ?? ""] ?? stratifyBy ?? "分层变量"}"将总体分为 ${layerNames} 等层，再按已配置的各层样本量分别抽取。`;
+            const layerList = layers ?? [];
+            const layerDescription = layerList.length > LAYER_COLORS.length
+                ? `${layerList.length} 层（完整名称与分配见结果凭证）`
+                : layerList.map(layer => layer.name).join("、");
+            return `先按"${FIELD_LABELS[stratifyBy ?? ""] ?? stratifyBy ?? "分层变量"}"将总体分为 ${layerDescription}，再按已配置的各层样本量分别抽取。`;
         }
     }, [method, populationSize, sampleSize, interval, sizeField, stratifyBy, layers]);
 
@@ -739,14 +742,22 @@ export function ImmersiveSamplingAnimation({
                 {phase.type !== "intro" && (
                     <div className={`w-full max-w-5xl mx-auto animate-in fade-in duration-300 ${phase.type === "complete" ? "flex flex-col min-h-0 h-full" : "space-y-4"}`}>
                         {/* Legend for stratified */}
-                        {method === "stratified" && layers && (
-                            <div className="flex flex-wrap items-center justify-center gap-4 mb-2">
-                                {layers.map((layer, i) => (
+                        {method === "stratified" && layers && phase.type !== "complete" && (
+                            <div className="mb-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2" data-testid="sampling-animation-strata-legend">
+                                {layers.length <= LAYER_COLORS.length ? layers.map((layer, i) => (
                                     <div key={layer.name} className="flex items-center gap-2">
-                                        <div className={`w-3 h-3 rounded-circle ${lc(i).bg}`} />
+                                        <div className={`h-3 w-3 rounded-circle ${lc(i).bg}`} />
                                         <span className="text-meta text-muted-foreground">{layer.name}</span>
                                     </div>
-                                ))}
+                                )) : (
+                                    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-meta text-muted-foreground">
+                                        <span className="inline-flex items-center gap-2 font-medium text-foreground">
+                                            <Layers className="h-3.5 w-3.5 text-warning" aria-hidden="true" />
+                                            共 {layers.length} 层
+                                        </span>
+                                        <span>颜色循环仅区分相邻层；当前层名称与配额显示在点阵下方</span>
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -773,11 +784,12 @@ export function ImmersiveSamplingAnimation({
                                 <div
                                     className="mb-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-meta text-muted-foreground"
                                     data-testid="sampling-animation-legend"
+                                    role="group"
                                     aria-label="点阵图例"
                                 >
                                     <span className="inline-flex items-center gap-2">
                                         <span className={`h-3 w-3 rounded-control ${method === "pps" ? `${meta.accentBg} opacity-40` : method === "stratified" ? "bg-warning-muted" : "bg-input"}`} aria-hidden="true" />
-                                        {method === "pps" ? "点亮程度：规模大小（示意）" : method === "stratified" ? "颜色：所属层" : "浅色：总体单位"}
+                                        {method === "pps" ? "点亮程度：规模大小（示意）" : method === "stratified" ? (layers && layers.length > LAYER_COLORS.length ? "颜色：循环区分相邻层" : "颜色：所属层") : "浅色：总体单位"}
                                     </span>
                                     <span className="inline-flex items-center gap-2">
                                         <span className={`h-3 w-3 rounded-control ${meta.accentBg} ring-1 ring-inset ${meta.accentRing}`} aria-hidden="true" />
@@ -838,9 +850,11 @@ export function ImmersiveSamplingAnimation({
 
                                 {method === "stratified" && phase.type === "sampling" && stratifiedActiveLayer !== null && layers?.[stratifiedActiveLayer] && (
                                     <div className="mt-3 text-center">
-                                        <span className={`inline-flex items-center gap-2 rounded-control border ${meta.accentBorder} bg-card px-3 py-1.5 text-meta ${meta.accentText}`}>
+                                        <span className={`inline-flex max-w-full flex-wrap items-center justify-center gap-2 rounded-control border ${meta.accentBorder} bg-card px-3 py-1.5 text-meta ${meta.accentText}`} data-testid="sampling-animation-active-stratum">
                                             <div className={`h-2.5 w-2.5 rounded-circle ${lc(stratifiedActiveLayer).bg}`} />
-                                            随机种子 {seed === undefined ? "—" : String(seed)}；当前正在抽取 {layers[stratifiedActiveLayer].name} 层样本
+                                            <span className="break-all">层 {stratifiedActiveLayer + 1}/{layers.length}：{layers[stratifiedActiveLayer].name}</span>
+                                            <span className="font-mono text-foreground">Nₕ {layers[stratifiedActiveLayer].count} → nₕ {layers[stratifiedActiveLayer].sampleCount}</span>
+                                            <span>随机种子 {seed === undefined ? "—" : String(seed)}</span>
                                         </span>
                                     </div>
                                 )}
