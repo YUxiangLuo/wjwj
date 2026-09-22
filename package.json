@@ -35,7 +35,6 @@
     "db:check": "bunx drizzle-kit check",
     "db:clean": "bun run src/db/clean.ts",
     "db:bootstrap-admin": "bun run src/db/bootstrap-admin.ts",
-    "db:seed": "bun run src/db/seeds/default.ts",
     "db:seed:demo": "DEMO_MODE=1 SEED_ADMIN_PASSWORD=admin123 bun run src/db/seeds/default.ts",
     "db:seed:check": "bun run src/db/seeds/check-default.ts",
     "db:reset": "bun run db:clean && bun run db:migrate && bun run db:bootstrap-admin",

@@ -1,6 +1,6 @@
 import type { Question, QuestionSection, QuestionType } from "./questionnaire-types";
 
-const QUESTION_TYPES = new Set<QuestionType>(["boolean", "single", "multiple", "scale"]);
+const QUESTION_TYPES = new Set<QuestionType>(["boolean", "single", "multiple", "scale", "numeric"]);
 const QUESTION_SECTIONS = new Set<QuestionSection>(["screening", "main", "background"]);
 
 const logNormalizeSkips = process.env.NODE_ENV !== "production";
@@ -82,6 +82,12 @@ export function normalizeRecommendQuestionsFromDb(value: unknown): Question[] {
             if (typeof o.scaleMax === "number") q.scaleMax = o.scaleMax;
             if (typeof o.scaleMinLabel === "string") q.scaleMinLabel = o.scaleMinLabel;
             if (typeof o.scaleMaxLabel === "string") q.scaleMaxLabel = o.scaleMaxLabel;
+        }
+        if (type === "numeric") {
+            if (typeof o.unit === "string") q.unit = o.unit;
+            if (typeof o.numericMin === "number") q.numericMin = o.numericMin;
+            if (typeof o.numericMax === "number") q.numericMax = o.numericMax;
+            if (typeof o.decimalPlaces === "number") q.decimalPlaces = o.decimalPlaces;
         }
         out.push(q);
     }

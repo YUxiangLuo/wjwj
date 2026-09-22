@@ -3,7 +3,7 @@ import { SQL } from "bun";
 import { mkdtemp, mkdir, symlink, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
-import { computePpsMeanPlan, DOGFOOD_ANCHORS, DOGFOOD_NAMES } from "../src/db/seeds/dogfood-fixtures";
+import { computeDiningPlan, DOGFOOD_ANCHORS, DOGFOOD_NAMES } from "../src/db/seeds/dogfood-fixtures";
 import { calculateFinitePopulationSampleSize } from "../src/student/experiment/sample-plan";
 import type { ExperimentData, StudentTask } from "../src/student/api-client";
 import type { AnalysisMetricsResult } from "../src/domain/experiment/analysis-types";
@@ -163,14 +163,14 @@ try {
     console.log("PASS seeded teacher grading and student submission hydrate from frozen source");
 
     const templates = await api<Array<{ id: number; name: string }>>(teacher, "/api/teacher/topics");
-    const source = templates.find(item => item.name === DOGFOOD_NAMES.topicA);
+    const source = templates.find(item => item.name === DOGFOOD_NAMES.topicD);
     assert(source, "Seed template missing");
     const copied = await api<{ id: number }>(teacher, `/api/teacher/topics/${source.id}/copy`, "POST");
     const name = "浏览器回归：完整教学流程";
     await api(teacher, `/api/teacher/topics/${copied.id}`, "PUT", { name, status: 0 });
     type DictionarySnapshot = { source: string; revision: number; dictionary: { source: string; revision: number; variables: Array<{ field: string; label: string; unit: string; kind: string; categories: unknown[]; missing: unknown[] }> } | null; suggestion: { source?: string; revision?: number; variables: Array<{ field: string; label: string; unit: string; kind: string; categories: unknown[]; missing: unknown[] }> } };
     const suggestedDictionary = await api<DictionarySnapshot>(teacher, `/api/teacher/topics/${copied.id}/variables`);
-    const configuredVariables = suggestedDictionary.suggestion.variables.map(variable => variable.field === "每周学习时长" ? { ...variable, kind: "continuous", unit: "小时", categories: [] } : variable);
+    const configuredVariables = suggestedDictionary.suggestion.variables.map(variable => variable.field === "等待分钟" ? { ...variable, kind: "continuous", unit: "分钟", categories: [] } : variable);
     await api(teacher, `/api/teacher/topics/${copied.id}/variables`, "PUT", { source: suggestedDictionary.source, observedRevision: suggestedDictionary.revision, dictionary: { source: suggestedDictionary.source, revision: suggestedDictionary.revision, variables: configuredVariables } });
     const dictionaryBefore = await api<DictionarySnapshot>(teacher, `/api/teacher/topics/${copied.id}/variables`);
     const continuousVariable = (dictionaryBefore.dictionary ?? dictionaryBefore.suggestion).variables.find(variable => variable.kind === "continuous");
@@ -266,7 +266,7 @@ try {
     assert(planningLayout.contentBottom <= planningLayout.footerTop,
         "Planning footer must not overlap scrollable content");
     console.log("PASS planning dialog viewport and content/footer geometry (real browser)");
-    const plan = computePpsMeanPlan();
+    const plan = computeDiningPlan();
     const hasLearningEntry = await evaluate(student, '[...document.querySelectorAll("button")].some(button => button.textContent.trim() === "暂不估计，直接查看建议")');
     if (hasLearningEntry) {
     await namedButton(student, "暂不估计，直接查看建议");
@@ -311,7 +311,7 @@ try {
     await activate(student, '[data-testid="immersive-sp-confirm"]');
     await visible(student, '[data-testid="student-stage-sampling"]');
     experiment = await api(student, experimentPath);
-    assert(experiment.currentStage === 3 && experiment.samplePlan?.finalSampleSize === 49, "Stage 2 did not persist");
+    assert(experiment.currentStage === 3 && experiment.samplePlan?.finalSampleSize === plan.recommendedSize, "Stage 2 did not persist");
     await browser(student, "set", "viewport", "1024", "768");
     await page(student, stageUrl, '[data-testid="student-stage-sampling"]');
     assert(await evaluate(student, `(() => {const button=document.querySelector('[data-testid="student-sampling-simple-run"]').getBoundingClientRect();const footer=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect();return button.top>0 && button.bottom<=footer.top && button.right<=innerWidth && document.documentElement.scrollWidth<=innerWidth;})()`), "The initial sampling action must remain visible without document overflow at 1024×768");
@@ -346,7 +346,7 @@ try {
     }
     assert(await evaluate(student, `(async () => {const receipt=document.querySelector('[data-testid="sampling-animation-receipt"]');receipt?.scrollIntoView({block:"start",inline:"start"});await new Promise(requestAnimationFrame);const receiptBounds=receipt?.getBoundingClientRect();const table=document.querySelector('[aria-label="抽样结果数据表"]');table?.scrollIntoView({block:"start",inline:"start"});await new Promise(requestAnimationFrame);const tableBounds=table?.getBoundingClientRect();const firstRow=table?.querySelector('tbody tr')?.getBoundingClientRect();return receiptBounds && receiptBounds.width>0 && tableBounds && tableBounds.width>0 && tableBounds.height>=80 && firstRow && firstRow.height>0;})()`), "Sampling evidence and data rows are unreachable at 200% desktop zoom");
     await browser(student, "screenshot", join(artifacts, "sampling-animation-zoom-200.png"));
-    assert(await evaluate(student, `(async () => {const range=document.querySelector('[data-testid="sampling-animation-result-range"]');range?.scrollIntoView({block:"end",inline:"nearest"});await new Promise(requestAnimationFrame);const bounds=range?.getBoundingClientRect();return range?.textContent.includes("显示第 1-10 条，共 49 条") && bounds && bounds.left>=0 && bounds.right<=innerWidth && bounds.top>=0 && bounds.bottom<=innerHeight;})()`), "Sampling result range is unreachable at 200% desktop zoom");
+    assert(await evaluate(student, `(async () => {const range=document.querySelector('[data-testid="sampling-animation-result-range"]');range?.scrollIntoView({block:"end",inline:"nearest"});await new Promise(requestAnimationFrame);const bounds=range?.getBoundingClientRect();return range?.textContent.includes("显示第 1-10 条，共 ${plan.recommendedSize} 条") && bounds && bounds.left>=0 && bounds.right<=innerWidth && bounds.top>=0 && bounds.bottom<=innerHeight;})()`), "Sampling result range is unreachable at 200% desktop zoom");
     assert(await evaluate(student, `(async () => {const next=document.querySelector('[aria-label="抽样结果下一页"]');next?.scrollIntoView({block:"end",inline:"nearest"});await new Promise(requestAnimationFrame);const bounds=next?.getBoundingClientRect();return bounds && bounds.left>=0 && bounds.right<=innerWidth && bounds.top>=0 && bounds.bottom<=innerHeight && !next.disabled;})()`), "Sampling pagination is unreachable at 200% desktop zoom");
     await browser(student, "screenshot", join(artifacts, "sampling-animation-zoom-200-pagination.png"));
     await activate(student, '[data-testid="immersive-sampling-replay"]');
@@ -365,7 +365,7 @@ try {
     await activate(student, '[data-testid="immersive-sampling-return"]');
     await browser(student, "set", "viewport", "1280", "800");
     for (const method of ["systematic", "pps"] as const) {
-        await api(student, `/api/student/tasks/${task.id}/sampling`, "POST", { method, params: { sampleSize: 49, ...(method === "pps" ? { sizeField: "月生活费" } : {}) } });
+        await api(student, `/api/student/tasks/${task.id}/sampling`, "POST", { method, params: { sampleSize: plan.recommendedSize, ...(method === "pps" ? { sizeField: "客流量" } : {}) } });
     }
     await page(student, stageUrl, '[data-testid="student-stage-sampling"]');
     assert(await evaluate(student, `(() => {const table=document.querySelector('[aria-label^="抽样结果数据表"]');const stage=document.querySelector('[data-testid="student-stage-sampling"]');return table && table.getBoundingClientRect().width > stage.getBoundingClientRect().width*0.8 && document.documentElement.scrollWidth<=innerWidth;})()`), "Sampling data table must use the available width without overflowing the page");
@@ -453,7 +453,7 @@ try {
     const staleRecords = await api<{ records: Array<{ id: number; stale: boolean }> }>(student, `/api/student/tasks/${task.id}/analyses`);
     assert(staleRecords.records.length === 2 && staleRecords.records.every(record => record.stale), "Reopening upstream did not mark saved analyses stale");
     for (const method of ["simple", "systematic", "pps"] as const) {
-        await api(student, `/api/student/tasks/${task.id}/sampling`, "POST", { method, params: { sampleSize: 49, seed: 1701, ...(method === "pps" ? { sizeField: "月生活费" } : {}) } });
+        await api(student, `/api/student/tasks/${task.id}/sampling`, "POST", { method, params: { sampleSize: plan.recommendedSize, seed: 1701, ...(method === "pps" ? { sizeField: "客流量" } : {}) } });
     }
     experiment = await api<ExperimentData>(student, `${experimentPath}/stages/3/complete`, "POST", { observedVersion: (await api<ExperimentData>(student, experimentPath)).version });
     assert(experiment.currentStage === 4, "Stage 3 recompletion failed");
@@ -484,7 +484,7 @@ try {
     console.log("PASS upstream reopen, stale reference gate, resample and re-analysis (real browser)");
 
     await activate(student, '[data-testid="student-analysis-workspace-report"]');
-    const report = "本次实验以学生每周学习时长的均值为研究目标。我们比较了简单随机、系统抽样与PPS的实际估计及设计标准误，结合总体真值讨论各设计的精度和代表性。样本量规划采用有限总体校正，本次无回答率假设为零。这里的误差分析依赖完整虚拟总体，不能直接替代现实调查中的设计方差估计。";
+    const report = "本次实验以食堂午间十五分钟服务时段的平均等待分钟数为研究目标。我们比较了简单随机、系统抽样与以客流量为规模变量的PPS估计及设计标准误，并结合总体真值讨论精度和代表性。样本量规划采用有限总体校正，本次无回答率假设为零。分析单位是服务时段而非就餐学生，单次样本差异不能直接解释为服务质量的因果差异。";
     await browser(student, "fill", '[data-testid="student-analysis-report-editor"]', report);
     await browser(student, "screenshot", join(artifacts, "report-editor.png"));
     await activate(student, '[data-testid="student-analysis-preview"]');

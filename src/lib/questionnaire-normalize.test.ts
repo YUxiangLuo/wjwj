@@ -59,6 +59,29 @@ describe("normalizeRecommendQuestionsFromDb", () => {
         });
     });
 
+    test("preserves numeric fields", () => {
+        const out = normalizeRecommendQuestionsFromDb([
+            {
+                id: "n1",
+                type: "numeric",
+                content: "幸福感得分",
+                unit: "分",
+                numericMin: 0,
+                numericMax: 10,
+                decimalPlaces: 1,
+            },
+        ]);
+        expect(out[0]).toEqual({
+            id: "n1",
+            type: "numeric",
+            content: "幸福感得分",
+            unit: "分",
+            numericMin: 0,
+            numericMax: 10,
+            decimalPlaces: 1,
+        });
+    });
+
     test("preserves recognized questionnaire sections", () => {
         expect(normalizeRecommendQuestionsFromDb([{ id: "q1", type: "boolean", content: "测试", section: "background" }])).toEqual([
             { id: "q1", type: "boolean", content: "测试", section: "background" },

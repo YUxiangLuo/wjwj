@@ -14,11 +14,11 @@ export const DOGFOOD_NAMES = {
     secondaryClass: "2026级公共管理班",
     dataScienceClass: "2026级数据科学班",
     historyClass: "2025级统计学2班",
-    topicA: "本科生每周学习时长",
+    topicA: "青年幸福感调查",
     topicB: "学生每周阅读时长",
     topicC: "毕业生直接就业意向比例",
     topicD: "食堂午间等待时间",
-    topicE: "新生数字素养调查（设计阶段）",
+    topicE: "校园绿色通勤方式占比",
 } as const;
 
 export const DOGFOOD_COUNTS = {
@@ -28,9 +28,9 @@ export const DOGFOOD_COUNTS = {
     class: 4,
     student: 20,
     topic: 5,
-    task: 6,
+    task: 8,
     experiment: 17,
-    samplingAttempt: 12,
+    samplingAttempt: 10,
     announcement: 5,
     topicAttachment: 2,
 } as const;
@@ -46,15 +46,12 @@ export const DOGFOOD_MAIN_TASK_PROGRESS = {
     rejected: 1,
 } as const;
 
-export const STUDY_HOURS_POPULATION_PATH = "/storage/topics/seed-population-study-hours.xlsx";
+export const HAPPINESS_POPULATION_PATH = "/storage/topics/seed-population-youth-happiness.xlsx";
 export const READING_POPULATION_PATH = "/storage/topics/seed-population-reading-hours.csv";
 export const EMPLOYMENT_POPULATION_PATH = "/storage/topics/seed-population-employment-intent.csv";
 export const DINING_POPULATION_PATH = "/storage/topics/seed-population-dining-wait.csv";
+export const GREEN_COMMUTE_POPULATION_PATH = "/storage/topics/seed-population-green-commute.csv";
 
-/** Aliases kept for the population helpers below. */
-export const PPS_POPULATION_PATH = STUDY_HOURS_POPULATION_PATH;
-export const MEAN_POPULATION_PATH = READING_POPULATION_PATH;
-export const PROPORTION_POPULATION_PATH = EMPLOYMENT_POPULATION_PATH;
 export const GUIDE_ATTACHMENT_PATH = "/storage/uploads/seed-topic-guide.pdf";
 export const QUESTIONNAIRE_TEMPLATE_ATTACHMENT_PATH = "/storage/uploads/seed-questionnaire-template.docx";
 
@@ -105,19 +102,19 @@ export function allocateIntegerShares(total: number, ratios: readonly number[]):
     return shares;
 }
 
-export function computePpsMeanPlan(population = createPpsPopulation()) {
+export function computeYouthHappinessPlan(population = createYouthHappinessPopulation()) {
     // Same convention as the student-facing population stats (see computeReadingPlan).
-    const populationVariance = buildPopulationNumericStats(population, ["每周学习时长"])["每周学习时长"]!.variance;
+    const populationVariance = buildPopulationNumericStats(population, ["生活幸福感得分"])["生活幸福感得分"]!.variance;
     const recommendedSize = calculateMeanEstimationSampleSize({
         confidenceLevel: "95",
-        marginOfError: 2,
+        marginOfError: 0.5,
         populationSize: population.length,
         populationVariance,
         designEffect: 1,
         nonResponseRate: 0,
     });
     if (recommendedSize === null) {
-        throw new Error("Dogfood PPS mean sample plan could not be calculated");
+        throw new Error("Youth happiness sample plan could not be calculated");
     }
     return { recommendedSize, populationVariance };
 }
@@ -144,23 +141,60 @@ export function computeReadingPlan(population = createMeanPopulation()) {
     return { recommendedSize, populationVariance };
 }
 
-export function createPpsPopulation() {
-    const gradePlan = [
-        ...Array.from({ length: 80 }, () => "大一"),
-        ...Array.from({ length: 60 }, () => "大二"),
-        ...Array.from({ length: 40 }, () => "大三"),
-        ...Array.from({ length: 20 }, () => "大四"),
-    ];
-    const majors = ["统计学", "经济学", "管理学", "计算机"];
-    return gradePlan.map((年级, index) => ({
-        编号: index + 1,
-        年级,
-        专业: majors[index % majors.length]!,
-        性别: index % 2 === 0 ? "男" : "女",
-        每周学习时长: 6 + (index % 28),
-        月生活费: 800 + (index % 20) * 180,
-        学习满意度: 1 + (index % 5),
-    }));
+export function computeDiningPlan(population = createDiningServicePopulation()) {
+    const populationVariance = buildPopulationNumericStats(population, ["等待分钟"])["等待分钟"]!.variance;
+    const recommendedSize = calculateMeanEstimationSampleSize({
+        confidenceLevel: "95",
+        marginOfError: 2,
+        populationSize: population.length,
+        populationVariance,
+        designEffect: 1,
+        nonResponseRate: 0,
+    });
+    if (recommendedSize === null) {
+        throw new Error("Dining service sample plan could not be calculated");
+    }
+    return { recommendedSize, populationVariance };
+}
+
+function fixtureNoise(index: number, salt: number) {
+    let value = (Math.imul(index + 1, 2_654_435_761) ^ Math.imul(salt, 1_597_334_677)) >>> 0;
+    value = Math.imul(value ^ (value >>> 16), 2_246_822_507) >>> 0;
+    return ((value ^ (value >>> 13)) >>> 0) / 4_294_967_296;
+}
+
+function clamp(value: number, minimum: number, maximum: number) {
+    return Math.min(maximum, Math.max(minimum, value));
+}
+
+export function createYouthHappinessPopulation() {
+    const ageGroups = ["18—22岁", "23—27岁", "28—35岁"];
+    const residenceTypes = ["城区", "县镇", "农村"];
+    const employmentStatuses = ["在校学习", "稳定就业", "灵活就业", "求职或待业"];
+    return Array.from({ length: 240 }, (_, index) => {
+        const ageGroup = ageGroups[index % ageGroups.length]!;
+        const residenceType = residenceTypes[Math.floor(index / ageGroups.length) % residenceTypes.length]!;
+        const employmentStatus = employmentStatuses[(index * 5 + Math.floor(index / 12)) % employmentStatuses.length]!;
+        const socialSupport = 2 + Math.floor(fixtureNoise(index, 1) * 4);
+        const health = 2 + Math.floor(fixtureNoise(index, 2) * 4);
+        const pressure = 1 + Math.floor(fixtureNoise(index, 3) * 5);
+        const employmentAdjustment = employmentStatus === "稳定就业" ? 0.35 : employmentStatus === "求职或待业" ? -0.55 : 0;
+        const happiness = clamp(
+            4.2 + socialSupport * 0.55 + health * 0.45 - pressure * 0.38 + employmentAdjustment + (fixtureNoise(index, 4) - 0.5) * 2.2,
+            0,
+            10,
+        );
+        return {
+            青年代号: `Y${String(index + 1).padStart(3, "0")}`,
+            年龄组: ageGroup,
+            居住地类型: residenceType,
+            当前状态: employmentStatus,
+            生活幸福感得分: Number(happiness.toFixed(1)),
+            社会支持感: socialSupport,
+            自评健康: health,
+            经济压力: pressure,
+        };
+    });
 }
 
 export function createMeanPopulation() {
@@ -203,4 +237,34 @@ export function createDiningServicePopulation() {
         客流量: 45 + (index * 11) % 156,
         开放窗口数: 3 + index % 8,
     }));
+}
+
+export function createGreenCommutePopulation() {
+    const residenceAreas = ["校内宿舍", "近校社区", "远校社区"];
+    const grades = ["大一", "大二", "大三", "大四"];
+    const registrationPeriods = ["07:00前", "07:00—08:00", "08:00—09:00", "09:00后"];
+    return Array.from({ length: 360 }, (_, index) => {
+        // The frame is grouped by residence area and repeats four registration
+        // periods inside every group. With the documented n=90, K=4, each
+        // random start locks onto one period and exposes systematic periodicity.
+        const area = residenceAreas[Math.floor(index / 120)]!;
+        const registrationPeriod = registrationPeriods[index % registrationPeriods.length]!;
+        const areaBaseline = area === "校内宿舍" ? 0.82 : area === "近校社区" ? 0.67 : 0.5;
+        const periodAdjustment = registrationPeriod === "07:00前" ? 0.18
+            : registrationPeriod === "07:00—08:00" ? 0.06
+                : registrationPeriod === "08:00—09:00" ? -0.08
+                    : -0.2;
+        const greenProbability = clamp(areaBaseline + periodAdjustment, 0.05, 0.95);
+        const green = fixtureNoise(index, 21) < greenProbability;
+        const greenModes = ["步行", "自行车", "公共交通"];
+        return {
+            通勤记录编号: `C${String(index + 1).padStart(3, "0")}`,
+            住宿片区: area,
+            登记时段: registrationPeriod,
+            年级: grades[Math.floor(index / registrationPeriods.length) % grades.length]!,
+            是否绿色通勤: green ? "是" : "否",
+            主要通勤方式: green ? greenModes[index % greenModes.length]! : "网约车或私家车",
+            通勤距离公里: Number(((area === "校内宿舍" ? 0.3 : area === "近校社区" ? 2 : 7) + fixtureNoise(index, 22) * 4).toFixed(1)),
+        };
+    });
 }

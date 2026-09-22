@@ -20,20 +20,22 @@ import { buildPopulationNumericStats, getPpsEligibleNumericFields, parseTopicFie
 import { validateReportForSubmit } from "../../student/experiment/submit-validation";
 import { buildTaskProgressSnapshot } from "../../teacher/topic/task-progress";
 import {
-    computePpsMeanPlan,
+    computeYouthHappinessPlan,
     DINING_POPULATION_PATH,
     DOGFOOD_ANCHORS,
     DOGFOOD_COUNTS,
     DOGFOOD_MAIN_TASK_PROGRESS,
     DOGFOOD_NAMES,
     EMPLOYMENT_POPULATION_PATH,
+    GREEN_COMMUTE_POPULATION_PATH,
     GUIDE_ATTACHMENT_PATH,
+    HAPPINESS_POPULATION_PATH,
     QUESTIONNAIRE_TEMPLATE_ATTACHMENT_PATH,
     READING_POPULATION_PATH,
-    STUDY_HOURS_POPULATION_PATH,
 } from "./dogfood-fixtures";
 import { DEMO_STUDENT_ACCOUNTS } from "./demo-accounts";
 import { parseSamplingPolicy } from "../../lib/sampling-policy";
+import { validateRecommendQuestionsPayload } from "../../lib/validate-question";
 
 function check(condition: unknown, message: string): asserts condition {
     if (!condition) throw new Error(message);
@@ -169,7 +171,9 @@ async function verify() {
     const populationHashCache = new Map<string, string>();
     for (const row of authoritative) {
         const label = `${row.studentId}/${row.topicName}`;
-        const hasDisabledPps = row.topicName === DOGFOOD_NAMES.topicB;
+        const hasDisabledPps = row.topicName === DOGFOOD_NAMES.topicA
+            || row.topicName === DOGFOOD_NAMES.topicB
+            || row.topicName === DOGFOOD_NAMES.topicC;
         const hasChoicePair = row.studentId === DOGFOOD_ANCHORS.choicePair && row.topicName === DOGFOOD_NAMES.topicA;
         const liveResults = checkAuthoritativeMethods(label, row.results, hasDisabledPps, hasChoicePair);
         if (row.status !== "in_progress") {
@@ -196,10 +200,13 @@ async function verify() {
             check(validateReportForSubmit(row.reportContent) === null, `${label} live report is invalid`);
             check(validateReportForSubmit(storedSnapshot.reportContent) === null, `${label} snapshot report is invalid`);
         }
-        if (hasDisabledPps) {
-            check(row.reportContent?.includes("PPS") && row.reportContent.includes("不适用"), "Mean live report does not explain disabled PPS");
+        if (hasDisabledPps && row.status !== "in_progress") {
+            const explainsDisabledPps = (value: unknown) => typeof value === "string"
+                && value.includes("PPS")
+                && ["不适用", "不使用", "不用于"].some((phrase) => value.includes(phrase));
+            check(explainsDisabledPps(row.reportContent), `${label} live report does not explain disabled PPS`);
             const snapshotReport = (row.snapshot as Record<string, unknown> | null)?.reportContent;
-            check(typeof snapshotReport === "string" && snapshotReport.includes("PPS") && snapshotReport.includes("不适用"), "Mean snapshot report does not explain disabled PPS");
+            check(explainsDisabledPps(snapshotReport), `${label} snapshot report does not explain disabled PPS`);
         }
     }
     check(
@@ -216,11 +223,10 @@ async function verify() {
         .innerJoin(topic, eq(task.topicId, topic.id))
         .where(and(eq(student.studentId, DOGFOOD_ANCHORS.submitted), eq(topic.name, DOGFOOD_NAMES.topicA)))
         .orderBy(asc(samplingAttempt.createdAt));
-    const { recommendedSize: expectedPpsSampleCount } = computePpsMeanPlan();
+    const { recommendedSize: expectedPpsSampleCount } = computeYouthHappinessPlan();
     check(JSON.stringify(auditRows) === JSON.stringify([
         { method: "simple", seed: 202601, sampleCount: expectedPpsSampleCount },
         { method: "systematic", seed: 202602, sampleCount: expectedPpsSampleCount },
-        { method: "pps", seed: 202603, sampleCount: expectedPpsSampleCount },
         { method: "stratified", seed: 202604, sampleCount: expectedPpsSampleCount },
     ]), `Sampling attempt fixtures differ: ${JSON.stringify(auditRows)}`);
 
@@ -236,7 +242,8 @@ async function verify() {
     check(auditCoverage.length === DOGFOOD_COUNTS.samplingAttempt, `Sampling audit coverage differs: ${auditCoverage.length}`);
     check(auditedScenarioKeys.size === 3, `Expected three audited research scenarios, got ${[...auditedScenarioKeys].join(", ")}`);
     for (const key of auditedScenarioKeys) {
-        check(auditCoverage.filter((row) => `${row.studentId}|${row.topicName}` === key).length === 4, `${key} does not cover four sampling methods`);
+        const expectedMethods = key.endsWith(`|${DOGFOOD_NAMES.topicD}`) ? 4 : 3;
+        check(auditCoverage.filter((row) => `${row.studentId}|${row.topicName}` === key).length === expectedMethods, `${key} does not cover ${expectedMethods} sampling methods`);
     }
 
     const visible = await db
@@ -334,20 +341,28 @@ async function verify() {
     }
 
     const storedTopics = await db
-        .select({ name: topic.name, path: topic.excelFilePath, rowCount: topic.excelRowCount, fieldMapping: topic.fieldMapping, samplingPolicy: topic.samplingPolicy })
+        .select({
+            name: topic.name,
+            status: topic.status,
+            path: topic.excelFilePath,
+            rowCount: topic.excelRowCount,
+            fieldMapping: topic.fieldMapping,
+            samplingPolicy: topic.samplingPolicy,
+            recommendQuestions: topic.recommendQuestions,
+        })
         .from(topic)
-        .where(inArray(topic.name, [DOGFOOD_NAMES.topicA, DOGFOOD_NAMES.topicB, DOGFOOD_NAMES.topicC, DOGFOOD_NAMES.topicD]));
-    check(storedTopics.length === 4, `Expected stored population metadata for four research scenarios, got ${storedTopics.length}`);
+        .where(inArray(topic.name, [DOGFOOD_NAMES.topicA, DOGFOOD_NAMES.topicB, DOGFOOD_NAMES.topicC, DOGFOOD_NAMES.topicD, DOGFOOD_NAMES.topicE]));
+    check(storedTopics.length === 5, `Expected stored population metadata for five research scenarios, got ${storedTopics.length}`);
 
     const expectedTopicFiles = {
         [DOGFOOD_NAMES.topicA]: {
-            path: STUDY_HOURS_POPULATION_PATH,
-            rowCount: 200,
-            columns: ["编号", "年级", "专业", "性别", "每周学习时长", "月生活费", "学习满意度"],
-            ppsFields: ["每周学习时长", "月生活费", "学习满意度"],
+            path: HAPPINESS_POPULATION_PATH,
+            rowCount: 240,
+            columns: ["青年代号", "年龄组", "居住地类型", "当前状态", "生活幸福感得分", "社会支持感", "自评健康", "经济压力"],
+            ppsFields: ["生活幸福感得分", "社会支持感", "自评健康", "经济压力"],
             targetKind: "mean",
             targetValue: undefined,
-            policy: { pps: "optional", stratified: "optional" },
+            policy: { pps: "disabled", stratified: "required", systematic: "optional" },
         },
         [DOGFOOD_NAMES.topicB]: {
             path: READING_POPULATION_PATH,
@@ -356,7 +371,7 @@ async function verify() {
             ppsFields: [],
             targetKind: "mean",
             targetValue: undefined,
-            policy: { pps: "disabled", stratified: "optional" },
+            policy: { pps: "disabled", stratified: "optional", systematic: "optional" },
         },
         [DOGFOOD_NAMES.topicC]: {
             path: EMPLOYMENT_POPULATION_PATH,
@@ -365,7 +380,7 @@ async function verify() {
             ppsFields: ["每周职业准备时长", "求职准备度"],
             targetKind: "proportion",
             targetValue: "直接就业",
-            policy: { pps: "optional", stratified: "required" },
+            policy: { pps: "disabled", stratified: "required", systematic: "optional" },
         },
         [DOGFOOD_NAMES.topicD]: {
             path: DINING_POPULATION_PATH,
@@ -374,13 +389,24 @@ async function verify() {
             ppsFields: ["等待分钟", "客流量", "开放窗口数"],
             targetKind: "mean",
             targetValue: undefined,
-            policy: { pps: "required", stratified: "optional" },
+            policy: { pps: "required", stratified: "optional", systematic: "optional" },
+        },
+        [DOGFOOD_NAMES.topicE]: {
+            path: GREEN_COMMUTE_POPULATION_PATH,
+            rowCount: 360,
+            columns: ["通勤记录编号", "住宿片区", "登记时段", "年级", "是否绿色通勤", "主要通勤方式", "通勤距离公里"],
+            ppsFields: ["通勤距离公里"],
+            targetKind: "proportion",
+            targetValue: "是",
+            policy: { pps: "disabled", stratified: "optional", systematic: "required" },
         },
     } as const;
     const parsedRowCounts: Record<string, number> = {};
     for (const storedTopic of storedTopics) {
         const expected = expectedTopicFiles[storedTopic.name as keyof typeof expectedTopicFiles];
         check(expected, `Unexpected topic population metadata: ${storedTopic.name}`);
+        check(storedTopic.status === 1, `${storedTopic.name} is not published`);
+        check(validateRecommendQuestionsPayload(storedTopic.recommendQuestions) === null, `${storedTopic.name} recommended questionnaire is invalid`);
         check(storedTopic.path === expected.path, `${storedTopic.name} stored path differs: ${storedTopic.path}`);
         check(storedTopic.rowCount === expected.rowCount, `${storedTopic.name} stored row count differs: ${storedTopic.rowCount}`);
         const mapping = parseTopicFieldMapping(storedTopic.fieldMapping);
@@ -398,6 +424,7 @@ async function verify() {
         check(samplingPolicy.methods.simple === "required", `${storedTopic.name} must require simple sampling`);
         check(samplingPolicy.methods.pps === expected.policy.pps, `${storedTopic.name} PPS policy differs`);
         check(samplingPolicy.methods.stratified === expected.policy.stratified, `${storedTopic.name} stratified policy differs`);
+        check(samplingPolicy.methods.systematic === expected.policy.systematic, `${storedTopic.name} systematic policy differs`);
 
         const file = Bun.file(resolveStoragePath(storedTopic.path));
         check(await file.exists(), `${storedTopic.name} population file is missing: ${storedTopic.path}`);
@@ -408,6 +435,17 @@ async function verify() {
         const eligiblePpsFields = getPpsEligibleNumericFields(parsed.rows, mapping.numeric ?? []);
         check(JSON.stringify(eligiblePpsFields) === JSON.stringify(expected.ppsFields), `${storedTopic.name} PPS eligibility differs: ${JSON.stringify(eligiblePpsFields)}`);
         parsedRowCounts[storedTopic.name] = parsed.rowCount;
+    }
+
+    const mainClassTopicRows = await db
+        .select({ topicName: topic.name })
+        .from(task)
+        .innerJoin(topic, eq(task.topicId, topic.id))
+        .innerJoin(class_, eq(task.classId, class_.id))
+        .where(eq(class_.name, DOGFOOD_NAMES.mainClass));
+    const mainClassTopicNames = new Set(mainClassTopicRows.map((row) => row.topicName));
+    for (const topicName of Object.values(DOGFOOD_NAMES).filter((name) => storedTopics.some((row) => row.name === name))) {
+        check(mainClassTopicNames.has(topicName), `${topicName} is not assigned to the main demo class`);
     }
 
     const attachments = await db

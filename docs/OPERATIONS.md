@@ -45,6 +45,4 @@ bun run start:demo
 
 `start:demo` 启用账号预填和随机学生凭据端点，普通 `start` 不包含演示密码。默认管理员是 `admin` / `admin123`，教师和学生初始密码分别为工号、学号。
 
-Seed 非幂等且仅支持空库；失败后不要直接重跑。确认数据库可丢弃后，按 [DATABASE.md](../DATABASE.md) 的保护流程运行 `db:reset:demo`，该命令不清理 `storage/`。`SEED_NOW` 可指定带时区的 ISO 时间锚点。演示内容以 `src/db/seeds/default.ts` 和 `dogfood-fixtures.ts` 为准，使用 `bun run db:seed:check` 验证，不在文档维护数量或状态快照。
-
-扩充课题使用 `scripts/add-demo-research-topics.ts`，并提供 `DEMO_BASE_URL` 和持久保存的 `DEMO_CATALOG_MANIFEST`；中断续跑必须沿用同一清单。
+仓库只维护这一套演示 Seed；不存在额外课题目录或二次扩充脚本。Seed 非幂等且仅支持空库；失败后不要直接重跑。确认数据库可丢弃后，按 [DATABASE.md](../DATABASE.md) 的保护流程运行 `db:reset:demo`，该命令不清理 `storage/`。`SEED_NOW` 可指定带时区的 ISO 时间锚点。5 个教学实验的目标、方法和解释边界见 [演示实验目录](DEMO_EXPERIMENT_CATALOG.md)；数据实现以 `src/db/seeds/default.ts` 和 `dogfood-fixtures.ts` 为准，使用 `bun run db:seed:check` 验证。
