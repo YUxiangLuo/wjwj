@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef, memo } from "react";
 import { createPortal } from "react-dom";
-import { X, Users, Target, Layers, Shuffle, ChevronLeft, ChevronRight, Loader2, CheckCircle2 } from "lucide-react";
+import { X, Users, Target, Layers, Shuffle, ChevronLeft, ChevronRight, Loader2, CheckCircle2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { MethodKey as SamplingMethod } from "@/domain/experiment/types";
 import { createSeededRandom, performSimpleSamplingWithIndices, type PpsProbabilitySummary } from "@/domain/statistics/sampling";
@@ -241,6 +241,7 @@ export function ImmersiveSamplingAnimation({
     const [phase, setPhase] = useState<Phase>({ type: "intro" });
     const [visiblePopCount, setVisiblePopCount] = useState(0);
     const [currentSelectIndex, setCurrentSelectIndex] = useState(0);
+    const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
     const meta = METHOD_META[method];
     const progressCopy = METHOD_PROGRESS_COPY[method];
     const fieldLabel = FIELD_LABELS[stratifyBy ?? ""] ?? stratifyBy;
@@ -385,8 +386,20 @@ export function ImmersiveSamplingAnimation({
     useEffect(() => {
         if (typeof window.matchMedia !== "function") return;
         const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-        if (reducedMotion.matches) finishAnimation();
+        const syncMotionPreference = () => {
+            setPrefersReducedMotion(reducedMotion.matches);
+            if (reducedMotion.matches) finishAnimation();
+        };
+        syncMotionPreference();
+        reducedMotion.addEventListener?.("change", syncMotionPreference);
+        return () => reducedMotion.removeEventListener?.("change", syncMotionPreference);
     }, [finishAnimation]);
+
+    const replayAnimation = useCallback(() => {
+        setVisiblePopCount(0);
+        setCurrentSelectIndex(0);
+        setPhase({ type: "intro" });
+    }, []);
 
     // ─── Phase transitions ────────────────────────────────
     // Intro → Populating after 1.5s
@@ -639,6 +652,18 @@ export function ImmersiveSamplingAnimation({
                 </div>
                 {phase.type === "complete" ? (
                     <div className="flex items-center gap-2">
+                        {!prefersReducedMotion && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={replayAnimation}
+                                data-testid="immersive-sampling-replay"
+                                className="border-input text-foreground hover:bg-muted"
+                            >
+                                <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                                重播本次动画
+                            </Button>
+                        )}
                         {onSkipRest && (
                             <Button
                                 type="button"
@@ -744,6 +769,20 @@ export function ImmersiveSamplingAnimation({
                                         ? `比例示意：用 ${visualPopulationSize.toLocaleString()} 个点代表实际总体 ${populationSize.toLocaleString()}，样本高亮按 ${sampleSize.toLocaleString()}/${populationSize.toLocaleString()} 近似映射`
                                         : `按实际数量绘制：${visualPopulationSize.toLocaleString()} 个点分别代表 ${populationSize.toLocaleString()} 个总体单位`}
                                 </p>
+                                <div
+                                    className="mb-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-meta text-muted-foreground"
+                                    data-testid="sampling-animation-legend"
+                                    aria-label="点阵图例"
+                                >
+                                    <span className="inline-flex items-center gap-2">
+                                        <span className={`h-3 w-3 rounded-control ${method === "pps" ? `${meta.accentBg} opacity-40` : method === "stratified" ? "bg-warning-muted" : "bg-input"}`} aria-hidden="true" />
+                                        {method === "pps" ? "点亮程度：规模大小（示意）" : method === "stratified" ? "颜色：所属层" : "浅色：总体单位"}
+                                    </span>
+                                    <span className="inline-flex items-center gap-2">
+                                        <span className={`h-3 w-3 rounded-control ${meta.accentBg} ring-1 ring-inset ${meta.accentRing}`} aria-hidden="true" />
+                                        实色描边：已选样本
+                                    </span>
+                                </div>
                                 <div className="relative mx-auto w-fit">
                                     <DotGrid
                                         totalDots={visualPopulationSize}

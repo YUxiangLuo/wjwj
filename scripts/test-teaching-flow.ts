@@ -329,6 +329,11 @@ try {
     await visible(student, '[data-testid="sampling-animation-receipt"]');
     assert(await evaluate(student, `(() => {const receipt=document.querySelector('[data-testid="sampling-animation-receipt"]');return receipt.textContent.includes("${experiment.populationSize} → ${experiment.samplePlan?.finalSampleSize}") && receipt.textContent.includes("抽样比") && receipt.textContent.includes("随机种子");})()`), "Sampling receipt did not preserve the saved draw parameters");
     await browser(student, "screenshot", join(artifacts, "sampling-animation-receipt.png"));
+    await activate(student, '[data-testid="immersive-sampling-replay"]');
+    await visible(student, '[data-testid="sampling-animation-dot-grid"]');
+    assert(await evaluate(student, `document.querySelector('[data-testid="sampling-animation-legend"]').textContent.includes("实色描边：已选样本") && document.body.textContent.includes("随机种子 ${simpleSeed}")`), "Sampling replay did not retain the saved draw or explain the dot encoding");
+    await activate(student, '[data-testid="immersive-sampling-skip"]');
+    await visible(student, '[data-testid="sampling-animation-receipt"]');
     await activate(student, '[data-testid="immersive-sampling-return"]');
     for (const method of ["systematic", "pps"] as const) {
         await api(student, `/api/student/tasks/${task.id}/sampling`, "POST", { method, params: { sampleSize: 49, ...(method === "pps" ? { sizeField: "月生活费" } : {}) } });

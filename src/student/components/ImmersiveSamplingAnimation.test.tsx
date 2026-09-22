@@ -62,7 +62,7 @@ test("a large frame labels its capped dot grid as a proportional illustration", 
     expect(grid.querySelectorAll('[data-selected="true"].ring-inset')).toHaveLength(200);
 });
 
-test("simple animation replays the saved seed instead of a fixed visual draw", async () => {
+test("simple animation uses the saved seed and replays the same draw", async () => {
     const view = render(
         <ImmersiveSamplingAnimation
             method="simple"
@@ -75,12 +75,25 @@ test("simple animation replays the saved seed instead of a fixed visual draw", a
     );
 
     const grid = await waitFor(() => view.getByTestId("sampling-animation-dot-grid"), { timeout: 1500 });
+    expect(view.getByTestId("sampling-animation-legend").textContent).toContain("实色描边：已选样本");
     await waitFor(() => {
         const selectedIndices = [...grid.children]
             .map((dot, index) => dot.getAttribute("data-selected") === "true" ? index : -1)
             .filter(index => index >= 0);
         expect(selectedIndices).toEqual([2, 3, 7]);
         expect(view.getByText("已完成选取，正在核对结果... 3/3")).toBeTruthy();
+    }, { timeout: 3000 });
+
+    await waitFor(() => view.getByTestId("sampling-animation-receipt"), { timeout: 2500 });
+    fireEvent.click(view.getByTestId("immersive-sampling-replay"));
+    expect(view.queryByTestId("sampling-animation-receipt")).toBeNull();
+    expect(view.getByText("准备中...")).toBeTruthy();
+    const replayGrid = await waitFor(() => view.getByTestId("sampling-animation-dot-grid"), { timeout: 1500 });
+    await waitFor(() => {
+        const selectedIndices = [...replayGrid.children]
+            .map((dot, index) => dot.getAttribute("data-selected") === "true" ? index : -1)
+            .filter(index => index >= 0);
+        expect(selectedIndices).toEqual([2, 3, 7]);
     }, { timeout: 3000 });
 });
 
@@ -165,4 +178,36 @@ test("a twenty-layer receipt keeps the full allocation in bounded disclosure", a
     expect(layerList.className).toContain("max-h-24");
     expect(layerList.tabIndex).toBe(0);
     expect(layerList.getAttribute("aria-label")).toBe("各层总体与样本分配");
+});
+
+test("reduced-motion users go directly to results without a replay control", async () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+        matches: query === "(prefers-reduced-motion: reduce)",
+        media: query,
+        onchange: null,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        dispatchEvent: () => false,
+    })) as typeof window.matchMedia;
+
+    try {
+        const view = render(
+            <ImmersiveSamplingAnimation
+                method="simple"
+                populationSize={8}
+                sampleSize={3}
+                seed={43}
+                sampledData={[]}
+                onClose={() => undefined}
+            />,
+        );
+
+        await waitFor(() => view.getByTestId("sampling-animation-receipt"));
+        expect(view.queryByTestId("immersive-sampling-replay")).toBeNull();
+    } finally {
+        window.matchMedia = originalMatchMedia;
+    }
 });
