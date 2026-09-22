@@ -8,6 +8,15 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Button, IconButton } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+    AlertDialog,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
     Dialog,
     DialogContent,
     DialogDescription,
@@ -40,6 +49,8 @@ export function AnnouncementManagement() {
     const [editing, setEditing] = useState<Announcement | null>(null);
     const [form, setForm] = useState(emptyForm);
     const [submitting, setSubmitting] = useState(false);
+    const [announcementToDelete, setAnnouncementToDelete] = useState<Announcement | null>(null);
+    const [deletePending, setDeletePending] = useState(false);
     const pending = useRef(false);
 
     const load = async () => {
@@ -70,6 +81,23 @@ export function AnnouncementManagement() {
         } finally {
             pending.current = false;
             setSubmitting(false);
+        }
+    };
+
+    const deleteAnnouncement = async () => {
+        if (!announcementToDelete || deletePending) return;
+        setDeletePending(true);
+        try {
+            const response = await announcementApi.delete(announcementToDelete.id);
+            if (!response.success) {
+                toast.error(response.error?.message ?? "删除失败");
+                return;
+            }
+            setAnnouncementToDelete(null);
+            toast.success("公告已删除");
+            void load();
+        } finally {
+            setDeletePending(false);
         }
     };
 
@@ -145,11 +173,7 @@ export function AnnouncementManagement() {
                                         variant="ghost"
                                         size="icon-sm"
                                         className="text-destructive"
-                                        onClick={async () => {
-                                            if (!window.confirm("确定删除这条公告吗？")) return;
-                                            const response = await announcementApi.delete(item.id);
-                                            if (response.success) void load();
-                                        }}
+                                        onClick={() => setAnnouncementToDelete(item)}
                                     >
                                         <Trash2 className="h-4 w-4" />
                                     </IconButton>
@@ -236,6 +260,29 @@ export function AnnouncementManagement() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            <AlertDialog
+                open={announcementToDelete !== null}
+                onOpenChange={(nextOpen) => {
+                    if (!nextOpen && !deletePending) setAnnouncementToDelete(null);
+                }}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>永久删除公告？</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {announcementToDelete
+                                ? `将永久删除「${announcementToDelete.title}」（${announcementToDelete.status === 1 ? "已发布" : "草稿"}）。此操作不可恢复。`
+                                : null}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deletePending}>取消</AlertDialogCancel>
+                        <Button variant="destructive" disabled={deletePending} onClick={() => void deleteAnnouncement()}>
+                            {deletePending ? "删除中…" : "永久删除"}
+                        </Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Card>
     );
 }

@@ -38,10 +38,19 @@ export async function getTeacherVariableDictionary(params: { teacherId: number; 
         if (stored?.source === sourceData.source && stored.revision === state.variableRevision) {
             try { confirmed = validateDictionary(stored, sourceData.rows, sourceData.source); } catch { confirmed = null; }
         }
+        const mapping = state.fieldMapping && typeof state.fieldMapping === "object"
+            ? state.fieldMapping as { identifier?: unknown; numeric?: unknown }
+            : {};
+        const roleHints = {
+            identifier: typeof mapping.identifier === "string" ? mapping.identifier : undefined,
+            numeric: Array.isArray(mapping.numeric) && mapping.numeric.every(field => typeof field === "string")
+                ? mapping.numeric as string[]
+                : undefined,
+        };
         return {
             ok: true as const,
             dictionary: confirmed,
-            suggestion: suggestDictionary(sourceData.rows, sourceData.source, state.variableRevision),
+            suggestion: suggestDictionary(sourceData.rows, sourceData.source, state.variableRevision, roleHints),
             source: sourceData.source,
             revision: state.variableRevision,
             locked: state.locked,

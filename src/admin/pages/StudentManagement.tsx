@@ -220,7 +220,7 @@ export function StudentManagement() {
                                                 value={item.progress}
                                                 className="h-1.5 w-24"
                                             />
-                                            <span className="text-meta text-muted-foreground">{item.progress}%</span>
+                                            <span aria-hidden="true" className="text-meta text-muted-foreground">{item.progress}%</span>
                                         </div>
                                     </TableCell>
                                     <TableCell>

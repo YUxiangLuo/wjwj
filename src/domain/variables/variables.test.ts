@@ -26,6 +26,24 @@ test("suggestions do not infer numeric-looking text as continuous and validation
     expect(() => validateDictionary({ ...dictionary, variables: [{ ...dictionary.variables[0]!, categories: [] }] }, rows, "population.csv")).toThrow("未覆盖完整总体");
 });
 
+test("suggestions honor authoritative identifier and numeric field roles", () => {
+    const rows = [
+        { id: "D001", score: 10, group: "A" },
+        { id: "D002", score: 20, group: "B" },
+    ];
+    const dictionary = suggestDictionary(rows, "population.csv", 1, {
+        identifier: "id",
+        numeric: ["score"],
+    });
+
+    expect(dictionary.variables.map(variable => [variable.field, variable.kind, variable.categories.length])).toEqual([
+        ["id", "identifier", 0],
+        ["score", "continuous", 0],
+        ["group", "nominal", 2],
+    ]);
+    expect(validateDictionary(dictionary, rows, "population.csv")).toEqual(dictionary);
+});
+
 test("explicit continuous variables parse CSV numeric text but reject invalid non-missing values", () => {
     expect(interpretNumeric("１,200", continuous)).toBe(1200);
     expect(interpretNumeric("NA", continuous)).toBeNull();

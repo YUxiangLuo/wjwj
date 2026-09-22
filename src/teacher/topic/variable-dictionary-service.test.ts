@@ -38,3 +38,27 @@ test("variable dictionary PUT body is strict and complete", async () => {
     expect(await service.putTeacherVariableDictionary({ teacherId: 9, topicId: 12, body: { source: "x", observedRevision: 0 } }))
         .toMatchObject({ ok: false, code: "VALIDATION_ERROR" });
 });
+
+test("variable dictionary suggestions follow the topic field mapping", async () => {
+    const path = `/storage/uploads/variable-suggestion-${crypto.randomUUID()}.csv`;
+    await Bun.write(`${process.cwd()}${path}`, "id,group,score\nD001,A,10\nD002,B,20\n");
+    const mapping = { identifier: "id", numeric: ["score"], stratified: ["group"] };
+    const { db } = createMockDb({ select: [
+        [{ id: 12, status: 1, excelFilePath: path, fieldMapping: mapping, variableDictionary: null, variableRevision: 0 }],
+        [{ id: 3 }],
+    ] });
+    mock.module("../../db", () => ({ db }));
+    const service = await import(`./variable-dictionary-service?suggestion=${crypto.randomUUID()}`);
+    try {
+        const result = await service.getTeacherVariableDictionary({ teacherId: 9, topicId: 12 });
+        expect(result.ok).toBe(true);
+        if (!result.ok) throw new Error(result.message);
+        expect(result.suggestion.variables.map((variable: { field: string; kind: string; categories: unknown[] }) => [variable.field, variable.kind, variable.categories.length])).toEqual([
+            ["id", "identifier", 0],
+            ["group", "nominal", 2],
+            ["score", "continuous", 0],
+        ]);
+    } finally {
+        await Bun.file(`${process.cwd()}${path}`).delete().catch(() => undefined);
+    }
+});

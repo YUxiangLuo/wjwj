@@ -17,7 +17,12 @@ function raw(value: unknown): RawValue {
     return value as RawValue;
 }
 
-export function suggestDictionary(rows: Record<string, unknown>[], source: string, revision: number): VariableDictionary {
+export function suggestDictionary(
+    rows: Record<string, unknown>[],
+    source: string,
+    revision: number,
+    roleHints?: { identifier?: string; numeric?: readonly string[] },
+): VariableDictionary {
     if (!source.trim() || !Number.isSafeInteger(revision) || revision < 0) throw new Error("数据来源和修订号无效");
     const fields: string[] = [];
     const seenFields = new Set<string>();
@@ -38,7 +43,11 @@ export function suggestDictionary(rows: Record<string, unknown>[], source: strin
             }
             values.set(valueKey(value), value);
         }
-        const kind = values.size > MAX_CATEGORIES_PER_VARIABLE ? "identifier" : "nominal";
+        const kind = field === roleHints?.identifier
+            ? "identifier"
+            : roleHints?.numeric?.includes(field)
+                ? "continuous"
+                : values.size > MAX_CATEGORIES_PER_VARIABLE ? "identifier" : "nominal";
         return {
             field, label: field, unit: "", kind,
             categories: kind === "nominal" ? [...values.values()].map(value => ({ value, label: String(value) })) : [],

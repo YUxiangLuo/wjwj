@@ -54,3 +54,38 @@ test("announcement publishing starts once and keeps the editor locked until comp
     await act(async () => resolveWrite(Response.json({ success: true, data: { id: 12 } })));
     await waitFor(() => expect(view.queryByRole("dialog")).toBeNull());
 });
+
+test("announcement deletion identifies the exact object before the destructive request", async () => {
+    dom = installDomGlobals();
+    let deletes = 0;
+    const announcement = {
+        id: 7,
+        title: "课堂安排变更",
+        content: "正文",
+        targetScope: "teacher",
+        status: 1,
+        createdAt: "2026-09-22T00:00:00.000Z",
+        updatedAt: "2026-09-22T00:00:00.000Z",
+    };
+    globalThis.fetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === "DELETE") {
+            deletes += 1;
+            return Response.json({ success: true, data: { success: true } });
+        }
+        return Response.json({ success: true, data: [announcement] });
+    }) as unknown as typeof fetch;
+
+    const { AnnouncementManagement } = await import("./AnnouncementManagement");
+    const view = render(<AnnouncementManagement />);
+    const deleteButton = await view.findByRole("button", { name: "删除公告：课堂安排变更" });
+    fireEvent.click(deleteButton);
+
+    expect(view.getByRole("alertdialog").textContent).toContain("课堂安排变更");
+    expect(view.getByRole("alertdialog").textContent).toContain("已发布");
+    expect(view.getByRole("alertdialog").textContent).toContain("不可恢复");
+    expect(deletes).toBe(0);
+
+    fireEvent.click(view.getByRole("button", { name: "永久删除" }));
+    await waitFor(() => expect(deletes).toBe(1));
+    await waitFor(() => expect(view.queryByRole("alertdialog")).toBeNull());
+});

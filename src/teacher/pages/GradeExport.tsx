@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FileSpreadsheet, Users, CheckCircle2, Layers, Search, Download } from "lucide-react";
+import { FileSpreadsheet, Users, CheckCircle2, Layers, Search, Download, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -91,7 +91,7 @@ export function GradeExport() {
         }
     }
 
-    async function loadPreview(requestId: number) {
+    async function loadPreview(requestId: number, resetSelection = true) {
         setLoading(true);
         setAnalyticsError(null);
         setPreviewError(null);
@@ -120,7 +120,12 @@ export function GradeExport() {
                 : analyticsRes.error?.message ?? "成绩分析加载失败，请稍后重试");
         }
         setLoading(false);
-        setSelectedTaskIds([]);
+        if (resetSelection) setSelectedTaskIds([]);
+    }
+
+    function retryPreview() {
+        const requestId = ++previewRequestId.current;
+        void loadPreview(requestId, false);
     }
 
     function toggleTask(taskId: number) {
@@ -210,7 +215,14 @@ export function GradeExport() {
                 </Card>
             </div>
 
-            {analyticsError && <p role="alert" className="rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3 text-label text-destructive">{analyticsError}</p>}
+            {analyticsError && (
+                <div role="alert" className="flex items-center justify-between gap-3 rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3 text-label text-destructive">
+                    <span>{analyticsError}</span>
+                    <Button type="button" variant="outline" size="sm" onClick={retryPreview} disabled={loading} className="shrink-0 border-destructive-border bg-background text-destructive hover:bg-destructive-muted hover:text-destructive">
+                        <RefreshCw className="mr-1.5 h-3.5 w-3.5" />重试分析
+                    </Button>
+                </div>
+            )}
 
             {loading ? (
                 <Card><CardContent role="status" aria-live="polite" className="py-12 text-center text-label text-muted-foreground">正在加载成绩分析…</CardContent></Card>

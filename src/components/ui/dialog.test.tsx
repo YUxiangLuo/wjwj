@@ -36,6 +36,9 @@ test("controlled dialogs restore focus to their external opener", async () => {
     const opener = view.getByRole("button", { name: "打开测试弹窗" });
     opener.focus();
     fireEvent.click(opener);
+    const dialog = view.getByRole("dialog");
+    expect(dialog.className).toContain("max-h-[calc(100vh-2rem)]");
+    expect(dialog.className).toContain("overflow-y-auto");
     const close = await view.findByRole("button", { name: "完成并关闭" });
     expect(document.activeElement).not.toBe(opener);
     fireEvent.click(close);
