@@ -346,11 +346,27 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                         {SAMPLING_METHODS.map((method) => {
                                             const requirement = samplingPolicy.methods[method];
                                             return (
-                                                <div key={method} className="flex items-center justify-between rounded-surface border border-border bg-background p-4">
-                                                    <span className="text-label font-medium text-foreground">{samplingMethodLabels[method]}</span>
-                                                    <StatusBadge intent={requirement === "required" ? "primary" : requirement === "optional" ? "info" : "neutral"}>
-                                                        {requirement === "required" ? "必做" : requirement === "optional" ? "选做" : "不适用"}
-                                                    </StatusBadge>
+                                                <div key={method} className="space-y-3 rounded-surface border border-border bg-background p-4">
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <span className="text-label font-medium text-foreground">{samplingMethodLabels[method]}</span>
+                                                        <StatusBadge intent={requirement === "required" ? "primary" : requirement === "optional" ? "info" : "neutral"}>
+                                                            {requirement === "required" ? "必做" : requirement === "optional" ? "选做" : "不适用"}
+                                                        </StatusBadge>
+                                                    </div>
+                                                    {method === "pps" && requirement !== "disabled" && (
+                                                        <div className="border-t border-border pt-3">
+                                                            <p className="text-meta text-muted-foreground">PPS 规模变量</p>
+                                                            {samplingPolicy.ppsSizeFields?.length ? (
+                                                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                                                    {samplingPolicy.ppsSizeFields.map((field) => (
+                                                                        <StatusBadge intent="success" key={field}>{field}</StatusBadge>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <p className="mt-1 text-meta text-muted-foreground">从总体中符合条件的正值数值字段选择</p>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             );
                                         })}
