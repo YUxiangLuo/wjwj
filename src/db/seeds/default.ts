@@ -73,10 +73,10 @@ const happinessQuestionnaire = {
 
 const readingQuestionnaire = {
     title: "学生课外阅读调查（受访者视角试填）",
-    welcomeText: "您好！本问卷属于「2026 校园学习与生活状况调查」的阅读行为子课题，用于课堂受访者视角试填。",
+    welcomeText: "您好！本问卷用于了解学生在正常教学周的课外阅读情况。课堂预试答案不会进入正式估计，请将确实没有课外阅读记录为0小时。",
     endingText: "感谢您的参与。正式研究将估计每周课外阅读时长均值，并说明总体中零值较多的处理方式。",
     questions: [
-        { id: "rq1", type: "single", content: "您平均每周课外阅读时长？", options: ["几乎不阅读", "1小时以内", "1-3小时", "3-5小时", "5小时以上"] },
+        { id: "rq1", section: "main", type: "numeric", content: "在一个正常教学周，您用于课外阅读的时间共约多少小时？", unit: "小时", numericMin: 0, numericMax: 168, decimalPlaces: 1 },
         { id: "rq2", type: "multiple", content: "您主要阅读哪类材料？", options: ["专业教材", "学术论文", "文学读物", "新闻资讯", "其他"], minSelect: 1, maxSelect: 3 },
         { id: "rq3", type: "scale", content: "您对自己阅读量的满意程度？", scaleMin: 1, scaleMax: 5, scaleMinLabel: "很不满意", scaleMaxLabel: "很满意" },
         { id: "rq4", type: "boolean", content: "您是否使用图书馆纸质藏书？" },
@@ -99,15 +99,16 @@ const graduateQuestionnaire = {
 };
 
 const diningQuestionnaire = {
-    title: "食堂午间服务体验调查（受访者视角试填）",
-    welcomeText: "您好！本问卷用于课堂演练食堂午间服务调查。预试回答只帮助检查问卷可理解性，不会进入等待时间估计。",
-    endingText: "感谢您完成体验。正式研究将以服务时段观测记录估计等待时间，并结合客流量和开放窗口数解释结果。",
+    title: "食堂午间服务时段观测表（观察员试填）",
+    welcomeText: "请观察员以一个地点、观测日和15分钟时段共同确定的服务时段为单位填写。历史同期客流量应从抽样框抄录，并在抽样前用于确定纳入概率；等待时间和开放窗口数在抽中时段现场记录。课堂预试记录不会进入正式估计。",
+    endingText: "本表记录的是服务时段而非单个就餐者。正式研究将用现场记录估计平均等待时间，并以抽样前已知的历史同期客流量作为PPS规模变量。",
     questions: [
-        { id: "dq1", type: "single", content: "您最常在哪个校区的食堂就餐？", options: ["东校区", "西校区"] },
-        { id: "dq2", type: "single", content: "您通常到达食堂的时间？", options: ["11:30前", "11:30-12:00", "12:00-12:30", "12:30后"] },
-        { id: "dq3", type: "scale", content: "您对午间排队秩序的满意程度？", scaleMin: 1, scaleMax: 5, scaleMinLabel: "很不满意", scaleMaxLabel: "很满意" },
-        { id: "dq4", type: "multiple", content: "哪些因素最影响您的食堂选择？", options: ["等待时间", "价格", "口味", "距离", "座位"], minSelect: 1, maxSelect: 3 },
-        { id: "dq5", type: "boolean", content: "您是否愿意错峰就餐以减少等待？" },
+        { id: "dq1", section: "background", type: "single", content: "本次观测位于哪个地点？", options: ["东校区·学苑食堂", "东校区·风味食堂", "西校区·湖畔食堂", "西校区·清真食堂"] },
+        { id: "dq2", section: "background", type: "single", content: "本次观测属于哪个观测日？", options: ["第一周周一", "第一周周二", "第一周周三", "第二周周一", "第二周周二", "第二周周三"] },
+        { id: "dq3", section: "background", type: "single", content: "本次观测属于哪个15分钟时段？", options: ["11:30-11:45", "11:45-12:00", "12:00-12:15", "12:15-12:30"] },
+        { id: "dq4", section: "main", type: "numeric", content: "按统一规则记录的平均等待时间是多少分钟？", unit: "分钟", numericMin: 0, numericMax: 60, decimalPlaces: 1 },
+        { id: "dq5", section: "background", type: "numeric", content: "抽样框中该时段的历史同期客流量是多少人次？", unit: "人次", numericMin: 1, numericMax: 1000, decimalPlaces: 0 },
+        { id: "dq6", section: "main", type: "numeric", content: "该时段实际开放了多少个服务窗口？", unit: "个", numericMin: 0, numericMax: 100, decimalPlaces: 0 },
     ],
 };
 
@@ -204,7 +205,7 @@ const diningPlan = {
 const reportContent = `<h2>研究问题</h2><p>本研究估计示范地区18—35岁青年生活幸福感自评的平均水平。主指标为0—10分单题生活评价，仅用于总体描述，不是临床心理量表。</p><h2>抽样设计</h2><p>在95%置信水平和绝对误差限0.5分下规划样本量，完成简单随机、系统和按年龄组分层抽样。个体没有自然且事先已知的“规模”变量，因此不使用PPS；不能把幸福感得分本身当作规模变量。</p><h2>结果解释</h2><p>比较三种设计的样本构成、均值、设计标准误与总体已知均值。社会支持、自评健康和经济压力只用于描述分组差异；横截面合成数据不能证明因果关系，结论也不能外推到研究总体之外。</p>`;
 const readingReportContent = `<h2>实验目的</h2><p>本实验以每周阅读时长的均值为估计目标，使用总体方差估计、绝对误差限和有限总体校正确定样本量，并比较可执行抽样方法的结果。</p><h2>方法与结果</h2><p>总体中每周阅读时长包含零值，且没有其他对每个单位都为正数的数值字段，因此不存在合格的 PPS 规模变量。实验模板按规则将 PPS 设为不适用，随后完成简单随机、系统和按学院分层抽样。</p><h2>结论</h2><p>均值估计流程使用样本量 ${readingRecommendedSize}。三种启用方法均保留随机种子和完整样本行；PPS 未启用是由总体数据条件决定的有效策略，而不是执行失败。分析时应明确记录这一限制，避免为完成形式而选用不满足正值条件的规模变量。</p>`;
 const graduateReportContent = `<h2>研究问题</h2><p>本研究估计某综合大学本届毕业生中计划直接就业的学生比例，分析单位为一名毕业生。</p><h2>抽样设计</h2><p>以学院进行分层。个体层面的求职准备度是分析辅助变量，不是表示单位“规模”的抽样框变量，因此不用于PPS。目标属于分类变量，样本量规划采用最保守比例方差，误差限按百分点解释。</p><h2>结果解释</h2><p>比较简单随机、系统和分层抽样的直接就业比例、设计标准误与总体已知比例。结果仅代表该虚拟总体和当前抽样设计，不应外推到其他学校或毕业年份。</p>`;
-const diningReportContent = `<h2>研究问题</h2><p>本研究估计校园食堂工作日午间高峰服务时段的平均等待分钟数，分析单位是一个十五分钟服务时段，而不是一名学生。</p><h2>抽样设计</h2><p>按校区分层，并以客流量作为 PPS 规模变量，比较简单随机、系统、PPS 与分层抽样。</p><h2>结果解释</h2><p>等待时间会同时受到时段、客流量和开放窗口数影响。单次样本的均值差异不能直接解释为食堂服务质量的因果差异。</p>`;
+const diningReportContent = `<h2>研究问题</h2><p>本研究估计两个教学周内选定的六个观测日中，两校区四个食堂午间高峰96个服务时段的平均等待分钟数，分析单位是一个十五分钟服务时段，而不是一名学生。</p><h2>抽样设计</h2><p>按校区分层，并以抽样框中事先已知的历史同期客流量作为 PPS 规模变量，比较简单随机、系统、PPS 与分层抽样。等待时间和实际开放窗口数只在抽中时段现场记录，不参与事前纳入概率计算。</p><h2>结果解释</h2><p>合成总体刻意让等待时间与时段、历史同期客流量和开放窗口数相关，用于教学比较；单次样本的均值差异不能解释为现实食堂服务措施的因果效果。</p>`;
 
 const happinessFieldMapping = {
     identifier: "青年代号",
@@ -252,14 +253,14 @@ const graduateFieldMapping = {
 
 const diningFieldMapping = {
     identifier: "记录编号",
-    numeric: ["等待分钟", "客流量", "开放窗口数"],
+    numeric: ["等待分钟", "历史同期客流量", "开放窗口数"],
     stratified: ["校区", "食堂"],
-    others: ["观测时段", "星期"],
+    others: ["观测时段", "观测日"],
     analysisTarget: { kind: "mean" as const, field: "等待分钟" },
     studyContract: {
         version: 1 as const,
-        researchQuestion: "本学期工作日午间高峰时段食堂的平均排队等待时间是多少？",
-        targetPopulation: "本学期两校区食堂工作日午间高峰的全部服务时段",
+        researchQuestion: "两个教学周内选定的六个观测日中，两校区四个食堂午间服务时段的平均排队等待时间是多少？",
+        targetPopulation: "两个教学周内选定的六个观测日中，两校区四个食堂的96个午间服务时段",
         unitOfAnalysis: "一个15分钟食堂服务时段",
         target: { kind: "mean" as const, field: "等待分钟" },
     },
@@ -466,7 +467,7 @@ async function buildSamplingFixtures(
     const diningResults = {
         simple: await runSampling({ method: "simple", rawParams: { sampleSize: diningRecommendedSize, seed: 202631 }, targetSampleSize: diningRecommendedSize, population: diningPopulation, fieldMapping: diningFieldMapping }),
         systematic: await runSampling({ method: "systematic", rawParams: { seed: 202632 }, targetSampleSize: diningRecommendedSize, population: diningPopulation, fieldMapping: diningFieldMapping }),
-        pps: await runSampling({ method: "pps", rawParams: { sampleSize: diningRecommendedSize, sizeField: "客流量", seed: 202633 }, targetSampleSize: diningRecommendedSize, population: diningPopulation, fieldMapping: diningFieldMapping }),
+        pps: await runSampling({ method: "pps", rawParams: { sampleSize: diningRecommendedSize, sizeField: "历史同期客流量", seed: 202633 }, targetSampleSize: diningRecommendedSize, population: diningPopulation, fieldMapping: diningFieldMapping }),
         stratified: await runSampling({
             method: "stratified",
             rawParams: {

@@ -1,5 +1,5 @@
 import { buildPopulationNumericStats } from "../../domain/statistics/population";
-import { calculateMeanEstimationSampleSize } from "../../student/experiment/sample-plan";
+import { calculateMeanEstimationSampleSize, finitePopulationS2ToSigma2 } from "../../student/experiment/sample-plan";
 import { DEMO_CLASS_NAME } from "./seed-identity";
 
 export { DOGFOOD_ANCHORS, DOGFOOD_ROSTER, DOGFOOD_TEACHERS } from "./seed-identity";
@@ -102,9 +102,17 @@ export function allocateIntegerShares(total: number, ratios: readonly number[]):
     return shares;
 }
 
+function populationVarianceForPlan(population: Array<Record<string, unknown>>, field: string) {
+    const stats = buildPopulationNumericStats(population, [field])[field];
+    const variance = stats && finitePopulationS2ToSigma2(stats.variance, stats.count);
+    if (variance === null || variance === undefined) {
+        throw new Error(`Population variance could not be calculated for ${field}`);
+    }
+    return variance;
+}
+
 export function computeYouthHappinessPlan(population = createYouthHappinessPopulation()) {
-    // Same convention as the student-facing population stats (see computeReadingPlan).
-    const populationVariance = buildPopulationNumericStats(population, ["生活幸福感得分"])["生活幸福感得分"]!.variance;
+    const populationVariance = populationVarianceForPlan(population, "生活幸福感得分");
     const recommendedSize = calculateMeanEstimationSampleSize({
         confidenceLevel: "95",
         marginOfError: 0.5,
@@ -124,9 +132,7 @@ export function computeYouthHappinessPlan(population = createYouthHappinessPopul
  * fixture and the live planning UI cannot disagree about the variance.
  */
 export function computeReadingPlan(population = createMeanPopulation()) {
-    // Same convention as the student-facing population stats, so the seeded plan
-    // and the live planning screen cannot disagree.
-    const populationVariance = buildPopulationNumericStats(population, ["每周阅读时长"])["每周阅读时长"]!.variance;
+    const populationVariance = populationVarianceForPlan(population, "每周阅读时长");
     const recommendedSize = calculateMeanEstimationSampleSize({
         confidenceLevel: "95",
         marginOfError: 2,
@@ -142,7 +148,7 @@ export function computeReadingPlan(population = createMeanPopulation()) {
 }
 
 export function computeDiningPlan(population = createDiningServicePopulation()) {
-    const populationVariance = buildPopulationNumericStats(population, ["等待分钟"])["等待分钟"]!.variance;
+    const populationVariance = populationVarianceForPlan(population, "等待分钟");
     const recommendedSize = calculateMeanEstimationSampleSize({
         confidenceLevel: "95",
         marginOfError: 2,
@@ -178,9 +184,13 @@ export function createYouthHappinessPopulation() {
         const socialSupport = 2 + Math.floor(fixtureNoise(index, 1) * 4);
         const health = 2 + Math.floor(fixtureNoise(index, 2) * 4);
         const pressure = 1 + Math.floor(fixtureNoise(index, 3) * 5);
+        // Deliberately create a visible between-stratum signal for the required
+        // age-stratified exercise. These are synthetic teaching effects, not claims
+        // about real age groups.
+        const ageAdjustment = ageGroup === "18—22岁" ? -0.45 : ageGroup === "28—35岁" ? 0.45 : 0;
         const employmentAdjustment = employmentStatus === "稳定就业" ? 0.35 : employmentStatus === "求职或待业" ? -0.55 : 0;
         const happiness = clamp(
-            4.2 + socialSupport * 0.55 + health * 0.45 - pressure * 0.38 + employmentAdjustment + (fixtureNoise(index, 4) - 0.5) * 2.2,
+            4.2 + socialSupport * 0.55 + health * 0.45 - pressure * 0.38 + ageAdjustment + employmentAdjustment + (fixtureNoise(index, 4) - 0.5) * 2.2,
             0,
             10,
         );
@@ -224,19 +234,40 @@ export function createGraduateIntentionPopulation() {
 
 export function createDiningServicePopulation() {
     const campuses = ["东校区", "西校区"];
-    const diningHalls = ["学苑食堂", "湖畔食堂", "风味食堂", "清真食堂"];
+    const diningHalls = [["学苑食堂", "风味食堂"], ["湖畔食堂", "清真食堂"]];
     const periods = ["11:30-11:45", "11:45-12:00", "12:00-12:15", "12:15-12:30"];
-    const weekdays = ["周一", "周二", "周三", "周四", "周五"];
-    return Array.from({ length: 96 }, (_, index) => ({
-        记录编号: `D${String(index + 1).padStart(3, "0")}`,
-        校区: campuses[index % campuses.length]!,
-        食堂: diningHalls[index % diningHalls.length]!,
-        观测时段: periods[index % periods.length]!,
-        星期: weekdays[index % weekdays.length]!,
-        等待分钟: 3 + (index * 5) % 18,
-        客流量: 45 + (index * 11) % 156,
-        开放窗口数: 3 + index % 8,
-    }));
+    const observationDays = ["第一周周一", "第一周周二", "第一周周三", "第二周周一", "第二周周二", "第二周周三"];
+    const periodTraffic = [70, 125, 175, 115];
+    return Array.from({ length: 96 }, (_, index) => {
+        const campusIndex = Math.floor(index / 48);
+        const withinCampus = index % 48;
+        const diningHallIndex = Math.floor(withinCampus / 24);
+        const withinDiningHall = withinCampus % 24;
+        const periodIndex = Math.floor(withinDiningHall / observationDays.length);
+        const dayIndex = withinDiningHall % observationDays.length;
+        const historicalTraffic = Math.round(
+            periodTraffic[periodIndex]!
+            + campusIndex * 8
+            + diningHallIndex * 10
+            + (fixtureNoise(index, 11) - 0.5) * 26,
+        );
+        const openWindows = 3 + ((dayIndex * 3 + diningHallIndex + campusIndex) % 5);
+        const wait = clamp(
+            1.8 + historicalTraffic * 0.1 - openWindows * 0.8 + periodIndex * 0.5 + (fixtureNoise(index, 12) - 0.5) * 2.4,
+            1,
+            25,
+        );
+        return {
+            记录编号: `D${String(index + 1).padStart(3, "0")}`,
+            校区: campuses[campusIndex]!,
+            食堂: diningHalls[campusIndex]![diningHallIndex]!,
+            观测时段: periods[periodIndex]!,
+            观测日: observationDays[dayIndex]!,
+            等待分钟: Number(wait.toFixed(1)),
+            历史同期客流量: historicalTraffic,
+            开放窗口数: openWindows,
+        };
+    });
 }
 
 export function createGreenCommutePopulation() {

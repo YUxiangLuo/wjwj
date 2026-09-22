@@ -14,10 +14,10 @@ import {
     topicAttachment,
 } from "../schema";
 import { parseSpreadsheetFile } from "../../lib/spreadsheet";
-import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize } from "../../student/experiment/sample-plan";
+import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize, finitePopulationS2ToSigma2 } from "../../student/experiment/sample-plan";
 import { resolveStoragePath } from "../../server/storage-files";
 import { buildPopulationNumericStats, getPpsEligibleNumericFields, parseTopicFieldMapping } from "@/domain/statistics/population";
-import { validateReportForSubmit } from "../../student/experiment/submit-validation";
+import { validateQuestionnaireForSubmit, validateReportForSubmit, validateSamplePlanForSubmit } from "../../student/experiment/submit-validation";
 import { buildTaskProgressSnapshot } from "../../teacher/topic/task-progress";
 import {
     computeYouthHappinessPlan,
@@ -39,6 +39,19 @@ import { validateRecommendQuestionsPayload } from "../../lib/validate-question";
 
 function check(condition: unknown, message: string): asserts condition {
     if (!condition) throw new Error(message);
+}
+
+function stableJson(value: unknown): string {
+    const normalize = (input: unknown): unknown => {
+        if (Array.isArray(input)) return input.map(normalize);
+        if (!input || typeof input !== "object") return input;
+        return Object.fromEntries(
+            Object.entries(input as Record<string, unknown>)
+                .sort(([left], [right]) => left.localeCompare(right))
+                .map(([key, nested]) => [key, normalize(nested)]),
+        );
+    };
+    return JSON.stringify(normalize(value));
 }
 
 async function rowCount(table: typeof admin | typeof teacher | typeof semester | typeof class_ | typeof student | typeof topic | typeof task | typeof experiment | typeof samplingAttempt | typeof announcement | typeof topicAttachment) {
@@ -121,10 +134,16 @@ async function verify() {
     const authoritative = await db
         .select({
             studentId: student.studentId,
+            studentName: student.name,
             topicName: topic.name,
             populationPath: topic.excelFilePath,
+            populationSize: topic.excelRowCount,
+            fieldMapping: topic.fieldMapping,
+            weightConfig: topic.weightConfig,
+            samplingPolicy: topic.samplingPolicy,
             currentStage: experiment.currentStage,
             status: experiment.status,
+            questionnaire: experiment.questionnaire,
             results: experiment.samplingResults,
             reportContent: experiment.reportContent,
             snapshot: experiment.submissionSnapshot,
@@ -180,7 +199,14 @@ async function verify() {
             const storedSnapshot = row.snapshot as Record<string, unknown> | null;
             check(storedSnapshot, `${label} has no submission snapshot`);
             const snapshotResults = checkAuthoritativeMethods(`${label}/snapshot`, storedSnapshot.samplingResults, hasDisabledPps, hasChoicePair);
-            check(JSON.stringify(snapshotResults) === JSON.stringify(liveResults), `${label} snapshot sampling results differ from the live record`);
+            check(stableJson(snapshotResults) === stableJson(liveResults), `${label} snapshot sampling results differ from the live record`);
+            check(stableJson(storedSnapshot.questionnaire) === stableJson(row.questionnaire), `${label} snapshot questionnaire differs from the live record`);
+            check(stableJson(storedSnapshot.samplePlan) === stableJson(row.samplePlan), `${label} snapshot sample plan differs from the live record`);
+            check(stableJson(storedSnapshot.weightConfig) === stableJson(row.weightConfig), `${label} snapshot scoring weights differ from the topic`);
+            check(stableJson(storedSnapshot.samplingPolicy) === stableJson(row.samplingPolicy), `${label} snapshot sampling policy differs from the topic`);
+            check(storedSnapshot.populationSize === row.populationSize, `${label} snapshot population size differs from the topic`);
+            check(storedSnapshot.topicName === row.topicName, `${label} snapshot topic name differs`);
+            check(storedSnapshot.studentName === row.studentName, `${label} snapshot student name differs`);
             check(storedSnapshot.reportContent === row.reportContent, `${label} snapshot report differs from the live record`);
             check(typeof row.populationPath === "string" && row.populationPath.length > 0, `${label} has no population file`);
             let populationHash = populationHashCache.get(row.populationPath);
@@ -197,6 +223,8 @@ async function verify() {
             check(storedSnapshot.populationFileSha256 === populationHash, `${label} snapshot population hash differs from the source file`);
             check(storedSnapshot.parserVersion === "raw-values-v1", `${label} snapshot parser version differs`);
             check(storedSnapshot.samplingAlgorithmVersion === "sampling-v2", `${label} snapshot sampling algorithm version differs`);
+            check(validateQuestionnaireForSubmit(storedSnapshot.questionnaire) === null, `${label} snapshot questionnaire is invalid`);
+            check(validateSamplePlanForSubmit(storedSnapshot.samplePlan, row.populationSize) === null, `${label} snapshot sample plan is invalid`);
             check(validateReportForSubmit(row.reportContent) === null, `${label} live report is invalid`);
             check(validateReportForSubmit(storedSnapshot.reportContent) === null, `${label} snapshot report is invalid`);
         }
@@ -231,7 +259,14 @@ async function verify() {
     ]), `Sampling attempt fixtures differ: ${JSON.stringify(auditRows)}`);
 
     const auditCoverage = await db
-        .select({ studentId: student.studentId, topicName: topic.name, method: samplingAttempt.method })
+        .select({
+            studentId: student.studentId,
+            topicName: topic.name,
+            method: samplingAttempt.method,
+            seed: samplingAttempt.seed,
+            sampleCount: samplingAttempt.sampleCount,
+            details: samplingAttempt.details,
+        })
         .from(samplingAttempt)
         .innerJoin(experiment, eq(samplingAttempt.experimentId, experiment.id))
         .innerJoin(student, eq(experiment.studentId, student.id))
@@ -244,6 +279,26 @@ async function verify() {
     for (const key of auditedScenarioKeys) {
         const expectedMethods = key.endsWith(`|${DOGFOOD_NAMES.topicD}`) ? 4 : 3;
         check(auditCoverage.filter((row) => `${row.studentId}|${row.topicName}` === key).length === expectedMethods, `${key} does not cover ${expectedMethods} sampling methods`);
+    }
+    for (const attempt of auditCoverage) {
+        const source = authoritative.find((row) => row.studentId === attempt.studentId && row.topicName === attempt.topicName);
+        const result = (source?.results as Record<string, Record<string, unknown> | undefined> | null)?.[attempt.method];
+        check(result, `${attempt.studentId}/${attempt.topicName}/${attempt.method} has no authoritative result`);
+        const {
+            data: _data,
+            indices: _indices,
+            inclusionProbabilities: _inclusionProbabilities,
+            serverGenerated: _serverGenerated,
+            seed: expectedSeed,
+            sampleCount: expectedSampleCount,
+            ...expectedDetails
+        } = result;
+        check(attempt.seed === expectedSeed, `${attempt.studentId}/${attempt.topicName}/${attempt.method} audit seed differs`);
+        check(attempt.sampleCount === expectedSampleCount, `${attempt.studentId}/${attempt.topicName}/${attempt.method} audit sample count differs`);
+        check(stableJson(attempt.details) === stableJson(expectedDetails), `${attempt.studentId}/${attempt.topicName}/${attempt.method} audit details differ`);
+        if (attempt.topicName === DOGFOOD_NAMES.topicD && attempt.method === "pps") {
+            check(expectedDetails.sizeField === "历史同期客流量", `${attempt.studentId}/${attempt.topicName}/pps does not use the prior-frame size measure`);
+        }
     }
 
     const visible = await db
@@ -300,7 +355,8 @@ async function verify() {
             // Reuse the production helper so the check cannot invent a third convention.
             const stats = buildPopulationNumericStats(parsed.rows, [targetField])[targetField];
             check(stats && stats.count > 1, `${row.topicName} sample plan target has no numeric rows`);
-            const populationVariance = stats.variance;
+            const populationVariance = finitePopulationS2ToSigma2(stats.variance, stats.count);
+            check(populationVariance !== null, `${row.topicName} sample plan variance could not be converted`);
             const storedVariance = Number(plan.populationVariance);
             check(Number.isFinite(storedVariance), `${label} has no population variance`);
             check(
@@ -362,6 +418,7 @@ async function verify() {
             ppsFields: ["生活幸福感得分", "社会支持感", "自评健康", "经济压力"],
             targetKind: "mean",
             targetValue: undefined,
+            targetQuestion: { id: "hq2", type: "numeric", unit: "分" },
             policy: { pps: "disabled", stratified: "required", systematic: "optional" },
         },
         [DOGFOOD_NAMES.topicB]: {
@@ -371,6 +428,7 @@ async function verify() {
             ppsFields: [],
             targetKind: "mean",
             targetValue: undefined,
+            targetQuestion: { id: "rq1", type: "numeric", unit: "小时" },
             policy: { pps: "disabled", stratified: "optional", systematic: "optional" },
         },
         [DOGFOOD_NAMES.topicC]: {
@@ -380,15 +438,23 @@ async function verify() {
             ppsFields: ["每周职业准备时长", "求职准备度"],
             targetKind: "proportion",
             targetValue: "直接就业",
+            targetQuestion: { id: "gq1", type: "single", option: "直接就业" },
             policy: { pps: "disabled", stratified: "required", systematic: "optional" },
         },
         [DOGFOOD_NAMES.topicD]: {
             path: DINING_POPULATION_PATH,
             rowCount: 96,
-            columns: ["记录编号", "校区", "食堂", "观测时段", "星期", "等待分钟", "客流量", "开放窗口数"],
-            ppsFields: ["等待分钟", "客流量", "开放窗口数"],
+            columns: ["记录编号", "校区", "食堂", "观测时段", "观测日", "等待分钟", "历史同期客流量", "开放窗口数"],
+            ppsFields: ["等待分钟", "历史同期客流量", "开放窗口数"],
             targetKind: "mean",
             targetValue: undefined,
+            targetQuestion: { id: "dq4", type: "numeric", unit: "分钟" },
+            identityQuestions: [
+                { id: "dq1", options: ["东校区·学苑食堂", "东校区·风味食堂", "西校区·湖畔食堂", "西校区·清真食堂"] },
+                { id: "dq2", options: ["第一周周一", "第一周周二", "第一周周三", "第二周周一", "第二周周二", "第二周周三"] },
+                { id: "dq3", options: ["11:30-11:45", "11:45-12:00", "12:00-12:15", "12:15-12:30"] },
+            ],
+            frameSizeQuestion: { id: "dq5", unit: "人次", numericMin: 1, content: "历史同期客流量" },
             policy: { pps: "required", stratified: "optional", systematic: "optional" },
         },
         [DOGFOOD_NAMES.topicE]: {
@@ -398,6 +464,7 @@ async function verify() {
             ppsFields: ["通勤距离公里"],
             targetKind: "proportion",
             targetValue: "是",
+            targetQuestion: { id: "cq2", type: "single", options: ["步行", "自行车", "公共交通", "网约车或私家车"] },
             policy: { pps: "disabled", stratified: "optional", systematic: "required" },
         },
     } as const;
@@ -407,6 +474,31 @@ async function verify() {
         check(expected, `Unexpected topic population metadata: ${storedTopic.name}`);
         check(storedTopic.status === 1, `${storedTopic.name} is not published`);
         check(validateRecommendQuestionsPayload(storedTopic.recommendQuestions) === null, `${storedTopic.name} recommended questionnaire is invalid`);
+        const targetQuestion = Array.isArray(storedTopic.recommendQuestions)
+            ? (storedTopic.recommendQuestions as Array<Record<string, unknown>>).find((question) => question.id === expected.targetQuestion.id)
+            : undefined;
+        check(targetQuestion?.type === expected.targetQuestion.type, `${storedTopic.name} recommended questionnaire does not measure its target`);
+        if ("unit" in expected.targetQuestion) {
+            check(targetQuestion.unit === expected.targetQuestion.unit, `${storedTopic.name} target question unit differs`);
+        }
+        if ("option" in expected.targetQuestion) {
+            check(Array.isArray(targetQuestion.options) && targetQuestion.options.includes(expected.targetQuestion.option), `${storedTopic.name} target question options differ`);
+        }
+        if ("options" in expected.targetQuestion) {
+            check(stableJson(targetQuestion.options) === stableJson(expected.targetQuestion.options), `${storedTopic.name} target question options differ`);
+        }
+        if ("identityQuestions" in expected) {
+            for (const identity of expected.identityQuestions) {
+                const question = (storedTopic.recommendQuestions as Array<Record<string, unknown>>).find((candidate) => candidate.id === identity.id);
+                check(question?.type === "single" && stableJson(question.options) === stableJson(identity.options), `${storedTopic.name}/${identity.id} does not identify a valid sampling unit`);
+            }
+        }
+        if ("frameSizeQuestion" in expected) {
+            const frameSize = (storedTopic.recommendQuestions as Array<Record<string, unknown>>).find((question) => question.id === expected.frameSizeQuestion.id);
+            check(frameSize?.type === "numeric", `${storedTopic.name} prior-frame size question is missing`);
+            check(frameSize.unit === expected.frameSizeQuestion.unit && frameSize.numericMin === expected.frameSizeQuestion.numericMin, `${storedTopic.name} prior-frame size question constraints differ`);
+            check(typeof frameSize.content === "string" && frameSize.content.includes(expected.frameSizeQuestion.content), `${storedTopic.name} prior-frame size question is not identified as historical`);
+        }
         check(storedTopic.path === expected.path, `${storedTopic.name} stored path differs: ${storedTopic.path}`);
         check(storedTopic.rowCount === expected.rowCount, `${storedTopic.name} stored row count differs: ${storedTopic.rowCount}`);
         const mapping = parseTopicFieldMapping(storedTopic.fieldMapping);
