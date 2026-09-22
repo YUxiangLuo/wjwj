@@ -106,3 +106,52 @@ test("student result renders the immutable submission snapshot", async () => {
     expect(view.getByText("9.5000 kg")).toBeTruthy();
     expect(view.getByText("±0.9800 kg")).toBeTruthy();
 });
+
+test("graded result distinguishes component scores from their weights", async () => {
+    globalThis.fetch = mock(async () => Response.json({
+        success: true,
+        data: {
+            id: 501,
+            taskId: 40,
+            version: 13,
+            topicId: 12,
+            topicName: "抽样调查",
+            submittedAt: "2026-03-08T08:00:00.000Z",
+            status: "graded",
+            scoreQuestionnaire: 88,
+            scoreProcess: 91,
+            scoreReport: 93,
+            totalScore: 90.9,
+            teacherComment: "完成良好",
+            rejectReason: null,
+            gradedAt: "2026-03-08T10:00:00.000Z",
+            graderName: "王老师",
+            weights: { questionnaire: 30, process: 30, report: 40 },
+            snapshot: {
+                topicName: "抽样调查",
+                studentName: "学生",
+                populationSize: 100,
+                questionnaire: null,
+                samplePlan: null,
+                samplingResults: null,
+                samplingPolicy: { version: 1, methods: {} },
+                reportContent: "",
+            },
+        },
+    })) as unknown as typeof fetch;
+
+    const view = render(
+        <MemoryRouter initialEntries={["/task/40/result"]}>
+            <Routes>
+                <Route path="/task/:taskId/result" element={<SubmissionDetailPage />} />
+            </Routes>
+        </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(view.getByText("90.9")).toBeTruthy());
+    expect(view.getByText("88")).toBeTruthy();
+    expect(view.getByText("91")).toBeTruthy();
+    expect(view.getByText("93")).toBeTruthy();
+    expect(view.getAllByText("权重 30%")).toHaveLength(2);
+    expect(view.getByText("权重 40%")).toBeTruthy();
+});

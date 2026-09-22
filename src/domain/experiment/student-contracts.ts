@@ -51,6 +51,9 @@ export interface SubmissionDetail {
     topicName: string;
     submittedAt: string | null;
     status: Exclude<ExperimentStatus, "in_progress">;
+    scoreQuestionnaire: number | null;
+    scoreProcess: number | null;
+    scoreReport: number | null;
     totalScore: number | null;
     teacherComment: string | null;
     rejectReason: string | null;

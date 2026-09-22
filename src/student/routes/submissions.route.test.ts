@@ -60,6 +60,9 @@ test("submission endpoint returns the task's current experiment result", async (
         version: 12,
         status: "graded",
         topicName: "提交时课题",
+        scoreQuestionnaire: 88,
+        scoreProcess: 90,
+        scoreReport: 91,
         totalScore: 89.9,
         graderName: "王老师",
         snapshot: {
@@ -74,9 +77,6 @@ test("submission endpoint returns the task's current experiment result", async (
         },
     });
     expect(payload.data.weights).toEqual({ questionnaire: 40, process: 35, report: 25 });
-    expect(payload.data).not.toHaveProperty("scoreQuestionnaire");
-    expect(payload.data).not.toHaveProperty("scoreProcess");
-    expect(payload.data).not.toHaveProperty("scoreReport");
     expect(payload.data).not.toHaveProperty("pdfStatus");
 });
 

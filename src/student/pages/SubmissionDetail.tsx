@@ -48,10 +48,10 @@ export function SubmissionDetailPage() {
     if (!detail) return <StudentStatusPage title="实验结果" message="未找到提交记录，可能尚未提交或记录已被删除。" />;
 
     const status = statusConfig[detail.status];
-    const scoreWeights = [
-        ["问卷设计", detail.weights.questionnaire],
-        ["实验过程", detail.weights.process],
-        ["实验报告", detail.weights.report],
+    const scores = [
+        ["问卷设计", detail.scoreQuestionnaire, detail.weights.questionnaire],
+        ["实验过程", detail.scoreProcess, detail.weights.process],
+        ["实验报告", detail.scoreReport, detail.weights.report],
     ] as const;
     const totalLabel = detail.status === "graded" ? detail.totalScore ?? "-" : detail.status === "rejected" ? "待修改" : "待批改";
 
@@ -80,11 +80,11 @@ export function SubmissionDetailPage() {
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
                     <div className="grid gap-4 grid-cols-4">
-                        {scoreWeights.map(([label, weight]) => (
+                        {scores.map(([label, value, weight]) => (
                             <div key={label} className="rounded-surface border border-border bg-muted p-4 text-center">
                                 <p className="text-meta text-muted-foreground">{label}</p>
-                                <p className="mt-1 text-page-title font-bold">{weight}%</p>
-                                <p className="mt-1 text-meta text-muted-foreground">评分权重</p>
+                                <p className="mt-1 text-page-title font-bold">{value ?? "—"}</p>
+                                <p className="mt-1 text-meta text-muted-foreground">权重 {weight}%</p>
                             </div>
                         ))}
                         <div className="rounded-surface border border-primary-border bg-primary-muted p-4 text-center">
