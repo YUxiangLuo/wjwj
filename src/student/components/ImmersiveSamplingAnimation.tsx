@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useCallback, useRef, memo } from "react";
 import { createPortal } from "react-dom";
-import { X, Users, Target, Layers, Shuffle, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { X, Users, Target, Layers, Shuffle, ChevronLeft, ChevronRight, Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { MethodKey as SamplingMethod } from "@/domain/experiment/types";
+import type { PpsProbabilitySummary } from "@/domain/statistics/sampling";
 import { computeSampleProgressDisplay } from "./sample-progress-display";
 import { formatSystematicInterval } from "../experiment/systematic-sampling";
 import { buildSamplingAnimationScale, buildStratifiedVisualAllocation } from "./sampling-animation-scale";
@@ -22,6 +23,10 @@ interface Props {
     interval?: number;
     /** For pps */
     sizeField?: string;
+    /** Metadata from the completed server-side draw. */
+    seed?: number;
+    randomStart?: number;
+    ppsProbabilitySummary?: PpsProbabilitySummary;
     /** For stratified */
     stratifyBy?: string;
     layers?: StratifiedLayer[];
@@ -41,7 +46,7 @@ const POPULATION_TICK_COUNT = 10;
 const POPULATION_TO_SAMPLING_DELAY_MS = 200;
 const MAX_SAMPLING_TICKS = 60;
 const SAMPLING_TICK_MS = 40;
-const COMPLETION_DELAY_MS = 300;
+const COMPLETION_DELAY_MS = 1000;
 
 // PPS weight simulation: each dot gets a random "size" in [MIN, MIN + RANGE]
 const PPS_WEIGHT_MIN = 0.1;
@@ -129,6 +134,12 @@ function shuffleIndices(count: number, rng: () => number): number[] {
         arr[j] = tmp;
     }
     return arr;
+}
+
+function formatProbability(value: number) {
+    if (!Number.isFinite(value)) return "—";
+    if (value > 0 && value < 0.0001) return value.toExponential(2);
+    return value.toLocaleString("zh-CN", { maximumFractionDigits: 4 });
 }
 
 // ─── Memoized dot grid to avoid re-creating 1000 DOM nodes on each tick ───
@@ -237,6 +248,9 @@ export function ImmersiveSamplingAnimation({
     sampleSize,
     interval,
     sizeField,
+    seed,
+    randomStart,
+    ppsProbabilitySummary,
     stratifyBy,
     layers,
     onClose,
@@ -497,6 +511,43 @@ export function ImmersiveSamplingAnimation({
         () => computeSampleProgressDisplay(selectionOrder.length, currentSelectIndex, sampleSize),
         [selectionOrder.length, currentSelectIndex, sampleSize],
     );
+
+    const receiptItems = useMemo(() => {
+        const items = [
+            { label: "总体 → 样本", value: `${populationSize.toLocaleString()} → ${sampleSize.toLocaleString()}` },
+            {
+                label: "抽样比",
+                value: populationSize > 0
+                    ? (sampleSize / populationSize).toLocaleString("zh-CN", { style: "percent", maximumFractionDigits: 2 })
+                    : "—",
+            },
+        ];
+        if (method === "simple") {
+            items.push({ label: "抽样设计", value: "等概率、不放回" });
+        } else if (method === "systematic") {
+            items.push({ label: "分数间隔 K", value: formatSystematicInterval(interval) });
+            if (randomStart !== undefined) items.push({ label: "实际随机起点 r", value: formatSystematicInterval(randomStart) });
+        } else if (method === "pps") {
+            items.push({ label: "规模变量", value: FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模" });
+            if (randomStart !== undefined) items.push({ label: "PPS 系统随机起点 u", value: formatProbability(randomStart) });
+            if (ppsProbabilitySummary) {
+                items.push({
+                    label: "纳入概率范围",
+                    value: `${formatProbability(ppsProbabilitySummary.minInclusionProbability)}–${formatProbability(ppsProbabilitySummary.maxInclusionProbability)}`,
+                });
+                items.push({ label: "纳入概率之和 Σπᵢ", value: formatProbability(ppsProbabilitySummary.probabilitySum) });
+                if (ppsProbabilitySummary.certaintyUnitCount > 0) {
+                    items.push({ label: "必入单位（π=1）", value: `${ppsProbabilitySummary.certaintyUnitCount.toLocaleString()} 个` });
+                }
+            }
+        } else if (layers?.length) {
+            const layerPopulation = layers.reduce((sum, layer) => sum + layer.count, 0);
+            const layerSample = layers.reduce((sum, layer) => sum + layer.sampleCount, 0);
+            items.push({ label: "分层配置", value: `${layers.length} 层；${layerPopulation.toLocaleString()} → ${layerSample.toLocaleString()}` });
+        }
+        if (seed !== undefined) items.push({ label: "随机种子", value: String(seed) });
+        return items;
+    }, [interval, layers, method, populationSize, ppsProbabilitySummary, randomStart, sampleSize, seed, sizeField]);
 
     const Icon = meta.icon;
     const overlayRef = useRef<HTMLDivElement>(null);
@@ -781,7 +832,43 @@ export function ImmersiveSamplingAnimation({
 
                         {/* Complete phase */}
                         {phase.type === "complete" && (
-                            <div className="animate-in fade-in duration-300 flex flex-col min-h-0 h-full">
+                            <div className="animate-in fade-in duration-300 flex flex-col min-h-0 h-full gap-4">
+                                <section className="shrink-0 rounded-surface border border-success-border bg-success-muted p-3" data-testid="sampling-animation-receipt">
+                                    <div className="mb-2 flex items-center gap-2 text-success">
+                                        <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+                                        <h3 className="text-subheading font-semibold">抽样结果凭证</h3>
+                                        <span className="text-meta text-muted-foreground">参数来自本次已保存的抽样结果</span>
+                                    </div>
+                                    <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-2">
+                                        {receiptItems.map(item => (
+                                            <div key={item.label} className="rounded-control border border-success-border bg-card px-3 py-1.5">
+                                                <dt className="text-meta text-muted-foreground">{item.label}</dt>
+                                                <dd className="mt-1 break-words text-label font-medium text-foreground">{item.value}</dd>
+                                            </div>
+                                        ))}
+                                    </dl>
+                                    {method === "stratified" && layers && layers.length > 0 && (
+                                        <details className="mt-2" data-testid="sampling-animation-layer-details">
+                                            <summary className="cursor-pointer text-meta font-medium text-foreground">查看各层 Nₕ → nₕ（{layers.length} 层，可滚动查看全部）</summary>
+                                            <div
+                                                className="mt-2 max-h-24 overflow-auto rounded-control border border-success-border bg-card p-2"
+                                                data-testid="sampling-animation-layer-list"
+                                                role="region"
+                                                tabIndex={0}
+                                                aria-label="各层总体与样本分配"
+                                            >
+                                                <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))] gap-x-4 gap-y-2">
+                                                    {layers.map(layer => (
+                                                        <div key={layer.name} className="flex items-center justify-between gap-3 text-meta">
+                                                            <dt className="min-w-0 truncate text-muted-foreground" title={layer.name}>{layer.name}</dt>
+                                                            <dd className="shrink-0 font-mono text-foreground">{layer.count} → {layer.sampleCount}</dd>
+                                                        </div>
+                                                    ))}
+                                                </dl>
+                                            </div>
+                                        </details>
+                                    )}
+                                </section>
                                 {!sampledData ? (
                                     <div role="status" aria-live="polite" className="flex-1 flex flex-col items-center justify-center gap-3 py-8">
                                         <Loader2 aria-hidden="true" className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -800,7 +887,7 @@ export function ImmersiveSamplingAnimation({
 }
 
 // ─── Inline data table for complete phase ────────────────
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 function SampledDataTable({ data, total }: { data: Array<Record<string, unknown>>; total: number }) {
     const [page, setPage] = useState(1);

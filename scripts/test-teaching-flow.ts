@@ -18,7 +18,7 @@ databaseUrl.pathname = `/${databaseName}`;
 const workdir = await mkdtemp(join(tmpdir(), "wj-teaching-"));
 const artifacts = resolve(process.env.TEACHING_TEST_ARTIFACTS ?? join(root, "test-results/teaching-flow"));
 await mkdir(artifacts, { recursive: true });
-for (const name of ["student-failure.png", "teacher-failure.png", "result.json", "teacher-dictionary.png", "numeric-variable-binding.png", "sampling-animation-exact.png", "stage4-saved-analysis.png", "teacher-submitted-appendix.png", "stale-analysis-warning.png", "empty-path-narrow.png"]) {
+for (const name of ["student-failure.png", "teacher-failure.png", "result.json", "teacher-dictionary.png", "numeric-variable-binding.png", "sampling-animation-exact.png", "sampling-animation-receipt.png", "stage4-saved-analysis.png", "teacher-submitted-appendix.png", "stale-analysis-warning.png", "empty-path-narrow.png"]) {
     await Bun.file(join(artifacts, name)).delete().catch(() => undefined);
 }
 const environment = { ...process.env, DATABASE_URL: String(databaseUrl), DEMO_MODE: "1", DEV_AUTH_MODE: "0", NODE_ENV: "development", HOST: "127.0.0.1" };
@@ -323,6 +323,9 @@ try {
     await eventually(() => evaluate(student, `(() => {const grid=document.querySelector('[data-testid="sampling-animation-dot-grid"]');return grid?.querySelectorAll('[data-selected="true"]').length===${experiment.samplePlan?.finalSampleSize} && document.body.textContent.includes("已选中 ${experiment.samplePlan?.finalSampleSize} / ${experiment.samplePlan?.finalSampleSize}");})()`), "Sampling animation did not select the planned number of visual samples");
     await browser(student, "screenshot", join(artifacts, "sampling-animation-exact.png"));
     await activate(student, '[data-testid="immersive-sampling-skip"]');
+    await visible(student, '[data-testid="sampling-animation-receipt"]');
+    assert(await evaluate(student, `(() => {const receipt=document.querySelector('[data-testid="sampling-animation-receipt"]');return receipt.textContent.includes("${experiment.populationSize} → ${experiment.samplePlan?.finalSampleSize}") && receipt.textContent.includes("抽样比") && receipt.textContent.includes("随机种子");})()`), "Sampling receipt did not preserve the saved draw parameters");
+    await browser(student, "screenshot", join(artifacts, "sampling-animation-receipt.png"));
     await activate(student, '[data-testid="immersive-sampling-return"]');
     for (const method of ["systematic", "pps"] as const) {
         await api(student, `/api/student/tasks/${task.id}/sampling`, "POST", { method, params: { sampleSize: 49, ...(method === "pps" ? { sizeField: "月生活费" } : {}) } });
