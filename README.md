@@ -16,7 +16,7 @@
 
 ## 启动
 
-需要 Bun **1.4.0**、PostgreSQL，以及可创建 `citext` 扩展的迁移角色。Bun 自动读取 `.env`。
+需要 Bun **1.4.2**、PostgreSQL，以及可创建 `citext` 扩展的迁移角色。Bun 自动读取 `.env`。
 
 ```sh
 bun install

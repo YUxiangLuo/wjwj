@@ -314,7 +314,7 @@ test-results/<candidate>/<round>/<case-id>/
 
 ### 步骤
 
-1. 记录 `git status`、commit、Bun 1.4.0、PostgreSQL 与浏览器版本。
+1. 记录 `git status`、commit、Bun 1.4.2、PostgreSQL 与浏览器版本。
 2. 从空数据库迁移，固定带时区的 `SEED_NOW`，执行 demo seed 与 `db:seed:check`。
 3. 运行：
 

@@ -1,6 +1,6 @@
 # 运行与部署
 
-启动见 [README](../README.md)，数据库恢复见 [DATABASE.md](../DATABASE.md)，安全规则见 [SECURITY.md](../SECURITY.md)。Bun 自动加载 `.env`；本地 CI 固定使用 Bun 1.4.0。
+启动见 [README](../README.md)，数据库恢复见 [DATABASE.md](../DATABASE.md)，安全规则见 [SECURITY.md](../SECURITY.md)。Bun 自动加载 `.env`；本地 CI 固定使用 Bun 1.4.2。
 
 ## 关键环境变量
 

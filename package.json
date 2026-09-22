@@ -4,9 +4,9 @@
   "description": "Sampling statistics virtual simulation teaching platform built with Bun",
   "private": true,
   "type": "module",
-  "packageManager": "bun@1.4.0",
+  "packageManager": "bun@1.4.2",
   "engines": {
-    "bun": "1.4.0"
+    "bun": "1.4.2"
   },
   "overrides": {
     "prosemirror-model": "1.25.11"
@@ -79,13 +79,13 @@
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.2",
-    "@types/bun": "1.4.0",
+    "@types/bun": "1.4.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/sanitize-html": "^2.16.1",
     "agent-browser": "0.36.0",
     "axe-core": "^4.12.1",
-    "bun": "1.4.0",
+    "bun": "1.4.2",
     "drizzle-kit": "^0.31.8",
     "happy-dom": "^20.11.1",
     "tailwindcss": "^4.1.11",
