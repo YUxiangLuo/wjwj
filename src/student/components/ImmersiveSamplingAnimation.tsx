@@ -614,9 +614,10 @@ export function ImmersiveSamplingAnimation({
             aria-labelledby="sampling-animation-title"
             tabIndex={-1}
             onKeyDown={handleOverlayKeyDown}
-            className="fixed inset-0 z-50 bg-background flex flex-col outline-none"
+            className="fixed inset-0 z-50 overflow-auto bg-background outline-none"
             data-testid="immersive-sampling-animation"
         >
+            <div className="relative flex min-h-full min-w-[64rem] flex-col bg-background">
             {/* Progress bar */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-muted z-10">
                 <div
@@ -908,6 +909,7 @@ export function ImmersiveSamplingAnimation({
                     </div>
                 )}
             </div>
+            </div>
         </div>, document.body
     );
 }
@@ -966,7 +968,7 @@ function SampledDataTable({ data, total }: { data: Array<Record<string, unknown>
                 </table>
             </div>
             <div className="flex shrink-0 items-center justify-between rounded-control bg-background px-1">
-                <p className="text-meta text-muted-foreground">
+                <p className="text-meta text-muted-foreground" data-testid="sampling-animation-result-range">
                     显示第 {start + 1}-{end} 条{total > data.length ? `（已加载 ${data.length} 条，共 ${total} 条）` : `，共 ${data.length} 条`}
                 </p>
                 <div className="flex items-center gap-2">
