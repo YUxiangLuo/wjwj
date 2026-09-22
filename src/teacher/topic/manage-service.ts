@@ -4,7 +4,7 @@ import { task, topic, topicAttachment } from "../../db/schema";
 import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
 import { resolveAnalysisTarget, retitleGeneratedStudyContract } from "../../lib/analysis-target";
 import { hasSameSamplingMapping } from "./sampling-mapping";
-import { buildDefaultSamplingPolicy, parseSamplingPolicy, validateSamplingPolicy } from "../../lib/sampling-policy";
+import { buildDefaultSamplingPolicy, filterPpsEligibleFields, parseSamplingPolicy, validateSamplingPolicy } from "../../lib/sampling-policy";
 import { validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
 import { createStorageUploadPath, deleteStorageFileIfExists, resolveStoragePath, writeStorageFile } from "../../server/storage-files";
 import { parseExcelFile, sanitizeUploadFileName } from "./file-utils";
@@ -414,8 +414,10 @@ export async function updateTopicSamplingPolicy(params: {
             const parsed = await parseExcelFile(buffer, topicInfo.excelFilePath, { numericFields: mapping?.numeric ?? [] });
             const resolvedTarget = resolveAnalysisTarget(topicInfo.fieldMapping);
             const targetField = resolvedTarget?.inferred ? undefined : resolvedTarget?.target.field;
-            const eligible = getPpsEligibleNumericFields(parsed.rows, mapping?.numeric ?? [])
-                .filter((field) => field !== targetField);
+            const eligible = filterPpsEligibleFields(
+                samplingPolicy,
+                getPpsEligibleNumericFields(parsed.rows, mapping?.numeric ?? []),
+            ).filter((field) => field !== targetField);
             if (eligible.length === 0) {
                 return fail("当前总体没有合格的 PPS 规模变量，请将 PPS 设为不适用");
             }

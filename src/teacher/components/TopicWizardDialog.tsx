@@ -20,6 +20,7 @@ import { categoricalFieldsFromMapping, parseStudyContract } from "@/lib/analysis
 import { isStudyContractComplete, StudyContractEditor, type FieldMappingState } from "./StudyContractEditor";
 import { VariableDictionaryEditor } from "./VariableDictionaryEditor";
 import {
+    filterPpsEligibleFields,
     SAMPLING_METHODS,
     validateSamplingPolicy,
     type SamplingMethod,
@@ -214,13 +215,13 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
     );
     const canProceedMapping = mappingRules.every((item) => item.ok);
     const targetField = fieldMapping.studyContract?.target.field ?? fieldMapping.analysisTarget?.field;
-    const ppsEligibleFields = fieldMapping.numeric.filter((field) => {
+    const ppsEligibleFields = filterPpsEligibleFields(samplingPolicy, fieldMapping.numeric.filter((field) => {
         if (field === targetField) return false;
         if (excelInfo?.ppsEligibleFields) return excelInfo.ppsEligibleFields.includes(field);
         const values = excelInfo?.columnValues?.[field]
             ?? (excelInfo?.preview ?? []).map((row) => String(row?.[field] ?? "")).filter(Boolean);
         return values.length > 0 && values.every((value) => (parseNumericText(value) ?? 0) > 0);
-    });
+    }));
     const samplingPolicyError = validateSamplingPolicy(samplingPolicy)
         ?? (ppsEligibleFields.length === 0 && samplingPolicy.methods.pps !== "disabled"
             ? "当前总体没有合格的 PPS 规模变量，请将 PPS 设为不适用"

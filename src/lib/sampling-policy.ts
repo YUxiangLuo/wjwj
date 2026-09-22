@@ -6,6 +6,8 @@ export type SamplingMethodRequirement = "required" | "optional" | "disabled";
 export interface SamplingPolicyV1 {
     version: 1;
     methods: Record<SamplingMethod, SamplingMethodRequirement>;
+    /** Optional semantic allowlist; absent preserves legacy positive-numeric discovery. */
+    ppsSizeFields?: string[];
 }
 
 export const DEFAULT_SAMPLING_POLICY: SamplingPolicyV1 = Object.freeze({
@@ -60,7 +62,16 @@ export function parseSamplingPolicy(value: unknown): SamplingPolicyV1 | null {
     if (Object.keys(methods).some((key) => !(SAMPLING_METHODS as readonly string[]).includes(key))) {
         return null;
     }
-    return { version: 1, methods: parsed };
+    let ppsSizeFields: string[] | undefined;
+    if (root.ppsSizeFields !== undefined) {
+        if (!Array.isArray(root.ppsSizeFields) || root.ppsSizeFields.length === 0
+            || root.ppsSizeFields.some((field) => typeof field !== "string" || field.length === 0)
+            || new Set(root.ppsSizeFields).size !== root.ppsSizeFields.length) {
+            return null;
+        }
+        ppsSizeFields = [...root.ppsSizeFields] as string[];
+    }
+    return { version: 1, methods: parsed, ...(ppsSizeFields ? { ppsSizeFields } : {}) };
 }
 
 export function validateSamplingPolicy(value: unknown): string | null {
@@ -74,6 +85,11 @@ export function validateSamplingPolicy(value: unknown): string | null {
 
 export function resolveSamplingPolicy(value: unknown): SamplingPolicyV1 {
     return parseSamplingPolicy(value) ?? buildDefaultSamplingPolicy();
+}
+
+export function filterPpsEligibleFields(policyValue: unknown, fields: readonly string[]) {
+    const allowlist = resolveSamplingPolicy(policyValue).ppsSizeFields;
+    return allowlist ? fields.filter((field) => allowlist.includes(field)) : [...fields];
 }
 
 export function enabledSamplingMethods(policyValue: unknown) {

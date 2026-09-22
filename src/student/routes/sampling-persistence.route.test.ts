@@ -171,6 +171,23 @@ test("sampling action rejects methods disabled by the experiment template", asyn
     expect(operations.some((operation) => operation.kind === "update")).toBeFalse();
 });
 
+test("sampling action rejects a positive numeric field outside the template PPS allowlist", async () => {
+    const policy = {
+        version: 1,
+        methods: { simple: "required", systematic: "optional", pps: "required", stratified: "optional" },
+        ppsSizeFields: ["approved_size"],
+    };
+    const { module, operations } = await load(record(), [[{ id: 9 }]], undefined, populationPath, policy);
+    const response = await module.samplingActionRoutes.POST!(routeRequest(
+        "/api/student/tasks/3/sampling",
+        { method: "pps", params: { sampleSize: 2, sizeField: "weight" } },
+        { id: "3" },
+    ));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ error: { code: "VALIDATION_ERROR", message: "请选择实验模板指定的 PPS 规模变量" } });
+    expect(operations.some((operation) => operation.kind === "update")).toBeFalse();
+});
+
 test("experiment reads hydrate compact stored indices for the SPA", async () => {
     const compact = record({
         status: "rejected",

@@ -21,6 +21,7 @@ import { validateQuestionnaireForSubmit, validateReportForSubmit, validateSample
 import { buildTaskProgressSnapshot } from "../../teacher/topic/task-progress";
 import {
     computeYouthHappinessPlan,
+    DINING_PPS_SIZE_FIELD,
     DINING_POPULATION_PATH,
     DOGFOOD_ANCHORS,
     DOGFOOD_COUNTS,
@@ -34,7 +35,7 @@ import {
     READING_POPULATION_PATH,
 } from "./dogfood-fixtures";
 import { DEMO_STUDENT_ACCOUNTS } from "./demo-accounts";
-import { parseSamplingPolicy } from "../../lib/sampling-policy";
+import { filterPpsEligibleFields, parseSamplingPolicy } from "../../lib/sampling-policy";
 import { validateRecommendQuestionsPayload } from "../../lib/validate-question";
 
 function check(condition: unknown, message: string): asserts condition {
@@ -154,8 +155,8 @@ async function verify() {
         .innerJoin(task, eq(experiment.taskId, task.id))
         .innerJoin(topic, eq(task.topicId, topic.id))
         .where(eq(experiment.currentStage, 4));
-    // 12 份完成全部四阶段的实验：主任务 4、阅读 1、比例 2、服务时段 3、历史归档 2。
-    check(authoritative.length === 12, `Expected 12 stage4/terminal authoritative fixtures, got ${authoritative.length}`);
+    // 13 份完成全部四阶段的实验：主任务 4、阅读 1、比例 2、服务时段 3、绿色通勤 1、历史归档 2。
+    check(authoritative.length === 13, `Expected 13 stage4/terminal authoritative fixtures, got ${authoritative.length}`);
 
     function checkAuthoritativeMethods(label: string, value: unknown, ppsDisabled: boolean, allowChoicePair = false) {
         const results = value as Record<string, Record<string, unknown> | undefined> | null;
@@ -192,7 +193,8 @@ async function verify() {
         const label = `${row.studentId}/${row.topicName}`;
         const hasDisabledPps = row.topicName === DOGFOOD_NAMES.topicA
             || row.topicName === DOGFOOD_NAMES.topicB
-            || row.topicName === DOGFOOD_NAMES.topicC;
+            || row.topicName === DOGFOOD_NAMES.topicC
+            || row.topicName === DOGFOOD_NAMES.topicE;
         const hasChoicePair = row.studentId === DOGFOOD_ANCHORS.choicePair && row.topicName === DOGFOOD_NAMES.topicA;
         const liveResults = checkAuthoritativeMethods(label, row.results, hasDisabledPps, hasChoicePair);
         if (row.status !== "in_progress") {
@@ -275,7 +277,7 @@ async function verify() {
         .orderBy(asc(student.studentId), asc(topic.name), asc(samplingAttempt.method));
     const auditedScenarioKeys = new Set(auditCoverage.map((row) => `${row.studentId}|${row.topicName}`));
     check(auditCoverage.length === DOGFOOD_COUNTS.samplingAttempt, `Sampling audit coverage differs: ${auditCoverage.length}`);
-    check(auditedScenarioKeys.size === 3, `Expected three audited research scenarios, got ${[...auditedScenarioKeys].join(", ")}`);
+    check(auditedScenarioKeys.size === 4, `Expected four audited research scenarios, got ${[...auditedScenarioKeys].join(", ")}`);
     for (const key of auditedScenarioKeys) {
         const expectedMethods = key.endsWith(`|${DOGFOOD_NAMES.topicD}`) ? 4 : 3;
         check(auditCoverage.filter((row) => `${row.studentId}|${row.topicName}` === key).length === expectedMethods, `${key} does not cover ${expectedMethods} sampling methods`);
@@ -299,6 +301,9 @@ async function verify() {
         if (attempt.topicName === DOGFOOD_NAMES.topicD && attempt.method === "pps") {
             check(expectedDetails.sizeField === "历史同期客流量", `${attempt.studentId}/${attempt.topicName}/pps does not use the prior-frame size measure`);
         }
+        if (attempt.topicName === DOGFOOD_NAMES.topicE && attempt.method === "systematic") {
+            check(expectedDetails.interval === 4, `${attempt.studentId}/${attempt.topicName}/systematic does not preserve the designed K=4 periodicity`);
+        }
     }
 
     const visible = await db
@@ -318,6 +323,7 @@ async function verify() {
         `${DOGFOOD_ANCHORS.submitted}|${DOGFOOD_NAMES.topicA}`,
         `${DOGFOOD_ANCHORS.submitted}|${DOGFOOD_NAMES.topicB}`,
         `${DOGFOOD_ANCHORS.submitted}|${DOGFOOD_NAMES.topicC}`,
+        `${DOGFOOD_ANCHORS.submitted}|${DOGFOOD_NAMES.topicE}`,
         `${DOGFOOD_ANCHORS.graded}|${DOGFOOD_NAMES.topicA}`,
         `${DOGFOOD_ANCHORS.graded}|${DOGFOOD_NAMES.topicC}`,
         `${DOGFOOD_ANCHORS.rejected}|${DOGFOOD_NAMES.topicA}`,
@@ -448,14 +454,15 @@ async function verify() {
             ppsFields: ["等待分钟", "历史同期客流量", "开放窗口数"],
             targetKind: "mean",
             targetValue: undefined,
-            targetQuestion: { id: "dq4", type: "numeric", unit: "分钟" },
+            targetQuestion: { id: "dq4", type: "numeric", unit: "分钟", content: "入队至窗口开始受理" },
             identityQuestions: [
                 { id: "dq1", options: ["东校区·学苑食堂", "东校区·风味食堂", "西校区·湖畔食堂", "西校区·清真食堂"] },
                 { id: "dq2", options: ["第一周周一", "第一周周二", "第一周周三", "第二周周一", "第二周周二", "第二周周三"] },
                 { id: "dq3", options: ["11:30-11:45", "11:45-12:00", "12:00-12:15", "12:15-12:30"] },
             ],
             frameSizeQuestion: { id: "dq5", unit: "人次", numericMin: 1, content: "历史同期客流量" },
-            policy: { pps: "required", stratified: "optional", systematic: "optional" },
+            observationCountQuestion: { id: "dq7", unit: "名", numericMin: 0, numericMax: 5 },
+            policy: { pps: "required", stratified: "optional", systematic: "optional", ppsSizeFields: [DINING_PPS_SIZE_FIELD] },
         },
         [DOGFOOD_NAMES.topicE]: {
             path: GREEN_COMMUTE_POPULATION_PATH,
@@ -481,6 +488,9 @@ async function verify() {
         if ("unit" in expected.targetQuestion) {
             check(targetQuestion.unit === expected.targetQuestion.unit, `${storedTopic.name} target question unit differs`);
         }
+        if ("content" in expected.targetQuestion) {
+            check(typeof targetQuestion.content === "string" && targetQuestion.content.includes(expected.targetQuestion.content), `${storedTopic.name} target question lacks its operational measurement rule`);
+        }
         if ("option" in expected.targetQuestion) {
             check(Array.isArray(targetQuestion.options) && targetQuestion.options.includes(expected.targetQuestion.option), `${storedTopic.name} target question options differ`);
         }
@@ -498,6 +508,13 @@ async function verify() {
             check(frameSize?.type === "numeric", `${storedTopic.name} prior-frame size question is missing`);
             check(frameSize.unit === expected.frameSizeQuestion.unit && frameSize.numericMin === expected.frameSizeQuestion.numericMin, `${storedTopic.name} prior-frame size question constraints differ`);
             check(typeof frameSize.content === "string" && frameSize.content.includes(expected.frameSizeQuestion.content), `${storedTopic.name} prior-frame size question is not identified as historical`);
+        }
+        if ("observationCountQuestion" in expected) {
+            const countQuestion = (storedTopic.recommendQuestions as Array<Record<string, unknown>>).find((question) => question.id === expected.observationCountQuestion.id);
+            check(countQuestion?.type === "numeric", `${storedTopic.name} observation-count question is missing`);
+            check(countQuestion.unit === expected.observationCountQuestion.unit
+                && countQuestion.numericMin === expected.observationCountQuestion.numericMin
+                && countQuestion.numericMax === expected.observationCountQuestion.numericMax, `${storedTopic.name} observation-count constraints differ`);
         }
         check(storedTopic.path === expected.path, `${storedTopic.name} stored path differs: ${storedTopic.path}`);
         check(storedTopic.rowCount === expected.rowCount, `${storedTopic.name} stored row count differs: ${storedTopic.rowCount}`);
@@ -517,6 +534,9 @@ async function verify() {
         check(samplingPolicy.methods.pps === expected.policy.pps, `${storedTopic.name} PPS policy differs`);
         check(samplingPolicy.methods.stratified === expected.policy.stratified, `${storedTopic.name} stratified policy differs`);
         check(samplingPolicy.methods.systematic === expected.policy.systematic, `${storedTopic.name} systematic policy differs`);
+        if ("ppsSizeFields" in expected.policy) {
+            check(JSON.stringify(samplingPolicy.ppsSizeFields) === JSON.stringify(expected.policy.ppsSizeFields), `${storedTopic.name} PPS size-field allowlist differs`);
+        }
 
         const file = Bun.file(resolveStoragePath(storedTopic.path));
         check(await file.exists(), `${storedTopic.name} population file is missing: ${storedTopic.path}`);
@@ -526,6 +546,11 @@ async function verify() {
         check(JSON.stringify(parsed.columns) === JSON.stringify(expected.columns), `${storedTopic.name} columns differ: ${JSON.stringify(parsed.columns)}`);
         const eligiblePpsFields = getPpsEligibleNumericFields(parsed.rows, mapping.numeric ?? []);
         check(JSON.stringify(eligiblePpsFields) === JSON.stringify(expected.ppsFields), `${storedTopic.name} PPS eligibility differs: ${JSON.stringify(eligiblePpsFields)}`);
+        if (samplingPolicy.methods.pps !== "disabled") {
+            const semanticPpsFields = filterPpsEligibleFields(samplingPolicy, eligiblePpsFields)
+                .filter((field) => field !== mapping.analysisTarget?.field);
+            check(semanticPpsFields.length > 0, `${storedTopic.name} has no policy-approved PPS size field`);
+        }
         parsedRowCounts[storedTopic.name] = parsed.rowCount;
     }
 

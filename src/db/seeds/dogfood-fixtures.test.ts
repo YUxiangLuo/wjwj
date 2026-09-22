@@ -75,6 +75,33 @@ describe("default demo research fixtures", () => {
         expect(rows.every((row) => row.等待分钟 > 0 && row.历史同期客流量 > 0 && row.开放窗口数 > 0)).toBe(true);
     });
 
+    test("reading background variables are crossed instead of mechanically confounded", () => {
+        const rows = createMeanPopulation();
+        for (const college of ["文学院", "理学院", "商学院"]) {
+            const collegeRows = rows.filter((row) => row.学院 === college);
+            expect(collegeRows).toHaveLength(8);
+            expect(collegeRows.filter((row) => row.是否住宿 === "是")).toHaveLength(4);
+            expect(collegeRows.filter((row) => row.是否住宿 === "否")).toHaveLength(4);
+            expect(new Set(collegeRows.map((row) => row.年级))).toEqual(new Set(["大1", "大2", "大3", "大4"]));
+        }
+    });
+
+    test("graduate intentions have full support and plausible variation within every college", () => {
+        const rows = createGraduateIntentionPopulation();
+        const intentions = new Set(["直接就业", "考研", "考公", "出国深造", "灵活就业"]);
+        const directRates: number[] = [];
+        for (const college of ["文学院", "理学院", "商学院", "工学院"]) {
+            const collegeRows = rows.filter((row) => row.学院 === college);
+            expect(collegeRows).toHaveLength(40);
+            expect(new Set(collegeRows.map((row) => row.毕业去向意向))).toEqual(intentions);
+            const directRate = collegeRows.filter((row) => row.毕业去向意向 === "直接就业").length / collegeRows.length;
+            expect(directRate).toBeGreaterThanOrEqual(0.3);
+            expect(directRate).toBeLessThanOrEqual(0.55);
+            directRates.push(directRate);
+        }
+        expect(Math.max(...directRates) - Math.min(...directRates)).toBeGreaterThanOrEqual(0.1);
+    });
+
     test("green commute exposes both implicit stratification and periodicity risk", () => {
         const rows = createGreenCommutePopulation();
         expect(rows).toHaveLength(360);

@@ -29,8 +29,8 @@ export const DOGFOOD_COUNTS = {
     student: 20,
     topic: 5,
     task: 8,
-    experiment: 17,
-    samplingAttempt: 10,
+    experiment: 18,
+    samplingAttempt: 13,
     announcement: 5,
     topicAttachment: 2,
 } as const;
@@ -51,6 +51,7 @@ export const READING_POPULATION_PATH = "/storage/topics/seed-population-reading-
 export const EMPLOYMENT_POPULATION_PATH = "/storage/topics/seed-population-employment-intent.csv";
 export const DINING_POPULATION_PATH = "/storage/topics/seed-population-dining-wait.csv";
 export const GREEN_COMMUTE_POPULATION_PATH = "/storage/topics/seed-population-green-commute.csv";
+export const DINING_PPS_SIZE_FIELD = "历史同期客流量";
 
 export const GUIDE_ATTACHMENT_PATH = "/storage/uploads/seed-topic-guide.pdf";
 export const QUESTIONNAIRE_TEMPLATE_ATTACHMENT_PATH = "/storage/uploads/seed-questionnaire-template.docx";
@@ -212,24 +213,43 @@ export function createMeanPopulation() {
     return Array.from({ length: 24 }, (_, index) => ({
         编号: index + 1,
         学院: colleges[index % colleges.length]!,
-        年级: `大${index % 4 + 1}`,
+        年级: `大${Math.floor(index / colleges.length) % 4 + 1}`,
         每周阅读时长: index === 0 ? 0 : 2 + (index % 13),
-        是否住宿: index % 3 === 0 ? "否" : "是",
+        是否住宿: Math.floor(index / colleges.length) % 2 === 0 ? "否" : "是",
     }));
 }
 
 export function createGraduateIntentionPopulation() {
     const colleges = ["文学院", "理学院", "商学院", "工学院"];
-    const intentions = ["直接就业", "直接就业", "直接就业", "考研", "考研", "考公", "出国深造", "灵活就业"];
-    return Array.from({ length: 160 }, (_, index) => ({
-        样本编号: `G${String(index + 1).padStart(3, "0")}`,
-        学院: colleges[index % colleges.length]!,
-        培养层次: index % 5 === 0 ? "专业学位" : "学术学位",
-        毕业去向意向: intentions[index % intentions.length]!,
-        是否有实习经历: index % 3 === 0 ? "否" : "是",
-        每周职业准备时长: 2 + (index * 3) % 19,
-        求职准备度: 35 + (index * 7) % 66,
-    }));
+    const intentionProfiles = [
+        [14, 10, 6, 5, 5],
+        [15, 11, 7, 4, 3],
+        [20, 6, 6, 4, 4],
+        [16, 10, 5, 4, 5],
+    ];
+    const intentionNames = ["直接就业", "考研", "考公", "出国深造", "灵活就业"];
+    return Array.from({ length: 160 }, (_, index) => {
+        const collegeIndex = index % colleges.length;
+        const withinCollege = Math.floor(index / colleges.length);
+        // Multiplication by 17 permutes all 40 positions (17 and 40 are
+        // coprime), preserving each college's profile without long blocks.
+        const profilePosition = (withinCollege * 17 + collegeIndex * 7) % 40;
+        const profile = intentionProfiles[collegeIndex]!;
+        let cumulative = 0;
+        const intentionIndex = profile.findIndex((count) => {
+            cumulative += count;
+            return profilePosition < cumulative;
+        });
+        return {
+            样本编号: `G${String(index + 1).padStart(3, "0")}`,
+            学院: colleges[collegeIndex]!,
+            培养层次: (withinCollege + collegeIndex * 2) % 5 === 0 ? "专业学位" : "学术学位",
+            毕业去向意向: intentionNames[intentionIndex]!,
+            是否有实习经历: (withinCollege * 2 + collegeIndex) % 3 === 0 ? "否" : "是",
+            每周职业准备时长: 2 + (index * 3) % 19,
+            求职准备度: 35 + (index * 7) % 66,
+        };
+    });
 }
 
 export function createDiningServicePopulation() {

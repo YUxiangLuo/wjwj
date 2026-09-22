@@ -442,4 +442,9 @@ test("publish readiness rejects a required PPS when no numeric column is all pos
         samplingPolicy: policy("required"),
         rows: [{ 编号: "1", 得分: 10, 规模: 3 }, { 编号: "2", 得分: 20, 规模: 5 }],
     })).toBeNull();
+    expect(validateTopicPublishReadiness({
+        ...base,
+        samplingPolicy: { ...policy("required"), ppsSizeFields: ["不存在的字段"] },
+        rows: [{ 编号: "1", 得分: 10, 规模: 3 }, { 编号: "2", 得分: 20, 规模: 5 }],
+    })).toContain("没有非目标数值字段");
 });

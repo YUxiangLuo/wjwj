@@ -30,6 +30,7 @@ import { getTargetSampleSizeFromSamplePlan } from "../experiment/submit-validati
 import { resolveAnalysisTarget, resolveStudyContract } from "../../lib/analysis-target";
 import {
     evaluateSamplingPolicy,
+    filterPpsEligibleFields,
     isCompletedSamplingResult,
     resolveSamplingPolicy,
     type SamplingMethod as PolicySamplingMethod,
@@ -238,7 +239,9 @@ async function prepareStoredSamplingResultsForCompletion(params: {
         let ppsEligibleFields: string[];
         try {
             const stats = await populationStatsService.run({
-                populationPath: params.taskInfo.excelFilePath, fieldMapping: params.taskInfo.fieldMapping,
+                populationPath: params.taskInfo.excelFilePath,
+                fieldMapping: params.taskInfo.fieldMapping,
+                ppsSizeFields: policy.ppsSizeFields,
             }, params.signal);
             ppsEligibleFields = stats.ppsEligibleFields;
         } catch (cause) {
@@ -413,6 +416,7 @@ const stageCompleteRoutes: RouteDefinition = {
                     populationPath: stageTaskInfo.excelFilePath,
                     fieldMapping,
                     ppsSampleSize: Number((result.updates.samplePlan as Record<string, unknown>).finalSampleSize),
+                    ppsSizeFields: resolveSamplingPolicy(stageTaskInfo.samplingPolicy).ppsSizeFields,
                 }, req.signal);
                 if (stats.ppsPlanFeasible === false) {
                     return error("当前样本量下，所有辅助规模变量均无法可靠计算必做 PPS 的入样概率。请调整样本量后重试；选择总体规模进行普查可避免此概率精度问题。", "PPS_PLAN_INFEASIBLE");
@@ -477,7 +481,11 @@ const statsRoutes: RouteDefinition = {
         const taskInfo = await findStudentTaskSamplingInfo(taskId, auth.student.classId);
         if (!taskInfo?.excelFilePath) return error("未找到总体的Excel数据文件", "NO_DATA_FILE");
         try {
-            return json(await populationStatsService.run({ populationPath: taskInfo.excelFilePath, fieldMapping: taskInfo.fieldMapping }, req.signal));
+            return json(await populationStatsService.run({
+                populationPath: taskInfo.excelFilePath,
+                fieldMapping: taskInfo.fieldMapping,
+                ppsSizeFields: resolveSamplingPolicy(taskInfo.samplingPolicy).ppsSizeFields,
+            }, req.signal));
         } catch (cause) {
             return handleServerError(cause);
         }
@@ -512,6 +520,13 @@ const samplingActionRoutes: RouteDefinition = {
         const samplingPolicy = resolveSamplingPolicy(taskInfo.samplingPolicy);
         if (samplingPolicy.methods[body.method] === "disabled") {
             return error("该抽样方法未在本实验模板中启用", "SAMPLING_METHOD_DISABLED", 409);
+        }
+        if (body.method === "pps" && samplingPolicy.ppsSizeFields) {
+            const requestedField = (body.params as { sizeField?: unknown } | null)?.sizeField;
+            if (typeof requestedField !== "string"
+                || !filterPpsEligibleFields(samplingPolicy, [requestedField]).length) {
+                return error("请选择实验模板指定的 PPS 规模变量", "VALIDATION_ERROR", 400);
+            }
         }
         const population = await readPopulationData(taskInfo.excelFilePath, taskInfo.fieldMapping);
         if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);

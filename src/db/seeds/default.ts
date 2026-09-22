@@ -37,6 +37,7 @@ import {
     createGraduateIntentionPopulation,
     createMeanPopulation,
     createYouthHappinessPopulation,
+    DINING_PPS_SIZE_FIELD,
     DINING_POPULATION_PATH,
     DOGFOOD_ANCHORS,
     DOGFOOD_COUNTS,
@@ -100,15 +101,16 @@ const graduateQuestionnaire = {
 
 const diningQuestionnaire = {
     title: "食堂午间服务时段观测表（观察员试填）",
-    welcomeText: "请观察员以一个地点、观测日和15分钟时段共同确定的服务时段为单位填写。历史同期客流量应从抽样框抄录，并在抽样前用于确定纳入概率；等待时间和开放窗口数在抽中时段现场记录。课堂预试记录不会进入正式估计。",
-    endingText: "本表记录的是服务时段而非单个就餐者。正式研究将用现场记录估计平均等待时间，并以抽样前已知的历史同期客流量作为PPS规模变量。",
+    welcomeText: "请观察员以一个地点、观测日和15分钟时段共同确定的服务时段为单位填写。时段开始后依到达顺序观察最先加入队列的5名就餐者（不足5名则观察全部）：从站到队尾开始计时，到窗口开始受理点餐或结算时停止；先分别记录，再计算算术平均。若无人加入队列，本实验将该时段等待负担记为0分钟，并把有效观察人数记为0。历史同期客流量应从抽样框抄录，并在抽样前用于确定纳入概率；等待时间和开放窗口数在抽中时段现场记录。课堂预试记录不会进入正式估计。",
+    endingText: "本表记录的是服务时段而非单个就餐者。正式研究比较的是按服务时段等权的平均等待负担，不是按就餐人数加权的个人平均等待；历史同期客流量仅作为抽样前已知的PPS规模变量。",
     questions: [
         { id: "dq1", section: "background", type: "single", content: "本次观测位于哪个地点？", options: ["东校区·学苑食堂", "东校区·风味食堂", "西校区·湖畔食堂", "西校区·清真食堂"] },
         { id: "dq2", section: "background", type: "single", content: "本次观测属于哪个观测日？", options: ["第一周周一", "第一周周二", "第一周周三", "第二周周一", "第二周周二", "第二周周三"] },
         { id: "dq3", section: "background", type: "single", content: "本次观测属于哪个15分钟时段？", options: ["11:30-11:45", "11:45-12:00", "12:00-12:15", "12:15-12:30"] },
-        { id: "dq4", section: "main", type: "numeric", content: "按统一规则记录的平均等待时间是多少分钟？", unit: "分钟", numericMin: 0, numericMax: 60, decimalPlaces: 1 },
+        { id: "dq4", section: "main", type: "numeric", content: "按“入队至窗口开始受理”规则，前5名到达者（不足5名则全部）的平均等待时间是多少？", unit: "分钟", numericMin: 0, numericMax: 60, decimalPlaces: 1 },
         { id: "dq5", section: "background", type: "numeric", content: "抽样框中该时段的历史同期客流量是多少人次？", unit: "人次", numericMin: 1, numericMax: 1000, decimalPlaces: 0 },
         { id: "dq6", section: "main", type: "numeric", content: "该时段实际开放了多少个服务窗口？", unit: "个", numericMin: 0, numericMax: 100, decimalPlaces: 0 },
+        { id: "dq7", section: "main", type: "numeric", content: "本时段实际纳入等待时间计算的就餐者有多少名？", unit: "名", numericMin: 0, numericMax: 5, decimalPlaces: 0 },
     ],
 };
 
@@ -145,6 +147,7 @@ const greenCommuteSamplingPolicy: SamplingPolicyV1 = {
 const ppsRequiredPolicy: SamplingPolicyV1 = {
     version: 1,
     methods: { ...defaultSamplingPolicy.methods, pps: "required" },
+    ppsSizeFields: [DINING_PPS_SIZE_FIELD],
 };
 const happinessPopulationForPlan = createYouthHappinessPopulation();
 const { recommendedSize: happinessRecommendedSize, populationVariance: happinessVariance } = computeYouthHappinessPlan(happinessPopulationForPlan);
@@ -202,10 +205,30 @@ const diningPlan = {
     finalSampleSize: diningRecommendedSize,
 };
 
+const calculatedGreenCommuteSize = calculateFinitePopulationSampleSize({
+    confidenceLevel: "95",
+    marginOfError: 9,
+    populationSize: 360,
+    designEffect: 1,
+    nonResponseRate: 0,
+});
+if (calculatedGreenCommuteSize === null) throw new Error("Dogfood green commute proportion plan could not be calculated");
+const greenCommuteRecommendedSize: number = calculatedGreenCommuteSize;
+const greenCommutePlan = {
+    estimationType: "proportion" as const,
+    confidenceLevel: "95",
+    marginOfError: 9,
+    designEffect: 1,
+    nonResponseRate: 0,
+    recommendedSize: greenCommuteRecommendedSize,
+    finalSampleSize: greenCommuteRecommendedSize,
+};
+
 const reportContent = `<h2>研究问题</h2><p>本研究估计示范地区18—35岁青年生活幸福感自评的平均水平。主指标为0—10分单题生活评价，仅用于总体描述，不是临床心理量表。</p><h2>抽样设计</h2><p>在95%置信水平和绝对误差限0.5分下规划样本量，完成简单随机、系统和按年龄组分层抽样。个体没有自然且事先已知的“规模”变量，因此不使用PPS；不能把幸福感得分本身当作规模变量。</p><h2>结果解释</h2><p>比较三种设计的样本构成、均值、设计标准误与总体已知均值。社会支持、自评健康和经济压力只用于描述分组差异；横截面合成数据不能证明因果关系，结论也不能外推到研究总体之外。</p>`;
 const readingReportContent = `<h2>实验目的</h2><p>本实验以每周阅读时长的均值为估计目标，使用总体方差估计、绝对误差限和有限总体校正确定样本量，并比较可执行抽样方法的结果。</p><h2>方法与结果</h2><p>总体中每周阅读时长包含零值，且没有其他对每个单位都为正数的数值字段，因此不存在合格的 PPS 规模变量。实验模板按规则将 PPS 设为不适用，随后完成简单随机、系统和按学院分层抽样。</p><h2>结论</h2><p>均值估计流程使用样本量 ${readingRecommendedSize}。三种启用方法均保留随机种子和完整样本行；PPS 未启用是由总体数据条件决定的有效策略，而不是执行失败。分析时应明确记录这一限制，避免为完成形式而选用不满足正值条件的规模变量。</p>`;
 const graduateReportContent = `<h2>研究问题</h2><p>本研究估计某综合大学本届毕业生中计划直接就业的学生比例，分析单位为一名毕业生。</p><h2>抽样设计</h2><p>以学院进行分层。个体层面的求职准备度是分析辅助变量，不是表示单位“规模”的抽样框变量，因此不用于PPS。目标属于分类变量，样本量规划采用最保守比例方差，误差限按百分点解释。</p><h2>结果解释</h2><p>比较简单随机、系统和分层抽样的直接就业比例、设计标准误与总体已知比例。结果仅代表该虚拟总体和当前抽样设计，不应外推到其他学校或毕业年份。</p>`;
-const diningReportContent = `<h2>研究问题</h2><p>本研究估计两个教学周内选定的六个观测日中，两校区四个食堂午间高峰96个服务时段的平均等待分钟数，分析单位是一个十五分钟服务时段，而不是一名学生。</p><h2>抽样设计</h2><p>按校区分层，并以抽样框中事先已知的历史同期客流量作为 PPS 规模变量，比较简单随机、系统、PPS 与分层抽样。等待时间和实际开放窗口数只在抽中时段现场记录，不参与事前纳入概率计算。</p><h2>结果解释</h2><p>合成总体刻意让等待时间与时段、历史同期客流量和开放窗口数相关，用于教学比较；单次样本的均值差异不能解释为现实食堂服务措施的因果效果。</p>`;
+const diningReportContent = `<h2>研究问题</h2><p>本研究估计两个教学周内选定的六个观测日中，两校区四个食堂午间高峰96个服务时段的平均等待分钟数，分析单位是一个十五分钟服务时段，而不是一名学生。</p><h2>抽样设计</h2><p>按校区分层，并以抽样框中事先已知的历史同期客流量作为 PPS 规模变量，比较简单随机、系统、PPS 与分层抽样。每个抽中时段从开始后最先入队的5名就餐者（不足5名则全部）站到队尾起计时，到窗口开始受理时停止，再计算时段算术平均；无人入队时按预先约定把时段等待负担记为0并记录观察人数0。等待时间和实际开放窗口数只在抽中时段现场记录，不参与事前纳入概率计算。</p><h2>结果解释</h2><p>各服务时段在目标估计中等权，因此结果不是按就餐人数加权的个人平均等待。合成总体刻意让等待时间与时段、历史同期客流量和开放窗口数相关，用于教学比较；单次样本的均值差异不能解释为现实食堂服务措施的因果效果。</p>`;
+const greenCommuteReportContent = `<h2>研究问题</h2><p>本研究估计某高校正常教学周学生典型到校通勤记录中绿色通勤方式所占比例，绿色通勤定义为步行、自行车或公共交通。</p><h2>抽样设计</h2><p>按95%置信水平和±9个百分点规划得到样本量90。完成简单随机、系统和按住宿片区分层抽样；通勤距离描述的是个体特征而不是单位规模，因此PPS不适用。抽样框按住宿片区成组，并在组内按四个登记时段固定轮换，系统抽样间隔K=4会让不同随机起点固定抽中不同登记时段。</p><h2>结果解释</h2><p>系统样本一次更接近总体比例并不能证明设计更优，应比较不同随机起点并说明周期结构风险。结果表示通勤记录比例，不应直接解释为总体学生人数，也不能外推到其他学校或非正常教学周。</p>`;
 
 const happinessFieldMapping = {
     identifier: "青年代号",
@@ -398,12 +421,14 @@ async function buildSamplingFixtures(
     meanPopulation: Array<Record<string, unknown>>,
     graduatePopulation: Array<Record<string, unknown>>,
     diningPopulation: Array<Record<string, unknown>>,
+    greenCommutePopulation: Array<Record<string, unknown>>,
 ) {
     const happinessSampleSize = happinessRecommendedSize;
     const [age1 = 0, age2 = 0, age3 = 0] = allocateIntegerShares(happinessSampleSize, [1, 1, 1]);
     const [college1 = 0, college2 = 0, college3 = 0] = allocateIntegerShares(readingRecommendedSize, [1 / 3, 1 / 3, 1 / 3]);
     const graduateCollegeCounts = allocateIntegerShares(graduateRecommendedSize, [0.25, 0.25, 0.25, 0.25]);
     const diningCampusCounts = allocateIntegerShares(diningRecommendedSize, [0.5, 0.5]);
+    const greenAreaCounts = allocateIntegerShares(greenCommuteRecommendedSize, [1 / 3, 1 / 3, 1 / 3]);
     const happinessResults = {
         simple: await runSampling({ method: "simple", rawParams: { sampleSize: happinessSampleSize, seed: 202601 }, targetSampleSize: happinessSampleSize, population: happinessPopulation, fieldMapping: happinessFieldMapping }),
         systematic: await runSampling({ method: "systematic", rawParams: { seed: 202602 }, targetSampleSize: happinessSampleSize, population: happinessPopulation, fieldMapping: happinessFieldMapping }),
@@ -467,7 +492,7 @@ async function buildSamplingFixtures(
     const diningResults = {
         simple: await runSampling({ method: "simple", rawParams: { sampleSize: diningRecommendedSize, seed: 202631 }, targetSampleSize: diningRecommendedSize, population: diningPopulation, fieldMapping: diningFieldMapping }),
         systematic: await runSampling({ method: "systematic", rawParams: { seed: 202632 }, targetSampleSize: diningRecommendedSize, population: diningPopulation, fieldMapping: diningFieldMapping }),
-        pps: await runSampling({ method: "pps", rawParams: { sampleSize: diningRecommendedSize, sizeField: "历史同期客流量", seed: 202633 }, targetSampleSize: diningRecommendedSize, population: diningPopulation, fieldMapping: diningFieldMapping }),
+        pps: await runSampling({ method: "pps", rawParams: { sampleSize: diningRecommendedSize, sizeField: DINING_PPS_SIZE_FIELD, seed: 202633 }, targetSampleSize: diningRecommendedSize, population: diningPopulation, fieldMapping: diningFieldMapping }),
         stratified: await runSampling({
             method: "stratified",
             rawParams: {
@@ -485,7 +510,27 @@ async function buildSamplingFixtures(
         }),
     };
 
-    return { happinessResults, meanResults, graduateResults, diningResults };
+    const greenCommuteResults = {
+        simple: await runSampling({ method: "simple", rawParams: { sampleSize: greenCommuteRecommendedSize, seed: 202641 }, targetSampleSize: greenCommuteRecommendedSize, population: greenCommutePopulation, fieldMapping: greenCommuteFieldMapping }),
+        systematic: await runSampling({ method: "systematic", rawParams: { seed: 202642 }, targetSampleSize: greenCommuteRecommendedSize, population: greenCommutePopulation, fieldMapping: greenCommuteFieldMapping }),
+        stratified: await runSampling({
+            method: "stratified",
+            rawParams: {
+                stratifyBy: "住宿片区",
+                seed: 202644,
+                layers: ["校内宿舍", "近校社区", "远校社区"].map((name, index) => ({
+                    name,
+                    ratio: 1 / 3,
+                    sampleCount: greenAreaCounts[index] ?? 0,
+                })),
+            },
+            targetSampleSize: greenCommuteRecommendedSize,
+            population: greenCommutePopulation,
+            fieldMapping: greenCommuteFieldMapping,
+        }),
+    };
+
+    return { happinessResults, meanResults, graduateResults, diningResults, greenCommuteResults };
 }
 
 function buildSamplingAttemptDetails(result: Record<string, unknown>) {
@@ -563,16 +608,18 @@ async function seed() {
     const diningPopulation = createDiningServicePopulation();
     const greenCommutePopulation = createGreenCommutePopulation();
     const populationFileHashes = await writePopulationFixtures(happinessPopulation, meanPopulation, graduatePopulation, diningPopulation, greenCommutePopulation);
-    const { happinessResults, meanResults, graduateResults, diningResults } = await buildSamplingFixtures(
+    const { happinessResults, meanResults, graduateResults, diningResults, greenCommuteResults } = await buildSamplingFixtures(
         happinessPopulation,
         meanPopulation,
         graduatePopulation,
         diningPopulation,
+        greenCommutePopulation,
     );
     assertCompleteSubmission(happinessQuestionnaire, happinessPlan, happinessResults, happinessPopulation.length, reportContent, happinessSamplingPolicy);
     assertCompleteSubmission(readingQuestionnaire, readingPlan, meanResults, meanPopulation.length, readingReportContent, noPpsSamplingPolicy);
     assertCompleteSubmission(graduateQuestionnaire, graduatePlan, graduateResults, graduatePopulation.length, graduateReportContent, graduateSamplingPolicy);
     assertCompleteSubmission(diningQuestionnaire, diningPlan, diningResults, diningPopulation.length, diningReportContent, ppsRequiredPolicy);
+    assertCompleteSubmission(greenCommuteQuestionnaire, greenCommutePlan, greenCommuteResults, greenCommutePopulation.length, greenCommuteReportContent, greenCommuteSamplingPolicy);
     const compactHappinessResults = compactSamplingResults(happinessResults);
     const compactHappinessChoiceResults = compactSamplingResults({
         simple: happinessResults.simple,
@@ -581,7 +628,8 @@ async function seed() {
     const compactMeanResults = compactSamplingResults(meanResults);
     const compactGraduateResults = compactSamplingResults(graduateResults);
     const compactDiningResults = compactSamplingResults(diningResults);
-    if (!compactHappinessResults || !compactHappinessChoiceResults || !compactMeanResults || !compactGraduateResults || !compactDiningResults) {
+    const compactGreenCommuteResults = compactSamplingResults(greenCommuteResults);
+    if (!compactHappinessResults || !compactHappinessChoiceResults || !compactMeanResults || !compactGraduateResults || !compactDiningResults || !compactGreenCommuteResults) {
         throw new Error("Dogfood sampling fixtures could not be compacted");
     }
 
@@ -797,6 +845,28 @@ async function seed() {
         reportContent: diningReportContent,
         samplingPolicy: ppsRequiredPolicy,
     });
+    const greenCommuteCompletedBase = {
+        currentStage: 4,
+        questionnaire: greenCommuteQuestionnaire,
+        samplePlan: greenCommutePlan,
+        samplingResults: compactGreenCommuteResults,
+        reportContent: greenCommuteReportContent,
+        stage1CompletedAt: day(-3),
+        stage2CompletedAt: day(-2),
+        stage3CompletedAt: day(-1),
+        stage4CompletedAt: day(-1),
+    } as const;
+    const greenCommuteSnapshot = (studentId: string) => snapshot({
+        topicName: DOGFOOD_NAMES.topicE,
+        studentName: studentsById[studentId]!.name,
+        populationSize: 360,
+        populationFileSha256: populationFileHashes.greenCommute,
+        questionnaire: greenCommuteQuestionnaire,
+        samplePlan: greenCommutePlan,
+        samplingResults: compactGreenCommuteResults,
+        reportContent: greenCommuteReportContent,
+        samplingPolicy: greenCommuteSamplingPolicy,
+    });
 
     const experimentRows = await db.insert(experiment).values([
         // 主任务：10 名主班学生精确覆盖 8 个进度桶（3 人未开始）。
@@ -826,6 +896,8 @@ async function seed() {
             createdAt: day(-6),
             updatedAt: day(-1),
         },
+        // 绿色通勤：冻结一份系统抽样周期风险的完整提交，用于端到端回放。
+        { ...greenCommuteCompletedBase, studentId: studentsById[DOGFOOD_ANCHORS.submitted]!.id, taskId: taskFor(DOGFOOD_NAMES.topicE, DOGFOOD_NAMES.mainClass).id, status: "submitted", submissionSnapshot: greenCommuteSnapshot(DOGFOOD_ANCHORS.submitted), submittedAt: day(-1), createdAt: day(-3), updatedAt: day(-1) },
         // 就业比例子课题：进行中、待批改、已批改各一份。
         { studentId: studentsById[DOGFOOD_ANCHORS.stage1]!.id, taskId: taskFor(DOGFOOD_NAMES.topicC, DOGFOOD_NAMES.mainClass).id, currentStage: 2, status: "in_progress", questionnaire: graduateQuestionnaire, stage1CompletedAt: day(-2), createdAt: day(-4), updatedAt: day(-2) },
         { ...graduateCompletedBase, studentId: studentsById[DOGFOOD_ANCHORS.submitted]!.id, taskId: taskFor(DOGFOOD_NAMES.topicC, DOGFOOD_NAMES.mainClass).id, status: "submitted", submissionSnapshot: graduateSnapshot(DOGFOOD_ANCHORS.submitted), submittedAt: day(-1), createdAt: day(-5), updatedAt: day(-1) },
@@ -840,11 +912,12 @@ async function seed() {
         { ...happinessCompletedBase, studentId: studentsById.H2502!.id, taskId: taskFor(DOGFOOD_NAMES.topicA, DOGFOOD_NAMES.historyClass).id, status: "graded", submissionSnapshot: happinessSnapshot("H2502"), submittedAt: day(-192), scoreQuestionnaire: "84", scoreProcess: "88", scoreReport: "86", totalScore: "86.00", teacherComment: "上学期归档样本，抽样方法比较略显简略。", gradedByTeacherId: teachersById.T003!.id, gradedAt: day(-191), createdAt: day(-198), updatedAt: day(-191) },
     ]).returning({ id: experiment.id, studentId: experiment.studentId, taskId: experiment.taskId });
 
-    // 三组服务端抽样审计记录：幸福感与毕业意向各三种可用方法，服务时段课题四种方法。
+    // 四组服务端抽样审计记录：幸福感、毕业意向和绿色通勤各三种可用方法，服务时段课题四种方法。
     const auditedRuns = [
         { studentId: DOGFOOD_ANCHORS.submitted, topicName: DOGFOOD_NAMES.topicA, className: DOGFOOD_NAMES.mainClass, results: happinessResults },
         { studentId: DOGFOOD_ANCHORS.submitted, topicName: DOGFOOD_NAMES.topicC, className: DOGFOOD_NAMES.mainClass, results: graduateResults },
         { studentId: DOGFOOD_ANCHORS.auditedSecondary, topicName: DOGFOOD_NAMES.topicD, className: DOGFOOD_NAMES.secondaryClass, results: diningResults },
+        { studentId: DOGFOOD_ANCHORS.submitted, topicName: DOGFOOD_NAMES.topicE, className: DOGFOOD_NAMES.mainClass, results: greenCommuteResults },
     ];
     const auditedMethods = auditedRuns.flatMap((auditedRun, runIndex) => {
         const auditedExperiment = experimentRows.find((row) => (

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
     buildDefaultSamplingPolicy,
     evaluateSamplingPolicy,
+    filterPpsEligibleFields,
     getSamplingMethodState,
     parseSamplingPolicy,
     validateSamplingPolicy,
@@ -55,6 +56,17 @@ describe("sampling policy", () => {
             ...buildDefaultSamplingPolicy(),
             methods: { ...buildDefaultSamplingPolicy().methods, cluster: "optional" },
         })).toBeNull();
+    });
+
+    test("an explicit PPS size-field allowlist is parsed and restricts otherwise eligible numeric fields", () => {
+        const policy = { ...buildDefaultSamplingPolicy(), ppsSizeFields: ["历史同期客流量"] };
+        expect(parseSamplingPolicy(JSON.stringify(policy))).toEqual(policy);
+        expect(filterPpsEligibleFields(policy, ["等待分钟", "历史同期客流量", "开放窗口数"]))
+            .toEqual(["历史同期客流量"]);
+        expect(filterPpsEligibleFields(buildDefaultSamplingPolicy(), ["规模", "权重"]))
+            .toEqual(["规模", "权重"]);
+        expect(parseSamplingPolicy({ ...policy, ppsSizeFields: ["规模", "规模"] })).toBeNull();
+        expect(parseSamplingPolicy({ ...policy, ppsSizeFields: [] })).toBeNull();
     });
 
     test("display state distinguishes disabled, unavailable, unselected, and incomplete methods", () => {

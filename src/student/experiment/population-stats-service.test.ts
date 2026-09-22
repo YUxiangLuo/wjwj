@@ -16,6 +16,8 @@ test("PPS planning checks actual designs, excludes the target and caches each sa
         expect((await service.run({ ...job, ppsSampleSize: 3 })).ppsPlanFeasible).toBe(true);
         expect((await service.run({ ...job, ppsSampleSize: 1 })).ppsPlanFeasible).toBe(false);
         expect((await service.run({ ...job, ppsSampleSize: 1, fieldMapping: { ...fieldMapping, numeric: ["y", "size", "safe"] } })).ppsPlanFeasible).toBe(true);
+        expect((await service.run({ ...job, ppsSampleSize: 1, fieldMapping: { ...fieldMapping, numeric: ["y", "size", "safe"] }, ppsSizeFields: ["size"] })).ppsPlanFeasible).toBe(false);
+        expect((await service.run({ ...job, fieldMapping: { ...fieldMapping, numeric: ["y", "size", "safe"] }, ppsSizeFields: ["safe"] })).ppsEligibleFields).toEqual(["safe"]);
         expect((await service.run({ ...job, ppsSampleSize: 1, fieldMapping: { ...fieldMapping, numeric: ["y"] } })).ppsPlanFeasible).toBeNull();
     } finally { service.close(); await file.delete(); }
 });

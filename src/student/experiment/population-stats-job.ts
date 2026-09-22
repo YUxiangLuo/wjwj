@@ -8,12 +8,20 @@ import { preparePPSSampling } from "../../domain/statistics/sampling";
 import { resolveAnalysisTarget } from "../../lib/analysis-target";
 import type { WorkerResult } from "../../server/worker-service";
 
-export interface PopulationStatsJob { populationPath: string; fieldMapping: unknown; ppsSampleSize?: number }
+export interface PopulationStatsJob {
+    populationPath: string;
+    fieldMapping: unknown;
+    ppsSampleSize?: number;
+    ppsSizeFields?: string[];
+}
 
-function buildStats(population: Record<string, unknown>[], fieldMapping: unknown, ppsSampleSize?: number) {
+function buildStats(population: Record<string, unknown>[], fieldMapping: unknown, ppsSampleSize?: number, ppsSizeFields?: string[]) {
     const numericFields = parseTopicFieldMapping(fieldMapping)?.numeric ?? [];
     const categoricalFields = getCategoricalFieldsFromTopicMapping(fieldMapping);
-    const ppsEligibleFields = getPpsEligibleNumericFields(population, numericFields);
+    const positiveNumericFields = getPpsEligibleNumericFields(population, numericFields);
+    const ppsEligibleFields = ppsSizeFields
+        ? positiveNumericFields.filter((field) => ppsSizeFields.includes(field))
+        : positiveNumericFields;
     const target = resolveAnalysisTarget(fieldMapping);
     const candidates = ppsEligibleFields.filter(field => target?.inferred || field !== target?.target.field);
     return {
@@ -33,5 +41,5 @@ export type PopulationStats = ReturnType<typeof buildStats>;
 export async function runPopulationStatsJob(job: PopulationStatsJob): Promise<WorkerResult<PopulationStats>> {
     const population = await readPopulationData(job.populationPath, job.fieldMapping);
     if (!population.length) return { ok: false, code: "READ_FAILED", message: "总体数据为空或读取失败" };
-    return { ok: true, data: buildStats(population, job.fieldMapping, job.ppsSampleSize) };
+    return { ok: true, data: buildStats(population, job.fieldMapping, job.ppsSampleSize, job.ppsSizeFields) };
 }

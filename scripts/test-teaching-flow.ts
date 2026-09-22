@@ -3,7 +3,7 @@ import { SQL } from "bun";
 import { mkdtemp, mkdir, symlink, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
-import { computeDiningPlan, DOGFOOD_ANCHORS, DOGFOOD_NAMES } from "../src/db/seeds/dogfood-fixtures";
+import { computeDiningPlan, DINING_PPS_SIZE_FIELD, DOGFOOD_ANCHORS, DOGFOOD_NAMES } from "../src/db/seeds/dogfood-fixtures";
 import { calculateFinitePopulationSampleSize } from "../src/student/experiment/sample-plan";
 import type { ExperimentData, StudentTask } from "../src/student/api-client";
 import type { AnalysisMetricsResult } from "../src/domain/experiment/analysis-types";
@@ -18,7 +18,7 @@ databaseUrl.pathname = `/${databaseName}`;
 const workdir = await mkdtemp(join(tmpdir(), "wj-teaching-"));
 const artifacts = resolve(process.env.TEACHING_TEST_ARTIFACTS ?? join(root, "test-results/teaching-flow"));
 await mkdir(artifacts, { recursive: true });
-for (const name of ["student-failure.png", "teacher-failure.png", "result.json", "teacher-dictionary.png", "numeric-variable-binding.png", "sampling-animation-exact.png", "sampling-animation-receipt.png", "sampling-animation-zoom-200.png", "sampling-animation-zoom-200-pagination.png", "sampling-animation-zoom-200-draw.png", "stage4-saved-analysis.png", "teacher-submitted-appendix.png", "stale-analysis-warning.png", "empty-path-narrow.png"]) {
+for (const name of ["student-failure.png", "teacher-failure.png", "result.json", "teacher-dictionary.png", "numeric-variable-binding.png", "sampling-pps-policy.png", "sampling-animation-exact.png", "sampling-animation-receipt.png", "sampling-animation-zoom-200.png", "sampling-animation-zoom-200-pagination.png", "sampling-animation-zoom-200-draw.png", "stage4-saved-analysis.png", "teacher-submitted-appendix.png", "stale-analysis-warning.png", "empty-path-narrow.png"]) {
     await Bun.file(join(artifacts, name)).delete().catch(() => undefined);
 }
 const environment = { ...process.env, DATABASE_URL: String(databaseUrl), DEMO_MODE: "1", DEV_AUTH_MODE: "0", NODE_ENV: "development", HOST: "127.0.0.1" };
@@ -314,6 +314,13 @@ try {
     assert(experiment.currentStage === 3 && experiment.samplePlan?.finalSampleSize === plan.recommendedSize, "Stage 2 did not persist");
     await browser(student, "set", "viewport", "1024", "768");
     await page(student, stageUrl, '[data-testid="student-stage-sampling"]');
+    const diningStats = await api<{ ppsEligibleFields: string[] }>(student, `/api/student/tasks/${task.id}/stats`);
+    assert(JSON.stringify(diningStats.ppsEligibleFields) === JSON.stringify([DINING_PPS_SIZE_FIELD]), `Dining PPS policy exposed unintended fields: ${JSON.stringify(diningStats.ppsEligibleFields)}`);
+    await activate(student, '[data-testid="student-sampling-tab-pps"]');
+    await visible(student, '[data-testid="student-sampling-pps-size-field"]');
+    assert(await evaluate(student, `document.querySelector('[data-testid="student-sampling-pps-size-field"]').textContent.includes(${JSON.stringify(DINING_PPS_SIZE_FIELD)})`), "Dining PPS control did not select the policy-approved prior-frame size field");
+    await browser(student, "screenshot", join(artifacts, "sampling-pps-policy.png"));
+    await activate(student, '[data-testid="student-sampling-tab-simple"]');
     assert(await evaluate(student, `(() => {const button=document.querySelector('[data-testid="student-sampling-simple-run"]').getBoundingClientRect();const footer=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect();return button.top>0 && button.bottom<=footer.top && button.right<=innerWidth && document.documentElement.scrollWidth<=innerWidth;})()`), "The initial sampling action must remain visible without document overflow at 1024×768");
     await browser(student, "screenshot", join(artifacts, "sampling-start.png"));
     const savedRecordLayout = await evaluate<{ found: boolean; top?: number; bottom?: number; footerTop?: number; scrollY: number; scrollHeight: number }>(student, `(async () => {const heading=[...document.querySelectorAll('div')].find(element=>element.textContent.trim()==="已保存的入样记录");const card=heading?.closest('[data-slot="card"]');scrollTo({top:document.documentElement.scrollHeight,behavior:"instant"});await new Promise(requestAnimationFrame);const footer=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect();const bounds=card?.getBoundingClientRect();return {found:Boolean(card),top:bounds?.top,bottom:bounds?.bottom,footerTop:footer.top,scrollY,scrollHeight:document.documentElement.scrollHeight};})()`);
@@ -365,7 +372,7 @@ try {
     await activate(student, '[data-testid="immersive-sampling-return"]');
     await browser(student, "set", "viewport", "1280", "800");
     for (const method of ["systematic", "pps"] as const) {
-        await api(student, `/api/student/tasks/${task.id}/sampling`, "POST", { method, params: { sampleSize: plan.recommendedSize, ...(method === "pps" ? { sizeField: "客流量" } : {}) } });
+        await api(student, `/api/student/tasks/${task.id}/sampling`, "POST", { method, params: { sampleSize: plan.recommendedSize, ...(method === "pps" ? { sizeField: DINING_PPS_SIZE_FIELD } : {}) } });
     }
     await page(student, stageUrl, '[data-testid="student-stage-sampling"]');
     assert(await evaluate(student, `(() => {const table=document.querySelector('[aria-label^="抽样结果数据表"]');const stage=document.querySelector('[data-testid="student-stage-sampling"]');return table && table.getBoundingClientRect().width > stage.getBoundingClientRect().width*0.8 && document.documentElement.scrollWidth<=innerWidth;})()`), "Sampling data table must use the available width without overflowing the page");
@@ -453,7 +460,7 @@ try {
     const staleRecords = await api<{ records: Array<{ id: number; stale: boolean }> }>(student, `/api/student/tasks/${task.id}/analyses`);
     assert(staleRecords.records.length === 2 && staleRecords.records.every(record => record.stale), "Reopening upstream did not mark saved analyses stale");
     for (const method of ["simple", "systematic", "pps"] as const) {
-        await api(student, `/api/student/tasks/${task.id}/sampling`, "POST", { method, params: { sampleSize: plan.recommendedSize, seed: 1701, ...(method === "pps" ? { sizeField: "客流量" } : {}) } });
+        await api(student, `/api/student/tasks/${task.id}/sampling`, "POST", { method, params: { sampleSize: plan.recommendedSize, seed: 1701, ...(method === "pps" ? { sizeField: DINING_PPS_SIZE_FIELD } : {}) } });
     }
     experiment = await api<ExperimentData>(student, `${experimentPath}/stages/3/complete`, "POST", { observedVersion: (await api<ExperimentData>(student, experimentPath)).version });
     assert(experiment.currentStage === 4, "Stage 3 recompletion failed");
