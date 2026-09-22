@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { X, Users, Target, Layers, Shuffle, ChevronLeft, ChevronRight, Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { MethodKey as SamplingMethod } from "@/domain/experiment/types";
-import type { PpsProbabilitySummary } from "@/domain/statistics/sampling";
+import { createSeededRandom, performSimpleSamplingWithIndices, type PpsProbabilitySummary } from "@/domain/statistics/sampling";
 import { computeSampleProgressDisplay } from "./sample-progress-display";
 import { formatSystematicInterval } from "../experiment/systematic-sampling";
 import { buildSamplingAnimationScale, buildStratifiedVisualAllocation } from "./sampling-animation-scale";
@@ -113,27 +113,6 @@ function lc(index: number) {
 
 export function getSystematicPopulationDotClass(index: number, scanIndex: number | undefined) {
     return scanIndex !== undefined && index <= scanIndex ? "bg-info-muted" : "bg-muted";
-}
-
-// ─── Seeded RNG (deterministic visual order) ──────────────
-function mulberry32(seed: number) {
-    return () => {
-        let t = (seed += 0x6d2b79f5);
-        t = Math.imul(t ^ (t >>> 15), t | 1);
-        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-}
-
-function shuffleIndices(count: number, rng: () => number): number[] {
-    const arr = Array.from({ length: count }, (_, i) => i);
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(rng() * (i + 1));
-        const tmp = arr[i]!;
-        arr[i] = arr[j]!;
-        arr[j] = tmp;
-    }
-    return arr;
 }
 
 function formatProbability(value: number) {
@@ -284,21 +263,24 @@ export function ImmersiveSamplingAnimation({
 
     // ─── Precompute which dots get selected ───────────────
     const { selectionOrder, layerAssignment, dotSelectedAt, dotWeights } = useMemo(() => {
-        const rng = mulberry32(42);
+        const drawRng = createSeededRandom(seed ?? 42);
 
         let selection: number[] = [];
         let layerMap: number[] | undefined;
         let weights: Float32Array | undefined;
 
         if (method === "simple") {
-            const shuffled = shuffleIndices(visualPopulationSize, rng);
-            selection = shuffled.slice(0, visualSampleSize);
+            const frame = Array.from({ length: visualPopulationSize }, (_, index) => index);
+            selection = performSimpleSamplingWithIndices(frame, visualSampleSize, drawRng).indices;
         } else if (method === "pps") {
             // PPS systematic selection: simulate varying sizes and walk
             // through the cumulative distribution, mirroring the real algorithm.
+            // The synthetic size frame remains stable between runs; the saved
+            // random start controls which units are highlighted within it.
+            const frameRng = createSeededRandom("pps-animation-frame");
             const rawWeights = new Float32Array(visualPopulationSize);
             for (let i = 0; i < visualPopulationSize; i++) {
-                rawWeights[i] = rng() * PPS_WEIGHT_RANGE + PPS_WEIGHT_MIN;
+                rawWeights[i] = frameRng() * PPS_WEIGHT_RANGE + PPS_WEIGHT_MIN;
             }
             // Normalize to 0-1 for visual opacity
             let maxW = 0;
@@ -319,7 +301,10 @@ export function ImmersiveSamplingAnimation({
             }
             const totalSize = cumSum;
             const interval = totalSize / visualSampleSize;
-            const start = rng() * interval;
+            const savedRandomUnit = Number.isFinite(randomStart) && randomStart! >= 0 && randomStart! < 1
+                ? randomStart!
+                : drawRng();
+            const start = savedRandomUnit * interval;
             let pointer = start;
             let dataIdx = 0;
             const selected = new Set<number>();
@@ -350,9 +335,14 @@ export function ImmersiveSamplingAnimation({
             weights = normalizedWeights;
         } else if (method === "systematic") {
             // Spread samples evenly across the entire grid so the animation
-            // visibly scans from top-left to bottom-right.
+            // visibly scans from top-left to bottom-right. Reuse the saved
+            // random-start fraction when mapping an actual frame to a compressed grid.
             const visualInterval = visualPopulationSize / Math.max(1, visualSampleSize);
-            const start = rng() * visualInterval;
+            const savedRandomUnit = Number.isFinite(randomStart) && randomStart! >= 0
+                && Number.isFinite(interval) && interval! > 0
+                ? Math.min(1 - Number.EPSILON, randomStart! / interval!)
+                : drawRng();
+            const start = savedRandomUnit * visualInterval;
             for (let index = 0; index < visualSampleSize; index += 1) {
                 selection.push(Math.floor(start + index * visualInterval));
             }
@@ -371,15 +361,8 @@ export function ImmersiveSamplingAnimation({
                 const layerStart = offset;
                 const layerEnd = offset + dotCount;
                 const layerIndices = Array.from({ length: layerEnd - layerStart }, (_, i) => layerStart + i);
-                // Shuffle within layer
-                for (let i = layerIndices.length - 1; i > 0; i--) {
-                    const j = Math.floor(rng() * (i + 1));
-                    const tmp = layerIndices[i]!;
-                    layerIndices[i] = layerIndices[j]!;
-                    layerIndices[j] = tmp;
-                }
                 const visualLayerSample = allocation.sample[li] ?? 0;
-                selection.push(...layerIndices.slice(0, visualLayerSample));
+                selection.push(...performSimpleSamplingWithIndices(layerIndices, visualLayerSample, drawRng).data);
                 offset += dotCount;
             }
         }
@@ -391,7 +374,7 @@ export function ImmersiveSamplingAnimation({
         }
 
         return { selectionOrder: selection, layerAssignment: layerMap, dotSelectedAt: selectedAtMap, dotWeights: weights };
-    }, [method, layers, visualPopulationSize, visualSampleSize]);
+    }, [interval, layers, method, randomStart, seed, visualPopulationSize, visualSampleSize]);
 
     const finishAnimation = useCallback(() => {
         setVisiblePopCount(visualPopulationSize);
@@ -645,7 +628,11 @@ export function ImmersiveSamplingAnimation({
                         <p className="text-meta text-muted-foreground">
                             {phase.type === "intro" && "准备中..."}
                             {phase.type === "populating" && progressCopy.populating}
-                            {phase.type === "sampling" && `${progressCopy.sampling} ${sampleProgressDisplay.current}/${sampleProgressDisplay.total}`}
+                            {phase.type === "sampling" && (
+                                currentSelectIndex >= selectionOrder.length && selectionOrder.length > 0
+                                    ? `已完成选取，正在核对结果... ${sampleProgressDisplay.current}/${sampleProgressDisplay.total}`
+                                    : `${progressCopy.sampling} ${sampleProgressDisplay.current}/${sampleProgressDisplay.total}`
+                            )}
                             {phase.type === "complete" && progressCopy.complete}
                         </p>
                     </div>
@@ -786,7 +773,7 @@ export function ImmersiveSamplingAnimation({
                                 {method === "systematic" && phase.type === "sampling" && (
                                     <div className="mt-3 text-center">
                                         <span className={`inline-flex items-center gap-2 rounded-control border ${meta.accentBorder} bg-card px-3 py-1.5 text-meta font-mono ${meta.accentText}`}>
-                                            间隔 K = {formatSystematicInterval(interval)}，从总体首端至末端等距抽取
+                                            间隔 K = {formatSystematicInterval(interval)}，实际起点 r = {formatSystematicInterval(randomStart)}，从总体首端至末端等距抽取
                                         </span>
                                     </div>
                                 )}
@@ -795,7 +782,7 @@ export function ImmersiveSamplingAnimation({
                                     <div className="mt-3 text-center">
                                         <span className={`inline-flex items-center gap-2 bg-card border ${meta.accentBorder} ${meta.accentText} text-meta px-3 py-1.5 rounded-control`}>
                                             <Shuffle className="w-3.5 h-3.5" />
-                                            每个样本点被抽中的机会相同
+                                            随机种子 {seed === undefined ? "—" : String(seed)}；每个样本点被抽中的机会相同
                                         </span>
                                     </div>
                                 )}
@@ -804,7 +791,7 @@ export function ImmersiveSamplingAnimation({
                                     <div className="mt-3 text-center">
                                         <span className={`inline-flex items-center gap-2 rounded-control border ${meta.accentBorder} bg-card px-3 py-1.5 text-meta ${meta.accentText}`}>
                                             <Target className="w-3.5 h-3.5" />
-                                            按 {FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模"} 权重系统选取；亮度仅示意规模差异
+                                            按 {FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模"} 权重系统选取，实际起点 u = {formatProbability(randomStart ?? Number.NaN)}；点位仅示意机制，不对应具体总体行
                                         </span>
                                     </div>
                                 )}
@@ -813,7 +800,7 @@ export function ImmersiveSamplingAnimation({
                                     <div className="mt-3 text-center">
                                         <span className={`inline-flex items-center gap-2 rounded-control border ${meta.accentBorder} bg-card px-3 py-1.5 text-meta ${meta.accentText}`}>
                                             <div className={`h-2.5 w-2.5 rounded-circle ${lc(stratifiedActiveLayer).bg}`} />
-                                            当前正在抽取 {layers[stratifiedActiveLayer].name} 层样本
+                                            随机种子 {seed === undefined ? "—" : String(seed)}；当前正在抽取 {layers[stratifiedActiveLayer].name} 层样本
                                         </span>
                                     </div>
                                 )}

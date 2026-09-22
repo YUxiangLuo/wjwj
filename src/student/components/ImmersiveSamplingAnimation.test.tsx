@@ -62,6 +62,51 @@ test("a large frame labels its capped dot grid as a proportional illustration", 
     expect(grid.querySelectorAll('[data-selected="true"].ring-inset')).toHaveLength(200);
 });
 
+test("simple animation replays the saved seed instead of a fixed visual draw", async () => {
+    const view = render(
+        <ImmersiveSamplingAnimation
+            method="simple"
+            populationSize={8}
+            sampleSize={3}
+            seed={43}
+            sampledData={[]}
+            onClose={() => undefined}
+        />,
+    );
+
+    const grid = await waitFor(() => view.getByTestId("sampling-animation-dot-grid"), { timeout: 1500 });
+    await waitFor(() => {
+        const selectedIndices = [...grid.children]
+            .map((dot, index) => dot.getAttribute("data-selected") === "true" ? index : -1)
+            .filter(index => index >= 0);
+        expect(selectedIndices).toEqual([2, 3, 7]);
+        expect(view.getByText("已完成选取，正在核对结果... 3/3")).toBeTruthy();
+    }, { timeout: 3000 });
+});
+
+test("systematic animation maps the saved random start onto the visible frame", async () => {
+    const view = render(
+        <ImmersiveSamplingAnimation
+            method="systematic"
+            populationSize={10}
+            sampleSize={4}
+            interval={2.5}
+            randomStart={1.25}
+            seed={99}
+            sampledData={[]}
+            onClose={() => undefined}
+        />,
+    );
+
+    const grid = await waitFor(() => view.getByTestId("sampling-animation-dot-grid"), { timeout: 1500 });
+    await waitFor(() => {
+        const selectedIndices = [...grid.children]
+            .map((dot, index) => dot.getAttribute("data-selected") === "true" ? index : -1)
+            .filter(index => index >= 0);
+        expect(selectedIndices).toEqual([1, 3, 6, 8]);
+    }, { timeout: 3000 });
+});
+
 test("PPS receipt includes its saved systematic start and copyable seed", async () => {
     const view = render(
         <ImmersiveSamplingAnimation
