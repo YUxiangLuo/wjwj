@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo, useCallback, useRef, memo } from "react";
 import { createPortal } from "react-dom";
-import { X, Users, Target, Layers, Shuffle, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { X, Users, Target, Layers, Shuffle, ChevronLeft, ChevronRight, Loader2, CheckCircle2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { MethodKey as SamplingMethod } from "@/domain/experiment/types";
+import { createSeededRandom, performSimpleSamplingWithIndices, type PpsProbabilitySummary } from "@/domain/statistics/sampling";
 import { computeSampleProgressDisplay } from "./sample-progress-display";
 import { formatSystematicInterval } from "../experiment/systematic-sampling";
+import { buildSamplingAnimationScale, buildStratifiedVisualAllocation } from "./sampling-animation-scale";
 
 interface StratifiedLayer {
     name: string;
@@ -21,6 +23,10 @@ interface Props {
     interval?: number;
     /** For pps */
     sizeField?: string;
+    /** Metadata from the completed server-side draw. */
+    seed?: number;
+    randomStart?: number;
+    ppsProbabilitySummary?: PpsProbabilitySummary;
     /** For stratified */
     stratifyBy?: string;
     layers?: StratifiedLayer[];
@@ -35,15 +41,12 @@ interface Props {
 }
 
 // ─── Constants ─────────────────────────────────────────────
-const GRID_COLS = 40;
-const GRID_ROWS = 25;
-const TOTAL_DOTS = GRID_COLS * GRID_ROWS; // 1000 visual dots
 const POPULATION_TICK_MS = 16;
-const POPULATION_TICK_COUNT = Math.ceil(TOTAL_DOTS / 100);
+const POPULATION_TICK_COUNT = 10;
 const POPULATION_TO_SAMPLING_DELAY_MS = 200;
 const MAX_SAMPLING_TICKS = 60;
 const SAMPLING_TICK_MS = 40;
-const COMPLETION_DELAY_MS = 300;
+const COMPLETION_DELAY_MS = 1000;
 
 // PPS weight simulation: each dot gets a random "size" in [MIN, MIN + RANGE]
 const PPS_WEIGHT_MIN = 0.1;
@@ -112,29 +115,16 @@ export function getSystematicPopulationDotClass(index: number, scanIndex: number
     return scanIndex !== undefined && index <= scanIndex ? "bg-info-muted" : "bg-muted";
 }
 
-// ─── Seeded RNG (deterministic visual order) ──────────────
-function mulberry32(seed: number) {
-    return () => {
-        let t = (seed += 0x6d2b79f5);
-        t = Math.imul(t ^ (t >>> 15), t | 1);
-        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-}
-
-function shuffleIndices(count: number, rng: () => number): number[] {
-    const arr = Array.from({ length: count }, (_, i) => i);
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(rng() * (i + 1));
-        const tmp = arr[i]!;
-        arr[i] = arr[j]!;
-        arr[j] = tmp;
-    }
-    return arr;
+function formatProbability(value: number) {
+    if (!Number.isFinite(value)) return "—";
+    if (value > 0 && value < 0.0001) return value.toExponential(2);
+    return value.toLocaleString("zh-CN", { maximumFractionDigits: 4 });
 }
 
 // ─── Memoized dot grid to avoid re-creating 1000 DOM nodes on each tick ───
 const DotGrid = memo(function DotGrid({
+    totalDots,
+    gridColumns,
     visiblePopCount,
     currentSelectIndex,
     dotSelectedAt,
@@ -143,6 +133,8 @@ const DotGrid = memo(function DotGrid({
     method,
     systematicScanIndex,
 }: {
+    totalDots: number;
+    gridColumns: number;
     visiblePopCount: number;
     currentSelectIndex: number;
     dotSelectedAt: Int32Array;
@@ -156,10 +148,12 @@ const DotGrid = memo(function DotGrid({
     const methodMeta = METHOD_META[method];
     return (
         <div
-            className="grid gap-[2px]"
-            style={{ gridTemplateColumns: `repeat(${GRID_COLS}, 1fr)` }}
+            className="grid w-fit justify-center gap-[2px]"
+            style={{ gridTemplateColumns: `repeat(${gridColumns}, minmax(6px, 18px))` }}
+            data-testid="sampling-animation-dot-grid"
+            data-visual-population={totalDots}
         >
-            {Array.from({ length: TOTAL_DOTS }, (_, i) => {
+            {Array.from({ length: totalDots }, (_, i) => {
                 const visible = i < visiblePopCount;
                 const selected = dotSelectedAt[i]! >= 0 && dotSelectedAt[i]! < currentSelectIndex;
                 const layerIdx = layerAssignment?.[i] ?? 0;
@@ -168,9 +162,9 @@ const DotGrid = memo(function DotGrid({
                 let inlineStyle: React.CSSProperties | undefined;
                 if (selected) {
                     if (method === "stratified") {
-                        bgClass = `${lc(layerIdx).bg} ring-1 ${lc(layerIdx).ring} scale-125`;
+                        bgClass = `${lc(layerIdx).bg} ring-1 ring-inset ${lc(layerIdx).ring}`;
                     } else {
-                        bgClass = `${methodMeta.accentBg} ring-1 ${methodMeta.accentRing} scale-125`;
+                        bgClass = `${methodMeta.accentBg} ring-1 ring-inset ${methodMeta.accentRing}`;
                     }
                 } else if (visible) {
                     if (method === "stratified" && layerAssignment) {
@@ -199,6 +193,8 @@ const DotGrid = memo(function DotGrid({
                         key={i}
                         className={`aspect-square rounded-control transition-colors duration-150 ${bgClass}`}
                         style={inlineStyle}
+                        aria-hidden="true"
+                        data-selected={selected ? "true" : undefined}
                     />
                 );
             })}
@@ -231,6 +227,9 @@ export function ImmersiveSamplingAnimation({
     sampleSize,
     interval,
     sizeField,
+    seed,
+    randomStart,
+    ppsProbabilitySummary,
     stratifyBy,
     layers,
     onClose,
@@ -242,10 +241,17 @@ export function ImmersiveSamplingAnimation({
     const [phase, setPhase] = useState<Phase>({ type: "intro" });
     const [visiblePopCount, setVisiblePopCount] = useState(0);
     const [currentSelectIndex, setCurrentSelectIndex] = useState(0);
+    const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
     const meta = METHOD_META[method];
     const progressCopy = METHOD_PROGRESS_COPY[method];
     const fieldLabel = FIELD_LABELS[stratifyBy ?? ""] ?? stratifyBy;
     const introDelay = method === "stratified" ? 900 : 700;
+    const visualScale = useMemo(
+        () => buildSamplingAnimationScale(populationSize, sampleSize),
+        [populationSize, sampleSize],
+    );
+    const visualPopulationSize = visualScale.population;
+    const visualSampleSize = visualScale.sample;
 
     // Prevent body scroll
     useEffect(() => {
@@ -258,52 +264,53 @@ export function ImmersiveSamplingAnimation({
 
     // ─── Precompute which dots get selected ───────────────
     const { selectionOrder, layerAssignment, dotSelectedAt, dotWeights } = useMemo(() => {
-        const rng = mulberry32(42);
+        const drawRng = createSeededRandom(seed ?? 42);
 
         let selection: number[] = [];
         let layerMap: number[] | undefined;
         let weights: Float32Array | undefined;
 
-        // Scale sample size to visual grid
-        const visualSampleSize = sampleSize > 0 && populationSize > 0
-            ? Math.min(Math.max(1, Math.round((sampleSize / populationSize) * TOTAL_DOTS)), TOTAL_DOTS)
-            : 0;
-
         if (method === "simple") {
-            const shuffled = shuffleIndices(TOTAL_DOTS, rng);
-            selection = shuffled.slice(0, visualSampleSize);
+            const frame = Array.from({ length: visualPopulationSize }, (_, index) => index);
+            selection = performSimpleSamplingWithIndices(frame, visualSampleSize, drawRng).indices;
         } else if (method === "pps") {
             // PPS systematic selection: simulate varying sizes and walk
             // through the cumulative distribution, mirroring the real algorithm.
-            const rawWeights = new Float32Array(TOTAL_DOTS);
-            for (let i = 0; i < TOTAL_DOTS; i++) {
-                rawWeights[i] = rng() * PPS_WEIGHT_RANGE + PPS_WEIGHT_MIN;
+            // The synthetic size frame remains stable between runs; the saved
+            // random start controls which units are highlighted within it.
+            const frameRng = createSeededRandom("pps-animation-frame");
+            const rawWeights = new Float32Array(visualPopulationSize);
+            for (let i = 0; i < visualPopulationSize; i++) {
+                rawWeights[i] = frameRng() * PPS_WEIGHT_RANGE + PPS_WEIGHT_MIN;
             }
             // Normalize to 0-1 for visual opacity
             let maxW = 0;
-            for (let i = 0; i < TOTAL_DOTS; i++) {
+            for (let i = 0; i < visualPopulationSize; i++) {
                 if (rawWeights[i]! > maxW) maxW = rawWeights[i]!;
             }
-            const normalizedWeights = new Float32Array(TOTAL_DOTS);
-            for (let i = 0; i < TOTAL_DOTS; i++) {
+            const normalizedWeights = new Float32Array(visualPopulationSize);
+            for (let i = 0; i < visualPopulationSize; i++) {
                 normalizedWeights[i] = rawWeights[i]! / maxW;
             }
 
             // Cumulative distribution for systematic PPS selection
             const cumulative: number[] = [];
             let cumSum = 0;
-            for (let i = 0; i < TOTAL_DOTS; i++) {
+            for (let i = 0; i < visualPopulationSize; i++) {
                 cumSum += rawWeights[i]!;
                 cumulative.push(cumSum);
             }
             const totalSize = cumSum;
             const interval = totalSize / visualSampleSize;
-            const start = rng() * interval;
+            const savedRandomUnit = Number.isFinite(randomStart) && randomStart! >= 0 && randomStart! < 1
+                ? randomStart!
+                : drawRng();
+            const start = savedRandomUnit * interval;
             let pointer = start;
             let dataIdx = 0;
             const selected = new Set<number>();
             for (let i = 0; i < visualSampleSize; i++) {
-                while (dataIdx < TOTAL_DOTS - 1 && cumulative[dataIdx]! < pointer) {
+                while (dataIdx < visualPopulationSize - 1 && cumulative[dataIdx]! < pointer) {
                     dataIdx++;
                 }
                 if (!selected.has(dataIdx)) {
@@ -311,9 +318,9 @@ export function ImmersiveSamplingAnimation({
                     selection.push(dataIdx);
                 } else {
                     // Duplicate hit — advance to find next unselected dot
-                    let next = (dataIdx + 1) % TOTAL_DOTS;
+                    let next = (dataIdx + 1) % visualPopulationSize;
                     while (selected.has(next) && next !== dataIdx) {
-                        next = (next + 1) % TOTAL_DOTS;
+                        next = (next + 1) % visualPopulationSize;
                     }
                     if (!selected.has(next)) {
                         selected.add(next);
@@ -329,70 +336,70 @@ export function ImmersiveSamplingAnimation({
             weights = normalizedWeights;
         } else if (method === "systematic") {
             // Spread samples evenly across the entire grid so the animation
-            // visibly scans from top-left to bottom-right.
-            const visualInterval = TOTAL_DOTS / Math.max(1, visualSampleSize);
-            const start = rng() * visualInterval;
+            // visibly scans from top-left to bottom-right. Reuse the saved
+            // random-start fraction when mapping an actual frame to a compressed grid.
+            const visualInterval = visualPopulationSize / Math.max(1, visualSampleSize);
+            const savedRandomUnit = Number.isFinite(randomStart) && randomStart! >= 0
+                && Number.isFinite(interval) && interval! > 0
+                ? Math.min(1 - Number.EPSILON, randomStart! / interval!)
+                : drawRng();
+            const start = savedRandomUnit * visualInterval;
             for (let index = 0; index < visualSampleSize; index += 1) {
                 selection.push(Math.floor(start + index * visualInterval));
             }
         } else if (method === "stratified" && layers && layers.length > 0) {
-            // Assign dots to layers proportionally
-            layerMap = new Array(TOTAL_DOTS).fill(0);
+            // Keep both layer sizes and layer samples within the visual frame.
+            layerMap = new Array(visualPopulationSize).fill(0);
             let offset = 0;
-            const layerDotCounts = layers.map((l) => Math.round((l.count / populationSize) * TOTAL_DOTS));
-            // Fix rounding: adjust the largest layer to ensure sum === TOTAL_DOTS
-            const layerTotal = layerDotCounts.reduce((a, b) => a + b, 0);
-            if (layerTotal !== TOTAL_DOTS && layerDotCounts.length > 0) {
-                // Find the largest layer to absorb the rounding difference
-                let maxIdx = 0;
-                for (let i = 1; i < layerDotCounts.length; i++) {
-                    if (layerDotCounts[i]! > layerDotCounts[maxIdx]!) maxIdx = i;
-                }
-                layerDotCounts[maxIdx]! += TOTAL_DOTS - layerTotal;
-            }
+            const allocation = buildStratifiedVisualAllocation(layers, visualPopulationSize, visualSampleSize);
 
             for (let li = 0; li < layers.length; li++) {
-                const dotCount = layerDotCounts[li] ?? 0;
-                for (let d = 0; d < dotCount && offset + d < TOTAL_DOTS; d++) {
+                const dotCount = allocation.population[li] ?? 0;
+                for (let d = 0; d < dotCount && offset + d < visualPopulationSize; d++) {
                     layerMap[offset + d] = li;
                 }
                 // Sample from this layer
                 const layerStart = offset;
                 const layerEnd = offset + dotCount;
                 const layerIndices = Array.from({ length: layerEnd - layerStart }, (_, i) => layerStart + i);
-                // Shuffle within layer
-                for (let i = layerIndices.length - 1; i > 0; i--) {
-                    const j = Math.floor(rng() * (i + 1));
-                    const tmp = layerIndices[i]!;
-                    layerIndices[i] = layerIndices[j]!;
-                    layerIndices[j] = tmp;
-                }
-                const visualLayerSample = Math.round((layers[li]!.sampleCount / sampleSize) * visualSampleSize);
-                selection.push(...layerIndices.slice(0, visualLayerSample));
+                const visualLayerSample = allocation.sample[li] ?? 0;
+                selection.push(...performSimpleSamplingWithIndices(layerIndices, visualLayerSample, drawRng).data);
                 offset += dotCount;
             }
         }
 
         // Precompute a lookup: for each dot, at which selection step it gets highlighted (-1 = never)
-        const selectedAtMap = new Int32Array(TOTAL_DOTS).fill(-1);
+        const selectedAtMap = new Int32Array(visualPopulationSize).fill(-1);
         for (let step = 0; step < selection.length; step++) {
             selectedAtMap[selection[step]!] = step;
         }
 
         return { selectionOrder: selection, layerAssignment: layerMap, dotSelectedAt: selectedAtMap, dotWeights: weights };
-    }, [method, populationSize, sampleSize, layers]);
+    }, [interval, layers, method, randomStart, seed, visualPopulationSize, visualSampleSize]);
 
     const finishAnimation = useCallback(() => {
-        setVisiblePopCount(TOTAL_DOTS);
+        setVisiblePopCount(visualPopulationSize);
         setCurrentSelectIndex(selectionOrder.length);
         setPhase({ type: "complete" });
-    }, [selectionOrder.length]);
+    }, [selectionOrder.length, visualPopulationSize]);
 
     useEffect(() => {
         if (typeof window.matchMedia !== "function") return;
         const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-        if (reducedMotion.matches) finishAnimation();
+        const syncMotionPreference = () => {
+            setPrefersReducedMotion(reducedMotion.matches);
+            if (reducedMotion.matches) finishAnimation();
+        };
+        syncMotionPreference();
+        reducedMotion.addEventListener?.("change", syncMotionPreference);
+        return () => reducedMotion.removeEventListener?.("change", syncMotionPreference);
     }, [finishAnimation]);
+
+    const replayAnimation = useCallback(() => {
+        setVisiblePopCount(0);
+        setCurrentSelectIndex(0);
+        setPhase({ type: "intro" });
+    }, []);
 
     // ─── Phase transitions ────────────────────────────────
     // Intro → Populating after 1.5s
@@ -407,11 +414,11 @@ export function ImmersiveSamplingAnimation({
     useEffect(() => {
         if (phase.type !== "populating") return;
         let transitionTimer: ReturnType<typeof setTimeout> | undefined;
-        const batchSize = 100;
+        const batchSize = Math.max(1, Math.ceil(visualPopulationSize / POPULATION_TICK_COUNT));
         const populationTimer = setInterval(() => {
             setVisiblePopCount((prev) => {
-                const next = Math.min(prev + batchSize, TOTAL_DOTS);
-                if (next >= TOTAL_DOTS) {
+                const next = Math.min(prev + batchSize, visualPopulationSize);
+                if (next >= visualPopulationSize) {
                     clearInterval(populationTimer);
                     transitionTimer = setTimeout(() => setPhase({ type: "sampling" }), POPULATION_TO_SAMPLING_DELAY_MS);
                 }
@@ -422,7 +429,7 @@ export function ImmersiveSamplingAnimation({
             clearInterval(populationTimer);
             if (transitionTimer) clearTimeout(transitionTimer);
         };
-    }, [phase]);
+    }, [phase, visualPopulationSize]);
 
     // Sampling animation: highlight selected dots progressively
     useEffect(() => {
@@ -454,7 +461,7 @@ export function ImmersiveSamplingAnimation({
 
     const progress =
         phase.type === "intro" ? 0
-            : phase.type === "populating" ? (visiblePopCount / TOTAL_DOTS) * 30
+            : phase.type === "populating" ? (visiblePopCount / Math.max(1, visualPopulationSize)) * 30
                 : phase.type === "sampling" ? 30 + (currentSelectIndex / Math.max(1, selectionOrder.length)) * 70
                     : 100;
 
@@ -468,8 +475,11 @@ export function ImmersiveSamplingAnimation({
             const label = FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模";
             return `按"${label}"大小赋予不同选中概率，从 ${populationSize.toLocaleString()} 个总体中抽取 ${sampleSize} 个样本。`;
         } else {
-            const layerNames = (layers ?? []).map((l) => l.name).join("、");
-            return `先按"${FIELD_LABELS[stratifyBy ?? ""] ?? stratifyBy ?? "分层变量"}"将总体分为 ${layerNames} 等层，再按已配置的各层样本量分别抽取。`;
+            const layerList = layers ?? [];
+            const layerDescription = layerList.length > LAYER_COLORS.length
+                ? `${layerList.length} 层（完整名称与分配见结果凭证）`
+                : layerList.map(layer => layer.name).join("、");
+            return `先按"${FIELD_LABELS[stratifyBy ?? ""] ?? stratifyBy ?? "分层变量"}"将总体分为 ${layerDescription}，再按已配置的各层样本量分别抽取。`;
         }
     }, [method, populationSize, sampleSize, interval, sizeField, stratifyBy, layers]);
 
@@ -478,14 +488,14 @@ export function ImmersiveSamplingAnimation({
             return null;
         }
         const latestIndex = selectionOrder[Math.max(0, currentSelectIndex - 1)] ?? selectionOrder[0] ?? 0;
-        const col = latestIndex % GRID_COLS;
-        const row = Math.floor(latestIndex / GRID_COLS);
+        const col = latestIndex % visualScale.gridColumns;
+        const row = Math.floor(latestIndex / visualScale.gridColumns);
         return {
-            left: `${((col + 0.5) / GRID_COLS) * 100}%`,
-            top: `${((row + 0.5) / GRID_ROWS) * 100}%`,
+            left: `${((col + 0.5) / visualScale.gridColumns) * 100}%`,
+            top: `${((row + 0.5) / visualScale.gridRows) * 100}%`,
             scanIndex: latestIndex,
         };
-    }, [method, phase.type, selectionOrder, currentSelectIndex]);
+    }, [method, phase.type, selectionOrder, currentSelectIndex, visualScale.gridColumns, visualScale.gridRows]);
 
     const stratifiedActiveLayer = useMemo(() => {
         if (method !== "stratified" || !layers?.length || !layerAssignment?.length || phase.type !== "sampling") {
@@ -500,6 +510,43 @@ export function ImmersiveSamplingAnimation({
         () => computeSampleProgressDisplay(selectionOrder.length, currentSelectIndex, sampleSize),
         [selectionOrder.length, currentSelectIndex, sampleSize],
     );
+
+    const receiptItems = useMemo(() => {
+        const items = [
+            { label: "总体 → 样本", value: `${populationSize.toLocaleString()} → ${sampleSize.toLocaleString()}` },
+            {
+                label: "抽样比",
+                value: populationSize > 0
+                    ? (sampleSize / populationSize).toLocaleString("zh-CN", { style: "percent", maximumFractionDigits: 2 })
+                    : "—",
+            },
+        ];
+        if (method === "simple") {
+            items.push({ label: "抽样设计", value: "等概率、不放回" });
+        } else if (method === "systematic") {
+            items.push({ label: "分数间隔 K", value: formatSystematicInterval(interval) });
+            if (randomStart !== undefined) items.push({ label: "实际随机起点 r", value: formatSystematicInterval(randomStart) });
+        } else if (method === "pps") {
+            items.push({ label: "规模变量", value: FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模" });
+            if (randomStart !== undefined) items.push({ label: "PPS 系统随机起点 u", value: formatProbability(randomStart) });
+            if (ppsProbabilitySummary) {
+                items.push({
+                    label: "纳入概率范围",
+                    value: `${formatProbability(ppsProbabilitySummary.minInclusionProbability)}–${formatProbability(ppsProbabilitySummary.maxInclusionProbability)}`,
+                });
+                items.push({ label: "纳入概率之和 Σπᵢ", value: formatProbability(ppsProbabilitySummary.probabilitySum) });
+                if (ppsProbabilitySummary.certaintyUnitCount > 0) {
+                    items.push({ label: "必入单位（π=1）", value: `${ppsProbabilitySummary.certaintyUnitCount.toLocaleString()} 个` });
+                }
+            }
+        } else if (layers?.length) {
+            const layerPopulation = layers.reduce((sum, layer) => sum + layer.count, 0);
+            const layerSample = layers.reduce((sum, layer) => sum + layer.sampleCount, 0);
+            items.push({ label: "分层配置", value: `${layers.length} 层；${layerPopulation.toLocaleString()} → ${layerSample.toLocaleString()}` });
+        }
+        if (seed !== undefined) items.push({ label: "随机种子", value: String(seed) });
+        return items;
+    }, [interval, layers, method, populationSize, ppsProbabilitySummary, randomStart, sampleSize, seed, sizeField]);
 
     const Icon = meta.icon;
     const overlayRef = useRef<HTMLDivElement>(null);
@@ -570,9 +617,10 @@ export function ImmersiveSamplingAnimation({
             aria-labelledby="sampling-animation-title"
             tabIndex={-1}
             onKeyDown={handleOverlayKeyDown}
-            className="fixed inset-0 z-50 bg-background flex flex-col outline-none"
+            className="fixed inset-0 z-50 overflow-auto bg-background outline-none"
             data-testid="immersive-sampling-animation"
         >
+            <div className="relative flex min-h-full min-w-[64rem] flex-col bg-background">
             {/* Progress bar */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-muted z-10">
                 <div
@@ -597,13 +645,29 @@ export function ImmersiveSamplingAnimation({
                         <p className="text-meta text-muted-foreground">
                             {phase.type === "intro" && "准备中..."}
                             {phase.type === "populating" && progressCopy.populating}
-                            {phase.type === "sampling" && `${progressCopy.sampling} ${sampleProgressDisplay.current}/${sampleProgressDisplay.total}`}
+                            {phase.type === "sampling" && (
+                                currentSelectIndex >= selectionOrder.length && selectionOrder.length > 0
+                                    ? `已完成选取，正在核对结果... ${sampleProgressDisplay.current}/${sampleProgressDisplay.total}`
+                                    : `${progressCopy.sampling} ${sampleProgressDisplay.current}/${sampleProgressDisplay.total}`
+                            )}
                             {phase.type === "complete" && progressCopy.complete}
                         </p>
                     </div>
                 </div>
                 {phase.type === "complete" ? (
                     <div className="flex items-center gap-2">
+                        {!prefersReducedMotion && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={replayAnimation}
+                                data-testid="immersive-sampling-replay"
+                                className="border-input text-foreground hover:bg-muted"
+                            >
+                                <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                                重播本次动画
+                            </Button>
+                        )}
                         {onSkipRest && (
                             <Button
                                 type="button"
@@ -678,14 +742,22 @@ export function ImmersiveSamplingAnimation({
                 {phase.type !== "intro" && (
                     <div className={`w-full max-w-5xl mx-auto animate-in fade-in duration-300 ${phase.type === "complete" ? "flex flex-col min-h-0 h-full" : "space-y-4"}`}>
                         {/* Legend for stratified */}
-                        {method === "stratified" && layers && (
-                            <div className="flex flex-wrap items-center justify-center gap-4 mb-2">
-                                {layers.map((layer, i) => (
+                        {method === "stratified" && layers && phase.type !== "complete" && (
+                            <div className="mb-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2" data-testid="sampling-animation-strata-legend">
+                                {layers.length <= LAYER_COLORS.length ? layers.map((layer, i) => (
                                     <div key={layer.name} className="flex items-center gap-2">
-                                        <div className={`w-3 h-3 rounded-circle ${lc(i).bg}`} />
+                                        <div className={`h-3 w-3 rounded-circle ${lc(i).bg}`} />
                                         <span className="text-meta text-muted-foreground">{layer.name}</span>
                                     </div>
-                                ))}
+                                )) : (
+                                    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-meta text-muted-foreground">
+                                        <span className="inline-flex items-center gap-2 font-medium text-foreground">
+                                            <Layers className="h-3.5 w-3.5 text-warning" aria-hidden="true" />
+                                            共 {layers.length} 层
+                                        </span>
+                                        <span>颜色循环仅区分相邻层；当前层名称与配额显示在点阵下方</span>
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -701,67 +773,88 @@ export function ImmersiveSamplingAnimation({
                                 {method === "pps" && phase.type === "populating" && (
                                     <div className={`mb-3 flex items-center justify-center gap-2 text-meta ${meta.accentText}`}>
                                         <Target className="w-3.5 h-3.5" />
-                                        <span>按 {FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模"} 赋予不同权重，亮度反映规模大小</span>
+                                        <span>按 {FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模"} 赋予不同权重；亮度仅示意规模差异，不对应具体总体行</span>
                                     </div>
                                 )}
-                                <DotGrid
-                                    visiblePopCount={visiblePopCount}
-                                    currentSelectIndex={currentSelectIndex}
-                                    dotSelectedAt={dotSelectedAt}
-                                    layerAssignment={layerAssignment}
-                                    dotWeights={dotWeights}
-                                    method={method}
-                                    systematicScanIndex={systematicIndicator?.scanIndex}
-                                />
-
-                                {/* Systematic: scan line sweeping top→bottom + cursor */}
-                                {method === "systematic" && phase.type === "sampling" && (
-                                    <>
-                                        {systematicIndicator && (
-                                            <div className="pointer-events-none absolute inset-4">
-                                                {/* Horizontal scan line showing current row */}
-                                                <div
-                                                    className="absolute inset-x-0 h-px bg-info-muted transition-[top] duration-[80ms]"
-                                                    style={{ top: systematicIndicator.top }}
-                                                />
-                                                {/* Scan cursor */}
-                                                <div
-                                                    className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-control border-2 border-info bg-background transition-[left,top] duration-[80ms]"
-                                                    style={{ left: systematicIndicator.left, top: systematicIndicator.top }}
-                                                />
-                                            </div>
-                                        )}
-                                        <div className="absolute bottom-3 left-0 right-0 text-center">
-                                            <span className={`inline-flex items-center gap-2 rounded-control border ${meta.accentBorder} bg-card px-3 py-1.5 text-meta font-mono ${meta.accentText}`}>
-                                                间隔 K = {formatSystematicInterval(interval)}，从总体首端至末端等距抽取
-                                            </span>
+                                <p className="mb-3 text-center text-meta text-muted-foreground" data-testid="sampling-animation-scale-note">
+                                    {visualScale.compressed
+                                        ? `比例示意：用 ${visualPopulationSize.toLocaleString()} 个点代表实际总体 ${populationSize.toLocaleString()}，样本高亮按 ${sampleSize.toLocaleString()}/${populationSize.toLocaleString()} 近似映射`
+                                        : `按实际数量绘制：${visualPopulationSize.toLocaleString()} 个点分别代表 ${populationSize.toLocaleString()} 个总体单位`}
+                                </p>
+                                <div
+                                    className="mb-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-meta text-muted-foreground"
+                                    data-testid="sampling-animation-legend"
+                                    role="group"
+                                    aria-label="点阵图例"
+                                >
+                                    <span className="inline-flex items-center gap-2">
+                                        <span className={`h-3 w-3 rounded-control ${method === "pps" ? `${meta.accentBg} opacity-40` : method === "stratified" ? "bg-warning-muted" : "bg-input"}`} aria-hidden="true" />
+                                        {method === "pps" ? "点亮程度：规模大小（示意）" : method === "stratified" ? (layers && layers.length > LAYER_COLORS.length ? "颜色：循环区分相邻层" : "颜色：所属层") : "浅色：总体单位"}
+                                    </span>
+                                    <span className="inline-flex items-center gap-2">
+                                        <span className={`h-3 w-3 rounded-control ${meta.accentBg} ring-1 ring-inset ${meta.accentRing}`} aria-hidden="true" />
+                                        实色描边：已选样本
+                                    </span>
+                                </div>
+                                <div className="relative mx-auto w-fit">
+                                    <DotGrid
+                                        totalDots={visualPopulationSize}
+                                        gridColumns={visualScale.gridColumns}
+                                        visiblePopCount={visiblePopCount}
+                                        currentSelectIndex={currentSelectIndex}
+                                        dotSelectedAt={dotSelectedAt}
+                                        layerAssignment={layerAssignment}
+                                        dotWeights={dotWeights}
+                                        method={method}
+                                        systematicScanIndex={systematicIndicator?.scanIndex}
+                                    />
+                                    {method === "systematic" && phase.type === "sampling" && systematicIndicator && (
+                                        <div className="pointer-events-none absolute inset-0">
+                                            <div
+                                                className="absolute inset-x-0 h-px bg-info-muted transition-[top] duration-[80ms]"
+                                                style={{ top: systematicIndicator.top }}
+                                            />
+                                            <div
+                                                className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-control border-2 border-info bg-background transition-[left,top] duration-[80ms]"
+                                                style={{ left: systematicIndicator.left, top: systematicIndicator.top }}
+                                            />
                                         </div>
-                                    </>
+                                    )}
+                                </div>
+
+                                {method === "systematic" && phase.type === "sampling" && (
+                                    <div className="mt-3 text-center">
+                                        <span className={`inline-flex items-center gap-2 rounded-control border ${meta.accentBorder} bg-card px-3 py-1.5 text-meta font-mono ${meta.accentText}`}>
+                                            间隔 K = {formatSystematicInterval(interval)}，实际起点 r = {formatSystematicInterval(randomStart)}，从总体首端至末端等距抽取
+                                        </span>
+                                    </div>
                                 )}
 
                                 {method === "simple" && phase.type === "sampling" && (
-                                    <div className="absolute bottom-3 left-0 right-0 text-center">
+                                    <div className="mt-3 text-center">
                                         <span className={`inline-flex items-center gap-2 bg-card border ${meta.accentBorder} ${meta.accentText} text-meta px-3 py-1.5 rounded-control`}>
                                             <Shuffle className="w-3.5 h-3.5" />
-                                            每个样本点被抽中的机会相同
+                                            随机种子 {seed === undefined ? "—" : String(seed)}；每个样本点被抽中的机会相同
                                         </span>
                                     </div>
                                 )}
 
                                 {method === "pps" && phase.type === "sampling" && (
-                                    <div className="absolute bottom-3 left-0 right-0 text-center">
+                                    <div className="mt-3 text-center">
                                         <span className={`inline-flex items-center gap-2 rounded-control border ${meta.accentBorder} bg-card px-3 py-1.5 text-meta ${meta.accentText}`}>
                                             <Target className="w-3.5 h-3.5" />
-                                            按 {FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模"} 权重系统选取，亮度越高规模越大
+                                            按 {FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模"} 权重系统选取，实际起点 u = {formatProbability(randomStart ?? Number.NaN)}；点位仅示意机制，不对应具体总体行
                                         </span>
                                     </div>
                                 )}
 
                                 {method === "stratified" && phase.type === "sampling" && stratifiedActiveLayer !== null && layers?.[stratifiedActiveLayer] && (
-                                    <div className="absolute bottom-3 left-0 right-0 text-center">
-                                        <span className={`inline-flex items-center gap-2 rounded-control border ${meta.accentBorder} bg-card px-3 py-1.5 text-meta ${meta.accentText}`}>
+                                    <div className="mt-3 text-center">
+                                        <span className={`inline-flex max-w-full flex-wrap items-center justify-center gap-2 rounded-control border ${meta.accentBorder} bg-card px-3 py-1.5 text-meta ${meta.accentText}`} data-testid="sampling-animation-active-stratum">
                                             <div className={`h-2.5 w-2.5 rounded-circle ${lc(stratifiedActiveLayer).bg}`} />
-                                            当前正在抽取 {layers[stratifiedActiveLayer].name} 层样本
+                                            <span className="break-all">层 {stratifiedActiveLayer + 1}/{layers.length}：{layers[stratifiedActiveLayer].name}</span>
+                                            <span className="font-mono text-foreground">Nₕ {layers[stratifiedActiveLayer].count} → nₕ {layers[stratifiedActiveLayer].sampleCount}</span>
+                                            <span>随机种子 {seed === undefined ? "—" : String(seed)}</span>
                                         </span>
                                     </div>
                                 )}
@@ -780,7 +873,43 @@ export function ImmersiveSamplingAnimation({
 
                         {/* Complete phase */}
                         {phase.type === "complete" && (
-                            <div className="animate-in fade-in duration-300 flex flex-col min-h-0 h-full">
+                            <div className="animate-in fade-in duration-300 flex flex-col min-h-0 h-full gap-4">
+                                <section className="shrink-0 rounded-surface border border-success-border bg-success-muted p-3" data-testid="sampling-animation-receipt">
+                                    <div className="mb-2 flex items-center gap-2 text-success">
+                                        <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+                                        <h3 className="text-subheading font-semibold">抽样结果凭证</h3>
+                                        <span className="text-meta text-muted-foreground">参数来自本次已保存的抽样结果</span>
+                                    </div>
+                                    <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-2">
+                                        {receiptItems.map(item => (
+                                            <div key={item.label} className="rounded-control border border-success-border bg-card px-3 py-1.5">
+                                                <dt className="text-meta text-muted-foreground">{item.label}</dt>
+                                                <dd className="mt-1 break-words text-label font-medium text-foreground">{item.value}</dd>
+                                            </div>
+                                        ))}
+                                    </dl>
+                                    {method === "stratified" && layers && layers.length > 0 && (
+                                        <details className="mt-2" data-testid="sampling-animation-layer-details">
+                                            <summary className="cursor-pointer text-meta font-medium text-foreground">查看各层 Nₕ → nₕ（{layers.length} 层，可滚动查看全部）</summary>
+                                            <div
+                                                className="mt-2 max-h-24 overflow-auto rounded-control border border-success-border bg-card p-2"
+                                                data-testid="sampling-animation-layer-list"
+                                                role="region"
+                                                tabIndex={0}
+                                                aria-label="各层总体与样本分配"
+                                            >
+                                                <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))] gap-x-4 gap-y-2">
+                                                    {layers.map(layer => (
+                                                        <div key={layer.name} className="flex items-center justify-between gap-3 text-meta">
+                                                            <dt className="min-w-0 truncate text-muted-foreground" title={layer.name}>{layer.name}</dt>
+                                                            <dd className="shrink-0 font-mono text-foreground">{layer.count} → {layer.sampleCount}</dd>
+                                                        </div>
+                                                    ))}
+                                                </dl>
+                                            </div>
+                                        </details>
+                                    )}
+                                </section>
                                 {!sampledData ? (
                                     <div role="status" aria-live="polite" className="flex-1 flex flex-col items-center justify-center gap-3 py-8">
                                         <Loader2 aria-hidden="true" className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -794,12 +923,13 @@ export function ImmersiveSamplingAnimation({
                     </div>
                 )}
             </div>
+            </div>
         </div>, document.body
     );
 }
 
 // ─── Inline data table for complete phase ────────────────
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 function SampledDataTable({ data, total }: { data: Array<Record<string, unknown>>; total: number }) {
     const [page, setPage] = useState(1);
@@ -852,7 +982,7 @@ function SampledDataTable({ data, total }: { data: Array<Record<string, unknown>
                 </table>
             </div>
             <div className="flex shrink-0 items-center justify-between rounded-control bg-background px-1">
-                <p className="text-meta text-muted-foreground">
+                <p className="text-meta text-muted-foreground" data-testid="sampling-animation-result-range">
                     显示第 {start + 1}-{end} 条{total > data.length ? `（已加载 ${data.length} 条，共 ${total} 条）` : `，共 ${data.length} 条`}
                 </p>
                 <div className="flex items-center gap-2">

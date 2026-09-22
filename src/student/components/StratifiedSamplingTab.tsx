@@ -273,7 +273,7 @@ export function StratifiedSamplingTab({
                 setExecutionTime(Math.round(performance.now() - startTime));
                 onResult(nextResult);
                 buildSavePayload(nextResult);
-                onAnimate(layers, stratifyBy, opener);
+                onAnimate(nextResult.layers, nextResult.stratifyBy, opener);
             } else {
                 if (res.error?.code === "INVALID_STAGE_ORDER" || res.error?.code === "VERSION_CONFLICT") onRefreshRequired();
                 else toast.error(res.error?.message || "分层抽样执行失败");

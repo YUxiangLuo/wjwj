@@ -18,7 +18,7 @@ databaseUrl.pathname = `/${databaseName}`;
 const workdir = await mkdtemp(join(tmpdir(), "wj-teaching-"));
 const artifacts = resolve(process.env.TEACHING_TEST_ARTIFACTS ?? join(root, "test-results/teaching-flow"));
 await mkdir(artifacts, { recursive: true });
-for (const name of ["student-failure.png", "teacher-failure.png", "result.json", "teacher-dictionary.png", "numeric-variable-binding.png", "stage4-saved-analysis.png", "teacher-submitted-appendix.png", "stale-analysis-warning.png", "empty-path-narrow.png"]) {
+for (const name of ["student-failure.png", "teacher-failure.png", "result.json", "teacher-dictionary.png", "numeric-variable-binding.png", "sampling-animation-exact.png", "sampling-animation-receipt.png", "sampling-animation-zoom-200.png", "sampling-animation-zoom-200-pagination.png", "sampling-animation-zoom-200-draw.png", "stage4-saved-analysis.png", "teacher-submitted-appendix.png", "stale-analysis-warning.png", "empty-path-narrow.png"]) {
     await Bun.file(join(artifacts, name)).delete().catch(() => undefined);
 }
 const environment = { ...process.env, DATABASE_URL: String(databaseUrl), DEMO_MODE: "1", DEV_AUTH_MODE: "0", NODE_ENV: "development", HOST: "127.0.0.1" };
@@ -312,14 +312,58 @@ try {
     await visible(student, '[data-testid="student-stage-sampling"]');
     experiment = await api(student, experimentPath);
     assert(experiment.currentStage === 3 && experiment.samplePlan?.finalSampleSize === 49, "Stage 2 did not persist");
+    await browser(student, "set", "viewport", "1024", "768");
     await page(student, stageUrl, '[data-testid="student-stage-sampling"]');
-    assert(await evaluate(student, `(() => {const button=document.querySelector('[data-testid="student-sampling-simple-run"]').getBoundingClientRect();const footer=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect();return button.top>0 && button.bottom<=footer.top && button.right<=innerWidth;})()`), "The initial sampling action must be visible above the footer at 1280×800");
+    assert(await evaluate(student, `(() => {const button=document.querySelector('[data-testid="student-sampling-simple-run"]').getBoundingClientRect();const footer=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect();return button.top>0 && button.bottom<=footer.top && button.right<=innerWidth && document.documentElement.scrollWidth<=innerWidth;})()`), "The initial sampling action must remain visible without document overflow at 1024×768");
     await browser(student, "screenshot", join(artifacts, "sampling-start.png"));
+    const savedRecordLayout = await evaluate<{ found: boolean; top?: number; bottom?: number; footerTop?: number; scrollY: number; scrollHeight: number }>(student, `(async () => {const heading=[...document.querySelectorAll('div')].find(element=>element.textContent.trim()==="已保存的入样记录");const card=heading?.closest('[data-slot="card"]');scrollTo({top:document.documentElement.scrollHeight,behavior:"instant"});await new Promise(requestAnimationFrame);const footer=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect();const bounds=card?.getBoundingClientRect();return {found:Boolean(card),top:bounds?.top,bottom:bounds?.bottom,footerTop:footer.top,scrollY,scrollHeight:document.documentElement.scrollHeight};})()`);
+    assert(savedRecordLayout.found && Number(savedRecordLayout.bottom) <= Number(savedRecordLayout.footerTop), `The saved-record card cannot be scrolled clear of the sticky actions at 1024×768: ${JSON.stringify(savedRecordLayout)}`);
     await activate(student, '[data-testid="student-sampling-simple-run"]');
     await visible(student, '[data-testid="immersive-sampling-animation"]');
-    assert(await evaluate(student, `(() => {const e=document.querySelector('[data-testid="immersive-sampling-animation"]');const r=e.getBoundingClientRect();return e.parentElement===document.body && r.top===0 && r.bottom===innerHeight;})()`), "Sampling animation must cover the viewport");
+    assert(await evaluate(student, `(() => {const e=document.querySelector('[data-testid="immersive-sampling-animation"]');const r=e.getBoundingClientRect();return e.parentElement===document.body && r.top===0 && r.bottom===innerHeight && r.right===innerWidth && document.documentElement.scrollWidth<=innerWidth;})()`), "Sampling animation must cover the 1024×768 desktop viewport without document overflow");
+    await visible(student, '[data-testid="sampling-animation-dot-grid"]');
+    assert(await evaluate(student, `(() => {const grid=document.querySelector('[data-testid="sampling-animation-dot-grid"]');const card=grid.closest('.overflow-hidden').getBoundingClientRect();const legend=document.querySelector('[data-testid="sampling-animation-legend"]').getBoundingClientRect();return Number(grid.dataset.visualPopulation)===${experiment.populationSize} && grid.children.length===${experiment.populationSize} && document.querySelector('[data-testid="sampling-animation-scale-note"]').textContent.includes("按实际数量绘制") && card.left>=0 && card.right<=innerWidth && card.bottom<=innerHeight && legend.left>=card.left && legend.right<=card.right;})()`), "Small population animation did not fit or render one dot per actual unit at 1024×768");
+    experiment = await api(student, experimentPath);
+    const simpleSeed = experiment.samplingResults?.simple?.seed;
+    assert(simpleSeed !== undefined, "Simple sampling result did not save its random seed");
+    await eventually(() => evaluate(student, `(() => {const grid=document.querySelector('[data-testid="sampling-animation-dot-grid"]');return grid?.querySelectorAll('[data-selected="true"]').length===${experiment.samplePlan?.finalSampleSize} && document.body.textContent.includes("已选中 ${experiment.samplePlan?.finalSampleSize} / ${experiment.samplePlan?.finalSampleSize}") && document.body.textContent.includes("随机种子 ${simpleSeed}");})()`), "Sampling animation did not replay the saved draw parameters and planned sample count");
+    await browser(student, "screenshot", join(artifacts, "sampling-animation-exact.png"));
     await activate(student, '[data-testid="immersive-sampling-skip"]');
+    await visible(student, '[data-testid="sampling-animation-receipt"]');
+    assert(await evaluate(student, `(() => {const receipt=document.querySelector('[data-testid="sampling-animation-receipt"]');return receipt.textContent.includes("${experiment.populationSize} → ${experiment.samplePlan?.finalSampleSize}") && receipt.textContent.includes("抽样比") && receipt.textContent.includes("随机种子");})()`), "Sampling receipt did not preserve the saved draw parameters");
+    assert(await evaluate(student, `(() => {const overlay=document.querySelector('[data-testid="immersive-sampling-animation"]');const receipt=document.querySelector('[data-testid="sampling-animation-receipt"]').getBoundingClientRect();const table=document.querySelector('[aria-label="抽样结果数据表"]').getBoundingClientRect();const actions=[...overlay.querySelectorAll('button')].map(button=>button.getBoundingClientRect());return document.documentElement.scrollWidth<=innerWidth && receipt.left>=0 && receipt.right<=innerWidth && table.height>=120 && table.bottom<=innerHeight && actions.every(rect=>rect.left>=0 && rect.right<=innerWidth && rect.bottom<=innerHeight);})()`), "Sampling receipt, table, or actions are clipped at 1024×768");
+    for (let tab = 0; tab < 6; tab += 1) {
+        await browser(student, "press", "Tab");
+        assert(await evaluate(student, `document.querySelector('[data-testid="immersive-sampling-animation"]').contains(document.activeElement)`), `Sampling animation focus escaped at 1024×768 after Tab ${tab + 1}`);
+    }
+    await browser(student, "screenshot", join(artifacts, "sampling-animation-receipt.png"));
+    // A 512×384 CSS viewport reproduces the layout viewport of a 1024×768
+    // desktop display at 200% browser zoom; this is not a mobile breakpoint.
+    await browser(student, "set", "viewport", "512", "384");
+    assert(await evaluate(student, `(() => {const overlay=document.querySelector('[data-testid="immersive-sampling-animation"]');const canvas=overlay.firstElementChild.getBoundingClientRect();return canvas.width>=1024 && overlay.scrollWidth>=1024;})()`), "Sampling overlay did not preserve the documented 1024px desktop canvas at 200% zoom");
+    for (const selector of ['[data-testid="immersive-sampling-replay"]', '[data-testid="immersive-sampling-skip-rest"]', '[data-testid="immersive-sampling-return"]']) {
+        assert(await evaluate(student, `(async () => {const element=document.querySelector(${JSON.stringify(selector)});element?.scrollIntoView({block:"nearest",inline:"nearest"});await new Promise(requestAnimationFrame);const bounds=element?.getBoundingClientRect();return bounds && bounds.left>=0 && bounds.right<=innerWidth && bounds.top>=0 && bounds.bottom<=innerHeight;})()`), `Sampling action ${selector} is unreachable at 200% desktop zoom`);
+    }
+    assert(await evaluate(student, `(async () => {const receipt=document.querySelector('[data-testid="sampling-animation-receipt"]');receipt?.scrollIntoView({block:"start",inline:"start"});await new Promise(requestAnimationFrame);const receiptBounds=receipt?.getBoundingClientRect();const table=document.querySelector('[aria-label="抽样结果数据表"]');table?.scrollIntoView({block:"start",inline:"start"});await new Promise(requestAnimationFrame);const tableBounds=table?.getBoundingClientRect();const firstRow=table?.querySelector('tbody tr')?.getBoundingClientRect();return receiptBounds && receiptBounds.width>0 && tableBounds && tableBounds.width>0 && tableBounds.height>=80 && firstRow && firstRow.height>0;})()`), "Sampling evidence and data rows are unreachable at 200% desktop zoom");
+    await browser(student, "screenshot", join(artifacts, "sampling-animation-zoom-200.png"));
+    assert(await evaluate(student, `(async () => {const range=document.querySelector('[data-testid="sampling-animation-result-range"]');range?.scrollIntoView({block:"end",inline:"nearest"});await new Promise(requestAnimationFrame);const bounds=range?.getBoundingClientRect();return range?.textContent.includes("显示第 1-10 条，共 49 条") && bounds && bounds.left>=0 && bounds.right<=innerWidth && bounds.top>=0 && bounds.bottom<=innerHeight;})()`), "Sampling result range is unreachable at 200% desktop zoom");
+    assert(await evaluate(student, `(async () => {const next=document.querySelector('[aria-label="抽样结果下一页"]');next?.scrollIntoView({block:"end",inline:"nearest"});await new Promise(requestAnimationFrame);const bounds=next?.getBoundingClientRect();return bounds && bounds.left>=0 && bounds.right<=innerWidth && bounds.top>=0 && bounds.bottom<=innerHeight && !next.disabled;})()`), "Sampling pagination is unreachable at 200% desktop zoom");
+    await browser(student, "screenshot", join(artifacts, "sampling-animation-zoom-200-pagination.png"));
+    await activate(student, '[data-testid="immersive-sampling-replay"]');
+    await visible(student, '[data-testid="sampling-animation-dot-grid"]');
+    assert(await evaluate(student, `(async () => {const grid=document.querySelector('[data-testid="sampling-animation-dot-grid"]');grid?.scrollIntoView({block:"center",inline:"center"});await new Promise(requestAnimationFrame);const bounds=grid?.getBoundingClientRect();return grid?.children.length===${experiment.populationSize} && document.querySelector('[data-testid="sampling-animation-legend"]') && document.body.textContent.includes("随机种子 ${simpleSeed}") && bounds && bounds.right>0 && bounds.left<innerWidth && bounds.bottom>0 && bounds.top<innerHeight;})()`), "Sampling draw is unreachable when replayed at 200% desktop zoom");
+    await eventually(() => evaluate(student, `document.querySelector('[data-testid="sampling-animation-dot-grid"]')?.querySelectorAll('[data-selected="true"]').length===${experiment.samplePlan?.finalSampleSize}`), "Sampling replay did not expose the completed draw at 200% desktop zoom");
+    await browser(student, "screenshot", join(artifacts, "sampling-animation-zoom-200-draw.png"));
+    await activate(student, '[data-testid="immersive-sampling-skip"]');
+    await visible(student, '[data-testid="sampling-animation-receipt"]');
+    await browser(student, "set", "viewport", "1024", "768");
+    await activate(student, '[data-testid="immersive-sampling-replay"]');
+    await visible(student, '[data-testid="sampling-animation-dot-grid"]');
+    assert(await evaluate(student, `document.querySelector('[data-testid="sampling-animation-legend"]').textContent.includes("实色描边：已选样本") && document.body.textContent.includes("随机种子 ${simpleSeed}")`), "Sampling replay did not retain the saved draw or explain the dot encoding");
+    await activate(student, '[data-testid="immersive-sampling-skip"]');
+    await visible(student, '[data-testid="sampling-animation-receipt"]');
     await activate(student, '[data-testid="immersive-sampling-return"]');
+    await browser(student, "set", "viewport", "1280", "800");
     for (const method of ["systematic", "pps"] as const) {
         await api(student, `/api/student/tasks/${task.id}/sampling`, "POST", { method, params: { sampleSize: 49, ...(method === "pps" ? { sizeField: "月生活费" } : {}) } });
     }

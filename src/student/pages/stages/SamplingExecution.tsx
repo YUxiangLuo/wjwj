@@ -22,6 +22,7 @@ import { AlertCircle, CheckCircle2, Play, Loader2, ArrowRight, RefreshCw } from 
 import { useExperiment } from "../ExperimentLayout";
 import { experimentApi } from "../../api-client";
 import type { SamplingResultsData, SamplePlanData } from "@/domain/experiment/types";
+import type { PpsProbabilitySummary } from "@/domain/statistics/sampling";
 import type { MethodKey as SamplingMethod } from "@/domain/experiment/types";
 import { ImmersiveSamplingAnimation } from "../../components/ImmersiveSamplingAnimation";
 import { SamplingSuccessState } from "../../components/SamplingSuccessState";
@@ -199,7 +200,13 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const [executing, setExecuting] = useState<SamplingMethod | null>(null);
     const [isCompleting, setIsCompleting] = useState(false);
     const [animatingMethod, setAnimatingMethod] = useState<SamplingMethod | null>(null);
-    const [animationSampledData, setAnimationSampledData] = useState<{ data: Array<Record<string, unknown>>; total: number } | null>(null);
+    const [animationSampledData, setAnimationSampledData] = useState<{
+        data: Array<Record<string, unknown>>;
+        total: number;
+        seed?: number;
+        randomStart?: number;
+        ppsProbabilitySummary?: PpsProbabilitySummary;
+    } | null>(null);
     const [stratifiedAnimationLayers, setStratifiedAnimationLayers] = useState<StratifiedLayer[]>([]);
     const [stratifiedAnimationStratifyBy, setStratifiedAnimationStratifyBy] = useState("gender");
     const animationOpenerRef = useRef<HTMLElement | null>(null);
@@ -251,7 +258,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 setSimpleResult(nextSimple);
                 setExecutionTimes(prev => ({ ...prev, simple: Math.round(performance.now() - startTime) }));
                 const dataArr = (nextSimple.data ?? []) as Array<Record<string, unknown>>;
-                setAnimationSampledData({ data: dataArr, total: nextSimple.sampleCount ?? dataArr.length });
+                setAnimationSampledData({ data: dataArr, total: nextSimple.sampleCount ?? dataArr.length, seed: nextSimple.seed });
                 if (showAnimation) setAnimatingMethod("simple");
             } else {
                 reportSamplingFailure(res.error?.code, res.error?.message, "简单随机抽样执行失败");
@@ -282,7 +289,12 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 setSystematicResult(nextSystematic);
                 setExecutionTimes(prev => ({ ...prev, systematic: Math.round(performance.now() - startTime) }));
                 const dataArr = (nextSystematic.data ?? []) as Array<Record<string, unknown>>;
-                setAnimationSampledData({ data: dataArr, total: nextSystematic.sampleCount ?? dataArr.length });
+                setAnimationSampledData({
+                    data: dataArr,
+                    total: nextSystematic.sampleCount ?? dataArr.length,
+                    seed: nextSystematic.seed,
+                    randomStart: nextSystematic.randomStart,
+                });
                 if (showAnimation) setAnimatingMethod("systematic");
             } else {
                 reportSamplingFailure(res.error?.code, res.error?.message, "系统抽样执行失败");
@@ -315,7 +327,13 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 setPpsResult(nextPps);
                 setExecutionTimes(prev => ({ ...prev, pps: Math.round(performance.now() - startTime) }));
                 const dataArr = (nextPps.data ?? []) as Array<Record<string, unknown>>;
-                setAnimationSampledData({ data: dataArr, total: nextPps.sampleCount ?? dataArr.length });
+                setAnimationSampledData({
+                    data: dataArr,
+                    total: nextPps.sampleCount ?? dataArr.length,
+                    seed: nextPps.seed,
+                    randomStart: nextPps.randomStart,
+                    ppsProbabilitySummary: nextPps.probabilitySummary,
+                });
                 if (showAnimation) setAnimatingMethod("pps");
             } else {
                 reportSamplingFailure(res.error?.code, res.error?.message, "PPS抽样执行失败");
@@ -801,7 +819,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                         onResult={(result) => {
                             setStratifiedResult(result);
                             const dataArr = (result.data ?? []) as Array<Record<string, unknown>>;
-                            setAnimationSampledData({ data: dataArr, total: getSamplingResultCount("stratified", result) });
+                            setAnimationSampledData({ data: dataArr, total: getSamplingResultCount("stratified", result), seed: result.seed });
                         }}
                         onAnimate={(animLayers, animStratifyBy, opener) => {
                             animationOpenerRef.current = opener;
@@ -844,6 +862,9 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                     sampleSize={animatingMethod === "pps" ? ppsSampleSize : n}
                     interval={animatingMethod === "systematic" ? resultSystematicInterval ?? undefined : undefined}
                     sizeField={animatingMethod === "pps" ? ppsSizeField : undefined}
+                    seed={animationSampledData?.seed}
+                    randomStart={animationSampledData?.randomStart}
+                    ppsProbabilitySummary={animationSampledData?.ppsProbabilitySummary}
                     stratifyBy={animatingMethod === "stratified" ? stratifiedAnimationStratifyBy : undefined}
                     layers={animatingMethod === "stratified" ? stratifiedAnimationLayers : undefined}
                     onClose={() => { setAnimatingMethod(null); setAnimationSampledData(null); }}
