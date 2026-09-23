@@ -367,4 +367,6 @@ test("stage completion ignores client results and does not rewrite stored author
     expect(response.status).toBe(200);
     const update = operations.find((operation) => operation.kind === "update");
     expect((update?.set as { samplingResults?: unknown }).samplingResults).toBeUndefined();
+    expect(update?.set).toMatchObject({ version: 7, currentStage: 4 });
+    expect(update?.set).not.toHaveProperty("samplingGeneration");
 });

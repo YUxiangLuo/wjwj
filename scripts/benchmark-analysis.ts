@@ -52,7 +52,8 @@ if (Bun.argv[2] === "--client") {
             fieldMapping: { numeric: ["size", "score"] },
             samplingResults: compactSamplingResults({ pps: {
                 ...performPPSSampling(population, "size", sampleCount, createSeededRandom(index)),
-                completed: true, sampleCount, sizeField: "size",
+                // Analysis verifies compact results by replaying the server's seed.
+                completed: true, serverGenerated: true, seed: index, sampleCount, sizeField: "size",
             } }),
             samplePlan: { confidenceLevel: "95", marginOfError: 5, finalSampleSize: sampleCount },
         };

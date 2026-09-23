@@ -69,12 +69,13 @@ pg_restore --no-owner --no-privileges --dbname="$RESTORE_DATABASE_URL" \
   "$backup_dir/wenjuan-$stamp.dump"
 test ! -e "$app_dir/storage" || exit 1
 tar -C "$app_dir" -xzf "$backup_dir/wenjuan-storage-$stamp.tar.gz"
-DATABASE_URL="$RESTORE_DATABASE_URL" bun run db:migrate
-TEST_DATABASE_URL="$RESTORE_DATABASE_URL" bun run test:db
-DATABASE_URL="$RESTORE_DATABASE_URL" bun run storage:audit
+(cd "$app_dir" && DATABASE_URL="$RESTORE_DATABASE_URL" bun run db:migrate)
+(cd "$app_dir" && DATABASE_URL="$RESTORE_DATABASE_URL" bun run storage:audit)
 ```
 
-每步成功后再继续，并以恢复库启动应用检查典型总体和附件下载后才接受备份。
+每步成功后再继续。核对恢复前后的关键表行数、典型提交快照与文件校验和；在 `$app_dir` 以恢复库启动应用，检查历史提交、样本导出和附件下载后才接受备份。`storage:audit` 只列出孤立文件，不能代替已引用文件的完整性检查。
+
+**不要在恢复库运行 `test:db`，也不要为通过测试清空恢复数据。** 集成测试会写入测试夹具（例如另一个当前学期），与已恢复的业务数据产生唯一约束冲突；它不适合作为恢复验收。需要数据库回归时，另建空的已迁移、可丢弃测试库，按上文“初始化、迁移与测试”执行。
 
 ## Collation 版本
 

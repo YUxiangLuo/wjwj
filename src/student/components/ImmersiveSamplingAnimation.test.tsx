@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, expect, test } from "bun:test";
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { installDomGlobals } from "@/test-utils/dom";
 import { ImmersiveSamplingAnimation } from "./ImmersiveSamplingAnimation";
 
@@ -9,7 +9,11 @@ beforeAll(() => {
     restoreDom = installDomGlobals("http://localhost/").restore;
 });
 
-afterEach(() => cleanup());
+afterEach(async () => {
+    // Timer-driven commits can leave a passive-effect callback on React's host
+    // queue even after unmount. Let it finish while window still exists.
+    await act(async () => cleanup());
+});
 
 afterAll(() => {
     restoreDom?.();
