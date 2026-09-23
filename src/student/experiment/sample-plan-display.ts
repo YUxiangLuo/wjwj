@@ -101,5 +101,6 @@ export function formatMarginOfError(
 /** Preserve parameter magnitude and useful precision without floating-point tails. */
 export function formatSamplePlanNumber(value: number): string {
     if (!Number.isFinite(value)) return "—";
+    if (value === Number.MAX_VALUE) return "≥1.79769e+308";
     return Number(value.toPrecision(6)).toString();
 }

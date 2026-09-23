@@ -6,6 +6,7 @@ test("sample-plan numbers retain useful precision without floating-point tails",
     expect(formatSamplePlanNumber(0.25)).toBe("0.25");
     expect(formatSamplePlanNumber(0.000002)).toBe("0.000002");
     expect(formatSamplePlanNumber(100)).toBe("100");
+    expect(formatSamplePlanNumber(Number.MAX_VALUE)).toBe("≥1.79769e+308");
 });
 
 test("normalizeSamplePlanData backfills legacy proportion sample plans", () => {

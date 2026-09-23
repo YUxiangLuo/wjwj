@@ -28,6 +28,9 @@ export function EnhancedMetricsCard({
 
     // 格式化百分比
     const formatPercent = (value: number | null) => value === null ? "不可定义" : formatStatistic(value * 100, 2) + "%";
+    const formatIntermediateSize = (value: number) => value < 1e12
+        ? Math.ceil(value).toLocaleString()
+        : formatSamplePlanNumber(Math.ceil(value));
 
     // 格式化置信区间
     const formatCI = (value: number | undefined) => value === undefined ? "—" : formatStatistic(value * 100, 1) + "%";
@@ -186,11 +189,11 @@ export function EnhancedMetricsCard({
                     <div className="space-y-1.5 text-meta font-mono">
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">初始样本量 n₀</span>
-                            <span className="text-foreground">{Math.ceil(metrics.n0).toLocaleString()}</span>
+                            <span className="text-foreground">{formatIntermediateSize(metrics.n0)}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">设计效应后 n₁</span>
-                            <span className="text-foreground">{metrics.nDeff.toLocaleString()}</span>
+                            <span className="text-foreground">{formatIntermediateSize(metrics.nDeff)}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">有限总体校正 n₂</span>

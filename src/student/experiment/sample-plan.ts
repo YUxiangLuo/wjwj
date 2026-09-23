@@ -85,17 +85,29 @@ export function applyDesignAdjustments(
 
     const deffValue = normalizeDeff(deff);
     const nrrValue = normalizeNrr(nrr);
-    const nDeffRaw = n0Raw * deffValue;
-    const nFpcRaw = nDeffRaw * N / (N - 1 + nDeffRaw);
+    // Raw targets can exceed Number.MAX_VALUE before the finite-population
+    // correction. Saturate only those display values; for any finite N the
+    // corrected target is indistinguishable from N at that magnitude.
+    const finiteN0Raw = Math.min(n0Raw, Number.MAX_VALUE);
+    const nDeffProduct = n0Raw * deffValue;
+    const nDeffRaw = nDeffProduct === 0
+        ? Number.MIN_VALUE
+        : Math.min(nDeffProduct, Number.MAX_VALUE);
+    // For n_deff > N, divide first: n_deff*N can overflow even though
+    // the finite-population result is at most N. Keep the direct form for
+    // small n_deff so (N-1)/n_deff cannot overflow instead.
+    const nFpcRaw = nDeffRaw <= N
+        ? nDeffRaw * N / (N - 1 + nDeffRaw)
+        : N / (1 + (N - 1) / nDeffRaw);
     const nInviteRaw = nrrValue > 0 ? nFpcRaw / (1 - nrrValue) : nFpcRaw;
     const nInvite = capSampleSizeAtPopulation(nInviteRaw, N);
 
     return {
-        n0Raw,
+        n0Raw: finiteN0Raw,
         nDeffRaw,
         nFpcRaw,
         nInviteRaw,
-        n0: Math.ceil(n0Raw),
+        n0: Math.ceil(finiteN0Raw),
         nDeff: Math.ceil(nDeffRaw),
         nFpc: Math.ceil(nFpcRaw),
         nInvite,
@@ -198,7 +210,7 @@ export function calculateSampleSizeMetrics(params: {
     const marginOfErrorAbs = z * standardError;
 
     return {
-        n0,
+        n0: adjusted.n0Raw,
         nDeff: adjusted.nDeff,
         nFpc: adjusted.nFpc,
         n1: expectedCompleted,
@@ -327,7 +339,7 @@ function meanEstimationCore(z: number, sigma2: number, e: number, N: number, def
     const adjusted = applyDesignAdjustments(n0, N, deff, nrr);
     return {
         ...adjusted,
-        n0,
+        n0: adjusted.n0Raw,
         n: adjusted.nInvite,
     };
 }
