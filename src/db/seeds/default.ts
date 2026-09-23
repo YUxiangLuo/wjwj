@@ -55,6 +55,10 @@ import {
 } from "./dogfood-fixtures";
 import { DEMO_STUDENT_ACCOUNTS } from "./demo-accounts";
 import { buildDefaultSamplingPolicy, type SamplingPolicyV1 } from "../../lib/sampling-policy";
+import { buildAnalysisMetrics } from "../../domain/statistics/analysis";
+import { parseTopicFieldMapping } from "../../domain/statistics/population";
+import type { TargetAnalysisMetrics } from "../../domain/experiment/analysis-types";
+import type { SamplePlanData, SamplingResultsData } from "../../domain/experiment/types";
 
 const happinessQuestionnaire = {
     title: "青年幸福感调查（受访者视角试填）",
@@ -573,6 +577,7 @@ function snapshot(params: {
     samplingResults: Record<string, unknown>;
     reportContent: string;
     samplingPolicy?: SamplingPolicyV1;
+    targetMetrics: TargetAnalysisMetrics;
 }): SubmissionSnapshot {
     return {
         topicName: params.topicName,
@@ -584,10 +589,31 @@ function snapshot(params: {
         reportContent: params.reportContent,
         weightConfig,
         samplingPolicy: params.samplingPolicy ?? defaultSamplingPolicy,
+        targetMetrics: params.targetMetrics,
         populationFileSha256: params.populationFileSha256,
         parserVersion: "raw-values-v1",
         samplingAlgorithmVersion: "sampling-v2",
     };
+}
+
+function seedTargetMetrics(params: {
+    population: Array<Record<string, unknown>>;
+    fieldMapping: unknown;
+    samplingResults: unknown;
+    samplePlan: SamplePlanData;
+    topicName: string;
+}): TargetAnalysisMetrics {
+    const target = buildAnalysisMetrics({
+        population: params.population,
+        fieldMapping: parseTopicFieldMapping(params.fieldMapping),
+        // The fixture runner returns a method union even for literal methods;
+        // assertCompleteSubmission validated these fixture results above.
+        samplingResults: params.samplingResults as SamplingResultsData,
+        samplePlan: params.samplePlan,
+        topicName: params.topicName,
+    }).target;
+    if (!target) throw new Error(`Dogfood target metrics missing for ${params.topicName}`);
+    return target;
 }
 
 async function seed() {
@@ -620,6 +646,15 @@ async function seed() {
     assertCompleteSubmission(graduateQuestionnaire, graduatePlan, graduateResults, graduatePopulation.length, graduateReportContent, graduateSamplingPolicy);
     assertCompleteSubmission(diningQuestionnaire, diningPlan, diningResults, diningPopulation.length, diningReportContent, ppsRequiredPolicy);
     assertCompleteSubmission(greenCommuteQuestionnaire, greenCommutePlan, greenCommuteResults, greenCommutePopulation.length, greenCommuteReportContent, greenCommuteSamplingPolicy);
+    // Real submissions freeze target estimates for both student results and
+    // teacher grading. Demo submissions must expose the same material.
+    const seedTargets = {
+        happiness: seedTargetMetrics({ population: happinessPopulation, fieldMapping: happinessFieldMapping, samplingResults: happinessResults, samplePlan: happinessPlan, topicName: DOGFOOD_NAMES.topicA }),
+        reading: seedTargetMetrics({ population: meanPopulation, fieldMapping: readingFieldMapping, samplingResults: meanResults, samplePlan: readingPlan, topicName: DOGFOOD_NAMES.topicB }),
+        graduate: seedTargetMetrics({ population: graduatePopulation, fieldMapping: graduateFieldMapping, samplingResults: graduateResults, samplePlan: graduatePlan, topicName: DOGFOOD_NAMES.topicC }),
+        dining: seedTargetMetrics({ population: diningPopulation, fieldMapping: diningFieldMapping, samplingResults: diningResults, samplePlan: diningPlan, topicName: DOGFOOD_NAMES.topicD }),
+        greenCommute: seedTargetMetrics({ population: greenCommutePopulation, fieldMapping: greenCommuteFieldMapping, samplingResults: greenCommuteResults, samplePlan: greenCommutePlan, topicName: DOGFOOD_NAMES.topicE }),
+    };
     const compactHappinessResults = compactSamplingResults(happinessResults);
     const compactHappinessChoiceResults = compactSamplingResults({
         simple: happinessResults.simple,
@@ -800,6 +835,7 @@ async function seed() {
         samplingResults: compactHappinessResults,
         reportContent,
         samplingPolicy: happinessSamplingPolicy,
+        targetMetrics: seedTargets.happiness,
     });
     const graduateCompletedBase = {
         currentStage: 4,
@@ -822,6 +858,7 @@ async function seed() {
         samplingResults: compactGraduateResults,
         reportContent: graduateReportContent,
         samplingPolicy: graduateSamplingPolicy,
+        targetMetrics: seedTargets.graduate,
     });
     const diningCompletedBase = {
         currentStage: 4,
@@ -844,6 +881,7 @@ async function seed() {
         samplingResults: compactDiningResults,
         reportContent: diningReportContent,
         samplingPolicy: ppsRequiredPolicy,
+        targetMetrics: seedTargets.dining,
     });
     const greenCommuteCompletedBase = {
         currentStage: 4,
@@ -866,6 +904,7 @@ async function seed() {
         samplingResults: compactGreenCommuteResults,
         reportContent: greenCommuteReportContent,
         samplingPolicy: greenCommuteSamplingPolicy,
+        targetMetrics: seedTargets.greenCommute,
     });
 
     const experimentRows = await db.insert(experiment).values([
@@ -891,7 +930,7 @@ async function seed() {
             stage2CompletedAt: day(-4),
             stage3CompletedAt: day(-3),
             stage4CompletedAt: day(-2),
-            submissionSnapshot: snapshot({ topicName: DOGFOOD_NAMES.topicB, studentName: studentsById[DOGFOOD_ANCHORS.submitted]!.name, populationSize: 24, populationFileSha256: populationFileHashes.reading, questionnaire: readingQuestionnaire, samplePlan: readingPlan, samplingResults: compactMeanResults, reportContent: readingReportContent, samplingPolicy: noPpsSamplingPolicy }),
+            submissionSnapshot: snapshot({ topicName: DOGFOOD_NAMES.topicB, studentName: studentsById[DOGFOOD_ANCHORS.submitted]!.name, populationSize: 24, populationFileSha256: populationFileHashes.reading, questionnaire: readingQuestionnaire, samplePlan: readingPlan, samplingResults: compactMeanResults, reportContent: readingReportContent, samplingPolicy: noPpsSamplingPolicy, targetMetrics: seedTargets.reading }),
             submittedAt: day(-1),
             createdAt: day(-6),
             updatedAt: day(-1),

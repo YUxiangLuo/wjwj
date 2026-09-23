@@ -206,6 +206,23 @@ async function verify() {
             check(stableJson(storedSnapshot.samplePlan) === stableJson(row.samplePlan), `${label} snapshot sample plan differs from the live record`);
             check(stableJson(storedSnapshot.weightConfig) === stableJson(row.weightConfig), `${label} snapshot scoring weights differ from the topic`);
             check(stableJson(storedSnapshot.samplingPolicy) === stableJson(row.samplingPolicy), `${label} snapshot sampling policy differs from the topic`);
+            const targetMetrics = storedSnapshot.targetMetrics as {
+                contract?: { contract?: { target?: unknown } };
+                confidenceLevel?: string;
+                populationValue?: number;
+                methods?: Record<string, { estimate?: number | null; standardError?: number | null; marginOfError?: number | null }>;
+            } | null;
+            check(targetMetrics && Number.isFinite(targetMetrics.populationValue), `${label} snapshot has no finite research target result`);
+            check(
+                stableJson(targetMetrics.contract?.contract?.target) === stableJson(parseTopicFieldMapping(row.fieldMapping)?.analysisTarget),
+                `${label} snapshot target differs from the topic`,
+            );
+            check(targetMetrics.confidenceLevel === (row.samplePlan as { confidenceLevel?: string })?.confidenceLevel, `${label} snapshot confidence level differs from the plan`);
+            for (const [method, result] of Object.entries(snapshotResults ?? {})) {
+                if (result?.completed !== true) continue;
+                const metrics = targetMetrics.methods?.[method];
+                check(metrics && Number.isFinite(metrics.estimate) && Number.isFinite(metrics.standardError) && Number.isFinite(metrics.marginOfError), `${label}/${method} snapshot target estimate or design precision is unavailable`);
+            }
             check(storedSnapshot.populationSize === row.populationSize, `${label} snapshot population size differs from the topic`);
             check(storedSnapshot.topicName === row.topicName, `${label} snapshot topic name differs`);
             check(storedSnapshot.studentName === row.studentName, `${label} snapshot student name differs`);
