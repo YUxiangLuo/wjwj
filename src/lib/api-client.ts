@@ -85,7 +85,13 @@ export function createApiClient(role: AuthRole) {
                 if ([`${api}/login`, `${api}/logout`, `${api}/password`].includes(url)) {
                     // An event marker, not a credential: works on ordinary intranet HTTP too.
                     try { page?.localStorage.setItem(changeKey, `${Date.now()}:${Math.random()}`); } catch { /* Storage is best-effort. */ }
-                    navigate(url === `${api}/logout` ? `${root}/login` : url === `${api}/password` ? page?.location.href ?? root : root);
+                    let destination = url === `${api}/logout` ? `${root}/login` : url === `${api}/password` ? page?.location.href ?? root : root;
+                    if (role === "student" && url === `${api}/password` && page) {
+                        const next = new URL(destination);
+                        next.searchParams.set("passwordChanged", "1");
+                        destination = next.href;
+                    }
+                    navigate(destination);
                 }
             }
             return payload;

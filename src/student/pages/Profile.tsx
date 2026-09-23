@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, User, Key, Shield } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { useStudent } from "../contexts/StudentContext";
 
 export function Profile() {
     const navigate = useNavigate();
+    const location = useLocation();
     const { currentUser } = useStudent();
     const [passwordForm, setPasswordForm] = useState({
         currentPassword: "",
@@ -19,7 +20,14 @@ export function Profile() {
     });
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState(false);
+    const [success, setSuccess] = useState(() => new URLSearchParams(location.search).get("passwordChanged") === "1");
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        if (params.get("passwordChanged") !== "1") return;
+        // Consume the non-secret notice so refreshing or returning does not replay it.
+        params.delete("passwordChanged");
+        navigate({ pathname: location.pathname, search: params.toString(), hash: location.hash }, { replace: true, state: location.state });
+    }, [location, navigate]);
     const passwordPolicy = evaluatePasswordRules({
         password: passwordForm.newPassword,
         confirmPassword: passwordForm.confirmPassword,

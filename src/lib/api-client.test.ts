@@ -42,7 +42,7 @@ for (const role of ["student", "teacher", "admin"] as const) {
             await client.request(`/api/${role}/me`);
             globalThis.fetch = (async () => ok({ ok: true })) as unknown as typeof fetch;
             expect((await client.request(`/api/${role}/${action}`, { method: "POST" })).success).toBe(true);
-            expect(navigate).toHaveBeenCalledWith(action === "logout" ? `/${role}/login` : action === "password" ? window.location.href : `/${role}`);
+            expect(navigate).toHaveBeenCalledWith(action === "logout" ? `/${role}/login` : action === "password" ? window.location.href + (role === "student" ? "?passwordChanged=1" : "") : `/${role}`);
             expect(localStorage.getItem(`wj:auth-change:${role}`)).toBeTruthy();
             const fetcher = mock(async () => ok({})); globalThis.fetch = fetcher as unknown as typeof fetch;
             expect((await client.request(`/api/${role}/save`, { method: "POST" })).success).toBe(false);
@@ -174,4 +174,16 @@ test("auth notifications work without secure-context randomUUID", async () => {
     await client.request("/api/student/logout", { method: "POST" });
     expect(navigate).toHaveBeenCalledWith("/student/login");
     expect(localStorage.getItem("wj:auth-change:student")).toBeTruthy();
+});
+
+test("student password notice requires success and preserves the return URL", async () => {
+    const navigate = setup(), client = createApiClient("student");
+    window.history.replaceState(null, "", "/student/profile?keep=value#security");
+    globalThis.fetch = (async () => fail(401, "INVALID_CREDENTIALS")) as unknown as typeof fetch;
+    await client.request("/api/student/password", { method: "PUT" });
+    expect(navigate).not.toHaveBeenCalled();
+    expect(localStorage.getItem("wj:auth-change:student")).toBeNull();
+    globalThis.fetch = (async () => ok({ success: true })) as unknown as typeof fetch;
+    await client.request("/api/student/password", { method: "PUT" });
+    expect(navigate).toHaveBeenCalledWith("http://localhost/student/profile?keep=value&passwordChanged=1#security");
 });
