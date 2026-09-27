@@ -2,7 +2,7 @@ import type { AnalysisTarget, StudyContract } from "../../lib/analysis-target";
 import { parseNumericText } from "../../lib/numeric-text";
 import { createSafeRecord } from "../../lib/safe-record";
 import { stratumKey } from "./sampling";
-import { sampleVariance, scaledMean } from "./values";
+import { sampleStandardDeviation, scaledMean } from "./values";
 
 export interface TopicFieldMapping {
     identifier?: string;
@@ -105,8 +105,8 @@ export function buildStratifiedNumericStats(
                 if (values.length === 0 || values.length !== rows.length) continue;
 
                 const mean = scaledMean(values)!;
-                const variance = sampleVariance(values);
-                const stdDev = Math.sqrt(variance);
+                const stdDev = sampleStandardDeviation(values);
+                const variance = stdDev * stdDev;
                 if (![mean, variance, stdDev].every(Number.isFinite)) continue;
 
                 stratStats[numField] = { mean, stdDev };
@@ -137,8 +137,8 @@ export function buildPopulationNumericStats(
         }
 
         const mean = scaledMean(values)!;
-        const variance = sampleVariance(values);
-        const stdDev = Math.sqrt(variance);
+        const stdDev = sampleStandardDeviation(values);
+        const variance = stdDev * stdDev;
         if (![mean, variance, stdDev].every(Number.isFinite)) continue;
 
         stats[field] = {

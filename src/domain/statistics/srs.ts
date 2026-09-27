@@ -7,15 +7,14 @@ export function computeSimpleRandomMeanSe(
 ) {
     if (!populationStat || sampleSize < 1 || populationSize < 1) return null;
     if (sampleSize >= populationSize || populationSize <= 1) return 0;
-    const samplingFraction = sampleSize / populationSize;
-    return Math.sqrt((1 - samplingFraction) * populationStat.variance / sampleSize);
+    return computeSimpleRandomValueSe(populationStat.variance, populationSize, sampleSize, populationStat.stdDev);
 }
 
-export function computeSimpleRandomValueSe(populationVariance: number, populationSize: number, sampleSize: number) {
+export function computeSimpleRandomValueSe(populationVariance: number, populationSize: number, sampleSize: number, populationStandardDeviation = Math.sqrt(populationVariance)) {
     if (sampleSize < 1 || populationSize < 1) return null;
     if (sampleSize >= populationSize || populationSize <= 1) return 0;
     const samplingFraction = sampleSize / populationSize;
-    return Math.sqrt((1 - samplingFraction) * populationVariance / sampleSize);
+    return populationStandardDeviation * Math.sqrt((1 - samplingFraction) / sampleSize);
 }
 
 /**
@@ -27,15 +26,16 @@ export function computeFinitePopulationEquivalentSampleSize(
     populationVariance: number,
     populationSize: number,
     standardError: number,
+    populationStandardDeviation = Math.sqrt(populationVariance),
 ) {
     if (!Number.isFinite(populationVariance) || populationVariance < 0) return null;
     if (!Number.isInteger(populationSize) || populationSize < 1) return null;
     if (!Number.isFinite(standardError) || standardError < 0) return null;
-    if (standardError === 0 || populationVariance === 0) return populationSize;
+    if (standardError === 0 || populationStandardDeviation === 0) return populationSize;
 
     // Use S/SE rather than SE/S so a large relative SE cannot overflow before
     // taking its reciprocal: n = (S/SE)² / (1 + (S/SE)²/N).
-    const informationRatio = Math.sqrt(populationVariance) / standardError;
+    const informationRatio = populationStandardDeviation / standardError;
     if (!Number.isFinite(informationRatio)) return populationSize;
     const information = informationRatio * informationRatio;
     // A positive equivalent n smaller than the representable range is

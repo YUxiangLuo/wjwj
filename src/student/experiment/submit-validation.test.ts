@@ -54,12 +54,21 @@ describe("validateMeanPlanVariance", () => {
         expect(validateMeanPlanVariance(null, "mean", 35)).toBeNull();
     });
 
-    test("accepts 4-decimal UI rounding and rejects larger mismatches", () => {
+    test("requires full precision rather than legacy four-decimal rounding", () => {
         const actual = 66.792364721;
-        // 规划界面展示/保存 4 位小数
-        expect(validateMeanPlanVariance({ populationVariance: 66.7924 }, "mean", actual)).toBeNull();
+        expect(validateMeanPlanVariance({ populationVariance: 66.7924 }, "mean", actual)).toMatch(/总体方差与当前总体不一致/);
         expect(validateMeanPlanVariance({ populationVariance: actual + 1e-12 }, "mean", actual)).toBeNull();
         expect(validateMeanPlanVariance({ populationVariance: actual + 1e-3 }, "mean", actual)).toMatch(/总体方差与当前总体不一致/);
+    });
+
+    test("relative tolerance rejects low-variance substitutions in both directions", () => {
+        for (const actual of [1e-6, 4e-5, 1e-160, Number.MIN_VALUE]) {
+            expect(validateMeanPlanVariance({ populationVariance: actual }, "mean", actual)).toBeNull();
+            expect(validateMeanPlanVariance({ populationVariance: actual * 40 }, "mean", actual)).toMatch(/总体方差与当前总体不一致/);
+            expect(validateMeanPlanVariance({ populationVariance: actual }, "mean", actual * 40)).toMatch(/总体方差与当前总体不一致/);
+        }
+        expect(validateMeanPlanVariance({ populationVariance: 1e-6 * (1 + 5e-10) }, "mean", 1e-6)).toBeNull();
+        expect(validateMeanPlanVariance({ populationVariance: 1e-6 * (1 + 2e-9) }, "mean", 1e-6)).not.toBeNull();
     });
 });
 

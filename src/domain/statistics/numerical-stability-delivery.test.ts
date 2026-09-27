@@ -1,6 +1,29 @@
 import { expect, test } from "bun:test";
 import { buildAnalysisMetrics } from "./analysis";
 import { sampleVariance } from "./values";
+import { performSystematicSampling } from "./sampling";
+import { computeSystematicExactMeanSe } from "./systematic";
+
+test("ST-N03 subnormal variances do not collapse representable design SEs", () => {
+    for (const scale of [1, 1e-155, 1e-160]) {
+        const population = Array.from({ length: 1000 }, (_, i) => ({ y: i % 2 * scale }));
+        for (const n of [1, 100, 499, 999, 1000]) {
+            const sample = performSystematicSampling(population, n, () => .12345);
+            const metrics = buildAnalysisMetrics({ population,
+                fieldMapping: { numeric: ["y"], analysisTarget: { kind: "mean", field: "y" } },
+                samplingResults: { simple: { completed: true, sampleCount: n, data: sample.data }, systematic: { ...sample, completed: true, sampleCount: n } },
+            });
+            const simple = metrics.target!.methods.simple;
+            // Exact balanced binary population: sigma²=1/4. Compare in original units
+            // so an incorrect zero cannot pass an absolute tiny-number tolerance.
+            expect(simple.standardError! / scale).toBeCloseTo(Math.sqrt(.25 * (1000 - n) / (999 * n)), 12);
+            expect(simple.effectiveSampleSize!).toBeCloseTo(n, 8);
+            const systematicSe = n === 1000 ? 0 : n % 2 ? .5 / n : .5;
+            expect(metrics.target!.methods.systematic.standardError! / scale).toBeCloseTo(systematicSe, 12);
+        }
+        expect(computeSystematicExactMeanSe(population, "y", { completed: true, kValue: 2, sampleCount: 500 })! / scale).toBeCloseTo(.5, 12);
+    }
+});
 
 test("ST-N01 shared large translations preserve sample variance and design standard error", () => {
     const original = [0, 0.003, 0.009, 0.019];

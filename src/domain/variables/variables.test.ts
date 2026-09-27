@@ -174,6 +174,21 @@ test("A01 unavailable statistics stay null, zero-frequency categories keep dicti
     expect(zeroFrequency.categories.map(category => category.proportion)).toEqual([1, 0, 0]);
 });
 
+test("A02 large translations preserve sample SD and R7 interpolation", () => {
+    for (const offset of [0, 1e6, 1e12, 1e16]) {
+        for (const indices of [[0, 1, 2], [2, 0, 1]]) {
+            const result = univariate({ population: [0, 2, 4].map(x => ({ x: x + offset })), indices, variable: continuous, weighted: false });
+            expect(result.mean).toBe(offset + 2);
+            expect(result.sampleStandardDeviation).toBe(2);
+            expect(result.q1).toBe(offset + 1);
+            expect(result.q3).toBe(offset + 3);
+        }
+    }
+    const pair = univariate({ population: [{ x: 1e16 }, { x: 1e16 + 2 }], indices: [0, 1], variable: continuous, weighted: false });
+    // The exact mean lies between representable numbers; SD must not use its rounded value.
+    expect(pair.sampleStandardDeviation).toBe(Math.SQRT2);
+});
+
 test("A02 extreme scales are reliable or explicitly rejected, never NaN/Infinity", () => {
     // 对称大数：均值 0，SD = √2·1e300 仍可表示
     const pair = univariate({ population: [{ x: -1e300 }, { x: 1e300 }], indices: [0, 1], variable: continuous, weighted: false });

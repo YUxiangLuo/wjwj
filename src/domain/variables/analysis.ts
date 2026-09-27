@@ -1,5 +1,6 @@
 import { interpretNumeric, valueKey } from "./dictionary";
 import type { AnalysisResult, VariableDefinition } from "./types";
+import { scaledMean, sampleStandardDeviation as computeSampleStandardDeviation } from "../statistics/values";
 
 class Sum {
     private total = 0;
@@ -19,15 +20,6 @@ function finite(value: number): number {
     return value;
 }
 
-function scaledMean(values: number[]): number | null {
-    if (!values.length) return null;
-    const scale = values.reduce((maximum, value) => Math.max(maximum, Math.abs(value)), 0);
-    if (scale === 0) return 0;
-    const sum = new Sum();
-    for (const value of values) sum.add(value / scale);
-    return finite((sum.value / values.length) * scale);
-}
-
 function weightedMean(values: number[], weights: number[]): number | null {
     if (!values.length) return null;
     const valueScale = values.reduce((maximum, value) => Math.max(maximum, Math.abs(value)), 0);
@@ -45,12 +37,11 @@ function weightedMean(values: number[], weights: number[]): number | null {
 
 function quantileR7(sorted: number[], probability: number): number | null {
     if (!sorted.length) return null;
-    const scale = sorted.reduce((maximum, value) => Math.max(maximum, Math.abs(value)), 0);
-    if (scale === 0) return 0;
     const position = (sorted.length - 1) * probability;
     const lower = Math.floor(position), fraction = position - lower;
-    const a = sorted[lower]! / scale, b = sorted[Math.min(lower + 1, sorted.length - 1)]! / scale;
-    return finite((a + (b - a) * fraction) * scale);
+    const a = sorted[lower]!, b = sorted[Math.min(lower + 1, sorted.length - 1)]!;
+    // Subtraction preserves nearby values; opposite signs need an overflow-safe blend.
+    return finite(a < 0 && b > 0 ? a * (1 - fraction) + b * fraction : a + (b - a) * fraction);
 }
 
 export function calculateUnivariate({
@@ -101,11 +92,7 @@ export function calculateUnivariate({
         const sorted = [...values].sort((a, b) => a - b);
         let sampleStandardDeviation: number | null = null;
         if (values.length > 1) {
-            const scale = values.reduce((maximum, value) => Math.max(maximum, Math.abs(value)), 0);
-            const normalizedMean = scale === 0 ? 0 : mean! / scale;
-            const squares = new Sum();
-            for (const value of values) squares.add((value / (scale || 1) - normalizedMean) ** 2);
-            sampleStandardDeviation = finite(Math.sqrt(squares.value / (values.length - 1)) * scale);
+            sampleStandardDeviation = finite(computeSampleStandardDeviation(values));
         }
         return { kind: "numeric", weighted, sampleCount: rows.length, validCount: values.length, missingCount: rows.length - values.length,
             mean, sampleStandardDeviation, min: sorted[0] ?? null, max: sorted.at(-1) ?? null,

@@ -37,14 +37,17 @@ export function extractAccessorValues(rows: Array<Record<string, unknown>>, acce
     return values;
 }
 
-/** Scale before compensated summation so finite means survive large cancellation. */
+/** Center before scaling to preserve small differences on a large baseline. */
 export function scaledMean(values: number[]) {
     if (values.length === 0) return null;
-    const scale = values.reduce((maximum, value) => Math.max(maximum, Math.abs(value)), 0);
-    if (scale === 0) return 0;
+    const minimum = values.reduce((result, value) => Math.min(result, value), Infinity);
+    const maximum = values.reduce((result, value) => Math.max(result, value), -Infinity);
+    const center = minimum / 2 + maximum / 2;
+    const scale = values.reduce((maximum, value) => Math.max(maximum, Math.abs(value - center)), 0);
+    if (scale === 0) return center;
     const sum = new StableSum();
-    for (const value of values) sum.add(value / scale);
-    return (sum.value / values.length) * scale;
+    for (const value of values) sum.add((value - center) / scale);
+    return center + (sum.value / values.length) * scale;
 }
 
 export function estimateSimpleValue(rows: Array<Record<string, unknown>>, accessor: NumericAccessor) {
@@ -57,6 +60,12 @@ export function estimateSimpleMean(rows: Array<Record<string, unknown>>, field: 
 }
 
 export function sampleVariance(values: number[]) {
+    const standardDeviation = sampleStandardDeviation(values);
+    return standardDeviation * standardDeviation;
+}
+
+/** Keep the unsquared dispersion available when variance would underflow. */
+export function sampleStandardDeviation(values: number[]) {
     if (values.length < 2) return 0;
     const minimum = values.reduce((result, value) => Math.min(result, value), Infinity);
     const maximum = values.reduce((result, value) => Math.max(result, value), -Infinity);
@@ -70,6 +79,5 @@ export function sampleVariance(values: number[]) {
     const normalizedMean = scaledMean(deviations)! / scale;
     const squares = new StableSum();
     for (const deviation of deviations) squares.add((deviation / scale - normalizedMean) ** 2);
-    const standardDeviation = Math.sqrt(Math.max(0, squares.value) / (values.length - 1)) * scale;
-    return standardDeviation * standardDeviation;
+    return Math.sqrt(Math.max(0, squares.value) / (values.length - 1)) * scale;
 }

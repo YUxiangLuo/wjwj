@@ -730,8 +730,9 @@ pgTest("submission rejects changed sampling execution evidence even when indices
     expect(unchanged!.submissionSnapshot).toBeNull();
 }, 20_000);
 
-pgTest("F-R1-01 mean planning variance is verified against the current population at stage 2", async () => {
+pgTest.each([1, 0.0002])("F-R1-01 mean planning variance is verified at stage 2 (scale %s)", async (scale) => {
     const f = await fixture();
+    await Bun.write(`${process.cwd()}${f.storagePath}`, "id,value,group\n" + [10, 20, 30, 40, 50].map((value, i) => `${i + 1},${value * scale},${i < 2 ? "A" : "B"}`).join("\n") + "\n");
     // 回到可完成阶段 2 的状态（阶段 1 已完成），随后走真实路由。
     await application.db.update(schema.experiment).set({
         currentStage: 2, status: "in_progress", version: f.experiment.version + 1,

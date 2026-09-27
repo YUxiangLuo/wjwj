@@ -4,7 +4,7 @@ import {
     fieldAccessor,
     extractAccessorValues,
     estimateSimpleValue,
-    sampleVariance,
+    sampleStandardDeviation,
     scaledMean,
 } from "./values";
 import { computeSimpleRandomValueSe, computeFinitePopulationEquivalentSampleSize } from "./srs";
@@ -60,7 +60,8 @@ export function buildTargetAnalysis(params: {
     // 与数值字段的 fail-closed 约定一致：均值目标在数据不完整时不给目标分析。
     if (populationValues.length !== populationSize) return null;
     const populationValue = scaledMean(populationValues)!;
-    const populationVar = sampleVariance(populationValues);
+    const populationSd = sampleStandardDeviation(populationValues);
+    const populationVar = populationSd * populationSd;
     if (!Number.isFinite(populationValue) || !Number.isFinite(populationVar)) return null;
 
     const simpleRows = (params.samplingResults?.simple?.data ?? []) as Array<Record<string, unknown>>;
@@ -93,7 +94,7 @@ export function buildTargetAnalysis(params: {
     const methodInputs: Record<MethodKey, { estimate: number | null; standardError: number | null; sampleSize: number | null }> = {
         simple: {
             estimate: estimateSimpleValue(simpleRows, accessor),
-            standardError: computeSimpleRandomValueSe(populationVar, populationSize, extractAccessorValues(simpleRows, accessor).length),
+            standardError: computeSimpleRandomValueSe(populationVar, populationSize, extractAccessorValues(simpleRows, accessor).length, populationSd),
             sampleSize: extractAccessorValues(simpleRows, accessor).length || null,
         },
         systematic: {
@@ -133,6 +134,7 @@ export function buildTargetAnalysis(params: {
                 populationVar,
                 populationSize,
                 standardError,
+                populationSd,
             );
         }
 

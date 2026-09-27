@@ -1,4 +1,4 @@
-import { type NumericAccessor, fieldAccessor, sampleVariance, scaledMean } from "./values";
+import { type NumericAccessor, fieldAccessor, sampleStandardDeviation, scaledMean } from "./values";
 import type { SamplingResultsData } from "../experiment/types";
 import { StableSum } from "./stable-sum";
 
@@ -25,8 +25,7 @@ function computeLegacySystematicValueSe(
 
     if (startMeans.length === 0) return null;
 
-    const variance = sampleVariance(startMeans) * (startMeans.length - 1) / startMeans.length;
-    return Math.sqrt(variance);
+    return sampleStandardDeviation(startMeans) / Math.sqrt(startMeans.length / (startMeans.length - 1));
 }
 
 function computeFractionalSystematicValueSe(
@@ -92,15 +91,16 @@ function computeFractionalSystematicValueSe(
 
     let totalWeight = 0;
     let weightedMean = 0;
-    let weightedSquaredDeviation = 0;
+    let weightedDeviationNorm = 0;
     const includeSegment = (width: number) => {
         if (width <= tolerance || valueCount === 0) return;
         const weight = width / interval;
         const segmentMean = valueSum.value / valueCount;
         const nextTotalWeight = totalWeight + weight;
         const delta = segmentMean - weightedMean;
+        // Weighted Welford increment, accumulated without squaring tiny deviations.
+        weightedDeviationNorm = Math.hypot(weightedDeviationNorm, delta * Math.sqrt(weight * totalWeight / nextTotalWeight));
         weightedMean += delta * weight / nextTotalWeight;
-        weightedSquaredDeviation += weight * delta * (segmentMean - weightedMean);
         totalWeight = nextTotalWeight;
     };
 
@@ -140,7 +140,7 @@ function computeFractionalSystematicValueSe(
     includeSegment(interval - segmentStart);
 
     if (totalWeight === 0) return null;
-    return Math.sqrt(Math.max(0, weightedSquaredDeviation / totalWeight));
+    return weightedDeviationNorm / Math.sqrt(totalWeight);
 }
 
 export function computeSystematicExactMeanSe(

@@ -81,10 +81,9 @@ export function validateMeanPlanVariance(
     if (!samplePlan || typeof samplePlan !== "object") return null;
     const planned = Number((samplePlan as Record<string, unknown>).populationVariance);
     if (!Number.isFinite(planned) || planned <= 0) return "均值估计时需提供正的总体方差估计";
-    // 规划界面向学生展示并保存 4 位小数的方差，合法计划与总体值最多相差 5e-5；
-    // 该容差仍能拦住伪造值或换源后的过期计划（差异通常为数量级级别）。
-    const tolerance = Math.max(5e-5, 1e-9 * Math.abs(actual));
-    if (Math.abs(planned - actual) > tolerance) {
+    // 当前界面保存完整精度。仅容忍浮点相对误差；绝对容差会放过低方差总体的数量级变化。
+    // 旧的四位小数计划若不再匹配，必须按当前总体重新规划。
+    if (Math.abs(planned - actual) / actual > 1e-9) {
         return "总体方差与当前总体不一致，请按当前总体重新计算样本量";
     }
     return null;
