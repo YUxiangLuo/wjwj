@@ -11,9 +11,26 @@ import {
     validateTopicFieldMappingConfig,
     validateTopicName,
     validateWeightConfig,
+    validatePrimaryTargetDictionary,
 } from "./validation";
 import { validateRecommendQuestionsPayload } from "../../lib/validate-question";
 import { buildDefaultSamplingPolicy } from "../../lib/sampling-policy";
+import { suggestDictionary } from "../../domain/variables/dictionary";
+
+test("primary target completeness respects typed missing codes without banning auxiliary missingness", () => {
+    const rows = [{ target: "1", extra: -99 }, { target: "2", extra: 7 }];
+    const dictionary = suggestDictionary(rows, "fixture", 0, { numeric: ["target", "extra"] });
+    dictionary.variables.find(v => v.field === "extra")!.missing.push(-99);
+    const target = dictionary.variables.find(v => v.field === "target")!;
+    const mapping = { numeric: ["target", "extra"], analysisTarget: { kind: "mean", field: "target" } };
+    expect(validatePrimaryTargetDictionary(mapping, dictionary, rows)).toBeNull();
+    target.missing.push(1); // A numeric missing code does not match CSV text "1".
+    expect(validatePrimaryTargetDictionary(mapping, dictionary, rows)).toBeNull();
+    target.missing.push("1");
+    expect(validatePrimaryTargetDictionary(mapping, dictionary, rows)).toContain("研究目标变量");
+    // A non-event missing code still changes the denominator of a proportion.
+    expect(validatePrimaryTargetDictionary({ others: ["target"], analysisTarget: { kind: "proportion", field: "target", value: "2" } }, dictionary, rows)).toContain("缺失值");
+});
 
 test("constant mean targets fail early while constant proportions remain valid", () => {
     for (const value of [0, 100]) {

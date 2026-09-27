@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeAll, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import * as schema from "./schema";
 import { assertTestDatabaseIsMigrated } from "./test-database-guard";
+import type { VariableDictionary } from "../domain/variables/types";
 
 // 字典保存、冻结、换源与复制的真实数据库竞争回归。
 const required = process.env.REQUIRE_TEST_DATABASE === "1";
@@ -40,6 +41,28 @@ afterEach(async () => {
 afterAll(async () => { if (required) { await application?.closeDatabase(); await raw?.close(); } });
 
 const csv = "id,value,group\n1,10,A\n2,20,A\n3,30,B\n4,40,B\n5,50,B\n";
+
+pgTest.each(["mean", "proportion"])("primary %s targets cannot declare observed values missing at save or publication", async (kind) => {
+    const f = await fixture();
+    const mapping = { ...f.mapping, studyContract: { ...f.mapping.studyContract,
+        target: kind === "mean" ? { kind: "mean", field: "value" } : { kind: "proportion", field: "group", value: "A" },
+    } };
+    await application.db.update(schema.topic).set({ fieldMapping: mapping }).where(eq(schema.topic.id, f.topic.id));
+    const source = await variableSource.readVariableSource(f.storagePath, mapping);
+    const dictionary: VariableDictionary = f.dictionaryFrom("Value", source.source);
+    if (kind === "mean") dictionary.variables[1]!.missing = [null, "10"];
+    else {
+        dictionary.variables[2]!.missing = [null, "A"];
+        dictionary.variables[2]!.categories = [{ value: "B", label: "B" }];
+    }
+    const save = await dictionaryService.putTeacherVariableDictionary({ teacherId: f.teacher.id, topicId: f.topic.id,
+        body: { source: source.source, observedRevision: 0, dictionary } });
+    // A historical or restored dictionary must also be checked at publication.
+    await application.db.update(schema.topic).set({ variableDictionary: dictionary, variableRevision: 0 }).where(eq(schema.topic.id, f.topic.id));
+    const publish = await manageService.updateTeacherTopicBasics({ teacherId: f.teacher.id, topicId: f.topic.id, body: { status: 1 } });
+    expect({ saveRejected: !save.ok, publishRejected: !publish.ok }).toEqual({ saveRejected: true, publishRejected: true });
+    expect((await f.readTopic()).status).toBe(0);
+});
 
 async function fixture() {
     const suffix = crypto.randomUUID().slice(0, 8);

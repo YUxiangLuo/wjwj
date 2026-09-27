@@ -5,6 +5,7 @@ import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
 import { suggestDictionary, validateDictionary } from "../../domain/variables/dictionary";
 import type { VariableDictionary } from "../../domain/variables/types";
 import { canonicalJson, readVariableSource } from "../../server/variable-source";
+import { validatePrimaryTargetDictionary } from "./validation";
 
 function fail(message: string, code = "VALIDATION_ERROR", status = 400) {
     return { ok: false as const, message, code, status };
@@ -85,6 +86,8 @@ export async function putTeacherVariableDictionary(params: {
         } catch (error) {
             return fail(error instanceof Error ? error.message : "变量字典无效");
         }
+        const targetError = validatePrimaryTargetDictionary(state.fieldMapping, incoming, sourceData.rows);
+        if (targetError) return fail(targetError);
         if (incoming.revision !== state.variableRevision) return fail("变量字典修订号与观察版本不一致");
         const current = dictionaryValue(state.variableDictionary);
         if (current?.source === sourceData.source && canonicalJson(current.variables) === canonicalJson(incoming.variables)) {

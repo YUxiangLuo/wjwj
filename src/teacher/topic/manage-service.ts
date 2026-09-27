@@ -22,6 +22,7 @@ import {
     validateTopicFieldMappingConfig,
     validateTopicName,
     validateWeightConfig,
+    validatePrimaryTargetDictionary,
 } from "./validation";
 
 interface ServiceFailure {
@@ -156,7 +157,11 @@ export async function updateTeacherTopicBasics(params: {
             if (populationError) return fail(populationError);
             if (topicInfo.variableDictionary) {
                 const sourceData = await readVariableSource(topicInfo.excelFilePath, effectiveMapping);
-                try { validateDictionary(topicInfo.variableDictionary, sourceData.rows, sourceData.source); }
+                try {
+                    const dictionary = validateDictionary(topicInfo.variableDictionary, sourceData.rows, sourceData.source);
+                    const targetError = validatePrimaryTargetDictionary(effectiveMapping, dictionary, sourceData.rows);
+                    if (targetError) return fail(targetError);
+                }
                 catch { return fail("变量字典与当前总体不一致，请重新确认后再发布"); }
             }
         }

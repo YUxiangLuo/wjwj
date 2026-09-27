@@ -5,6 +5,8 @@ import { buildDefaultSamplingPolicy, filterPpsEligibleFields, resolveSamplingPol
 import { identityKey, normalizeIdentityText } from "../../lib/identity-text";
 import { isNumericText, parseNumericText } from "../../lib/numeric-text";
 import { isRowEmpty } from "./file-utils";
+import { valueKey } from "../../domain/variables/dictionary";
+import type { VariableDictionary } from "../../domain/variables/types";
 
 interface ParsedExcelFile {
     rows: Array<Record<string, any>>;
@@ -202,6 +204,23 @@ export function validateTopicPublishReadiness(topicInfo: TopicPublishReadyInput 
         return "实验模板需先完成评分规则配置后才能发布";
     }
 
+    return null;
+}
+
+/** Main estimands require a complete population, including dictionary missing codes. */
+export function validatePrimaryTargetDictionary(
+    fieldMapping: unknown,
+    dictionary: VariableDictionary,
+    rows: Record<string, unknown>[],
+) {
+    const target = resolveAnalysisTarget(fieldMapping)?.target;
+    if (!target) return null;
+    const variable = dictionary.variables.find(variable => variable.field === target.field);
+    if (!variable) return null; // Full dictionary coverage is validated separately.
+    const missing = new Set(variable.missing.map(valueKey));
+    if (rows.some(row => missing.has(valueKey(row[target.field])))) {
+        return `研究目标变量“${target.field}”包含字典声明的缺失值；主目标需要完整总体，请调整缺失编码或更换研究目标`;
+    }
     return null;
 }
 

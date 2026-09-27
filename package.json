@@ -20,6 +20,7 @@
     "test": "bun run test:unit",
     "typecheck": "bunx tsc --noEmit && bun run check:styles",
     "test:teaching": "bun run scripts/test-teaching-flow.ts",
+    "test:compatibility": "bun run build && bun run scripts/test-topic-compatibility.ts",
     "test:unit": "bun test --isolate src scripts",
     "test:unit:random": "bun test --isolate --randomize --seed=20260903 src scripts",
     "verify": "bun run typecheck && bun run check:docs && bun run test:unit && bun run build && bun run db:check && bun run audit:applicable",
