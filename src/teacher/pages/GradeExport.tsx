@@ -162,10 +162,8 @@ export function GradeExport() {
         }
     }
 
-    return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            <p className="text-label text-muted-foreground">按学期、班级和实验模板分析学生任务人次，并支持单项与批量导出。</p>
-
+    const analyticsContent = (
+        <section aria-label="成绩统计参考" className="space-y-6">
             <div className="grid grid-cols-4 gap-4">
                 <Card>
                     <CardContent className="p-4 flex items-center justify-between">
@@ -247,23 +245,31 @@ export function GradeExport() {
                         />
                     </div>
 
-                    <MetricBars
-                        title="分项平均分"
-                        description="仅统计已批改记录中的问卷设计、实验过程和实验报告分项。"
-                        valueSuffix=" 分"
-                        items={[
-                            { label: "问卷设计", value: analytics.scores.componentAverages.questionnaire, color: "var(--chart-2)" },
-                            { label: "实验过程", value: analytics.scores.componentAverages.process, color: "var(--chart-3)" },
-                            { label: "实验报告", value: analytics.scores.componentAverages.report, color: "var(--chart-4)" },
-                        ]}
-                    />
+                    <div>
+                        <MetricBars
+                            title="分项平均分"
+                            description="仅统计已批改记录中的问卷设计、实验过程和实验报告分项。"
+                            valueSuffix=" 分"
+                            items={[
+                                { label: "问卷设计", value: analytics.scores.componentAverages.questionnaire, color: "var(--chart-2)" },
+                                { label: "实验过程", value: analytics.scores.componentAverages.process, color: "var(--chart-3)" },
+                                { label: "实验报告", value: analytics.scores.componentAverages.report, color: "var(--chart-4)" },
+                            ]}
+                        />
+                    </div>
                 </>
             ) : null}
 
-            <Card>
-                <PageHeader as={CardHeader}>
+        </section>
+    );
+
+    return (
+        <div className="space-y-6 animate-in fade-in duration-500">
+            <p className="text-label text-muted-foreground">按学期、班级和实验模板分析学生任务人次，并支持单项与批量导出。</p>
+            <Card data-testid="teacher-export-list">
+                <PageHeader as={CardHeader} className="flex-wrap">
                     <div>
-                        <CardTitle className="text-body text-foreground">导出列表</CardTitle>
+                        <CardTitle className="text-section-title text-foreground">导出列表</CardTitle>
                         <p className="text-meta text-muted-foreground mt-1">{previewError ? "导出任务加载失败" : `共 ${preview.length} 条数据`}</p>
                     </div>
                     <div className="flex gap-3 flex-row w-auto flex-wrap">
@@ -403,6 +409,7 @@ export function GradeExport() {
                     </Table>
                 </CardContent>
             </Card>
+            {analyticsContent}
         </div>
     );
 }

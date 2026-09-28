@@ -115,6 +115,7 @@ test("submission previews distinguish selected, unselected, and disabled samplin
 
     await waitFor(() => expect(view.getByTestId("student-preview-sampling-pps").textContent).toContain("未选择"));
     expect(view.getByTestId("student-preview-sampling-simple").textContent).toContain("已完成");
+    expect(view.getByTestId("student-preview-submit-panel").compareDocumentPosition(view.getByTestId("student-preview-tabs")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // Disabled methods are not rendered as selectable rows.
     expect(view.queryByTestId("student-preview-sampling-stratified")).toBeNull();
 });

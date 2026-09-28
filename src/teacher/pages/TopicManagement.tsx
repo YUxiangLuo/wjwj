@@ -1,7 +1,7 @@
 import { RequestError } from "@/components/RequestError";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useState, useEffect, useMemo } from "react";
-import { BookOpen, Search, Layers, FileText } from "lucide-react";
+import { BookOpen, Search, Layers } from "lucide-react";
 import { getRichTextPlainText } from "@/utils/rich-text";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -23,7 +23,6 @@ import { isStudyContractComplete, type FieldMappingState } from "../components/S
 import { parseStudyContract } from "@/lib/analysis-target";
 import { TopicViewDialog } from "../components/TopicViewDialog";
 import { toast } from "sonner";
-import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { buildDefaultSamplingPolicy, resolveSamplingPolicy, type SamplingPolicyV1 } from "@/lib/sampling-policy";
@@ -431,57 +430,17 @@ export function TopicManagement() {
         <div className="space-y-6 animate-in fade-in duration-500">
             <p className="text-label text-muted-foreground">配置总体数据、研究目标、抽样策略、教学资料与评分规则。</p>
 
-            <div className="grid grid-cols-4 gap-4">
-                <Card>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">模板总数</p>
-                            <p className="text-page-title font-semibold text-foreground mt-1">{loading || loadError ? "-" : summary.total}</p>
-                        </div>
-                        <IconTile intent="info">
-                            <BookOpen className="w-5 h-5" />
-                        </IconTile>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已发布</p>
-                            <p className="text-page-title font-semibold text-foreground mt-1">{loading || loadError ? "-" : summary.published}</p>
-                        </div>
-                        <IconTile intent="success">
-                            <Layers className="w-5 h-5" />
-                        </IconTile>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">草稿</p>
-                            <p className="text-page-title font-semibold text-foreground mt-1">{loading || loadError ? "-" : summary.draft}</p>
-                        </div>
-                        <IconTile intent="warning">
-                            <FileText className="w-5 h-5" />
-                        </IconTile>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">数据行数</p>
-                            <p className="text-page-title font-semibold text-foreground mt-1">{loading || loadError ? "-" : summary.totalRows.toLocaleString()}</p>
-                        </div>
-                        <IconTile intent="auxiliary">
-                            <Layers className="w-5 h-5" />
-                        </IconTile>
-                    </CardContent>
-                </Card>
-            </div>
+            <dl aria-label="实验模板概览" className="grid grid-cols-4 gap-5 border-b border-border pb-5">
+                <div><dt className="text-meta text-muted-foreground">模板总数</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.total}</dd></div>
+                <div><dt className="text-meta text-muted-foreground">已发布</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.published}</dd></div>
+                <div><dt className="text-meta text-muted-foreground">草稿</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.draft}</dd></div>
+                <div><dt className="text-meta text-muted-foreground">总体数据行数</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.totalRows.toLocaleString()}</dd></div>
+            </dl>
 
             <Card>
                 <PageHeader as={CardHeader}>
                     <div>
-                        <h2 className="text-body font-semibold text-foreground">实验模板列表</h2>
+                        <h2 className="text-section-title font-semibold text-foreground">实验模板列表</h2>
                         <p className="text-meta text-muted-foreground mt-1">
                             {loading || loadError ? "共 - 条数据" : `共 ${filteredTopics.length} 条数据`}
                         </p>

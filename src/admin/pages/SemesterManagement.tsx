@@ -1,7 +1,7 @@
 import { RequestError } from "@/components/RequestError";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Trash2, Star, Loader2, Pencil, CalendarDays, School, CheckCircle, Search } from "lucide-react";
+import { Plus, Trash2, Star, Loader2, Pencil, School, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +14,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { semesterApi, type Semester } from "../api-client";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { toast } from "sonner";
-import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { LoadingStatus } from "@/components/LoadingStatus";
@@ -187,52 +186,11 @@ export function SemesterManagement() {
                 </Button>
             </PageHeader>
 
-            <div className="grid grid-cols-4 gap-4">
-                <Card>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">学期总数</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.total}</p>
-                        </div>
-                        <IconTile intent="info">
-                            <CalendarDays className="w-5 h-5" />
-                        </IconTile>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">当前学期</p>
-                            <p className="text-label font-bold text-foreground mt-2">{loading || loadError ? "-" : summary.currentName}</p>
-                        </div>
-                        <IconTile intent="success">
-                            <Star className="w-5 h-5" />
-                        </IconTile>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">历史学期</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.history}</p>
-                        </div>
-                        <div className="w-10 h-10 rounded-surface bg-muted text-muted-foreground flex items-center justify-center border border-input">
-                            <CheckCircle className="w-5 h-5" />
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已建班学期</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.withClasses}</p>
-                        </div>
-                        <IconTile intent="auxiliary">
-                            <School className="w-5 h-5" />
-                        </IconTile>
-                    </CardContent>
-                </Card>
-            </div>
+            <dl aria-label="学期概览" className="grid grid-cols-4 gap-5 border-b border-border pb-5">
+                {[["学期总数", summary.total], ["当前学期", summary.currentName], ["历史学期", summary.history], ["已建班学期", summary.withClasses]].map(([label, value]) => (
+                    <div key={label}><dt className="text-meta text-muted-foreground">{label}</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : value}</dd></div>
+                ))}
+            </dl>
 
             <Card>
                 <PageHeader as={CardHeader}>
@@ -240,7 +198,7 @@ export function SemesterManagement() {
                         <CardTitle className="text-body text-foreground">学期列表</CardTitle>
                         <p className="text-meta text-muted-foreground mt-1">共 {filteredSemesters.length} 条数据</p>
                     </div>
-                    <div className="flex gap-3 flex-row w-auto">
+                    <div className="flex flex-wrap gap-3 flex-row w-auto">
                         <Input
                             placeholder="搜索学期名称..."
                             aria-label="搜索学期名称"

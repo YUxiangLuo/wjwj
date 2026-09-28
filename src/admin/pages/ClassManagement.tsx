@@ -1,7 +1,7 @@
 import { RequestError } from "@/components/RequestError";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Trash2, Users, Pencil, Loader2, School, CalendarDays, UserCircle2, Search } from "lucide-react";
+import { Plus, Trash2, Users, Pencil, Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,6 @@ import { classApi, semesterApi, teacherApi, type Class, type Semester, type Teac
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { LoadingStatus } from "@/components/LoadingStatus";
@@ -171,8 +170,7 @@ export function ClassManagement() {
             {optionsLoad.error && <RequestError message={optionsLoad.error} onRetry={() => void loadInitialData()} />}
             <PageHeader border={false}>
                 <div>
-                    <h2 className="text-subheading font-semibold text-foreground">班级管理</h2>
-                    <p className="text-label text-muted-foreground mt-1">管理班级、授课教师与学生规模。</p>
+                    <p className="text-label text-muted-foreground">管理班级、授课教师与学生规模。</p>
                 </div>
                 <Button data-testid="class-create-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary-hover text-primary-foreground ">
                     <Plus className="w-4 h-4 mr-1" />
@@ -180,60 +178,20 @@ export function ClassManagement() {
                 </Button>
             </PageHeader>
 
-            <div className="grid grid-cols-4 gap-4">
-                <Card>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">班级总数</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.total}</p>
-                        </div>
-                        <IconTile intent="info">
-                            <School className="w-5 h-5" />
-                        </IconTile>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">学生总数</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.studentTotal}</p>
-                        </div>
-                        <IconTile intent="success">
-                            <Users className="w-5 h-5" />
-                        </IconTile>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">当前学期</p>
-                            <p className="text-label font-bold text-foreground mt-2">{loading || loadError ? "-" : summary.currentSemesterName}</p>
-                        </div>
-                        <IconTile intent="warning">
-                            <CalendarDays className="w-5 h-5" />
-                        </IconTile>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">授课教师</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.teacherCount}</p>
-                        </div>
-                        <IconTile intent="auxiliary">
-                            <UserCircle2 className="w-5 h-5" />
-                        </IconTile>
-                    </CardContent>
-                </Card>
-            </div>
+            <dl aria-label="班级概览" className="grid grid-cols-4 gap-5 border-b border-border pb-5">
+                <div><dt className="text-meta text-muted-foreground">班级总数</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.total}</dd></div>
+                <div><dt className="text-meta text-muted-foreground">学生总数</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.studentTotal}</dd></div>
+                <div><dt className="text-meta text-muted-foreground">当前学期</dt><dd className="mt-1 text-label font-semibold break-words">{loading || loadError ? "-" : summary.currentSemesterName}</dd></div>
+                <div><dt className="text-meta text-muted-foreground">授课教师</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.teacherCount}</dd></div>
+            </dl>
 
             <Card>
-                <PageHeader as={CardHeader}>
+                <PageHeader as={CardHeader} className="flex-wrap">
                     <div>
-                        <CardTitle className="text-body text-foreground">班级列表</CardTitle>
+                        <CardTitle className="text-section-title text-foreground">班级列表</CardTitle>
                         <p className="text-meta text-muted-foreground mt-1">共 {filteredClasses.length} 条数据</p>
                     </div>
-                    <div className="flex gap-3 flex-row w-auto">
+                    <div className="flex flex-wrap gap-3 flex-row w-auto">
                         <Input
                             placeholder="搜索班级 / 学期 / 教师"
                             aria-label="搜索班级、学期或教师"

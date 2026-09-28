@@ -21,7 +21,8 @@ await mkdir(artifacts, { recursive: true });
 for (const name of ["student-failure.png", "teacher-failure.png", "result.json", "teacher-dictionary.png", "numeric-variable-binding.png", "sampling-pps-policy.png", "sampling-animation-exact.png", "sampling-animation-receipt.png", "sampling-animation-zoom-200.png", "sampling-animation-zoom-200-pagination.png", "sampling-animation-zoom-200-draw.png", "stage4-saved-analysis.png", "teacher-submitted-appendix.png", "stale-analysis-warning.png", "empty-path-narrow.png"]) {
     await Bun.file(join(artifacts, name)).delete().catch(() => undefined);
 }
-const environment = { ...process.env, DATABASE_URL: String(databaseUrl), DEMO_MODE: "1", DEV_AUTH_MODE: "0", NODE_ENV: "development", HOST: "127.0.0.1" };
+const adminTestPassword = `Test-${crypto.randomUUID()}`;
+const environment = { ...process.env, SEED_ADMIN_PASSWORD: adminTestPassword, DATABASE_URL: String(databaseUrl), DEMO_MODE: "1", DEV_AUTH_MODE: "0", NODE_ENV: "development", HOST: "127.0.0.1" };
 const browserLauncher = join(root, "node_modules/agent-browser/bin/agent-browser.js");
 const sessionPrefix = `wj-flow-${crypto.randomUUID().slice(0, 8)}`;
 const student = `${sessionPrefix}-student`;
@@ -29,6 +30,7 @@ const student2 = `${sessionPrefix}-student2`;
 const seedStudent = `${sessionPrefix}-seed-student`;
 const teacher = `${sessionPrefix}-teacher`;
 const teacher2 = `${sessionPrefix}-teacher2`;
+const administrator = `${sessionPrefix}-admin`;
 let server: ReturnType<typeof Bun.spawn> | undefined;
 let databaseCreated = false;
 let baseUrl = "";
@@ -71,6 +73,19 @@ async function visible(session: string, selector: string) {
 async function page(session: string, path: string, selector: string) {
     await browser(session, "open", baseUrl + path);
     await visible(session, selector);
+}
+async function captureDesktop(session: string, name: string, primary: string) {
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(session, "set", "viewport", String(width), String(height));
+        await evaluate(session, 'scrollTo({top:0,behavior:"instant"})');
+        assert(await evaluate(session, `(() => {const r=document.querySelector(${JSON.stringify(primary)}).getBoundingClientRect();return r.top>=0 && r.top<innerHeight && r.right<=innerWidth && document.documentElement.scrollWidth<=innerWidth;})()`), `${name} main content must fit at ${width}px`);
+        await browser(session, "screenshot", join(artifacts, `${name}-${width}.png`));
+        if (width === 1024) {
+            const overflowTables = await evaluate<number>(session, `(async () => {let count=0;for(const region of document.querySelectorAll('[data-slot="table-container"]')){if(region.clientWidth===0 || region.scrollWidth<=region.clientWidth)continue;const action=[...region.querySelectorAll('button:not(:disabled),a[href]')].at(-1);if(!action)continue;region.scrollLeft=region.scrollWidth;await new Promise(requestAnimationFrame);const a=action.getBoundingClientRect(),r=region.getBoundingClientRect();if(a.left<r.left || a.right>r.right+1)throw Error('Table action cannot be scrolled into view');count++;}return count;})()`);
+            if (overflowTables) await browser(session, "screenshot", join(artifacts, `${name}-table-actions-${width}.png`));
+        }
+    }
+    await browser(session, "set", "viewport", "1280", "800");
 }
 async function api<T>(session: string, path: string, method = "GET", body?: unknown): Promise<T> {
     return evaluate(session, `(async () => {
@@ -119,10 +134,10 @@ async function completeQuestionnairePreview(session: string, questionCount: numb
     await eventually(() => evaluate(session, '!document.querySelector("[data-testid=immersive-questionnaire-preview]")'), "Trial did not return to the editor");
 }
 
-async function login(session: string, role: "student" | "teacher", account: string) {
+async function login(session: string, role: "student" | "teacher" | "admin", account: string, password = account) {
     await page(session, `/${role}/login`, "input[type=password]");
     await browser(session, "fill", "input:not([type=password])", account);
-    await browser(session, "fill", "input[type=password]", account);
+    await browser(session, "fill", "input[type=password]", password);
     await browser(session, "click", "button[type=submit]");
     await eventually(() => evaluate(session, `!location.pathname.endsWith("/login") && !document.querySelector("input[type=password]")`), `${role} login failed`);
 }
@@ -149,6 +164,77 @@ try {
     }, "Test server failed to start");
 
     await login(teacher, "teacher", "T001");
+    await login(administrator, "admin", "admin", adminTestPassword);
+    for (const [session, role, endpoint, panel, ready] of [
+        [teacher, "teacher", "/api/teacher/dashboard", "teacher-dashboard-active-tasks", '[data-testid="teacher-dashboard-active-tasks"] a[href*="/progress"]'],
+        [administrator, "admin", "/api/admin/stats", "admin-dashboard-announcements", '[data-testid="admin-dashboard-stat-students"]'],
+    ] as const) {
+        await page(session, `/${role}`, ready);
+        await eventually(() => evaluate(session, `document.querySelector('${ready}')?.textContent.trim().length > 0`), `${role} dashboard data missing`);
+        for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+            await browser(session, "set", "viewport", String(width), String(height));
+            assert(await evaluate(session, `(() => {const panel=document.querySelector('[data-testid="${panel}"]').getBoundingClientRect();return document.documentElement.scrollWidth<=innerWidth && panel.left>=0 && panel.right<=innerWidth && panel.top<innerHeight/2;})()`), `${role} dashboard main content must fit and start in the upper half at ${width}`);
+            await browser(session, "screenshot", join(artifacts, `${role}-dashboard-${width}.png`));
+        }
+        const route = `${baseUrl}${endpoint}*`;
+        await browser(session, "network", "route", route, "--body", JSON.stringify({ success: false, error: { code: "TEST_UNAVAILABLE", message: "模拟首页加载失败" } }));
+        await page(session, `/${role}`, '[role="alert"]');
+        await browser(session, "screenshot", join(artifacts, `${role}-dashboard-error.png`));
+        await browser(session, "network", "unroute", route);
+        await namedButton(session, role === "teacher" ? "重试" : "重新加载");
+        await eventually(() => evaluate(session, `!document.querySelector('[role="alert"]') && document.querySelector('${ready}')?.textContent.trim().length > 0`), `${role} dashboard retry failed`);
+        await browser(session, "set", "viewport", "1280", "800");
+    }
+    await activate(teacher, '[data-testid="teacher-dashboard-active-tasks"] a[href*="/progress"]');
+    await eventually(() => evaluate(teacher, 'location.pathname.endsWith("/progress")'), "Dashboard task link did not open progress");
+    await visible(teacher, '#teacher-progress-search');
+    const progressRows = await evaluate<number>(teacher, 'document.querySelectorAll("table[aria-label=任务学生进度] tbody tr").length');
+    assert(progressRows > 0, "Progress fixture must include students");
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(teacher, "set", "viewport", String(width), String(height));
+        assert(await evaluate(teacher, `(() => {const list=document.querySelector('[data-testid="teacher-progress-students"]').getBoundingClientRect();return !document.querySelector('#teacher-progress-charts') && list.top<innerHeight/2 && document.documentElement.scrollWidth<=innerWidth;})()`), `Progress list must take priority at ${width}px`);
+        await evaluate(teacher, 'document.getAnimations().forEach(animation=>animation.finish())');
+        await evaluate(teacher, `(() => {const button=document.querySelector('[aria-controls="teacher-progress-charts"]');button.addEventListener('click',event=>button.dataset.trustedClick=String(event.isTrusted),{once:true});})()`);
+        await browser(teacher, "click", '[aria-controls="teacher-progress-charts"]');
+        assert(await evaluate(teacher, `document.querySelector('[aria-controls="teacher-progress-charts"]').dataset.trustedClick==='true'`), "Progress disclosure must receive a trusted browser click");
+        await eventually(() => evaluate(teacher, `document.querySelector('[aria-controls="teacher-progress-charts"]').getAttribute('aria-expanded')==='true' && document.querySelector('[aria-label="学生实验状态分布环形图"]').getBoundingClientRect().height>0 && document.documentElement.scrollWidth<=innerWidth`), `Distribution must expand without overflow at ${width}px`);
+        await browser(teacher, "screenshot", join(artifacts, `teacher-progress-expanded-${width}.png`));
+        await browser(teacher, "press", "Enter");
+        await eventually(() => evaluate(teacher, `!document.querySelector('#teacher-progress-charts') && document.querySelector('[aria-controls="teacher-progress-charts"]').getAttribute('aria-expanded')==='false'`), "Distribution must collapse");
+        await browser(teacher, "press", "Space");
+        assert(await evaluate(teacher, `document.querySelector('[aria-controls="teacher-progress-charts"]').getAttribute('aria-expanded')==='true'`), "Space must expand the distribution");
+        await browser(teacher, "press", "Space");
+        await browser(teacher, "press", "Tab");
+        assert(await evaluate(teacher, `document.activeElement?.id==='teacher-progress-search'`), "Tab must advance from disclosure to student search");
+        await browser(teacher, "screenshot", join(artifacts, `teacher-progress-${width}.png`));
+    }
+    await captureDesktop(teacher, 'progress-table', '[data-testid="teacher-progress-students"]');
+    await browser(teacher, "fill", '#teacher-progress-search', "no-such-student-ui-check");
+    assert(await evaluate(teacher, 'document.querySelector("table[aria-label=任务学生进度] tbody").textContent.includes("暂无数据")'), "Progress search must show empty state");
+    await evaluate(teacher, `(() => {const input=document.querySelector('#teacher-progress-search');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'');input.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+    await eventually(() => evaluate(teacher, `document.querySelectorAll('table[aria-label="任务学生进度"] tbody tr').length===${progressRows}`), "Clearing progress search must restore all students");
+    console.log("PASS teacher/admin dashboard hierarchy, desktop viewports, retry and task navigation");
+    for (const [session, role, path, search, table] of [
+        [teacher, "teacher", "/teacher/task", "teacher-task-search", "实验任务列表"],
+        [administrator, "admin", "/admin/class", "class-search-input", "班级列表"],
+    ] as const) {
+        await page(session, path, `[data-testid="${search}"]`);
+        await eventually(() => evaluate(session, `document.querySelectorAll('table[aria-label="${table}"] tbody tr').length > 1`), `${role} list rows missing`);
+        for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+            await browser(session, "set", "viewport", String(width), String(height));
+            await evaluate(session, "scrollTo(0,0)");
+            assert(await evaluate(session, `(() => {const search=document.querySelector('[data-testid="${search}"]').getBoundingClientRect();const table=document.querySelector('table[aria-label="${table}"]');return document.documentElement.scrollWidth<=innerWidth && search.left>=0 && search.right<=innerWidth && table.querySelector('tbody tr').getBoundingClientRect().bottom<innerHeight;})()`), `${role} list must expose filters and first row without page overflow at ${width}`);
+            await browser(session, "screenshot", join(artifacts, `${role}-list-${width}.png`));
+        }
+        await browser(session, "fill", `[data-testid="${search}"]`, "不存在的专项测试记录");
+        await eventually(() => evaluate(session, `document.querySelectorAll('table[aria-label="${table}"] tbody tr td').length === 1`), `${role} empty search state missing`);
+        await browser(session, "screenshot", join(artifacts, `${role}-list-empty.png`));
+        // Explicit native input event: the browser CLI's empty fill did not notify React.
+        await evaluate(session, `(() => {const input=document.querySelector('[data-testid="${search}"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'');input.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+        await eventually(() => evaluate(session, `document.querySelectorAll('table[aria-label="${table}"] tbody tr').length > 1`), `${role} search clear did not restore rows`);
+        await browser(session, "set", "viewport", "1280", "800");
+    }
+    console.log("PASS teacher/admin list hierarchy, three desktop viewports and search recovery");
     const seededPending = await api<{ items: Array<{ id: number; topic: string }> }>(teacher, "/api/teacher/grading?status=pending&page=1&pageSize=20");
     const seededGrading = seededPending.items.find(item => item.topic === DOGFOOD_NAMES.topicA);
     assert(seededGrading, "Seeded pending grading item missing");
@@ -181,6 +267,15 @@ try {
     await activate(teacher, '[data-testid="teacher-topic-next"]');
     await activate(teacher, '[data-testid="teacher-topic-next"]');
     await visible(teacher, `input[aria-label="${continuousVariable.field} 标签"]`);
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(teacher, "set", "viewport", String(width), String(height));
+        await evaluate(teacher, `document.querySelector('[data-testid="teacher-topic-scroll-content"]').scrollTop=0`);
+        assert(await evaluate(teacher, `(() => {const dialog=document.querySelector('[role="dialog"]').getBoundingClientRect();const nav=document.querySelector('[data-testid="teacher-topic-step-navigation"]').getBoundingClientRect();const content=document.querySelector('[data-testid="teacher-topic-scroll-content"]').getBoundingClientRect();const next=document.querySelector('[data-testid="teacher-topic-next"]').getBoundingClientRect();return dialog.left>=0 && dialog.right<=innerWidth && dialog.top>=0 && dialog.bottom<=innerHeight && nav.bottom<=content.top && content.height>200 && content.bottom<=next.top;})()`), `Wizard navigation, scroll area and actions must not overlap at ${width}`);
+        await browser(teacher, "screenshot", join(artifacts, `teacher-wizard-${width}.png`));
+        await evaluate(teacher, `(() => {const content=document.querySelector('[data-testid="teacher-topic-scroll-content"]');content.scrollTop=content.scrollHeight;})()`);
+        assert(await evaluate(teacher, `(() => {const nav=document.querySelector('[data-testid="teacher-topic-step-navigation"]').getBoundingClientRect();const content=document.querySelector('[data-testid="teacher-topic-scroll-content"]');return content.scrollTop>0 && nav.bottom<=content.getBoundingClientRect().top && document.querySelector('[aria-current="step"]').textContent==='3';})()`), "Wizard scrolling must not hide the current step");
+    }
+    await browser(teacher, "set", "viewport", "1280", "800");
     const dictionaryLabel = `${continuousVariable.label}（浏览器确认）`;
     await browser(teacher, "fill", `input[aria-label="${continuousVariable.field} 标签"]`, dictionaryLabel);
     const missingBefore = await evaluate<string>(teacher, 'document.querySelector("#missing-0").value');
@@ -205,6 +300,21 @@ try {
 
     await login(student, "student", "S2610");
     const tasks = await api<StudentTask[]>(student, "/api/student/tasks");
+    await page(student, "/student", '[data-testid="student-task-grid"]');
+    await eventually(() => evaluate(student, `document.querySelectorAll('[data-testid^="student-task-card-"]').length===${tasks.length}`), "Task hall cards missing");
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(student, "set", "viewport", String(width), String(height));
+        assert(await evaluate(student, `document.documentElement.scrollWidth<=innerWidth && [...document.querySelectorAll('[data-testid^="student-task-card-"]')].every(card=>card.getBoundingClientRect().width>=320)`), `Task cards must retain readable width at ${width}`);
+        await browser(student, "screenshot", join(artifacts, `student-hall-${width}.png`));
+    }
+    for (const filter of ["submitted", "graded"] as const) {
+        await activate(student, `[data-testid="student-filter-${filter}"]`);
+        const expected = tasks.filter(task => task.status === filter).map(task => `student-task-card-${task.id}`).sort();
+        await eventually(() => evaluate(student, `JSON.stringify([...document.querySelectorAll('[data-testid^="student-task-card-"]')].map(card=>card.dataset.testid).sort())===${JSON.stringify(JSON.stringify(expected))} && document.querySelector('[data-testid="student-filter-${filter}"]').getAttribute('aria-pressed')==='true'`), `Task filter ${filter} does not match server tasks`);
+        await browser(student, "screenshot", join(artifacts, `student-hall-${filter}.png`));
+    }
+    await activate(student, '[data-testid="student-filter-all"]');
+    await browser(student, "set", "viewport", "1280", "800");
     const task = tasks.find(item => item.name === name);
     assert(task, "Published task did not reach student");
     const experimentPath = `/api/student/tasks/${task.id}/experiment`;
@@ -223,9 +333,38 @@ try {
     experiment = await api(student, `${experimentPath}/stages/1/complete`, "POST", { observedVersion: experiment.version, questionnaire });
     experiment = await api(student, `${experimentPath}/stages/1/reopen`, "POST", { observedVersion: experiment.version });
     await page(student, stageUrl, '[data-testid="student-questionnaire-title"]');
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(student, "set", "viewport", String(width), String(height));
+        await evaluate(student, 'scrollTo({top:0,behavior:"instant"})');
+        assert(await evaluate(student, `(() => {const title=document.querySelector('[data-testid="student-questionnaire-title"]');return title.value==='学习投入调查' && document.querySelector('[data-testid="student-questionnaire-welcome-editor"]').textContent.includes('欢迎参加本次学习投入调查') && document.documentElement.scrollWidth<=innerWidth;})()`), `Opening form must retain draft and fit at ${width}px`);
+        await browser(student, "screenshot", join(artifacts, `questionnaire-opening-${width}.png`));
+        assert(await evaluate(student, `(async () => {const reference=document.querySelector('[data-testid="student-questionnaire-opening-reference"]');reference.scrollIntoView({block:'center'});await new Promise(requestAnimationFrame);const bounds=reference.getBoundingClientRect();return bounds.top>=0 && bounds.bottom<=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect().top && reference.textContent.includes('数据仅用于教学分析');})()`), `Opening reference must remain readable above the footer at ${width}px`);
+        await browser(student, "screenshot", join(artifacts, `questionnaire-opening-reference-${width}.png`));
+    }
     await browser(student, "set", "viewport", "1280", "800");
     await browser(student, "fill", '[data-testid="student-questionnaire-title"]', "学习投入调查：浏览器试填");
     await activate(student, '[data-testid="student-questionnaire-step-2"]');
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(student, "set", "viewport", String(width), String(height));
+        await evaluate(student, 'scrollTo({top:0,behavior:"instant"})');
+        assert(await evaluate(student, `(() => {const list=document.querySelector('[data-testid="student-questionnaire-list"]');const rows=[...list.querySelectorAll('[draggable="true"]')];return rows.length===5 && rows.every(row=>row.getBoundingClientRect().right<=innerWidth) && document.documentElement.scrollWidth<=innerWidth;})()`), `Questionnaire rows must fit at ${width}px`);
+        await browser(student, "screenshot", join(artifacts, `questionnaire-editor-${width}.png`));
+        assert(await evaluate(student, `(async () => {const last=document.querySelector('[data-testid="student-questionnaire-item-q4"]');last.scrollIntoView({block:'center'});await new Promise(requestAnimationFrame);const bounds=last.getBoundingClientRect();return bounds.top>=0 && bounds.bottom<=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect().top;})()`), `Last question must scroll clear of the footer at ${width}px`);
+        assert(await evaluate(student, `(async () => {scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'});await new Promise(requestAnimationFrame);const reference=document.querySelector('[data-testid="student-questionnaire-reference"]');return reference.getBoundingClientRect().bottom<=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect().top;})()`), `Design advice must scroll clear of the footer at ${width}px`);
+        await browser(student, "screenshot", join(artifacts, `questionnaire-reference-tail-${width}.png`));
+    }
+    await browser(student, "set", "viewport", "1280", "800");
+    const recommendationToggle = '[aria-controls="student-recommended-question-list"]';
+    await evaluate(student, `document.querySelector('${recommendationToggle}').focus()`);
+    await browser(student, "press", "Enter");
+    assert(await evaluate(student, `document.querySelector('${recommendationToggle}').getAttribute('aria-expanded')==='false' && !document.querySelector('#student-recommended-question-list')`), "Keyboard collapse must hide recommended questions");
+    await browser(student, "screenshot", join(artifacts, "questionnaire-references-collapsed.png"));
+    await browser(student, "press", "Space");
+    assert(await evaluate(student, `document.querySelector('${recommendationToggle}').getAttribute('aria-expanded')==='true' && Boolean(document.querySelector('#student-recommended-question-list'))`), "Keyboard expand must restore recommended questions");
+    await activate(student, '[data-testid="student-questionnaire-move-down-q0"]');
+    assert(await evaluate(student, `document.querySelector('[data-testid="student-questionnaire-list"] [draggable="true"]').dataset.testid==='student-questionnaire-item-q1'`), "Question move-down must change order");
+    await activate(student, '[data-testid="student-questionnaire-move-up-q0"]');
+    assert(await evaluate(student, `document.querySelector('[data-testid="student-questionnaire-list"] [draggable="true"]').dataset.testid==='student-questionnaire-item-q0'`), "Question move-up must restore order");
     await namedButton(student, "关联变量");
     await visible(student, '[aria-label="选择变量字段"]');
     // 关联对话框：焦点进入、Tab 不逃逸、Escape 关闭并把焦点还给触发按钮
@@ -245,7 +384,20 @@ try {
     await eventually(() => evaluate(student, 'document.body.textContent.includes("已关联变量")'), "Numeric variable binding was not shown");
     await browser(student, "screenshot", join(artifacts, "numeric-variable-binding.png"));
     await activate(student, '[data-testid="student-questionnaire-step-4"]');
-    await completeQuestionnairePreview(student, 5);
+    for (const state of ["pending", "completed"]) {
+        if (state === "completed") await completeQuestionnairePreview(student, 5);
+        assert(await evaluate(student, `document.querySelector('[data-testid="student-questionnaire-complete"]').disabled===${state === "pending"}`), `Questionnaire completion gate must reflect ${state} trial`);
+        for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+            await browser(student, "set", "viewport", String(width), String(height));
+            const trialSelector = `[data-testid="student-questionnaire-${state === "pending" ? "start" : "redo"}-preview"]`;
+            await evaluate(student, `document.querySelector('${trialSelector}').scrollIntoView({block:'center'})`);
+            assert(await evaluate(student, `(() => {const button=document.querySelector('${trialSelector}').getBoundingClientRect();return button.top>=0 && button.bottom<=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect().top && document.documentElement.scrollWidth<=innerWidth;})()`), `${state} trial action must remain reachable at ${width}px`);
+            await browser(student, "screenshot", join(artifacts, `questionnaire-trial-${state}-${width}.png`));
+            assert(await evaluate(student, `(async () => {scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'});await new Promise(requestAnimationFrame);const panel=document.querySelector('[data-testid="student-questionnaire-structure"]');return panel.textContent.includes('100分不代表问卷具有良好效度、信度') && panel.getBoundingClientRect().bottom<=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect().top;})()`), `Structure details and caveat must remain available at ${width}px`);
+            await browser(student, "screenshot", join(artifacts, `questionnaire-structure-${state}-${width}.png`));
+        }
+    }
+    await browser(student, "set", "viewport", "1280", "800");
     await activate(student, '[data-testid="student-questionnaire-complete"]');
     await visible(student, '[data-testid="student-stage-sample-plan"]');
     experiment = await api(student, experimentPath);
@@ -253,6 +405,12 @@ try {
     assert(experiment.questionnaire?.title === "学习投入调查：浏览器试填", "Questionnaire save lost the reviewed title");
     console.log("PASS questionnaire editing, explicit trial navigation and one-step save (real browser)");
     await page(student, stageUrl, '[data-testid="student-stage-sample-plan"]');
+    await visible(student, '[data-testid="planning-scroll-content"]');
+    await activate(student, '[data-testid="immersive-sp-close"]');
+    await namedButton(student, "确定退出");
+    await visible(student, '[data-testid="student-sample-plan-start"]');
+    await browser(student, "screenshot", join(artifacts, "planning-entry.png"));
+    await activate(student, '[data-testid="student-sample-plan-start"]');
     await visible(student, '[data-testid="planning-scroll-content"]');
     const planningLayout = await evaluate<{ viewportHeight: number; top: number; bottom: number; contentBottom: number; footerTop: number }>(student, `(() => {
         const dialog = document.querySelector('[data-testid="immersive-sample-planning"]');
@@ -308,7 +466,19 @@ try {
         await activate(student, '[data-testid="immersive-sp-quiz-next"]');
     }
     console.log("PASS required planning lessons, retry feedback, draft recovery and layout (real browser)");
+    const planSaveRoute = `${baseUrl}/api/student/tasks/${task.id}/experiment/stages/2/complete*`;
+    await browser(student, "network", "route", planSaveRoute, "--body", JSON.stringify({ success: false, error: { code: "TEST_UNAVAILABLE", message: "模拟规划保存失败，请重试" } }));
     await activate(student, '[data-testid="immersive-sp-confirm"]');
+    await visible(student, '[data-testid="student-sample-plan-summary"]');
+    assert(await evaluate(student, `document.querySelector('[data-testid="student-sample-plan-summary"]').textContent.includes(${JSON.stringify(String(plan.recommendedSize))})`), "Failed save must retain the calculated plan summary");
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(student, "set", "viewport", String(width), String(height));
+        await evaluate(student, `document.querySelector('[data-testid="student-sample-plan-summary"]').scrollIntoView({block:'center'})`);
+        assert(await evaluate(student, "document.documentElement.scrollWidth<=innerWidth"), "Plan summary must not overflow");
+        await browser(student, "screenshot", join(artifacts, `planning-summary-${width}.png`));
+    }
+    await browser(student, "network", "unroute", planSaveRoute);
+    await activate(student, '[data-testid="student-sample-plan-next"]');
     await visible(student, '[data-testid="student-stage-sampling"]');
     experiment = await api(student, experimentPath);
     assert(experiment.currentStage === 3 && experiment.samplePlan?.finalSampleSize === plan.recommendedSize, "Stage 2 did not persist");
@@ -316,6 +486,13 @@ try {
     await page(student, stageUrl, '[data-testid="student-stage-sampling"]');
     const diningStats = await api<{ ppsEligibleFields: string[] }>(student, `/api/student/tasks/${task.id}/stats`);
     assert(JSON.stringify(diningStats.ppsEligibleFields) === JSON.stringify([DINING_PPS_SIZE_FIELD]), `Dining PPS policy exposed unintended fields: ${JSON.stringify(diningStats.ppsEligibleFields)}`);
+    for (const method of ["simple", "systematic", "pps", "stratified"]) {
+        await activate(student, `[data-testid="student-sampling-tab-${method}"]`);
+        assert(await evaluate(student, `(() => {const preview=document.querySelector('[data-testid="student-sampling-${method}-preview"]');const bounds=preview?.getBoundingClientRect();return bounds && bounds.height>0 && bounds.height<140 && !preview.querySelector('table') && document.documentElement.scrollWidth<=innerWidth;})()`), `${method} empty preview must be compact without horizontal overflow`);
+        await evaluate(student, `document.querySelector('[data-testid="student-sampling-${method}-preview"]').scrollIntoView({block:'center'})`);
+        await browser(student, "screenshot", join(artifacts, `sampling-${method}-empty.png`));
+    }
+    await evaluate(student, 'scrollTo({top:0,behavior:"instant"})');
     await activate(student, '[data-testid="student-sampling-tab-pps"]');
     await visible(student, '[data-testid="student-sampling-pps-size-field"]');
     assert(await evaluate(student, `document.querySelector('[data-testid="student-sampling-pps-size-field"]').textContent.includes(${JSON.stringify(DINING_PPS_SIZE_FIELD)})`), "Dining PPS control did not select the policy-approved prior-frame size field");
@@ -376,6 +553,19 @@ try {
     }
     await page(student, stageUrl, '[data-testid="student-stage-sampling"]');
     assert(await evaluate(student, `(() => {const table=document.querySelector('[aria-label^="抽样结果数据表"]');const stage=document.querySelector('[data-testid="student-stage-sampling"]');return table && table.getBoundingClientRect().width > stage.getBoundingClientRect().width*0.8 && document.documentElement.scrollWidth<=innerWidth;})()`), "Sampling data table must use the available width without overflowing the page");
+    await activate(student, '[data-testid="student-sampling-tab-stratified"]');
+    await activate(student, '[data-testid="student-sampling-stratified-run"]');
+    await visible(student, '[data-testid="immersive-sampling-animation"]');
+    await activate(student, '[data-testid="immersive-sampling-skip"]');
+    await visible(student, '[data-testid="sampling-animation-receipt"]');
+    await activate(student, '[data-testid="immersive-sampling-return"]');
+    for (const method of ["simple", "systematic", "pps", "stratified"]) {
+        await activate(student, `[data-testid="student-sampling-tab-${method}"]`);
+        assert(await evaluate(student, `(() => {const preview=document.querySelector('[data-testid="student-sampling-${method}-preview"]');return preview?.getBoundingClientRect().height===360 && preview.querySelector('table tbody tr') && document.documentElement.scrollWidth<=innerWidth;})()`), `${method} completed preview must retain table space and saved records`);
+        await evaluate(student, `document.querySelector('[data-testid="student-sampling-${method}-preview"]').scrollIntoView({block:'center'})`);
+        await browser(student, "screenshot", join(artifacts, `sampling-${method}-completed.png`));
+        assert(await evaluate(student, `(async () => {const preview=document.querySelector('[data-testid="student-sampling-${method}-preview"]');const region=preview.querySelector('[role="region"]');region.scrollTop=region.scrollHeight;await new Promise(requestAnimationFrame);const last=region.querySelector('tbody tr:last-child').getBoundingClientRect();const bounds=region.getBoundingClientRect();return last.top>=bounds.top && last.bottom<=bounds.bottom && preview.getBoundingClientRect().bottom<=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect().top;})()`), `${method} last preview row and pagination must remain reachable above the sticky footer`);
+    }
     await activate(student, '[data-testid="student-sampling-next"]');
     await visible(student, '[data-testid="student-stage-analysis-report"]');
     experiment = await api(student, experimentPath);
@@ -385,6 +575,18 @@ try {
     await eventually(() => evaluate(student, `(() => {const panel=document.querySelector('[data-testid="student-target-metrics"]');const table=panel?.querySelector('table');return panel && table && table.getBoundingClientRect().width<=panel.getBoundingClientRect().width && document.documentElement.scrollWidth<=innerWidth;})()`), "Target comparison table must fit the full-width result panel");
     await eventually(() => evaluate(student, `(() => {const rows=document.querySelectorAll('[data-testid="student-target-metrics"] tbody tr');const footer=document.querySelector('[data-testid="student-stage-actions"]');return rows.length>=2 && rows[1].getBoundingClientRect().bottom<=footer.getBoundingClientRect().top;})()`), "The first two comparison results must be fully visible above the footer at 1280×800");
     await browser(student, "screenshot", join(artifacts, "analysis-results.png"));
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(student, "set", "viewport", String(width), String(height));
+        await evaluate(student, `scrollTo(0,0);document.querySelector('[data-testid="student-study-context"]').open=true`);
+        assert(await evaluate(student, `(() => {const nav=document.querySelector('[data-testid="student-experiment-navigation"]').getBoundingClientRect();const context=document.querySelector('[data-testid="student-study-context"]').getBoundingClientRect();return document.documentElement.scrollWidth<=innerWidth && context.top>=nav.bottom && document.querySelectorAll('[data-testid="student-experiment-stages"] [aria-current="step"]').length===1;})()`), `Student navigation and expanded study context must remain readable at ${width}`);
+        await browser(student, "screenshot", join(artifacts, `student-context-${width}.png`));
+    }
+    await evaluate(student, `document.querySelector('[data-testid="student-study-context"]').open=false`);
+    await browser(student, "set", "viewport", "1280", "800");
+    await evaluate(student, `document.querySelector('[data-testid="student-target-metrics"] details').open = true`);
+    await evaluate(student, `document.querySelector('[data-testid="student-target-metrics"] details').scrollIntoView({block:'center'})`);
+    await browser(student, "screenshot", join(artifacts, "analysis-diagnostics.png"));
+    await evaluate(student, `document.querySelector('[data-testid="student-target-metrics"] details').open = false`);
     const metrics = await api<AnalysisMetricsResult>(student, `/api/student/tasks/${task.id}/analysis-metrics`);
     assert(metrics.ppsStandardErrorMode === "systematic_exact" && metrics.ppsMonteCarloReplicates === 0,
         "PPS worker did not use exact design integration");
@@ -494,8 +696,22 @@ try {
     const report = "本次实验以食堂午间十五分钟服务时段的平均等待分钟数为研究目标。我们比较了简单随机、系统抽样与以客流量为规模变量的PPS估计及设计标准误，并结合总体真值讨论精度和代表性。样本量规划采用有限总体校正，本次无回答率假设为零。分析单位是服务时段而非就餐学生，单次样本差异不能直接解释为服务质量的因果差异。";
     await browser(student, "fill", '[data-testid="student-analysis-report-editor"]', report);
     await browser(student, "screenshot", join(artifacts, "report-editor.png"));
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(student, "set", "viewport", String(width), String(height));
+        await evaluate(student, `document.querySelector('[data-testid="student-analysis-report-editor"]').scrollIntoView({block:'center'})`);
+        assert(await evaluate(student, `(() => {const editor=document.querySelector('[data-testid="student-analysis-report-editor"]').getBoundingClientRect();const reference=document.querySelector('[aria-label="报告写作参考"]').getBoundingClientRect();return document.documentElement.scrollWidth<=innerWidth && editor.width>=400 && (reference.left>=editor.right || reference.top>=editor.bottom);})()`), `Report editor and reference must not overlap or overflow at ${width}×${height}`);
+        await browser(student, "screenshot", join(artifacts, `report-editor-${width}.png`));
+        await evaluate(student, `document.querySelector('[aria-label="报告写作参考"] > p:last-child').scrollIntoView({block:'center'})`);
+        assert(await evaluate(student, `(() => {const tail=document.querySelector('[aria-label="报告写作参考"] > p:last-child').getBoundingClientRect();const footer=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect();const navigation=document.querySelector('[data-testid="student-experiment-navigation"]').getBoundingClientRect();return tail.bottom<=footer.top && tail.top>=navigation.bottom;})()`), `Report reference tail must scroll clear of sticky navigation and actions at ${width}×${height}`);
+        await browser(student, "screenshot", join(artifacts, `report-reference-tail-${width}.png`));
+    }
+    await browser(student, "set", "viewport", "1280", "800");
     await activate(student, '[data-testid="student-analysis-preview"]');
     await visible(student, '[data-testid="student-preview-submit"]');
+    await captureDesktop(student, "submission-preview", '[data-testid="student-preview-submit-panel"]');
+    await activate(student, '[data-testid="student-preview-tab-questionnaire"]');
+    await captureDesktop(student, "submission-questionnaire", '[data-testid="student-preview-submit-panel"]');
+    await activate(student, '[data-testid="student-preview-tab-report"]');
     experiment = await api(student, experimentPath);
     assert(experiment.stage4CompletedAt, "Stage 4 did not persist");
     console.log("PASS four stage transitions, rendered pages and PPS analysis");
@@ -513,6 +729,9 @@ try {
         }, "Submission failed");
     }
     await submit();
+    await page(student, `/student/task/${task.id}/result`, '[data-testid="student-submission-pending"]');
+    assert(await evaluate(student, `!document.querySelector('[data-testid="student-submission-scores"]') && document.querySelector('[data-testid="student-submission-pending"]').getBoundingClientRect().top<document.querySelector('[data-testid="student-submission-content"]').getBoundingClientRect().top`), "Pending state must precede frozen content without empty score tiles");
+    await captureDesktop(student, "submission-pending", '[data-testid="student-submission-pending"]');
     const frozenStudent = await api<{ snapshot: { analysisAppendices: Array<{ id: number; result: unknown }> } }>(student, `/api/student/tasks/${task.id}/submission`);
     const frozenTeacher = await api<{ analysisAppendices: Array<{ id: number; result: unknown }> }>(teacher, `/api/teacher/grading/${experiment.id}`);
     assert(frozenStudent.snapshot.analysisAppendices[0]?.id === referencedAnalysisId, "Submission did not freeze selected analysis");
@@ -527,6 +746,9 @@ try {
     await browser(teacher, "fill", "#grading-reject-reason", "请补充不同抽样设计的误差解释后重新提交。");
     await namedButton(teacher, "确认驳回");
     await eventually(async () => (await api<ExperimentData>(student, experimentPath)).status === "rejected", "Rejection failed");
+    await page(student, `/student/task/${task.id}/result`, '[data-testid="student-submission-rejection"]');
+    assert(await evaluate(student, `document.querySelector('[data-testid="student-submission-rejection"]').textContent.includes('请补充不同抽样设计的误差解释') && !document.querySelector('[data-testid="student-submission-scores"]')`), "Rejected result must show actionable feedback without scores");
+    await captureDesktop(student, "submission-rejected", '[data-testid="student-submission-rejection"]');
     experiment = await api(student, experimentPath);
     await page(student, stageUrl, '[data-testid="student-experiment-rejection-notice"]');
     experiment = await api(student, `${experimentPath}/stages/4/reopen`, "POST", { observedVersion: experiment.version });
@@ -545,7 +767,11 @@ try {
     await page(student, `/student/task/${task.id}/result`, '[data-testid="student-submission-detail"]');
     assert(await evaluate(student, 'document.body.textContent.includes("90") && document.body.textContent.includes("已完成修改，分析准确。")'), "Student grade or comment missing");
     await browser(student, "screenshot", join(artifacts, "student-result.png"));
+    await captureDesktop(student, "submission-graded", '[data-testid="student-submission-scores"]');
     await page(teacher, "/teacher/export", 'button');
+    await visible(teacher, '[data-testid="teacher-export-list"]');
+    await captureDesktop(teacher, "export-list", '[data-testid="teacher-export-list"]');
+    assert(await evaluate(teacher, `Boolean(document.querySelector('[data-testid="teacher-export-list"]').compareDocumentPosition(document.querySelector('[aria-label="成绩统计参考"]')) & Node.DOCUMENT_POSITION_FOLLOWING)`), "Export filters must precede analytics in DOM reading order");
     const rows = await api<Array<{ totalScore: string; name: string }>>(teacher, `/api/teacher/grade-export/data?taskId=${task.id}`);
     assert(rows.length === 1 && Number(rows[0]!.totalScore) === 90, "Grade export disagrees with the submitted score");
     const download = await evaluate<{ status: number; bytes: number; base64: string }>(teacher, `(async()=>{const r=await fetch("/api/teacher/grade-export/excel?taskId=${task.id}");const bytes=new Uint8Array(await r.arrayBuffer());return {status:r.status,bytes:bytes.length,base64:btoa(String.fromCharCode(...bytes))}})()`);
@@ -694,6 +920,21 @@ try {
     await eventually(async () => {const state = await api<DictionarySnapshot>(teacher, `/api/teacher/topics/${conflictTopic.id}/variables`);return state.revision === revisionBeforeA + 2 && state.dictionary?.variables.find(variable => variable.field === "score")?.label === "窗口B最终标签";}, "Window B retry save failed");
     console.log("PASS dual teacher windows: stale revision, input retention, reload and retry");
 
+    for (const [session, path, name, selector] of [
+        [teacher, '/teacher/topic', 'topic-list', '[data-testid="teacher-topic-search"]'],
+        [teacher, '/teacher/grading', 'grading-list', '#grading-search'],
+        [teacher, '/teacher/class', 'teacher-class-list', '[data-testid="teacher-class-search"]'],
+        [administrator, '/admin/semester', 'semester-list', '[aria-label="搜索学期名称"]'],
+    ] as const) {
+        await page(session, path, selector);
+        await captureDesktop(session, name, selector);
+    }
+    await page(teacher, '/teacher/class', '[data-testid="teacher-class-search"]');
+    await eventually(() => evaluate(teacher, `Boolean(document.querySelector('a[href*="/students"]'))`), 'Student management link missing');
+    await activate(teacher, 'a[href*="/students"]');
+    await visible(teacher, '[data-testid="teacher-student-search"]');
+    await captureDesktop(teacher, 'teacher-student-list', '[data-testid="teacher-student-search"]');
+
     await Bun.write(join(artifacts, "result.json"), JSON.stringify({ success: true, taskId: task.id, experimentId: experiment.id, grade: 90, exportBytes: download.bytes, emptyFeature: { taskId: emptyTask.id, experimentId: emptyExperiment.id }, conflictTopicId: conflictTopic.id }, null, 2));
 } catch (cause) {
     for (const session of [student, teacher]) {
@@ -701,7 +942,7 @@ try {
     }
     throw cause;
 } finally {
-    for (const session of [student, student2, seedStudent, teacher, teacher2]) await browser(session, "close").catch(() => undefined);
+    for (const session of [student, student2, seedStudent, teacher, teacher2, administrator]) await browser(session, "close").catch(() => undefined);
     if (server) {
         server.kill("SIGTERM");
         const timer = setTimeout(() => server!.kill("SIGKILL"), 7000);

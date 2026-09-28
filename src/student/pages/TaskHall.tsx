@@ -362,17 +362,17 @@ export function TaskHall() {
                 <p className="mt-1 text-label text-muted-foreground">查看实验任务、截止时间与学习进度（中国标准时间 UTC+8）。</p>
             </div>
             {latestAnnouncement && (
-                <div className="rounded-surface border border-info-border bg-info-muted p-4 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="p-2 rounded-control bg-info-muted text-info shrink-0">
+                <div className="border-b border-border pb-4 flex items-center justify-between gap-4">
+                    <div className="min-w-0 flex items-center gap-3">
+                        <div className="text-muted-foreground shrink-0">
                             <Info className="w-5 h-5" />
                         </div>
-                        <div>
-                            <div className="text-label text-info font-medium font-mono tracking-wider uppercase text-meta mb-0.5">最新公告</div>
-                            <div className="text-label text-info font-medium line-clamp-1">{latestAnnouncement.title}</div>
+                        <div className="min-w-0">
+                            <div className="text-meta text-muted-foreground mb-0.5">最新公告</div>
+                            <div className="text-label text-foreground line-clamp-1">{latestAnnouncement.title}</div>
                         </div>
                     </div>
-                    <Button variant="ghost" size="sm" className="rounded-control text-info hover:text-info hover:bg-info-muted shrink-0" onClick={() => setShowAnnouncements(true)}>
+                    <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setShowAnnouncements(true)}>
                         查看详情
                     </Button>
                 </div>
@@ -388,6 +388,7 @@ export function TaskHall() {
                     <button
                         onClick={() => setFilter("all")}
                         data-testid="student-filter-all"
+                        aria-pressed={filter === "all"}
                         className={`px-4 py-1.5 text-label font-medium rounded-control transition-none ${filter === "all" ? "bg-muted text-foreground " : "text-muted-foreground hover:text-foreground"}`}
                     >
                         全部
@@ -395,6 +396,7 @@ export function TaskHall() {
                     <button
                         onClick={() => setFilter("in_progress")}
                         data-testid="student-filter-in-progress"
+                        aria-pressed={filter === "in_progress"}
                         className={`px-4 py-1.5 text-label font-medium rounded-control transition-none ${filter === "in_progress" ? "bg-muted text-foreground " : "text-muted-foreground hover:text-foreground"}`}
                     >
                         进行中
@@ -402,6 +404,7 @@ export function TaskHall() {
                     <button
                         onClick={() => setFilter("submitted")}
                         data-testid="student-filter-submitted"
+                        aria-pressed={filter === "submitted"}
                         className={`px-4 py-1.5 text-label font-medium rounded-control transition-none ${filter === "submitted" ? "bg-muted text-foreground " : "text-muted-foreground hover:text-foreground"}`}
                     >
                         已提交
@@ -409,6 +412,7 @@ export function TaskHall() {
                     <button
                         onClick={() => setFilter("graded")}
                         data-testid="student-filter-graded"
+                        aria-pressed={filter === "graded"}
                         className={`px-4 py-1.5 text-label font-medium rounded-control transition-none ${filter === "graded" ? "bg-muted text-foreground " : "text-muted-foreground hover:text-foreground"}`}
                     >
                         已批改
@@ -417,7 +421,7 @@ export function TaskHall() {
             </div>
 
             {/* Task Grid */}
-            <div className="grid grid-cols-3 gap-6 min-h-[300px]" data-testid="student-task-grid">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] gap-6 min-h-[300px]" data-testid="student-task-grid">
                 {taskError ? (
                     <div className="col-span-full flex flex-col items-center justify-center rounded-surface border border-dashed border-destructive-border bg-destructive-muted py-20">
                         <div className="w-16 h-16 bg-destructive rounded-control flex items-center justify-center mb-4 border border-destructive">

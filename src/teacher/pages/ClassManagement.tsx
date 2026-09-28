@@ -7,9 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Users, School, CalendarDays, Search } from "lucide-react";
+import { Users, Search } from "lucide-react";
 import { teacherApi, type TeacherClass } from "../api-client";
-import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 
 export function ClassManagement() {
@@ -51,41 +50,11 @@ export function ClassManagement() {
         <div className="space-y-6 animate-in fade-in duration-500">
             <p className="text-label text-muted-foreground">查看班级名单与学期分布。</p>
 
-            <div className="grid grid-cols-3 gap-4">
-                <Card>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">班级总数</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.total}</p>
-                        </div>
-                        <IconTile intent="info">
-                            <School className="w-5 h-5" />
-                        </IconTile>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">学生总数</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.studentTotal}</p>
-                        </div>
-                        <IconTile intent="success">
-                            <Users className="w-5 h-5" />
-                        </IconTile>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">学期数量</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.semesterCount}</p>
-                        </div>
-                        <IconTile intent="warning">
-                            <CalendarDays className="w-5 h-5" />
-                        </IconTile>
-                    </CardContent>
-                </Card>
-            </div>
+            <dl aria-label="班级概览" className="grid grid-cols-3 gap-5 border-b border-border pb-5">
+                {[["班级总数", summary.total], ["学生总数", summary.studentTotal], ["学期数量", summary.semesterCount]].map(([label, value]) => (
+                    <div key={label}><dt className="text-meta text-muted-foreground">{label}</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : value}</dd></div>
+                ))}
+            </dl>
 
             <Card>
                 <PageHeader as={CardHeader}>
@@ -95,7 +64,7 @@ export function ClassManagement() {
                             {loading || loadError ? "共 - 条数据" : `共 ${filteredClasses.length} 条数据`}
                         </p>
                     </div>
-                    <div className="flex gap-3 flex-row w-auto">
+                    <div className="flex flex-wrap gap-3 flex-row w-auto">
                         <div className="relative">
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                             <Input

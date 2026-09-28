@@ -14,6 +14,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
+import { PageHeader } from "@/components/PageHeader";
 import { formatDateTimeDisplay } from "@/utils/format";
 import { teacherApi, type GradingItem } from "../api-client";
 
@@ -89,9 +90,12 @@ export function GradingManagement() {
         <div className="space-y-6">
             <p className="text-label text-muted-foreground">评分直接写入学生当前实验；驳回后学生可修改并覆盖重交。</p>
             <Card>
-                <CardHeader className="flex gap-4 flex-row items-center justify-between">
-                    <CardTitle className="text-body">批改列表（{total}）</CardTitle>
-                    <div className="flex gap-2 w-auto flex-row">
+                <PageHeader as={CardHeader} className="flex-wrap">
+                    <div>
+                        <CardTitle className="text-section-title text-foreground">批改列表</CardTitle>
+                        <p className="mt-1 text-meta text-muted-foreground">共 {total} 条记录</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 w-auto flex-row">
                         <div className="relative w-auto">
                             <Label htmlFor="grading-search" className="sr-only">搜索学生或实验模板</Label>
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -117,8 +121,8 @@ export function GradingManagement() {
                             </SelectContent>
                         </Select>
                     </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
+                </PageHeader>
+                <CardContent className="space-y-3 pt-0">
                     {loadError && <div role="alert" className="flex items-center gap-3 text-label text-destructive"><span>{loadError}</span><Button variant="outline" onClick={() => void load()}>重试加载</Button></div>}
                     {loading ? (
                         <p className="py-12 text-center text-label text-muted-foreground" role="status">加载中...</p>

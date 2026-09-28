@@ -1,7 +1,7 @@
 import { RequestError } from "@/components/RequestError";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, CheckCircle2, Download, History, XCircle } from "lucide-react";
+import { ArrowLeft, Download, History, XCircle } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useSectionNavigation } from "@/hooks/useSectionNavigation";
 import { toast } from "sonner";
@@ -189,7 +189,7 @@ export function GradingDetail() {
             <Card className="min-w-0 flex-1 gap-3 py-4">
                 <CardHeader className="px-4">
                     <CardTitle>
-                        <h2>{data.studentName} · {data.topic}</h2>
+                        <h2 className="text-section-title font-semibold">{data.studentName} · {data.topic}</h2>
                     </CardTitle>
                     <p className="text-label text-muted-foreground">{data.className} · {data.studentId}</p>
                 </CardHeader>
@@ -254,7 +254,7 @@ export function GradingDetail() {
                 </Card>
             ) : (
                 <Card className="sticky top-20 max-h-[calc(100dvh-6rem)] w-80 shrink-0 gap-3 overflow-y-auto py-4" data-testid="teacher-grading-panel">
-                    <CardHeader className="px-4"><CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-success" />评分</CardTitle><p className="break-words text-meta text-muted-foreground">{data.studentName} · {data.studentId}</p></CardHeader>
+                    <CardHeader className="border-b border-border px-4"><CardTitle className="text-section-title">评分</CardTitle><p className="break-words text-meta text-muted-foreground">{data.studentName} · {data.studentId}</p></CardHeader>
                     <CardContent className="space-y-3 px-4">
                         <div className="grid gap-2 grid-cols-3">
                             {(["questionnaire", "process", "report"] as const).map((key) => {

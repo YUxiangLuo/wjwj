@@ -520,9 +520,9 @@ export function StratifiedSamplingTab({
                             </div>
                             <CardDescription className="text-muted-foreground">每页查看 20 条记录，完整数据可在分析阶段导出。</CardDescription>
                         </CardHeader>
-                        <CardContent className="h-[360px] min-w-0 overflow-hidden">
+                        <CardContent className={`min-w-0 overflow-hidden ${result?.completed ? "h-[360px]" : "pb-5"}`} data-testid="student-sampling-stratified-preview">
                             {!result?.completed ? (
-                                <div className="h-full flex items-center justify-center text-label text-muted-foreground italic">
+                                <div className="border-t border-border pt-4 text-label text-muted-foreground">
                                     确认各层分配并执行后，在这里查看入样记录。
                                 </div>
                             ) : (

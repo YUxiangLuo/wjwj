@@ -547,9 +547,9 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                     </div>
                                     <CardDescription className="text-muted-foreground">每页查看 20 条记录，完整数据可在分析阶段导出。</CardDescription>
                                 </CardHeader>
-                                <CardContent className="h-[360px] min-w-0 overflow-hidden">
+                                <CardContent className={`min-w-0 overflow-hidden ${simpleResult?.completed ? "h-[360px]" : "pb-5"}`} data-testid="student-sampling-simple-preview">
                                     {!simpleResult?.completed ? (
-                                        <div className="h-full flex items-center justify-center text-label text-muted-foreground italic">
+                                        <div className="border-t border-border pt-4 text-label text-muted-foreground">
                                             执行上方抽样后，在这里查看入样单位和记录。
                                         </div>
                                     ) : (
@@ -652,9 +652,9 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                     </div>
                                     <CardDescription className="text-muted-foreground">每页查看 20 条记录，完整数据可在分析阶段导出。</CardDescription>
                                 </CardHeader>
-                                <CardContent className="h-[360px] min-w-0 overflow-hidden">
+                                <CardContent className={`min-w-0 overflow-hidden ${systematicCompletedForCurrentPlan ? "h-[360px]" : "pb-5"}`} data-testid="student-sampling-systematic-preview">
                                     {!systematicCompletedForCurrentPlan ? (
-                                        <div className="h-full flex items-center justify-center text-label text-muted-foreground italic">
+                                        <div className="border-t border-border pt-4 text-label text-muted-foreground">
                                             执行上方抽样后，在这里查看入样单位和记录。
                                         </div>
                                     ) : (
@@ -787,9 +787,9 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                     </div>
                                     <CardDescription className="text-muted-foreground">每页查看 20 条记录，完整数据可在分析阶段导出。</CardDescription>
                                 </CardHeader>
-                                <CardContent className="h-[360px] min-w-0 overflow-hidden">
+                                <CardContent className={`min-w-0 overflow-hidden ${ppsResult?.completed ? "h-[360px]" : "pb-5"}`} data-testid="student-sampling-pps-preview">
                                     {!ppsResult?.completed ? (
-                                        <div className="h-full flex items-center justify-center text-label text-muted-foreground italic">
+                                        <div className="border-t border-border pt-4 text-label text-muted-foreground">
                                             执行上方抽样后，在这里查看入样单位和记录。
                                         </div>
                                     ) : (

@@ -17,7 +17,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ClipboardList, CalendarDays, CheckCircle2, AlertTriangle, Search, Clock, Plus, BarChart3, Trash2 } from "lucide-react";
+import { Search, Clock, Plus, BarChart3, Trash2 } from "lucide-react";
 import { teacherApi, type Task, type Topic, type TeacherClass } from "../api-client";
 import { describeCascadeImpact } from "@/lib/deletion-impact-copy";
 import { TaskExtendDialog } from "../components/TaskExtendDialog";
@@ -26,7 +26,6 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { localWallClockToUtcIso } from "@/lib/datetime";
 import { formatDateTimeDisplay } from "@/utils/format";
-import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 
@@ -230,63 +229,22 @@ export function TaskManagement() {
         <div className="space-y-6 animate-in fade-in duration-500">
             <p className="text-label text-muted-foreground">将实验模板分配到班级，并跟踪提交与批改进度。</p>
 
-            <div className="grid grid-cols-4 gap-4">
-                <Card>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">实验任务总数</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.total}</p>
-                        </div>
-                        <IconTile intent="info">
-                            <ClipboardList className="w-5 h-5" />
-                        </IconTile>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">待批改</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.pendingTotal}</p>
-                        </div>
-                        <IconTile intent="destructive">
-                            <AlertTriangle className="w-5 h-5" />
-                        </IconTile>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已完成</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.completedTotal}</p>
-                        </div>
-                        <IconTile intent="success">
-                            <CheckCircle2 className="w-5 h-5" />
-                        </IconTile>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">应交人次</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{loading || loadError ? "-" : summary.expectedCount}</p>
-                            <p className="mt-1 text-meta text-muted-foreground">按任务覆盖班级学生数累计，非实际提交数</p>
-                        </div>
-                        <IconTile intent="warning">
-                            <CalendarDays className="w-5 h-5" />
-                        </IconTile>
-                    </CardContent>
-                </Card>
-            </div>
+            <dl aria-label="实验任务概览" className="grid grid-cols-4 gap-5 border-b border-border pb-5">
+                <div><dt className="text-meta text-muted-foreground">实验任务总数</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.total}</dd></div>
+                <div><dt className="text-meta text-muted-foreground">待批改</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : <StatusBadge intent={summary.pendingTotal > 0 ? "warning" : "neutral"}>{summary.pendingTotal}</StatusBadge>}</dd></div>
+                <div><dt className="text-meta text-muted-foreground">已完成</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.completedTotal}</dd></div>
+                <div><dt className="text-meta text-muted-foreground">应交人次</dt><dd className="mt-1"><span className="text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.expectedCount}</span><p className="mt-1 text-meta text-muted-foreground">按任务覆盖班级学生数累计，非实际提交数</p></dd></div>
+            </dl>
 
             <Card>
-                <PageHeader as={CardHeader}>
+                <PageHeader as={CardHeader} className="flex-wrap">
                     <div>
-                        <CardTitle className="text-body text-foreground">实验任务列表</CardTitle>
+                        <CardTitle className="text-section-title text-foreground">实验任务列表</CardTitle>
                         <p className="text-meta text-muted-foreground mt-1">
                             {loading || loadError ? "共 - 条数据" : `共 ${filteredTasks.length} 条数据`}
                         </p>
                     </div>
-                    <div className="flex gap-3 flex-row w-auto">
+                    <div className="flex flex-wrap gap-3 flex-row w-auto">
                         <div className="relative w-56">
                             <Label htmlFor="teacher-task-search" className="sr-only">搜索实验模板</Label>
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />

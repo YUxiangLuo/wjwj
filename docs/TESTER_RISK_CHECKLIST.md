@@ -37,6 +37,14 @@ bun run test:teaching
 
 缺少 `TEST_DATABASE_URL` 或创建临时库权限时应记为“阻塞”，不能把 skipped 记为通过。
 
+浏览器验收应记录实际浏览器版本。2026-09-28 本机使用 agent-browser 自动下载的 Chrome 153.0.8010.36 时，任务进度页的原生输入命令返回成功却未产生页面事件；同一测试使用系统 Chromium 153.0.8010.52 通过。若复现此症状，不要用 DOM `.click()` 代替真实输入后宣称通过，可指定已验证的浏览器重跑：
+
+```sh
+AGENT_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium bun run test:teaching
+```
+
+路径按测试机器实际安装位置调整；教学闭环会断言任务进度展开按钮收到 `isTrusted` 点击，并检查 Enter、Space 和 Tab。
+
 ## 2. P0：必须优先检查
 
 ### A. 实验状态机、重开与提交冻结

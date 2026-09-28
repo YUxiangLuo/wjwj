@@ -63,6 +63,7 @@ export function TaskProgressDetail() {
     const [data, setData] = useState<TaskProgressData | null>(null);
     const { loading, error: loadError, run, cancel } = useAsyncLoad("任务进度加载失败");
     const [searchTerm, setSearchTerm] = useState("");
+    const [distributionOpen, setDistributionOpen] = useState(false);
 
     useEffect(() => {
         if (Number.isInteger(Number(taskId)) && Number(taskId) > 0) void loadProgress(Number(taskId));
@@ -127,9 +128,13 @@ export function TaskProgressDetail() {
 
             {/* Ring chart + Progress bar */}
             {total > 0 && (
-                <div className="grid grid-cols-3 gap-6">
+                <div className="rounded-surface bg-muted p-4" data-testid="teacher-progress-distribution">
+                    <Button variant="ghost" aria-expanded={distributionOpen} aria-controls="teacher-progress-charts" onClick={() => setDistributionOpen(open => !open)}>
+                        {distributionOpen ? "收起阶段分布" : "查看阶段分布"} · {total} 名学生
+                    </Button>
+                    {distributionOpen && <div id="teacher-progress-charts" className="mt-4 flex flex-wrap items-start gap-6">
                     {/* Ring chart */}
-                    <Card>
+                    <Card className="min-w-0 flex-[1_1_16rem] border-0 bg-transparent">
                         <CardContent className="p-6 flex flex-col items-center">
                             <svg role="img" aria-label="学生实验状态分布环形图" width={CHART_SIZE} height={CHART_SIZE} viewBox={`0 0 ${CHART_SIZE} ${CHART_SIZE}`} className="mb-4">
                                 {(() => {
@@ -187,8 +192,8 @@ export function TaskProgressDetail() {
                         </CardContent>
                     </Card>
 
-                    {/* Distribution bar (now wider, takes 2 cols) */}
-                    <Card className="border-border bg-card col-span-2">
+                    {/* Distribution bar */}
+                    <Card className="min-w-0 flex-[2_1_28rem] border-0 bg-transparent">
                         <CardContent className="p-6 flex flex-col justify-center h-full gap-4">
                             <span className="text-label font-medium text-foreground">各阶段分布</span>
                             <div className="flex h-4 rounded-control overflow-hidden bg-muted">
@@ -206,7 +211,7 @@ export function TaskProgressDetail() {
                                     );
                                 })}
                             </div>
-                            <div className="grid grid-cols-4 gap-3">
+                            <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-3">
                                 {STATUS_KEYS.map((key) => {
                                     const cfg = STATUS_CONFIG[key];
                                     const count = data.counts[key];
@@ -222,11 +227,12 @@ export function TaskProgressDetail() {
                             </div>
                         </CardContent>
                     </Card>
+                    </div>}
                 </div>
             )}
 
             {/* Student list */}
-            <Card>
+            <Card data-testid="teacher-progress-students">
                 <div className="p-4 border-b border-border flex items-center justify-between">
                     <span className="text-label font-medium text-foreground">学生列表</span>
                     <div className="relative w-56">

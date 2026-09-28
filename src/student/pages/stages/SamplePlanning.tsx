@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, ClipboardList, Sparkles, ChevronLeft, ChevronRight, Info, Loader2 } from "lucide-react";
+import { ClipboardList, Sparkles, ChevronLeft, ChevronRight, Info, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useExperiment } from "../ExperimentLayout";
 import { experimentApi } from "../../api-client";
@@ -271,27 +271,17 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             </div>
 
             {/* Population info */}
-            <Card className="gap-2 py-4 rounded-surface border-border bg-card ">
-                <CardHeader className="border-b border-border px-4 pb-3 pt-0 [.border-b]:pb-3">
-                    <CardTitle className="flex items-center gap-2 text-body text-foreground">
-                        <Users className="w-4 h-4 shrink-0 text-primary" />
-                        总体信息
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="px-4 pb-1 pt-3">
-                    <div className="flex items-center justify-between rounded-surface border border-border bg-background px-3 py-2.5">
-                        <span className="text-muted-foreground">总体规模 (N)</span>
-                        <span className="text-section-title font-bold tabular-nums text-primary">{N.toLocaleString()} <span className="text-label font-normal text-muted-foreground">个总体单位</span></span>
-                    </div>
-                </CardContent>
-            </Card>
+            <dl className="flex items-baseline gap-3 border-b border-border pb-4">
+                <dt className="text-label text-muted-foreground">总体规模 (N)</dt>
+                <dd className="text-label font-semibold tabular-nums">{N.toLocaleString()} <span className="font-normal text-muted-foreground">个总体单位</span></dd>
+            </dl>
 
             {displayData ? (
                 <>
                     {/* Parameter summary (read-only) */}
                     <Card className="gap-2 py-4 rounded-surface border-border bg-card ">
                         <CardHeader className="border-b border-border px-4 pb-3 pt-0 [.border-b]:pb-3">
-                            <CardTitle className="flex items-center gap-2 text-body text-foreground">
+                            <CardTitle className="flex items-center gap-2 text-section-title text-foreground">
                                 <ClipboardList className="w-4 h-4 shrink-0 text-muted-foreground" />
                                 参数摘要
                             </CardTitle>
@@ -316,10 +306,10 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                                 <SummaryRow label="设计效应" value={displayData.designEffect.toFixed(1)} />
                                 <SummaryRow label="无回答率" value={`${Math.round(displayData.nonResponseRate * 100)}%`} />
                             </div>
-                            <div className="mt-2 grid grid-cols-2 gap-3 rounded-surface border border-border bg-background px-3 py-2">
+                            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4">
                                 <div>
                                     <p className="text-meta font-medium uppercase tracking-wide text-muted-foreground">建议样本量</p>
-                                    <p className="text-body font-bold font-mono tabular-nums text-info">{displayData.recommendedSize.toLocaleString()}</p>
+                                    <p className="text-body font-semibold tabular-nums text-foreground">{displayData.recommendedSize.toLocaleString()}</p>
                                 </div>
                                 <div className="text-right">
                                     <p className="text-meta font-medium uppercase tracking-wide text-muted-foreground">最终设定</p>
@@ -353,13 +343,10 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                 </>
             ) : (
                 /* First visit — prompt to start sample planning */
-                <Card className="gap-2 py-8 rounded-surface border-primary-border bg-primary-muted ">
+                <Card className="gap-2 py-8 rounded-surface border-border bg-card">
                     <CardContent className="flex flex-col items-center text-center space-y-4 px-6">
-                        <div className="w-14 h-14 rounded-surface bg-primary-muted border border-primary-border flex items-center justify-center">
-                            <Sparkles className="w-7 h-7 text-primary" />
-                        </div>
                         <div className="space-y-1">
-                            <h3 className="text-subheading font-semibold text-foreground">{wizardDraft ? "继续样本量规划" : "开始样本量规划"}</h3>
+                            <h3 className="text-section-title font-semibold text-foreground">{wizardDraft ? "继续样本量规划" : "开始样本量规划"}</h3>
                             <p className="text-label text-muted-foreground max-w-sm">
                                 直接调整参数并查看预期精度，确认样本量后保存。计算原理可按需查看，无需答题。
                             </p>

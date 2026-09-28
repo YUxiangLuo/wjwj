@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Megaphone, ChevronRight, Circle, Clock, AlertCircle, RefreshCw } from "lucide-react";
+import { Megaphone, ChevronRight, Circle, Clock, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -10,47 +10,26 @@ import { teacherApi, type TeacherStats, type TeacherAnnouncement } from "../api-
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDateTimeDisplay } from "@/utils/format";
 
-function StatCard({ icon: Icon, label, value, color, loading, to }: {
-    icon: React.ComponentType<{ className?: string }>;
+function StatCard({ label, value, loading, to }: {
     label: string;
     value: number;
-    color: string;
     loading?: boolean;
     to?: string;
 }) {
-    // Map colors to class names
-    const colorStyles: Record<string, { bg: string, text: string, border: string }> = {
-        blue: { bg: "bg-info-muted", text: "text-info", border: "border-info-border" },
-        emerald: { bg: "bg-success-muted", text: "text-success", border: "border-success-border" },
-        rose: { bg: "bg-destructive-muted", text: "text-destructive", border: "border-destructive-border" },
-        amber: { bg: "bg-warning-muted", text: "text-warning", border: "border-warning-border" },
-        slate: { bg: "bg-muted", text: "text-muted-foreground", border: "border-input" },
-    };
-
-    const style = colorStyles[color] || colorStyles.slate!;
-
     const card = (
-        <Card className={`border-border bg-card transition-none ${to ? "cursor-pointer hover:border-input" : ""}`}>
-            <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-label font-medium text-muted-foreground">{label}</p>
-                        <div className="mt-2 flex items-baseline gap-2">
-                            <span className="text-display font-bold text-foreground">
-                                {loading ? <div className="h-9 w-12 bg-muted rounded-control animate-pulse" /> : value}
-                            </span>
-                        </div>
-                    </div>
-                    <div className={`w-12 h-12 rounded-surface ${style.bg} ${style.text} flex items-center justify-center border ${style.border}`}>
-                        <Icon className="w-6 h-6" />
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
+        <div className="flex items-center justify-between gap-2 p-4">
+            <div className="min-w-0">
+                <p className="text-label text-muted-foreground">{label}</p>
+                <p className="mt-2 text-section-title font-semibold tabular-nums">
+                    {loading ? <span className="inline-block h-7 w-12 bg-muted rounded-control animate-pulse" /> : value}
+                </p>
+            </div>
+            {to && <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />}
+        </div>
     );
 
     if (to) {
-        return <Link to={to}>{card}</Link>;
+        return <Link to={to} className="rounded-surface hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">{card}</Link>;
     }
     return card;
 }
@@ -97,13 +76,13 @@ export function Dashboard() {
         setSelectedAnnouncement(item);
     }
 
-    const getIconAndColor = (label: string) => {
+    const statDestination = (label: string) => {
         switch (label) {
-            case "我的班级": return { icon: School, color: "blue", to: "/class" };
-            case "我的实验模板": return { icon: BookOpen, color: "emerald", to: "/topic" };
-            case "待批改作业": return { icon: PenLine, color: "rose", to: "/grading" };
-            case "进行中实验任务": return { icon: ClipboardList, color: "amber", to: "/task" };
-            default: return { icon: LayoutDashboard, color: "slate", to: undefined };
+            case "我的班级": return "/class";
+            case "我的实验模板": return "/topic";
+            case "待批改作业": return "/grading";
+            case "进行中实验任务": return "/task";
+            default: return undefined;
         }
     };
 
@@ -123,16 +102,16 @@ export function Dashboard() {
                 if (announcements.length === 0) return null;
                 const latest = announcements[0]!;
                 return (
-                    <div className="flex items-center gap-3 px-4 py-3 bg-info-muted border border-info-border rounded-surface">
-                        <Megaphone className="w-5 h-5 text-info shrink-0" />
+                    <div className="flex items-center gap-3 border-b border-border pb-3">
+                        <Megaphone className="w-5 h-5 text-muted-foreground shrink-0" />
                         <div className="flex-1 min-w-0">
-                            <span className="text-label text-info font-medium truncate block">{latest.title}</span>
+                            <span className="text-label text-foreground truncate block">{latest.title}</span>
                         </div>
-                        <span className="text-meta text-info shrink-0">{announcements.length} 条公告</span>
+                        <span className="text-meta text-muted-foreground shrink-0">{announcements.length} 条公告</span>
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="text-info hover:text-info hover:bg-info-muted h-7 text-meta px-2 shrink-0"
+                            className="shrink-0"
                             onClick={() => setShowAnnouncements(true)}
                         >
                             查看详情
@@ -142,34 +121,31 @@ export function Dashboard() {
                 );
             })()}
 
-            <div className="grid grid-cols-4 gap-6">
+            <div className="grid grid-cols-4 gap-2 border-b border-border pb-4">
                 {stats.length > 0 ? stats.map((stat) => {
-                    const { icon, color, to } = getIconAndColor(stat.label);
                     return (
                         <StatCard
                             key={stat.label}
-                            icon={icon}
                             label={stat.label}
                             value={stat.value}
-                            color={color}
                             loading={loading}
-                            to={to}
+                            to={statDestination(stat.label)}
                         />
                     );
                 }) : loading ? (
                     // Skeletons if stats are empty initially or loading
                     Array.from({ length: 4 }).map((_, i) => (
-                        <StatCard key={i} icon={LayoutDashboard} label="Loading..." value={0} color="slate" loading={true} />
+                        <StatCard key={i} label="加载中…" value={0} loading={true} />
                     ))
                 ) : null}
             </div>
 
             <Card className="border-border bg-card" data-testid="teacher-dashboard-active-tasks">
                 <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
-                    <div><CardTitle className="text-subheading text-foreground">当前活动实验任务</CardTitle><p className="mt-1 text-meta text-muted-foreground">按最近截止时间排序，直接进入班级任务进度。</p></div>
+                    <div><CardTitle className="text-section-title text-foreground">当前活动实验任务</CardTitle><p className="mt-1 text-meta text-muted-foreground">按最近截止时间排序，直接进入班级任务进度。</p></div>
                     <Button variant="outline" size="sm" asChild><Link to="/task">全部实验任务</Link></Button>
                 </CardHeader>
-                <CardContent className="space-y-3 pt-5">
+                <CardContent className="divide-y divide-border">
                     {loading ? (
                         <div role="status" aria-live="polite" className="flex items-center justify-center py-8 text-label text-muted-foreground">加载中...</div>
                     ) : loadError ? (
@@ -179,10 +155,10 @@ export function Dashboard() {
                     ) : activeTasks.map((item) => {
                         const progress = item.total > 0 ? Math.round(item.completed / item.total * 100) : 0;
                         return (
-                            <Link key={item.id} to={`/task/${item.id}/progress`} className="grid grid-cols-[minmax(0,1.4fr)_minmax(12rem,1fr)_auto] items-center gap-5 rounded-surface border border-border bg-background p-4 transition-none hover:border-input hover:bg-muted">
-                                <div className="min-w-0"><p className="truncate text-label font-semibold text-foreground">{item.templateName}</p><p className="mt-1 text-meta text-muted-foreground">{item.className}</p></div>
-                                <div><div className="flex justify-between text-meta text-muted-foreground"><span>已提交 {item.completed}/{item.total}</span><span aria-hidden="true">{progress}%</span></div><Progress aria-label={`${item.templateName}提交进度`} value={progress} className="mt-2 h-1.5" /></div>
-                                <div className="flex items-center gap-2 whitespace-nowrap"><StatusBadge intent={item.pending > 0 ? "warning" : "neutral"}>待批改 {item.pending}</StatusBadge>{item.rejected > 0 && <StatusBadge intent="destructive">需重做 {item.rejected}</StatusBadge>}<span className="flex items-center gap-1 text-meta text-muted-foreground"><Clock className="h-3.5 w-3.5" />{item.deadline ? formatDateTimeDisplay(item.deadline, "-") : "无截止时间"}</span><ChevronRight className="h-4 w-4 text-muted-foreground" /></div>
+                            <Link key={item.id} to={`/task/${item.id}/progress`} className="flex flex-wrap items-center gap-x-5 gap-y-3 py-4 transition-none hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
+                                <div className="min-w-0 flex-[2_1_16rem]"><p className="text-label font-semibold text-foreground">{item.templateName}</p><p className="mt-1 text-meta text-muted-foreground">{item.className}</p></div>
+                                <div className="flex-[1_1_12rem]"><div className="flex justify-between text-meta text-muted-foreground"><span>已提交 {item.completed}/{item.total}</span><span aria-hidden="true">{progress}%</span></div><Progress aria-label={`${item.templateName}提交进度`} value={progress} className="mt-2 h-1.5" /></div>
+                                <div className="flex flex-wrap items-center gap-2"><StatusBadge intent={item.pending > 0 ? "warning" : "neutral"}>待批改 {item.pending}</StatusBadge>{item.rejected > 0 && <StatusBadge intent="destructive">需重做 {item.rejected}</StatusBadge>}<span className="flex items-center gap-1 text-meta text-muted-foreground"><Clock className="h-3.5 w-3.5" />{item.deadline ? formatDateTimeDisplay(item.deadline, "-") : "无截止时间"}</span><ChevronRight className="h-4 w-4 text-muted-foreground" /></div>
                             </Link>
                         );
                     })}

@@ -467,19 +467,19 @@ export function QuestionnaireDesign() {
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card className="min-w-0 flex-[1_1_18rem] h-fit rounded-surface border-border bg-card">
+                        <Card className="min-w-0 flex-[1_1_18rem] h-fit border-0 bg-muted" data-testid="student-questionnaire-opening-reference">
                             <CardHeader>
-                                <CardTitle className="flex items-center gap-2 text-body text-info">
-                                    <HelpCircle className="w-4 h-4" />
+                                <CardTitle className="flex items-center gap-2 text-body text-foreground">
+                                    <HelpCircle className="w-4 h-4 text-muted-foreground" />
                                     小贴士
                                 </CardTitle>
-                                <CardDescription className="text-info">让受访者知道为什么填写、如何作答。</CardDescription>
+                                <CardDescription className="text-muted-foreground">让受访者知道为什么填写、如何作答。</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-4 text-label leading-relaxed text-info">
+                            <CardContent className="space-y-4 text-label leading-relaxed text-muted-foreground">
                                 <p>建议说明调查目的、预计用时与隐私保护方式。</p>
                                 <p>保持简洁友好，最好控制在 200 字以内。</p>
-                                <div className="rounded-surface border border-info-border bg-background p-3 text-meta text-info ">
-                                    <span className="font-semibold block mb-1">示例：</span>
+                                <div className="border-t border-border pt-4 text-meta">
+                                    <span className="font-semibold block mb-1 text-foreground">示例：</span>
                                     感谢参与本次调查，本问卷约 3 分钟完成，数据仅用于教学分析。
                                 </div>
                             </CardContent>
@@ -518,14 +518,14 @@ export function QuestionnaireDesign() {
                                             <p>暂无题目，点击「添加题目」开始设计问卷</p>
                                         </div>
                                     ) : (
-                                        <div className="space-y-3">
+                                        <div className="divide-y divide-border">
                                             {questions.map((q, index) => (
                                                 <div
                                                     key={q.id}
                                                     data-testid={`student-questionnaire-item-${q.id}`}
-                                                    className={`flex flex-wrap items-start gap-3 p-4 rounded-surface border transition-none group hover:bg-muted ${dragOverId === q.id && draggingId !== q.id
-                                                        ? "border-primary ring-1 ring-ring bg-primary-muted"
-                                                        : "border-border bg-background"
+                                                    className={`flex flex-wrap items-start gap-3 px-2 py-5 transition-none group hover:bg-muted ${dragOverId === q.id && draggingId !== q.id
+                                                        ? "ring-1 ring-ring bg-primary-muted"
+                                                        : "bg-card"
                                                         } ${draggingId === q.id ? "opacity-50" : ""}`}
                                                     draggable
                                                     onDragStart={handleDragStart(q.id)}
@@ -619,14 +619,14 @@ export function QuestionnaireDesign() {
                                 </div>
                             )}
                         </div>
-                        <div className="min-w-0 flex-[1_1_18rem] space-y-4">
-                            <Card className="rounded-surface border-border bg-card ">
+                        <div className="min-w-0 flex-[1_1_18rem] space-y-6" data-testid="student-questionnaire-reference">
+                            <Card className="border-0 bg-muted">
                                 <CardHeader
                                     role="button"
                                     tabIndex={0}
                                     aria-expanded={!recommendCollapsed}
                                     aria-controls="student-recommended-question-list"
-                                    className="cursor-pointer select-none"
+                                    className="cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                     onClick={() => setRecommendCollapsed(!recommendCollapsed)}
                                     onKeyDown={(event) => {
                                         if (event.key === "Enter" || event.key === " ") {
@@ -647,7 +647,7 @@ export function QuestionnaireDesign() {
                                         role="region"
                                         tabIndex={0}
                                         aria-label="教师推荐题目列表"
-                                        className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar"
+                                        className="divide-y divide-border max-h-[400px] overflow-y-auto custom-scrollbar"
                                     >
                                         {recommendQuestions.length === 0 && (
                                             <div className="rounded-surface border border-dashed border-input bg-card p-4 text-label text-muted-foreground text-center">
@@ -657,7 +657,7 @@ export function QuestionnaireDesign() {
                                         {recommendQuestions.map((rq) => {
                                             const recommendAlreadyInQuestionnaire = questions.some((q) => q.recommendSourceId === rq.id);
                                             return (
-                                            <div key={rq.id} className="flex flex-col gap-2 p-3 rounded-surface border border-border bg-background">
+                                            <div key={rq.id} className="flex flex-col gap-2 py-4 first:pt-0 last:pb-0">
                                                 <div className="space-y-1">
                                                     <div className="text-label font-medium text-foreground line-clamp-2">{rq.content}</div>
                                                     <div className="text-meta text-muted-foreground">
@@ -679,7 +679,7 @@ export function QuestionnaireDesign() {
                                     </CardContent>
                                 )}
                             </Card>
-                            <Card className="rounded-surface border-border bg-card ">
+                            <Card className="border-0 border-t border-border rounded-none bg-transparent">
                                 <CardHeader>
                                     <CardTitle className="text-body text-foreground">设计建议</CardTitle>
                                 </CardHeader>
@@ -738,12 +738,12 @@ export function QuestionnaireDesign() {
 
             case 4:
                 return (
-                    <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))] gap-4">
                         <Card className="rounded-surface border-border bg-card overflow-hidden h-fit">
                             {isPreviewValid ? (
                                 <CardContent className="py-5">
-                                    <div className="flex items-center justify-between gap-4">
+                                    <div className="flex flex-wrap items-center justify-between gap-4">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-surface bg-success-muted border border-success-border flex items-center justify-center shrink-0">
                                                 <CheckCircle className="w-5 h-5 text-success" />
@@ -767,14 +767,14 @@ export function QuestionnaireDesign() {
                                 </CardContent>
                             ) : (
                                 <div>
-                                    <div className="border-b border-primary-border bg-primary-muted px-6 py-4">
+                                    <div className="border-b border-border px-6 py-4">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-surface bg-primary-muted flex items-center justify-center">
                                                 <Play className="w-5 h-5 text-primary" />
                                             </div>
                                             <div>
-                                                <h3 className="text-body font-semibold text-primary">受访者视角试填</h3>
-                                                <p className="text-meta text-primary mt-0.5">请以受访者身份完整体验一次问卷填写</p>
+                                                <h3 className="text-subheading font-semibold text-foreground">受访者视角试填</h3>
+                                                <p className="text-meta text-muted-foreground mt-0.5">请以受访者身份完整体验一次问卷填写</p>
                                             </div>
                                         </div>
                                     </div>
@@ -884,18 +884,18 @@ export function QuestionnaireDesign() {
                         </Card>
                         </div>
 
-                        <Card className="rounded-surface border-border bg-card h-fit">
+                        <Card className="border-0 bg-muted h-fit" data-testid="student-questionnaire-structure">
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-label text-foreground">结构完整度检查</CardTitle>
                                 <CardDescription className="text-muted-foreground">仅检查可机械验证的格式，满分100分</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-3">
-                                <div className="rounded-surface border border-primary-border bg-primary-muted px-4 py-3 flex items-center justify-between">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
                                     <div className="flex items-baseline gap-2">
-                                        <span className="text-meta uppercase tracking-wider text-primary">结构完整度</span>
-                                        <span className="text-page-title font-bold text-primary">{structureScore}</span>
+                                        <span className="text-label text-muted-foreground">结构完整度</span>
+                                        <span className="text-subheading font-semibold text-foreground">{structureScore} / 100</span>
                                     </div>
-                                    <div className="text-meta text-primary">
+                                    <div className="text-meta text-muted-foreground">
                                         {structureScore === 100
                                             ? "自动格式检查通过"
                                             : structureScore >= 70
@@ -903,12 +903,12 @@ export function QuestionnaireDesign() {
                                                 : "请先完善基础结构"}
                                     </div>
                                 </div>
-                                <p className="rounded-surface border border-info-border bg-info-muted px-3 py-2 text-meta leading-relaxed text-info">
+                                <p className="text-meta leading-relaxed text-muted-foreground">
                                     100分不代表问卷具有良好效度、信度或无偏措辞。单一概念、题序、选项互斥与穷尽等仍需人工复核和预测试。
                                 </p>
-                                <div className="space-y-1.5">
+                                <div className="divide-y divide-border border-t border-border">
                                     {scoreItems.map((item) => (
-                                        <div key={item.label} className="flex items-baseline justify-between rounded-surface border border-border bg-background px-3 py-2">
+                                        <div key={item.label} className="flex items-baseline justify-between gap-3 py-3">
                                             <div className="min-w-0">
                                                 <span className="text-label text-foreground">{item.label}</span>
                                                 <span
