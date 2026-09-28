@@ -405,6 +405,13 @@ try {
     await page(student, stageUrl, '[data-testid="student-stage-sampling"]');
     const diningStats = await api<{ ppsEligibleFields: string[] }>(student, `/api/student/tasks/${task.id}/stats`);
     assert(JSON.stringify(diningStats.ppsEligibleFields) === JSON.stringify([DINING_PPS_SIZE_FIELD]), `Dining PPS policy exposed unintended fields: ${JSON.stringify(diningStats.ppsEligibleFields)}`);
+    for (const method of ["simple", "systematic", "pps", "stratified"]) {
+        await activate(student, `[data-testid="student-sampling-tab-${method}"]`);
+        assert(await evaluate(student, `(() => {const preview=document.querySelector('[data-testid="student-sampling-${method}-preview"]');const bounds=preview?.getBoundingClientRect();return bounds && bounds.height>0 && bounds.height<140 && !preview.querySelector('table') && document.documentElement.scrollWidth<=innerWidth;})()`), `${method} empty preview must be compact without horizontal overflow`);
+        await evaluate(student, `document.querySelector('[data-testid="student-sampling-${method}-preview"]').scrollIntoView({block:'center'})`);
+        await browser(student, "screenshot", join(artifacts, `sampling-${method}-empty.png`));
+    }
+    await evaluate(student, 'scrollTo({top:0,behavior:"instant"})');
     await activate(student, '[data-testid="student-sampling-tab-pps"]');
     await visible(student, '[data-testid="student-sampling-pps-size-field"]');
     assert(await evaluate(student, `document.querySelector('[data-testid="student-sampling-pps-size-field"]').textContent.includes(${JSON.stringify(DINING_PPS_SIZE_FIELD)})`), "Dining PPS control did not select the policy-approved prior-frame size field");
@@ -465,6 +472,19 @@ try {
     }
     await page(student, stageUrl, '[data-testid="student-stage-sampling"]');
     assert(await evaluate(student, `(() => {const table=document.querySelector('[aria-label^="抽样结果数据表"]');const stage=document.querySelector('[data-testid="student-stage-sampling"]');return table && table.getBoundingClientRect().width > stage.getBoundingClientRect().width*0.8 && document.documentElement.scrollWidth<=innerWidth;})()`), "Sampling data table must use the available width without overflowing the page");
+    await activate(student, '[data-testid="student-sampling-tab-stratified"]');
+    await activate(student, '[data-testid="student-sampling-stratified-run"]');
+    await visible(student, '[data-testid="immersive-sampling-animation"]');
+    await activate(student, '[data-testid="immersive-sampling-skip"]');
+    await visible(student, '[data-testid="sampling-animation-receipt"]');
+    await activate(student, '[data-testid="immersive-sampling-return"]');
+    for (const method of ["simple", "systematic", "pps", "stratified"]) {
+        await activate(student, `[data-testid="student-sampling-tab-${method}"]`);
+        assert(await evaluate(student, `(() => {const preview=document.querySelector('[data-testid="student-sampling-${method}-preview"]');return preview?.getBoundingClientRect().height===360 && preview.querySelector('table tbody tr') && document.documentElement.scrollWidth<=innerWidth;})()`), `${method} completed preview must retain table space and saved records`);
+        await evaluate(student, `document.querySelector('[data-testid="student-sampling-${method}-preview"]').scrollIntoView({block:'center'})`);
+        await browser(student, "screenshot", join(artifacts, `sampling-${method}-completed.png`));
+        assert(await evaluate(student, `(async () => {const preview=document.querySelector('[data-testid="student-sampling-${method}-preview"]');const region=preview.querySelector('[role="region"]');region.scrollTop=region.scrollHeight;await new Promise(requestAnimationFrame);const last=region.querySelector('tbody tr:last-child').getBoundingClientRect();const bounds=region.getBoundingClientRect();return last.top>=bounds.top && last.bottom<=bounds.bottom && preview.getBoundingClientRect().bottom<=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect().top;})()`), `${method} last preview row and pagination must remain reachable above the sticky footer`);
+    }
     await activate(student, '[data-testid="student-sampling-next"]');
     await visible(student, '[data-testid="student-stage-analysis-report"]');
     experiment = await api(student, experimentPath);
