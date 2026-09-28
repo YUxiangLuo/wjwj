@@ -266,7 +266,7 @@ export function SubmissionPreview() {
                                             <p key={question.id ?? index} className="text-muted-foreground">第 {index + 1} 题：{question.content}</p>
                                         ))}
                                         {questionnaireQuestions.length > 3 && (
-                                            <p className="text-meta text-muted-foreground">其余题目见「问卷预览」。</p>
+                                            <p className="text-meta text-muted-foreground">其余题目见「问卷参考」。</p>
                                         )}
                                     </div>
                                 </div>
