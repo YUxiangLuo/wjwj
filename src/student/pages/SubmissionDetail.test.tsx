@@ -105,6 +105,9 @@ test("student result renders the immutable submission snapshot", async () => {
     expect(view.getByText("10.0000 kg")).toBeTruthy();
     expect(view.getByText("9.5000 kg")).toBeTruthy();
     expect(view.getByText("±0.9800 kg")).toBeTruthy();
+    expect(view.getByTestId("student-submission-pending")).toBeTruthy();
+    expect(view.queryByTestId("student-submission-scores")).toBeNull();
+    expect(view.getByTestId("student-submission-pending").compareDocumentPosition(view.getByTestId("student-submission-content")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
 
 test("graded result distinguishes component scores from their weights", async () => {
@@ -154,4 +157,6 @@ test("graded result distinguishes component scores from their weights", async ()
     expect(view.getByText("93")).toBeTruthy();
     expect(view.getAllByText("权重 30%")).toHaveLength(2);
     expect(view.getByText("权重 40%")).toBeTruthy();
+    expect(view.getByTestId("student-submission-scores")).toBeTruthy();
+    expect(view.getByTestId("student-submission-feedback").compareDocumentPosition(view.getByTestId("student-submission-content")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });

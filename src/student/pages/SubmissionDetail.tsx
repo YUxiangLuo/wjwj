@@ -12,7 +12,6 @@ import { LoadingStatus } from "@/components/LoadingStatus";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
 import { formatDateTimeDisplay } from "@/utils/format";
 import { submissionsApi } from "../api-client";
 import type { SubmissionDetail } from "@/domain/experiment/student-contracts";
@@ -53,10 +52,8 @@ export function SubmissionDetailPage() {
         ["实验过程", detail.scoreProcess, detail.weights.process],
         ["实验报告", detail.scoreReport, detail.weights.report],
     ] as const;
-    const totalLabel = detail.status === "graded" ? detail.totalScore ?? "-" : detail.status === "rejected" ? "待修改" : "待批改";
-
     return (
-        <div className="mx-auto max-w-4xl space-y-6" data-testid="student-submission-detail">
+        <div className="mx-auto max-w-4xl space-y-6" data-testid="student-submission-detail" data-submission-status={detail.status}>
             <div className="flex items-center justify-between gap-4">
                 <Button asChild variant="ghost" className="gap-2">
                     <Link to={`/task/${detail.taskId}`}><ArrowLeft className="h-4 w-4" />返回任务</Link>
@@ -79,21 +76,48 @@ export function SubmissionDetailPage() {
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
-                    <div className="grid gap-4 grid-cols-4">
-                        {scores.map(([label, value, weight]) => (
-                            <div key={label} className="rounded-surface border border-border bg-muted p-4 text-center">
-                                <p className="text-meta text-muted-foreground">{label}</p>
-                                <p className="mt-1 text-page-title font-bold">{value ?? "—"}</p>
-                                <p className="mt-1 text-meta text-muted-foreground">权重 {weight}%</p>
+                    {detail.status === "graded" && (
+                        <section data-testid="student-submission-scores" aria-labelledby="submission-score-heading">
+                            <h2 id="submission-score-heading" className="mb-3 text-section-title">批改成绩</h2>
+                            <div className="grid grid-cols-4 gap-3">
+                                {scores.map(([label, value, weight]) => (
+                                    <div key={label} className="rounded-surface bg-muted p-4 text-center">
+                                        <p className="text-meta text-muted-foreground">{label}</p>
+                                        <p className="mt-1 text-page-title font-bold">{value ?? "—"}</p>
+                                        <p className="mt-1 text-meta text-muted-foreground">权重 {weight}%</p>
+                                    </div>
+                                ))}
+                                <div className="rounded-surface bg-primary-muted p-4 text-center">
+                                    <p className="text-meta font-medium text-primary">总分</p>
+                                    <p className="mt-1 text-display font-bold text-primary">{detail.totalScore ?? "—"}</p>
+                                </div>
                             </div>
-                        ))}
-                        <div className="rounded-surface border border-primary-border bg-primary-muted p-4 text-center">
-                            <p className="text-meta font-medium text-primary">总分</p>
-                            <p className={cn("mt-1 font-bold", detail.status === "graded" ? "text-display text-primary" : "text-section-title text-foreground")}>{totalLabel}</p>
-                        </div>
-                    </div>
+                        </section>
+                    )}
 
-                    <section data-testid="student-submission-content" className="rounded-surface border border-border bg-card">
+                    {detail.rejectReason && (
+                        <section data-testid="student-submission-rejection" className="rounded-surface border border-destructive-border bg-destructive-muted p-5">
+                            <h2 className="mb-2 flex items-center gap-2 text-section-title text-destructive"><AlertCircle className="h-5 w-5" />需要修改后重新提交</h2>
+                            <p className="whitespace-pre-line text-label leading-relaxed text-destructive">{detail.rejectReason}</p>
+                            <Button asChild className="mt-4"><Link to={`/task/${detail.taskId}/experiment`}>继续修改</Link></Button>
+                        </section>
+                    )}
+
+                    {detail.teacherComment && (
+                        <section data-testid="student-submission-feedback" className="rounded-surface bg-muted p-5">
+                            <h2 className="mb-2 flex items-center gap-2 text-section-title"><FileText className="h-4 w-4 text-primary" />教师评语</h2>
+                            <p className="whitespace-pre-line text-label leading-relaxed text-foreground">{detail.teacherComment}</p>
+                        </section>
+                    )}
+
+                    {!detail.teacherComment && !detail.rejectReason && detail.status === "submitted" && (
+                        <section data-testid="student-submission-pending" className="rounded-surface bg-warning-muted p-4">
+                            <h2 className="text-label font-medium text-warning">已提交，等待教师批改</h2>
+                            <p className="mt-1 text-label text-muted-foreground">成绩和教师评语将在批改完成后显示。</p>
+                        </section>
+                    )}
+
+                    <section data-testid="student-submission-content" className="border-t border-border pt-6">
                         <div className="border-b border-border px-5 py-4">
                             <h2 className="flex items-center gap-2 font-semibold"><FileText className="h-4 w-4 text-primary" />提交内容快照</h2>
                             <p className="mt-1 text-meta text-muted-foreground">以下内容固定为本次提交时的版本，不受后续实验模板修改影响。</p>
@@ -117,25 +141,6 @@ export function SubmissionDetailPage() {
                             </Tabs>
                         </div>
                     </section>
-
-                    {detail.teacherComment && (
-                        <section className="rounded-surface border border-border bg-muted p-5">
-                            <h2 className="mb-2 flex items-center gap-2 text-label font-medium"><FileText className="h-4 w-4 text-primary" />教师评语</h2>
-                            <p className="whitespace-pre-line text-label leading-relaxed text-foreground">{detail.teacherComment}</p>
-                        </section>
-                    )}
-
-                    {detail.rejectReason && (
-                        <section className="rounded-surface border border-destructive-border bg-destructive-muted p-5">
-                            <h2 className="mb-2 flex items-center gap-2 text-label font-medium text-destructive"><AlertCircle className="h-4 w-4" />驳回理由</h2>
-                            <p className="whitespace-pre-line text-label leading-relaxed text-destructive">{detail.rejectReason}</p>
-                            <Button asChild className="mt-4"><Link to={`/task/${detail.taskId}/experiment`}>继续修改</Link></Button>
-                        </section>
-                    )}
-
-                    {!detail.teacherComment && !detail.rejectReason && detail.status === "submitted" && (
-                        <p className="rounded-surface border border-warning-border bg-warning-muted p-4 text-label text-warning">实验已经提交，等待教师批改。</p>
-                    )}
                 </CardContent>
             </Card>
         </div>

@@ -50,8 +50,7 @@ const SAMPLING_METHOD_LABELS: Record<SamplingMethod, string> = {
 
 function QuestionPreview({ question, index }: { question: Question; index: number }) {
     return (
-        <Card className="bg-muted border-input">
-            <CardContent className="p-4">
+        <div className="border-b border-border py-4 last:border-b-0">
                 <div className="flex items-start gap-3">
                     <span className="flex-shrink-0 w-6 h-6 rounded-control bg-primary-muted text-primary flex items-center justify-center text-label font-bold mt-0.5">
                         {index + 1}
@@ -87,8 +86,7 @@ function QuestionPreview({ question, index }: { question: Question; index: numbe
                         )}
                     </div>
                 </div>
-            </CardContent>
-        </Card>
+        </div>
     );
 }
 
@@ -192,8 +190,7 @@ export function SubmissionPreview() {
                 </Link>
             </Button>
 
-            <Card className="border-primary-border bg-card">
-                <div className="absolute top-0 left-0 h-1 w-full bg-primary" />
+            <Card className="border-border bg-card">
                 <CardHeader className="border-b border-input pb-4">
                     <div className="flex items-center justify-between">
                         <h1 className="flex items-center gap-3 text-page-title font-semibold text-foreground">
@@ -209,7 +206,37 @@ export function SubmissionPreview() {
                         实验模板：<span className="text-foreground font-medium">{task.name}</span>
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="pt-6">
+                <CardContent className="space-y-6 pt-6">
+                    <section data-testid="student-preview-submit-panel" aria-labelledby="preview-submit-heading" className="flex flex-wrap items-center justify-between gap-4 rounded-surface bg-primary-muted p-5">
+                        <div>
+                            <h2 id="preview-submit-heading" className="text-section-title text-foreground">确认内容并提交</h2>
+                            <p className="mt-1 text-label text-muted-foreground">提交后内容将冻结，无法再次修改。</p>
+                            {!canSubmit && (
+                                <div className="mt-3 flex items-center gap-2 text-label text-destructive">
+                                    <AlertCircle className="h-4 w-4" />{submitBlocker}
+                                </div>
+                            )}
+                            {error && (
+                                <div role="alert" data-testid="student-preview-submit-error" className="mt-3 text-label text-destructive">
+                                    {error}
+                                </div>
+                            )}
+                        </div>
+                        <Button
+                            onClick={() => setConfirmOpen(true)}
+                            disabled={!canSubmit || submitting || refreshRequired}
+                            data-testid="student-preview-submit"
+                            className="h-12 shrink-0 px-8 text-subheading"
+                        >
+                            {submitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />提交中...</> : <><Send className="mr-2 h-5 w-5" />确认提交</>}
+                        </Button>
+                    </section>
+
+                    <section aria-labelledby="preview-content-heading">
+                        <div className="mb-4">
+                            <h2 id="preview-content-heading" className="text-section-title">提交内容</h2>
+                            <p className="mt-1 text-label text-muted-foreground">实验报告是主要提交内容，问卷可作为参考核对。</p>
+                        </div>
                     <Tabs defaultValue="report" className="w-full">
                         <TabsList className="bg-muted border border-input p-1 w-auto h-auto rounded-surface" data-testid="student-preview-tabs">
                             <TabsTrigger
@@ -217,20 +244,20 @@ export function SubmissionPreview() {
                                 data-testid="student-preview-tab-report"
                                 className="px-6 py-2 rounded-control data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-muted-foreground data-[state=inactive]:hover:text-foreground transition-none"
                             >
-                                实验报告预览
+                                实验报告
                             </TabsTrigger>
                             <TabsTrigger
                                 value="questionnaire"
                                 data-testid="student-preview-tab-questionnaire"
                                 className="px-6 py-2 rounded-control data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-muted-foreground data-[state=inactive]:hover:text-foreground transition-none"
                             >
-                                问卷预览
+                                问卷参考
                             </TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="report" className="mt-6 space-y-4 animate-in fade-in-50 slide-in-from-bottom-2">
-                            <div className="bg-muted rounded-surface p-6 border border-border min-h-[300px] space-y-5">
-                                <div className="rounded-surface border border-border bg-card p-4">
+                            <div className="min-h-[300px] rounded-surface bg-muted p-6">
+                                <div className="border-b border-border py-4 first:pt-0">
                                     <h2 className="text-body font-semibold text-foreground mb-3">阶段一：问卷预试</h2>
                                     <div className="text-label text-foreground space-y-1">
                                         <p>问卷标题：{questionnaire?.title || "未填写"}</p>
@@ -244,7 +271,7 @@ export function SubmissionPreview() {
                                     </div>
                                 </div>
 
-                                <div className="rounded-surface border border-border bg-card p-4">
+                                <div className="border-b border-border py-4">
                                     <h2 className="text-body font-semibold text-foreground mb-3">阶段二：样本量规划</h2>
                                     {samplePlan ? (
                                         <div className="text-label text-foreground space-y-1">
@@ -273,7 +300,7 @@ export function SubmissionPreview() {
                                     )}
                                 </div>
 
-                                <div className="rounded-surface border border-border bg-card p-4">
+                                <div className="border-b border-border py-4">
                                     <h2 className="text-body font-semibold text-foreground mb-3">阶段三：抽样执行</h2>
                                     <div className="text-label text-foreground space-y-1">
                                         {samplingMethodRows.map((row) => (
@@ -282,7 +309,7 @@ export function SubmissionPreview() {
                                     </div>
                                 </div>
 
-                                <div className="rounded-surface border border-border bg-card p-4">
+                                <div className="pt-4">
                                     <h2 className="text-body font-semibold text-foreground mb-3 flex items-center gap-2">
                                         <FileText className="w-4 h-4 text-success" />
                                         阶段四：分析报告
@@ -301,7 +328,7 @@ export function SubmissionPreview() {
                         </TabsContent>
 
                         <TabsContent value="questionnaire" className="mt-6 space-y-4 animate-in fade-in-50 slide-in-from-bottom-2">
-                            <div className="bg-muted rounded-surface p-6 border border-border">
+                            <div className="rounded-surface bg-muted p-6">
                                 {!questionnaire ? (
                                     <div className="text-label text-muted-foreground italic">暂无问卷内容</div>
                                 ) : (
@@ -310,7 +337,7 @@ export function SubmissionPreview() {
                                             <h2 className="text-section-title font-bold text-foreground mb-2">{questionnaire.title || "未命名问卷"}</h2>
                                             <RichTextContent
                                                 html={questionnaire.welcomeText ?? ""}
-                                                className="text-label text-muted-foreground bg-card p-3 rounded-surface border border-border"
+                                                className="text-label text-muted-foreground"
                                             />
                                         </div>
 
@@ -327,7 +354,7 @@ export function SubmissionPreview() {
                                         <div className="mt-6 pt-4 border-t border-border">
                                             <RichTextContent
                                                 html={questionnaire.endingText ?? ""}
-                                                className="text-label text-muted-foreground bg-card p-3 rounded-surface border border-border"
+                                                className="text-label text-muted-foreground"
                                             />
                                         </div>
                                     </>
@@ -335,41 +362,9 @@ export function SubmissionPreview() {
                             </div>
                         </TabsContent>
                     </Tabs>
+                    </section>
                 </CardContent>
             </Card>
-
-            <div className="flex flex-col items-end gap-4 pb-12">
-                {!canSubmit && (
-                    <div className="text-label text-destructive bg-destructive-muted px-4 py-2 rounded-surface border border-destructive-border flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4" />
-                        {submitBlocker}
-                    </div>
-                )}
-                {error && (
-                    <div role="alert" data-testid="student-preview-submit-error" className="text-label text-destructive bg-destructive-muted px-4 py-2 rounded-surface border border-destructive-border">
-                        {error}
-                    </div>
-                )}
-
-                <Button
-                    onClick={() => setConfirmOpen(true)}
-                    disabled={!canSubmit || submitting || refreshRequired}
-                    data-testid="student-preview-submit"
-                    className="w-auto h-12 px-8 text-subheading bg-primary hover:bg-primary-hover text-primary-foreground "
-                >
-                    {submitting ? (
-                        <>
-                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                            提交中...
-                        </>
-                    ) : (
-                        <>
-                            <Send className="w-5 h-5 mr-2" />
-                            确认提交
-                        </>
-                    )}
-                </Button>
-            </div>
 
             <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
                 <AlertDialogContent className="bg-card border-border text-foreground" data-testid="student-preview-submit-dialog">
