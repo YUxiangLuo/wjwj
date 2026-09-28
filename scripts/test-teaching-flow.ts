@@ -21,7 +21,8 @@ await mkdir(artifacts, { recursive: true });
 for (const name of ["student-failure.png", "teacher-failure.png", "result.json", "teacher-dictionary.png", "numeric-variable-binding.png", "sampling-pps-policy.png", "sampling-animation-exact.png", "sampling-animation-receipt.png", "sampling-animation-zoom-200.png", "sampling-animation-zoom-200-pagination.png", "sampling-animation-zoom-200-draw.png", "stage4-saved-analysis.png", "teacher-submitted-appendix.png", "stale-analysis-warning.png", "empty-path-narrow.png"]) {
     await Bun.file(join(artifacts, name)).delete().catch(() => undefined);
 }
-const environment = { ...process.env, DATABASE_URL: String(databaseUrl), DEMO_MODE: "1", DEV_AUTH_MODE: "0", NODE_ENV: "development", HOST: "127.0.0.1" };
+const adminTestPassword = `Test-${crypto.randomUUID()}`;
+const environment = { ...process.env, SEED_ADMIN_PASSWORD: adminTestPassword, DATABASE_URL: String(databaseUrl), DEMO_MODE: "1", DEV_AUTH_MODE: "0", NODE_ENV: "development", HOST: "127.0.0.1" };
 const browserLauncher = join(root, "node_modules/agent-browser/bin/agent-browser.js");
 const sessionPrefix = `wj-flow-${crypto.randomUUID().slice(0, 8)}`;
 const student = `${sessionPrefix}-student`;
@@ -29,6 +30,7 @@ const student2 = `${sessionPrefix}-student2`;
 const seedStudent = `${sessionPrefix}-seed-student`;
 const teacher = `${sessionPrefix}-teacher`;
 const teacher2 = `${sessionPrefix}-teacher2`;
+const administrator = `${sessionPrefix}-admin`;
 let server: ReturnType<typeof Bun.spawn> | undefined;
 let databaseCreated = false;
 let baseUrl = "";
@@ -119,10 +121,10 @@ async function completeQuestionnairePreview(session: string, questionCount: numb
     await eventually(() => evaluate(session, '!document.querySelector("[data-testid=immersive-questionnaire-preview]")'), "Trial did not return to the editor");
 }
 
-async function login(session: string, role: "student" | "teacher", account: string) {
+async function login(session: string, role: "student" | "teacher" | "admin", account: string, password = account) {
     await page(session, `/${role}/login`, "input[type=password]");
     await browser(session, "fill", "input:not([type=password])", account);
-    await browser(session, "fill", "input[type=password]", account);
+    await browser(session, "fill", "input[type=password]", password);
     await browser(session, "click", "button[type=submit]");
     await eventually(() => evaluate(session, `!location.pathname.endsWith("/login") && !document.querySelector("input[type=password]")`), `${role} login failed`);
 }
@@ -149,6 +151,28 @@ try {
     }, "Test server failed to start");
 
     await login(teacher, "teacher", "T001");
+    await login(administrator, "admin", "admin", adminTestPassword);
+    for (const [session, role, path, search, table] of [
+        [teacher, "teacher", "/teacher/task", "teacher-task-search", "实验任务列表"],
+        [administrator, "admin", "/admin/class", "class-search-input", "班级列表"],
+    ] as const) {
+        await page(session, path, `[data-testid="${search}"]`);
+        await eventually(() => evaluate(session, `document.querySelectorAll('table[aria-label="${table}"] tbody tr').length > 1`), `${role} list rows missing`);
+        for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+            await browser(session, "set", "viewport", String(width), String(height));
+            await evaluate(session, "scrollTo(0,0)");
+            assert(await evaluate(session, `(() => {const search=document.querySelector('[data-testid="${search}"]').getBoundingClientRect();const table=document.querySelector('table[aria-label="${table}"]');return document.documentElement.scrollWidth<=innerWidth && search.left>=0 && search.right<=innerWidth && table.querySelector('tbody tr').getBoundingClientRect().bottom<innerHeight;})()`), `${role} list must expose filters and first row without page overflow at ${width}`);
+            await browser(session, "screenshot", join(artifacts, `${role}-list-${width}.png`));
+        }
+        await browser(session, "fill", `[data-testid="${search}"]`, "不存在的专项测试记录");
+        await eventually(() => evaluate(session, `document.querySelectorAll('table[aria-label="${table}"] tbody tr td').length === 1`), `${role} empty search state missing`);
+        await browser(session, "screenshot", join(artifacts, `${role}-list-empty.png`));
+        // Explicit native input event: the browser CLI's empty fill did not notify React.
+        await evaluate(session, `(() => {const input=document.querySelector('[data-testid="${search}"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'');input.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+        await eventually(() => evaluate(session, `document.querySelectorAll('table[aria-label="${table}"] tbody tr').length > 1`), `${role} search clear did not restore rows`);
+        await browser(session, "set", "viewport", "1280", "800");
+    }
+    console.log("PASS teacher/admin list hierarchy, three desktop viewports and search recovery");
     const seededPending = await api<{ items: Array<{ id: number; topic: string }> }>(teacher, "/api/teacher/grading?status=pending&page=1&pageSize=20");
     const seededGrading = seededPending.items.find(item => item.topic === DOGFOOD_NAMES.topicA);
     assert(seededGrading, "Seeded pending grading item missing");
@@ -715,7 +739,7 @@ try {
     }
     throw cause;
 } finally {
-    for (const session of [student, student2, seedStudent, teacher, teacher2]) await browser(session, "close").catch(() => undefined);
+    for (const session of [student, student2, seedStudent, teacher, teacher2, administrator]) await browser(session, "close").catch(() => undefined);
     if (server) {
         server.kill("SIGTERM");
         const timer = setTimeout(() => server!.kill("SIGKILL"), 7000);
