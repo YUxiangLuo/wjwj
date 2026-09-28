@@ -297,6 +297,27 @@ try {
     await browser(student, "set", "viewport", "1280", "800");
     await browser(student, "fill", '[data-testid="student-questionnaire-title"]', "学习投入调查：浏览器试填");
     await activate(student, '[data-testid="student-questionnaire-step-2"]');
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(student, "set", "viewport", String(width), String(height));
+        await evaluate(student, 'scrollTo({top:0,behavior:"instant"})');
+        assert(await evaluate(student, `(() => {const list=document.querySelector('[data-testid="student-questionnaire-list"]');const rows=[...list.querySelectorAll('[draggable="true"]')];return rows.length===5 && rows.every(row=>row.getBoundingClientRect().right<=innerWidth) && document.documentElement.scrollWidth<=innerWidth;})()`), `Questionnaire rows must fit at ${width}px`);
+        await browser(student, "screenshot", join(artifacts, `questionnaire-editor-${width}.png`));
+        assert(await evaluate(student, `(async () => {const last=document.querySelector('[data-testid="student-questionnaire-item-q4"]');last.scrollIntoView({block:'center'});await new Promise(requestAnimationFrame);const bounds=last.getBoundingClientRect();return bounds.top>=0 && bounds.bottom<=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect().top;})()`), `Last question must scroll clear of the footer at ${width}px`);
+        assert(await evaluate(student, `(async () => {scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'});await new Promise(requestAnimationFrame);const reference=document.querySelector('[data-testid="student-questionnaire-reference"]');return reference.getBoundingClientRect().bottom<=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect().top;})()`), `Design advice must scroll clear of the footer at ${width}px`);
+        await browser(student, "screenshot", join(artifacts, `questionnaire-reference-tail-${width}.png`));
+    }
+    await browser(student, "set", "viewport", "1280", "800");
+    const recommendationToggle = '[aria-controls="student-recommended-question-list"]';
+    await evaluate(student, `document.querySelector('${recommendationToggle}').focus()`);
+    await browser(student, "press", "Enter");
+    assert(await evaluate(student, `document.querySelector('${recommendationToggle}').getAttribute('aria-expanded')==='false' && !document.querySelector('#student-recommended-question-list')`), "Keyboard collapse must hide recommended questions");
+    await browser(student, "screenshot", join(artifacts, "questionnaire-references-collapsed.png"));
+    await browser(student, "press", "Space");
+    assert(await evaluate(student, `document.querySelector('${recommendationToggle}').getAttribute('aria-expanded')==='true' && Boolean(document.querySelector('#student-recommended-question-list'))`), "Keyboard expand must restore recommended questions");
+    await activate(student, '[data-testid="student-questionnaire-move-down-q0"]');
+    assert(await evaluate(student, `document.querySelector('[data-testid="student-questionnaire-list"] [draggable="true"]').dataset.testid==='student-questionnaire-item-q1'`), "Question move-down must change order");
+    await activate(student, '[data-testid="student-questionnaire-move-up-q0"]');
+    assert(await evaluate(student, `document.querySelector('[data-testid="student-questionnaire-list"] [draggable="true"]').dataset.testid==='student-questionnaire-item-q0'`), "Question move-up must restore order");
     await namedButton(student, "关联变量");
     await visible(student, '[aria-label="选择变量字段"]');
     // 关联对话框：焦点进入、Tab 不逃逸、Escape 关闭并把焦点还给触发按钮

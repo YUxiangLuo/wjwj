@@ -518,14 +518,14 @@ export function QuestionnaireDesign() {
                                             <p>暂无题目，点击「添加题目」开始设计问卷</p>
                                         </div>
                                     ) : (
-                                        <div className="space-y-3">
+                                        <div className="divide-y divide-border">
                                             {questions.map((q, index) => (
                                                 <div
                                                     key={q.id}
                                                     data-testid={`student-questionnaire-item-${q.id}`}
-                                                    className={`flex flex-wrap items-start gap-3 p-4 rounded-surface border transition-none group hover:bg-muted ${dragOverId === q.id && draggingId !== q.id
-                                                        ? "border-primary ring-1 ring-ring bg-primary-muted"
-                                                        : "border-border bg-background"
+                                                    className={`flex flex-wrap items-start gap-3 px-2 py-5 transition-none group hover:bg-muted ${dragOverId === q.id && draggingId !== q.id
+                                                        ? "ring-1 ring-ring bg-primary-muted"
+                                                        : "bg-card"
                                                         } ${draggingId === q.id ? "opacity-50" : ""}`}
                                                     draggable
                                                     onDragStart={handleDragStart(q.id)}
@@ -619,14 +619,14 @@ export function QuestionnaireDesign() {
                                 </div>
                             )}
                         </div>
-                        <div className="min-w-0 flex-[1_1_18rem] space-y-4">
-                            <Card className="rounded-surface border-border bg-card ">
+                        <div className="min-w-0 flex-[1_1_18rem] space-y-6" data-testid="student-questionnaire-reference">
+                            <Card className="border-0 bg-muted">
                                 <CardHeader
                                     role="button"
                                     tabIndex={0}
                                     aria-expanded={!recommendCollapsed}
                                     aria-controls="student-recommended-question-list"
-                                    className="cursor-pointer select-none"
+                                    className="cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                     onClick={() => setRecommendCollapsed(!recommendCollapsed)}
                                     onKeyDown={(event) => {
                                         if (event.key === "Enter" || event.key === " ") {
@@ -647,7 +647,7 @@ export function QuestionnaireDesign() {
                                         role="region"
                                         tabIndex={0}
                                         aria-label="教师推荐题目列表"
-                                        className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar"
+                                        className="divide-y divide-border max-h-[400px] overflow-y-auto custom-scrollbar"
                                     >
                                         {recommendQuestions.length === 0 && (
                                             <div className="rounded-surface border border-dashed border-input bg-card p-4 text-label text-muted-foreground text-center">
@@ -657,7 +657,7 @@ export function QuestionnaireDesign() {
                                         {recommendQuestions.map((rq) => {
                                             const recommendAlreadyInQuestionnaire = questions.some((q) => q.recommendSourceId === rq.id);
                                             return (
-                                            <div key={rq.id} className="flex flex-col gap-2 p-3 rounded-surface border border-border bg-background">
+                                            <div key={rq.id} className="flex flex-col gap-2 py-4 first:pt-0 last:pb-0">
                                                 <div className="space-y-1">
                                                     <div className="text-label font-medium text-foreground line-clamp-2">{rq.content}</div>
                                                     <div className="text-meta text-muted-foreground">
@@ -679,7 +679,7 @@ export function QuestionnaireDesign() {
                                     </CardContent>
                                 )}
                             </Card>
-                            <Card className="rounded-surface border-border bg-card ">
+                            <Card className="border-0 border-t border-border rounded-none bg-transparent">
                                 <CardHeader>
                                     <CardTitle className="text-body text-foreground">设计建议</CardTitle>
                                 </CardHeader>
