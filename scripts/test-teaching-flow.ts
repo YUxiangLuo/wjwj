@@ -228,6 +228,15 @@ try {
     await activate(teacher, '[data-testid="teacher-topic-next"]');
     await activate(teacher, '[data-testid="teacher-topic-next"]');
     await visible(teacher, `input[aria-label="${continuousVariable.field} 标签"]`);
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(teacher, "set", "viewport", String(width), String(height));
+        await evaluate(teacher, `document.querySelector('[data-testid="teacher-topic-scroll-content"]').scrollTop=0`);
+        assert(await evaluate(teacher, `(() => {const dialog=document.querySelector('[role="dialog"]').getBoundingClientRect();const nav=document.querySelector('[data-testid="teacher-topic-step-navigation"]').getBoundingClientRect();const content=document.querySelector('[data-testid="teacher-topic-scroll-content"]').getBoundingClientRect();const next=document.querySelector('[data-testid="teacher-topic-next"]').getBoundingClientRect();return dialog.left>=0 && dialog.right<=innerWidth && dialog.top>=0 && dialog.bottom<=innerHeight && nav.bottom<=content.top && content.height>200 && content.bottom<=next.top;})()`), `Wizard navigation, scroll area and actions must not overlap at ${width}`);
+        await browser(teacher, "screenshot", join(artifacts, `teacher-wizard-${width}.png`));
+        await evaluate(teacher, `(() => {const content=document.querySelector('[data-testid="teacher-topic-scroll-content"]');content.scrollTop=content.scrollHeight;})()`);
+        assert(await evaluate(teacher, `(() => {const nav=document.querySelector('[data-testid="teacher-topic-step-navigation"]').getBoundingClientRect();const content=document.querySelector('[data-testid="teacher-topic-scroll-content"]');return content.scrollTop>0 && nav.bottom<=content.getBoundingClientRect().top && document.querySelector('[aria-current="step"]').textContent==='3';})()`), "Wizard scrolling must not hide the current step");
+    }
+    await browser(teacher, "set", "viewport", "1280", "800");
     const dictionaryLabel = `${continuousVariable.label}（浏览器确认）`;
     await browser(teacher, "fill", `input[aria-label="${continuousVariable.field} 标签"]`, dictionaryLabel);
     const missingBefore = await evaluate<string>(teacher, 'document.querySelector("#missing-0").value');
@@ -432,6 +441,14 @@ try {
     await eventually(() => evaluate(student, `(() => {const panel=document.querySelector('[data-testid="student-target-metrics"]');const table=panel?.querySelector('table');return panel && table && table.getBoundingClientRect().width<=panel.getBoundingClientRect().width && document.documentElement.scrollWidth<=innerWidth;})()`), "Target comparison table must fit the full-width result panel");
     await eventually(() => evaluate(student, `(() => {const rows=document.querySelectorAll('[data-testid="student-target-metrics"] tbody tr');const footer=document.querySelector('[data-testid="student-stage-actions"]');return rows.length>=2 && rows[1].getBoundingClientRect().bottom<=footer.getBoundingClientRect().top;})()`), "The first two comparison results must be fully visible above the footer at 1280×800");
     await browser(student, "screenshot", join(artifacts, "analysis-results.png"));
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(student, "set", "viewport", String(width), String(height));
+        await evaluate(student, `scrollTo(0,0);document.querySelector('[data-testid="student-study-context"]').open=true`);
+        assert(await evaluate(student, `(() => {const nav=document.querySelector('[data-testid="student-experiment-navigation"]').getBoundingClientRect();const context=document.querySelector('[data-testid="student-study-context"]').getBoundingClientRect();return document.documentElement.scrollWidth<=innerWidth && context.top>=nav.bottom && document.querySelectorAll('[data-testid="student-experiment-stages"] [aria-current="step"]').length===1;})()`), `Student navigation and expanded study context must remain readable at ${width}`);
+        await browser(student, "screenshot", join(artifacts, `student-context-${width}.png`));
+    }
+    await evaluate(student, `document.querySelector('[data-testid="student-study-context"]').open=false`);
+    await browser(student, "set", "viewport", "1280", "800");
     await evaluate(student, `document.querySelector('[data-testid="student-target-metrics"] details').open = true`);
     await evaluate(student, `document.querySelector('[data-testid="student-target-metrics"] details').scrollIntoView({block:'center'})`);
     await browser(student, "screenshot", join(artifacts, "analysis-diagnostics.png"));

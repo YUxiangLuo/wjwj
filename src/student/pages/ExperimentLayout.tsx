@@ -1,7 +1,7 @@
 import { StudentStatusPage } from "../components/StudentStatusPage";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, ArrowLeft, BarChart3, CheckCircle2, ChevronRight, Clock, FileText, Home, Play, RefreshCw, Ruler } from "lucide-react";
+import { AlertCircle, ArrowLeft, BarChart3, CheckCircle2, ChevronRight, Clock, FileText, Play, RefreshCw, Ruler } from "lucide-react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -180,14 +180,14 @@ function ExperimentWorkspace() {
             <div className="pb-4" data-testid="student-experiment-layout">
                 <div className="sticky top-16 z-40 -mt-2 border-b border-border bg-background" data-testid="student-experiment-navigation">
                     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2">
-                        <div className="flex min-w-[20rem] flex-1 items-center gap-2"><Button asChild variant="ghost" size="icon"><Link to="/" aria-label="返回任务大厅"><Home className="h-4 w-4" /></Link></Button><Button asChild variant="ghost" className="gap-2 flex shrink-0"><Link to={`/task/${numericTaskId}`}><ArrowLeft className="h-4 w-4" />返回任务</Link></Button><h1 tabIndex={-1} title={taskName} className="ml-2 min-w-0 line-clamp-1 border-l border-border pl-4 text-label font-semibold outline-none">{taskName}</h1></div>
+                        <div className="flex min-w-[12rem] flex-1 items-center gap-2"><Button asChild variant="ghost" size="sm" className="gap-2 shrink-0"><Link to={`/task/${numericTaskId}`}><ArrowLeft className="h-4 w-4" />返回任务</Link></Button><h1 tabIndex={-1} title={taskName} className="min-w-0 line-clamp-1 text-label font-medium outline-none">{taskName}</h1></div>
                     <div className="flex shrink-0 items-center gap-2" data-testid="student-experiment-stages">
                         {stages.map((stage, index) => {
                             const number = index + 1;
                             const isCurrent = number === currentStage;
                             const isCompleted = completed[index] !== null;
                             const Icon = stage.icon;
-                            return <div key={stage.name} className="flex items-center gap-2">{index > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}<button aria-label={`${isCurrent ? "当前阶段" : isCompleted ? "查看已完成阶段" : "未完成阶段"} ${number}：${stage.name}`} disabled={number >= currentStage || !isCompleted} onClick={() => setInspectStage(number)} className={`flex items-center gap-1.5 whitespace-nowrap rounded-surface px-2.5 py-1 text-meta font-medium ${isCurrent ? "border border-primary-border bg-primary-muted text-primary" : isCompleted ? "text-success hover:bg-success-muted" : "text-muted-foreground"}`}>{isCompleted && !isCurrent ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}<span>{stage.name}</span></button></div>;
+                            return <div key={stage.name} className="flex items-center gap-2">{index > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}<button aria-current={isCurrent ? "step" : undefined} aria-label={`${isCurrent ? "当前阶段" : isCompleted ? "查看已完成阶段" : "未完成阶段"} ${number}：${stage.name}`} disabled={number >= currentStage || !isCompleted} onClick={() => setInspectStage(number)} className={`flex items-center gap-1.5 whitespace-nowrap rounded-surface px-2.5 py-1 text-meta font-medium ${isCurrent ? "border border-primary-border bg-primary-muted text-primary" : isCompleted ? "text-success hover:bg-success-muted" : "text-muted-foreground"}`}>{isCompleted && !isCurrent ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}<span>{stage.name}</span></button></div>;
                         })}
                     </div>
                         {deadlineInfo && <span className={`flex shrink-0 items-center gap-1 text-meta ${deadlineInfo.urgent ? "text-destructive" : "text-muted-foreground"}`}>{deadlineInfo.urgent ? <AlertCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}{deadlineInfo.text}</span>}
@@ -201,7 +201,7 @@ function ExperimentWorkspace() {
                     </div>
                     <span className="shrink-0 text-meta text-muted-foreground">阶段 {currentStage} / 4</span>
                 </PageHeader>
-                <details className="mb-4 rounded-surface border border-border bg-card px-4 py-2">
+                <details className="mb-5 border-l-2 border-border pl-4 py-1" data-testid="student-study-context">
                     <summary className="cursor-pointer text-label text-foreground">研究目标：{experiment.studyContract?.contract.researchQuestion ?? "查看本次实验的目标与约定"}</summary>
                     <p className="mt-3 text-label leading-relaxed text-muted-foreground" data-testid="student-analysis-target-summary">
                     {formatStudyContractSummary(experiment.studyContract ?? null, experiment.samplePlan

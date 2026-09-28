@@ -238,19 +238,18 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
     return (
         <Dialog open={open} onOpenChange={(value) => { if (!busy) onOpenChange(value); }}>
             <DialogContent
-                className="max-w-5xl h-[80vh] flex flex-col bg-card border-border text-foreground"
+                className="w-[calc(100vw-2rem)] max-w-5xl h-[86vh] flex flex-col overflow-hidden bg-card border-border text-foreground"
                 showCloseButton={!busy}
                 onOpenAutoFocus={(event) => { event.preventDefault(); stepRef.current?.focus({ preventScroll: true }); }}
                 onInteractOutside={(e) => e.preventDefault()}
             >
                 <DialogHeader>
-                    <DialogTitle className="text-foreground">{(mode ?? (editingTopicId ? "edit" : "create")) === "edit" ? "编辑实验模板" : "创建实验模板"}</DialogTitle>
+                    <DialogTitle className="text-section-title text-foreground">{(mode ?? (editingTopicId ? "edit" : "create")) === "edit" ? "编辑实验模板" : "创建实验模板"}</DialogTitle>
                     <DialogDescription className="sr-only">
                         通过七个步骤配置实验模板的基础信息、总体数据、研究目标、抽样策略、教学资料、推荐题目和评分规则。
                     </DialogDescription>
                 </DialogHeader>
-                <div ref={contentRef} data-testid="teacher-topic-scroll-content" className="min-h-0 space-y-4 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
-                    <div className="sticky top-0 z-10 flex items-center gap-2 bg-card py-2 overflow-x-auto scrollbar-thin scrollbar-thumb-border">
+                    <div data-testid="teacher-topic-step-navigation" className="flex shrink-0 items-center gap-2 border-b border-border pb-3 overflow-x-auto scrollbar-thin scrollbar-thumb-border">
                         {["基本信息", "总体数据", "研究目标与字段", "抽样策略", "教学资料", "推荐题目", "评分规则"].map((step, idx) => {
                             const isCompleted = idx + 1 < currentStep;
                             const isCurrent = idx + 1 === currentStep;
@@ -260,12 +259,13 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         ref={isCurrent ? stepRef : undefined}
                                         tabIndex={isCurrent ? -1 : undefined}
                                         aria-current={isCurrent ? "step" : undefined}
+                                        aria-label={`步骤 ${idx + 1}：${step}`}
                                         data-testid={`teacher-topic-step-${idx + 1}`}
                                         className={`w-7 h-7 rounded-control flex items-center justify-center text-meta font-medium transition-colors ${isCurrent
-                                            ? "bg-primary text-primary-foreground ring-2 ring-ring"
+                                            ? "bg-primary text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring"
                                             : isCompleted
                                                 ? "bg-success-muted text-success border border-success-border"
-                                                : "bg-muted text-muted-foreground border border-input"
+                                                : "text-muted-foreground"
                                         }`}
                                     >
                                         {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5" /> : idx + 1}
@@ -277,6 +277,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         })}
                     </div>
 
+                <div ref={contentRef} data-testid="teacher-topic-scroll-content" className="min-h-0 space-y-4 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
                     <div className="min-w-0 flex-1" inert={busy} aria-busy={busy}>
                         {detailError && onRetryDetail && <RequestError message={detailError} onRetry={onRetryDetail} />}
                         {loadingDetail && !detailError && currentStep > 1 && (
