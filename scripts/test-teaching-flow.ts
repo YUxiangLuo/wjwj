@@ -180,12 +180,20 @@ try {
     for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
         await browser(teacher, "set", "viewport", String(width), String(height));
         assert(await evaluate(teacher, `(() => {const list=document.querySelector('[data-testid="teacher-progress-students"]').getBoundingClientRect();return !document.querySelector('#teacher-progress-charts') && list.top<innerHeight/2 && document.documentElement.scrollWidth<=innerWidth;})()`), `Progress list must take priority at ${width}px`);
-        await browser(teacher, "screenshot", join(artifacts, `teacher-progress-${width}.png`));
-        await activate(teacher, '[aria-controls="teacher-progress-charts"]');
+        await evaluate(teacher, 'document.getAnimations().forEach(animation=>animation.finish())');
+        await evaluate(teacher, `(() => {const button=document.querySelector('[aria-controls="teacher-progress-charts"]');button.addEventListener('click',event=>button.dataset.trustedClick=String(event.isTrusted),{once:true});})()`);
+        await browser(teacher, "click", '[aria-controls="teacher-progress-charts"]');
+        assert(await evaluate(teacher, `document.querySelector('[aria-controls="teacher-progress-charts"]').dataset.trustedClick==='true'`), "Progress disclosure must receive a trusted browser click");
         await eventually(() => evaluate(teacher, `document.querySelector('[aria-controls="teacher-progress-charts"]').getAttribute('aria-expanded')==='true' && document.querySelector('[aria-label="学生实验状态分布环形图"]').getBoundingClientRect().height>0 && document.documentElement.scrollWidth<=innerWidth`), `Distribution must expand without overflow at ${width}px`);
         await browser(teacher, "screenshot", join(artifacts, `teacher-progress-expanded-${width}.png`));
-        await activate(teacher, '[aria-controls="teacher-progress-charts"]');
+        await browser(teacher, "press", "Enter");
         await eventually(() => evaluate(teacher, `!document.querySelector('#teacher-progress-charts') && document.querySelector('[aria-controls="teacher-progress-charts"]').getAttribute('aria-expanded')==='false'`), "Distribution must collapse");
+        await browser(teacher, "press", "Space");
+        assert(await evaluate(teacher, `document.querySelector('[aria-controls="teacher-progress-charts"]').getAttribute('aria-expanded')==='true'`), "Space must expand the distribution");
+        await browser(teacher, "press", "Space");
+        await browser(teacher, "press", "Tab");
+        assert(await evaluate(teacher, `document.activeElement?.id==='teacher-progress-search'`), "Tab must advance from disclosure to student search");
+        await browser(teacher, "screenshot", join(artifacts, `teacher-progress-${width}.png`));
     }
     await browser(teacher, "fill", '#teacher-progress-search', "no-such-student-ui-check");
     assert(await evaluate(teacher, 'document.querySelector("table[aria-label=任务学生进度] tbody").textContent.includes("暂无数据")'), "Progress search must show empty state");
