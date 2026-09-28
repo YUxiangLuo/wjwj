@@ -2,7 +2,7 @@ import { RequestError } from "@/components/RequestError";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useState, useEffect, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronLeft, ChevronRight, Search, Upload, UserPlus, RotateCcw, Trash2, Users } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Search, Upload, UserPlus, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,6 @@ import { StudentConfirmDialog } from "../components/StudentConfirmDialog";
 import { StudentImportDialog } from "../components/StudentImportDialog";
 import { teacherApi, type Student, type TeacherClass } from "../api-client";
 import { toast } from "sonner";
-import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { isValidOptionalEmail } from "@/lib/email";
 import { rowsToCsv } from "@/lib/csv";
@@ -262,20 +261,6 @@ export function StudentManagement() {
                 <p className="text-label text-muted-foreground mt-1">维护班级学生名单。</p>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-                <Card>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">学生总数</p>
-                            <p className="text-page-title font-bold text-foreground mt-1">{totalStudents}</p>
-                        </div>
-                        <IconTile intent="info">
-                            <Users className="w-5 h-5" />
-                        </IconTile>
-                    </CardContent>
-                </Card>
-            </div>
-
             <Card>
                 <PageHeader as={CardHeader}>
                     <div>
@@ -284,7 +269,7 @@ export function StudentManagement() {
                             {loading || loadError ? "共 - 人" : `共 ${totalStudents} 人${appliedSearch ? `（筛选：${appliedSearch}）` : ""}`}
                         </p>
                     </div>
-                    <div className="flex gap-3 flex-row w-auto">
+                    <div className="flex flex-wrap gap-3 flex-row w-auto">
                         <form role="search" aria-label="学生搜索" className="flex items-center gap-2" onSubmit={(event) => {
                             event.preventDefault();
                             const next = searchQuery.trim();
