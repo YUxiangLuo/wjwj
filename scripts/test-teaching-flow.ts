@@ -261,6 +261,21 @@ try {
 
     await login(student, "student", "S2610");
     const tasks = await api<StudentTask[]>(student, "/api/student/tasks");
+    await page(student, "/student", '[data-testid="student-task-grid"]');
+    await eventually(() => evaluate(student, `document.querySelectorAll('[data-testid^="student-task-card-"]').length===${tasks.length}`), "Task hall cards missing");
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(student, "set", "viewport", String(width), String(height));
+        assert(await evaluate(student, `document.documentElement.scrollWidth<=innerWidth && [...document.querySelectorAll('[data-testid^="student-task-card-"]')].every(card=>card.getBoundingClientRect().width>=320)`), `Task cards must retain readable width at ${width}`);
+        await browser(student, "screenshot", join(artifacts, `student-hall-${width}.png`));
+    }
+    for (const filter of ["submitted", "graded"] as const) {
+        await activate(student, `[data-testid="student-filter-${filter}"]`);
+        const expected = tasks.filter(task => task.status === filter).map(task => `student-task-card-${task.id}`).sort();
+        await eventually(() => evaluate(student, `JSON.stringify([...document.querySelectorAll('[data-testid^="student-task-card-"]')].map(card=>card.dataset.testid).sort())===${JSON.stringify(JSON.stringify(expected))} && document.querySelector('[data-testid="student-filter-${filter}"]').getAttribute('aria-pressed')==='true'`), `Task filter ${filter} does not match server tasks`);
+        await browser(student, "screenshot", join(artifacts, `student-hall-${filter}.png`));
+    }
+    await activate(student, '[data-testid="student-filter-all"]');
+    await browser(student, "set", "viewport", "1280", "800");
     const task = tasks.find(item => item.name === name);
     assert(task, "Published task did not reach student");
     const experimentPath = `/api/student/tasks/${task.id}/experiment`;
@@ -309,6 +324,12 @@ try {
     assert(experiment.questionnaire?.title === "学习投入调查：浏览器试填", "Questionnaire save lost the reviewed title");
     console.log("PASS questionnaire editing, explicit trial navigation and one-step save (real browser)");
     await page(student, stageUrl, '[data-testid="student-stage-sample-plan"]');
+    await visible(student, '[data-testid="planning-scroll-content"]');
+    await activate(student, '[data-testid="immersive-sp-close"]');
+    await namedButton(student, "确定退出");
+    await visible(student, '[data-testid="student-sample-plan-start"]');
+    await browser(student, "screenshot", join(artifacts, "planning-entry.png"));
+    await activate(student, '[data-testid="student-sample-plan-start"]');
     await visible(student, '[data-testid="planning-scroll-content"]');
     const planningLayout = await evaluate<{ viewportHeight: number; top: number; bottom: number; contentBottom: number; footerTop: number }>(student, `(() => {
         const dialog = document.querySelector('[data-testid="immersive-sample-planning"]');
@@ -364,7 +385,19 @@ try {
         await activate(student, '[data-testid="immersive-sp-quiz-next"]');
     }
     console.log("PASS required planning lessons, retry feedback, draft recovery and layout (real browser)");
+    const planSaveRoute = `${baseUrl}/api/student/tasks/${task.id}/experiment/stages/2/complete*`;
+    await browser(student, "network", "route", planSaveRoute, "--body", JSON.stringify({ success: false, error: { code: "TEST_UNAVAILABLE", message: "模拟规划保存失败，请重试" } }));
     await activate(student, '[data-testid="immersive-sp-confirm"]');
+    await visible(student, '[data-testid="student-sample-plan-summary"]');
+    assert(await evaluate(student, `document.querySelector('[data-testid="student-sample-plan-summary"]').textContent.includes(${JSON.stringify(String(plan.recommendedSize))})`), "Failed save must retain the calculated plan summary");
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(student, "set", "viewport", String(width), String(height));
+        await evaluate(student, `document.querySelector('[data-testid="student-sample-plan-summary"]').scrollIntoView({block:'center'})`);
+        assert(await evaluate(student, "document.documentElement.scrollWidth<=innerWidth"), "Plan summary must not overflow");
+        await browser(student, "screenshot", join(artifacts, `planning-summary-${width}.png`));
+    }
+    await browser(student, "network", "unroute", planSaveRoute);
+    await activate(student, '[data-testid="student-sample-plan-next"]');
     await visible(student, '[data-testid="student-stage-sampling"]');
     experiment = await api(student, experimentPath);
     assert(experiment.currentStage === 3 && experiment.samplePlan?.finalSampleSize === plan.recommendedSize, "Stage 2 did not persist");
