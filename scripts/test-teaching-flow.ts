@@ -294,6 +294,14 @@ try {
     experiment = await api(student, `${experimentPath}/stages/1/complete`, "POST", { observedVersion: experiment.version, questionnaire });
     experiment = await api(student, `${experimentPath}/stages/1/reopen`, "POST", { observedVersion: experiment.version });
     await page(student, stageUrl, '[data-testid="student-questionnaire-title"]');
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(student, "set", "viewport", String(width), String(height));
+        await evaluate(student, 'scrollTo({top:0,behavior:"instant"})');
+        assert(await evaluate(student, `(() => {const title=document.querySelector('[data-testid="student-questionnaire-title"]');return title.value==='学习投入调查' && document.querySelector('[data-testid="student-questionnaire-welcome-editor"]').textContent.includes('欢迎参加本次学习投入调查') && document.documentElement.scrollWidth<=innerWidth;})()`), `Opening form must retain draft and fit at ${width}px`);
+        await browser(student, "screenshot", join(artifacts, `questionnaire-opening-${width}.png`));
+        assert(await evaluate(student, `(async () => {const reference=document.querySelector('[data-testid="student-questionnaire-opening-reference"]');reference.scrollIntoView({block:'center'});await new Promise(requestAnimationFrame);const bounds=reference.getBoundingClientRect();return bounds.top>=0 && bounds.bottom<=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect().top && reference.textContent.includes('数据仅用于教学分析');})()`), `Opening reference must remain readable above the footer at ${width}px`);
+        await browser(student, "screenshot", join(artifacts, `questionnaire-opening-reference-${width}.png`));
+    }
     await browser(student, "set", "viewport", "1280", "800");
     await browser(student, "fill", '[data-testid="student-questionnaire-title"]', "学习投入调查：浏览器试填");
     await activate(student, '[data-testid="student-questionnaire-step-2"]');

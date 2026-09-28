@@ -467,19 +467,19 @@ export function QuestionnaireDesign() {
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card className="min-w-0 flex-[1_1_18rem] h-fit rounded-surface border-border bg-card">
+                        <Card className="min-w-0 flex-[1_1_18rem] h-fit border-0 bg-muted" data-testid="student-questionnaire-opening-reference">
                             <CardHeader>
-                                <CardTitle className="flex items-center gap-2 text-body text-info">
-                                    <HelpCircle className="w-4 h-4" />
+                                <CardTitle className="flex items-center gap-2 text-body text-foreground">
+                                    <HelpCircle className="w-4 h-4 text-muted-foreground" />
                                     小贴士
                                 </CardTitle>
-                                <CardDescription className="text-info">让受访者知道为什么填写、如何作答。</CardDescription>
+                                <CardDescription className="text-muted-foreground">让受访者知道为什么填写、如何作答。</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-4 text-label leading-relaxed text-info">
+                            <CardContent className="space-y-4 text-label leading-relaxed text-muted-foreground">
                                 <p>建议说明调查目的、预计用时与隐私保护方式。</p>
                                 <p>保持简洁友好，最好控制在 200 字以内。</p>
-                                <div className="rounded-surface border border-info-border bg-background p-3 text-meta text-info ">
-                                    <span className="font-semibold block mb-1">示例：</span>
+                                <div className="border-t border-border pt-4 text-meta">
+                                    <span className="font-semibold block mb-1 text-foreground">示例：</span>
                                     感谢参与本次调查，本问卷约 3 分钟完成，数据仅用于教学分析。
                                 </div>
                             </CardContent>
