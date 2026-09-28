@@ -337,7 +337,20 @@ try {
     await eventually(() => evaluate(student, 'document.body.textContent.includes("已关联变量")'), "Numeric variable binding was not shown");
     await browser(student, "screenshot", join(artifacts, "numeric-variable-binding.png"));
     await activate(student, '[data-testid="student-questionnaire-step-4"]');
-    await completeQuestionnairePreview(student, 5);
+    for (const state of ["pending", "completed"]) {
+        if (state === "completed") await completeQuestionnairePreview(student, 5);
+        assert(await evaluate(student, `document.querySelector('[data-testid="student-questionnaire-complete"]').disabled===${state === "pending"}`), `Questionnaire completion gate must reflect ${state} trial`);
+        for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+            await browser(student, "set", "viewport", String(width), String(height));
+            const trialSelector = `[data-testid="student-questionnaire-${state === "pending" ? "start" : "redo"}-preview"]`;
+            await evaluate(student, `document.querySelector('${trialSelector}').scrollIntoView({block:'center'})`);
+            assert(await evaluate(student, `(() => {const button=document.querySelector('${trialSelector}').getBoundingClientRect();return button.top>=0 && button.bottom<=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect().top && document.documentElement.scrollWidth<=innerWidth;})()`), `${state} trial action must remain reachable at ${width}px`);
+            await browser(student, "screenshot", join(artifacts, `questionnaire-trial-${state}-${width}.png`));
+            assert(await evaluate(student, `(async () => {scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'});await new Promise(requestAnimationFrame);const panel=document.querySelector('[data-testid="student-questionnaire-structure"]');return panel.textContent.includes('100分不代表问卷具有良好效度、信度') && panel.getBoundingClientRect().bottom<=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect().top;})()`), `Structure details and caveat must remain available at ${width}px`);
+            await browser(student, "screenshot", join(artifacts, `questionnaire-structure-${state}-${width}.png`));
+        }
+    }
+    await browser(student, "set", "viewport", "1280", "800");
     await activate(student, '[data-testid="student-questionnaire-complete"]');
     await visible(student, '[data-testid="student-stage-sample-plan"]');
     experiment = await api(student, experimentPath);
