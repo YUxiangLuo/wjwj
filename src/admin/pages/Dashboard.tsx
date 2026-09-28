@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, Briefcase, Calendar, GraduationCap, Megaphone, RefreshCw, School, TrendingUp } from "lucide-react";
+import { AlertCircle, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { LoadingStatus } from "@/components/LoadingStatus";
 import { RichTextContent } from "@/components/RichTextContent";
@@ -35,11 +35,11 @@ export function Dashboard() {
     }, []);
 
     const cards = [
-        { key: "semester", label: "当前学期", value: stats ? stats.currentSemester || "未设置" : null, icon: Calendar },
-        { key: "teachers", label: "教师", value: stats?.teacherCount ?? null, icon: Briefcase },
-        { key: "classes", label: "班级", value: stats?.classCount ?? null, icon: School },
-        { key: "students", label: "学生", value: stats?.studentCount ?? null, icon: GraduationCap },
-        { key: "pending", label: "待批改", value: stats?.pendingItems ?? null, icon: TrendingUp },
+        { key: "semester", label: "当前学期", value: stats ? stats.currentSemester || "未设置" : null },
+        { key: "teachers", label: "教师", value: stats?.teacherCount ?? null },
+        { key: "classes", label: "班级", value: stats?.classCount ?? null },
+        { key: "students", label: "学生", value: stats?.studentCount ?? null },
+        { key: "pending", label: "待批改", value: stats?.pendingItems ?? null },
     ];
 
     return (
@@ -58,47 +58,41 @@ export function Dashboard() {
                 </div>
             )}
 
-            <div className="grid grid-cols-[1.35fr_repeat(4,minmax(0,1fr))] gap-4">
-                {cards.map(({ key, label, value, icon: Icon }) => (
-                    <Card key={key}>
-                        <CardContent className="flex items-center justify-between gap-3 p-5">
-                            <div className="min-w-0">
-                                <p className="text-label text-muted-foreground">{label}</p>
-                                <p
-                                    data-testid={`admin-dashboard-stat-${key}`}
-                                    className={`mt-2 font-bold ${label === "当前学期" ? "whitespace-nowrap text-section-title" : "text-page-title"}`}
-                                >
-                                    {value === null
-                                        ? loading
-                                            ? <span aria-hidden="true" className="inline-block h-8 w-16 animate-pulse bg-muted align-middle" />
-                                            : "—"
-                                        : value}
-                                </p>
-                            </div>
-                            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-surface bg-primary-muted text-primary"><Icon className="h-5 w-5" /></span>
-                        </CardContent>
-                    </Card>
+            <dl aria-label="管理概览" className="grid grid-cols-[1.5fr_repeat(4,minmax(0,1fr))] gap-5 border-b border-border pb-5">
+                {cards.map(({ key, label, value }) => (
+                    <div key={key} className="min-w-0">
+                        <dt className="text-label text-muted-foreground">{label}</dt>
+                        <dd
+                            data-testid={`admin-dashboard-stat-${key}`}
+                            className={`mt-2 font-semibold tabular-nums ${label === "当前学期" ? "break-words text-label" : "text-section-title"}`}
+                        >
+                            {value === null
+                                ? loading
+                                    ? <span aria-hidden="true" className="inline-block h-8 w-16 animate-pulse bg-muted align-middle" />
+                                    : "—"
+                                : value}
+                        </dd>
+                    </div>
                 ))}
-            </div>
+            </dl>
 
             <Card>
                 <CardHeader className="flex-row items-center justify-between">
                     <CardTitle>
-                        <h2 className="flex items-center gap-2 text-subheading">
-                            <Megaphone className="h-5 w-5 text-primary" />
+                        <h2 className="text-section-title font-semibold">
                             最近公告
                         </h2>
                     </CardTitle>
                     <Link className="text-label text-primary hover:underline" to="/announcement">管理公告</Link>
                 </CardHeader>
-                <CardContent data-testid="admin-dashboard-announcements" className="space-y-3">
+                <CardContent data-testid="admin-dashboard-announcements" className="divide-y divide-border">
                     {announcements === null
                         ? loading
                             ? <LoadingStatus label="正在加载最近公告" showLabel className="py-8 text-label text-muted-foreground" />
                             : <p className="py-8 text-center text-label text-muted-foreground">公告数据暂不可用，请重试</p>
                         : announcements.length
                             ? announcements.map((item) => (
-                                <div key={item.id} className="rounded-surface border border-border p-4">
+                                <div key={item.id} className="py-4 first:pt-0 last:pb-0">
                                     <div className="flex items-center justify-between gap-4">
                                         <h3 className="font-medium">{item.title}</h3>
                                         <span className="text-meta text-muted-foreground">{formatDateDisplay(item.createdAt, "-")}</span>

@@ -152,6 +152,29 @@ try {
 
     await login(teacher, "teacher", "T001");
     await login(administrator, "admin", "admin", adminTestPassword);
+    for (const [session, role, endpoint, panel, ready] of [
+        [teacher, "teacher", "/api/teacher/dashboard", "teacher-dashboard-active-tasks", '[data-testid="teacher-dashboard-active-tasks"] a[href*="/progress"]'],
+        [administrator, "admin", "/api/admin/stats", "admin-dashboard-announcements", '[data-testid="admin-dashboard-stat-students"]'],
+    ] as const) {
+        await page(session, `/${role}`, ready);
+        await eventually(() => evaluate(session, `document.querySelector('${ready}')?.textContent.trim().length > 0`), `${role} dashboard data missing`);
+        for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+            await browser(session, "set", "viewport", String(width), String(height));
+            assert(await evaluate(session, `(() => {const panel=document.querySelector('[data-testid="${panel}"]').getBoundingClientRect();return document.documentElement.scrollWidth<=innerWidth && panel.left>=0 && panel.right<=innerWidth && panel.top<innerHeight/2;})()`), `${role} dashboard main content must fit and start in the upper half at ${width}`);
+            await browser(session, "screenshot", join(artifacts, `${role}-dashboard-${width}.png`));
+        }
+        const route = `${baseUrl}${endpoint}*`;
+        await browser(session, "network", "route", route, "--body", JSON.stringify({ success: false, error: { code: "TEST_UNAVAILABLE", message: "模拟首页加载失败" } }));
+        await page(session, `/${role}`, '[role="alert"]');
+        await browser(session, "screenshot", join(artifacts, `${role}-dashboard-error.png`));
+        await browser(session, "network", "unroute", route);
+        await namedButton(session, role === "teacher" ? "重试" : "重新加载");
+        await eventually(() => evaluate(session, `!document.querySelector('[role="alert"]') && document.querySelector('${ready}')?.textContent.trim().length > 0`), `${role} dashboard retry failed`);
+        await browser(session, "set", "viewport", "1280", "800");
+    }
+    await activate(teacher, '[data-testid="teacher-dashboard-active-tasks"] a[href*="/progress"]');
+    await eventually(() => evaluate(teacher, 'location.pathname.endsWith("/progress")'), "Dashboard task link did not open progress");
+    console.log("PASS teacher/admin dashboard hierarchy, desktop viewports, retry and task navigation");
     for (const [session, role, path, search, table] of [
         [teacher, "teacher", "/teacher/task", "teacher-task-search", "实验任务列表"],
         [administrator, "admin", "/admin/class", "class-search-input", "班级列表"],
