@@ -428,8 +428,6 @@ export function TopicManagement() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            <p className="text-label text-muted-foreground">配置总体数据、研究目标、抽样策略、教学资料与评分规则。</p>
-
             <dl aria-label="实验模板概览" className="grid grid-cols-4 gap-5 border-b border-border pb-5">
                 <div><dt className="text-meta text-muted-foreground">模板总数</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.total}</dd></div>
                 <div><dt className="text-meta text-muted-foreground">已发布</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.published}</dd></div>
@@ -476,12 +474,12 @@ export function TopicManagement() {
                     {loadError ? <RequestError message={loadError} onRetry={() => void loadTopics()} backTo="/" backLabel="返回教学概览" /> : loading ? <div role="status" aria-live="polite" className="text-center py-12 text-muted-foreground">加载中...</div> : topics.length === 0 ? (
                         <div className="rounded-surface border border-dashed border-border py-16 text-center">
                             <p className="text-subheading font-medium text-foreground">还没有实验模板</p>
-                            <p className="mt-2 text-label text-muted-foreground">点击「创建实验模板」，配置总体数据、研究目标和抽样策略。</p>
+                            <p className="mt-2 text-label text-muted-foreground">创建模板后可配置总体数据、研究目标和抽样策略。</p>
                         </div>
                     ) : filteredTopics.length === 0 ? (
                         <div className="rounded-surface border border-dashed border-border py-16 text-center">
                             <p className="text-subheading font-medium text-foreground">没有符合条件的实验模板</p>
-                            <p className="mt-2 text-label text-muted-foreground">试试清空搜索或切换状态筛选。</p>
+                            <p className="mt-2 text-label text-muted-foreground">请清空搜索或更改状态筛选。</p>
                         </div>
                     ) : filteredTopics.map((topic) => (
                         <div data-testid={`teacher-topic-row-${topic.id}`} key={topic.id} className="border border-border rounded-surface p-5 bg-background">

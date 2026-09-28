@@ -88,8 +88,6 @@ export function Dashboard() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            <p className="text-label text-muted-foreground">关注班级、实验模板、活动任务与待批改作业。</p>
-
             {loadError && (
                 <div role="alert" className="flex items-center justify-between gap-4 rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3 text-label text-destructive">
                     <span className="flex items-center gap-2"><AlertCircle className="h-4 w-4" />{loadError}</span>
@@ -142,7 +140,7 @@ export function Dashboard() {
 
             <Card className="border-border bg-card" data-testid="teacher-dashboard-active-tasks">
                 <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
-                    <div><CardTitle className="text-section-title text-foreground">当前活动实验任务</CardTitle><p className="mt-1 text-meta text-muted-foreground">按最近截止时间排序，直接进入班级任务进度。</p></div>
+                    <div><CardTitle className="text-section-title text-foreground">当前活动实验任务</CardTitle><p className="mt-1 text-meta text-muted-foreground">按截止时间由近到远排序</p></div>
                     <Button variant="outline" size="sm" asChild><Link to="/task">全部实验任务</Link></Button>
                 </CardHeader>
                 <CardContent className="divide-y divide-border">

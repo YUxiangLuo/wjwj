@@ -188,8 +188,7 @@ export function TopicDetails() {
                                 <BookOpen className="w-3 h-3" />
                                 实验目标
                             </div>
-                            <p className="text-body font-medium text-foreground leading-relaxed">完成抽样实验，形成完整报告。</p>
-                            <p className="text-label text-muted-foreground">按步骤推进，及时提交，体验完整的数据分析流程。</p>
+                            <p className="text-body font-medium text-foreground leading-relaxed">完成问卷、样本规划、抽样和分析报告。</p>
                         </div>
                         <div className="rounded-surface bg-card border border-border px-5 py-3 min-w-[180px]">
                             <div className="text-meta text-muted-foreground font-medium uppercase tracking-wider">
@@ -346,8 +345,8 @@ export function TopicDetails() {
                             </div>
                             <div className="w-full h-px bg-muted" />
                             <div className="space-y-0.5">
-                                <div className="text-meta text-muted-foreground uppercase tracking-wider font-medium">操作提示</div>
-                                <div className="text-label text-muted-foreground leading-relaxed">问卷、样本规划和报告草稿会保存在当前浏览器；抽样结果每次执行即保存，完成阶段后正式推进流程。</div>
+                                <div className="text-meta text-muted-foreground uppercase tracking-wider font-medium">保存规则</div>
+                                <div className="text-label text-muted-foreground leading-relaxed">问卷、样本规划和报告草稿保存在当前浏览器；抽样结果执行后立即保存，完成阶段后才推进流程。</div>
                             </div>
                         </CardContent>
                     </Card>
@@ -355,7 +354,7 @@ export function TopicDetails() {
                     <Card className="rounded-surface border-primary-border bg-primary-muted ">
                         <CardContent className="pt-4 pb-4 space-y-3">
                             <div className="text-label font-medium text-primary">
-                                {task.status === "submitted" || task.status === "graded" ? "已提交实验内容" : "准备好开始了吗？"}
+                                {task.status === "submitted" || task.status === "graded" ? "实验已提交" : "实验操作"}
                             </div>
                             {task.status === "graded" && task.score !== undefined && (
                                 <div className="flex items-center gap-2 rounded-surface bg-success-muted border border-success-border px-3 py-2">

@@ -266,7 +266,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             <div className="flex items-start gap-2 rounded-surface border border-info-border bg-info-muted p-3 text-meta leading-relaxed text-info" data-testid="student-sample-plan-scope-notice">
                 <Info className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
-                    本实验使用完整虚拟总体演示抽样设计。页面中的样本量、设计效应和无回答率计算是基于所列目标与假设的规划近似，不替代现实项目中的预调查、抽样框评估和专业统计设计；现实调查通常也无法直接看到未入样单位的总体真值。
+                    本实验使用完整虚拟总体。样本量、设计效应和无回答率计算基于当前目标与假设，属于规划近似，不能替代预调查、抽样框评估和专业统计设计；现实调查通常无法得知未入样单位的真值。
                 </span>
             </div>
 
@@ -348,7 +348,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                         <div className="space-y-1">
                             <h3 className="text-section-title font-semibold text-foreground">{wizardDraft ? "继续样本量规划" : "开始样本量规划"}</h3>
                             <p className="text-label text-muted-foreground max-w-sm">
-                                直接调整参数并查看预期精度，确认样本量后保存。计算原理可按需查看，无需答题。
+                                调整参数并查看预期精度，确认后保存。计算原理可按需展开。
                             </p>
                         </div>
                         <Button

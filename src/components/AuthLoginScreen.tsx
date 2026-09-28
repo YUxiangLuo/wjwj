@@ -26,9 +26,9 @@ export interface AuthLoginScreenProps {
 }
 
 const featureItems = [
-    { icon: LineChart, label: "实时可视化" },
-    { icon: PieChart, label: "动态交互" },
-    { icon: ShieldCheck, label: "精准评估" },
+    { icon: LineChart, label: "样本量规划" },
+    { icon: PieChart, label: "概率抽样" },
+    { icon: ShieldCheck, label: "估计比较" },
 ] as const;
 
 export function AuthLoginScreen({
@@ -64,12 +64,12 @@ export function AuthLoginScreen({
 
                 <div className="relative z-20 flex max-w-lg flex-1 flex-col justify-center">
                     <h1 className="mb-6 text-display font-bold tracking-tight text-navigation-foreground">
-                        探索数据背后的<br />
-                        <span className="text-navigation-muted">数学真理</span>
+                        抽样与估计<br />
+                        <span className="text-navigation-muted">虚拟仿真实验</span>
                     </h1>
 
                     <p className="max-w-md text-body text-navigation-muted">
-                        通过沉浸式虚拟仿真实验，完成问卷设计、样本量规划、概率抽样与估计比较。
+                        设计问卷、规划样本量，比较不同抽样方法的估计结果。
                     </p>
 
                     <div className="mt-12 flex gap-8">
@@ -155,7 +155,7 @@ export function AuthLoginScreen({
                                         <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />
                                         {loadingText}
                                     </>
-                                ) : "安全登录"}
+                                ) : "登录"}
                             </Button>
                             <div className="space-y-3 rounded-surface border border-border bg-secondary p-4">
                                 <p className="text-center text-meta font-medium tracking-[0.2em] text-muted-foreground">其他端入口</p>

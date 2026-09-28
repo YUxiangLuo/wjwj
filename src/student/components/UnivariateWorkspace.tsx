@@ -78,8 +78,8 @@ export function UnivariateWorkspace({ taskId, observedVersion, completedMethods,
             <div className="grid gap-3 grid-cols-2"><label className="text-label">抽样结果<select className="mt-1 w-full rounded-control border border-input bg-background p-2" value={config.method} onChange={event => update({ method: event.target.value as AnalysisConfig["method"] })}>{completedMethods.map(method => <option key={method} value={method}>{methods[method]}</option>)}</select></label>
             <label className="text-label">分析变量<select className="mt-1 w-full rounded-control border border-input bg-background p-2" value={config.field} onChange={event => update({ field: event.target.value })}><option value="">请选择</option>{variables.map(variable => <option key={variable.field} value={variable.field}>{variable.label}</option>)}</select></label></div>
             <label className="text-label"><input type="checkbox" checked={config.weighted} onChange={event => update({ weighted: event.target.checked })} /> 使用抽样权重</label>
-            <p className="text-meta text-muted-foreground" data-testid="student-univariate-category-contract">单变量分析严格按变量字典的 JSON 原始类型区分类别（例如数字 1 与文本“1”不同），并从有效值分母中排除字典声明的缺失编码。主图为跨方法对比而使用规范化文本类别，并把空值单列，因此两处分类比例可能不同。</p>
-            <p className="text-meta text-muted-foreground">修改配置不会自动运行。每次点击执行后服务端会自动保存一条不可变记录。</p>
+            <p className="text-meta text-muted-foreground" data-testid="student-univariate-category-contract">单变量分析按变量字典的 JSON 原始类型区分类别（数字 1 与文本“1”不同），有效值分母排除字典声明的缺失编码。主图为跨方法比较，会规范化文本类别并单列空值，因此两处分类比例可能不同。</p>
+            <p className="text-meta text-muted-foreground">修改配置不会自动运行；每次执行都会在服务端保存一条不可变记录。</p>
             <Button onClick={() => void run()} disabled={refreshRequired || running || config.question.trim().length < 5 || config.question.trim().length > 500 || !config.field || records.length >= capacity}>{running ? "正在执行…" : "执行并保存分析"}</Button>
         </section>}
         {records.length >= capacity && <p className="rounded-surface border border-warning-border bg-warning-muted p-3 text-label text-warning">已达到 {capacity} 条容量上限。历史记录会保留且不能删除；如需继续分析，请联系教师处理。</p>}

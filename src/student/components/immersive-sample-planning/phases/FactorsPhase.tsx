@@ -22,19 +22,19 @@ const STEP_META: Record<FactorsStep, { label: string; badge: string; icon: typeo
         label: "允许多大的误差",
         badge: "因素 1",
         icon: Crosshair,
-        intro: "先判断你希望估计多精确。误差限是最直接影响样本量大小的因素。",
+        intro: "误差限直接影响样本量：精度要求越高，通常需要的样本越多。",
     },
     subpopulation: {
         label: "子总体估计需求",
         badge: "因素 2",
         icon: Layers,
-        intro: "再判断是否需要对子总体单独达标。若每个子总体都要分别估计，总样本量往往会明显增加。",
+        intro: "若每个子总体都要单独达到精度目标，总样本量往往会明显增加。",
     },
     variability: {
         label: "总体的变异程度",
         badge: "因素 3",
         icon: BarChart3,
-        intro: "接着判断总体本身有多分散。总体越不稳定，越需要更多样本去把波动压下来。",
+        intro: "总体变异越大，达到同一精度通常需要更多样本。",
     },
     design_effect: {
         label: "抽样设计的影响",
@@ -52,13 +52,13 @@ const STEP_META: Record<FactorsStep, { label: string; badge: string; icon: typeo
         label: "精度与费用的平衡",
         badge: "因素 6",
         icon: DollarSign,
-        intro: "最后把统计精度和调查成本放在一起看，找到既合理又可执行的样本量。",
+        intro: "结合统计精度与调查成本，选择可执行的样本量。",
     },
     summary: {
         label: "六因素汇总",
         badge: "汇总",
         icon: CheckCircle2,
-        intro: "用这张小结比较六类因素的作用，可自由选择感兴趣的因素查看示例。",
+        intro: "比较六类因素的作用，也可选择任一因素查看示例。",
     },
 };
 
@@ -344,7 +344,7 @@ function VariabilityContent() {
     return (
         <div className="space-y-6">
             <p className="text-center text-muted-foreground text-label">
-                这一步是在判断公式里的“变异度”该怎么理解。变异越大，需要的样本越多。
+                公式中的变异度越大，所需样本越多。
             </p>
 
             <div className="mx-auto max-w-lg space-y-4">
@@ -476,7 +476,7 @@ function DesignEffectContent({ params }: { params: SampleParams }) {
                 <ul className="text-label text-muted-foreground list-disc list-inside space-y-1 pl-2">
                     <li>整群抽样：deff ≈ 1 + (平均群规模 − 1) × 群内相关 ρ，群越大、群内越相似，代价越高</li>
                     <li>分层抽样：当层间差异明显时 deff 可以小于 1——好设计反而省样本</li>
-                    <li>取值依据：历史调查、小规模预调查或设计模拟，而不是按方法名称拍脑袋</li>
+                    <li>取值依据：历史调查、小规模预调查或设计模拟，不能仅按方法名称设定</li>
                 </ul>
             </div>
 

@@ -241,7 +241,7 @@ test("the introductory flow is optional instead of pushing the first fields down
     const view = render(<TopicWizardDialog {...makeProps()} />);
     const help = view.getByText("实验模板如何生成学生实验").closest("details")!;
     expect(help.open).toBe(false);
-    expect(view.getByText("仅上传总体数据不会立即生成学生实验；必须完成七步配置，再发布模板并分配到班级。")).toBeTruthy();
+    expect(view.getByText("完成七步配置并发布模板后，再分配到班级。")).toBeTruthy();
 });
 
 test("pending saves prevent duplicate requests, field edits and closing", async () => {

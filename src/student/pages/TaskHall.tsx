@@ -359,7 +359,7 @@ export function TaskHall() {
         <div className="space-y-8">
             <div>
                 <h1 className="text-page-title font-bold text-foreground">任务大厅</h1>
-                <p className="mt-1 text-label text-muted-foreground">查看实验任务、截止时间与学习进度（中国标准时间 UTC+8）。</p>
+                <p className="mt-1 text-label text-muted-foreground">任务、截止时间与进度（中国标准时间 UTC+8）</p>
             </div>
             {latestAnnouncement && (
                 <div className="border-b border-border pb-4 flex items-center justify-between gap-4">
@@ -443,7 +443,7 @@ export function TaskHall() {
                             <BookOpen className="w-8 h-8 text-muted-foreground" />
                         </div>
                         <p className="text-subheading text-muted-foreground font-medium">暂无相关任务</p>
-                        <p className="text-label text-muted-foreground mt-1">当有新任务发布或状态变更时将出现在这里</p>
+                        <p className="text-label text-muted-foreground mt-1">新任务或状态变更会显示在这里</p>
                     </div>
                 )}
             </div>
@@ -455,7 +455,7 @@ export function TaskHall() {
                             <AlertCircle className="w-5 h-5 text-primary" />
                             系统公告
                         </DialogTitle>
-                        <DialogDescription className="text-muted-foreground">查看实验室最新通知与动态</DialogDescription>
+                        <DialogDescription className="text-muted-foreground">实验室通知</DialogDescription>
                     </DialogHeader>
                     <div className="grid grid-cols-2 gap-6 mt-4 min-h-[400px]">
                         {/* List */}

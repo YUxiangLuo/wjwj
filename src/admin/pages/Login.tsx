@@ -39,7 +39,7 @@ export function Login() {
         <AuthLoginScreen
             portal="admin"
             heading="管理员登录"
-            description="请输入您的用户名和密码登录系统"
+            description="使用用户名和密码登录"
             accountLabel="用户名"
             accountPlaceholder="请输入用户名"
             resetHint="忘记密码？请联系系统管理员通过后台重置"

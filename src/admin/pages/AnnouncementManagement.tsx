@@ -106,7 +106,7 @@ export function AnnouncementManagement() {
             <CardHeader className="flex-row items-center justify-between">
                 <div>
                     <CardTitle>公告管理</CardTitle>
-                    <p className="mt-1 text-label text-muted-foreground">公告按管理员选择的对象直接展示，不记录已读状态。</p>
+                    <p className="mt-1 text-label text-muted-foreground">公告向所选对象展示，不记录已读状态。</p>
                 </div>
                 <Button onClick={() => {
                     setEditing(null);

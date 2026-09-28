@@ -190,8 +190,8 @@ export function StudentManagement() {
                             </p>
                             <p className="mt-1 text-label text-muted-foreground">
                                 {hasFilters
-                                    ? "可调整搜索或班级条件后重试。"
-                                    : "学生加入班级后会显示在这里。"}
+                                    ? "请更改搜索或班级筛选。"
+                                    : "学生加入班级后将显示在此处。"}
                             </p>
                         </div>
                         {hasFilters && <Button variant="outline" onClick={clearFilters}>查看全部学生</Button>}

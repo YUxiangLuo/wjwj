@@ -24,7 +24,7 @@ export function PrecisionPhase({ params, onNext, initialSampleSize, hideNext = f
         .filter((n): n is number => n != null && n >= 1 && n <= N))].sort((a,b) => a-b);
     const isMean = params.estimationType === "mean";
     return <div className="space-y-6">
-        <PlanningHeading title="样本多一点，误差会小多少？" description="拖动样本量，观察它与目标精度的关系。这里的试算不会改动你的最终方案。"/>
+        <PlanningHeading title="样本量如何影响误差？" description="拖动样本量查看预期误差；试算不会改动最终方案。"/>
         <section className="rounded-surface border border-border bg-card p-6 space-y-5">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <h3 className="text-subheading font-semibold">试算邀请样本量</h3>

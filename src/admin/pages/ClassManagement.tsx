@@ -169,9 +169,7 @@ export function ClassManagement() {
         <div className="space-y-6 animate-in fade-in duration-500">
             {optionsLoad.error && <RequestError message={optionsLoad.error} onRetry={() => void loadInitialData()} />}
             <PageHeader border={false}>
-                <div>
-                    <p className="text-label text-muted-foreground">管理班级、授课教师与学生规模。</p>
-                </div>
+                <div />
                 <Button data-testid="class-create-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary-hover text-primary-foreground ">
                     <Plus className="w-4 h-4 mr-1" />
                     创建班级

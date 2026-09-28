@@ -468,18 +468,18 @@ export function ImmersiveSamplingAnimation({
     // ─── Intro explanation text ───────────────────────────
     const introText = useMemo(() => {
         if (method === "simple") {
-            return `即将从 ${populationSize.toLocaleString()} 个总体中随机选取 ${sampleSize} 个样本，每个个体被选中的概率完全相等。`;
+            return `从 ${populationSize.toLocaleString()} 个总体单位中随机抽取 ${sampleSize} 个样本，每个单位被选中的概率相等。`;
         } else if (method === "systematic") {
             return `将按分数间隔 K=${formatSystematicInterval(interval)} 和随机起点从当前抽样框顺序中抽取 ${sampleSize} 个样本。执行前应检查排序与周期结构，避免其与 K 同步。`;
         } else if (method === "pps") {
             const label = FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模";
-            return `按"${label}"大小赋予不同选中概率，从 ${populationSize.toLocaleString()} 个总体中抽取 ${sampleSize} 个样本。`;
+            return `按“${label}”赋予不同入样概率，从 ${populationSize.toLocaleString()} 个总体单位中抽取 ${sampleSize} 个样本。`;
         } else {
             const layerList = layers ?? [];
             const layerDescription = layerList.length > LAYER_COLORS.length
                 ? `${layerList.length} 层（完整名称与分配见结果凭证）`
                 : layerList.map(layer => layer.name).join("、");
-            return `先按"${FIELD_LABELS[stratifyBy ?? ""] ?? stratifyBy ?? "分层变量"}"将总体分为 ${layerDescription}，再按已配置的各层样本量分别抽取。`;
+            return `先按“${FIELD_LABELS[stratifyBy ?? ""] ?? stratifyBy ?? "分层变量"}”将总体分为 ${layerDescription}，再按各层配置的样本量抽取。`;
         }
     }, [method, populationSize, sampleSize, interval, sizeField, stratifyBy, layers]);
 

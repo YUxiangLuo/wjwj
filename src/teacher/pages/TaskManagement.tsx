@@ -227,8 +227,6 @@ export function TaskManagement() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            <p className="text-label text-muted-foreground">将实验模板分配到班级，并跟踪提交与批改进度。</p>
-
             <dl aria-label="实验任务概览" className="grid grid-cols-4 gap-5 border-b border-border pb-5">
                 <div><dt className="text-meta text-muted-foreground">实验任务总数</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.total}</dd></div>
                 <div><dt className="text-meta text-muted-foreground">待批改</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : <StatusBadge intent={summary.pendingTotal > 0 ? "warning" : "neutral"}>{summary.pendingTotal}</StatusBadge>}</dd></div>

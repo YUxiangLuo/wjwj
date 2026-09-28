@@ -425,7 +425,7 @@ export function QuestionnaireDesign() {
                                     <MessageSquare className="w-5 h-5 text-primary" />
                                     问卷开场
                                 </CardTitle>
-                                <CardDescription className="text-muted-foreground">设置问卷的标题和欢迎语，让受访者了解调查目的</CardDescription>
+                                <CardDescription className="text-muted-foreground">填写标题，并在欢迎语中说明调查目的和填写方式</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
                                 <div className="space-y-2">
@@ -471,7 +471,7 @@ export function QuestionnaireDesign() {
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2 text-body text-foreground">
                                     <HelpCircle className="w-4 h-4 text-muted-foreground" />
-                                    小贴士
+                                    欢迎语写法
                                 </CardTitle>
                                 <CardDescription className="text-muted-foreground">让受访者知道为什么填写、如何作答。</CardDescription>
                             </CardHeader>
@@ -515,7 +515,7 @@ export function QuestionnaireDesign() {
                                 <CardContent className="space-y-4 pt-6" data-testid="student-questionnaire-list">
                                     {questions.length === 0 ? (
                                         <div className="text-center py-16 text-muted-foreground bg-background rounded-surface border border-dashed border-border">
-                                            <p>暂无题目，点击「添加题目」开始设计问卷</p>
+                                            <p>暂无题目，请先添加题目</p>
                                         </div>
                                     ) : (
                                         <div className="divide-y divide-border">
@@ -700,7 +700,7 @@ export function QuestionnaireDesign() {
                         <Card className="w-full rounded-surface border-border bg-card ">
                             <CardHeader>
                                 <CardTitle className="text-foreground">结束语设置</CardTitle>
-                                <CardDescription className="text-muted-foreground">设置问卷的结束语，感谢受访者参与</CardDescription>
+                                <CardDescription className="text-muted-foreground">填写致谢和必要的后续说明</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
                                 <div className="space-y-2">
@@ -729,7 +729,7 @@ export function QuestionnaireDesign() {
                                 </div>
                                 <div className="rounded-surface bg-primary-muted border border-primary-border p-3 text-meta text-primary flex items-start gap-2">
                                     <HelpCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                                    提示：感谢语中可以提示下一步操作或后续联系信息。
+                                    可在结束语中说明后续操作或联系方式。
                                 </div>
                             </CardContent>
                         </Card>
@@ -774,15 +774,14 @@ export function QuestionnaireDesign() {
                                             </div>
                                             <div>
                                                 <h3 className="text-subheading font-semibold text-foreground">受访者视角试填</h3>
-                                                <p className="text-meta text-muted-foreground mt-0.5">请以受访者身份完整体验一次问卷填写</p>
+                                                <p className="text-meta text-muted-foreground mt-0.5">以受访者身份完整填写一次问卷</p>
                                             </div>
                                         </div>
                                     </div>
                                     <CardContent className="py-5">
                                         <div className="flex flex-col items-start gap-4">
                                             <p className="text-label text-muted-foreground leading-relaxed">
-                                                在进入下一阶段之前，您需要以受访者的视角完整填写一次自己设计的问卷。
-                                                这将帮助您发现问卷中可能存在的问题，提升问卷质量。
+                                                完整试填当前问卷，检查题意和作答方式。试填答案不进入抽样或分析。
                                             </p>
                                             <Button
                                                 ref={previewTriggerRef}
@@ -807,7 +806,7 @@ export function QuestionnaireDesign() {
                         <Card className="rounded-surface border-border bg-card h-fit">
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-label text-foreground">校验清单</CardTitle>
-                                <CardDescription className="text-muted-foreground">确认问卷信息完善后再进入下一阶段</CardDescription>
+                                <CardDescription className="text-muted-foreground">完成以下项目后可进入下一阶段</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-1.5">
                                 <div className={`flex items-center gap-2.5 px-3 py-2 rounded-surface border ${validation.title ? "bg-success-muted border-success-border" : "bg-destructive-muted border-destructive-border"}`}>

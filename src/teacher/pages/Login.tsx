@@ -39,7 +39,7 @@ export function Login() {
         <AuthLoginScreen
             portal="teacher"
             heading="教师登录"
-            description="请输入教师工号和密码登录系统"
+            description="使用教师工号和密码登录"
             accountLabel="教师工号"
             accountPlaceholder="请输入教师工号"
             resetHint="忘记密码？请联系系统管理员重置"

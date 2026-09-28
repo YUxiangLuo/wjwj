@@ -371,7 +371,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const allCompleted = samplingProgress.canComplete;
     const completedMethodCount = samplingProgress.completed.length;
     const nextMethod = samplingProgress.missingRequired[0] ?? (!allCompleted ? enabledMethods.find(method => !completedMethods.includes(method)) : undefined);
-    const completionHint = allCompleted ? "已满足本阶段要求。可以进入分析，也可以继续尝试选做方法。"
+    const completionHint = allCompleted ? "已满足要求，可进入分析或继续尝试选做方法。"
         : samplingProgress.missingRequired.length > 0 ? "还需完成必做方法：" + samplingProgress.missingRequired.map(method => METHOD_LABELS[method]).join("、")
             : `还需再完成 ${samplingProgress.minimumCompleted - completedMethodCount} 种启用方法，才能比较抽样结果。`;
 
@@ -391,12 +391,12 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                             无法开始抽样执行
                         </CardTitle>
                         <CardDescription className="text-destructive">
-                            当前实验缺少有效的最终样本量，抽样执行必须建立在已确认的样本量规划之上。
+                            当前实验没有有效的最终样本量。
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="rounded-surface border border-destructive-border bg-background px-4 py-3 text-label text-foreground">
-                            请返回“样本量规划”阶段，重新确认并保存最终样本量后，再进入本阶段。
+                            返回“样本量规划”，确认并保存最终样本量后重试。
                         </div>
                         <div className="flex justify-between">
                             <Button variant="outline" onClick={onPrev} data-testid="student-sampling-blocked-prev" className="border-input bg-muted text-foreground hover:bg-muted hover:text-foreground">
@@ -413,7 +413,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
         <div className="min-w-0 space-y-4" data-testid="student-stage-sampling">
             {censusPlan && (
                 <p role="status" data-testid="student-sampling-census-notice" className="rounded-surface border border-warning-border bg-warning-muted p-3 text-label text-warning">
-                    规划样本量等于总体规模，本次执行是完整普查：各方法都会抽满全部单位，估计结果与抽样误差相同，无法比较方法差异。
+                    规划样本量等于总体规模，本次为完整普查：各方法都会抽取全部单位，估计结果与抽样误差相同，无法比较方法差异。
                 </p>
             )}
             {statsState === "loading" && (
@@ -550,7 +550,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                 <CardContent className={`min-w-0 overflow-hidden ${simpleResult?.completed ? "h-[360px]" : "pb-5"}`} data-testid="student-sampling-simple-preview">
                                     {!simpleResult?.completed ? (
                                         <div className="border-t border-border pt-4 text-label text-muted-foreground">
-                                            执行上方抽样后，在这里查看入样单位和记录。
+                                            执行抽样后可查看入样记录。
                                         </div>
                                     ) : (
                                         <SamplePreviewTable priorityField={experiment?.analysisTarget?.target.field} data={simpleResult.data ?? []} total={simpleResult.sampleCount} />
@@ -655,7 +655,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                 <CardContent className={`min-w-0 overflow-hidden ${systematicCompletedForCurrentPlan ? "h-[360px]" : "pb-5"}`} data-testid="student-sampling-systematic-preview">
                                     {!systematicCompletedForCurrentPlan ? (
                                         <div className="border-t border-border pt-4 text-label text-muted-foreground">
-                                            执行上方抽样后，在这里查看入样单位和记录。
+                                            执行抽样后可查看入样记录。
                                         </div>
                                     ) : (
                                         <SamplePreviewTable priorityField={experiment?.analysisTarget?.target.field} data={systematicResult?.data ?? []} total={systematicResult?.sampleCount ?? 0} />
@@ -678,7 +678,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                         <div className="w-2 h-6 bg-auxiliary rounded-control mr-2"></div>
                                         PPS抽样（概率与规模成比例抽样）
                                     </CardTitle>
-                                    <CardDescription>选择与研究目标有关的规模变量，再设置抽取数量。规模较大的单位通常有更高的入样概率。</CardDescription>
+                                    <CardDescription>选择规模变量并设置抽取数量。规模越大，单位的入样概率通常越高。</CardDescription>
                                     <details className="rounded-surface border border-border bg-background p-3"><summary className="cursor-pointer text-label font-medium">了解 PPS 的条件与本实验规则</summary>                                    <p className="mt-3 text-meta leading-relaxed text-muted-foreground">
                                         不放回 πps：普通单位的一阶包含概率与规模成正比；若初始 n·xᵢ/Σxᵢ 达到 1，该单位必然入样，剩余名额会在其他单位间重新按规模分配。分析阶段用 Hájek 加权均值，不是 Horvitz–Thompson 均值。规模变量应在抽样前对总体单位可获得；它与目标变量相关时 PPS 才更可能提高效率，相关性弱时未必优于等概率设计。抽取数量允许在规划目标的 80%–120% 调整，这是本实验的操作规则，不是 PPS 理论要求。
                                     </p></details>
@@ -790,7 +790,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                 <CardContent className={`min-w-0 overflow-hidden ${ppsResult?.completed ? "h-[360px]" : "pb-5"}`} data-testid="student-sampling-pps-preview">
                                     {!ppsResult?.completed ? (
                                         <div className="border-t border-border pt-4 text-label text-muted-foreground">
-                                            执行上方抽样后，在这里查看入样单位和记录。
+                                            执行抽样后可查看入样记录。
                                         </div>
                                     ) : (
                                         <SamplePreviewTable priorityField={experiment?.analysisTarget?.target.field} data={ppsResult.data ?? []} total={ppsPreviewTotal} />

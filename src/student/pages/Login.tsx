@@ -58,14 +58,14 @@ export function Login() {
         <AuthLoginScreen
             portal="student"
             heading="学生登录"
-            description="请输入您的学号和密码登录系统"
+            description="使用学号和密码登录"
             accountLabel="学号"
             accountPlaceholder="请输入学号"
             resetHint="忘记密码？请联系班级教师重置"
             username={username}
             password={password}
             loading={loading}
-            loadingText="正在登录，请稍候…"
+            loadingText="登录中…"
             error={error}
             alternateLinks={[
                 { href: "/admin/login", label: "管理员登录" },

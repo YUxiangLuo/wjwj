@@ -296,7 +296,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         <div className="rounded-surface border border-info-border bg-card p-3 text-foreground"><School className="mb-2 h-4 w-4 text-info" /><strong className="block">3. 分配任务</strong><span className="mt-1 block text-muted-foreground">选择班级与截止时间，生成实验任务</span></div>
                                         <div className="rounded-surface border border-info-border bg-card p-3 text-foreground"><Users className="mb-2 h-4 w-4 text-info" /><strong className="block">4. 学生完成</strong><span className="mt-1 block text-muted-foreground">问卷预试、样本量规划、抽样与分析报告</span></div>
                                     </div>
-                                    <p className="mt-3 text-meta leading-relaxed">仅上传总体数据不会立即生成学生实验；必须完成七步配置，再发布模板并分配到班级。</p>
+                                    <p className="mt-3 text-meta leading-relaxed">完成七步配置并发布模板后，再分配到班级。</p>
                                 </details>
                                 <div className="space-y-2">
                                     <Label htmlFor="topicName" className="text-foreground">实验模板名称</Label>
@@ -439,14 +439,14 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     </div>
                                 )}
                                 {!isPublishedTopic && <p className="text-meta text-muted-foreground">
-                                    字段角色或估计目标变更后会重置抽样策略，请在下一步确认要求；未变更配置或仅修改文字说明时保留原有有效策略。
+                                    更改字段角色或估计目标会重置抽样策略，请在下一步重新确认。仅修改文字说明不会重置。
                                 </p>}
                                 <div className={`rounded-surface border border-border bg-background p-4 ${isPublishedTopic ? "opacity-70" : ""}`}>
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
-                                            <div className="text-label font-medium text-foreground">不知道怎么配？可先用智能推荐</div>
+                                            <div className="text-label font-medium text-foreground">推荐字段映射</div>
                                             <p className="mt-1 text-meta text-muted-foreground">
-                                                系统会根据字段名称和样例数据自动推荐标识符、分层变量和数值变量，你再按教学需要微调即可。
+                                                根据字段名称和样例数据推荐标识符、分层变量和数值变量，请核对后使用。
                                             </p>
                                         </div>
                                         <Button
@@ -464,7 +464,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
                                 {excelInfo && excelInfo.rowCount > 0 && excelInfo.rowCount < 100 && (
                                     <div data-testid="teacher-topic-small-population-notice" className="rounded-surface border border-warning-border bg-warning-muted px-4 py-3 text-label text-warning">
-                                        总体只有 {excelInfo.rowCount} 个单位：按常用精度规划时很可能直接抽满总体（普查），各抽样方法会得到相同估计且没有抽样误差差异，不适合做方法比较。若教学目标是比较抽样方法，请把总体规模增加到至少数百个单位。
+                                        总体只有 {excelInfo.rowCount} 个单位，按常用精度规划可能抽满总体（普查），无法比较抽样误差。若需比较抽样方法，请将总体增加到至少数百个单位。
                                     </div>
                                 )}
 
@@ -505,7 +505,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="space-y-2">
                                         <Label className="text-foreground">分层变量（按需，已选 {fieldMapping.stratified.length}）</Label>
-                                        <p className="text-meta text-muted-foreground">仅在需要分层抽样时选择，建议 1-3 个，每个字段需有 2-20 个类别；只做比例或分类分布比较时可使用下方其他分类变量。</p>
+                                        <p className="text-meta text-muted-foreground">分层抽样时选择，建议 1-3 个；每个字段需有 2-20 个类别。仅用于比例或分类分布比较时，可选下方其他分类变量。</p>
                                         {riskyStratifiedFields.length > 0 && (
                                             <p className="text-meta text-warning">
                                                 请核对编码或高基数字段（{riskyStratifiedFields.join("、")}）是否代表实际分组：分层需有 2-20 个类别；其他分类分析不受此限制。
@@ -614,7 +614,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         {!loadingDetail && currentStep === 4 && (
                             <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="rounded-surface border border-info-border bg-info-muted px-4 py-3 text-label text-info">
-                                    简单随机抽样作为比较基准固定必做。学生还需完成至少一种启用的方法；设为“必做”的方法必须全部完成。
+                                    简单随机抽样固定为必做。学生还需完成至少一种已启用的方法，并完成所有标记为“必做”的方法。
                                     {isPublishedTopic ? "该实验模板已发布，抽样策略不可修改，仅可查看当前配置。" : null}
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">

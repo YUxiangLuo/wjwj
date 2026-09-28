@@ -113,14 +113,14 @@ export function SubmissionDetailPage() {
                     {!detail.teacherComment && !detail.rejectReason && detail.status === "submitted" && (
                         <section data-testid="student-submission-pending" className="rounded-surface bg-warning-muted p-4">
                             <h2 className="text-label font-medium text-warning">已提交，等待教师批改</h2>
-                            <p className="mt-1 text-label text-muted-foreground">成绩和教师评语将在批改完成后显示。</p>
+                            <p className="mt-1 text-label text-muted-foreground">批改后显示成绩和评语。</p>
                         </section>
                     )}
 
                     <section data-testid="student-submission-content" className="border-t border-border pt-6">
                         <div className="border-b border-border px-5 py-4">
                             <h2 className="flex items-center gap-2 font-semibold"><FileText className="h-4 w-4 text-primary" />提交内容快照</h2>
-                            <p className="mt-1 text-meta text-muted-foreground">以下内容固定为本次提交时的版本，不受后续实验模板修改影响。</p>
+                            <p className="mt-1 text-meta text-muted-foreground">以下为提交时的冻结版本，不受模板后续修改影响。</p>
                         </div>
                         <div className="p-5">
                             <Tabs defaultValue="report">

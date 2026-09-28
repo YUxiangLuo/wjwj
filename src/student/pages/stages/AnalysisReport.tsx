@@ -575,7 +575,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 <AlertCircle className="h-4 w-4 shrink-0"/><span className="min-w-0 flex-1">{analysisMetricsError}。报告草稿仍可继续编辑。</span>
                 <Button type="button" variant="outline" disabled={statsLoading} data-testid="student-analysis-metrics-retry" onClick={() => setMetricsRetry(value => value + 1)}>重试加载</Button>
             </div>}
-            {statsLoading && <p role="status" className="flex items-center gap-2 text-label text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin"/>正在计算分析指标，你可以先整理报告。</p>}
+            {statsLoading && <p role="status" className="flex items-center gap-2 text-label text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin"/>正在计算分析指标，可先撰写报告。</p>}
             {(analysisMetrics?.excludedNumericFields?.length ?? 0) > 0 && <div className="rounded-surface border border-warning-border bg-warning-muted p-3 text-meta text-warning" data-testid="student-analysis-invalid-numeric-warning">
                 数值字段 {analysisMetrics!.excludedNumericFields!.join("、")} 含空值或非数值，已停止该字段的均值与标准误分析。请联系教师修正总体数据。
             </div>}
@@ -589,7 +589,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                     </div>}
                 </CardContent></Card>
                 <details className="px-5 py-2">
-                    <summary className="cursor-pointer text-label font-semibold">这些指标如何计算，解释时要注意什么？</summary>
+                    <summary className="cursor-pointer text-label font-semibold">计算口径与解释限制</summary>
                     <div className="mt-3 space-y-3 text-meta leading-relaxed text-muted-foreground">
                         <p data-testid="student-analysis-oracle-notice">本实验使用完整虚拟总体演示抽样设计，因此可以对照总体真值并计算设计层面的误差。现实调查通常看不到未入样单位，需使用与抽样设计匹配的权重和方差估计。样本量、设计效应和无回答率计算均是基于页面所列假设的规划近似，不替代预调查、抽样框评估和专业统计设计。{analysisMetrics && hasPpsCompleted && ppsStandardErrorMode && ppsStandardErrorNotice}</p>
                         <SamplingObservationNotice nonResponseRate={experiment?.samplePlan?.nonResponseRate}/>
@@ -602,7 +602,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             <TabsContent value="charts" className="min-w-0">
                 <Card className="min-w-0 rounded-surface border-border bg-card"><CardHeader>
                     <CardTitle><h2 className="text-section-title font-semibold">从不同角度比较样本</h2></CardTitle>
-                    <CardDescription>选择变量和图表，补充对研究目标的解释。图表只包含本次实际完成的方法。</CardDescription>
+                    <CardDescription>选择变量和图表。图表只包含本次完成的方法。</CardDescription>
                 </CardHeader><CardContent className="min-w-0">
                     <Tabs value={chartTab} onValueChange={setChartTab}>
                                 <TabsList className="bg-background border border-border p-1 rounded-surface w-full flex h-auto" data-testid="student-analysis-tabs">
@@ -680,7 +680,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             </TabsContent>
 
             <TabsContent value="records" className="min-w-0 space-y-4">
-                <PageHeader><div className="space-y-2"><h2 className="text-section-title font-semibold">回看你的实验依据</h2><p className="text-label text-muted-foreground">这些是已保存的参数，写报告时可用来解释样本量与方法选择。</p></div></PageHeader>
+                <PageHeader><div className="space-y-2"><h2 className="text-section-title font-semibold">实验依据</h2><p className="text-label text-muted-foreground">查看已保存的样本量参数和抽样记录。</p></div></PageHeader>
                 <details open className="rounded-surface border border-border bg-card p-5">
                     <summary className="cursor-pointer text-label font-semibold" data-testid="student-analysis-section-tab-plan">样本量规划</summary>
                     <div className="mt-4 min-w-0"><SamplePlanDecisionPanel samplePlan={experiment?.samplePlan ?? null} populationSize={populationSize}/></div>
@@ -708,7 +708,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                     </Card>
                     <aside className="min-w-0 flex-[1_1_18rem] space-y-6 border-l border-border pl-5" aria-label="报告写作参考">
                         {target && <section className="space-y-3">
-                            <h3 className="text-subheading font-semibold">随手查结果</h3>
+                            <h3 className="text-subheading font-semibold">结果速查</h3>
                             <p className="text-meta text-muted-foreground">{target.contract.contract.researchQuestion}</p>
                             {completedAnalysisMethods.map(method => <div key={method} className="border-t border-border pt-3 text-label">
                                 <p className="font-medium">{METHOD_META[method].label}</p>
@@ -726,7 +726,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 <li><strong className="font-medium text-foreground">改进方向。</strong>如果再做一次，会调整样本量、抽样设计还是问卷？</li>
                             </ol>
                         </section>
-                        <p className="text-meta leading-relaxed text-muted-foreground">下一步先保存并预览整份实验。预览页中确认提交后，教师才能收到报告。</p>
+                        <p className="text-meta leading-relaxed text-muted-foreground">保存后先预览；在预览页确认提交，教师才会收到报告。</p>
                     </aside>
                 </div>
             </TabsContent>

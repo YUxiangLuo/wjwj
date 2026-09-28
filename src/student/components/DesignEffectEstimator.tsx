@@ -14,13 +14,13 @@ const SAMPLING_METHODS = [
     {
         key: "srs",
         name: "简单随机抽样 (SRS)",
-        description: "在相同估计量和方差口径下，SRS 通常作为 deff=1 的比较基准；这不表示它对所有总体都具有最小方差。",
+        description: "在相同估计量和方差口径下，SRS 通常是 deff=1 的比较基准，但不一定对所有总体都有最小方差。",
         assumptions: ["固定样本量、等概率抽取", "作为比较基准时 deff=1", "有效分层或辅助信息可能比 SRS 更高效"],
     },
     {
         key: "stratified",
         name: "分层抽样",
-        description: "效率取决于目标变量的层内方差、层间差异、各层分配和权重，不能仅由“分层”二字确定 deff。",
+        description: "效率取决于目标变量的层内方差、层间差异、各层分配和权重，不能仅凭“分层”确定 deff。",
         assumptions: ["应先明确目标估计量", "分层变量与目标变量相关时更可能提高效率", "需用历史调查、预调查或完整设计计算"],
     },
     {
@@ -60,7 +60,7 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
                     </Badge>
                 </div>
                 <CardDescription className="text-foreground">
-                    抽样方法名称不能自动推出设计效应。这里说明需要核验的条件，不提供无来源的行业默认值。
+                    抽样方法不能直接决定设计效应。请核验以下条件，不要使用无来源的默认值。
                 </CardDescription>
             </CardHeader>
 

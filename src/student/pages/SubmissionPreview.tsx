@@ -210,7 +210,7 @@ export function SubmissionPreview() {
                     <section data-testid="student-preview-submit-panel" aria-labelledby="preview-submit-heading" className="flex flex-wrap items-center justify-between gap-4 rounded-surface bg-primary-muted p-5">
                         <div>
                             <h2 id="preview-submit-heading" className="text-section-title text-foreground">确认内容并提交</h2>
-                            <p className="mt-1 text-label text-muted-foreground">提交后内容将冻结，无法再次修改。</p>
+                            <p className="mt-1 text-label text-muted-foreground">提交后内容冻结；教师驳回后，可重开阶段修改。</p>
                             {!canSubmit && (
                                 <div className="mt-3 flex items-center gap-2 text-label text-destructive">
                                     <AlertCircle className="h-4 w-4" />{submitBlocker}
@@ -235,7 +235,7 @@ export function SubmissionPreview() {
                     <section aria-labelledby="preview-content-heading">
                         <div className="mb-4">
                             <h2 id="preview-content-heading" className="text-section-title">提交内容</h2>
-                            <p className="mt-1 text-label text-muted-foreground">实验报告是主要提交内容，问卷可作为参考核对。</p>
+                            <p className="mt-1 text-label text-muted-foreground">报告为主要提交内容，问卷供核对。</p>
                         </div>
                     <Tabs defaultValue="report" className="w-full">
                         <TabsList className="bg-muted border border-input p-1 w-auto h-auto rounded-surface" data-testid="student-preview-tabs">
@@ -371,7 +371,7 @@ export function SubmissionPreview() {
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-foreground">确认提交实验</AlertDialogTitle>
                         <AlertDialogDescription className="text-muted-foreground">
-                            提交后将无法修改实验内容。确定现在提交吗？
+                            提交后内容冻结；教师驳回后，可重开阶段修改。确认提交？
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

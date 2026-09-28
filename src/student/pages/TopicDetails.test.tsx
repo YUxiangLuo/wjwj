@@ -60,3 +60,31 @@ test("task details keep sampling requirements visible when a questionnaire templ
     expect(view.queryByTestId("student-task-built-in-questionnaire-resource")).toBeNull();
     expect(view.getAllByText("调查问卷设计规范与模板.docx")).toHaveLength(1);
 });
+
+test.each([
+    { status: "in_progress", deadline: null, label: "继续实验" },
+    { status: "rejected", deadline: null, label: "继续修改" },
+    { status: "not_started", deadline: "2020-02-01T00:00:00.000Z", label: "开始实验" },
+] as const)("task action heading stays neutral for $status", async ({ status, deadline, label }) => {
+    const task: TaskDetail = {
+        id: 12, topicId: 7, name: "任务状态测试", description: "",
+        publishedAt: "2020-01-01T00:00:00.000Z", deadline, status,
+        currentStage: status === "not_started" ? 0 : 4,
+        populationSize: 100, attachments: [], recommendQuestions: [],
+    };
+    globalThis.fetch = mock(async () => Response.json({ success: true, data: task })) as unknown as typeof fetch;
+    const view = render(
+        <MemoryRouter initialEntries={["/task/12"]}>
+            <Routes><Route path="/task/:taskId" element={<TopicDetails />} /></Routes>
+        </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(view.getByText("实验操作")).toBeTruthy());
+    if (deadline) {
+        expect((view.getByRole("button", { name: label }) as HTMLButtonElement).disabled).toBe(true);
+        expect(view.getByText("任务已截止，无法继续操作")).toBeTruthy();
+    } else {
+        expect(view.getByRole("link", { name: label }).getAttribute("href")).toBe("/task/12/experiment");
+        expect(view.queryByText("开始实验")).toBeNull();
+    }
+});

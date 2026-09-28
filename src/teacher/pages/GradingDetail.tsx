@@ -222,7 +222,7 @@ export function GradingDetail() {
                             <SamplingResultsSnapshot value={data.samplingResults} samplingPolicy={data.samplingPolicy} />
                             <div className="rounded-surface border border-border bg-card p-4">
                                 <h3 className="flex items-center gap-2 font-medium"><History className="h-4 w-4 text-primary" />抽样执行记录</h3>
-                                <p className="mt-1 text-meta text-muted-foreground">记录每次服务端抽样，便于识别重复尝试；每个实验保留并展示最近 100 次。</p>
+                                <p className="mt-1 text-meta text-muted-foreground">每个实验保留最近 100 次服务端抽样记录。</p>
                                 {data.samplingAttempts?.length ? (
                                     <div className="mt-3 max-h-64 space-y-2 overflow-y-auto custom-scrollbar">
                                         {data.samplingAttempts.map((attempt) => {

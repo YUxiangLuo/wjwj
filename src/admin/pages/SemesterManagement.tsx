@@ -52,7 +52,7 @@ export function SemesterManagement() {
         if (!isRecommendedSemesterName(newSemesterName)) {
             const shouldContinue = await confirm({
                 title: "学期名称不符合推荐格式",
-                description: "建议使用 YYYY-YYYY-1 或 YYYY-YYYY-2（例如 2026-2027-1）。\n继续创建后不会影响系统功能，但会降低列表可读性。",
+                description: "建议使用 YYYY-YYYY-1 或 YYYY-YYYY-2（例如 2026-2027-1）。\n继续创建不影响系统功能，但学期名称可能不易辨识。",
                 confirmLabel: "继续创建",
             });
             if (!shouldContinue) {
@@ -300,7 +300,7 @@ export function SemesterManagement() {
                 <DialogContent className="bg-card border-border text-foreground max-w-[425px]" showCloseButton={!submitting}>
                     <DialogHeader>
                         <DialogTitle className="text-foreground">创建学期</DialogTitle>
-                        <DialogDescription className="text-muted-foreground">创建一个新的学期用于组织班级和教学任务</DialogDescription>
+                        <DialogDescription className="text-muted-foreground">用于组织班级和教学任务</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-5 py-4">
                         <div className="space-y-2">
@@ -308,7 +308,7 @@ export function SemesterManagement() {
                             <Input
                                 id="semesterName"
                                 data-testid="semester-create-name"
-                                placeholder="例如：2024-Fall"
+                                placeholder="例如：2026-2027-1"
                                 value={newSemesterName}
                                 onChange={(e) => setNewSemesterName(e.target.value)}
                                 className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
@@ -318,7 +318,7 @@ export function SemesterManagement() {
                         <div className="flex items-center justify-between p-3 rounded-surface border border-border bg-background">
                             <div className="space-y-0.5">
                                 <Label htmlFor="setAsCurrent" className="text-body text-foreground cursor-pointer">设为当前学期</Label>
-                                <p className="text-meta text-muted-foreground">创建后立即生效为默认学期</p>
+                                <p className="text-meta text-muted-foreground">创建后设为默认学期</p>
                             </div>
                             <Switch
                                 id="setAsCurrent"
