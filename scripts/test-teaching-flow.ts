@@ -74,6 +74,19 @@ async function page(session: string, path: string, selector: string) {
     await browser(session, "open", baseUrl + path);
     await visible(session, selector);
 }
+async function captureDesktop(session: string, name: string, primary: string) {
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(session, "set", "viewport", String(width), String(height));
+        await evaluate(session, 'scrollTo({top:0,behavior:"instant"})');
+        assert(await evaluate(session, `(() => {const r=document.querySelector(${JSON.stringify(primary)}).getBoundingClientRect();return r.top>=0 && r.top<innerHeight && r.right<=innerWidth && document.documentElement.scrollWidth<=innerWidth;})()`), `${name} main content must fit at ${width}px`);
+        await browser(session, "screenshot", join(artifacts, `${name}-${width}.png`));
+        if (width === 1024) {
+            const overflowTables = await evaluate<number>(session, `(async () => {let count=0;for(const region of document.querySelectorAll('[data-slot="table-container"]')){if(region.clientWidth===0 || region.scrollWidth<=region.clientWidth)continue;const action=[...region.querySelectorAll('button:not(:disabled),a[href]')].at(-1);if(!action)continue;region.scrollLeft=region.scrollWidth;await new Promise(requestAnimationFrame);const a=action.getBoundingClientRect(),r=region.getBoundingClientRect();if(a.left<r.left || a.right>r.right+1)throw Error('Table action cannot be scrolled into view');count++;}return count;})()`);
+            if (overflowTables) await browser(session, "screenshot", join(artifacts, `${name}-table-actions-${width}.png`));
+        }
+    }
+    await browser(session, "set", "viewport", "1280", "800");
+}
 async function api<T>(session: string, path: string, method = "GET", body?: unknown): Promise<T> {
     return evaluate(session, `(async () => {
         const response = await fetch(${JSON.stringify(path)}, { method: ${JSON.stringify(method)}, credentials: "include", headers: { "Content-Type": "application/json" }, ${body === undefined ? "" : `body: JSON.stringify(${JSON.stringify(body)})`} });
@@ -195,6 +208,7 @@ try {
         assert(await evaluate(teacher, `document.activeElement?.id==='teacher-progress-search'`), "Tab must advance from disclosure to student search");
         await browser(teacher, "screenshot", join(artifacts, `teacher-progress-${width}.png`));
     }
+    await captureDesktop(teacher, 'progress-table', '[data-testid="teacher-progress-students"]');
     await browser(teacher, "fill", '#teacher-progress-search', "no-such-student-ui-check");
     assert(await evaluate(teacher, 'document.querySelector("table[aria-label=任务学生进度] tbody").textContent.includes("暂无数据")'), "Progress search must show empty state");
     await evaluate(teacher, `(() => {const input=document.querySelector('#teacher-progress-search');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'');input.dispatchEvent(new Event('input',{bubbles:true}));})()`);
@@ -694,6 +708,10 @@ try {
     await browser(student, "set", "viewport", "1280", "800");
     await activate(student, '[data-testid="student-analysis-preview"]');
     await visible(student, '[data-testid="student-preview-submit"]');
+    await captureDesktop(student, "submission-preview", '[data-testid="student-preview-submit-panel"]');
+    await activate(student, '[data-testid="student-preview-tab-questionnaire"]');
+    await captureDesktop(student, "submission-questionnaire", '[data-testid="student-preview-submit-panel"]');
+    await activate(student, '[data-testid="student-preview-tab-report"]');
     experiment = await api(student, experimentPath);
     assert(experiment.stage4CompletedAt, "Stage 4 did not persist");
     console.log("PASS four stage transitions, rendered pages and PPS analysis");
@@ -711,6 +729,9 @@ try {
         }, "Submission failed");
     }
     await submit();
+    await page(student, `/student/task/${task.id}/result`, '[data-testid="student-submission-pending"]');
+    assert(await evaluate(student, `!document.querySelector('[data-testid="student-submission-scores"]') && document.querySelector('[data-testid="student-submission-pending"]').getBoundingClientRect().top<document.querySelector('[data-testid="student-submission-content"]').getBoundingClientRect().top`), "Pending state must precede frozen content without empty score tiles");
+    await captureDesktop(student, "submission-pending", '[data-testid="student-submission-pending"]');
     const frozenStudent = await api<{ snapshot: { analysisAppendices: Array<{ id: number; result: unknown }> } }>(student, `/api/student/tasks/${task.id}/submission`);
     const frozenTeacher = await api<{ analysisAppendices: Array<{ id: number; result: unknown }> }>(teacher, `/api/teacher/grading/${experiment.id}`);
     assert(frozenStudent.snapshot.analysisAppendices[0]?.id === referencedAnalysisId, "Submission did not freeze selected analysis");
@@ -725,6 +746,9 @@ try {
     await browser(teacher, "fill", "#grading-reject-reason", "请补充不同抽样设计的误差解释后重新提交。");
     await namedButton(teacher, "确认驳回");
     await eventually(async () => (await api<ExperimentData>(student, experimentPath)).status === "rejected", "Rejection failed");
+    await page(student, `/student/task/${task.id}/result`, '[data-testid="student-submission-rejection"]');
+    assert(await evaluate(student, `document.querySelector('[data-testid="student-submission-rejection"]').textContent.includes('请补充不同抽样设计的误差解释') && !document.querySelector('[data-testid="student-submission-scores"]')`), "Rejected result must show actionable feedback without scores");
+    await captureDesktop(student, "submission-rejected", '[data-testid="student-submission-rejection"]');
     experiment = await api(student, experimentPath);
     await page(student, stageUrl, '[data-testid="student-experiment-rejection-notice"]');
     experiment = await api(student, `${experimentPath}/stages/4/reopen`, "POST", { observedVersion: experiment.version });
@@ -743,7 +767,11 @@ try {
     await page(student, `/student/task/${task.id}/result`, '[data-testid="student-submission-detail"]');
     assert(await evaluate(student, 'document.body.textContent.includes("90") && document.body.textContent.includes("已完成修改，分析准确。")'), "Student grade or comment missing");
     await browser(student, "screenshot", join(artifacts, "student-result.png"));
+    await captureDesktop(student, "submission-graded", '[data-testid="student-submission-scores"]');
     await page(teacher, "/teacher/export", 'button');
+    await visible(teacher, '[data-testid="teacher-export-list"]');
+    await captureDesktop(teacher, "export-list", '[data-testid="teacher-export-list"]');
+    assert(await evaluate(teacher, `Boolean(document.querySelector('[data-testid="teacher-export-list"]').compareDocumentPosition(document.querySelector('[aria-label="成绩统计参考"]')) & Node.DOCUMENT_POSITION_FOLLOWING)`), "Export filters must precede analytics in DOM reading order");
     const rows = await api<Array<{ totalScore: string; name: string }>>(teacher, `/api/teacher/grade-export/data?taskId=${task.id}`);
     assert(rows.length === 1 && Number(rows[0]!.totalScore) === 90, "Grade export disagrees with the submitted score");
     const download = await evaluate<{ status: number; bytes: number; base64: string }>(teacher, `(async()=>{const r=await fetch("/api/teacher/grade-export/excel?taskId=${task.id}");const bytes=new Uint8Array(await r.arrayBuffer());return {status:r.status,bytes:bytes.length,base64:btoa(String.fromCharCode(...bytes))}})()`);
@@ -891,6 +919,21 @@ try {
     await namedButton(teacher2, "明确确认并保存");
     await eventually(async () => {const state = await api<DictionarySnapshot>(teacher, `/api/teacher/topics/${conflictTopic.id}/variables`);return state.revision === revisionBeforeA + 2 && state.dictionary?.variables.find(variable => variable.field === "score")?.label === "窗口B最终标签";}, "Window B retry save failed");
     console.log("PASS dual teacher windows: stale revision, input retention, reload and retry");
+
+    for (const [session, path, name, selector] of [
+        [teacher, '/teacher/topic', 'topic-list', '[data-testid="teacher-topic-search"]'],
+        [teacher, '/teacher/grading', 'grading-list', '#grading-search'],
+        [teacher, '/teacher/class', 'teacher-class-list', '[data-testid="teacher-class-search"]'],
+        [administrator, '/admin/semester', 'semester-list', '[aria-label="搜索学期名称"]'],
+    ] as const) {
+        await page(session, path, selector);
+        await captureDesktop(session, name, selector);
+    }
+    await page(teacher, '/teacher/class', '[data-testid="teacher-class-search"]');
+    await eventually(() => evaluate(teacher, `Boolean(document.querySelector('a[href*="/students"]'))`), 'Student management link missing');
+    await activate(teacher, 'a[href*="/students"]');
+    await visible(teacher, '[data-testid="teacher-student-search"]');
+    await captureDesktop(teacher, 'teacher-student-list', '[data-testid="teacher-student-search"]');
 
     await Bun.write(join(artifacts, "result.json"), JSON.stringify({ success: true, taskId: task.id, experimentId: experiment.id, grade: 90, exportBytes: download.bytes, emptyFeature: { taskId: emptyTask.id, experimentId: emptyExperiment.id }, conflictTopicId: conflictTopic.id }, null, 2));
 } catch (cause) {
