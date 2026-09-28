@@ -588,7 +588,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         <Button variant="outline" onClick={() => setWorkspace("charts")}>查看图表探索</Button>
                     </div>}
                 </CardContent></Card>
-                <details className="rounded-surface border border-border bg-card p-4">
+                <details className="px-5 py-2">
                     <summary className="cursor-pointer text-label font-semibold">这些指标如何计算，解释时要注意什么？</summary>
                     <div className="mt-3 space-y-3 text-meta leading-relaxed text-muted-foreground">
                         <p data-testid="student-analysis-oracle-notice">本实验使用完整虚拟总体演示抽样设计，因此可以对照总体真值并计算设计层面的误差。现实调查通常看不到未入样单位，需使用与抽样设计匹配的权重和方差估计。样本量、设计效应和无回答率计算均是基于页面所列假设的规划近似，不替代预调查、抽样框评估和专业统计设计。{analysisMetrics && hasPpsCompleted && ppsStandardErrorMode && ppsStandardErrorNotice}</p>
@@ -698,7 +698,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             <TabsContent value="report" forceMount className="min-w-0 data-[state=inactive]:hidden">
                 <div className="flex flex-wrap items-start gap-5">
                     <Card className="min-w-0 flex-[3_1_36rem] gap-0 rounded-surface border-border bg-card py-0">
-                        <CardHeader className="border-b border-border p-3"><CardTitle><h2 className="text-section-title font-semibold">用数据回答研究问题</h2></CardTitle><CardDescription>报告需 {minLength}–{maxLength} 字。先写结论，再用估计值、误差和抽样设计说明理由。</CardDescription></CardHeader>
+                        <CardHeader className="p-5"><CardTitle><h2 className="text-section-title font-semibold">用数据回答研究问题</h2></CardTitle><CardDescription>报告需 {minLength}–{maxLength} 字。先写结论，再用估计值、误差和抽样设计说明理由。</CardDescription></CardHeader>
                         <CardContent className="px-3 pb-3 pt-1">
                             <Label htmlFor="report" className="sr-only">报告正文</Label>
                             <RichTextEditor dataTestId="student-analysis-report" editorTestId="student-analysis-report-editor" id="report" ariaLabel="报告正文" showWordCount={false}
@@ -706,18 +706,18 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 value={reportContent} onChange={setReportContent} editorClassName="min-h-[10rem] h-[clamp(10rem,calc(100dvh-30rem),26rem)] overflow-y-auto"/>
                         </CardContent>
                     </Card>
-                    <aside className="min-w-0 flex-[1_1_18rem] space-y-4" aria-label="报告写作参考">
-                        {target && <section className="rounded-surface border border-primary-border bg-primary-muted p-5 space-y-3">
+                    <aside className="min-w-0 flex-[1_1_18rem] space-y-6 border-l border-border pl-5" aria-label="报告写作参考">
+                        {target && <section className="space-y-3">
                             <h3 className="text-subheading font-semibold">随手查结果</h3>
                             <p className="text-meta text-muted-foreground">{target.contract.contract.researchQuestion}</p>
-                            {completedAnalysisMethods.map(method => <div key={method} className="border-t border-primary-border pt-3 text-label">
+                            {completedAnalysisMethods.map(method => <div key={method} className="border-t border-border pt-3 text-label">
                                 <p className="font-medium">{METHOD_META[method].label}</p>
                                 <p className="mt-1 tabular-nums">估计 {formatTargetEstimate(target.methods[method].estimate, target.contract.contract.target.kind, target.unit)}</p>
                                 <p className="mt-1 text-meta text-muted-foreground">教学半宽 {formatTargetMargin(target.methods[method].marginOfError, target.contract.contract.target.kind, target.unit)}</p>
                             </div>)}
                             <Button type="button" variant="outline" onClick={() => setWorkspace("overview")}>查看完整结果与条件</Button>
                         </section>}
-                        <section className="rounded-surface border border-border bg-card p-5 space-y-3">
+                        <section className="border-t border-border pt-5 space-y-3">
                             <h3 className="text-subheading font-semibold">写作提纲</h3>
                             <ol className="list-decimal space-y-3 pl-5 text-label leading-relaxed text-muted-foreground">
                                 <li><strong className="font-medium text-foreground">研究问题与方法。</strong>估计哪个指标？为什么选择这些方法？</li>

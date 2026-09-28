@@ -385,6 +385,10 @@ try {
     await eventually(() => evaluate(student, `(() => {const panel=document.querySelector('[data-testid="student-target-metrics"]');const table=panel?.querySelector('table');return panel && table && table.getBoundingClientRect().width<=panel.getBoundingClientRect().width && document.documentElement.scrollWidth<=innerWidth;})()`), "Target comparison table must fit the full-width result panel");
     await eventually(() => evaluate(student, `(() => {const rows=document.querySelectorAll('[data-testid="student-target-metrics"] tbody tr');const footer=document.querySelector('[data-testid="student-stage-actions"]');return rows.length>=2 && rows[1].getBoundingClientRect().bottom<=footer.getBoundingClientRect().top;})()`), "The first two comparison results must be fully visible above the footer at 1280×800");
     await browser(student, "screenshot", join(artifacts, "analysis-results.png"));
+    await evaluate(student, `document.querySelector('[data-testid="student-target-metrics"] details').open = true`);
+    await evaluate(student, `document.querySelector('[data-testid="student-target-metrics"] details').scrollIntoView({block:'center'})`);
+    await browser(student, "screenshot", join(artifacts, "analysis-diagnostics.png"));
+    await evaluate(student, `document.querySelector('[data-testid="student-target-metrics"] details').open = false`);
     const metrics = await api<AnalysisMetricsResult>(student, `/api/student/tasks/${task.id}/analysis-metrics`);
     assert(metrics.ppsStandardErrorMode === "systematic_exact" && metrics.ppsMonteCarloReplicates === 0,
         "PPS worker did not use exact design integration");
@@ -494,6 +498,16 @@ try {
     const report = "本次实验以食堂午间十五分钟服务时段的平均等待分钟数为研究目标。我们比较了简单随机、系统抽样与以客流量为规模变量的PPS估计及设计标准误，并结合总体真值讨论精度和代表性。样本量规划采用有限总体校正，本次无回答率假设为零。分析单位是服务时段而非就餐学生，单次样本差异不能直接解释为服务质量的因果差异。";
     await browser(student, "fill", '[data-testid="student-analysis-report-editor"]', report);
     await browser(student, "screenshot", join(artifacts, "report-editor.png"));
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(student, "set", "viewport", String(width), String(height));
+        await evaluate(student, `document.querySelector('[data-testid="student-analysis-report-editor"]').scrollIntoView({block:'center'})`);
+        assert(await evaluate(student, `(() => {const editor=document.querySelector('[data-testid="student-analysis-report-editor"]').getBoundingClientRect();const reference=document.querySelector('[aria-label="报告写作参考"]').getBoundingClientRect();return document.documentElement.scrollWidth<=innerWidth && editor.width>=400 && (reference.left>=editor.right || reference.top>=editor.bottom);})()`), `Report editor and reference must not overlap or overflow at ${width}×${height}`);
+        await browser(student, "screenshot", join(artifacts, `report-editor-${width}.png`));
+        await evaluate(student, `document.querySelector('[aria-label="报告写作参考"] > p:last-child').scrollIntoView({block:'center'})`);
+        assert(await evaluate(student, `(() => {const tail=document.querySelector('[aria-label="报告写作参考"] > p:last-child').getBoundingClientRect();const footer=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect();const navigation=document.querySelector('[data-testid="student-experiment-navigation"]').getBoundingClientRect();return tail.bottom<=footer.top && tail.top>=navigation.bottom;})()`), `Report reference tail must scroll clear of sticky navigation and actions at ${width}×${height}`);
+        await browser(student, "screenshot", join(artifacts, `report-reference-tail-${width}.png`));
+    }
+    await browser(student, "set", "viewport", "1280", "800");
     await activate(student, '[data-testid="student-analysis-preview"]');
     await visible(student, '[data-testid="student-preview-submit"]');
     experiment = await api(student, experimentPath);

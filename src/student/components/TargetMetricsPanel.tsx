@@ -43,9 +43,9 @@ export function TargetMetricsPanel({ target, methods = availableTargetMethods(ta
                 <h2 className="text-section-title font-semibold text-foreground">研究目标结果</h2>
                 <p className="text-label text-muted-foreground">{target.plannedMarginOfError !== null ? <>本次规划误差半宽：<strong className="font-semibold text-foreground">{formatMargin(target.plannedMarginOfError)}</strong></> : "本次尚未设置可比较的规划误差半宽"}</p>
             </div>
-            <div className="shrink-0 rounded-surface border border-primary-border bg-primary-muted px-4 py-3">
+            <div className="min-w-0 border-l border-border pl-4">
                 <p className="text-meta text-muted-foreground">虚拟总体真值 · 用于教学对照</p>
-                <p className="mt-1 text-section-title font-bold tabular-nums text-primary" data-testid="student-target-population-value">{formatEstimate(target.populationValue)}</p>
+                <p className="mt-1 text-label font-medium tabular-nums text-foreground" data-testid="student-target-population-value">{formatEstimate(target.populationValue)}</p>
             </div>
         </PageHeader>
         <div role="region" aria-label="研究目标结果表，可横向滚动" tabIndex={0} className="max-w-full overflow-auto rounded-surface border border-border outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -78,7 +78,7 @@ export function TargetMetricsPanel({ target, methods = availableTargetMethods(ta
         </div>
         <p className="text-meta text-muted-foreground" data-testid="student-target-margin-caveat">这里的设计标准误依赖教学系统已知的完整虚拟总体；现实调查通常不知道总体真值，也不能仅凭当前样本直接得到这些数值。正态近似教学半宽 = z × 设计标准误；它不表示覆盖率已经验证，也不应当作正式置信区间。半宽达标只说明这次达到规划精度，不能单独证明无偏、代表性或某种方法更好。{systematicMuchTighter ? <span data-testid="student-target-systematic-caveat"> 系统抽样半宽更小通常来自总体排序，不能推广成「系统抽样总是更准」。</span> : null}</p>
         {target.contract.inferred && <p className="text-meta leading-relaxed text-muted-foreground">当前研究目标由对照变量推断：{contract.researchQuestion}</p>}
-        <details className="rounded-surface border border-border bg-background p-4">
+        <details className="border-t border-border pt-4">
             <summary className="cursor-pointer text-label font-semibold text-foreground">查看标准误、等效样本量与近似条件</summary>
             <p className="mt-3 text-meta leading-relaxed text-muted-foreground">下列提示用于筛查，样本数 30、事件数 5 等经验阈值不是充分条件。等效 SRS 样本量用于表达设计精度，不是实际调查人数。</p>
             <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,24rem),1fr))] gap-3">
@@ -88,7 +88,7 @@ export function TargetMetricsPanel({ target, methods = availableTargetMethods(ta
                         : metrics.reliability.status === "ok"
                             ? metrics.standardError === 0 ? "已知设计下估计不随抽样变化" : "未触发筛查提示；区间覆盖率尚未验证"
                             : metrics.reliability.status === "census" ? "覆盖完整虚拟总体" : "暂无可用的近似条件评估。";
-                    return <section key={method} className="space-y-3 rounded-surface border border-border bg-card p-4">
+                    return <section key={method} className="space-y-3 rounded-surface bg-background p-4">
                         <h3 className="text-label font-semibold">{METHOD_META[method].label}</h3>
                         <dl className="grid grid-cols-2 gap-3 text-meta">
                             <div><dt className="text-muted-foreground">{kind === "proportion" ? "设计 SE（百分点）" : `设计 SE${target.unit ? `（${target.unit}）` : ""}`}</dt><dd className="mt-1 font-semibold tabular-nums">{metrics.standardError === null ? "—" : formatStatistic(kind === "proportion" ? metrics.standardError * 100 : metrics.standardError)}</dd></div>
