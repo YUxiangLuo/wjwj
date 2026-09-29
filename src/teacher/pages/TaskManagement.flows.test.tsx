@@ -3,7 +3,7 @@ import type { Task, Topic } from "../api-client";
 import { installDomGlobals } from "@/test-utils/dom";
 
 const bootstrapDom = installDomGlobals();
-const { cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
+const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
 const { MemoryRouter } = await import("react-router-dom");
 
 const toastError = mock(() => undefined);
@@ -198,6 +198,39 @@ test("publishing without a template or class is rejected before the API call", a
     fireEvent.click(view.getByTestId("teacher-task-publish-submit"));
     expect(toastError).toHaveBeenCalledWith("请选择实验模板和班级");
     expect(createTask).not.toHaveBeenCalled();
+});
+
+test("class search preserves hidden choices; publishing locks input and failed requests can retry", async () => {
+    getTasks.mockResolvedValue({ success: true, data: [] });
+    getTopics.mockResolvedValueOnce({ success: true, data: [{ id: 42, name: "发布模板", description: null, status: 1, dataRows: 80, createdAt: "" }] });
+    getClasses.mockResolvedValueOnce({ success: true, data: [{ id: 1, name: "统计一班" }, { id: 2, name: "管理二班" }] } as never);
+    let finish!: (value: { success: boolean; error?: { message: string } }) => void;
+    createTask.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; })).mockResolvedValueOnce({ success: true });
+    const view = renderPage("/task?topicId=42");
+    await waitFor(() => expect(view.getByTestId("teacher-task-class-check-1")).toBeTruthy());
+    fireEvent.click(view.getByTestId("teacher-task-class-check-1"));
+    fireEvent.change(view.getByLabelText("搜索班级"), { target: { value: "二班" } });
+    expect(view.queryByTestId("teacher-task-class-check-1")).toBeNull();
+    fireEvent.click(view.getByTestId("teacher-task-class-check-2"));
+    expect(view.getByText(/已选 2 个班级/)).toBeTruthy();
+    fireEvent.click(view.getByTestId("teacher-task-publish-submit"));
+    fireEvent.click(view.getByTestId("teacher-task-publish-submit"));
+    expect(createTask).toHaveBeenCalledTimes(1);
+    expect(createTask).toHaveBeenCalledWith({ topicId: 42, classIds: [1, 2], deadline: undefined });
+    expect((view.getByLabelText("搜索班级") as HTMLInputElement).disabled).toBe(true);
+    expect((view.getByTestId("teacher-task-class-check-2") as HTMLInputElement).disabled).toBe(true);
+    expect((view.getByRole("button", { name: "取消" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.keyDown(view.getByRole("dialog"), { key: "Escape" });
+    expect(view.getByRole("dialog")).toBeTruthy();
+    await act(async () => finish({ success: false, error: { message: "暂时无法发布" } }));
+    expect(view.getByRole("alert").textContent).toBe("暂时无法发布");
+    expect(document.activeElement === view.getByRole("alert")).toBe(true);
+    expect(view.getByText(/已选 2 个班级/)).toBeTruthy();
+    fireEvent.change(view.getByLabelText("搜索班级"), { target: { value: "" } });
+    expect((view.getByTestId("teacher-task-class-check-1") as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(view.getByTestId("teacher-task-publish-submit"));
+    await waitFor(() => expect(Boolean(view.queryByRole("dialog"))).toBe(false));
+    expect(createTask).toHaveBeenCalledTimes(2);
 });
 
 test("opening the extend dialog targets the selected task", async () => {

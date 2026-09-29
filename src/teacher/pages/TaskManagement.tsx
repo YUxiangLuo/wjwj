@@ -1,6 +1,6 @@
 import { RequestError } from "@/components/RequestError";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -62,6 +62,10 @@ export function TaskManagement() {
     const [tasks, setTasks] = useState<Task[]>([]);
     const { loading, error: loadError, run } = useAsyncLoad("任务列表加载失败");
     const [showPublishModal, setShowPublishModal] = useState(false);
+    const [publishing, setPublishing] = useState(false);
+    const publishLock = useRef(false);
+    const [publishError, setPublishError] = useState<string | null>(null);
+    useEffect(() => { setPublishError(null); }, [showPublishModal]);
     const [showExtendModal, setShowExtendModal] = useState(false);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [extendDeadline, setExtendDeadline] = useState("");
@@ -142,28 +146,33 @@ export function TaskManagement() {
     }
 
     async function handlePublish() {
-        if (optionsLoading || optionsError) return;
+        if (optionsLoading || optionsError || publishLock.current) return;
         if (!selectedTopicId || selectedClassIds.length === 0) {
+            setPublishError("请选择实验模板和班级");
             toast.error("请选择实验模板和班级");
             return;
         }
+        publishLock.current = true;
+        setPublishing(true);
+        setPublishError(null);
+        try {
+            const res = await teacherApi.createTask({
+                topicId: Number(selectedTopicId),
+                classIds: selectedClassIds,
+                deadline: localWallClockToUtcIso(deadline) ?? undefined,
+            });
 
-        const res = await teacherApi.createTask({
-            topicId: Number(selectedTopicId),
-            classIds: selectedClassIds,
-            deadline: localWallClockToUtcIso(deadline) ?? undefined,
-        });
-
-        if (res.success) {
-            setShowPublishModal(false);
-            loadTasks();
-            // Reset form
-            setSelectedTopicId("");
-            setSelectedClassIds([]);
-            setDeadline("");
-        } else {
-            toast.error("发布失败: " + res.error?.message);
-        }
+            if (res.success) {
+                setShowPublishModal(false);
+                loadTasks();
+                setSelectedTopicId("");
+                setSelectedClassIds([]);
+                setDeadline("");
+            } else {
+                setPublishError(res.error?.message ?? "发布失败，请重试");
+            }
+        } catch { setPublishError("发布失败，请检查网络后重试"); }
+        finally { publishLock.current = false; setPublishing(false); }
     }
 
     async function handleExtendDeadline() {
@@ -410,6 +419,8 @@ export function TaskManagement() {
                 deadline={deadline}
                 onDeadlineChange={setDeadline}
                 onPublish={handlePublish}
+                publishing={publishing}
+                publishError={publishError}
                 loading={optionsLoading}
                 loadError={optionsError}
                 onRetry={() => void loadPublishOptions()}
