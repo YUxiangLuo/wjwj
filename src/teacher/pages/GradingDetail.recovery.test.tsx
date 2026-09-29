@@ -223,7 +223,7 @@ test("continue grading waits for save, freezes the queue lookup and restores onl
         return Response.json({ success: true, data: { ...record(), id, studentName: `学生${id}`, scoreReport: id === 8 ? 65 : 30 } });
     }) as typeof fetch;
     localStorage.setItem("wj:teacher-draft:9:grading:8", JSON.stringify({ version: 1, scores: { questionnaire: "45", process: "55", report: "65" }, comment: "第八份草稿", rejectReason: "" }));
-    const view = page("/grading/7?status=all&keyword=S&page=3");
+    const view = page("/grading/7?taskId=42&status=all&keyword=S&page=3");
     await waitFor(() => expect(view.getByLabelText("教师评语")).toBeTruthy());
     fireEvent.change(view.getByLabelText("教师评语"), { target: { value: "第七份评语" } });
     fireEvent.click(view.getByText("提交评分"));
@@ -231,7 +231,7 @@ test("continue grading waits for save, freezes the queue lookup and restores onl
     expect(requests).toHaveLength(2);
     expect(localStorage.getItem("wj:teacher-draft:9:grading:7")).toContain("第七份评语");
     await act(async () => finishSave(Response.json({ success: true })));
-    expect(requests[2]).toBe("GET /api/teacher/grading?status=pending&keyword=S&page=1&pageSize=1");
+    expect(requests[2]).toBe("GET /api/teacher/grading?status=pending&keyword=S&taskId=42&page=1&pageSize=1");
     expect((view.getByLabelText("教师评语") as HTMLTextAreaElement).disabled).toBe(true);
     expect((view.getByText("返回列表") as HTMLButtonElement).disabled).toBe(true);
     expect(localStorage.getItem("wj:teacher-draft:9:grading:7")).toBeNull();
@@ -242,7 +242,7 @@ test("continue grading waits for save, freezes the queue lookup and restores onl
     expect((view.getByLabelText("实验报告（40%）") as HTMLInputElement).value).toBe("65");
     expect((view.getByLabelText("教师评语") as HTMLTextAreaElement).disabled).toBe(false);
     fireEvent.click(view.getByText("返回列表"));
-    expect(view.getByTestId("list-location").textContent).toBe("/grading?status=all&keyword=S&page=3");
+    expect(view.getByTestId("list-location").textContent).toBe("/grading?taskId=42&status=all&keyword=S&page=3");
 });
 
 for (const outcome of ["save-failed", "queue-failed", "empty"] as const) test(`continue grading: ${outcome} does not lose or resubmit a grade`, async () => {

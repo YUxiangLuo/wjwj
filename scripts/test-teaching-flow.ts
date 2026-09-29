@@ -1018,6 +1018,26 @@ try {
     await eventually(async () => (await api<ExperimentData>(student, emptyPath)).status === "submitted", "Reference-free submission failed");
     console.log("PASS empty-feature path: no dictionary, no binding, no references, keyboard Tab, narrow viewport and CSV export");
 
+    const scopedGrades = await api<{ items: Array<{ id: number }>; total: number }>(teacher, `/api/teacher/grading?status=pending&taskId=${emptyTask.id}`);
+    assert(scopedGrades.total === 1 && scopedGrades.items[0]?.id === emptyExperiment.id, "Task filter must return only its own submission");
+    const otherPending = await api<{ total: number }>(teacher, "/api/teacher/grading?status=pending");
+    assert(otherPending.total > 1, "Cross-task regression needs pending work outside this task");
+    await page(teacher, "/teacher/task", `[data-testid="teacher-task-row-${emptyTask.id}"]`);
+    await browser(teacher, "click", `[data-testid="teacher-task-row-${emptyTask.id}"] a[href="/teacher/grading?taskId=${emptyTask.id}"]`);
+    await eventually(() => evaluate(teacher, `document.body.textContent.includes('当前仅显示任务 #${emptyTask.id}') && document.body.textContent.includes('共 1 条记录')`), "Task link must open scoped grading");
+    await browser(teacher, "set", "viewport", "1024", "768", "2");
+    await browser(teacher, "screenshot", join(artifacts, "grading-task-scope.png"));
+    await browser(teacher, "click", `[data-testid="teacher-grading-item-${emptyExperiment.id}"]`);
+    await visible(teacher, "#grading-score-report");
+    assert(await evaluate(teacher, `new URLSearchParams(location.search).get('taskId')==='${emptyTask.id}'`), "Opening detail must keep the task scope");
+    for (const [key, score] of [["questionnaire", "72"], ["process", "81"], ["report", "93"]]) await browser(teacher, "fill", `#grading-score-${key}`, score!);
+    await namedButton(teacher, "提交评分");
+    await activate(teacher, '[data-testid="teacher-grade-next"]');
+    await eventually(() => evaluate(teacher, `location.pathname==='/teacher/grading' && new URLSearchParams(location.search).get('taskId')==='${emptyTask.id}' && document.body.textContent.includes('当前没有待批改作业')`), "Finishing a task must not continue into another task");
+    assert((await api<{ total: number }>(teacher, "/api/teacher/grading?status=pending")).total === otherPending.total - 1, "Other tasks must remain pending");
+    await browser(teacher, "screenshot", join(artifacts, "grading-task-complete.png"));
+    console.log("PASS task-scoped grading link, detail, completion and cross-task isolation");
+
     // =====================================================================
     // 双窗口教师字典冲突：过期修订、输入保留、显式重载后重试
     // =====================================================================

@@ -361,7 +361,7 @@ export function TaskManagement() {
                                                     延时
                                                 </Button>
                                                 <Button variant="ghost" size="sm" asChild className="h-8 text-muted-foreground hover:text-destructive hover:bg-destructive-muted">
-                                                    <Link to="/grading">批改</Link>
+                                                    <Link to={`/grading?taskId=${task.id}`}>批改</Link>
                                                 </Button>
                                                 <Button
                                                     data-testid={`teacher-task-delete-open-${task.id}`}

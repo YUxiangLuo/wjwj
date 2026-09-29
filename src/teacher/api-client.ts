@@ -50,7 +50,7 @@ export interface GradingItem {
     submittedAt: string; status: GradingStatus; score: number | null; gradedByName?: string | null; gradedAt?: string | null;
 }
 export interface GradingListResponse { items: GradingItem[]; total: number; page: number; pageSize: number }
-export interface GradingListParams { status?: string; className?: string; topicName?: string; keyword?: string; page?: number; pageSize?: number }
+export interface GradingListParams { taskId?: string; status?: string; className?: string; topicName?: string; keyword?: string; page?: number; pageSize?: number }
 export interface SubmissionDetail extends GradingItem {
     version: number;
     topicDesc: string | null;
@@ -144,7 +144,7 @@ export const teacherApi = {
 
     getGradingList: (params: GradingListParams = {}) => {
         const search = new URLSearchParams();
-        for (const [key, value] of Object.entries(params)) if (value !== undefined && value !== "") search.set(key, value === true ? "1" : String(value));
+        for (const [key, value] of Object.entries(params)) if (value !== undefined && (value !== "" || key === "taskId")) search.set(key, value === true ? "1" : String(value));
         return request<GradingListResponse>(`/api/teacher/grading${search.size ? `?${search}` : ""}`);
     },
     getSubmissionDetail: (id: number) => request<SubmissionDetail>(`/api/teacher/grading/${id}`),

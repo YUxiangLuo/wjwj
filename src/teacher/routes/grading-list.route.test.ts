@@ -9,7 +9,7 @@ test("grading rejects invalid pagination before any database query", async () =>
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => createTeacherAuthModuleMock());
     const module = await import(`./grading.ts?invalid-pagination=${crypto.randomUUID()}`);
-    for (const query of ["page=99999999999999999999999", "page=Infinity", "pageSize=1.5", "page=9007199254740991&pageSize=100"]) {
+    for (const query of ["page=99999999999999999999999", "page=Infinity", "pageSize=1.5", "page=9007199254740991&pageSize=100", "taskId=", "taskId=-1", "taskId=1.5", "taskId=abc", "taskId=9007199254740992"]) {
         const response = await module.gradingRoutes.GET!(new Request(`https://example.com/api/teacher/grading?${query}`));
         expect(response.status).toBe(400);
         expect(await response.json()).toMatchObject({ error: { code: "INVALID_PARAM" } });
@@ -39,7 +39,7 @@ test("grading list reads current experiment statuses directly", async () => {
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => createTeacherAuthModuleMock());
     const module = await import(`./grading.ts?list=${crypto.randomUUID()}`);
-    const response = await module.gradingRoutes.GET!(new Request("https://example.com/api/teacher/grading?status=pending"));
+    const response = await module.gradingRoutes.GET!(new Request("https://example.com/api/teacher/grading?status=pending&taskId=42"));
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
         data: {
@@ -52,4 +52,10 @@ test("grading list reads current experiment statuses directly", async () => {
     const listQuery = operations.find((item) => item.kind === "select");
     const sql = new PgDialect().sqlToQuery(listQuery?.where as SQL).sql;
     expect(sql).toContain('"student"."class_id" = "task"."class_id"');
+    for (const operation of operations.filter(item => item.kind === "select")) {
+        const query = new PgDialect().sqlToQuery(operation.where as SQL);
+        expect(query.sql).toContain('"experiment"."task_id" =');
+        expect(query.sql).toContain('"class"."teacher_id" =');
+        expect(query.params).toContain(42);
+    }
 });

@@ -153,7 +153,7 @@ export function GradingDetail() {
             // Query after saving: the completed submission is no longer pending.
             // Start at page one so removals cannot skip items across page boundaries.
             const query = new URLSearchParams(search);
-            const next = await teacherApi.getGradingList({ status: "pending", keyword: query.get("keyword")?.trim() || undefined, page: 1, pageSize: 1 });
+            const next = await teacherApi.getGradingList({ status: "pending", keyword: query.get("keyword")?.trim() || undefined, taskId: query.get("taskId") ?? undefined, page: 1, pageSize: 1 });
             if (currentId.current !== id) return;
             if (next.success && next.data) {
                 const item = next.data.items[0];
@@ -322,7 +322,7 @@ export function GradingDetail() {
                                         <Button data-testid="teacher-grade-confirm" disabled={!canGrade || !scoresReady} onClick={() => void grade()}>确认提交</Button>
                                         {data.status === "submitted" && <>
                                             <Button variant="outline" data-testid="teacher-grade-next" disabled={!canGrade || !scoresReady} onClick={() => void grade(true)}>保存并批改下一份</Button>
-                                            <p className="w-full text-meta text-muted-foreground">继续批改当前搜索范围内的待批改作业。</p>
+                                            <p className="w-full text-meta text-muted-foreground">{new URLSearchParams(search).has("taskId") ? "仅继续批改当前任务及搜索范围内的待批改作业。" : "继续批改当前搜索范围内的待批改作业。"}</p>
                                         </>}
                                     </>
                                 ) : (

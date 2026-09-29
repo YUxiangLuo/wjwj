@@ -67,6 +67,11 @@ const gradingRoutes: RouteDefinition = {
         if (!pagination) return error("分页参数无效", "INVALID_PARAM", 400);
         const { page, pageSize, offset } = pagination;
         const conditions = baseConditions(current.id);
+        const taskId = params.get("taskId");
+        if (taskId !== null) {
+            if (!/^[1-9]\d*$/.test(taskId) || !Number.isSafeInteger(Number(taskId))) return error("任务 ID 无效", "INVALID_PARAM", 400);
+            conditions.push(eq(experiment.taskId, Number(taskId)));
+        }
         const status = params.get("status");
         if (status === "pending") conditions.push(eq(experiment.status, "submitted"));
         if (status === "graded") conditions.push(eq(experiment.status, "graded"));

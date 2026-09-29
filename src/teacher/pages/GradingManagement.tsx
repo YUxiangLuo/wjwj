@@ -20,8 +20,9 @@ import { teacherApi, type GradingItem } from "../api-client";
 
 const PAGE_SIZE = 20;
 
-function listQuery(status: string, keyword: string, page: number) {
+function listQuery(status: string, keyword: string, page: number, taskId: string | null) {
     const query = new URLSearchParams();
+    if (taskId !== null) query.set("taskId", taskId);
     if (status !== "pending") query.set("status", status);
     if (keyword.trim()) query.set("keyword", keyword.trim());
     if (page > 1) query.set("page", String(page));
@@ -33,6 +34,7 @@ export function GradingManagement() {
     const [items, setItems] = useState<GradingItem[]>([]);
     const [total, setTotal] = useState(0);
     const [searchParams, setSearchParams] = useSearchParams();
+    const taskId = searchParams.get("taskId");
     const rawPage = Number(searchParams.get("page") ?? 1);
     const page = Number.isSafeInteger(rawPage) && rawPage > 0 ? rawPage : 1;
     const rawStatus = searchParams.get("status") ?? "pending";
@@ -50,6 +52,7 @@ export function GradingManagement() {
         setLoading(true);
         setLoadError(null);
         const response = await teacherApi.getGradingList({
+            taskId: taskId ?? undefined,
             status: status === "all" ? undefined : status,
             keyword: appliedKeyword || undefined,
             page,
@@ -59,7 +62,7 @@ export function GradingManagement() {
         if (response.success && response.data) {
             const lastPage = Math.max(1, Math.ceil(response.data.total / PAGE_SIZE));
             if (page > lastPage) {
-                setSearchParams(listQuery(status, appliedKeyword, lastPage), { replace: true });
+                setSearchParams(listQuery(status, appliedKeyword, lastPage, taskId), { replace: true });
                 return;
             }
             setItems(response.data.items);
@@ -70,11 +73,11 @@ export function GradingManagement() {
             setLoadError(response.error?.message ?? "批改列表加载失败");
         }
         setLoading(false);
-    }, [status, appliedKeyword, page, setSearchParams]);
+    }, [status, appliedKeyword, page, taskId, setSearchParams]);
 
     useEffect(() => { void load(); }, [load]);
     const applyFilters = (nextStatus = status) => {
-        const query = listQuery(nextStatus, keyword, 1);
+        const query = listQuery(nextStatus, keyword, 1, taskId);
         if (query.toString() === searchParams.toString()) void load();
         else setSearchParams(query);
     };
@@ -89,6 +92,10 @@ export function GradingManagement() {
     return (
         <div className="space-y-6">
             <p className="text-label text-muted-foreground">评分直接写入学生当前实验；驳回后学生可修改并覆盖重交。</p>
+            {taskId !== null && <div className="flex items-center justify-between gap-3 rounded-surface border border-info-border bg-info-muted p-3 text-label text-info">
+                <span>当前仅显示任务 #{taskId} 的作业，搜索和连续批改均限于此任务。</span>
+                <Button variant="outline" onClick={() => setSearchParams(listQuery(status, appliedKeyword, 1, null))}>查看全部任务</Button>
+            </div>}
             <Card>
                 <PageHeader as={CardHeader} className="flex-wrap">
                     <div>
@@ -129,6 +136,7 @@ export function GradingManagement() {
                     ) : items.map((item) => (
                         <button
                             key={item.id}
+                            data-testid={`teacher-grading-item-${item.id}`}
                             className="flex w-full gap-3 rounded-surface border border-border p-4 text-left transition-none hover:bg-muted flex-row items-center"
                             onClick={() => navigate(`/grading/${item.id}${searchParams.size ? `?${searchParams}` : ""}`)}
                         >
@@ -164,7 +172,7 @@ export function GradingManagement() {
                                 aria-label="上一页"
                                 variant="outline"
                                 disabled={loading || page <= 1}
-                                onClick={() => setSearchParams(listQuery(status, appliedKeyword, page - 1))}
+                                onClick={() => setSearchParams(listQuery(status, appliedKeyword, page - 1, taskId))}
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </IconButton>
@@ -173,7 +181,7 @@ export function GradingManagement() {
                                 aria-label="下一页"
                                 variant="outline"
                                 disabled={loading || page >= pages}
-                                onClick={() => setSearchParams(listQuery(status, appliedKeyword, page + 1))}
+                                onClick={() => setSearchParams(listQuery(status, appliedKeyword, page + 1, taskId))}
                             >
                                 <ChevronRight className="h-4 w-4" />
                             </IconButton>
