@@ -12,6 +12,7 @@ mock.module("sonner", () => ({ toast: { error: toastError, success: toastSuccess
 
 const getTasks = mock(async () => ({ success: true, data: [] as Task[] }));
 const getTopics = mock(async () => ({ success: true, data: [] as Topic[] }));
+const getClasses = mock(async () => ({ success: true, data: [] }));
 const createTask = mock(async (_body: unknown) => ({ success: true }));
 const deleteTask = mock(async (_id: number, _options?: { confirm?: boolean }) => ({ success: true }));
 const getTaskDeletionImpact = mock(async (_id: number) => ({
@@ -31,7 +32,7 @@ mock.module("../api-client", () => ({
         getTaskDeletionImpact,
         extendTaskDeadline,
         getTopics,
-        getClasses: async () => ({ success: true, data: [] }),
+        getClasses,
     },
 }));
 
@@ -88,6 +89,32 @@ test("a draft template in an assignment link is not preselected", async () => {
     await waitFor(() => expect(view.getByTestId("teacher-task-topic-select").textContent).toBe("请选择实验模板"));
     expect(view.getByRole("dialog").textContent).not.toContain("不可分配的草稿");
     expect(createTask).not.toHaveBeenCalled();
+});
+
+for (const failedResource of ["templates", "classes", "tasks"] as const) test(`assignment ${failedResource} failure is retryable without losing the linked template`, async () => {
+    getTasks.mockResolvedValue({ success: true, data: [] });
+    if (failedResource === "tasks") getTasks
+        .mockResolvedValueOnce({ success: true, data: [] })
+        .mockResolvedValueOnce({ success: false, error: { message: "任务暂不可用" } } as never);
+    const published = { id: 42, name: "刚发布的模板", description: null, status: 1, dataRows: 80, createdAt: "" };
+    getTopics.mockResolvedValueOnce(failedResource === "templates"
+        ? { success: false, error: { message: "模板暂不可用" } } as never
+        : { success: true, data: [published] });
+    getClasses.mockResolvedValueOnce(failedResource === "classes"
+        ? { success: false, error: { message: "班级暂不可用" } } as never
+        : { success: true, data: [] });
+    const view = renderPage("/task?topicId=42");
+    const dialog = within(view.getByRole("dialog"));
+    await waitFor(() => expect(dialog.getByRole("alert").textContent).toContain(failedResource === "tasks" ? "已有任务加载失败" : "暂不可用"));
+    expect(dialog.queryByText("无班级")).toBeNull();
+    expect(document.activeElement === dialog.getByRole("button", { name: "重试加载" })).toBe(true);
+    expect((dialog.getByTestId("teacher-task-publish-submit") as HTMLButtonElement).disabled).toBe(true);
+    expect(createTask).not.toHaveBeenCalled();
+    getTopics.mockResolvedValueOnce({ success: true, data: [published] });
+    fireEvent.click(dialog.getByRole("button", { name: "重试加载" }));
+    await waitFor(() => expect(dialog.getByTestId("teacher-task-topic-select").textContent).toBe("刚发布的模板"));
+    expect(document.activeElement === dialog.getByTestId("teacher-task-topic-select")).toBe(true);
+    expect(dialog.queryByRole("alert")).toBeNull();
 });
 
 test("a failed load shows the error and retry refetches", async () => {

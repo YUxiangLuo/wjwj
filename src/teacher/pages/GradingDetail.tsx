@@ -63,6 +63,7 @@ export function GradingDetail() {
     const returnToList = () => navigate(`/grading${search}`);
     const [section, selectSection, navigationRef] = useSectionNavigation<string>("questionnaire", "main > header");
     const mutationInFlight = useRef(false);
+    const identityRef = useRef<HTMLHeadingElement>(null);
     const [data, setData] = useState<SubmissionDetail | null>(null);
     const { loading, error: loadError, run, cancel } = useAsyncLoad("批改记录加载失败");
     const [conflict, setConflict] = useState(false);
@@ -104,6 +105,9 @@ export function GradingDetail() {
         if (Number.isInteger(id) && id > 0) void load();
         return () => { currentId.current = Number.NaN; cancel(); };
     }, [id, cancel]);
+    useEffect(() => {
+        if (data?.id === id) identityRef.current?.focus();
+    }, [data?.id, id]);
     useEffect(() => {
         if (!draftChanged || !data || data.id !== id) return;
         writeTeacherDraft(teacherId, draftScope, { version: data.version, scores, comment, rejectReason });
@@ -207,9 +211,9 @@ export function GradingDetail() {
             <Card className="min-w-0 flex-1 gap-3 py-4">
                 <CardHeader className="px-4">
                     <CardTitle>
-                        <h2 className="text-section-title font-semibold">{data.studentName} · {data.topic}</h2>
+                        <h2 ref={identityRef} tabIndex={-1} aria-describedby="grading-student-identity" className="text-section-title font-semibold">{data.studentName} · {data.topic}</h2>
                     </CardTitle>
-                    <p className="text-label text-muted-foreground">{data.className} · {data.studentId}</p>
+                    <p id="grading-student-identity" className="text-label text-muted-foreground">{data.className} · {data.studentId}</p>
                 </CardHeader>
                 <CardContent className="px-4">
                     <Tabs ref={navigationRef} value={section} onValueChange={selectSection} className="scroll-mt-20">

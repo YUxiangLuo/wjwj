@@ -1,4 +1,6 @@
 import { Button } from "@/components/ui/button";
+import { useEffect, useRef } from "react";
+import { RequestError } from "@/components/RequestError";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DatetimePicker24 } from "@/components/DatetimePicker24";
 import { Label } from "@/components/ui/label";
@@ -19,6 +21,9 @@ interface TaskPublishDialogProps {
     deadline: string;
     onDeadlineChange: (value: string) => void;
     onPublish: () => void;
+    loading: boolean;
+    loadError: string | null;
+    onRetry: () => void;
 }
 
 export function TaskPublishDialog(props: TaskPublishDialogProps) {
@@ -35,18 +40,30 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
         deadline,
         onDeadlineChange,
         onPublish,
+        loading,
+        loadError,
+        onRetry,
     } = props;
+    const contentRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (!open || loading) return;
+        contentRef.current?.querySelector<HTMLElement>(loadError
+            ? '[role="alert"] button'
+            : '[data-testid="teacher-task-topic-select"]')?.focus();
+    }, [open, loading, loadError]);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="bg-card border-border text-foreground max-w-md" showCloseButton={false}>
+            <DialogContent ref={contentRef} className="bg-card border-border text-foreground max-w-md" showCloseButton={false}>
                 <DialogHeader>
                     <DialogTitle className="text-foreground">发布实验任务</DialogTitle>
                     <DialogDescription className="sr-only">
                         选择已发布实验模板、目标班级和任务截止时间。
                     </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
+                {loadError ? <RequestError message={loadError} onRetry={onRetry} retrying={loading} />
+                : loading ? <p role="status" className="py-4 text-label text-muted-foreground">正在加载分配选项…</p>
+                : <div className="space-y-4 py-4">
                     <div className="space-y-2">
                         <Label className="text-foreground">选择实验模板</Label>
                         <Select onValueChange={onSelectedTopicIdChange} value={selectedTopicId}>
@@ -107,10 +124,10 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
                         />
                         <p className="text-meta text-muted-foreground">所有教师和学生均按中国标准时间（UTC+8）查看该截止时刻。</p>
                     </div>
-                </div>
+                </div>}
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground hover:bg-muted">取消</Button>
-                    <Button data-testid="teacher-task-publish-submit" onClick={onPublish} className="bg-primary hover:bg-primary-hover text-primary-foreground">确认发布</Button>
+                    <Button data-testid="teacher-task-publish-submit" disabled={loading || Boolean(loadError)} onClick={onPublish} className="bg-primary hover:bg-primary-hover text-primary-foreground">确认发布</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

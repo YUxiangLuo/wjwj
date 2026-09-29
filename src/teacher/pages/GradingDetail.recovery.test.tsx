@@ -237,6 +237,7 @@ test("continue grading waits for save, freezes the queue lookup and restores onl
     expect(localStorage.getItem("wj:teacher-draft:9:grading:7")).toBeNull();
     await act(async () => finishQueue(Response.json({ success: true, data: { items: [{ id: 8 }], total: 1 } })));
     await waitFor(() => expect(view.getByRole("heading", { name: "学生8 · 实验" })).toBeTruthy());
+    expect(document.activeElement === view.getByRole("heading", { name: "学生8 · 实验" })).toBe(true);
     expect((view.getByLabelText("教师评语") as HTMLTextAreaElement).value).toBe("第八份草稿");
     expect((view.getByLabelText("实验报告（40%）") as HTMLInputElement).value).toBe("65");
     expect((view.getByLabelText("教师评语") as HTMLTextAreaElement).disabled).toBe(false);

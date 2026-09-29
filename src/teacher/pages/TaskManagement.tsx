@@ -76,6 +76,7 @@ export function TaskManagement() {
     // Data for modal
     const [availableTopics, setAvailableTopics] = useState<Topic[]>([]);
     const [availableClasses, setAvailableClasses] = useState<TeacherClass[]>([]);
+    const { loading: optionsLoading, error: optionsError, run: runOptions, cancel: cancelOptions } = useAsyncLoad("分配选项加载失败");
 
     // Form state
     const [selectedTopicId, setSelectedTopicId] = useState<string>("");
@@ -101,29 +102,28 @@ export function TaskManagement() {
         setShowPublishModal(true);
     }, [searchParams, setSearchParams]);
 
-    // Load form data when modal opens；静默拉取任务列表以更新「已发布班级」禁用状态
+    async function loadPublishOptions() {
+        await runOptions(async () => {
+            const [topicsRes, classesRes, tasksLoaded] = await Promise.all([
+                teacherApi.getTopics(), teacherApi.getClasses(), loadTasks(),
+            ]);
+            const topics = requireApiData(topicsRes, "实验模板加载失败");
+            const classes = requireApiData(classesRes, "班级加载失败");
+            if (!tasksLoaded) throw new Error("已有任务加载失败，请重试后再分配");
+            return { topics: topics.filter(topic => topic.status === 1), classes };
+        }, ({ topics, classes }) => {
+            setAvailableTopics(topics);
+            setAvailableClasses(classes);
+            setSelectedTopicId(current => topics.some(topic => String(topic.id) === current) ? current : "");
+            setSelectedClassIds(current => current.filter(id => classes.some(cls => cls.id === id)));
+        });
+    }
+
+    // Refresh all assignment prerequisites; a failed request is not an empty list.
     useEffect(() => {
-        let active = true;
-        if (showPublishModal) {
-            void loadTasks();
-            Promise.all([
-                teacherApi.getTopics(),
-                teacherApi.getClasses()
-            ]).then(([topicsRes, classesRes]) => {
-                if (!active) return;
-                const published = topicsRes.success ? (topicsRes.data ?? []).filter(t => t.status === 1) : [];
-                setAvailableTopics(published);
-                setSelectedTopicId(current => published.some(topic => String(topic.id) === current) ? current : "");
-                if (classesRes.success && classesRes.data) setAvailableClasses(classesRes.data);
-            }).catch(() => {
-                if (!active) return;
-                setAvailableTopics([]);
-                setSelectedTopicId("");
-                toast.error("分配选项加载失败，请关闭后重试");
-            });
-        }
-        return () => { active = false; };
-    }, [showPublishModal]);
+        if (showPublishModal) void loadPublishOptions();
+        return cancelOptions;
+    }, [showPublishModal, cancelOptions]);
 
     /** 当前所选课题下已有任务的班级（不可再次勾选） */
     const publishedClassIdsForTopic = useMemo(() => {
@@ -142,6 +142,7 @@ export function TaskManagement() {
     }
 
     async function handlePublish() {
+        if (optionsLoading || optionsError) return;
         if (!selectedTopicId || selectedClassIds.length === 0) {
             toast.error("请选择实验模板和班级");
             return;
@@ -409,6 +410,9 @@ export function TaskManagement() {
                 deadline={deadline}
                 onDeadlineChange={setDeadline}
                 onPublish={handlePublish}
+                loading={optionsLoading}
+                loadError={optionsError}
+                onRetry={() => void loadPublishOptions()}
             />
 
             <TaskExtendDialog
