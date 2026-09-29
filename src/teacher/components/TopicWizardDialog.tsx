@@ -120,9 +120,10 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
     const pendingRef = useRef(false);
     const [actionError, setActionError] = useState<string | null>(null);
     const contentRef = useRef<HTMLDivElement>(null);
-    const stepRef = useRef<HTMLDivElement>(null);
+    const stepRef = useRef<HTMLSpanElement>(null);
     const errorRef = useRef<HTMLDivElement>(null);
     const [dictionaryState, setDictionaryState] = useState({ dirty: false, busy: false });
+    const editMode = (mode ?? (editingTopicId ? "edit" : "create")) === "edit";
     const busy = pending || uploadingExcel || uploadingAttachment || Boolean(csvReviewFile) || dictionaryState.busy;
     const stepValue = JSON.stringify(currentStep === 1 ? [newTopicName, newTopicDesc]
         : currentStep === 3 ? fieldMapping : currentStep === 4 ? samplingPolicy
@@ -144,16 +145,18 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
         setActionError("变量字典有未保存的修改，请先点击“明确确认并保存”。");
         return false;
     }
-    function goBack() {
-        if ((formDirty || dictionaryState.dirty) && !window.confirm("返回上一步会丢弃本步未保存的修改。继续吗？")) return;
+    function goToStep(step: number) {
+        if (busy || pendingRef.current || loadingDetail || detailError || step === currentStep) return;
+        if ((formDirty || dictionaryState.dirty) && !window.confirm("切换步骤会丢弃本步未保存的修改。继续吗？")) return;
         if (formDirty && baseline.current) {
             const saved = JSON.parse(baseline.current.value);
+            if (currentStep === 1) { setNewTopicName(saved[0]); setNewTopicDesc(saved[1]); }
             if (currentStep === 3) setFieldMapping(saved);
             if (currentStep === 4) setSamplingPolicy(saved);
             if (currentStep === 6) setRecommendQuestions(saved);
             if (currentStep === 7) setWeightConfig(saved);
         }
-        setCurrentStep(prev => prev - 1);
+        setCurrentStep(step);
     }
     const displayedError = actionError ?? saveError;
     useLayoutEffect(() => {
@@ -286,22 +289,21 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                 onInteractOutside={(e) => e.preventDefault()}
             >
                 <DialogHeader>
-                    <DialogTitle className="text-section-title text-foreground">{(mode ?? (editingTopicId ? "edit" : "create")) === "edit" ? "编辑实验模板" : "创建实验模板"}</DialogTitle>
+                    <DialogTitle className="text-section-title text-foreground">{editMode ? "编辑实验模板" : "创建实验模板"}</DialogTitle>
                     <DialogDescription className="sr-only">
                         通过七个步骤配置实验模板的基础信息、总体数据、研究目标、抽样策略、教学资料、推荐题目和评分规则。
                     </DialogDescription>
                 </DialogHeader>
                     <div data-testid="teacher-topic-step-navigation" className="flex shrink-0 items-center gap-2 border-b border-border pb-3 overflow-x-auto scrollbar-thin scrollbar-thumb-border">
                         {["基本信息", "总体数据", "研究目标与字段", "抽样策略", "教学资料", "推荐题目", "评分规则"].map((step, idx) => {
-                            const isCompleted = idx + 1 < currentStep;
+                            const isCompleted = !editMode && idx + 1 < currentStep;
                             const isCurrent = idx + 1 === currentStep;
-                            return (
-                                <div key={step} className="flex items-center shrink-0">
-                                    <div
+                            const needsPopulation = (idx === 2 || idx === 3) && !excelInfo;
+                            const indicator = <>
+                                    <span
                                         ref={isCurrent ? stepRef : undefined}
                                         tabIndex={isCurrent ? -1 : undefined}
                                         aria-current={isCurrent ? "step" : undefined}
-                                        aria-label={`步骤 ${idx + 1}：${step}`}
                                         data-testid={`teacher-topic-step-${idx + 1}`}
                                         className={`w-7 h-7 rounded-control flex items-center justify-center text-meta font-medium transition-colors ${isCurrent
                                             ? "bg-primary text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring"
@@ -311,8 +313,20 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         }`}
                                     >
                                         {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5" /> : idx + 1}
-                                    </div>
+                                    </span>
                                     <span className={`text-meta ml-2 ${isCurrent ? "text-primary font-medium" : isCompleted ? "text-success" : "text-muted-foreground"}`}>{step}</span>
+                            </>;
+                            return (
+                                <div key={step} className="flex items-center shrink-0">
+                                    {editMode ? <button
+                                        type="button"
+                                        data-testid={`teacher-topic-jump-${idx + 1}`}
+                                        aria-label={`编辑${step}`}
+                                        title={needsPopulation ? "请先上传总体数据" : undefined}
+                                        disabled={busy || loadingDetail || Boolean(detailError) || needsPopulation}
+                                        onClick={() => goToStep(idx + 1)}
+                                        className="flex min-h-10 items-center rounded-control px-1 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed"
+                                    >{indicator}</button> : <div className="flex items-center">{indicator}</div>}
                                     {idx < 6 && <ChevronRight className="w-3 h-3 mx-2 text-muted-foreground" />}
                                 </div>
                             );
@@ -743,7 +757,11 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 aria-label={`删除附件：${a.fileName}`}
                                                 title={`删除附件：${a.fileName}`}
                                                 className="opacity-0 text-destructive group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-destructive-muted hover:text-destructive"
-                                                onClick={() => teacherApi.deleteAttachment(editingTopicId!, a.id).then(() => onRefreshTopicDetail(editingTopicId!))}
+                                                onClick={() => void runAction(async () => {
+                                                    const result = await teacherApi.deleteAttachment(editingTopicId!, a.id);
+                                                    if (!result.success) throw new Error("删除失败");
+                                                    await onRefreshTopicDetail(editingTopicId!);
+                                                })}
                                             >
                                                 <X className="w-4 h-4" />
                                             </Button>
@@ -953,7 +971,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         <div className="text-meta text-muted-foreground" role="status">步骤 {currentStep} / 7{pending ? " · 正在保存…" : dictionaryState.busy ? " · 正在处理变量字典…" : busy ? " · 正在上传…" : ""}</div>
                         <div className="flex gap-2">
                             {currentStep > 1 && (
-                                <Button data-testid="teacher-topic-prev" variant="outline" disabled={busy || loadingDetail} onClick={goBack} className="border-input bg-muted text-foreground hover:text-foreground hover:bg-muted">上一步</Button>
+                                <Button data-testid="teacher-topic-prev" variant="outline" disabled={busy || loadingDetail || Boolean(detailError)} onClick={() => goToStep(currentStep - 1)} className="border-input bg-muted text-foreground hover:text-foreground hover:bg-muted">上一步</Button>
                             )}
                             {currentStep === 1 && (
                                 <Button data-testid="teacher-topic-next" disabled={busy || loadingDetail} onClick={() => void runAction(onSubmitTopic)} className="bg-primary hover:bg-primary-hover text-primary-foreground">{editingTopicId ? "保存并继续" : "下一步"}</Button>

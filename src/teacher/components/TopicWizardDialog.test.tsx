@@ -371,3 +371,52 @@ test("server hydration is clean, but a failed save does not clear unsaved change
     expect(confirm).toHaveBeenCalledTimes(1);
     expect(back).toHaveBeenCalledTimes(1);
 });
+
+test("editing jumps directly without saving or implying earlier sections are complete", () => {
+    const jump = mock(() => {});
+    const save = mock(() => {});
+    const props = makeProps({ mode: "edit", editingTopicId: 7, setCurrentStep: jump, onSubmitTopic: save });
+    const view = render(<TopicWizardDialog {...props} />);
+    fireEvent.click(view.getByRole("button", { name: "编辑评分规则" }));
+    expect(jump).toHaveBeenCalledWith(7);
+    expect(save).not.toHaveBeenCalled();
+    view.rerender(<TopicWizardDialog {...props} currentStep={7} />);
+    expect(view.getByTestId("teacher-topic-step-1").textContent).toBe("1");
+    expect(view.getByTestId("teacher-topic-step-1").querySelector("svg")).toBeNull();
+    view.rerender(<TopicWizardDialog {...props} mode="create" />);
+    expect(view.queryByTestId("teacher-topic-jump-7")).toBeNull();
+});
+
+test("jumping from basic information confirms discard and restores both fields", () => {
+    const jump = mock(() => {});
+    const name = mock(() => {});
+    const description = mock(() => {});
+    const props = makeProps({ mode: "edit", editingTopicId: 7, setCurrentStep: jump, setNewTopicName: name, setNewTopicDesc: description });
+    const view = render(<TopicWizardDialog {...props} />);
+    const confirm = mock(() => false);
+    window.confirm = confirm;
+    view.rerender(<TopicWizardDialog {...props} newTopicName="尚未保存" newTopicDesc="新的背景" />);
+    fireEvent.click(view.getByTestId("teacher-topic-jump-6"));
+    expect(jump).not.toHaveBeenCalled();
+    expect(name).not.toHaveBeenCalled();
+    confirm.mockReturnValue(true);
+    fireEvent.click(view.getByTestId("teacher-topic-jump-6"));
+    expect(name).toHaveBeenCalledWith("咖啡馆调查");
+    expect(description).toHaveBeenCalledWith("");
+    expect(jump).toHaveBeenCalledWith(6);
+});
+
+test("jump navigation respects missing population, load failures and ongoing saves", async () => {
+    const props = makeProps({ mode: "edit", editingTopicId: 7 });
+    const view = render(<TopicWizardDialog {...props} />);
+    expect((view.getByTestId("teacher-topic-jump-3") as HTMLButtonElement).disabled).toBe(true);
+    expect((view.getByTestId("teacher-topic-jump-6") as HTMLButtonElement).disabled).toBe(false);
+    view.rerender(<TopicWizardDialog {...props} detailError="加载失败" />);
+    expect((view.getByTestId("teacher-topic-jump-6") as HTMLButtonElement).disabled).toBe(true);
+    let finish!: () => void;
+    view.rerender(<TopicWizardDialog {...props} onSubmitTopic={() => new Promise<void>(resolve => { finish = resolve; })} />);
+    fireEvent.click(view.getByTestId("teacher-topic-next"));
+    expect((view.getByTestId("teacher-topic-jump-7") as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => finish());
+    expect((view.getByTestId("teacher-topic-jump-7") as HTMLButtonElement).disabled).toBe(false);
+});

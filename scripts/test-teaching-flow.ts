@@ -272,6 +272,27 @@ try {
     await page(teacher, "/teacher/topic", `[data-testid="teacher-topic-edit-${copied.id}"]`);
     await activate(teacher, `[data-testid="teacher-topic-edit-${copied.id}"]`);
     await visible(teacher, '[data-testid="teacher-topic-step-1"]');
+    await eventually(() => evaluate(teacher, '!document.querySelector("[data-testid=teacher-topic-jump-7]").disabled'), "Direct editing must wait for template details");
+    await browser(teacher, "click", '[data-testid="teacher-topic-jump-7"]');
+    assert(await evaluate(teacher, 'document.querySelector("[data-testid=teacher-topic-step-7]").getAttribute("aria-current")==="step" && !document.querySelector("[data-testid=teacher-topic-step-1] svg")'), "Direct navigation must not mark skipped sections complete");
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(teacher, "set", "viewport", String(width), String(height));
+        await evaluate(teacher, 'document.querySelector("[data-testid=teacher-topic-jump-7]").scrollIntoView({block:"nearest",inline:"nearest"})');
+        assert(await evaluate(teacher, '(() => {const b=document.querySelector("[data-testid=teacher-topic-jump-7]").getBoundingClientRect();const f=document.querySelector("[data-testid=teacher-topic-finish]").getBoundingClientRect();return b.left>=0 && b.right<=innerWidth && f.bottom<=innerHeight && document.documentElement.scrollWidth<=innerWidth;})()'), "Direct edit navigation and save must fit the viewport");
+        await browser(teacher, "screenshot", join(artifacts, `teacher-direct-edit-${width}.png`));
+    }
+    await browser(teacher, "set", "viewport", "1280", "800");
+    await browser(teacher, "click", '[data-testid="teacher-topic-jump-1"]');
+    await browser(teacher, "fill", '[data-testid="teacher-topic-name"]', "不应保存的临时名称");
+    for (const decision of ["dismiss", "accept"] as const) {
+        await browser(teacher, "click", '[data-testid="teacher-topic-jump-6"]');
+        assert(JSON.stringify(await browser(teacher, "dialog", "status")).includes("本步未保存"), "Direct editing must confirm before discarding");
+        await browser(teacher, "dialog", decision);
+        if (decision === "dismiss") assert(await evaluate(teacher, 'document.querySelector("[data-testid=teacher-topic-name]").value==="不应保存的临时名称"'), "Cancelled navigation must retain edits");
+    }
+    await browser(teacher, "click", '[data-testid="teacher-topic-jump-1"]');
+    assert(await evaluate(teacher, `document.querySelector('[data-testid="teacher-topic-name"]').value===${JSON.stringify(name)}`), "Discarded edits must not leak into later saves");
+    console.log("PASS direct template section editing, discard protection and desktop viewports");
     await activate(teacher, '[data-testid="teacher-topic-next"]');
     await activate(teacher, '[data-testid="teacher-topic-next"]');
     await visible(teacher, `input[aria-label="${continuousVariable.field} 标签"]`);
