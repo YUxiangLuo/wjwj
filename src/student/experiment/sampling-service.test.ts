@@ -1,10 +1,25 @@
 import { expect, test } from "bun:test";
 import { executeSamplingAction } from "./sampling-service";
+import { verifySamplingReplay } from "./sampling-replay";
 
 const population = Array.from({ length: 200 }, (_, i) => ({
     id: i + 1,
     gender: i % 2 === 0 ? "男" : "女",
 }));
+
+test("stratum request names share normalization, duplicate checks and replay with the frame", async () => {
+    const frame = [{ g: "Ａ", id: 1 }, { g: "A", id: 2 }, { g: "Ｂ", id: 3 }, { g: "B", id: 4 }];
+    const params = { method: "stratified" as const, targetSampleSize: 2, population: frame, fieldMapping: { stratified: ["g"] } };
+    const draw = (names: unknown[]) => executeSamplingAction({ ...params, rawParams: { seed: 42, stratifyBy: "g", layers: names.map(name => ({ name, sampleCount: 1 })) } });
+    const normalized = await draw(["A", "B"]);
+    const fullWidth = await draw([" Ａ ", "Ｂ"]);
+    expect(fullWidth.ok).toBe(true);
+    expect(fullWidth).toEqual(normalized);
+    if (fullWidth.ok) expect(await verifySamplingReplay({ population: frame, fieldMapping: params.fieldMapping, samplingResults: { stratified: { ...fullWidth.result, serverGenerated: true } } })).toBe(true);
+    const duplicate = await draw(["Ａ", "A", "B"]);
+    expect(duplicate).toMatchObject({ ok: false, errorMessage: "分层“A”不能重复配置" });
+    expect((await draw([{}, "B"])).ok).toBe(false);
+});
 
 test("PPS preserves whitespace column keys and accepts shared numeric text formats", async () => {
     const result = await executeSamplingAction({

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { formatStatistic } from "@/utils/statistic-format";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, Crosshair, Layers, BarChart3, DollarSign, CheckCircle2, Boxes, UserX } from "lucide-react";
-import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize } from "../../../experiment/sample-plan";
+import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize, calculateSampleSizeStepDetails } from "../../../experiment/sample-plan";
 import type { SampleParams } from "../types";
 import type { FactorsStep } from "../types";
 import { PlanningHeading } from "../PlanningShared";
@@ -494,11 +494,11 @@ function DesignEffectContent({ params }: { params: SampleParams }) {
 function NonResponseContent({ params }: { params: SampleParams }) {
     const rateChoices = [0, 10, 20, 30, 50];
     const [demoRate, setDemoRate] = useState(20);
-    const baseN = Math.max(1, Math.round(params.recommendedSize || 0));
+    const baseN = calculateSampleSizeStepDetails({ ...params, nonResponseRate: 0 }).n2Raw;
     const rows = rateChoices.map((rate) => {
-        const invite = baseN > 0 ? Math.min(params.populationSize, Math.ceil(baseN / (1 - rate / 100))) : 0;
-        const completed = rate >= 100 ? 0 : Math.floor(invite * (1 - rate / 100));
-        return { rate, invite, completed, capped: invite >= params.populationSize && rate > 0 };
+        const invite = calculateSampleSizeStepDetails({ ...params, nonResponseRate: rate / 100 }).n3;
+        const completed = invite * (1 - rate / 100);
+        return { rate, invite, completed, capped: completed < baseN * (1 - 1e-9) };
     });
     const maxInvite = Math.max(...rows.map((row) => row.invite), 1);
     const demo = rows.find((row) => row.rate === demoRate) ?? rows[0]!;
@@ -514,7 +514,7 @@ function NonResponseContent({ params }: { params: SampleParams }) {
                 <div className="bg-card px-4 py-2.5 border-b border-border">
                     <p className="text-label text-center text-muted-foreground">
                         不同无回答率下的发放量与预计完成量
-                        <span className="text-meta"> (目标完成 {baseN.toLocaleString()} 个有效样本，N={params.populationSize.toLocaleString()})</span>
+                        <span className="text-meta"> (目标完成约 {baseN.toLocaleString()} 个有效样本，N={params.populationSize.toLocaleString()})</span>
                     </p>
                 </div>
                 <div className="p-4 space-y-2">
@@ -559,7 +559,7 @@ function NonResponseContent({ params }: { params: SampleParams }) {
             <div className="mx-auto max-w-lg rounded-surface border border-warning-border bg-warning-muted p-4">
                 <p className="text-label text-warning">
                     <strong>关键洞察：</strong>无回答率 {demo.rate}% 时要完成约 {demo.completed.toLocaleString()} 个有效样本，需邀请 {demo.invite.toLocaleString()} 个总体单位
-                    {demo.capped && "（已触及总体上限，实际精度会进一步下降）"}。
+                    {demo.capped && "（已触及总体上限，预计完成量仍不足，无法达到规划精度）"}。
                     放大发放量只补足数量——回答意愿与调查内容相关时，完成样本仍可能系统性偏斜。
                     降低无回答本身（追访、激励、简短的问卷）比事后加权更重要。
                 </p>

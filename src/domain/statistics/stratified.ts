@@ -1,4 +1,4 @@
-import { type NumericAccessor, fieldAccessor, extractAccessorValues, sampleVariance, scaledMean } from "./values";
+import { type NumericAccessor, fieldAccessor, extractAccessorValues, sampleStandardDeviation, scaledMean } from "./values";
 import { estimateSimpleDistribution } from "./distributions";
 import { createSafeRecord } from "../../lib/safe-record";
 import { stratumKey } from "./sampling";
@@ -74,7 +74,7 @@ export function computeStratifiedValueSe(
         return null;
     }
 
-    let variance = 0;
+    let standardError = 0;
 
     for (const layer of layers) {
         const populationValues = population
@@ -86,14 +86,17 @@ export function computeStratifiedValueSe(
             return null;
         }
 
-        const layerVariance = sampleVariance(populationValues);
-
         const weight = layer.count / totalPopulation;
         const finiteCorrection = Math.max(0, 1 - (layer.sampleCount / layer.count));
-        variance += weight * weight * finiteCorrection * layerVariance / layer.sampleCount;
+        if (finiteCorrection === 0) continue;
+        const layerSd = sampleStandardDeviation(populationValues);
+        const component = layerSd * (weight * Math.sqrt(finiteCorrection / layer.sampleCount));
+        if (layerSd > 0 && component === 0) return null;
+        // Accumulate in SE units: squaring a representable tiny SD can erase
+        // genuine variance before the final square root can recover it.
+        standardError = Math.hypot(standardError, component);
     }
 
-    const standardError = Math.sqrt(variance);
     return Number.isFinite(standardError) ? standardError : null;
 }
 

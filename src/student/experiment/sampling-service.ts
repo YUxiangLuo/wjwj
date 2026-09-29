@@ -227,7 +227,7 @@ export async function executeSamplingAction(params: {
 
             for (let index = 0; index < layersInput.length; index += 1) {
                 const input = layersInput[index] as Record<string, unknown>;
-                const name = toTrimmedString(input?.name);
+                const name = stratumKey(toTrimmedString(input?.name));
                 const sampleCount = Number(input?.sampleCount);
                 if (!name) {
                     return { ok: false as const, errorMessage: `第 ${index + 1} 层名称无效` };

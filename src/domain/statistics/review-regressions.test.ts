@@ -5,8 +5,22 @@ import { performPPSSampling } from "./sampling";
 import { buildStratifiedNumericStats } from "./population";
 import { allocateNeymanSampleCounts } from "../../student/components/stratified-allocation";
 import { calculateMeanSampleSizeMetrics, calculateOptimalAllocationWithCost } from "../../student/experiment/sample-plan";
+import { computeStratifiedValueSe } from "./stratified";
 
 const ppsFrame = () => Array.from({ length: 1000 }, (_, i) => ({ y: i === 0 ? 1000 : 0, size: i === 0 ? 0.001 : 1 }));
+
+test("stratified SE preserves tiny dispersion without squaring it to zero", () => {
+    const population = [{ g: "A", y: 0 }, { g: "A", y: 1e-170 }, { g: "B", y: 1 }, { g: "B", y: 1 }];
+    const layers = [{ name: "A", count: 2, ratio: 50, sampleCount: 1 }, { name: "B", count: 2, ratio: 50, sampleCount: 1 }];
+    const se = computeStratifiedValueSe(population, "g", layers, 4, row => Number(row.y));
+    // Only A is random: weight .5 * SD(0,a)=a/sqrt(2) * sqrt(1-1/2) = a/4.
+    expect(se! / 2.5e-171).toBeCloseTo(1, 12);
+    const metrics = calculateAnalysisMetrics({ population, fieldMapping: { numeric: ["y"], stratified: ["g"], analysisTarget: { kind: "mean", field: "y" } }, samplingResults: { stratified: { completed: true, stratifyBy: "g", layers, sampleCount: 2, data: [population[0]!, population[2]!] } } });
+    expect(metrics.target!.methods.stratified.standardError! / 2.5e-171).toBeCloseTo(1, 12);
+    expect(metrics.target!.methods.stratified.marginOfError! / 4.9e-171).toBeCloseTo(1, 12);
+    expect(computeStratifiedValueSe(population, "g", layers.map(l => ({ ...l, sampleCount: 2 })), 4, row => Number(row.y))).toBe(0);
+    expect(computeStratifiedValueSe(population.map(r => ({ ...r, y: 7 })), "g", layers, 4, row => Number(row.y))).toBe(0);
+});
 
 test("exact PPS integrates the rare influential unit instead of missing it in simulation", () => {
     const population = ppsFrame();
