@@ -1,5 +1,6 @@
 import { beforeEach, afterEach, expect, mock, test } from "bun:test";
 import { installDomGlobals } from "@/test-utils/dom";
+import type { Question } from "@/lib/questionnaire-types";
 const bootstrap = installDomGlobals();
 const { cleanup, render, fireEvent } = await import("@testing-library/react");
 const { QuestionEditor } = await import("./QuestionEditor");
@@ -7,6 +8,74 @@ bootstrap.restore();
 let restore: () => void;
 beforeEach(() => { restore = installDomGlobals().restore; });
 afterEach(async () => { cleanup(); await new Promise(resolve => setTimeout(resolve, 0)); restore(); });
+
+for (const [question, field, value] of [
+    [{ id: "single", type: "single", content: "选择", options: ["甲", "乙"] }, "option-2", ""],
+    [{ id: "multiple", type: "multiple", content: "选择", options: ["甲", "乙", "丙"], maxSelect: 3 }, "max-select", "2"],
+    [{ id: "scale", type: "scale", content: "评分" }, "scale-min-label", "不满意"],
+    [{ id: "numeric", type: "numeric", content: "时长", numericMin: 0 }, "numeric-min", "-2"],
+    [{ id: "boolean", type: "boolean", content: "是否参加" }, "content", "是否愿意参加"],
+] as [Question, string, string][]) {
+    test(`${question.type}: dismissing discard keeps raw input; accepting closes without saving`, () => {
+        const close = mock(() => {});
+        const save = mock(() => {});
+        const confirm = mock(() => false);
+        window.confirm = confirm;
+        const view = render(<QuestionEditor open question={question} onOpenChange={close} onSave={save} />);
+        const input = view.getByTestId(`student-question-${field}`) as HTMLInputElement;
+        fireEvent.change(input, { target: { value } });
+        fireEvent.click(view.getByTestId("student-question-cancel"));
+        expect(confirm).toHaveBeenCalledTimes(1);
+        expect(close).not.toHaveBeenCalled();
+        expect(input.value).toBe(value);
+        confirm.mockReturnValue(true);
+        fireEvent.click(view.getByRole("button", { name: "关闭" }));
+        expect(close).toHaveBeenCalledWith(false);
+        expect(save).not.toHaveBeenCalled();
+    });
+}
+
+test("reverting edits removes unload protection and closes without confirmation", () => {
+    const question: Question = { id: "q", type: "numeric", content: "时长", numericMin: 0 };
+    const close = mock(() => {});
+    window.confirm = mock(() => false);
+    const view = render(<QuestionEditor open question={question} onOpenChange={close} onSave={() => {}} />);
+    const input = view.getByTestId("student-question-numeric-min");
+    fireEvent.change(input, { target: { value: "" } });
+    const dirtyUnload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(dirtyUnload);
+    expect(dirtyUnload.defaultPrevented).toBe(true);
+    fireEvent.change(input, { target: { value: "0" } });
+    const cleanUnload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(cleanUnload);
+    expect(cleanUnload.defaultPrevented).toBe(false);
+    fireEvent.click(view.getByTestId("student-question-cancel"));
+    expect(window.confirm).not.toHaveBeenCalled();
+    expect(close).toHaveBeenCalledWith(false);
+});
+
+test("saving bypasses discard confirmation; reopening a new question resets its draft", () => {
+    const close = mock(() => {});
+    const save = mock(() => {});
+    window.confirm = mock(() => false);
+    const props = { onOpenChange: close, onSave: save };
+    const view = render(<QuestionEditor open {...props} />);
+    fireEvent.change(view.getByTestId("student-question-content"), { target: { value: "选择饮料" } });
+    fireEvent.change(view.getByTestId("student-question-option-1"), { target: { value: "茶" } });
+    fireEvent.change(view.getByTestId("student-question-option-2"), { target: { value: "水" } });
+    fireEvent.click(view.getByTestId("student-question-save"));
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ content: "选择饮料", options: ["茶", "水"] }));
+    expect(window.confirm).not.toHaveBeenCalled();
+    expect(close).toHaveBeenCalledWith(false);
+    view.rerender(<QuestionEditor open={false} {...props} />);
+    const unload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(unload);
+    expect(unload.defaultPrevented).toBe(false);
+    view.rerender(<QuestionEditor open {...props} />);
+    expect((view.getByTestId("student-question-content") as HTMLTextAreaElement).value).toBe("");
+    fireEvent.click(view.getByTestId("student-question-cancel"));
+    expect(window.confirm).not.toHaveBeenCalled();
+});
 
 test("mathematically different option labels remain editable and saveable", () => {
     const save = mock(() => {});

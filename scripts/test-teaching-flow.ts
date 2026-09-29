@@ -104,6 +104,14 @@ async function namedButton(session: string, name: string) {
     const activated = await evaluate(session, `(() => {const button = [...document.querySelectorAll("button")].find(b => b.textContent.trim() === ${JSON.stringify(name)}); if (!button || button.disabled) return false; button.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0 })); button.click(); return true;})()`);
     assert(activated, `Button unavailable: ${name}`);
 }
+async function questionEscape(session: string, decision: "accept" | "dismiss") {
+    // The driver serializes commands: native press waits for confirm, blocking dialog handling.
+    // Exercise the DOM Escape path asynchronously; cancel buttons below use native clicks.
+    // Allow the eval command's post-processing to finish before opening the blocking dialog.
+    await evaluate(session, 'setTimeout(() => document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })), 1500); true');
+    await eventually(async () => JSON.stringify(await browser(session, "dialog", "status")).includes("本题未保存"), "Question Escape must protect unsaved input");
+    await browser(session, "dialog", decision);
+}
 async function answerLearningCheck(id: string, option: number) {
     const selector = `[data-testid="learning-check-${id}"]`;
     await activate(student, `${selector} input[value="${option}"]`);
@@ -306,6 +314,24 @@ try {
     await activate(teacher, '[data-testid="teacher-topic-next"]');
     await eventually(() => evaluate(teacher, `document.querySelector('[data-testid="teacher-topic-step-4"]').getAttribute('aria-current')==='step' && !document.querySelector('[data-testid="teacher-topic-save-error"]')`), "Successful mapping retry must advance and clear the error");
     await browser(teacher, "set", "viewport", "1280", "800");
+    await activate(teacher, '[data-testid="teacher-topic-next"]');
+    await eventually(() => evaluate(teacher, 'document.querySelector("[data-testid=teacher-topic-step-5]").getAttribute("aria-current")==="step"'), "Sampling policy save must advance");
+    await activate(teacher, '[data-testid="teacher-topic-next"]');
+    await namedButton(teacher, "+ 添加题目");
+    await activate(teacher, '[data-testid="student-question-type-boolean"]');
+    await browser(teacher, "fill", '[data-testid="student-question-content"]', "是否愿意参加后续调查？");
+    await browser(teacher, "click", '[data-testid="student-question-cancel"]');
+    assert(JSON.stringify(await browser(teacher, "dialog", "status")).includes("本题未保存"), "Question cancel must ask before discarding");
+    await browser(teacher, "dialog", "dismiss");
+    await questionEscape(teacher, "dismiss");
+    assert(await evaluate(teacher, 'document.querySelector("[data-testid=student-question-content]").value === "是否愿意参加后续调查？" && document.querySelector("[data-testid=teacher-topic-step-6]").getAttribute("aria-current")==="step"'), "Cancelling nested close must preserve question and parent step");
+    await activate(teacher, '[data-testid="student-question-save"]');
+    await eventually(() => evaluate(teacher, '!document.querySelector("[data-testid=student-question-editor]") && document.body.textContent.includes("是否愿意参加后续调查？")'), "Question save must update the parent without discard confirmation");
+    await browser(teacher, "click", '[data-testid="teacher-topic-prev"]');
+    assert(JSON.stringify(await browser(teacher, "dialog", "status")).includes("本步未保存"), "Saving a question must keep the outer template dirty");
+    await browser(teacher, "dialog", "accept");
+    await eventually(() => evaluate(teacher, 'document.querySelector("[data-testid=teacher-topic-step-5]").getAttribute("aria-current")==="step"'), "Discard must return to the prior template step");
+    console.log("PASS nested teacher question cancel, Escape, local save and outer draft protection");
     await api(teacher, `/api/teacher/topics/${copied.id}`, "PUT", { name, status: 1 });
     console.log("PASS teacher dictionary representative UI save and stale-revision conflict");
     const classes = await api<Array<{ id: number; name: string }>>(teacher, "/api/teacher/classes");
@@ -360,6 +386,10 @@ try {
     await browser(student, "set", "viewport", "1280", "800");
     await browser(student, "fill", '[data-testid="student-questionnaire-title"]', "学习投入调查：浏览器试填");
     await activate(student, '[data-testid="student-questionnaire-step-2"]');
+    await activate(student, '[data-testid="student-questionnaire-add-question"]');
+    await browser(student, "fill", '[data-testid="student-question-content"]', "尚未完成的题目");
+    await questionEscape(student, "accept");
+    await eventually(() => evaluate(student, '!document.querySelector("[data-testid=student-question-editor]")'), "Accepting discard must close the student editor");
     for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
         await browser(student, "set", "viewport", String(width), String(height));
         await evaluate(student, 'scrollTo({top:0,behavior:"instant"})');

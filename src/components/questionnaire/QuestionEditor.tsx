@@ -81,6 +81,24 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
     const [numericMax, setNumericMax] = useState(question?.numericMax?.toString() ?? "");
     const [decimalPlaces, setDecimalPlaces] = useState(question?.decimalPlaces ?? 0);
 
+    const dirty = JSON.stringify([type, content, section, options, minSelect, maxSelect,
+        scaleMin, scaleMax, scaleMinLabel, scaleMaxLabel, unit, numericMin, numericMax, decimalPlaces]) !== JSON.stringify([
+        question?.type ?? "single", question?.content ?? "", question?.section ?? "main", question?.options ?? ["", ""],
+        question?.minSelect ?? 1, question?.maxSelect ?? 3, question?.scaleMin ?? 1, question?.scaleMax ?? 5,
+        question?.scaleMinLabel ?? "非常不同意", question?.scaleMaxLabel ?? "非常同意", question?.unit ?? "",
+        question?.numericMin?.toString() ?? "", question?.numericMax?.toString() ?? "", question?.decimalPlaces ?? 0,
+    ]);
+    const requestOpenChange = (nextOpen: boolean) => {
+        if (!nextOpen && dirty && !window.confirm("关闭会丢弃本题未保存的修改。确定关闭吗？")) return;
+        onOpenChange(nextOpen);
+    };
+    useEffect(() => {
+        if (!open || !dirty) return;
+        const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+        window.addEventListener("beforeunload", warn);
+        return () => window.removeEventListener("beforeunload", warn);
+    }, [open, dirty]);
+
     useEffect(() => {
         if (question) {
             setType(question.type);
@@ -199,7 +217,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={requestOpenChange}>
             <DialogContent
                 className="max-h-[85vh] max-w-2xl overflow-y-auto bg-card text-foreground"
                 data-testid="student-question-editor"
@@ -464,7 +482,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                 <DialogFooter className="gap-2">
                     <Button
                         variant="outline"
-                        onClick={() => onOpenChange(false)}
+                        onClick={() => requestOpenChange(false)}
                         data-testid="student-question-cancel"
                         className="border-input bg-transparent text-foreground hover:bg-muted hover:text-foreground"
                     >
