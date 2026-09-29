@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import { SQL } from "bun";
+import { deepStrictEqual } from "node:assert";
 import { mkdtemp, mkdir, symlink, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
@@ -7,6 +8,7 @@ import { computeDiningPlan, DINING_PPS_SIZE_FIELD, DOGFOOD_ANCHORS, DOGFOOD_NAME
 import { calculateFinitePopulationSampleSize } from "../src/student/experiment/sample-plan";
 import type { ExperimentData, StudentTask } from "../src/student/api-client";
 import type { AnalysisMetricsResult } from "../src/domain/experiment/analysis-types";
+import { teacherTemplateDogfood } from "./teacher-template-dogfood";
 
 const root = resolve(import.meta.dir, "..");
 const provisionUrl = process.env.TEST_DATABASE_URL;
@@ -172,6 +174,7 @@ try {
     }, "Test server failed to start");
 
     await login(teacher, "teacher", "T001");
+    const templateMatrix = await teacherTemplateDogfood({ teacher, artifacts, workdir, browser, evaluate, api, page, eventually });
     await login(administrator, "admin", "admin", adminTestPassword);
     for (const [session, role, endpoint, panel, ready] of [
         [teacher, "teacher", "/api/teacher/dashboard", "teacher-dashboard-active-tasks", '[data-testid="teacher-dashboard-active-tasks"] a[href*="/progress"]'],
@@ -441,6 +444,16 @@ try {
 
     await login(student, "student", "S2610");
     const tasks = await api<StudentTask[]>(student, "/api/student/tasks");
+    for (const item of templateMatrix) {
+        const visibleTasks = tasks.filter(task => task.topicId === item.topicId);
+        assert(visibleTasks.length === 1, `${item.name}: student sees exactly their class task`);
+        assert(item.tasks.some(task => task.classId === targetClass.id && task.id === visibleTasks[0]!.id), "Student task belongs to the assigned class");
+        const experiment = await api<ExperimentData>(student, `/api/student/tasks/${visibleTasks[0]!.id}/experiment`);
+        deepStrictEqual(experiment.studyContract?.contract.target, item.target);
+        deepStrictEqual(experiment.samplingPolicy?.methods, item.methods);
+        assert(experiment.populationSize === 24, "Student population matches uploaded data");
+    }
+    console.log(`PASS ${templateMatrix.length} UI-created templates: student visibility, class isolation, target and policy persistence`);
     await page(student, "/student", '[data-testid="student-task-grid"]');
     await eventually(() => evaluate(student, `document.querySelectorAll('[data-testid^="student-task-card-"]').length===${tasks.length}`), "Task hall cards missing");
     for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
