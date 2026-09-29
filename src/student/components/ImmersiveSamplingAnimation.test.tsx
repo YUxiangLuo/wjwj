@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, expect, test } from "bun:test";
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { installDomGlobals } from "@/test-utils/dom";
 import { ImmersiveSamplingAnimation } from "./ImmersiveSamplingAnimation";
+import { SamplingMethodExplanation } from "./SamplingMethodExplanation";
 
 let restoreDom: (() => void) | null = null;
 
@@ -249,6 +250,21 @@ test("six strata retain their names while the seventh switches to a compact lege
     expect(compactLegend.textContent).toContain("共 7 层");
     expect(compactLegend.textContent).toContain("颜色循环仅区分相邻层");
     expect(compactLegend.textContent).not.toContain("层级1");
+});
+
+test("method examples agree with hand-calculated fractional and certainty-unit designs", () => {
+    const view = render(<SamplingMethodExplanation method="systematic" />);
+    expect([...view.getByRole("img").querySelectorAll(".bg-primary-muted")].map(element => element.textContent)).toEqual(["2", "5", "8"]);
+    view.rerender(<SamplingMethodExplanation method="pps" />);
+    const axis = view.getByRole("img");
+    expect([...axis.children].map(element => element.getAttribute("data-unit"))).toEqual(["B", "C", "D"]);
+    const probabilities = [...axis.children].map(element => parseFloat((element as HTMLElement).style.width) / 100);
+    expect(probabilities[0]).toBeCloseTo(1 / 2, 12);
+    expect(probabilities[1]).toBeCloseTo(1 / 3, 12);
+    expect(probabilities[2]).toBeCloseTo(1 / 6, 12);
+    expect(axis.querySelector(".bg-primary-muted")?.getAttribute("data-unit")).toBe("C");
+    expect(view.container.textContent).toContain("结果为 A、C");
+    expect(view.container.textContent).toContain("独立示例");
 });
 
 test("pause cancels phase timers and single stepping preserves position across speed changes", async () => {

@@ -7,6 +7,7 @@ import { createSeededRandom, performSimpleSamplingWithIndices, performPPSSamplin
 import { computeSampleProgressDisplay } from "./sample-progress-display";
 import { formatSystematicInterval } from "../experiment/systematic-sampling";
 import { buildSamplingAnimationScale, buildStratifiedVisualAllocation } from "./sampling-animation-scale";
+import { SamplingMethodExplanation } from "./SamplingMethodExplanation";
 
 interface StratifiedLayer {
     name: string;
@@ -661,7 +662,10 @@ export function ImmersiveSamplingAnimation({
             <div className="px-6 pb-3 space-y-2">
                 <details className="text-meta text-muted-foreground">
                     <summary className="cursor-pointer">方法说明</summary>
-                    <p className="mt-2 max-w-3xl">{introText}</p>
+                    <div className="mt-2 max-h-64 max-w-3xl overflow-auto leading-relaxed" tabIndex={0} role="region" aria-label="抽样机制说明">
+                        <p>{introText}</p>
+                        <SamplingMethodExplanation method={method} />
+                    </div>
                 </details>
                 {phase.type !== "complete" && !prefersReducedMotion && (
                     <div className="flex items-center gap-3" role="group" aria-label="演示播放控制">
@@ -725,9 +729,9 @@ export function ImmersiveSamplingAnimation({
                         )}
 
                         {method === "stratified" && layers && phase.type !== "complete" && (
-                            <div className="max-h-24 overflow-auto text-meta text-muted-foreground" tabIndex={0} role="region" aria-label="各层演示配额">
+                            <div className="grid max-h-24 grid-cols-2 gap-2 overflow-auto text-meta text-muted-foreground" tabIndex={0} role="region" aria-label="各层演示配额">
                                 {layers.map((layer, index) => {
-                                    return <p key={layer.name}>{layer.name}：总体 {layer.count} → 样本 {layer.sampleCount}
+                                    return <p key={layer.name} aria-current={stratifiedActiveLayer === index ? "step" : undefined} className={`rounded-control border p-2 ${stratifiedActiveLayer === index ? "border-warning-border bg-warning-muted text-foreground" : "border-border bg-card"}`}>{layer.name}：总体 {layer.count} → 样本 {layer.sampleCount}
                                         {layerAllocation.population[index] === 0 ? "；规模过小，点阵未表示" : layerAllocation.sample[index] === 0 && layer.sampleCount > 0 ? "；入样量过小，点阵未高亮" : layer.sampleCount === 0 ? "；本层不抽取" : ""}
                                     </p>;
                                 })}
