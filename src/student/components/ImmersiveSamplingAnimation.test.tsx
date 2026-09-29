@@ -22,7 +22,7 @@ afterAll(() => {
 });
 
 test("PPS illustration uses certainty-unit redistribution, not duplicate-hit advancement", async () => {
-    const view = render(<ImmersiveSamplingAnimation method="pps" populationSize={10} sampleSize={7} randomStart={0.1145} sampledData={[]} onClose={() => {}} />);
+    const view = render(<ImmersiveSamplingAnimation method="pps" populationSize={10} sampleSize={7} randomStart={0.1145} sizeField="size" ppsProbabilitySummary={{ populationCount: 10, probabilitySum: 7, minInclusionProbability: .13989362870504474, maxInclusionProbability: 1, certaintyUnitCount: 3 }} sampledData={[]} onClose={() => {}} />);
     const grid = await waitFor(() => view.getByTestId("sampling-animation-dot-grid"), { timeout: 1500 });
     // Fixed synthetic frame: certainty units 0,3,6; residual u+j hits 1,2,5,9.
     // The duplicate-hit design incorrectly selected unit 8 instead of 9.
@@ -32,7 +32,7 @@ test("PPS illustration uses certainty-unit redistribution, not duplicate-hit adv
 
 test("compressed stratified illustration discloses omitted small strata", async () => {
     const layers = [{ name: "小层", count: 2, sampleCount: 2, ratio: .02 }, { name: "中层", count: 998, sampleCount: 98, ratio: 9.98 }, { name: "大层", count: 9000, sampleCount: 900, ratio: 90 }];
-    const view = render(<ImmersiveSamplingAnimation method="stratified" populationSize={10000} sampleSize={1000} layers={layers} sampledData={[]} onClose={() => {}} />);
+    const view = render(<ImmersiveSamplingAnimation method="stratified" populationSize={10000} sampleSize={1000} layers={layers} seed={42} stratifyBy="地区" sampledData={[]} onClose={() => {}} />);
     const allocation = await waitFor(() => view.getByRole("region", { name: "各层演示配额" }), { timeout: 1500 });
     expect(allocation.textContent).toContain("小层：总体 2 → 样本 2；规模过小，点阵未表示");
     fireEvent.click(view.getByTestId("immersive-sampling-skip"));
@@ -71,6 +71,7 @@ test("a large frame labels its capped dot grid as a proportional illustration", 
             method="simple"
             populationSize={10_000}
             sampleSize={2_000}
+            seed={42}
             sampledData={[]}
             onClose={() => undefined}
         />,
@@ -185,6 +186,8 @@ test("a twenty-layer receipt keeps the full allocation in bounded disclosure", a
             method="stratified"
             populationSize={1000}
             sampleSize={100}
+            seed={42}
+            stratifyBy="地区"
             layers={layers}
             sampledData={[]}
             onClose={() => undefined}
@@ -223,6 +226,8 @@ test("six strata retain their names while the seventh switches to a compact lege
             method="stratified"
             populationSize={60}
             sampleSize={12}
+            seed={42}
+            stratifyBy="地区"
             layers={buildLayers(6)}
             sampledData={[]}
             onClose={() => undefined}
@@ -240,6 +245,8 @@ test("six strata retain their names while the seventh switches to a compact lege
             method="stratified"
             populationSize={70}
             sampleSize={14}
+            seed={42}
+            stratifyBy="地区"
             layers={buildLayers(7)}
             sampledData={[]}
             onClose={() => undefined}
@@ -250,6 +257,22 @@ test("six strata retain their names while the seventh switches to a compact lege
     expect(compactLegend.textContent).toContain("共 7 层");
     expect(compactLegend.textContent).toContain("颜色循环仅区分相邻层");
     expect(compactLegend.textContent).not.toContain("层级1");
+});
+
+test.each(["simple", "systematic", "pps", "stratified"] as const)("%s census retains every point, including zero seeds and starts", method => {
+    const view = render(<ImmersiveSamplingAnimation method={method} populationSize={4} sampleSize={4} seed={0} interval={1} randomStart={0} sizeField="size" stratifyBy="g" layers={[{ name: "A", count: 1, ratio: 25, sampleCount: 1 }, { name: "B", count: 3, ratio: 75, sampleCount: 3 }]} ppsProbabilitySummary={{ populationCount: 4, probabilitySum: 4, minInclusionProbability: 1, maxInclusionProbability: 1, certaintyUnitCount: 4 }} sampledData={[]} onClose={() => {}} />);
+    fireEvent.click(view.getByTestId("immersive-sampling-skip"));
+    expect(view.getByTestId("sampling-animation-final-diagram").querySelectorAll('[data-selected="true"]')).toHaveLength(4);
+    if (method === "systematic") expect(view.getByTestId("sampling-animation-receipt").textContent).toContain("实际随机起点 r0");
+});
+
+test.each(["simple", "systematic", "pps", "stratified"] as const)("historical %s results never invent missing replay parameters", method => {
+    const view = render(<ImmersiveSamplingAnimation method={method} populationSize={10} sampleSize={3} sampledData={[{ 名称: "已保存记录" }]} onClose={() => {}} />);
+    expect(view.queryByTestId("sampling-animation-dot-grid")).toBeNull();
+    expect(view.queryByTestId("immersive-sampling-replay")).toBeNull();
+    expect(view.getByText(/该历史结果缺少/)).toBeTruthy();
+    expect(view.getByText("已保存记录")).toBeTruthy();
+    expect(view.getByTestId("sampling-animation-receipt").textContent).not.toContain("随机种子42");
 });
 
 test("method examples agree with hand-calculated fractional and certainty-unit designs", () => {

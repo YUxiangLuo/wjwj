@@ -717,13 +717,30 @@ try {
     await activate(student, '[data-testid="immersive-sampling-skip"]');
     await visible(student, '[data-testid="sampling-animation-receipt"]');
     await activate(student, '[data-testid="immersive-sampling-return"]');
+    const beforeReview = await api<ExperimentData>(student, experimentPath);
     for (const method of ["simple", "systematic", "pps", "stratified"]) {
         await activate(student, `[data-testid="student-sampling-tab-${method}"]`);
         assert(await evaluate(student, `(() => {const preview=document.querySelector('[data-testid="student-sampling-${method}-preview"]');return preview?.getBoundingClientRect().height===360 && preview.querySelector('table tbody tr') && document.documentElement.scrollWidth<=innerWidth;})()`), `${method} completed preview must retain table space and saved records`);
         await evaluate(student, `document.querySelector('[data-testid="student-sampling-${method}-preview"]').scrollIntoView({block:'center'})`);
         await browser(student, "screenshot", join(artifacts, `sampling-${method}-completed.png`));
         assert(await evaluate(student, `(async () => {const preview=document.querySelector('[data-testid="student-sampling-${method}-preview"]');const region=preview.querySelector('[role="region"]');region.scrollTop=region.scrollHeight;await new Promise(requestAnimationFrame);const last=region.querySelector('tbody tr:last-child').getBoundingClientRect();const bounds=region.getBoundingClientRect();return last.top>=bounds.top && last.bottom<=bounds.bottom && preview.getBoundingClientRect().bottom<=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect().top;})()`), `${method} last preview row and pagination must remain reachable above the sticky footer`);
+        if (method === "pps") await browser(student, "fill", '[data-testid="student-sampling-pps-sample-size"]', "999999");
+        await activate(student, `[data-testid="student-sampling-${method}-review"]`);
+        await activate(student, '[data-testid="sampling-animation-step"]');
+        await activate(student, '[data-testid="sampling-animation-step"]');
+        assert(await evaluate(student, `(async () => {const count=()=>document.querySelectorAll('[data-testid="sampling-animation-dot-grid"] [data-selected="true"]').length;const before=count();await new Promise(resolve=>setTimeout(resolve,300));return before===1 && count()===1 && document.body.textContent.includes('已暂停');})()`), `${method} single step must pause at exactly one illustrated unit`);
+        await browser(student, "set", "viewport", "1024", "768", "2");
+        await browser(student, "screenshot", join(artifacts, `sampling-${method}-paused.png`));
+        await activate(student, '[data-testid="immersive-sampling-skip"]');
+        assert(await evaluate(student, `document.querySelector('[data-testid="sampling-animation-receipt"]').textContent.includes("${experiment.populationSize} → ${plan.recommendedSize}")`), `${method} explanation must use saved counts, not edited form values`);
+        await activate(student, '[data-testid="immersive-sampling-return"]');
+        await eventually(() => evaluate(student, `document.activeElement?.getAttribute('data-testid')==='student-sampling-${method}-review'`), `${method} explanation restores focus`);
+        await browser(student, "set", "viewport", "1280", "800", "2");
+        if (method === "pps") await browser(student, "fill", '[data-testid="student-sampling-pps-sample-size"]', String(plan.recommendedSize));
     }
+    const afterReview = await api<ExperimentData>(student, experimentPath);
+    deepStrictEqual(afterReview.samplingResults, beforeReview.samplingResults, "Viewing explanations must not replace saved samples");
+    assert(afterReview.version === beforeReview.version, "Viewing explanations must not write the experiment");
     await activate(student, '[data-testid="student-sampling-next"]');
     await visible(student, '[data-testid="student-stage-analysis-report"]');
     experiment = await api(student, experimentPath);

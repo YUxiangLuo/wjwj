@@ -93,13 +93,18 @@ mock.module("@/components/ui/alert-dialog", () => ({
 }));
 
 mock.module("../../components/ImmersiveSamplingAnimation", () => ({
-    ImmersiveSamplingAnimation: ({ sampledData, layers }: {
+    ImmersiveSamplingAnimation: ({ sampledData, layers, sampleSize, sizeField, seed, onClose }: {
         sampledData?: unknown[];
         layers?: Array<{ name: string; count: number; sampleCount: number }>;
+        sampleSize: number;
+        sizeField?: string;
+        seed?: number;
+        onClose: () => void;
     }) => (
-        <div data-testid="mock-sampling-animation">
+        <div data-testid="mock-sampling-animation" data-sample-size={sampleSize} data-size-field={sizeField} data-seed={seed}>
             结果 {sampledData?.length ?? 0} 条
             {layers?.map(layer => `${layer.name}:${layer.count}→${layer.sampleCount}`).join("；")}
+            <button onClick={onClose}>关闭演示</button>
         </div>
     ),
 }));
@@ -147,6 +152,33 @@ afterEach(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     restoreDom?.();
     restoreDom = null;
+});
+
+test("saved explanations use persisted parameters for every method without executing a draw", async () => {
+    mockExperimentApi.getStats.mockResolvedValueOnce({ success: true, data: { stats: { g: { A: 100 } }, numericFields: ["size"], ppsEligibleFields: ["size"] } });
+    const samplingResults = {
+        simple: { completed: true, sampleCount: 13, seed: 41, data: [{ id: 1 }] },
+        systematic: { completed: true, sampleCount: 13, seed: 42, interval: 100 / 13, randomStart: 2, data: [{ id: 2 }] },
+        pps: { completed: true, sampleCount: 15, seed: 43, sizeField: "size", randomStart: .2, data: [{ id: 3 }] },
+        stratified: { completed: true, sampleCount: 13, seed: 44, stratifyBy: "g", layers: [{ name: "A", count: 100, sampleCount: 13, ratio: 100 }], data: [{ id: 4 }] },
+    };
+    mockExperimentContext.experiment = { ...mockExperimentContext.experiment, samplingResults };
+    const before = JSON.stringify(samplingResults);
+    const view = render(<SamplingExecution onPrev={() => {}} />);
+    await waitFor(() => expect(view.getByTestId("student-sampling-pps-sample-size")).toBeTruthy());
+    fireEvent.change(view.getByTestId("student-sampling-pps-sample-size"), { target: { value: "999" } });
+    fireEvent.change(view.getByTestId("student-sampling-pps-seed"), { target: { value: "999" } });
+    for (const method of ["simple", "systematic", "pps", "stratified"] as const) {
+        fireEvent.click(view.getByTestId(`student-sampling-${method}-review`));
+        const animation = view.getByTestId("mock-sampling-animation");
+        expect(animation.dataset.sampleSize).toBe(String(samplingResults[method].sampleCount));
+        expect(animation.dataset.seed).toBe(String(samplingResults[method].seed));
+        if (method === "pps") expect(animation.dataset.sizeField).toBe("size");
+        if (method === "stratified") expect(animation.textContent).toContain("A:100→13");
+        fireEvent.click(view.getByText("关闭演示"));
+    }
+    expect(mockExperimentApi.executeSampling).not.toHaveBeenCalled();
+    expect(JSON.stringify(samplingResults)).toBe(before);
 });
 
 test("SamplingExecution aborts obsolete stats requests on task changes and unmount", async () => {

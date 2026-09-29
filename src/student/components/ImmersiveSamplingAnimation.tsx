@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useCallback, useRef, memo } from "react";
 import { createPortal } from "react-dom";
 import { X, Users, Target, Layers, Shuffle, ChevronLeft, ChevronRight, Loader2, CheckCircle2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { MethodKey as SamplingMethod } from "@/domain/experiment/types";
+import type { MethodKey as SamplingMethod, SamplingResultsData } from "@/domain/experiment/types";
+import { PpsProbabilityExplanation } from "@/components/PpsProbabilityExplanation";
 import { createSeededRandom, performSimpleSamplingWithIndices, performPPSSampling, type PpsProbabilitySummary } from "@/domain/statistics/sampling";
 import { computeSampleProgressDisplay } from "./sample-progress-display";
 import { formatSystematicInterval } from "../experiment/systematic-sampling";
@@ -28,6 +29,7 @@ interface Props {
     seed?: number;
     randomStart?: number;
     ppsProbabilitySummary?: PpsProbabilitySummary;
+    ppsResult?: SamplingResultsData["pps"];
     /** For stratified */
     stratifyBy?: string;
     layers?: StratifiedLayer[];
@@ -231,6 +233,7 @@ export function ImmersiveSamplingAnimation({
     seed,
     randomStart,
     ppsProbabilitySummary,
+    ppsResult,
     stratifyBy,
     layers,
     onClose,
@@ -239,7 +242,11 @@ export function ImmersiveSamplingAnimation({
     sampledData,
     sampledTotal,
 }: Props) {
-    const [phase, setPhase] = useState<Phase>({ type: "intro" });
+    const canIllustrate = sampleSize > 0 && (method === "simple" ? Number.isSafeInteger(seed)
+        : method === "systematic" ? Number.isFinite(randomStart) && randomStart! >= 0 && Number.isFinite(interval) && interval! > 0 && randomStart! < interval!
+            : method === "pps" ? Number.isFinite(randomStart) && randomStart! >= 0 && randomStart! < 1 && Boolean(sizeField && ppsProbabilitySummary)
+                : Number.isSafeInteger(seed) && Boolean(stratifyBy && layers?.length));
+    const [phase, setPhase] = useState<Phase>({ type: canIllustrate ? "intro" : "complete" });
     const [visiblePopCount, setVisiblePopCount] = useState(0);
     const [currentSelectIndex, setCurrentSelectIndex] = useState(0);
     const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
@@ -469,7 +476,7 @@ export function ImmersiveSamplingAnimation({
             items.push({ label: "抽样设计", value: "等概率、不放回" });
         } else if (method === "systematic") {
             items.push({ label: "分数间隔 K", value: formatSystematicInterval(interval) });
-            if (randomStart !== undefined) items.push({ label: "实际随机起点 r", value: formatSystematicInterval(randomStart) });
+            if (randomStart !== undefined) items.push({ label: "实际随机起点 r", value: formatProbability(randomStart) });
         } else if (method === "pps") {
             items.push({ label: "规模变量", value: FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模" });
             if (randomStart !== undefined) items.push({ label: "PPS 系统随机起点 u", value: formatProbability(randomStart) });
@@ -601,7 +608,7 @@ export function ImmersiveSamplingAnimation({
                 </div>
                 {phase.type === "complete" ? (
                     <div className="flex items-center gap-2">
-                        {!prefersReducedMotion && (
+                        {!prefersReducedMotion && canIllustrate && (
                             <Button
                                 type="button"
                                 variant="outline"
@@ -660,6 +667,7 @@ export function ImmersiveSamplingAnimation({
             </div>
 
             <div className="px-6 pb-3 space-y-2">
+                {!canIllustrate && <p role="status" className="text-label text-muted-foreground">该历史结果缺少演示所需参数，仅显示已保存结果和独立方法示例，不补造随机过程。</p>}
                 <details className="text-meta text-muted-foreground">
                     <summary className="cursor-pointer">方法说明</summary>
                     <div className="mt-2 max-h-64 max-w-3xl overflow-auto leading-relaxed" tabIndex={0} role="region" aria-label="抽样机制说明">
@@ -802,7 +810,7 @@ export function ImmersiveSamplingAnimation({
                                 {method === "systematic" && phase.type === "sampling" && (
                                     <div className="mt-3 text-center">
                                         <span className={`inline-flex items-center gap-2 rounded-control border ${meta.accentBorder} bg-card px-3 py-1.5 text-meta font-mono ${meta.accentText}`}>
-                                            间隔 K = {formatSystematicInterval(interval)}，实际起点 r = {formatSystematicInterval(randomStart)}，从总体首端至末端等距抽取
+                                            间隔 K = {formatSystematicInterval(interval)}，实际起点 r = {formatProbability(randomStart ?? Number.NaN)}，从总体首端至末端等距抽取
                                         </span>
                                     </div>
                                 )}
@@ -851,12 +859,12 @@ export function ImmersiveSamplingAnimation({
                         {/* Complete phase */}
                         {phase.type === "complete" && (
                             <div className="animate-in fade-in duration-300 flex flex-col min-h-0 h-full gap-4">
-                                <details className="shrink-0 rounded-surface border border-border bg-card p-3" data-testid="sampling-animation-final-diagram">
+                                {canIllustrate && <details className="shrink-0 rounded-surface border border-border bg-card p-3" data-testid="sampling-animation-final-diagram">
                                     <summary className="cursor-pointer text-label">查看最终示意图（不对应具体入样记录）</summary>
                                     <div className="mt-3 max-h-64 overflow-auto">
                                         <DotGrid totalDots={visualPopulationSize} gridColumns={visualScale.gridColumns} visiblePopCount={visualPopulationSize} currentSelectIndex={selectionOrder.length} dotSelectedAt={dotSelectedAt} layerAssignment={layerAssignment} dotWeights={dotWeights} method={method} />
                                     </div>
-                                </details>
+                                </details>}
                                 <section className="shrink-0 rounded-surface border border-success-border bg-success-muted p-3" data-testid="sampling-animation-receipt">
                                     <div className="mb-2 flex items-center gap-2 text-success">
                                         <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
@@ -893,6 +901,10 @@ export function ImmersiveSamplingAnimation({
                                         </details>
                                     )}
                                 </section>
+                                {method === "pps" && ppsResult && <details className="shrink-0 text-label">
+                                    <summary className="cursor-pointer">查看本次 PPS 纳入概率与权重</summary>
+                                    <div className="mt-2 max-h-64 overflow-auto" tabIndex={0}><PpsProbabilityExplanation result={ppsResult} /></div>
+                                </details>}
                                 {!sampledData ? (
                                     <div role="status" aria-live="polite" className="flex-1 flex flex-col items-center justify-center gap-3 py-8">
                                         <Loader2 aria-hidden="true" className="w-8 h-8 animate-spin text-muted-foreground" />

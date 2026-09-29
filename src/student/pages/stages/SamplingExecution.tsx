@@ -3,7 +3,7 @@ import { StageActions } from "../../components/StageActions";
 import { useSectionNavigation } from "@/hooks/useSectionNavigation";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Switch } from "@/components/ui/switch";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, type ComponentProps } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -22,12 +22,11 @@ import { AlertCircle, CheckCircle2, Play, Loader2, ArrowRight, RefreshCw } from 
 import { useExperiment } from "../ExperimentLayout";
 import { experimentApi } from "../../api-client";
 import type { SamplingResultsData, SamplePlanData } from "@/domain/experiment/types";
-import type { PpsProbabilitySummary } from "@/domain/statistics/sampling";
 import type { MethodKey as SamplingMethod } from "@/domain/experiment/types";
 import { ImmersiveSamplingAnimation } from "../../components/ImmersiveSamplingAnimation";
 import { SamplingSuccessState } from "../../components/SamplingSuccessState";
 import { SamplePreviewTable } from "../../components/SamplePreviewTable";
-import { StratifiedSamplingTab, type StratifiedLayer } from "../../components/StratifiedSamplingTab";
+import { StratifiedSamplingTab } from "../../components/StratifiedSamplingTab";
 import {
     PPS_UNAVAILABLE_REASON,
     PPS_UNAVAILABLE_STATUS_MESSAGE,
@@ -199,16 +198,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
     const [executing, setExecuting] = useState<SamplingMethod | null>(null);
     const [isCompleting, setIsCompleting] = useState(false);
-    const [animatingMethod, setAnimatingMethod] = useState<SamplingMethod | null>(null);
-    const [animationSampledData, setAnimationSampledData] = useState<{
-        data: Array<Record<string, unknown>>;
-        total: number;
-        seed?: number;
-        randomStart?: number;
-        ppsProbabilitySummary?: PpsProbabilitySummary;
-    } | null>(null);
-    const [stratifiedAnimationLayers, setStratifiedAnimationLayers] = useState<StratifiedLayer[]>([]);
-    const [stratifiedAnimationStratifyBy, setStratifiedAnimationStratifyBy] = useState("gender");
+    const [animation, setAnimation] = useState<Omit<ComponentProps<typeof ImmersiveSamplingAnimation>, "onClose" | "onSkipRest"> | null>(null);
     const animationOpenerRef = useRef<HTMLElement | null>(null);
 
     const rememberAnimationOpener = () => {
@@ -217,6 +207,22 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
             && document.activeElement !== document.body
             ? document.activeElement
             : null;
+    };
+
+    const openSavedExplanation = (method: SamplingMethod, result: NonNullable<SamplingResultsData[SamplingMethod]>, opener = animationOpenerRef.current) => {
+        setAnimation({
+            method, populationSize: N, sampleSize: getSamplingResultCount(method, result),
+            seed: result.seed,
+            interval: method === "systematic" ? getStoredSystematicInterval(result) ?? undefined : undefined,
+            randomStart: "randomStart" in result ? result.randomStart : undefined,
+            sizeField: "sizeField" in result ? result.sizeField : undefined,
+            ppsProbabilitySummary: "probabilitySummary" in result ? result.probabilitySummary : undefined,
+            ppsResult: method === "pps" ? result as SamplingResultsData["pps"] : undefined,
+            layers: "layers" in result ? result.layers : undefined,
+            stratifyBy: "stratifyBy" in result ? result.stratifyBy : undefined,
+            sampledData: (result.data ?? []) as Array<Record<string, unknown>>,
+            sampledTotal: getSamplingResultCount(method, result), restoreFocusTo: opener,
+        });
     };
 
 
@@ -244,7 +250,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
         if (!taskId || !hasValidSamplePlan || refreshRequired) return;
         rememberAnimationOpener();
         setExecuting("simple");
-        setAnimationSampledData(null);
+        setAnimation(null);
         const startTime = performance.now();
         try {
             const { seed, error: seedError } = parseSeed(simpleSeed);
@@ -257,16 +263,14 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 const nextSimple = res.data.result;
                 setSimpleResult(nextSimple);
                 setExecutionTimes(prev => ({ ...prev, simple: Math.round(performance.now() - startTime) }));
-                const dataArr = (nextSimple.data ?? []) as Array<Record<string, unknown>>;
-                setAnimationSampledData({ data: dataArr, total: nextSimple.sampleCount ?? dataArr.length, seed: nextSimple.seed });
-                if (showAnimation) setAnimatingMethod("simple");
+                if (showAnimation) openSavedExplanation("simple", nextSimple);
             } else {
                 reportSamplingFailure(res.error?.code, res.error?.message, "简单随机抽样执行失败");
-                setAnimatingMethod(null);
+                setAnimation(null);
             }
         } catch (e) {
             toast.error("简单随机抽样执行失败，请检查网络后重试");
-            setAnimatingMethod(null);
+            setAnimation(null);
         } finally {
             setExecuting(null);
         }
@@ -276,7 +280,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
         if (!taskId || !hasValidSamplePlan || systematicInterval === null || refreshRequired) return;
         rememberAnimationOpener();
         setExecuting("systematic");
-        setAnimationSampledData(null);
+        setAnimation(null);
         const startTime = performance.now();
         try {
             const { seed, error: seedError } = parseSeed(systematicSeed);
@@ -288,21 +292,14 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 const nextSystematic = res.data.result;
                 setSystematicResult(nextSystematic);
                 setExecutionTimes(prev => ({ ...prev, systematic: Math.round(performance.now() - startTime) }));
-                const dataArr = (nextSystematic.data ?? []) as Array<Record<string, unknown>>;
-                setAnimationSampledData({
-                    data: dataArr,
-                    total: nextSystematic.sampleCount ?? dataArr.length,
-                    seed: nextSystematic.seed,
-                    randomStart: nextSystematic.randomStart,
-                });
-                if (showAnimation) setAnimatingMethod("systematic");
+                if (showAnimation) openSavedExplanation("systematic", nextSystematic);
             } else {
                 reportSamplingFailure(res.error?.code, res.error?.message, "系统抽样执行失败");
-                setAnimatingMethod(null);
+                setAnimation(null);
             }
         } catch (e) {
             toast.error("系统抽样执行失败，请检查网络后重试");
-            setAnimatingMethod(null);
+            setAnimation(null);
         } finally {
             setExecuting(null);
         }
@@ -312,7 +309,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
         if (!taskId || !hasValidSamplePlan || !ppsSizeField || ppsEligibleFields.length === 0 || refreshRequired) return;
         rememberAnimationOpener();
         setExecuting("pps");
-        setAnimationSampledData(null);
+        setAnimation(null);
         const startTime = performance.now();
         try {
             const { seed, error: seedError } = parseSeed(ppsSeed);
@@ -326,22 +323,14 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 const nextPps = res.data.result;
                 setPpsResult(nextPps);
                 setExecutionTimes(prev => ({ ...prev, pps: Math.round(performance.now() - startTime) }));
-                const dataArr = (nextPps.data ?? []) as Array<Record<string, unknown>>;
-                setAnimationSampledData({
-                    data: dataArr,
-                    total: nextPps.sampleCount ?? dataArr.length,
-                    seed: nextPps.seed,
-                    randomStart: nextPps.randomStart,
-                    ppsProbabilitySummary: nextPps.probabilitySummary,
-                });
-                if (showAnimation) setAnimatingMethod("pps");
+                if (showAnimation) openSavedExplanation("pps", nextPps);
             } else {
                 reportSamplingFailure(res.error?.code, res.error?.message, "PPS抽样执行失败");
-                setAnimatingMethod(null);
+                setAnimation(null);
             }
         } catch (e) {
             toast.error("PPS抽样执行失败，请检查网络后重试");
-            setAnimatingMethod(null);
+            setAnimation(null);
         } finally {
             setExecuting(null);
         }
@@ -818,14 +807,10 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                         setExecuting={setExecuting}
                         onResult={(result) => {
                             setStratifiedResult(result);
-                            const dataArr = (result.data ?? []) as Array<Record<string, unknown>>;
-                            setAnimationSampledData({ data: dataArr, total: getSamplingResultCount("stratified", result), seed: result.seed });
+                            if (showAnimation) openSavedExplanation("stratified", result);
                         }}
-                        onAnimate={(animLayers, animStratifyBy, opener) => {
-                            animationOpenerRef.current = opener;
-                            setStratifiedAnimationLayers(animLayers);
-                            setStratifiedAnimationStratifyBy(animStratifyBy);
-                            if (showAnimation) setAnimatingMethod("stratified");
+                        onAnimate={(_animLayers, _animStratifyBy, opener) => {
+                            setAnimation(current => current ? { ...current, restoreFocusTo: opener } : null);
                         }}
                         buildSavePayload={() => undefined}
                         executionTime={executionTimes.stratified}
@@ -837,6 +822,14 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 )}
             </Tabs>
 
+            <div className="flex flex-wrap gap-2" aria-label="查看已保存的抽样说明">
+                {enabledMethods.map(method => {
+                    const result = { simple: simpleResult, systematic: systematicResult, pps: ppsResult, stratified: stratifiedResult }[method];
+                    return result?.completed ? <Button key={method} variant="outline" disabled={executing !== null} data-testid={`student-sampling-${method}-review`} onClick={event => openSavedExplanation(method, result, event.currentTarget)}>
+                        查看{METHOD_LABELS[method]}说明
+                    </Button> : null;
+                })}
+            </div>
             <details className="rounded-surface border border-border bg-card p-4">
                 <summary className="cursor-pointer text-label font-medium">抽样与观测的教学约定</summary>
                 <div className="mt-3"><SamplingObservationNotice nonResponseRate={samplePlan?.nonResponseRate}/></div>
@@ -855,23 +848,11 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
             </StageActions>
 
             {/* Immersive Sampling Animation Overlay */}
-            {animatingMethod && (
+            {animation && (
                 <ImmersiveSamplingAnimation
-                    method={animatingMethod}
-                    populationSize={N}
-                    sampleSize={animatingMethod === "pps" ? ppsSampleSize : n}
-                    interval={animatingMethod === "systematic" ? resultSystematicInterval ?? undefined : undefined}
-                    sizeField={animatingMethod === "pps" ? ppsSizeField : undefined}
-                    seed={animationSampledData?.seed}
-                    randomStart={animationSampledData?.randomStart}
-                    ppsProbabilitySummary={animationSampledData?.ppsProbabilitySummary}
-                    stratifyBy={animatingMethod === "stratified" ? stratifiedAnimationStratifyBy : undefined}
-                    layers={animatingMethod === "stratified" ? stratifiedAnimationLayers : undefined}
-                    onClose={() => { setAnimatingMethod(null); setAnimationSampledData(null); }}
+                    {...animation}
+                    onClose={() => setAnimation(null)}
                     onSkipRest={() => { persistSkipSamplingAnimation(); setShowAnimation(false); }}
-                    restoreFocusTo={animationOpenerRef.current}
-                    sampledData={animationSampledData?.data}
-                    sampledTotal={animationSampledData?.total}
                 />
             )}
         </div>
