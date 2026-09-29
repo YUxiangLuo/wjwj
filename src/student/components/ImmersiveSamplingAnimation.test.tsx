@@ -34,9 +34,10 @@ test("compressed stratified illustration discloses omitted small strata", async 
     const layers = [{ name: "小层", count: 2, sampleCount: 2, ratio: .02 }, { name: "中层", count: 998, sampleCount: 98, ratio: 9.98 }, { name: "大层", count: 9000, sampleCount: 900, ratio: 90 }];
     const view = render(<ImmersiveSamplingAnimation method="stratified" populationSize={10000} sampleSize={1000} layers={layers} seed={42} stratifyBy="地区" sampledData={[]} onClose={() => {}} />);
     const allocation = await waitFor(() => view.getByRole("region", { name: "各层演示配额" }), { timeout: 1500 });
-    expect(allocation.textContent).toContain("小层：总体 2 → 样本 2；规模过小，点阵未表示");
+    expect(allocation.textContent).toContain("小层总体 2 → 样本 2规模过小，点阵未表示");
     fireEvent.click(view.getByTestId("immersive-sampling-skip"));
     expect(view.getByTestId("sampling-animation-layer-list").textContent).toContain("小层2 → 2");
+    expect(view.getByTestId("sampling-animation-final-diagram").textContent).toContain("规模过小，点阵未表示");
 });
 
 test("a small frame renders exactly its actual number of population dots", async () => {
@@ -205,7 +206,7 @@ test("a twenty-layer receipt keeps the full allocation in bounded disclosure", a
     fireEvent.click(view.getByTestId("immersive-sampling-skip"));
     const receipt = view.getByTestId("sampling-animation-receipt");
     expect(receipt.textContent).toContain("分层配置20 层；1,000 → 100");
-    expect(view.queryByTestId("sampling-animation-strata-legend")).toBeNull();
+    expect(view.getByTestId("sampling-animation-final-diagram").contains(view.getByTestId("sampling-animation-strata-legend"))).toBe(true);
     expect(view.getByTestId("sampling-animation-layer-details").hasAttribute("open")).toBe(false);
     expect(view.getByTestId("sampling-animation-layer-details").textContent).toContain("可滚动查看全部");
     const layerList = view.getByTestId("sampling-animation-layer-list");
@@ -273,6 +274,44 @@ test.each(["simple", "systematic", "pps", "stratified"] as const)("historical %s
     expect(view.getByText(/该历史结果缺少/)).toBeTruthy();
     expect(view.getByText("已保存记录")).toBeTruthy();
     expect(view.getByTestId("sampling-animation-receipt").textContent).not.toContain("随机种子42");
+});
+
+test("final compressed diagram retains its scale and color key", () => {
+    const view = render(<ImmersiveSamplingAnimation method="simple" populationSize={100000} sampleSize={1000} seed={42} sampledData={[]} onClose={() => {}} />);
+    fireEvent.click(view.getByTestId("immersive-sampling-skip"));
+    const diagram = view.getByTestId("sampling-animation-final-diagram");
+    expect(diagram.textContent).toContain("用 1,000 个点代表实际总体 100,000");
+    expect(diagram.textContent).toContain("1,000/100,000 近似映射");
+    expect(diagram.textContent).toContain("实色描边：已选样本");
+    expect(diagram.querySelectorAll('[data-selected="true"]')).toHaveLength(10);
+});
+
+test.each(["simple", "stratified"] as const)("empty %s results trap focus through closed and open disclosures", method => {
+    const view = render(<ImmersiveSamplingAnimation method={method} populationSize={10} sampleSize={3} seed={42} stratifyBy="g" layers={[{ name: "A", count: 10, sampleCount: 3, ratio: 100 }]} sampledData={[]} onClose={() => {}} />);
+    fireEvent.click(view.getByTestId("immersive-sampling-skip"));
+    const dialog = view.getByRole("dialog");
+    // happy-dom has no layout. Model nonempty boxes even inside closed details:
+    // the focus trap must exclude hidden content explicitly, as Chromium needs.
+    for (const element of dialog.querySelectorAll<HTMLElement>("*")) {
+        Object.defineProperty(element, "getClientRects", { value: () => [{ width: 1, height: 1 }] });
+        if (element.tagName === "SUMMARY") element.tabIndex = 0;
+    }
+    const first = view.getByTestId("immersive-sampling-replay");
+    const last = dialog.querySelectorAll<HTMLElement>("summary").item(dialog.querySelectorAll("summary").length - 1)!;
+    last.focus();
+    fireEvent.keyDown(last, { key: "Tab" });
+    expect(document.activeElement).toBe(first);
+    fireEvent.keyDown(first, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(last);
+    if (method === "stratified") {
+        view.getByTestId("sampling-animation-layer-details").setAttribute("open", "");
+        const region = view.getByTestId("sampling-animation-layer-list");
+        region.focus();
+        fireEvent.keyDown(region, { key: "Tab" });
+        expect(document.activeElement).toBe(first);
+        fireEvent.keyDown(first, { key: "Tab", shiftKey: true });
+        expect(document.activeElement).toBe(region);
+    }
 });
 
 test("method examples agree with hand-calculated fractional and certainty-unit designs", () => {

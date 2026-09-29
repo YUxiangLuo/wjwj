@@ -542,8 +542,17 @@ export function ImmersiveSamplingAnimation({
         if (event.key !== "Tab") return;
 
         const focusable = [...(overlayRef.current?.querySelectorAll<HTMLElement>(
-            'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
-        ) ?? [])].filter((element) => element.getClientRects().length > 0);
+            'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex]:not([tabindex="-1"])',
+        ) ?? [])].filter((element) => {
+            if (element.tabIndex < 0 || element.getClientRects().length === 0) return false;
+            // Closed details can retain layout boxes for their hidden content.
+            // Only their own summary participates in keyboard navigation.
+            for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+                if (parent.tagName === "DETAILS" && !parent.hasAttribute("open")
+                    && !parent.querySelector(":scope > summary")?.contains(element)) return false;
+            }
+            return true;
+        });
         if (focusable.length === 0) {
             event.preventDefault();
             overlayRef.current?.focus();
@@ -559,6 +568,37 @@ export function ImmersiveSamplingAnimation({
             first.focus();
         }
     };
+
+    const strataKey = method === "stratified" && layers && <div className="space-y-2">
+        <div className="flex flex-wrap justify-center gap-2 text-meta text-muted-foreground" data-testid="sampling-animation-strata-legend">
+            {layers.length <= LAYER_COLORS.length ? layers.map((layer, index) => <span key={layer.name} className="flex min-w-0 max-w-full items-center gap-2">
+                <span className={`h-3 w-3 shrink-0 rounded-circle ${lc(index).bg}`} aria-hidden="true" /><span className="break-all">{layer.name}</span>
+            </span>) : <span>共 {layers.length} 层；颜色循环仅区分相邻层，层名与配额见下表</span>}
+        </div>
+        <div className="grid max-h-24 grid-cols-2 gap-2 overflow-auto text-meta text-muted-foreground" tabIndex={0} role="region" aria-label="各层演示配额">
+            {layers.map((layer, index) => <div key={layer.name} aria-current={stratifiedActiveLayer === index ? "step" : undefined} className={`min-w-0 rounded-control border p-2 ${stratifiedActiveLayer === index ? "border-warning-border bg-warning-muted text-foreground" : "border-border bg-card"}`}>
+                <p className="break-all">{layer.name}</p>
+                <p>总体 {layer.count} → 样本 {layer.sampleCount}</p>
+                {layerAllocation.population[index] === 0 ? <p>规模过小，点阵未表示</p> : layerAllocation.sample[index] === 0 && layer.sampleCount > 0 ? <p>入样量过小，点阵未高亮</p> : layer.sampleCount === 0 ? <p>本层不抽取</p> : null}
+            </div>)}
+        </div>
+    </div>;
+    const diagramKey = <>
+        <p className="mb-3 text-center text-meta text-muted-foreground" data-testid="sampling-animation-scale-note">
+            {visualScale.compressed
+                ? `比例示意：用 ${visualPopulationSize.toLocaleString()} 个点代表实际总体 ${populationSize.toLocaleString()}，样本高亮按 ${sampleSize.toLocaleString()}/${populationSize.toLocaleString()} 近似映射`
+                : `按实际数量绘制：${visualPopulationSize.toLocaleString()} 个点分别代表 ${populationSize.toLocaleString()} 个总体单位`}
+        </p>
+        <div className="mb-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-meta text-muted-foreground" data-testid="sampling-animation-legend" role="group" aria-label="点阵图例">
+            <span className="inline-flex items-center gap-2">
+                <span className={`h-3 w-3 rounded-control ${method === "pps" ? `${meta.accentBg} opacity-40` : method === "stratified" ? "bg-warning-muted" : "bg-input"}`} aria-hidden="true" />
+                {method === "pps" ? "点亮程度：规模大小（示意）" : method === "stratified" ? (layers && layers.length > LAYER_COLORS.length ? "颜色：循环区分相邻层" : "颜色：所属层") : "浅色：总体单位"}
+            </span>
+            <span className="inline-flex items-center gap-2">
+                <span className={`h-3 w-3 rounded-control ${meta.accentBg} ring-1 ring-inset ${meta.accentRing}`} aria-hidden="true" />实色描边：已选样本
+            </span>
+        </div>
+    </>;
 
     return createPortal(
         <div
@@ -716,35 +756,7 @@ export function ImmersiveSamplingAnimation({
                 {/* Populating + Sampling + Complete: Show the grid */}
                 {phase.type !== "intro" && (
                     <div className={`w-full max-w-5xl mx-auto animate-in fade-in duration-300 ${phase.type === "complete" ? "flex flex-col min-h-0 h-full" : "space-y-4"}`}>
-                        {/* Legend for stratified */}
-                        {method === "stratified" && layers && phase.type !== "complete" && (
-                            <div className="mb-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2" data-testid="sampling-animation-strata-legend">
-                                {layers.length <= LAYER_COLORS.length ? layers.map((layer, i) => (
-                                    <div key={layer.name} className="flex items-center gap-2">
-                                        <div className={`h-3 w-3 rounded-circle ${lc(i).bg}`} />
-                                        <span className="text-meta text-muted-foreground">{layer.name}</span>
-                                    </div>
-                                )) : (
-                                    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-meta text-muted-foreground">
-                                        <span className="inline-flex items-center gap-2 font-medium text-foreground">
-                                            <Layers className="h-3.5 w-3.5 text-warning" aria-hidden="true" />
-                                            共 {layers.length} 层
-                                        </span>
-                                        <span>颜色循环仅区分相邻层；当前层名称与配额显示在点阵下方</span>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {method === "stratified" && layers && phase.type !== "complete" && (
-                            <div className="grid max-h-24 grid-cols-2 gap-2 overflow-auto text-meta text-muted-foreground" tabIndex={0} role="region" aria-label="各层演示配额">
-                                {layers.map((layer, index) => {
-                                    return <p key={layer.name} aria-current={stratifiedActiveLayer === index ? "step" : undefined} className={`rounded-control border p-2 ${stratifiedActiveLayer === index ? "border-warning-border bg-warning-muted text-foreground" : "border-border bg-card"}`}>{layer.name}：总体 {layer.count} → 样本 {layer.sampleCount}
-                                        {layerAllocation.population[index] === 0 ? "；规模过小，点阵未表示" : layerAllocation.sample[index] === 0 && layer.sampleCount > 0 ? "；入样量过小，点阵未高亮" : layer.sampleCount === 0 ? "；本层不抽取" : ""}
-                                    </p>;
-                                })}
-                            </div>
-                        )}
+                        {phase.type !== "complete" && strataKey}
 
                         {/* Dot grid */}
                         {phase.type !== "complete" && (
@@ -761,26 +773,7 @@ export function ImmersiveSamplingAnimation({
                                         <span>按 {FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模"} 赋予不同权重；亮度仅示意规模差异，不对应具体总体行</span>
                                     </div>
                                 )}
-                                <p className="mb-3 text-center text-meta text-muted-foreground" data-testid="sampling-animation-scale-note">
-                                    {visualScale.compressed
-                                        ? `比例示意：用 ${visualPopulationSize.toLocaleString()} 个点代表实际总体 ${populationSize.toLocaleString()}，样本高亮按 ${sampleSize.toLocaleString()}/${populationSize.toLocaleString()} 近似映射`
-                                        : `按实际数量绘制：${visualPopulationSize.toLocaleString()} 个点分别代表 ${populationSize.toLocaleString()} 个总体单位`}
-                                </p>
-                                <div
-                                    className="mb-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-meta text-muted-foreground"
-                                    data-testid="sampling-animation-legend"
-                                    role="group"
-                                    aria-label="点阵图例"
-                                >
-                                    <span className="inline-flex items-center gap-2">
-                                        <span className={`h-3 w-3 rounded-control ${method === "pps" ? `${meta.accentBg} opacity-40` : method === "stratified" ? "bg-warning-muted" : "bg-input"}`} aria-hidden="true" />
-                                        {method === "pps" ? "点亮程度：规模大小（示意）" : method === "stratified" ? (layers && layers.length > LAYER_COLORS.length ? "颜色：循环区分相邻层" : "颜色：所属层") : "浅色：总体单位"}
-                                    </span>
-                                    <span className="inline-flex items-center gap-2">
-                                        <span className={`h-3 w-3 rounded-control ${meta.accentBg} ring-1 ring-inset ${meta.accentRing}`} aria-hidden="true" />
-                                        实色描边：已选样本
-                                    </span>
-                                </div>
+                                {diagramKey}
                                 <div className="relative mx-auto w-fit">
                                     <DotGrid
                                         totalDots={visualPopulationSize}
@@ -862,6 +855,8 @@ export function ImmersiveSamplingAnimation({
                                 {canIllustrate && <details className="shrink-0 rounded-surface border border-border bg-card p-3" data-testid="sampling-animation-final-diagram">
                                     <summary className="cursor-pointer text-label">查看最终示意图（不对应具体入样记录）</summary>
                                     <div className="mt-3 max-h-64 overflow-auto">
+                                        {diagramKey}
+                                        {strataKey}
                                         <DotGrid totalDots={visualPopulationSize} gridColumns={visualScale.gridColumns} visiblePopCount={visualPopulationSize} currentSelectIndex={selectionOrder.length} dotSelectedAt={dotSelectedAt} layerAssignment={layerAssignment} dotWeights={dotWeights} method={method} />
                                     </div>
                                 </details>}
