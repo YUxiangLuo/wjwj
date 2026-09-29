@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { X, Users, Target, Layers, Shuffle, ChevronLeft, ChevronRight, Loader2, CheckCircle2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { MethodKey as SamplingMethod } from "@/domain/experiment/types";
-import { createSeededRandom, performSimpleSamplingWithIndices, type PpsProbabilitySummary } from "@/domain/statistics/sampling";
+import { createSeededRandom, performSimpleSamplingWithIndices, performPPSSampling, type PpsProbabilitySummary } from "@/domain/statistics/sampling";
 import { computeSampleProgressDisplay } from "./sample-progress-display";
 import { formatSystematicInterval } from "../experiment/systematic-sampling";
 import { buildSamplingAnimationScale, buildStratifiedVisualAllocation } from "./sampling-animation-scale";
@@ -78,7 +78,7 @@ const METHOD_PROGRESS_COPY: Record<SamplingMethod, { populating: string; samplin
         complete: "系统抽样完成",
     },
     pps: {
-        populating: "计算各单位规模权重...",
+        populating: "展示示例规模与入样概率...",
         sampling: "按规模概率系统选取...",
         complete: "PPS抽样完成",
     },
@@ -252,6 +252,7 @@ export function ImmersiveSamplingAnimation({
     );
     const visualPopulationSize = visualScale.population;
     const visualSampleSize = visualScale.sample;
+    const layerAllocation = useMemo(() => buildStratifiedVisualAllocation(layers ?? [], visualPopulationSize, visualSampleSize), [layers, visualPopulationSize, visualSampleSize]);
 
     // Prevent body scroll
     useEffect(() => {
@@ -293,46 +294,14 @@ export function ImmersiveSamplingAnimation({
                 normalizedWeights[i] = rawWeights[i]! / maxW;
             }
 
-            // Cumulative distribution for systematic PPS selection
-            const cumulative: number[] = [];
-            let cumSum = 0;
-            for (let i = 0; i < visualPopulationSize; i++) {
-                cumSum += rawWeights[i]!;
-                cumulative.push(cumSum);
-            }
-            const totalSize = cumSum;
-            const interval = totalSize / visualSampleSize;
             const savedRandomUnit = Number.isFinite(randomStart) && randomStart! >= 0 && randomStart! < 1
                 ? randomStart!
                 : drawRng();
-            const start = savedRandomUnit * interval;
-            let pointer = start;
-            let dataIdx = 0;
-            const selected = new Set<number>();
-            for (let i = 0; i < visualSampleSize; i++) {
-                while (dataIdx < visualPopulationSize - 1 && cumulative[dataIdx]! < pointer) {
-                    dataIdx++;
-                }
-                if (!selected.has(dataIdx)) {
-                    selected.add(dataIdx);
-                    selection.push(dataIdx);
-                } else {
-                    // Duplicate hit — advance to find next unselected dot
-                    let next = (dataIdx + 1) % visualPopulationSize;
-                    while (selected.has(next) && next !== dataIdx) {
-                        next = (next + 1) % visualPopulationSize;
-                    }
-                    if (!selected.has(next)) {
-                        selected.add(next);
-                        selection.push(next);
-                    }
-                }
-                pointer += interval;
-                if (pointer >= totalSize && i < visualSampleSize - 1) {
-                    pointer -= totalSize;
-                    dataIdx = 0;
-                }
-            }
+            // Use the production design even for an illustrative frame: certainty
+            // units first, then systematic selection on inclusion probabilities.
+            selection = performPPSSampling(
+                Array.from(rawWeights, size => ({ size })), "size", visualSampleSize, () => savedRandomUnit,
+            ).indices;
             weights = normalizedWeights;
         } else if (method === "systematic") {
             // Spread samples evenly across the entire grid so the animation
@@ -351,7 +320,7 @@ export function ImmersiveSamplingAnimation({
             // Keep both layer sizes and layer samples within the visual frame.
             layerMap = new Array(visualPopulationSize).fill(0);
             let offset = 0;
-            const allocation = buildStratifiedVisualAllocation(layers, visualPopulationSize, visualSampleSize);
+            const allocation = layerAllocation;
 
             for (let li = 0; li < layers.length; li++) {
                 const dotCount = allocation.population[li] ?? 0;
@@ -375,7 +344,7 @@ export function ImmersiveSamplingAnimation({
         }
 
         return { selectionOrder: selection, layerAssignment: layerMap, dotSelectedAt: selectedAtMap, dotWeights: weights };
-    }, [interval, layers, method, randomStart, seed, visualPopulationSize, visualSampleSize]);
+    }, [interval, layers, layerAllocation, method, randomStart, seed, visualPopulationSize, visualSampleSize]);
 
     const finishAnimation = useCallback(() => {
         setVisiblePopCount(visualPopulationSize);
@@ -647,11 +616,12 @@ export function ImmersiveSamplingAnimation({
                             {phase.type === "populating" && progressCopy.populating}
                             {phase.type === "sampling" && (
                                 currentSelectIndex >= selectionOrder.length && selectionOrder.length > 0
-                                    ? `已完成选取，正在核对结果... ${sampleProgressDisplay.current}/${sampleProgressDisplay.total}`
+                                    ? `演示选取完成 ${sampleProgressDisplay.current}/${sampleProgressDisplay.total}`
                                     : `${progressCopy.sampling} ${sampleProgressDisplay.current}/${sampleProgressDisplay.total}`
                             )}
-                            {phase.type === "complete" && progressCopy.complete}
+                            {phase.type === "complete" && "本次抽样结果已保存"}
                         </p>
+                        <p className="text-meta text-muted-foreground">机制示意，不是实时计算；点位不用于核对具体入样记录。</p>
                     </div>
                 </div>
                 {phase.type === "complete" ? (
@@ -761,6 +731,16 @@ export function ImmersiveSamplingAnimation({
                             </div>
                         )}
 
+                        {method === "stratified" && layers && phase.type !== "complete" && (
+                            <div className="max-h-24 overflow-auto text-meta text-muted-foreground" tabIndex={0} role="region" aria-label="各层演示配额">
+                                {layers.map((layer, index) => {
+                                    return <p key={layer.name}>{layer.name}：总体 {layer.count} → 样本 {layer.sampleCount}
+                                        {layerAllocation.population[index] === 0 ? "；规模过小，点阵未表示" : layerAllocation.sample[index] === 0 && layer.sampleCount > 0 ? "；入样量过小，点阵未高亮" : layer.sampleCount === 0 ? "；本层不抽取" : ""}
+                                    </p>;
+                                })}
+                            </div>
+                        )}
+
                         {/* Dot grid */}
                         {phase.type !== "complete" && (
                             <div className="relative bg-card rounded-surface border border-border p-4 overflow-hidden">
@@ -866,7 +846,7 @@ export function ImmersiveSamplingAnimation({
                             <div className="flex items-center justify-between px-2 text-meta text-muted-foreground animate-in fade-in duration-200">
                                 <span>总体 {populationSize.toLocaleString()} 个数据点</span>
                                 <span className={meta.accentText}>
-                                    已选中 {sampleProgressDisplay.current} / {sampleProgressDisplay.total}
+                                    演示进度 {sampleProgressDisplay.current} / {sampleProgressDisplay.total}
                                 </span>
                             </div>
                         )}

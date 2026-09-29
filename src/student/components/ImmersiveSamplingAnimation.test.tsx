@@ -20,6 +20,24 @@ afterAll(() => {
     restoreDom = null;
 });
 
+test("PPS illustration uses certainty-unit redistribution, not duplicate-hit advancement", async () => {
+    const view = render(<ImmersiveSamplingAnimation method="pps" populationSize={10} sampleSize={7} randomStart={0.1145} sampledData={[]} onClose={() => {}} />);
+    const grid = await waitFor(() => view.getByTestId("sampling-animation-dot-grid"), { timeout: 1500 });
+    // Fixed synthetic frame: certainty units 0,3,6; residual u+j hits 1,2,5,9.
+    // The duplicate-hit design incorrectly selected unit 8 instead of 9.
+    await waitFor(() => expect([...grid.children].flatMap((dot, i) => dot.getAttribute("data-selected") === "true" ? [i] : [])).toEqual([0, 1, 2, 3, 5, 6, 9]), { timeout: 2000 });
+    expect(view.queryByText(/正在核对结果/)).toBeNull();
+});
+
+test("compressed stratified illustration discloses omitted small strata", async () => {
+    const layers = [{ name: "小层", count: 2, sampleCount: 2, ratio: .02 }, { name: "中层", count: 998, sampleCount: 98, ratio: 9.98 }, { name: "大层", count: 9000, sampleCount: 900, ratio: 90 }];
+    const view = render(<ImmersiveSamplingAnimation method="stratified" populationSize={10000} sampleSize={1000} layers={layers} sampledData={[]} onClose={() => {}} />);
+    const allocation = await waitFor(() => view.getByRole("region", { name: "各层演示配额" }), { timeout: 1500 });
+    expect(allocation.textContent).toContain("小层：总体 2 → 样本 2；规模过小，点阵未表示");
+    fireEvent.click(view.getByTestId("immersive-sampling-skip"));
+    expect(view.getByTestId("sampling-animation-layer-list").textContent).toContain("小层2 → 2");
+});
+
 test("a small frame renders exactly its actual number of population dots", async () => {
     const view = render(
         <ImmersiveSamplingAnimation
@@ -85,7 +103,7 @@ test("simple animation uses the saved seed and replays the same draw", async () 
             .map((dot, index) => dot.getAttribute("data-selected") === "true" ? index : -1)
             .filter(index => index >= 0);
         expect(selectedIndices).toEqual([2, 3, 7]);
-        expect(view.getByText("已完成选取，正在核对结果... 3/3")).toBeTruthy();
+        expect(view.getByText("演示选取完成 3/3")).toBeTruthy();
     }, { timeout: 3000 });
 
     await waitFor(() => view.getByTestId("sampling-animation-receipt"), { timeout: 2500 });

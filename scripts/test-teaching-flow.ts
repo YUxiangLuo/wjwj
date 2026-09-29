@@ -668,7 +668,7 @@ try {
     experiment = await api(student, experimentPath);
     const simpleSeed = experiment.samplingResults?.simple?.seed;
     assert(simpleSeed !== undefined, "Simple sampling result did not save its random seed");
-    await eventually(() => evaluate(student, `(() => {const grid=document.querySelector('[data-testid="sampling-animation-dot-grid"]');return grid?.querySelectorAll('[data-selected="true"]').length===${experiment.samplePlan?.finalSampleSize} && document.body.textContent.includes("已选中 ${experiment.samplePlan?.finalSampleSize} / ${experiment.samplePlan?.finalSampleSize}") && document.body.textContent.includes("随机种子 ${simpleSeed}");})()`), "Sampling animation did not replay the saved draw parameters and planned sample count");
+    await eventually(() => evaluate(student, `(() => {const grid=document.querySelector('[data-testid="sampling-animation-dot-grid"]');return grid?.querySelectorAll('[data-selected="true"]').length===${experiment.samplePlan?.finalSampleSize} && document.body.textContent.includes("演示进度 ${experiment.samplePlan?.finalSampleSize} / ${experiment.samplePlan?.finalSampleSize}") && document.body.textContent.includes("随机种子 ${simpleSeed}");})()`), "Sampling animation did not replay the saved draw parameters and planned sample count");
     await browser(student, "screenshot", join(artifacts, "sampling-animation-exact.png"));
     await activate(student, '[data-testid="immersive-sampling-skip"]');
     await visible(student, '[data-testid="sampling-animation-receipt"]');
