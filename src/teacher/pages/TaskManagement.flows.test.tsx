@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, mock, test } from "bun:test";
-import type { Task } from "../api-client";
+import type { Task, Topic } from "../api-client";
 import { installDomGlobals } from "@/test-utils/dom";
 
 const bootstrapDom = installDomGlobals();
@@ -11,6 +11,7 @@ const toastSuccess = mock(() => undefined);
 mock.module("sonner", () => ({ toast: { error: toastError, success: toastSuccess } }));
 
 const getTasks = mock(async () => ({ success: true, data: [] as Task[] }));
+const getTopics = mock(async () => ({ success: true, data: [] as Topic[] }));
 const createTask = mock(async (_body: unknown) => ({ success: true }));
 const deleteTask = mock(async (_id: number, _options?: { confirm?: boolean }) => ({ success: true }));
 const getTaskDeletionImpact = mock(async (_id: number) => ({
@@ -29,7 +30,7 @@ mock.module("../api-client", () => ({
         deleteTask,
         getTaskDeletionImpact,
         extendTaskDeadline,
-        getTopics: async () => ({ success: true, data: [] }),
+        getTopics,
         getClasses: async () => ({ success: true, data: [] }),
     },
 }));
@@ -62,13 +63,32 @@ afterEach(async () => {
     restoreDom = null;
 });
 
-function renderPage() {
+function renderPage(path = "/task") {
     return render(
-        <MemoryRouter initialEntries={["/task"]}>
+        <MemoryRouter initialEntries={[path]}>
             <TaskManagement />
         </MemoryRouter>,
     );
 }
+
+test("assignment links preselect only an available published template and never submit", async () => {
+    getTasks.mockResolvedValue({ success: true, data: [] });
+    getTopics.mockResolvedValueOnce({ success: true, data: [{ id: 42, name: "刚发布的模板", description: null, status: 1, dataRows: 80, createdAt: "" }] });
+    const view = renderPage("/task?topicId=42");
+    await waitFor(() => expect(view.getByRole("dialog").textContent).toContain("刚发布的模板"));
+    expect(createTask).not.toHaveBeenCalled();
+    fireEvent.click(view.getByRole("button", { name: "取消" }));
+    await waitFor(() => expect(view.queryByRole("dialog")).toBeNull());
+});
+
+test("a draft template in an assignment link is not preselected", async () => {
+    getTasks.mockResolvedValue({ success: true, data: [] });
+    getTopics.mockResolvedValueOnce({ success: true, data: [{ id: 42, name: "不可分配的草稿", description: null, status: 0, dataRows: 80, createdAt: "" }] });
+    const view = renderPage("/task?topicId=42");
+    await waitFor(() => expect(view.getByTestId("teacher-task-topic-select").textContent).toBe("请选择实验模板"));
+    expect(view.getByRole("dialog").textContent).not.toContain("不可分配的草稿");
+    expect(createTask).not.toHaveBeenCalled();
+});
 
 test("a failed load shows the error and retry refetches", async () => {
     getTasks

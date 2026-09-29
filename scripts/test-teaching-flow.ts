@@ -353,7 +353,30 @@ try {
     await browser(teacher, "dialog", "accept");
     await eventually(() => evaluate(teacher, 'document.querySelector("[data-testid=teacher-topic-step-5]").getAttribute("aria-current")==="step"'), "Discard must return to the prior template step");
     console.log("PASS nested teacher question cancel, Escape, local save and outer draft protection");
-    await api(teacher, `/api/teacher/topics/${copied.id}`, "PUT", { name, status: 1 });
+    await page(teacher, "/teacher/topic", `[data-testid="teacher-topic-publish-${copied.id}"]`);
+    const checkRoute = `${baseUrl}/api/teacher/topics/${copied.id}/publish-check`;
+    await browser(teacher, "network", "route", checkRoute, "--body", JSON.stringify({ success: false, error: { code: "TEST_UNAVAILABLE", message: "检查暂时不可用，请重试" } }));
+    await activate(teacher, `[data-testid="teacher-topic-publish-${copied.id}"]`);
+    await eventually(() => evaluate(teacher, 'document.querySelector("[role=alertdialog]")?.textContent.includes("检查暂时不可用")'), "Failed preflight must remain visible");
+    await browser(teacher, "screenshot", join(artifacts, "teacher-publish-check-error.png"));
+    await browser(teacher, "network", "unroute", checkRoute);
+    await namedButton(teacher, "重新检查");
+    await eventually(() => evaluate(teacher, 'document.querySelector("[role=alertdialog]")?.textContent.includes("检查通过")'), "Publish preflight did not pass");
+    assert((await api<Array<{ id: number; status: number }>>(teacher, "/api/teacher/topics")).find(topic => topic.id === copied.id)?.status === 0, "Preflight must not publish or mutate the template");
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(teacher, "set", "viewport", String(width), String(height));
+        await browser(teacher, "screenshot", join(artifacts, `teacher-publish-check-${width}.png`));
+    }
+    await namedButton(teacher, "确认");
+    await eventually(() => evaluate(teacher, 'document.querySelector("[role=alertdialog]")?.textContent.includes("模板已发布")'), "Publish success must offer assignment");
+    await browser(teacher, "screenshot", join(artifacts, "teacher-publish-success.png"));
+    await browser(teacher, "click", '[role="alertdialog"] a');
+    await eventually(() => evaluate(teacher, `document.querySelector('[data-testid="teacher-task-topic-select"]')?.textContent.includes(${JSON.stringify(name)})`), "Assignment must preselect the newly published template");
+    assert(!(await api<Array<{ topicId: number }>>(teacher, "/api/teacher/tasks")).some(task => task.topicId === copied.id), "Opening assignment must not create tasks");
+    await browser(teacher, "screenshot", join(artifacts, "teacher-assignment-prefilled.png"));
+    await namedButton(teacher, "取消");
+    await browser(teacher, "set", "viewport", "1280", "800");
+    console.log("PASS read-only publish preflight, retry, confirmed publication and preselected assignment");
     console.log("PASS teacher dictionary representative UI save and stale-revision conflict");
     const classes = await api<Array<{ id: number; name: string }>>(teacher, "/api/teacher/classes");
     const targetClass = classes.find(item => item.name === "2026级统计学1班");

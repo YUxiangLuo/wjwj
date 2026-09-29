@@ -63,6 +63,17 @@ const topicRoutes: RouteDefinition = {
     }
 };
 
+const topicPublishCheckRoutes: RouteDefinition = {
+    async GET(req) {
+        const teacherId = getPrimaryTeacherIdOrThrow(req);
+        const topicId = parsePositiveRouteId(req);
+        if (!topicId) return error("Invalid ID", "INVALID_ID");
+        const result = await updateTeacherTopicBasics({ teacherId, topicId, body: { status: 1 }, checkPublishOnly: true });
+        if (!result.ok) return error(result.message, result.code, result.status);
+        return json({ success: true });
+    },
+};
+
 const topicItemRoutes: RouteDefinition = {
     async PUT(req) {
         const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
@@ -412,6 +423,7 @@ export {
     topicExcelUploadRoutes,
     topicFieldMappingRoutes,
     topicItemRoutes,
+    topicPublishCheckRoutes,
     topicRecommendQuestionRoutes,
     topicSamplingPolicyRoutes,
     topicRoutes,

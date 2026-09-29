@@ -71,6 +71,8 @@ export async function updateTeacherTopicBasics(params: {
     teacherId: number;
     topicId: number;
     body: { name?: string; description?: string; status?: number };
+    /** Internal preflight: runs the same publish checks without writing the topic. */
+    checkPublishOnly?: boolean;
 }) {
     if (params.body.status !== undefined && params.body.status !== 0 && params.body.status !== 1) {
         return fail("实验模板状态无效");
@@ -165,6 +167,8 @@ export async function updateTeacherTopicBasics(params: {
                 catch { return fail("变量字典与当前总体不一致，请重新确认后再发布"); }
             }
         }
+
+        if (params.checkPublishOnly) return { ok: true as const };
 
         const [updated] = await tx
             .update(topic)

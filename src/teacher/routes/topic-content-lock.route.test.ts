@@ -69,3 +69,10 @@ test("topic item handlers reject non-finite IDs before querying", async () => {
     expect(await deleteResponse.json()).toMatchObject({ error: { code: "INVALID_ID" } });
     expect(operations.filter((operation) => operation.kind === "select")).toHaveLength(0);
 });
+
+test("publish preflight rejects inaccessible topics without writing", async () => {
+    const { module, operations } = await loadRoutes([[]]);
+    const response = await module.topicPublishCheckRoutes.GET!(withTopicId(new Request("https://example.com/api/teacher/topics/12/publish-check")));
+    expect(response.status).toBe(404);
+    expect(operations.filter(operation => operation.kind === "update")).toHaveLength(0);
+});

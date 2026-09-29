@@ -117,6 +117,7 @@ export const teacherApi = {
     getClasses: () => request<TeacherClass[]>("/api/teacher/classes"),
     getTopics: () => request<Topic[]>("/api/teacher/topics"),
     getTopicDetail: (id: number) => request<TopicDetail>(`/api/teacher/topics/${id}/detail`),
+    checkTopicPublish: (id: number) => request<{ success: boolean }>(`/api/teacher/topics/${id}/publish-check`),
     createTopic: (data: { name: string; description?: string }) => request<{ id: number }>("/api/teacher/topics", { method: "POST", body: JSON.stringify(data) }),
     updateTopic: (id: number, data: { name?: string; description?: string; status?: number }) => request<{ success: boolean }>(`/api/teacher/topics/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     deleteTopic: (id: number) => request<{ success: boolean }>(`/api/teacher/topics/${id}`, { method: "DELETE" }),

@@ -22,7 +22,7 @@ import { teacherApi, type Task, type Topic, type TeacherClass } from "../api-cli
 import { describeCascadeImpact } from "@/lib/deletion-impact-copy";
 import { TaskExtendDialog } from "../components/TaskExtendDialog";
 import { TaskPublishDialog } from "../components/TaskPublishDialog";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { localWallClockToUtcIso } from "@/lib/datetime";
 import { formatDateTimeDisplay } from "@/utils/format";
@@ -58,6 +58,7 @@ export function compareTeacherTasks(a: Task, b: Task) {
 }
 
 export function TaskManagement() {
+    const [searchParams, setSearchParams] = useSearchParams();
     const [tasks, setTasks] = useState<Task[]>([]);
     const { loading, error: loadError, run } = useAsyncLoad("任务列表加载失败");
     const [showPublishModal, setShowPublishModal] = useState(false);
@@ -87,18 +88,41 @@ export function TaskManagement() {
         loadTasks();
     }, []);
 
+    useEffect(() => {
+        const topicId = searchParams.get("topicId");
+        if (topicId === null) return;
+        const remaining = new URLSearchParams(searchParams);
+        remaining.delete("topicId");
+        setSearchParams(remaining, { replace: true });
+        if (!/^[1-9]\d*$/.test(topicId) || !Number.isSafeInteger(Number(topicId))) return;
+        setSelectedTopicId(topicId);
+        setSelectedClassIds([]);
+        setDeadline("");
+        setShowPublishModal(true);
+    }, [searchParams, setSearchParams]);
+
     // Load form data when modal opens；静默拉取任务列表以更新「已发布班级」禁用状态
     useEffect(() => {
+        let active = true;
         if (showPublishModal) {
             void loadTasks();
             Promise.all([
                 teacherApi.getTopics(),
                 teacherApi.getClasses()
             ]).then(([topicsRes, classesRes]) => {
-                if (topicsRes.success && topicsRes.data) setAvailableTopics(topicsRes.data.filter(t => t.status === 1)); // Only show published topics
+                if (!active) return;
+                const published = topicsRes.success ? (topicsRes.data ?? []).filter(t => t.status === 1) : [];
+                setAvailableTopics(published);
+                setSelectedTopicId(current => published.some(topic => String(topic.id) === current) ? current : "");
                 if (classesRes.success && classesRes.data) setAvailableClasses(classesRes.data);
+            }).catch(() => {
+                if (!active) return;
+                setAvailableTopics([]);
+                setSelectedTopicId("");
+                toast.error("分配选项加载失败，请关闭后重试");
             });
         }
+        return () => { active = false; };
     }, [showPublishModal]);
 
     /** 当前所选课题下已有任务的班级（不可再次勾选） */

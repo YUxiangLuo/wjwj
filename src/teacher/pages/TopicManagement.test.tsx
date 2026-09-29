@@ -13,6 +13,7 @@ mock.module("sonner", () => ({ toast: { error: toastError, success: toastSuccess
 
 const getTopics = mock(async () => ({ success: true, data: [] as Topic[] }));
 const updateTopic = mock(async (_id: number, _body: unknown) => ({ success: true }));
+const checkTopicPublish = mock(async (_id: number): Promise<{ success: boolean; error?: { code: string; message: string } }> => ({ success: true }));
 const deleteTopic = mock(async (_id: number) => ({ success: true }));
 const createTopic = mock(async (_body: unknown): Promise<{ success: boolean; data?: { id: number }; error?: { code: string; message: string } }> => ({ success: true, data: { id: 44 } }));
 const realClient = await import("../api-client");
@@ -22,6 +23,7 @@ mock.module("../api-client", () => ({
         ...realClient.teacherApi,
         getTopics,
         updateTopic,
+        checkTopicPublish,
         deleteTopic,
         createTopic,
         getTopicDetail: async () => ({ success: true, data: { topic: null, hasExcelFile: false, attachments: [], recommendQuestions: [] } }),
@@ -49,6 +51,7 @@ beforeEach(() => {
     localStorage.clear();
     getTopics.mockClear();
     updateTopic.mockClear();
+    checkTopicPublish.mockClear();
     deleteTopic.mockClear();
     createTopic.mockClear();
     toastError.mockClear();
@@ -97,21 +100,51 @@ test("publishing a draft asks for confirmation then updates and reloads", async 
     expect(view.getByText("确认发布该实验模板吗？发布后可分配给班级。")).toBeTruthy();
 
     const callsBefore = getTopics.mock.calls.length;
-    fireEvent.click(view.getByRole("button", { name: "确认" }));
+    fireEvent.click(await view.findByRole("button", { name: "确认" }));
 
     await waitFor(() => expect(updateTopic).toHaveBeenCalledWith(1, { status: 1 }));
     await waitFor(() => expect(getTopics.mock.calls.length).toBeGreaterThan(callsBefore));
+    expect(checkTopicPublish).toHaveBeenCalledWith(1);
+    expect(view.getByRole("link", { name: "分配到班级" }).getAttribute("href")).toBe("/task?topicId=1");
+});
+
+test("failed preflight stays visible and can be retried without publishing", async () => {
+    getTopics.mockResolvedValue({ success: true, data: [draft] });
+    checkTopicPublish.mockResolvedValueOnce({ success: false, error: { code: "VALIDATION_ERROR", message: "当前总体没有合格的 PPS 规模变量" } });
+    const view = renderPage();
+    fireEvent.click(await view.findByTestId("teacher-topic-publish-1"));
+    await waitFor(() => expect(view.getByRole("alert").textContent).toContain("PPS"));
+    expect(updateTopic).not.toHaveBeenCalled();
+    expect(view.queryByRole("button", { name: "确认" })).toBeNull();
+    fireEvent.click(view.getByRole("button", { name: "重新检查" }));
+    await view.findByRole("button", { name: "确认" });
+    expect(view.queryByRole("alert")).toBeNull();
+    expect(updateTopic).not.toHaveBeenCalled();
+});
+
+test("publication rejection after a successful check stays open and requires rechecking", async () => {
+    getTopics.mockResolvedValue({ success: true, data: [draft] });
+    updateTopic.mockResolvedValueOnce({ success: false });
+    const view = renderPage();
+    fireEvent.click(await view.findByTestId("teacher-topic-publish-1"));
+    fireEvent.click(await view.findByRole("button", { name: "确认" }));
+    await waitFor(() => expect(view.getByRole("alert").textContent).toContain("发布失败"));
+    expect(view.getByRole("button", { name: "重新检查" })).toBeTruthy();
+    expect(view.queryByRole("link", { name: "分配到班级" })).toBeNull();
+    expect(updateTopic).toHaveBeenCalledTimes(1);
 });
 
 test("a template without population data cannot be published", async () => {
     getTopics.mockResolvedValueOnce({ success: true, data: [{ ...draft, dataRows: 0 }] });
+    checkTopicPublish.mockResolvedValueOnce({ success: false, error: { code: "VALIDATION_ERROR", message: "实验模板需先上传总体数据后才能发布" } });
     const view = renderPage();
     await waitFor(() => expect(view.getByTestId("teacher-topic-publish-1")).toBeTruthy());
 
     fireEvent.click(view.getByTestId("teacher-topic-publish-1"));
 
-    expect(toastError).toHaveBeenCalledWith("实验模板需先上传总体数据后才能发布");
-    expect(view.queryByText("确认发布该实验模板吗？发布后可分配给班级。")).toBeNull();
+    await waitFor(() => expect(view.getByRole("alert").textContent).toContain("先上传总体数据"));
+    expect(view.getByRole("button", { name: "修改模板" })).toBeTruthy();
+    expect(view.queryByRole("button", { name: "确认" })).toBeNull();
     expect(updateTopic).not.toHaveBeenCalled();
 });
 

@@ -48,7 +48,7 @@ test("topic basics reject non-string descriptions before touching the database",
     expect(operations).toHaveLength(0);
 });
 
-test("updateTeacherTopicBasics rejects publishing an incomplete topic", async () => {
+for (const checkPublishOnly of [false, true]) test(`incomplete topic is rejected: preflight=${checkPublishOnly}`, async () => {
     const { module, operations } = await loadManageService({
         select: [[{
             excelFilePath: null,
@@ -61,6 +61,7 @@ test("updateTeacherTopicBasics rejects publishing an incomplete topic", async ()
         teacherId: 9,
         topicId: 12,
         body: { status: 1 },
+        checkPublishOnly,
     });
 
     expect(result).toEqual({
@@ -72,7 +73,7 @@ test("updateTeacherTopicBasics rejects publishing an incomplete topic", async ()
     expect(operations.filter((operation) => operation.kind === "update")).toHaveLength(0);
 });
 
-test("updateTeacherTopicBasics allows publishing a fully configured topic", async () => {
+for (const checkPublishOnly of [false, true]) test(`fully configured topic: preflight=${checkPublishOnly}`, async () => {
     const populationPath = `/storage/uploads/publish-ready-${crypto.randomUUID()}.csv`;
     await Bun.write(`${process.cwd()}${populationPath}`, "id,gender,score\n1,A,10\n2,B,20\n");
     const { module, operations } = await loadManageService({
@@ -89,15 +90,32 @@ test("updateTeacherTopicBasics allows publishing a fully configured topic", asyn
             teacherId: 9,
             topicId: 12,
             body: { status: 1 },
+            checkPublishOnly,
         });
 
         expect(result).toEqual({ ok: true });
         const updates = operations.filter((operation) => operation.kind === "update");
-        expect(updates).toHaveLength(1);
-        expect(updates[0]?.set).toMatchObject({ status: 1, updatedAt: expect.any(Date) });
+        expect(updates).toHaveLength(checkPublishOnly ? 0 : 1);
+        if (!checkPublishOnly) expect(updates[0]?.set).toMatchObject({ status: 1, updatedAt: expect.any(Date) });
     } finally {
         await Bun.file(`${process.cwd()}${populationPath}`).delete().catch(() => undefined);
     }
+});
+
+test("publish preflight checks actual PPS values, not just mapped field names", async () => {
+    const path = `/storage/uploads/preflight-${crypto.randomUUID()}.csv`;
+    await Bun.write(`${process.cwd()}${path}`, "id,group,score,size\n1,A,12,4\n2,B,18,-1\n");
+    const { module, operations } = await loadManageService({ select: [[{
+        excelFilePath: path,
+        fieldMapping: { identifier: "id", stratified: ["group"], numeric: ["score", "size"], analysisTarget: { kind: "mean", field: "score" } },
+        samplingPolicy: buildDefaultSamplingPolicy(),
+        weightConfig: { questionnaire: 30, process: 30, report: 40 },
+    }]] });
+    try {
+        const result = await module.updateTeacherTopicBasics({ teacherId: 9, topicId: 12, body: { status: 1 }, checkPublishOnly: true });
+        expect(result).toMatchObject({ ok: false, message: expect.stringContaining("需每一行都是正数") });
+        expect(operations.filter(operation => operation.kind === "update")).toHaveLength(0);
+    } finally { await Bun.file(`${process.cwd()}${path}`).delete(); }
 });
 
 test("field mapping derives method capabilities for categorical and two-column studies", async () => {

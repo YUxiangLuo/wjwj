@@ -1,6 +1,7 @@
 import { RequestError } from "@/components/RequestError";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Link } from "react-router-dom";
 import { BookOpen, Search, Layers } from "lucide-react";
 import { getRichTextPlainText } from "@/utils/rich-text";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     AlertDialog,
-    AlertDialogAction,
     AlertDialogCancel,
     AlertDialogContent,
     AlertDialogDescription,
@@ -77,9 +77,13 @@ export function TopicManagement() {
     // Confirmation State
     const [confirmDialog, setConfirmDialog] = useState<{
         open: boolean;
-        type: "delete" | "publish" | null;
+        type: "delete" | "publish" | "published" | null;
         topic: Topic | null;
     }>({ open: false, type: null, topic: null });
+    const [confirmBusy, setConfirmBusy] = useState(false);
+    const confirmLock = useRef(false);
+    const [confirmError, setConfirmError] = useState<string | null>(null);
+    const [publishReady, setPublishReady] = useState(false);
 
     useEffect(() => {
         loadTopics();
@@ -245,33 +249,40 @@ export function TopicManagement() {
         } finally { setCopyingTopicId(null); }
     }
 
-    function requestPublish(topic: Topic) {
-        if (topic.dataRows <= 0) {
-            toast.error("实验模板需先上传总体数据后才能发布");
-            return;
-        }
+    async function requestPublish(topic: Topic) {
+        if (confirmLock.current) return;
         setConfirmDialog({ open: true, type: "publish", topic });
+        setConfirmError(null);
+        setPublishReady(false);
+        confirmLock.current = true;
+        setConfirmBusy(true);
+        try {
+            const result = await teacherApi.checkTopicPublish(topic.id);
+            if (result.success) setPublishReady(true);
+            else setConfirmError(result.error?.message ?? "发布前检查失败，请重试");
+        } catch { setConfirmError("发布前检查失败，请重试"); }
+        finally { confirmLock.current = false; setConfirmBusy(false); }
     }
 
     async function executeConfirmAction() {
         const { type, topic } = confirmDialog;
-        if (!topic || !type) return;
-
-        let res;
-        if (type === "delete") {
-            res = await teacherApi.deleteTopic(topic.id);
-        } else if (type === "publish") {
-            res = await teacherApi.updateTopic(topic.id, { status: 1 });
-        }
-
-        if (res?.success) {
-            toast.success(type === "publish" ? "实验模板已发布，可在实验任务中分配给班级" : "实验模板已删除");
-            loadTopics();
-        } else {
-            const actionLabel = type === "publish" ? "发布" : "删除";
-            toast.error(`${actionLabel}失败: ${res?.error?.message || "未知错误"}`);
-        }
-        setConfirmDialog({ open: false, type: null, topic: null });
+        if (!topic || !type || type === "published" || confirmLock.current || (type === "publish" && !publishReady)) return;
+        confirmLock.current = true;
+        setConfirmBusy(true);
+        setConfirmError(null);
+        try {
+            const res = type === "delete" ? await teacherApi.deleteTopic(topic.id) : await teacherApi.updateTopic(topic.id, { status: 1 });
+            if (res.success) {
+                toast.success(type === "publish" ? "实验模板已发布，可在实验任务中分配给班级" : "实验模板已删除");
+                loadTopics();
+                setConfirmDialog(type === "publish" ? { open: true, type: "published", topic } : { open: false, type: null, topic: null });
+            } else {
+                const actionLabel = type === "publish" ? "发布" : "删除";
+                setConfirmError(`${actionLabel}失败: ${res.error?.message || "未知错误"}`);
+                if (type === "publish") setPublishReady(false);
+            }
+        } catch { setConfirmError("操作未完成，请重试"); }
+        finally { confirmLock.current = false; setConfirmBusy(false); }
     }
 
     async function handleExcelUpload(file: File) {
@@ -526,6 +537,7 @@ export function TopicManagement() {
                                     </span>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
+                                    {topic.status === 1 && <Button asChild size="sm" variant="outline"><Link to={`/task?topicId=${topic.id}`}>分配到班级</Link></Button>}
                                     {topic.hasTasks ? (
                                         <>
                                             <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-info hover:bg-info-muted" onClick={() => openViewModal(topic)}>查看</Button>
@@ -636,23 +648,32 @@ export function TopicManagement() {
 
             <AlertDialog
                 open={confirmDialog.open}
-                onOpenChange={(open) => !open && setConfirmDialog(markdown => ({ ...markdown, open: false }))}
+                onOpenChange={(open) => {
+                    if (!open && !confirmBusy) { setConfirmDialog(current => ({ ...current, open: false })); setConfirmError(null); }
+                }}
             >
                 <AlertDialogContent className="bg-card border-border text-foreground">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-foreground">确认操作</AlertDialogTitle>
+                        <AlertDialogTitle className="text-foreground">{confirmDialog.type === "published" ? "模板已发布" : confirmDialog.type === "publish" ? "发布实验模板" : "确认操作"}</AlertDialogTitle>
                         <AlertDialogDescription className="text-muted-foreground">
                             {confirmDialog.type === "delete" && "将永久删除该实验模板、总体数据和全部附件。已分配任务的模板不能删除，此操作无法恢复。"}
                             {confirmDialog.type === "publish" && "确认发布该实验模板吗？发布后可分配给班级。"}
+                            {confirmDialog.type === "published" && `“${confirmDialog.topic?.name}”已发布。接下来选择班级和截止时间，生成实验任务。`}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
+                    {confirmDialog.type === "publish" && <p role="status" className="text-label text-muted-foreground">{confirmBusy ? "正在检查或发布，请稍候…" : publishReady ? "检查通过：总体数据、研究目标、抽样策略、评分规则及变量字典一致性。正式发布时将再次检查。" : "请处理以下问题后重新检查。"}</p>}
+                    {confirmError && <p role="alert" className="rounded-surface border border-destructive-border bg-destructive-muted p-3 text-label text-destructive">{confirmError}</p>}
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setConfirmDialog({ open: false, type: null, topic: null })}>
-                            取消
+                        <AlertDialogCancel disabled={confirmBusy}>
+                            {confirmDialog.type === "published" ? "稍后分配" : "取消"}
                         </AlertDialogCancel>
-                        <AlertDialogAction onClick={executeConfirmAction} variant={confirmDialog.type === "delete" ? "destructive" : "default"}>
+                        {confirmDialog.type === "published" ? <Button asChild><Link to={`/task?topicId=${confirmDialog.topic?.id}`}>分配到班级</Link></Button>
+                        : confirmDialog.type === "publish" && !publishReady ? <>
+                            <Button variant="outline" disabled={confirmBusy} onClick={() => { const topic = confirmDialog.topic; setConfirmDialog({ open: false, type: null, topic: null }); setConfirmError(null); if (topic) openEditModal(topic); }}>修改模板</Button>
+                            <Button disabled={confirmBusy} onClick={() => { if (confirmDialog.topic) void requestPublish(confirmDialog.topic); }}>重新检查</Button>
+                        </> : <Button disabled={confirmBusy} onClick={() => void executeConfirmAction()} variant={confirmDialog.type === "delete" ? "destructive" : "default"}>
                             {confirmDialog.type === "delete" ? "永久删除" : "确认"}
-                        </AlertDialogAction>
+                        </Button>}
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
