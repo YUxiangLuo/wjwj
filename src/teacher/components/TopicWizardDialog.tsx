@@ -2,7 +2,7 @@ import { CsvFileReviewDialog } from "@/components/CsvFileReviewDialog";
 import { RequestError } from "@/components/RequestError";
 import { parseNumericText } from "@/lib/numeric-text";
 import { assignFieldRole } from "../topic/field-roles";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, CheckCircle2, ChevronRight, Download, FileText, HelpCircle, Loader2, Pencil, Play, School, Sparkles, Trash2, Upload, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -122,7 +122,39 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
     const contentRef = useRef<HTMLDivElement>(null);
     const stepRef = useRef<HTMLDivElement>(null);
     const errorRef = useRef<HTMLDivElement>(null);
-    const busy = pending || uploadingExcel || uploadingAttachment || Boolean(csvReviewFile);
+    const [dictionaryState, setDictionaryState] = useState({ dirty: false, busy: false });
+    const busy = pending || uploadingExcel || uploadingAttachment || Boolean(csvReviewFile) || dictionaryState.busy;
+    const stepValue = JSON.stringify(currentStep === 1 ? [newTopicName, newTopicDesc]
+        : currentStep === 3 ? fieldMapping : currentStep === 4 ? samplingPolicy
+        : currentStep === 6 ? recommendQuestions : currentStep === 7 ? weightConfig : null);
+    const baseline = useRef<{ step: number; value: string } | null>(null);
+    const formDirty = Boolean(open && !loadingDetail && baseline.current?.step === currentStep && baseline.current.value !== stepValue);
+    useLayoutEffect(() => {
+        if (!open || loadingDetail) baseline.current = null;
+        else if (baseline.current?.step !== currentStep) baseline.current = { step: currentStep, value: stepValue };
+    });
+    useEffect(() => {
+        if (!open || (!formDirty && !dictionaryState.dirty && !busy)) return;
+        const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+        window.addEventListener("beforeunload", warn);
+        return () => window.removeEventListener("beforeunload", warn);
+    }, [open, formDirty, dictionaryState.dirty, busy]);
+    function canLeaveDictionary() {
+        if (!dictionaryState.dirty) return true;
+        setActionError("变量字典有未保存的修改，请先点击“明确确认并保存”。");
+        return false;
+    }
+    function goBack() {
+        if ((formDirty || dictionaryState.dirty) && !window.confirm("返回上一步会丢弃本步未保存的修改。继续吗？")) return;
+        if (formDirty && baseline.current) {
+            const saved = JSON.parse(baseline.current.value);
+            if (currentStep === 3) setFieldMapping(saved);
+            if (currentStep === 4) setSamplingPolicy(saved);
+            if (currentStep === 6) setRecommendQuestions(saved);
+            if (currentStep === 7) setWeightConfig(saved);
+        }
+        setCurrentStep(prev => prev - 1);
+    }
     const displayedError = actionError ?? saveError;
     useLayoutEffect(() => {
         if (open && displayedError && !busy) errorRef.current?.focus({ preventScroll: true });
@@ -240,7 +272,13 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
     };
 
     return (
-        <Dialog open={open} onOpenChange={(value) => { if (!busy) onOpenChange(value); }}>
+        <Dialog open={open} onOpenChange={(value) => {
+            if (busy) return;
+            if (!value && (formDirty || dictionaryState.dirty) && !window.confirm(editingTopicId
+                ? "关闭会丢弃未保存的修改。已保存的内容不受影响。确定关闭吗？"
+                : "尚未创建模板。名称和说明会暂存于本机，确定关闭吗？")) return;
+            onOpenChange(value);
+        }}>
             <DialogContent
                 className="w-[calc(100vw-2rem)] max-w-5xl h-[86vh] flex flex-col overflow-hidden bg-card border-border text-foreground"
                 showCloseButton={!busy}
@@ -611,7 +649,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     analysisCategoryValues={analysisCategoryValues}
                                     disabled={Boolean(isPublishedTopic)}
                                 />
-                                {editingTopicId && <VariableDictionaryEditor topicId={editingTopicId} readOnly={isPublishedTopic} />}
+                                {editingTopicId && <VariableDictionaryEditor topicId={editingTopicId} readOnly={isPublishedTopic} onStateChange={setDictionaryState} />}
                             </div>
                         )}
 
@@ -912,10 +950,10 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         </div>
                     ) : null}
                     <div className="flex items-center justify-between w-full">
-                        <div className="text-meta text-muted-foreground" role="status">步骤 {currentStep} / 7{pending ? " · 正在保存…" : busy ? " · 正在上传…" : ""}</div>
+                        <div className="text-meta text-muted-foreground" role="status">步骤 {currentStep} / 7{pending ? " · 正在保存…" : dictionaryState.busy ? " · 正在处理变量字典…" : busy ? " · 正在上传…" : ""}</div>
                         <div className="flex gap-2">
                             {currentStep > 1 && (
-                                <Button data-testid="teacher-topic-prev" variant="outline" disabled={busy || loadingDetail} onClick={() => setCurrentStep(prev => prev - 1)} className="border-input bg-muted text-foreground hover:text-foreground hover:bg-muted">上一步</Button>
+                                <Button data-testid="teacher-topic-prev" variant="outline" disabled={busy || loadingDetail} onClick={goBack} className="border-input bg-muted text-foreground hover:text-foreground hover:bg-muted">上一步</Button>
                             )}
                             {currentStep === 1 && (
                                 <Button data-testid="teacher-topic-next" disabled={busy || loadingDetail} onClick={() => void runAction(onSubmitTopic)} className="bg-primary hover:bg-primary-hover text-primary-foreground">{editingTopicId ? "保存并继续" : "下一步"}</Button>
@@ -933,7 +971,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             {!loadingDetail && currentStep === 3 && (
                                 <Button
                                     data-testid="teacher-topic-next"
-                                    onClick={() => void runAction(onSaveFieldMapping)}
+                                    onClick={() => { if (canLeaveDictionary()) void runAction(onSaveFieldMapping); }}
                                     disabled={busy || (!isPublishedTopic && !canProceedMapping)}
                                     className="bg-primary hover:bg-primary-hover text-primary-foreground"
                                 >

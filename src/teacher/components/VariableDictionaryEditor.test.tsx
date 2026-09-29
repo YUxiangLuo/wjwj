@@ -76,3 +76,41 @@ test("a frozen template renders the dictionary read-only without a save action",
     expect(input.disabled).toBe(true);
     expect(view.queryByText("明确确认并保存")).toBeNull();
 });
+
+test("dirty state follows raw input, reverts and successful reload; cancelling reload preserves invalid input", async () => {
+    const state = mock((_state: { dirty: boolean; busy: boolean }) => {});
+    const view = render(<VariableDictionaryEditor topicId={7} onStateChange={state} />);
+    const missing = await waitFor(() => view.getByLabelText("缺失编码（JSON 标量数组）", { selector: "input#missing-0" }) as HTMLInputElement);
+    expect(state.mock.calls.at(-1)?.[0]).toEqual({ dirty: false, busy: false });
+    fireEvent.change(missing, { target: { value: "[broken" } });
+    expect(state.mock.calls.at(-1)?.[0].dirty).toBe(true);
+    fireEvent.change(missing, { target: { value: "[null]" } });
+    expect(state.mock.calls.at(-1)?.[0].dirty).toBe(false);
+    fireEvent.change(missing, { target: { value: "[broken" } });
+    fireEvent.click(view.getByText("明确确认并保存"));
+    await waitFor(() => expect(view.getByRole("alert")).toBeTruthy());
+    const confirm = mock(() => false);
+    window.confirm = confirm;
+    fireEvent.click(view.getByText("重新载入"));
+    expect(getVariableDictionary).toHaveBeenCalledTimes(1);
+    expect(missing.value).toBe("[broken");
+    confirm.mockReturnValue(true);
+    fireEvent.click(view.getByText("重新载入"));
+    await waitFor(() => expect(state.mock.calls.at(-1)?.[0]).toEqual({ dirty: false, busy: false }));
+    expect(getVariableDictionary).toHaveBeenCalledTimes(2);
+});
+
+test("failed reload keeps the draft dirty and releases busy state", async () => {
+    const state = mock((_state: { dirty: boolean; busy: boolean }) => {});
+    const view = render(<VariableDictionaryEditor topicId={7} onStateChange={state} />);
+    const missing = await waitFor(() => view.getByLabelText("缺失编码（JSON 标量数组）", { selector: "input#missing-0" }) as HTMLInputElement);
+    fireEvent.change(missing, { target: { value: "[broken" } });
+    fireEvent.click(view.getByText("明确确认并保存"));
+    await waitFor(() => expect(view.getByRole("alert")).toBeTruthy());
+    window.confirm = mock(() => true);
+    getVariableDictionary.mockRejectedValueOnce(new Error("offline"));
+    fireEvent.click(view.getByText("重新载入"));
+    await waitFor(() => expect(view.getByRole("alert").textContent).toContain("已有输入已保留"));
+    expect(state.mock.calls.at(-1)?.[0]).toEqual({ dirty: true, busy: false });
+    expect((view.getByLabelText("缺失编码（JSON 标量数组）", { selector: "input#missing-0" }) as HTMLInputElement).value).toBe("[broken");
+});

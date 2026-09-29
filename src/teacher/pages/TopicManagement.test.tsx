@@ -144,6 +144,7 @@ test("creating a topic opens the wizard and refuses an empty name", async () => 
 
 test("a new topic draft survives closing and is cleared after creation", async () => {
     getTopics.mockResolvedValue({ success: true, data: [] });
+    window.confirm = mock(() => true);
     const view = renderPage();
     await waitFor(() => expect(view.getByTestId("teacher-topic-create-open")).toBeTruthy());
 

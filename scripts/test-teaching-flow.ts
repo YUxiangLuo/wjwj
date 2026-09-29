@@ -278,6 +278,8 @@ try {
     await browser(teacher, "set", "viewport", "1280", "800");
     const dictionaryLabel = `${continuousVariable.label}（浏览器确认）`;
     await browser(teacher, "fill", `input[aria-label="${continuousVariable.field} 标签"]`, dictionaryLabel);
+    await activate(teacher, '[data-testid="teacher-topic-next"]');
+    assert(await evaluate(teacher, 'document.querySelector("[data-testid=teacher-topic-save-error]")?.textContent.includes("变量字典有未保存的修改") && document.querySelector("[data-testid=teacher-topic-step-3]").getAttribute("aria-current")==="step"'), "Mapping save must not discard dictionary edits");
     const missingBefore = await evaluate<string>(teacher, 'document.querySelector("#missing-0").value');
     await browser(teacher, "fill", "#missing-0", "[broken");
     await namedButton(teacher, "明确确认并保存");
@@ -927,7 +929,15 @@ try {
     await namedButton(teacher2, "明确确认并保存");
     await eventually(() => evaluate(teacher2, 'document.querySelector("[role=alert]")?.textContent.includes("已被更新")'), "Window B did not surface the revision conflict");
     assert(await evaluate(teacher2, 'document.querySelector(\'input[aria-label="score 标签"]\').value === "窗口B标签"'), "Window B lost its dictionary input");
-    await namedButton(teacher2, "重新载入");
+    for (const decision of ["dismiss", "accept"] as const) {
+        await evaluate(teacher2, 'document.querySelector("[data-testid=teacher-dictionary-reload]").scrollIntoView({block:"center"})');
+        await browser(teacher2, "screenshot", join(artifacts, `dictionary-reload-${decision}.png`));
+        await browser(teacher2, "click", '[data-testid="teacher-dictionary-reload"]');
+        const dialog = await browser(teacher2, "dialog", "status");
+        assert(JSON.stringify(dialog).includes("重新载入会丢弃"), `Dictionary reload must ask before discarding edits: ${JSON.stringify(dialog)}`);
+        await browser(teacher2, "dialog", decision);
+        if (decision === "dismiss") assert(await evaluate(teacher2, 'document.querySelector(\'input[aria-label="score 标签"]\').value === "窗口B标签"'), "Cancelling reload lost dictionary input");
+    }
     await eventually(() => evaluate(teacher2, 'document.querySelector(\'input[aria-label="score 标签"]\').value === "窗口A标签"'), "Window B reload did not show the server version");
     await browser(teacher2, "fill", 'input[aria-label="score 标签"]', "窗口B最终标签");
     await namedButton(teacher2, "明确确认并保存");

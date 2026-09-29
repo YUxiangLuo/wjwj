@@ -10,7 +10,13 @@ mock.module("@/components/RichTextEditor", () => ({
     RichTextEditor: ({ value }: { value: string }) => <div data-testid="mock-richtext">{value}</div>,
 }));
 mock.module("@/components/questionnaire/QuestionEditor", () => ({ QuestionEditor: () => null }));
-mock.module("../api-client", () => ({ teacherApi: { deleteAttachment: async () => ({ success: true }) } }));
+mock.module("../api-client", () => ({ teacherApi: {
+    deleteAttachment: async () => ({ success: true }),
+    getVariableDictionary: async () => ({ success: true, data: {
+        source: "fixture", revision: 1, locked: false,
+        dictionary: { source: "fixture", revision: 1, variables: [{ field: "score", label: "分数", unit: "", kind: "continuous", categories: [], missing: [] }] },
+    } }),
+} }));
 
 const { TopicWizardDialog } = await import("./TopicWizardDialog");
 bootstrapDom.restore();
@@ -290,4 +296,78 @@ test("uploading blocks step changes until population processing finishes", () =>
     expect((view.getByTestId("teacher-topic-next") as HTMLButtonElement).disabled).toBe(true);
     expect((view.getByTestId("teacher-topic-prev") as HTMLButtonElement).disabled).toBe(true);
     expect(view.getByText(/正在上传…/)).toBeTruthy();
+});
+
+test("changed weights require confirmation on back and restore the saved values only when accepted", () => {
+    const back = mock(() => {});
+    const restore = mock(() => {});
+    const props = makeProps({ currentStep: 7, setCurrentStep: back, setWeightConfig: restore });
+    const view = render(<TopicWizardDialog {...props} />);
+    const confirm = mock(() => false);
+    window.confirm = confirm;
+    view.rerender(<TopicWizardDialog {...props} weightConfig={{ questionnaire: 20, process: 35, report: 45 }} />);
+    fireEvent.click(view.getByTestId("teacher-topic-prev"));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(back).not.toHaveBeenCalled();
+    expect(restore).not.toHaveBeenCalled();
+    confirm.mockReturnValue(true);
+    fireEvent.click(view.getByTestId("teacher-topic-prev"));
+    expect(restore).toHaveBeenCalledWith({ questionnaire: 30, process: 30, report: 40 });
+    expect(back).toHaveBeenCalledTimes(1);
+});
+
+test("close and unload protect changed input but not edits reverted to the loaded value", () => {
+    const close = mock(() => {});
+    const props = makeProps({ editingTopicId: 7, onOpenChange: close });
+    const view = render(<TopicWizardDialog {...props} />);
+    const confirm = mock(() => false);
+    window.confirm = confirm;
+    view.rerender(<TopicWizardDialog {...props} newTopicName="修改后的名称" />);
+    const unloading = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(unloading);
+    expect(unloading.defaultPrevented).toBe(true);
+    fireEvent.click(view.getByRole("button", { name: "关闭" }));
+    expect(close).not.toHaveBeenCalled();
+    view.rerender(<TopicWizardDialog {...props} />);
+    const cleanUnload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(cleanUnload);
+    expect(cleanUnload.defaultPrevented).toBe(false);
+    fireEvent.click(view.getByRole("button", { name: "关闭" }));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(close).toHaveBeenCalledWith(false);
+});
+
+test("mapping save cannot silently discard independent dictionary edits", async () => {
+    const save = mock(() => {});
+    const props = makeProps({ editingTopicId: 7, currentStep: 3, fieldMapping: completeMapping, columns: ["id", "score"], onSaveFieldMapping: save });
+    const view = render(<TopicWizardDialog {...props} />);
+    const label = await view.findByLabelText("score 标签");
+    fireEvent.change(label, { target: { value: "满意度得分" } });
+    fireEvent.click(view.getByTestId("teacher-topic-next"));
+    expect(save).not.toHaveBeenCalled();
+    expect(view.getByTestId("teacher-topic-save-error").textContent).toContain("变量字典有未保存的修改");
+    expect((label as HTMLInputElement).value).toBe("满意度得分");
+    fireEvent.change(label, { target: { value: "分数" } });
+    fireEvent.click(view.getByTestId("teacher-topic-next"));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+});
+
+test("server hydration is clean, but a failed save does not clear unsaved changes", async () => {
+    const back = mock(() => {});
+    const save = mock(async () => { throw new Error("offline"); });
+    const props = makeProps({ currentStep: 7, setCurrentStep: back, onSaveWeights: save });
+    const view = render(<TopicWizardDialog {...props} loadingDetail />);
+    const loaded = { questionnaire: 20, process: 35, report: 45 };
+    view.rerender(<TopicWizardDialog {...props} weightConfig={loaded} />);
+    const confirm = mock(() => false);
+    window.confirm = confirm;
+    fireEvent.click(view.getByTestId("teacher-topic-prev"));
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(confirm).not.toHaveBeenCalled();
+    view.rerender(<TopicWizardDialog {...props} weightConfig={{ questionnaire: 25, process: 35, report: 40 }} />);
+    fireEvent.click(view.getByTestId("teacher-topic-finish"));
+    await view.findByTestId("teacher-topic-save-error");
+    fireEvent.click(view.getByTestId("teacher-topic-prev"));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(back).toHaveBeenCalledTimes(1);
 });
