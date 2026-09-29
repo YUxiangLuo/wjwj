@@ -124,6 +124,11 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
     const errorRef = useRef<HTMLDivElement>(null);
     const dictionaryDetailsRef = useRef<HTMLDetailsElement>(null);
     const [dictionaryState, setDictionaryState] = useState({ dirty: false, busy: false });
+    const [fieldSearch, setFieldSearch] = useState("");
+    const [selectedFieldsOnly, setSelectedFieldsOnly] = useState(false);
+    const matchingFields = columns.filter(field => field.toLocaleLowerCase().includes(fieldSearch.trim().toLocaleLowerCase()));
+    const fieldsFor = (role: "stratified" | "numeric" | "others") => matchingFields.filter(field => !selectedFieldsOnly || fieldMapping[role].includes(field));
+    useEffect(() => { setFieldSearch(""); setSelectedFieldsOnly(false); }, [open, editingTopicId]);
     const editMode = (mode ?? (editingTopicId ? "edit" : "create")) === "edit";
     const busy = pending || uploadingExcel || uploadingAttachment || Boolean(csvReviewFile) || dictionaryState.busy;
     const stepValue = JSON.stringify(currentStep === 1 ? [newTopicName, newTopicDesc]
@@ -560,6 +565,15 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     ))}
                                 </div>
 
+                                <div className="space-y-2 rounded-surface border border-border bg-background p-3">
+                                    <Label htmlFor="teacher-field-search">查找字段</Label>
+                                    <div className="flex items-center gap-3">
+                                        <Input id="teacher-field-search" data-testid="teacher-field-search" value={fieldSearch} onChange={event => setFieldSearch(event.target.value)} placeholder="按字段名称搜索" className="min-w-0 flex-1" />
+                                        <label className="flex shrink-0 items-center gap-2 text-label"><input type="checkbox" checked={selectedFieldsOnly} onChange={event => setSelectedFieldsOnly(event.target.checked)} />仅看已选</label>
+                                        <Button variant="outline" disabled={!fieldSearch && !selectedFieldsOnly} onClick={() => { setFieldSearch(""); setSelectedFieldsOnly(false); }}>显示全部字段</Button>
+                                    </div>
+                                    <p className="text-meta text-muted-foreground">筛选下方三组变量，不改变已选字段或研究目标。</p>
+                                </div>
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="space-y-2">
                                         <Label className="text-foreground">分层变量（按需，已选 {fieldMapping.stratified.length}）</Label>
@@ -570,7 +584,8 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                             </p>
                                         )}
                                         <div className="bg-background border border-border rounded-surface p-3 max-h-60 overflow-y-auto space-y-2">
-                                            {columns.map((c) => {
+                                            {fieldsFor("stratified").length === 0 && <p className="text-meta text-muted-foreground">没有符合条件的字段</p>}
+                                            {fieldsFor("stratified").map((c) => {
                                                 const checked = fieldMapping.stratified.includes(c);
                                                 const disabled = isPublishedTopic || fieldMapping.identifier === c;
                                                 const reason = fieldMapping.identifier === c
@@ -605,7 +620,8 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         <Label className="text-foreground">数值变量（按需，已选 {fieldMapping.numeric.length}）</Label>
                                         <p className="text-meta text-muted-foreground">均值目标和 PPS 辅助规模需要数值字段；纯分类比例研究可以不选。</p>
                                         <div className="bg-background border border-border rounded-surface p-3 max-h-60 overflow-y-auto space-y-2">
-                                            {columns.map((c) => {
+                                            {fieldsFor("numeric").length === 0 && <p className="text-meta text-muted-foreground">没有符合条件的字段</p>}
+                                            {fieldsFor("numeric").map((c) => {
                                                 const checked = fieldMapping.numeric.includes(c);
                                                 const disabled = isPublishedTopic || fieldMapping.identifier === c;
                                                 const reason = fieldMapping.identifier === c
@@ -641,8 +657,9 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 <div className="space-y-2">
                                     <Label>其他分类变量（不用于分层，已选 {fieldMapping.others.length}）</Label>
                                     <p className="text-meta text-muted-foreground">用于比例目标或分类分布比较；允许只有一个类别或超过20类，不要求执行分层抽样。</p>
-                                    <div className="grid grid-cols-2 gap-2 rounded-surface border border-border bg-background p-3">
-                                        {columns.map((field) => (
+                                    <div className="grid max-h-60 grid-cols-2 gap-2 overflow-y-auto rounded-surface border border-border bg-background p-3">
+                                        {fieldsFor("others").length === 0 && <p className="text-meta text-muted-foreground">没有符合条件的字段</p>}
+                                        {fieldsFor("others").map((field) => (
                                             <label key={field} className="flex items-center gap-2 text-label">
                                                 <input
                                                     type="checkbox"

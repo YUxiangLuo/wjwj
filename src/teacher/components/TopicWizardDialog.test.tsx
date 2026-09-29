@@ -435,6 +435,32 @@ test("jumping from basic information confirms discard and restores both fields",
     expect(jump).toHaveBeenCalledWith(6);
 });
 
+test("field search filters long lists without changing roles or the research target", () => {
+    const update = mock(() => {});
+    const columns = ["id", "score", "Area", "category", ...Array.from({ length: 60 }, (_, i) => `extra_${i}`)];
+    const props = makeProps({ currentStep: 3, columns, fieldMapping: { ...completeMapping, stratified: ["Area"], others: ["category"] }, setFieldMapping: update });
+    const view = render(<TopicWizardDialog {...props} />);
+    fireEvent.change(view.getByLabelText("查找字段"), { target: { value: " AREA " } });
+    expect(view.getByTestId("teacher-topic-mapping-stratified-Area")).toBeTruthy();
+    expect(view.queryByTestId("teacher-topic-mapping-numeric-score")).toBeNull();
+    expect(view.getByTestId("teacher-topic-analysis-field").textContent).toContain("score");
+    fireEvent.change(view.getByLabelText("查找字段"), { target: { value: "missing" } });
+    expect(view.getAllByText("没有符合条件的字段")).toHaveLength(3);
+    fireEvent.click(view.getByText("显示全部字段"));
+    expect((view.getByTestId("teacher-topic-mapping-numeric-score") as HTMLInputElement).checked).toBe(true);
+    expect(view.getByTestId("teacher-topic-mapping-others-extra_59")).toBeTruthy();
+    fireEvent.click(view.getByLabelText("仅看已选"));
+    expect(view.queryByTestId("teacher-topic-mapping-numeric-Area")).toBeNull();
+    expect(view.queryByTestId("teacher-topic-mapping-others-extra_59")).toBeNull();
+    expect((view.getByTestId("teacher-topic-mapping-stratified-Area") as HTMLInputElement).checked).toBe(true);
+    expect((view.getByTestId("teacher-topic-mapping-others-category") as HTMLInputElement).checked).toBe(true);
+    expect(update).not.toHaveBeenCalled();
+    view.rerender(<TopicWizardDialog {...props} open={false} />);
+    view.rerender(<TopicWizardDialog {...props} />);
+    expect((view.getByLabelText("仅看已选") as HTMLInputElement).checked).toBe(false);
+    expect(view.getByTestId("teacher-topic-mapping-others-extra_59")).toBeTruthy();
+});
+
 test("jump navigation respects missing population, load failures and ongoing saves", async () => {
     const props = makeProps({ mode: "edit", editingTopicId: 7 });
     const view = render(<TopicWizardDialog {...props} />);

@@ -296,6 +296,20 @@ try {
     await activate(teacher, '[data-testid="teacher-topic-next"]');
     await activate(teacher, '[data-testid="teacher-topic-next"]');
     await visible(teacher, `input[aria-label="${continuousVariable.field} 标签"]`);
+    const selectedRoles = await evaluate<string[]>(teacher, 'Array.from(document.querySelectorAll("input[data-testid^=teacher-topic-mapping-]:checked"), input => input.dataset.testid)');
+    await browser(teacher, "set", "viewport", "1024", "768", "2");
+    await browser(teacher, "fill", "#teacher-field-search", "不存在的字段");
+    assert(await evaluate(teacher, 'document.querySelectorAll("input[data-testid^=teacher-topic-mapping-]").length===0'), "Unmatched search must hide roles without modifying their values");
+    await evaluate(teacher, 'document.querySelector("#teacher-field-search").scrollIntoView({block:"start"})');
+    await browser(teacher, "screenshot", join(artifacts, "teacher-fields-empty-search.png"));
+    await namedButton(teacher, "显示全部字段");
+    assert(JSON.stringify(await evaluate(teacher, 'Array.from(document.querySelectorAll("input[data-testid^=teacher-topic-mapping-]:checked"), input => input.dataset.testid)')) === JSON.stringify(selectedRoles), "Clearing search must retain all selected roles");
+    await browser(teacher, "click", '#teacher-field-search + label input');
+    assert(await evaluate(teacher, `document.querySelectorAll("input[data-testid^=teacher-topic-mapping-]").length===${selectedRoles.length} && Array.from(document.querySelectorAll("input[data-testid^=teacher-topic-mapping-]")).every(input => input.checked)`), "Selected-only mode must show all and only each role's selections");
+    await browser(teacher, "screenshot", join(artifacts, "teacher-fields-selected.png"));
+    await evaluate(teacher, 'document.querySelector("input[data-testid^=teacher-topic-mapping-others-]").scrollIntoView({block:"center"})');
+    assert(await evaluate(teacher, '(() => {const field=document.querySelector("input[data-testid^=teacher-topic-mapping-others-]").getBoundingClientRect();const content=document.querySelector("[data-testid=teacher-topic-scroll-content]").getBoundingClientRect();return field.top>=content.top && field.bottom<=content.bottom;})()'), "Other selected categories must scroll clear of the fixed footer");
+    await namedButton(teacher, "显示全部字段");
     for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
         await browser(teacher, "set", "viewport", String(width), String(height));
         await evaluate(teacher, `document.querySelector('[data-testid="teacher-topic-scroll-content"]').scrollTop=0`);
