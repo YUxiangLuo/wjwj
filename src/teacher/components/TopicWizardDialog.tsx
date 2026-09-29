@@ -122,6 +122,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
     const contentRef = useRef<HTMLDivElement>(null);
     const stepRef = useRef<HTMLSpanElement>(null);
     const errorRef = useRef<HTMLDivElement>(null);
+    const dictionaryDetailsRef = useRef<HTMLDetailsElement>(null);
     const [dictionaryState, setDictionaryState] = useState({ dirty: false, busy: false });
     const editMode = (mode ?? (editingTopicId ? "edit" : "create")) === "edit";
     const busy = pending || uploadingExcel || uploadingAttachment || Boolean(csvReviewFile) || dictionaryState.busy;
@@ -142,6 +143,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
     }, [open, formDirty, dictionaryState.dirty, busy]);
     function canLeaveDictionary() {
         if (!dictionaryState.dirty) return true;
+        if (dictionaryDetailsRef.current) dictionaryDetailsRef.current.open = true;
         setActionError("变量字典有未保存的修改，请先点击“明确确认并保存”。");
         return false;
     }
@@ -663,7 +665,13 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     analysisCategoryValues={analysisCategoryValues}
                                     disabled={Boolean(isPublishedTopic)}
                                 />
-                                {editingTopicId && <VariableDictionaryEditor topicId={editingTopicId} readOnly={isPublishedTopic} onStateChange={setDictionaryState} />}
+                                {editingTopicId && <details ref={dictionaryDetailsRef} data-testid="teacher-variable-dictionary" className="rounded-surface border border-border bg-background p-4">
+                                    <summary data-testid="teacher-variable-dictionary-toggle" className="cursor-pointer text-label font-medium text-foreground focus-visible:outline-2 focus-visible:outline-ring">
+                                        变量字典（按需配置，单独保存）{dictionaryState.dirty ? " · 未保存" : ""}
+                                    </summary>
+                                    <p className="mt-2 text-meta text-muted-foreground">核对字段标签、单位、类别顺序和缺失编码；不随“保存并继续”一起保存。</p>
+                                    <div className="mt-4"><VariableDictionaryEditor topicId={editingTopicId} readOnly={isPublishedTopic} onStateChange={setDictionaryState} /></div>
+                                </details>}
                             </div>
                         )}
 

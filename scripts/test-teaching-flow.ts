@@ -303,11 +303,23 @@ try {
         await browser(teacher, "screenshot", join(artifacts, `teacher-wizard-${width}.png`));
         await evaluate(teacher, `(() => {const content=document.querySelector('[data-testid="teacher-topic-scroll-content"]');content.scrollTop=content.scrollHeight;})()`);
         assert(await evaluate(teacher, `(() => {const nav=document.querySelector('[data-testid="teacher-topic-step-navigation"]').getBoundingClientRect();const content=document.querySelector('[data-testid="teacher-topic-scroll-content"]');return content.scrollTop>0 && nav.bottom<=content.getBoundingClientRect().top && document.querySelector('[aria-current="step"]').textContent==='3';})()`), "Wizard scrolling must not hide the current step");
+        assert(await evaluate(teacher, '(() => {const target=document.querySelector("[data-testid=teacher-topic-analysis-field]");const question=document.querySelector("[data-testid=teacher-contract-question]");return Boolean(target.compareDocumentPosition(question)&Node.DOCUMENT_POSITION_FOLLOWING) && !document.querySelector("[data-testid=teacher-variable-dictionary]").open;})()'), "Research fields must precede text; optional dictionary must start collapsed");
+        await evaluate(teacher, 'document.querySelector("[data-testid=teacher-variable-dictionary-toggle]").scrollIntoView({block:"center",behavior:"instant"})');
+        // Scroll offsets round to CSS pixels; rectangles can retain subpixel precision.
+        await eventually(() => evaluate(teacher, '(() => {const summary=document.querySelector("[data-testid=teacher-variable-dictionary-toggle]").getBoundingClientRect();const content=document.querySelector("[data-testid=teacher-topic-scroll-content]").getBoundingClientRect();return summary.top>=content.top-1 && summary.bottom<=content.bottom+1;})()'), "Dictionary summary must scroll clear of the fixed footer");
+        await browser(teacher, "screenshot", join(artifacts, `teacher-research-target-${width}.png`));
     }
     await browser(teacher, "set", "viewport", "1280", "800");
+    await evaluate(teacher, 'document.querySelector("[data-testid=teacher-variable-dictionary-toggle]").focus()');
+    await browser(teacher, "press", "Enter");
+    assert(await evaluate(teacher, 'document.querySelector("[data-testid=teacher-variable-dictionary]").open'), "Keyboard must open the dictionary");
     const dictionaryLabel = `${continuousVariable.label}（浏览器确认）`;
     await browser(teacher, "fill", `input[aria-label="${continuousVariable.field} 标签"]`, dictionaryLabel);
+    await evaluate(teacher, 'document.querySelector("[data-testid=teacher-variable-dictionary-toggle]").scrollIntoView({block:"center"})');
+    await browser(teacher, "click", '[data-testid="teacher-variable-dictionary-toggle"]');
+    assert(await evaluate(teacher, '!document.querySelector("[data-testid=teacher-variable-dictionary]").open && document.querySelector("[data-testid=teacher-variable-dictionary-toggle]").textContent.includes("未保存")'), "Collapsed dictionary must retain and disclose unsaved edits");
     await activate(teacher, '[data-testid="teacher-topic-next"]');
+    assert(await evaluate(teacher, 'document.querySelector("[data-testid=teacher-variable-dictionary]").open'), "Blocked mapping save must reopen the unsaved dictionary");
     assert(await evaluate(teacher, 'document.querySelector("[data-testid=teacher-topic-save-error]")?.textContent.includes("变量字典有未保存的修改") && document.querySelector("[data-testid=teacher-topic-step-3]").getAttribute("aria-current")==="step"'), "Mapping save must not discard dictionary edits");
     const missingBefore = await evaluate<string>(teacher, 'document.querySelector("#missing-0").value');
     await browser(teacher, "fill", "#missing-0", "[broken");
@@ -989,6 +1001,12 @@ try {
         await activate(session, '[data-testid="teacher-topic-next"]');
         await activate(session, '[data-testid="teacher-topic-next"]');
         await visible(session, 'input[aria-label="score 标签"]');
+        if (session === teacher) {
+            await evaluate(session, 'document.querySelector("[data-testid=teacher-study-contract-editor]").scrollIntoView({block:"start"})');
+            await browser(session, "screenshot", join(artifacts, "teacher-research-proportion.png"));
+        }
+        await evaluate(session, 'document.querySelector("[data-testid=teacher-variable-dictionary-toggle]").scrollIntoView({block:"center"})');
+        await browser(session, "click", '[data-testid="teacher-variable-dictionary-toggle"]');
     };
     // 上传/改映射会推进 source 与修订号：两窗口在保存前必须处于同一观察修订
     const revisionBeforeA = (await api<DictionarySnapshot>(teacher, `/api/teacher/topics/${conflictTopic.id}/variables`)).revision;

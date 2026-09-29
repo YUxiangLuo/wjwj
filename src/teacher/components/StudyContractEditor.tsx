@@ -139,54 +139,10 @@ export function StudyContractEditor({
     return (
         <div className="space-y-3 rounded-surface border border-border bg-background p-4" data-testid="teacher-study-contract-editor">
             <div>
-                <Label className="text-foreground">研究合同（必选）</Label>
+                <Label className="text-foreground">研究目标（必填）</Label>
                 <p className="mt-1 text-meta text-muted-foreground">
-                    学生的规划与分析都钉在这份研究目标上。问卷是预试，答案不进入估计。PPS 规模变量不能与对照变量相同。
+                    先选估计类型和字段，再核对研究问题、目标总体与分析单位。问卷预试答案不参与估计。
                 </p>
-            </div>
-
-            <div className="space-y-1.5">
-                <Label className="text-meta text-muted-foreground">研究问题</Label>
-                <Textarea
-                    value={contract?.researchQuestion ?? (target ? buildDefaultResearchQuestion(topicName, target) : "")}
-                    disabled={disabled || !target}
-                    rows={2}
-                    maxLength={300}
-                    placeholder="本实验模板要回答的研究问题（5-300 字）"
-                    aria-label="研究问题"
-                    data-testid="teacher-contract-question"
-                    onChange={(e) => updateText("researchQuestion", e.target.value)}
-                    className="bg-card border-input text-foreground"
-                />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                    <Label className="text-meta text-muted-foreground">目标总体</Label>
-                    <Input
-                        value={contract?.targetPopulation ?? "上传总体数据中的全部单位"}
-                        disabled={disabled || !target}
-                        maxLength={200}
-                        placeholder="例如：某高校全体本科生"
-                        aria-label="目标总体"
-                        data-testid="teacher-contract-population"
-                        onChange={(e) => updateText("targetPopulation", e.target.value)}
-                        className="bg-card border-input text-foreground"
-                    />
-                </div>
-                <div className="space-y-1.5">
-                    <Label className="text-meta text-muted-foreground">分析单位</Label>
-                    <Input
-                        value={contract?.unitOfAnalysis ?? "总体数据中的一行记录"}
-                        disabled={disabled || !target}
-                        maxLength={100}
-                        placeholder="例如：一名学生"
-                        aria-label="分析单位"
-                        data-testid="teacher-contract-unit"
-                        onChange={(e) => updateText("unitOfAnalysis", e.target.value)}
-                        className="bg-card border-input text-foreground"
-                    />
-                </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -213,7 +169,7 @@ export function StudyContractEditor({
                             <SelectValue placeholder="选择均值或比例" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="mean">均值</SelectItem>
+                            <SelectItem value="mean" disabled={value.numeric.length === 0}>均值</SelectItem>
                             <SelectItem value="proportion" disabled={categoricalFields.length === 0}>比例</SelectItem>
                         </SelectContent>
                     </Select>
@@ -265,6 +221,51 @@ export function StudyContractEditor({
                     </Select>
                 </div>
             )}
+            {!target && <p className="text-meta text-muted-foreground">均值需先在上方选择数值变量；比例需先选择分层变量或其他分类变量。</p>}
+            {target && <p className="text-meta text-muted-foreground">如启用 PPS，规模变量不能与此目标字段相同。</p>}
+            <div className="space-y-1.5">
+                <Label className="text-meta text-muted-foreground">研究问题</Label>
+                <Textarea
+                    value={contract?.researchQuestion ?? (target ? buildDefaultResearchQuestion(topicName, target) : "")}
+                    disabled={disabled || !target}
+                    rows={2}
+                    maxLength={300}
+                    placeholder="本实验模板要回答的研究问题（5-300 字）"
+                    aria-label="研究问题"
+                    data-testid="teacher-contract-question"
+                    onChange={(e) => updateText("researchQuestion", e.target.value)}
+                    className="bg-card border-input text-foreground"
+                />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                    <Label className="text-meta text-muted-foreground">目标总体</Label>
+                    <Input
+                        value={contract?.targetPopulation ?? "上传总体数据中的全部单位"}
+                        disabled={disabled || !target}
+                        maxLength={200}
+                        placeholder="例如：某高校全体本科生"
+                        aria-label="目标总体"
+                        data-testid="teacher-contract-population"
+                        onChange={(e) => updateText("targetPopulation", e.target.value)}
+                        className="bg-card border-input text-foreground"
+                    />
+                </div>
+                <div className="space-y-1.5">
+                    <Label className="text-meta text-muted-foreground">分析单位</Label>
+                    <Input
+                        value={contract?.unitOfAnalysis ?? "总体数据中的一行记录"}
+                        disabled={disabled || !target}
+                        maxLength={100}
+                        placeholder="例如：一名学生"
+                        aria-label="分析单位"
+                        data-testid="teacher-contract-unit"
+                        onChange={(e) => updateText("unitOfAnalysis", e.target.value)}
+                        className="bg-card border-input text-foreground"
+                    />
+                </div>
+            </div>
         </div>
     );
 }

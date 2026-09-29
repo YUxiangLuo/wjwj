@@ -342,14 +342,43 @@ test("mapping save cannot silently discard independent dictionary edits", async 
     const props = makeProps({ editingTopicId: 7, currentStep: 3, fieldMapping: completeMapping, columns: ["id", "score"], onSaveFieldMapping: save });
     const view = render(<TopicWizardDialog {...props} />);
     const label = await view.findByLabelText("score 标签");
+    const dictionary = view.getByTestId("teacher-variable-dictionary") as HTMLDetailsElement;
+    expect(dictionary.open).toBe(false);
+    dictionary.open = true;
     fireEvent.change(label, { target: { value: "满意度得分" } });
+    dictionary.open = false;
+    expect(view.getByTestId("teacher-variable-dictionary-toggle").textContent).toContain("未保存");
     fireEvent.click(view.getByTestId("teacher-topic-next"));
+    expect(dictionary.open).toBe(true);
     expect(save).not.toHaveBeenCalled();
     expect(view.getByTestId("teacher-topic-save-error").textContent).toContain("变量字典有未保存的修改");
     expect((label as HTMLInputElement).value).toBe("满意度得分");
     fireEvent.change(label, { target: { value: "分数" } });
     fireEvent.click(view.getByTestId("teacher-topic-next"));
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+});
+
+for (const kind of ["mean", "proportion"] as const) test(`${kind}: target selection precedes research text without changing existing values`, () => {
+    const target = kind === "mean" ? { kind, field: "score" } : { kind, field: "group", value: "A" };
+    const contract = { version: 1 as const, target, researchQuestion: "教师自定义的研究问题", targetPopulation: "本校全体学生", unitOfAnalysis: "一名学生" };
+    const view = render(<TopicWizardDialog {...makeProps({
+        currentStep: 3,
+        fieldMapping: { ...completeMapping, others: ["group"], analysisTarget: target, studyContract: contract },
+        excelInfo: { rowCount: 120, colCount: 3, columns: ["id", "score", "group"], preview: [], columnValues: { group: ["A", "B"] } },
+    })} />);
+    const question = view.getByTestId("teacher-contract-question") as HTMLTextAreaElement;
+    const field = view.getByTestId(kind === "mean" ? "teacher-topic-analysis-field" : "teacher-topic-analysis-value");
+    expect(field.compareDocumentPosition(question) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(question.value).toBe("教师自定义的研究问题");
+    expect((view.getByTestId("teacher-contract-population") as HTMLInputElement).value).toBe("本校全体学生");
+});
+
+test("missing numeric roles explain the prerequisite and disable the mean option", () => {
+    const view = render(<TopicWizardDialog {...makeProps({ currentStep: 3 })} />);
+    expect(view.getByText(/均值需先在上方选择数值变量/)).toBeTruthy();
+    fireEvent.click(view.getByTestId("teacher-topic-analysis-kind"));
+    expect(view.getByRole("option", { name: "均值" }).getAttribute("aria-disabled")).toBe("true");
+    expect((view.getByTestId("teacher-contract-question") as HTMLTextAreaElement).disabled).toBe(true);
 });
 
 test("server hydration is clean, but a failed save does not clear unsaved changes", async () => {
