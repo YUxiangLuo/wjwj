@@ -267,9 +267,21 @@ test("unexpected save failure leaves the wizard open and permits retry", async (
     const view = render(<TopicWizardDialog {...makeProps({ onSubmitTopic: save })} />);
     fireEvent.click(view.getByTestId("teacher-topic-next"));
     await waitFor(() => expect(view.getByTestId("teacher-topic-save-error").textContent).toContain("本页输入已保留"));
+    expect(document.activeElement).toBe(view.getByTestId("teacher-topic-save-error"));
     expect((view.getByTestId("teacher-topic-next") as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(view.getByTestId("teacher-topic-next"));
     await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
+});
+
+test("server errors receive focus without discarding the current step or input", () => {
+    const props = makeProps({ editingTopicId: 7, mode: "edit" });
+    const view = render(<TopicWizardDialog {...props} />);
+    view.rerender(<TopicWizardDialog {...props} saveError="模板名称已存在，请修改名称" />);
+    expect(document.activeElement).toBe(view.getByTestId("teacher-topic-save-error"));
+    expect((view.getByLabelText("实验模板名称") as HTMLInputElement).value).toBe("咖啡馆调查");
+    expect(view.getByTestId("teacher-topic-step-1").getAttribute("aria-current")).toBe("step");
+    view.rerender(<TopicWizardDialog {...props} saveError={null} />);
+    expect(view.queryByTestId("teacher-topic-save-error")).toBeNull();
 });
 
 test("uploading blocks step changes until population processing finishes", () => {

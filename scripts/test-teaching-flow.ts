@@ -290,6 +290,20 @@ try {
     await eventually(async () => (await api<{ revision: number; dictionary: { variables: Array<{ field: string; label: string }> } | null }>(teacher, `/api/teacher/topics/${copied.id}/variables`)).dictionary?.variables.some(variable => variable.field === continuousVariable.field && variable.label === dictionaryLabel), "Dictionary UI save did not persist");
     const staleConflict = await evaluate<{ status: number; code?: string }>(teacher, `(async()=>{const r=await fetch(${JSON.stringify(`/api/teacher/topics/${copied.id}/variables`)},{method:"PUT",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(${JSON.stringify({ source: dictionaryBefore.source, observedRevision: dictionaryBefore.revision, dictionary: dictionaryBefore.dictionary ?? { source: dictionaryBefore.source, revision: dictionaryBefore.revision, variables: dictionaryBefore.suggestion.variables } })})});const p=await r.json();return {status:r.status,code:p.error?.code}})()`);
     assert(staleConflict.status === 409 && staleConflict.code === "VARIABLE_REVISION_CONFLICT", "Stale dictionary update did not produce an optimistic conflict");
+    const mappingRoute = `${baseUrl}/api/teacher/topics/${copied.id}/mapping`;
+    await browser(teacher, "network", "route", mappingRoute, "--body", JSON.stringify({ success: false, error: { code: "TEST_UNAVAILABLE", message: "字段配置暂时无法保存，请重试" } }));
+    await activate(teacher, '[data-testid="teacher-topic-next"]');
+    await eventually(() => evaluate(teacher, `document.querySelector('[data-testid="teacher-topic-save-error"]')?.textContent.includes('字段配置暂时无法保存') && document.activeElement===document.querySelector('[data-testid="teacher-topic-save-error"]')`), "Mapping save error must remain visible and receive focus");
+    assert(await evaluate(teacher, `document.querySelector('[data-testid="teacher-topic-step-3"]').getAttribute('aria-current')==='step' && document.querySelector(${JSON.stringify(`input[aria-label="${continuousVariable.field} 标签"]`)}).value===${JSON.stringify(dictionaryLabel)}`), "Mapping failure must preserve step and inputs");
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(teacher, "set", "viewport", String(width), String(height));
+        assert(await evaluate(teacher, `(() => {const error=document.querySelector('[data-testid="teacher-topic-save-error"]').getBoundingClientRect();const next=document.querySelector('[data-testid="teacher-topic-next"]').getBoundingClientRect();return error.top>=0 && error.bottom<=next.top && next.bottom<=innerHeight && document.documentElement.scrollWidth<=innerWidth;})()`), `Save feedback and retry must fit at ${width}px`);
+        await browser(teacher, "screenshot", join(artifacts, `teacher-template-save-error-${width}.png`));
+    }
+    await browser(teacher, "network", "unroute", mappingRoute);
+    await activate(teacher, '[data-testid="teacher-topic-next"]');
+    await eventually(() => evaluate(teacher, `document.querySelector('[data-testid="teacher-topic-step-4"]').getAttribute('aria-current')==='step' && !document.querySelector('[data-testid="teacher-topic-save-error"]')`), "Successful mapping retry must advance and clear the error");
+    await browser(teacher, "set", "viewport", "1280", "800");
     await api(teacher, `/api/teacher/topics/${copied.id}`, "PUT", { name, status: 1 });
     console.log("PASS teacher dictionary representative UI save and stale-revision conflict");
     const classes = await api<Array<{ id: number; name: string }>>(teacher, "/api/teacher/classes");

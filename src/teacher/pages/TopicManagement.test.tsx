@@ -137,6 +137,8 @@ test("creating a topic opens the wizard and refuses an empty name", async () => 
 
     fireEvent.click(view.getByTestId("teacher-topic-next"));
     await waitFor(() => expect(toastError).toHaveBeenCalledWith("请输入实验模板名称"));
+    expect(view.getByTestId("teacher-topic-save-error").textContent).toBe("请输入实验模板名称");
+    expect(document.activeElement).toBe(view.getByTestId("teacher-topic-save-error"));
     expect(createTopic).not.toHaveBeenCalled();
 });
 

@@ -86,6 +86,15 @@ export function TopicManagement() {
     }, []);
 
     useEffect(() => {
+        setSaveError(null);
+    }, [currentStep, showCreateModal]);
+
+    function reportSaveError(message: string) {
+        setSaveError(message);
+        toast.error(message);
+    }
+
+    useEffect(() => {
         if (!showCreateModal || topicWizardMode !== "create" || editingTopicId !== null) return;
         if (newTopicName || newTopicDesc) {
             writeTeacherDraft(teacherId, NEW_TOPIC_DRAFT, { name: newTopicName, description: newTopicDesc });
@@ -143,7 +152,7 @@ export function TopicManagement() {
 
     async function handleSubmitTopic() {
         if (!newTopicName.trim()) {
-            toast.error("请输入实验模板名称");
+            reportSaveError("请输入实验模板名称");
             return;
         }
 
@@ -267,6 +276,7 @@ export function TopicManagement() {
 
     async function handleExcelUpload(file: File) {
         if (!editingTopicId || editingTopicPublished) return;
+        setSaveError(null);
         setUploadingExcel(true);
         const res = await teacherApi.uploadTopicExcel(editingTopicId, file);
         setUploadingExcel(false);
@@ -282,29 +292,30 @@ export function TopicManagement() {
             setColumns(res.data.columns ?? []);
             setFieldMapping({ stratified: [], numeric: [], others: [] });
         } else {
-            toast.error("上传失败: " + res.error?.message);
+            reportSaveError(res.error?.message ?? "总体数据上传失败，请重新选择文件后重试。");
         }
     }
 
     async function handleSaveFieldMapping() {
         if (!editingTopicId) return;
+        setSaveError(null);
         if (editingTopicPublished) {
             setSaveError(null);
             setCurrentStep(4);
             return;
         }
         if (!fieldMapping.identifier) {
-            toast.error("请选择标识符字段");
+            reportSaveError("请选择标识符字段");
             return;
         }
         // 新课题要求研究合同完整；仅有旧版对照变量的历史课题保持可保存（兼容）。
         if (parseStudyContract(fieldMapping) !== null || fieldMapping.studyContract !== undefined) {
             if (!isStudyContractComplete(fieldMapping.studyContract)) {
-                toast.error("请完成研究合同：研究问题、目标总体、分析单位和对照变量");
+                reportSaveError("请完成研究合同：研究问题、目标总体、分析单位和对照变量");
                 return;
             }
         } else if (!fieldMapping.analysisTarget?.field || (fieldMapping.analysisTarget.kind === "proportion" && !fieldMapping.analysisTarget.value)) {
-            toast.error("请指定对照变量");
+            reportSaveError("请指定对照变量");
             return;
         }
         const res = await teacherApi.updateFieldMapping(editingTopicId, fieldMapping);
@@ -313,12 +324,13 @@ export function TopicManagement() {
             setSaveError(null);
             setCurrentStep(4);
         } else {
-            toast.error("保存失败: " + res.error?.message);
+            reportSaveError(res.error?.message ?? "字段配置保存失败，请重试；本页输入已保留。");
         }
     }
 
     async function handleSaveSamplingPolicy() {
         if (!editingTopicId) return;
+        setSaveError(null);
         if (editingTopicPublished) {
             setSaveError(null);
             setCurrentStep(5);
@@ -329,35 +341,38 @@ export function TopicManagement() {
             setSaveError(null);
             setCurrentStep(5);
         } else {
-            toast.error("保存失败: " + res.error?.message);
+            reportSaveError(res.error?.message ?? "抽样策略保存失败，请重试；本页输入已保留。");
         }
     }
 
     async function handleUploadAttachment(file: File) {
         if (!editingTopicId) return;
+        setSaveError(null);
         setUploadingAttachment(true);
         const res = await teacherApi.uploadAttachment(editingTopicId, file);
         setUploadingAttachment(false);
         if (res.success) {
             await loadTopicDetail(editingTopicId);
         } else {
-            toast.error("上传失败: " + res.error?.message);
+            reportSaveError(res.error?.message ?? "教学资料上传失败，请重新选择文件后重试。");
         }
     }
 
     async function handleSaveRecommendQuestions() {
         if (!editingTopicId) return;
+        setSaveError(null);
         const res = await teacherApi.updateRecommendQuestions(editingTopicId, recommendQuestions);
         if (res.success) {
             setSaveError(null);
             setCurrentStep(7);
         } else {
-            toast.error("保存失败: " + res.error?.message);
+            reportSaveError(res.error?.message ?? "推荐题目保存失败，请重试；本页输入已保留。");
         }
     }
 
     async function handleSaveWeights() {
         if (!editingTopicId) return;
+        setSaveError(null);
         if (editingTopicPublished) {
             setShowCreateModal(false);
             setCurrentStep(1);
@@ -367,20 +382,20 @@ export function TopicManagement() {
         }
         const { questionnaire, process, report } = weightConfig;
         if (questionnaire < 10 || questionnaire > 50) {
-            toast.error("问卷设计权重需在10-50%之间");
+            reportSaveError("问卷设计权重需在10-50%之间");
             return;
         }
         if (process < 20 || process > 60) {
-            toast.error("实验过程权重需在20-60%之间");
+            reportSaveError("实验过程权重需在20-60%之间");
             return;
         }
         if (report < 10 || report > 50) {
-            toast.error("实验报告权重需在10-50%之间");
+            reportSaveError("实验报告权重需在10-50%之间");
             return;
         }
         const total = questionnaire + process + report;
         if (total !== 100) {
-            toast.error("权重总和必须等于100");
+            reportSaveError("权重总和必须等于100");
             return;
         }
         const res = await teacherApi.updateWeightConfig(editingTopicId, weightConfig);
@@ -394,7 +409,7 @@ export function TopicManagement() {
             setNewTopicDesc("");
             loadTopics();
         } else {
-            toast.error("保存失败: " + res.error?.message);
+            reportSaveError(res.error?.message ?? "评分规则保存失败，请重试；本页输入已保留。");
         }
     }
 

@@ -121,8 +121,12 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
     const [actionError, setActionError] = useState<string | null>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const stepRef = useRef<HTMLDivElement>(null);
+    const errorRef = useRef<HTMLDivElement>(null);
     const busy = pending || uploadingExcel || uploadingAttachment || Boolean(csvReviewFile);
     const displayedError = actionError ?? saveError;
+    useLayoutEffect(() => {
+        if (open && displayedError && !busy) errorRef.current?.focus({ preventScroll: true });
+    }, [open, displayedError, busy]);
     useLayoutEffect(() => {
         if (!open) { setCsvReviewFile(null); return; }
         if (contentRef.current) contentRef.current.scrollTop = 0;
@@ -895,12 +899,14 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         )}
                     </div>
                 </div>
-                <DialogFooter className="border-t border-border pt-4 flex-shrink-0">
+                <DialogFooter className="border-t border-border pt-4 flex-shrink-0 flex-col">
                     {displayedError ? (
                         <div
+                            ref={errorRef}
+                            tabIndex={-1}
                             role="alert"
                             data-testid="teacher-topic-save-error"
-                            className="mb-3 w-full rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3 text-label text-destructive"
+                            className="mb-3 w-full rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3 text-label text-destructive focus-visible:outline-2 focus-visible:outline-ring"
                         >
                             {displayedError}
                         </div>
