@@ -209,3 +209,66 @@ test("zero scores still require explicit confirmation rather than being submitte
     expect(view.getByTestId("teacher-grade-confirm")).toBeTruthy();
     expect(writes).toBe(0);
 });
+
+test("continue grading waits for save, freezes the queue lookup and restores only the next submission's draft", async () => {
+    let finishSave!: (response: Response) => void;
+    let finishQueue!: (response: Response) => void;
+    const requests: string[] = [];
+    globalThis.fetch = (async (input, init) => {
+        const url = new URL(String(input), "http://localhost");
+        requests.push(`${init?.method ?? "GET"} ${url.pathname}${url.search}`);
+        if (init?.method === "POST") return new Promise<Response>(resolve => { finishSave = resolve; });
+        if (url.pathname === "/api/teacher/grading") return new Promise<Response>(resolve => { finishQueue = resolve; });
+        const id = Number(url.pathname.split("/").at(-1));
+        return Response.json({ success: true, data: { ...record(), id, studentName: `学生${id}`, scoreReport: id === 8 ? 65 : 30 } });
+    }) as typeof fetch;
+    localStorage.setItem("wj:teacher-draft:9:grading:8", JSON.stringify({ version: 1, scores: { questionnaire: "45", process: "55", report: "65" }, comment: "第八份草稿", rejectReason: "" }));
+    const view = page("/grading/7?status=all&keyword=S&page=3");
+    await waitFor(() => expect(view.getByLabelText("教师评语")).toBeTruthy());
+    fireEvent.change(view.getByLabelText("教师评语"), { target: { value: "第七份评语" } });
+    fireEvent.click(view.getByText("提交评分"));
+    fireEvent.click(view.getByTestId("teacher-grade-next"));
+    expect(requests).toHaveLength(2);
+    expect(localStorage.getItem("wj:teacher-draft:9:grading:7")).toContain("第七份评语");
+    await act(async () => finishSave(Response.json({ success: true })));
+    expect(requests[2]).toBe("GET /api/teacher/grading?status=pending&keyword=S&page=1&pageSize=1");
+    expect((view.getByLabelText("教师评语") as HTMLTextAreaElement).disabled).toBe(true);
+    expect((view.getByText("返回列表") as HTMLButtonElement).disabled).toBe(true);
+    expect(localStorage.getItem("wj:teacher-draft:9:grading:7")).toBeNull();
+    await act(async () => finishQueue(Response.json({ success: true, data: { items: [{ id: 8 }], total: 1 } })));
+    await waitFor(() => expect(view.getByRole("heading", { name: "学生8 · 实验" })).toBeTruthy());
+    expect((view.getByLabelText("教师评语") as HTMLTextAreaElement).value).toBe("第八份草稿");
+    expect((view.getByLabelText("实验报告（40%）") as HTMLInputElement).value).toBe("65");
+    expect((view.getByLabelText("教师评语") as HTMLTextAreaElement).disabled).toBe(false);
+    fireEvent.click(view.getByText("返回列表"));
+    expect(view.getByTestId("list-location").textContent).toBe("/grading?status=all&keyword=S&page=3");
+});
+
+for (const outcome of ["save-failed", "queue-failed", "empty"] as const) test(`continue grading: ${outcome} does not lose or resubmit a grade`, async () => {
+    let writes = 0;
+    let queues = 0;
+    globalThis.fetch = (async (input, init) => {
+        if (init?.method === "POST") { writes++; return Response.json(outcome === "save-failed" ? { success: false, error: { message: "保存失败" } } : { success: true }); }
+        if (new URL(String(input), "http://localhost").pathname === "/api/teacher/grading") {
+            queues++;
+            return Response.json(outcome === "queue-failed" ? { success: false, error: { message: "列表失败" } } : { success: true, data: { items: [], total: 0 } });
+        }
+        return Response.json({ success: true, data: record() });
+    }) as typeof fetch;
+    const view = page("/grading/7?keyword=S1&page=2");
+    await waitFor(() => expect(view.getByLabelText("教师评语")).toBeTruthy());
+    fireEvent.change(view.getByLabelText("教师评语"), { target: { value: "待保存评语" } });
+    fireEvent.click(view.getByText("提交评分"));
+    fireEvent.click(view.getByTestId("teacher-grade-next"));
+    if (outcome === "save-failed") {
+        await waitFor(() => expect((view.getByLabelText("教师评语") as HTMLTextAreaElement).disabled).toBe(false));
+        expect(queues).toBe(0);
+        expect(localStorage.getItem("wj:teacher-draft:9:grading:7")).toContain("待保存评语");
+        expect(view.queryByTestId("list-location")).toBeNull();
+    } else {
+        await waitFor(() => expect(view.getByTestId("list-location").textContent).toBe("/grading?keyword=S1&page=2"));
+        expect(queues).toBe(1);
+        expect(localStorage.getItem("wj:teacher-draft:9:grading:7")).toBeNull();
+    }
+    expect(writes).toBe(1);
+});

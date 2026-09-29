@@ -123,7 +123,7 @@ export function GradingDetail() {
             + parsedScores.report! * weights.report
         ) / 100;
     }, [parsedScores, scoresReady, weights]);
-    const grade = async () => {
+    const grade = async (continueGrading = false) => {
         if (!data || !scoresReady || !canGrade || mutationInFlight.current) return;
         mutationInFlight.current = true;
         setGradeConfirmOpen(false);
@@ -135,15 +135,33 @@ export function GradingDetail() {
             comment,
         });
         if (currentId.current !== id) return;
-        mutationInFlight.current = false;
-        setSaving(false);
         if (!response.success) {
+            mutationInFlight.current = false;
+            setSaving(false);
             toast.error(response.error?.message ?? "评分失败");
             if (response.error?.code === "VERSION_CONFLICT") setConflict(true);
             return;
         }
         toast.success("评分已保存");
         clearTeacherDraft(teacherId, draftScope);
+        setDraftChanged(false);
+        if (continueGrading) {
+            // Query after saving: the completed submission is no longer pending.
+            // Start at page one so removals cannot skip items across page boundaries.
+            const query = new URLSearchParams(search);
+            const next = await teacherApi.getGradingList({ status: "pending", keyword: query.get("keyword")?.trim() || undefined, page: 1, pageSize: 1 });
+            if (currentId.current !== id) return;
+            if (next.success && next.data) {
+                const item = next.data.items[0];
+                if (item) {
+                    navigate(`/grading/${item.id}${search}`);
+                    return;
+                }
+                toast.success("当前搜索范围内已无待批改作业");
+            } else {
+                toast.error("评分已保存，但下一份作业加载失败，请从列表继续批改");
+            }
+        }
         returnToList();
     };
     const reject = async () => {
@@ -298,6 +316,10 @@ export function GradingDetail() {
                                         </p>
                                         <Button variant="outline" disabled={saving} onClick={() => setGradeConfirmOpen(false)}>取消</Button>
                                         <Button data-testid="teacher-grade-confirm" disabled={!canGrade || !scoresReady} onClick={() => void grade()}>确认提交</Button>
+                                        {data.status === "submitted" && <>
+                                            <Button variant="outline" data-testid="teacher-grade-next" disabled={!canGrade || !scoresReady} onClick={() => void grade(true)}>保存并批改下一份</Button>
+                                            <p className="w-full text-meta text-muted-foreground">继续批改当前搜索范围内的待批改作业。</p>
+                                        </>}
                                     </>
                                 ) : (
                                     <Button disabled={!canGrade || saving || !scoresReady} onClick={() => setGradeConfirmOpen(true)}>{saving ? "保存中..." : data.status === "graded" ? "更新评分" : "提交评分"}</Button>

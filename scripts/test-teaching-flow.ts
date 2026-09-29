@@ -862,10 +862,15 @@ try {
     for (const key of ["questionnaire", "process", "report"]) await browser(teacher, "fill", `#grading-score-${key}`, "90");
     await browser(teacher, "fill", "#grading-comment", "已完成修改，分析准确。");
     await namedButton(teacher, "提交评分");
-    // Grading is a two-step confirm in the UI; skipping the second step leaves the
-    // form filled but unsaved, which used to make this harness report a timeout.
-    await activate(teacher, '[data-testid="teacher-grade-confirm"]');
+    await captureDesktop(teacher, "grading-continue-confirm", '[data-testid="teacher-grading-panel"]');
+    const pendingGrades = await api<{ items: Array<{ id: number }> }>(teacher, "/api/teacher/grading?status=pending&pageSize=100");
+    const nextGrade = pendingGrades.items.find(item => item.id !== experiment.id);
+    assert(nextGrade, "Seed must include another pending submission for continuous grading");
+    await activate(teacher, '[data-testid="teacher-grade-next"]');
     await eventually(async () => (await api<ExperimentData>(student, experimentPath)).status === "graded", "Grading failed");
+    await eventually(() => evaluate(teacher, `location.pathname==='/teacher/grading/${nextGrade.id}' && Boolean(document.querySelector('#grading-comment:not(:disabled)'))`), "Saving must open the next pending submission");
+    assert(await evaluate(teacher, 'document.querySelector("#grading-comment").value!=="已完成修改，分析准确。"'), "Previous student's comment must not carry into next submission");
+    await browser(teacher, "screenshot", join(artifacts, "grading-next-submission.png"));
     await page(student, `/student/task/${task.id}/result`, '[data-testid="student-submission-detail"]');
     assert(await evaluate(student, 'document.body.textContent.includes("90") && document.body.textContent.includes("已完成修改，分析准确。")'), "Student grade or comment missing");
     await browser(student, "screenshot", join(artifacts, "student-result.png"));
