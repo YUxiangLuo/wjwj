@@ -251,6 +251,33 @@ test("six strata retain their names while the seventh switches to a compact lege
     expect(compactLegend.textContent).not.toContain("层级1");
 });
 
+test("pause cancels phase timers and single stepping preserves position across speed changes", async () => {
+    const view = render(<ImmersiveSamplingAnimation method="simple" populationSize={8} sampleSize={3} seed={43} sampledData={[]} onClose={() => {}} />);
+    fireEvent.click(view.getByTestId("sampling-animation-pause"));
+    await act(async () => { await Bun.sleep(800); });
+    expect(view.queryByTestId("sampling-animation-dot-grid")).toBeNull();
+    const step = view.getByTestId("sampling-animation-step");
+    step.focus();
+    fireEvent.click(step);
+    expect(document.activeElement).toBe(step);
+    const grid = view.getByTestId("sampling-animation-dot-grid");
+    expect(grid.querySelectorAll('[data-selected="true"]')).toHaveLength(0);
+    fireEvent.click(step);
+    expect(grid.querySelectorAll('[data-selected="true"]')).toHaveLength(1);
+    fireEvent.change(view.getByLabelText("播放速度"), { target: { value: "2" } });
+    await act(async () => { await Bun.sleep(100); });
+    expect(grid.querySelectorAll('[data-selected="true"]')).toHaveLength(1);
+    fireEvent.click(view.getByTestId("sampling-animation-pause"));
+    await waitFor(() => expect(grid.querySelectorAll('[data-selected="true"]')).toHaveLength(3));
+    fireEvent.click(view.getByTestId("sampling-animation-pause"));
+    await act(async () => { await Bun.sleep(600); });
+    expect(view.queryByTestId("sampling-animation-receipt")).toBeNull();
+    fireEvent.click(step);
+    expect(view.getByTestId("sampling-animation-receipt")).toBeTruthy();
+    expect(view.getByTestId("sampling-animation-final-diagram").querySelectorAll('[data-selected="true"]')).toHaveLength(3);
+    expect(view.getByText("方法说明")).toBeTruthy();
+});
+
 test("reduced-motion users go directly to results without a replay control", async () => {
     const originalMatchMedia = window.matchMedia;
     window.matchMedia = ((query: string) => ({

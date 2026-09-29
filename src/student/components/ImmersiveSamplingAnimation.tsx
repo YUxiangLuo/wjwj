@@ -242,6 +242,8 @@ export function ImmersiveSamplingAnimation({
     const [visiblePopCount, setVisiblePopCount] = useState(0);
     const [currentSelectIndex, setCurrentSelectIndex] = useState(0);
     const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+    const [paused, setPaused] = useState(false);
+    const [speed, setSpeed] = useState(1);
     const meta = METHOD_META[method];
     const progressCopy = METHOD_PROGRESS_COPY[method];
     const fieldLabel = FIELD_LABELS[stratifyBy ?? ""] ?? stratifyBy;
@@ -367,66 +369,38 @@ export function ImmersiveSamplingAnimation({
     const replayAnimation = useCallback(() => {
         setVisiblePopCount(0);
         setCurrentSelectIndex(0);
+        setPaused(false);
         setPhase({ type: "intro" });
     }, []);
 
-    // ─── Phase transitions ────────────────────────────────
-    // Intro → Populating after 1.5s
+    // One pending timer, derived from the visible position. Pausing or changing
+    // speed cancels it without resetting progress or leaving a phase timer alive.
     useEffect(() => {
-        if (phase.type === "intro") {
-            const timer = setTimeout(() => setPhase({ type: "populating" }), introDelay);
-            return () => clearTimeout(timer);
-        }
-    }, [phase, introDelay]);
-
-    // Populating animation: fill grid rapidly
-    useEffect(() => {
-        if (phase.type !== "populating") return;
-        let transitionTimer: ReturnType<typeof setTimeout> | undefined;
-        const batchSize = Math.max(1, Math.ceil(visualPopulationSize / POPULATION_TICK_COUNT));
-        const populationTimer = setInterval(() => {
-            setVisiblePopCount((prev) => {
-                const next = Math.min(prev + batchSize, visualPopulationSize);
-                if (next >= visualPopulationSize) {
-                    clearInterval(populationTimer);
-                    transitionTimer = setTimeout(() => setPhase({ type: "sampling" }), POPULATION_TO_SAMPLING_DELAY_MS);
-                }
-                return next;
-            });
-        }, POPULATION_TICK_MS);
-        return () => {
-            clearInterval(populationTimer);
-            if (transitionTimer) clearTimeout(transitionTimer);
-        };
-    }, [phase, visualPopulationSize]);
-
-    // Sampling animation: highlight selected dots progressively
-    useEffect(() => {
-        if (phase.type !== "sampling") return;
-        const total = selectionOrder.length;
-        if (total === 0) {
-            setPhase({ type: "complete" });
-            return;
-        }
-
-        // At most 60 ticks keeps the full visual sequence well under six seconds.
-        let index = 0;
-        const batchSize = Math.max(1, Math.ceil(total / MAX_SAMPLING_TICKS));
-        let completionTimer: ReturnType<typeof setTimeout> | undefined;
-        const samplingTimer = setInterval(() => {
-            index = Math.min(index + batchSize, total);
-            setCurrentSelectIndex(index);
-            if (index >= total) {
-                clearInterval(samplingTimer);
-                completionTimer = setTimeout(finishAnimation, COMPLETION_DELAY_MS);
+        if (paused || prefersReducedMotion || phase.type === "complete") return;
+        const delay = phase.type === "intro" ? introDelay
+            : phase.type === "populating" ? (visiblePopCount < visualPopulationSize ? POPULATION_TICK_MS : POPULATION_TO_SAMPLING_DELAY_MS)
+                : currentSelectIndex < selectionOrder.length ? SAMPLING_TICK_MS : COMPLETION_DELAY_MS;
+        const timer = setTimeout(() => {
+            if (phase.type === "intro") setPhase({ type: "populating" });
+            else if (phase.type === "populating") {
+                if (visiblePopCount < visualPopulationSize) setVisiblePopCount(Math.min(visualPopulationSize, visiblePopCount + Math.max(1, Math.ceil(visualPopulationSize / POPULATION_TICK_COUNT))));
+                else setPhase({ type: "sampling" });
+            } else if (currentSelectIndex < selectionOrder.length) {
+                setCurrentSelectIndex(Math.min(selectionOrder.length, currentSelectIndex + Math.max(1, Math.ceil(selectionOrder.length / MAX_SAMPLING_TICKS))));
+            } else {
+                finishAnimation();
             }
-        }, SAMPLING_TICK_MS);
+        }, delay / speed);
+        return () => clearTimeout(timer);
+    }, [phase.type, paused, prefersReducedMotion, speed, introDelay, visiblePopCount, visualPopulationSize, currentSelectIndex, selectionOrder.length, finishAnimation]);
 
-        return () => {
-            clearInterval(samplingTimer);
-            if (completionTimer) clearTimeout(completionTimer);
-        };
-    }, [phase, selectionOrder, finishAnimation]);
+    const stepAnimation = () => {
+        setPaused(true);
+        setVisiblePopCount(visualPopulationSize);
+        if (phase.type !== "sampling") setPhase({ type: "sampling" });
+        else if (currentSelectIndex < selectionOrder.length) setCurrentSelectIndex(currentSelectIndex + 1);
+        else finishAnimation();
+    };
 
     const progress =
         phase.type === "intro" ? 0
@@ -553,7 +527,7 @@ export function ImmersiveSamplingAnimation({
     // The close control changes when the animation reaches its completed phase.
     // Keep a deterministic focus target through that automatic transition.
     useEffect(() => {
-        closeButtonRef.current?.focus();
+        if (!overlayRef.current?.contains(document.activeElement) || document.activeElement === overlayRef.current) closeButtonRef.current?.focus();
     }, [phase.type]);
 
     const handleOverlayKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -680,6 +654,25 @@ export function ImmersiveSamplingAnimation({
                         >
                             <X className="w-5 h-5" />
                         </button>
+                    </div>
+                )}
+            </div>
+
+            <div className="px-6 pb-3 space-y-2">
+                <details className="text-meta text-muted-foreground">
+                    <summary className="cursor-pointer">方法说明</summary>
+                    <p className="mt-2 max-w-3xl">{introText}</p>
+                </details>
+                {phase.type !== "complete" && !prefersReducedMotion && (
+                    <div className="flex items-center gap-3" role="group" aria-label="演示播放控制">
+                        <Button variant="outline" onClick={() => setPaused(value => !value)} data-testid="sampling-animation-pause">{paused ? "继续播放" : "暂停"}</Button>
+                        <Button variant="outline" onClick={stepAnimation} data-testid="sampling-animation-step">{phase.type === "sampling" ? currentSelectIndex === selectionOrder.length ? "查看结果" : "选取下一个点" : "进入选取"}</Button>
+                        <label className="flex items-center gap-2 text-label">播放速度
+                            <select aria-label="播放速度" className="rounded-control border border-input bg-card p-2" value={speed} onChange={event => setSpeed(Number(event.target.value))}>
+                                <option value={0.5}>0.5×</option><option value={1}>1×</option><option value={2}>2×</option>
+                            </select>
+                        </label>
+                        <span className="text-meta text-muted-foreground" role="status">{paused ? "已暂停" : "播放中"}</span>
                     </div>
                 )}
             </div>
@@ -854,6 +847,12 @@ export function ImmersiveSamplingAnimation({
                         {/* Complete phase */}
                         {phase.type === "complete" && (
                             <div className="animate-in fade-in duration-300 flex flex-col min-h-0 h-full gap-4">
+                                <details className="shrink-0 rounded-surface border border-border bg-card p-3" data-testid="sampling-animation-final-diagram">
+                                    <summary className="cursor-pointer text-label">查看最终示意图（不对应具体入样记录）</summary>
+                                    <div className="mt-3 max-h-64 overflow-auto">
+                                        <DotGrid totalDots={visualPopulationSize} gridColumns={visualScale.gridColumns} visiblePopCount={visualPopulationSize} currentSelectIndex={selectionOrder.length} dotSelectedAt={dotSelectedAt} layerAssignment={layerAssignment} dotWeights={dotWeights} method={method} />
+                                    </div>
+                                </details>
                                 <section className="shrink-0 rounded-surface border border-success-border bg-success-muted p-3" data-testid="sampling-animation-receipt">
                                     <div className="mb-2 flex items-center gap-2 text-success">
                                         <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
