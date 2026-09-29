@@ -21,6 +21,20 @@ afterAll(() => {
     restoreDom = null;
 });
 
+test.each([
+    { n: 1, expected: "<0.01%" },
+    { n: 100, expected: "0.01%" },
+    { n: 999900, expected: "99.99%" },
+    { n: 999999, expected: ">99.99%" },
+    { n: 1000000, expected: "100%" },
+])("receipt distinguishes extreme sampling fractions: $n", ({ n, expected }) => {
+    const view = render(<ImmersiveSamplingAnimation method="simple" populationSize={1000000} sampleSize={n} seed={42} sampledData={[]} onClose={() => {}} />);
+    fireEvent.click(view.getByTestId("immersive-sampling-skip"));
+    const label = view.getByTestId("sampling-animation-receipt").querySelectorAll("dt")[1]!;
+    expect(label.textContent).toBe("抽样比");
+    expect(label.nextElementSibling?.textContent).toBe(expected);
+});
+
 test("PPS illustration uses certainty-unit redistribution, not duplicate-hit advancement", async () => {
     const view = render(<ImmersiveSamplingAnimation method="pps" populationSize={10} sampleSize={7} randomStart={0.1145} sizeField="size" ppsProbabilitySummary={{ populationCount: 10, probabilitySum: 7, minInclusionProbability: .13989362870504474, maxInclusionProbability: 1, certaintyUnitCount: 3 }} sampledData={[]} onClose={() => {}} />);
     const grid = await waitFor(() => view.getByTestId("sampling-animation-dot-grid"), { timeout: 1500 });

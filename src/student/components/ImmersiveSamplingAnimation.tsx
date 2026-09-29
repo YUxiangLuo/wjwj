@@ -463,12 +463,15 @@ export function ImmersiveSamplingAnimation({
     );
 
     const receiptItems = useMemo(() => {
+        const fraction = sampleSize / populationSize;
         const items = [
             { label: "总体 → 样本", value: `${populationSize.toLocaleString()} → ${sampleSize.toLocaleString()}` },
             {
                 label: "抽样比",
                 value: populationSize > 0
-                    ? (sampleSize / populationSize).toLocaleString("zh-CN", { style: "percent", maximumFractionDigits: 2 })
+                    ? fraction > 0 && fraction < 0.0001 ? "<0.01%"
+                        : fraction > 0.9999 && sampleSize < populationSize ? ">99.99%"
+                        : fraction.toLocaleString("zh-CN", { style: "percent", maximumFractionDigits: 2 })
                     : "—",
             },
         ];
