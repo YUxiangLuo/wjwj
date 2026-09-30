@@ -1,11 +1,10 @@
 import { StudentStatusPage } from "../components/StudentStatusPage";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useState, useEffect } from "react";
-import { ArrowLeft, FileText, Download, Play, Image, File, CheckCircle, Clock, AlertTriangle, BookOpen, ChevronRight, Eye } from "lucide-react";
+import { ArrowLeft, FileText, Download, Play, Image, File, CheckCircle, Clock, AlertTriangle, ChevronRight, Eye } from "lucide-react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, type StatusBadgeIntent } from "@/components/StatusBadge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RichTextContent } from "@/components/RichTextContent";
 import { LoadingStatus } from "@/components/LoadingStatus";
@@ -108,7 +107,9 @@ export function TopicDetails() {
     }, [id, cancel]);
     if (!Number.isInteger(id) || id <= 0) return <Navigate to="/" replace />;
     if (loadError) {
-        return <StudentStatusPage title="课题详情" message="课题信息加载失败，请重试或返回任务大厅。" error={{ message: loadError, onRetry: () => void load() }} />;
+        return (
+            <StudentStatusPage title="课题详情" message="课题信息加载失败，请重试或返回任务大厅。" error={{ message: loadError, onRetry: () => void load() }} />
+        );
     }
 
     if (loading) {
@@ -125,23 +126,12 @@ export function TopicDetails() {
     const notOpenYet = !Number.isNaN(openAt.getTime()) && openAt.getTime() > Date.now();
     const isActiveStatus = ["not_started", "in_progress", "rejected"].includes(task.status);
     const canStartExperiment = isActiveStatus && !deadlinePassed && !notOpenYet;
-    const effectiveStatus = deadlinePassed && isActiveStatus
-        ? { label: "已截止", intent: "neutral" as const }
-        : notOpenYet && isActiveStatus
-            ? { label: "未开放", intent: "info" as const }
-            : status;
-    const effectiveStatusDotClass = deadlinePassed && isActiveStatus
-        ? "bg-muted-foreground"
-        : notOpenYet && isActiveStatus
-            ? "bg-info"
-            : task.status === "in_progress"
-                ? "bg-primary animate-pulse"
-                : task.status === "not_started"
-                    ? "bg-muted-foreground"
-                    : task.status === "rejected"
-                        ? "bg-destructive"
-                        : "bg-success";
-
+    const effectiveStatus =
+        deadlinePassed && isActiveStatus
+            ? { label: "已截止", intent: "neutral" as const }
+            : notOpenYet && isActiveStatus
+              ? { label: "未开放", intent: "info" as const }
+              : status;
     const action = getTaskPrimaryAction(task.id, task.status, canStartExperiment);
     const samplingPolicy = resolveSamplingPolicy(task.samplingPolicy);
     const samplingMethodLabels = { simple: "简单随机", systematic: "系统抽样", pps: "PPS抽样", stratified: "分层抽样" } as const;
@@ -159,7 +149,7 @@ export function TopicDetails() {
     const previewUrl = previewFile ? studentResourceUrl(`/api/student/attachments/${previewFile.id}/download?mode=preview`) : "";
 
     return (
-        <div className="space-y-4 pb-12" data-testid="student-task-detail">
+        <div className="space-y-4 pb-4" data-testid="student-task-detail">
             <div>
                 <Button asChild variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground hover:bg-muted -ml-4 h-8 text-label">
                     <Link to="/">
@@ -168,271 +158,171 @@ export function TopicDetails() {
                     </Link>
                 </Button>
 
-                <div className="flex flex-row items-center justify-between gap-3 mt-1">
-                    <div>
-                        <h1 className="text-page-title font-bold text-foreground">{task.name}</h1>
-                        <div className="flex flex-wrap items-center gap-4 mt-1 text-label text-muted-foreground">
-                            <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {notOpenYet ? "开放于" : "发布于"} {formatDateTime(task.publishedAt)}（UTC+8）</span>
-                            {task.deadline && <span>截止于 {formatDateTime(task.deadline)}（UTC+8）</span>}
+                <div className="flex items-start justify-between gap-5 mt-1">
+                    <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <h1 className="text-page-title font-bold text-foreground break-words">{task.name}</h1>
+                            <StatusBadge intent={effectiveStatus.intent}>{effectiveStatus.label}</StatusBadge>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-meta text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5" /> {notOpenYet ? "开放于" : "发布于"} {formatDateTime(task.publishedAt)}（UTC+8）
+                            </span>
+                            <span>{task.deadline ? `截止于 ${formatDateTime(task.deadline)}（UTC+8）` : "未设置截止时间"}</span>
+                            <span>{notOpenYet ? getOpeningLabel(task.publishedAt) : getDeadlineLabel(task.deadline)}</span>
                         </div>
                     </div>
-                    <StatusBadge intent={effectiveStatus.intent} className="h-7 px-3 py-1 text-label">{effectiveStatus.label}</StatusBadge>
+                    <div className="shrink-0 space-y-2 text-right" data-testid="student-task-action">
+                        {task.status === "graded" && task.score !== undefined && <p className="text-label font-medium text-success">实验成绩：{task.score}</p>}
+                        {action.link && !action.disabled ? (
+                            <Button asChild size="lg">
+                                <Link to={action.link}>
+                                    {action.text}
+                                    <ChevronRight className="h-4 w-4" />
+                                </Link>
+                            </Button>
+                        ) : (
+                            <Button size="lg" disabled>
+                                {action.text}
+                            </Button>
+                        )}
+                    </div>
                 </div>
+                {shouldShowTaskAvailabilityHint(task.status, canStartExperiment) && (
+                    <p className="mt-2 flex items-center gap-2 text-label text-destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        {notOpenYet ? "任务尚未开放，暂不可操作" : "任务已截止，无法继续操作"}
+                    </p>
+                )}
             </div>
 
-            <Card className="rounded-surface border-border bg-card ">
-                <CardContent className="px-5 py-4">
-                    <div className="flex gap-4 flex-row items-center justify-between">
-                        <div className="space-y-1 max-w-2xl">
-                            <div className="inline-flex items-center gap-1.5 rounded-control bg-primary-muted px-2.5 py-0.5 text-meta font-medium text-primary border border-primary-border">
-                                <BookOpen className="w-3 h-3" />
-                                实验目标
-                            </div>
-                            <p className="text-body font-medium text-foreground leading-relaxed">完成问卷、样本规划、抽样和分析报告。</p>
+            <ol aria-label="实验进度概览" className="grid grid-cols-4 gap-3 rounded-surface border border-border bg-muted px-4 py-3">
+                {stageNames.map((stage, index) => {
+                    const completed = task.currentStage > index + 1 || task.status === "graded" || task.status === "submitted";
+                    const current = !completed && task.currentStage === index + 1;
+                    return (
+                        <li
+                            key={stage}
+                            aria-current={current ? "step" : undefined}
+                            className={`flex items-center gap-2 text-label ${current ? "font-semibold text-primary" : "text-muted-foreground"}`}
+                        >
+                            {completed ? <CheckCircle className="h-4 w-4 shrink-0 text-success" aria-label="已完成" /> : <span>{index + 1}.</span>}
+                            {stage}
+                        </li>
+                    );
+                })}
+            </ol>
+
+            {task.status === "rejected" && task.rejectReason && (
+                <section className="rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3">
+                    <h2 className="text-label font-semibold text-destructive">驳回理由</h2>
+                    <p className="mt-1 text-label leading-relaxed text-destructive break-words">{task.rejectReason}</p>
+                </section>
+            )}
+
+            <div className="grid grid-cols-5 gap-5 rounded-surface border border-border bg-card p-4">
+                <section className="col-span-3 min-w-0">
+                    <h2 className="mb-3 text-subheading font-semibold text-foreground">实验说明</h2>
+                    <RichTextContent html={task.description ?? ""} className="prose max-w-none text-body text-foreground" emptyFallback="暂无描述" />
+                </section>
+
+                <div className="col-span-2 min-w-0 space-y-4 border-l border-border pl-5">
+                    <section className="space-y-2" data-testid="student-task-sampling-policy">
+                        <h2 className="text-subheading font-semibold text-foreground">抽样方法要求</h2>
+                        <p className="text-meta text-muted-foreground">完成全部必做方法，且至少完成两种启用方法。</p>
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                            {SAMPLING_METHODS.map((method) => {
+                                const requirement = samplingPolicy.methods[method];
+                                return (
+                                    <div key={method} className="flex flex-wrap items-center gap-2">
+                                        <span className="text-label text-foreground">{samplingMethodLabels[method]}</span>
+                                        <StatusBadge intent={requirement === "required" ? "primary" : requirement === "optional" ? "info" : "neutral"}>
+                                            {requirement === "required" ? "必做" : requirement === "optional" ? "选做" : "不适用"}
+                                        </StatusBadge>
+                                    </div>
+                                );
+                            })}
                         </div>
-                        <div className="rounded-surface bg-card border border-border px-5 py-3 min-w-[180px]">
-                            <div className="text-meta text-muted-foreground font-medium uppercase tracking-wider">
-                                {notOpenYet ? "开放状态" : "截止状态"}
-                            </div>
-                            <div className="text-section-title font-bold text-foreground mt-0.5">
-                                {notOpenYet ? getOpeningLabel(task.publishedAt) : getDeadlineLabel(task.deadline)}
-                            </div>
-                            <div className="text-meta text-muted-foreground mt-0.5 font-mono">
-                                {notOpenYet
-                                    ? `开放于 ${formatDateTime(task.publishedAt)}`
-                                    : task.deadline ? formatDateTime(task.deadline) : "未设置截止时间"}
-                            </div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    </section>
 
-            <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-2 space-y-4">
-                    <Card className="rounded-surface border-border bg-card ">
-                        <CardHeader className="border-b border-border pb-3">
-                            <CardTitle className="text-label text-foreground flex items-center gap-2">
-                                <FileText className="w-4 h-4 text-primary" />
-                                实验说明
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-4 pb-4">
-                            <RichTextContent
-                                html={task.description ?? ""}
-                                className="prose max-w-none text-body text-foreground"
-                                emptyFallback="暂无描述"
-                            />
-                        </CardContent>
-                    </Card>
-
-                    <Card className="rounded-surface border-border bg-card" data-testid="student-task-sampling-policy">
-                        <CardHeader className="border-b border-border pb-3">
-                            <CardTitle className="flex items-center gap-2 text-label text-foreground"><Play className="h-4 w-4 text-primary" />抽样方法要求</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3 pb-4 pt-4">
-                            <p className="text-label text-muted-foreground">完成全部必做方法，并至少实际完成两种启用的方法。</p>
-                            <div className="grid grid-cols-4 gap-2">
-                                {SAMPLING_METHODS.map((method) => {
-                                    const requirement = samplingPolicy.methods[method];
-                                    return (
-                                        <div key={method} className="rounded-surface border border-border bg-muted p-3 text-center">
-                                            <p className="text-label font-medium text-foreground">{samplingMethodLabels[method]}</p>
-                                            <StatusBadge className="mt-2" intent={requirement === "required" ? "primary" : requirement === "optional" ? "info" : "neutral"}>
-                                                {requirement === "required" ? "必做" : requirement === "optional" ? "选做" : "不适用"}
-                                            </StatusBadge>
-                                        </div>
-                                    );
-                                })}
+                    {!hasQuestionnaireTemplateAttachment && (
+                        <section className="space-y-2 border-t border-border pt-3" data-testid="student-task-built-in-questionnaire-resource">
+                            <h2 className="text-subheading font-semibold text-foreground">标准问卷设计资料</h2>
+                            <p className="text-label text-muted-foreground">调查问卷设计规范与模板</p>
+                            <div className="flex gap-2">
+                                <Button asChild variant="outline" size="sm">
+                                    <a href="/templates/调查问卷设计规范与模板.pdf" target="_blank" rel="noreferrer">
+                                        预览 PDF
+                                    </a>
+                                </Button>
+                                <Button asChild size="sm">
+                                    <a href="/templates/调查问卷设计规范与模板.docx" download>
+                                        下载 DOCX
+                                    </a>
+                                </Button>
                             </div>
-                        </CardContent>
-                    </Card>
-
-                    {!hasQuestionnaireTemplateAttachment && <Card className="rounded-surface border-border bg-card" data-testid="student-task-built-in-questionnaire-resource">
-                        <CardHeader className="border-b border-border pb-3">
-                            <CardTitle className="flex items-center gap-2 text-label text-foreground"><Download className="h-4 w-4 text-primary" />标准问卷设计资料</CardTitle>
-                        </CardHeader>
-                        <CardContent className="flex items-center justify-between gap-4 pb-4 pt-4">
-                            <div><p className="text-label font-medium text-foreground">调查问卷设计规范与模板</p><p className="mt-1 text-meta text-muted-foreground">包含封面信、甄别、主体、背景资料和结束语。</p></div>
-                            <div className="flex gap-2"><Button asChild variant="outline" size="sm"><a href="/templates/调查问卷设计规范与模板.pdf" target="_blank" rel="noreferrer">预览 PDF</a></Button><Button asChild size="sm"><a href="/templates/调查问卷设计规范与模板.docx" download>下载 DOCX</a></Button></div>
-                        </CardContent>
-                    </Card>}
+                        </section>
+                    )}
 
                     {task.attachments.length > 0 && (
-                        <Card className="rounded-surface border-border bg-card ">
-                            <CardHeader className="border-b border-border pb-3">
-                                <CardTitle className="text-label text-foreground flex items-center gap-2">
-                                    <Download className="w-4 h-4 text-primary" />
-                                    相关资料 ({task.attachments.length})
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="pt-3 pb-3">
-                                <div className="grid grid-cols-2 gap-2">
-                                    {task.attachments.map((file) => (
-                                        <div key={file.id} className="flex items-center justify-between rounded-surface border border-input bg-muted px-3 py-2 hover:bg-muted transition-none group gap-2">
-                                            <div className="flex items-center gap-2.5 overflow-hidden">
-                                                <div className="p-1.5 rounded-control bg-card border border-input shrink-0">
-                                                    {getFileIcon(file.type)}
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className="text-label font-medium text-foreground truncate group-hover:text-primary transition-none">{file.name}</p>
-                                                    <p className="text-meta text-muted-foreground">{formatFileSize(file.size)}</p>
-                                                </div>
+                        <section className="space-y-2 border-t border-border pt-3">
+                            <h2 className="text-subheading font-semibold text-foreground">相关资料 ({task.attachments.length})</h2>
+                            <div className="space-y-2">
+                                {task.attachments.map((file) => (
+                                    <div key={file.id} className="flex items-center justify-between gap-2">
+                                        <div className="flex min-w-0 items-center gap-2">
+                                            <div className="shrink-0">{getFileIcon(file.type)}</div>
+                                            <div className="min-w-0">
+                                                <p className="text-label text-foreground break-words">{file.name}</p>
+                                                <p className="text-meta text-muted-foreground">{formatFileSize(file.size)}</p>
                                             </div>
-                                            <div className="flex items-center gap-0.5 shrink-0">
-                                                {getAttachmentPreviewType(file) && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        aria-label={`预览附件：${file.name}`}
-                                                        className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted"
-                                                        onClick={() => setPreviewFile(file)}
-                                                        title="预览"
-                                                    >
-                                                        <Eye className="w-3.5 h-3.5" />
-                                                    </Button>
-                                                )}
+                                        </div>
+                                        <div className="flex items-center gap-0.5 shrink-0">
+                                            {getAttachmentPreviewType(file) && (
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    aria-label={`下载附件：${file.name}`}
-                                                    className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted"
-                                                    onClick={() => handleDownload(file)}
-                                                    title="下载"
+                                                    aria-label={`预览附件：${file.name}`}
+                                                    className="text-muted-foreground"
+                                                    onClick={() => setPreviewFile(file)}
+                                                    title="预览"
                                                 >
-                                                    <Download className="w-3.5 h-3.5" />
+                                                    <Eye className="w-3.5 h-3.5" />
                                                 </Button>
-                                            </div>
+                                            )}
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                aria-label={`下载附件：${file.name}`}
+                                                className="text-muted-foreground"
+                                                onClick={() => handleDownload(file)}
+                                                title="下载"
+                                            >
+                                                <Download className="w-3.5 h-3.5" />
+                                            </Button>
                                         </div>
-                                    ))}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    {task.status === "rejected" && task.rejectReason && (
-                        <Card className="rounded-surface border-destructive-border bg-destructive-muted">
-                            <CardContent className="py-4">
-                                <div className="flex items-start gap-2">
-                                    <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
-                                    <div>
-                                        <div className="text-label font-semibold text-destructive mb-1">驳回理由</div>
-                                        <p className="text-destructive text-label leading-relaxed opacity-90">{task.rejectReason}</p>
                                     </div>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                ))}
+                            </div>
+                        </section>
                     )}
-
-                </div>
-
-                <div className="space-y-4">
-                    <Card className="rounded-surface border-border bg-card h-fit">
-                        <CardHeader className="border-b border-border pb-3">
-                            <CardTitle className="text-label text-foreground">任务状态</CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-4 pb-4 space-y-3">
-                            <div className="space-y-0.5">
-                                <div className="text-meta text-muted-foreground uppercase tracking-wider font-medium">当前阶段</div>
-                                <div className="text-label font-medium text-foreground">{task.currentStage > 0 && task.currentStage <= 4 ? stageNames[task.currentStage - 1] : "尚未开始"}</div>
-                            </div>
-                            <div className="w-full h-px bg-muted" />
-                            <div className="space-y-0.5">
-                                <div className="text-meta text-muted-foreground uppercase tracking-wider font-medium">任务状态</div>
-                                <div className="flex items-center gap-2">
-                                    <span className={`w-2 h-2 rounded-circle ${effectiveStatusDotClass}`}></span>
-                                    <span className="text-label font-medium text-foreground">{effectiveStatus.label}</span>
-                                </div>
-                            </div>
-                            <div className="w-full h-px bg-muted" />
-                            <div className="space-y-0.5">
-                                <div className="text-meta text-muted-foreground uppercase tracking-wider font-medium">保存规则</div>
-                                <div className="text-label text-muted-foreground leading-relaxed">问卷、样本规划和报告草稿保存在当前浏览器；抽样结果执行后立即保存，完成阶段后才推进流程。</div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="rounded-surface border-primary-border bg-primary-muted ">
-                        <CardContent className="pt-4 pb-4 space-y-3">
-                            <div className="text-label font-medium text-primary">
-                                {task.status === "submitted" || task.status === "graded" ? "实验已提交" : "实验操作"}
-                            </div>
-                            {task.status === "graded" && task.score !== undefined && (
-                                <div className="flex items-center gap-2 rounded-surface bg-success-muted border border-success-border px-3 py-2">
-                                    <CheckCircle className="w-4 h-4 text-success shrink-0" />
-                                    <span className="text-label font-medium text-success">实验成绩</span>
-                                    <span className="text-section-title font-bold text-success tracking-tight ml-auto">{task.score}</span>
-                                </div>
-                            )}
-                            {action.link && !action.disabled ? (
-                                <Button
-                                    asChild
-                                    size="lg"
-                                    className="h-11 w-full bg-primary text-body font-medium text-primary-foreground hover:bg-primary-hover"
-                                >
-                                    <Link to={action.link}>
-                                        {action.text} <ChevronRight className="w-4 h-4 ml-1" />
-                                    </Link>
-                                </Button>
-                            ) : (
-                                <Button size="lg" className="w-full bg-muted hover:bg-muted text-foreground" disabled>{action.text}</Button>
-                            )}
-                            {shouldShowTaskAvailabilityHint(task.status, canStartExperiment) && (
-                                <div className="flex items-center justify-center gap-1.5 text-meta text-destructive bg-destructive-muted p-2 rounded-surface">
-                                    <AlertTriangle className="w-3 h-3" />
-                                    {notOpenYet ? "任务尚未开放，暂不可操作" : "任务已截止，无法继续操作"}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
                 </div>
             </div>
 
-            <Card className="rounded-surface border-border bg-card ">
-                <CardHeader className="border-b border-border pb-3">
-                    <CardTitle className="text-label text-foreground">实验进度概览</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6 pb-5">
-                    <div className="flex items-center justify-between relative px-4">
-                        {/* Connecting Line - Background */}
-                        <div className="absolute left-4 right-4 top-5 h-1 bg-muted rounded-control -z-0"></div>
+            <p className="text-meta leading-relaxed text-muted-foreground">
+                保存规则：问卷、样本规划和报告草稿保存在当前浏览器；抽样结果执行后立即保存，完成阶段后才推进流程。
+            </p>
 
-                        {stageNames.map((stage, index) => {
-                            const stageNum = index + 1;
-                            const isCompleted = task.currentStage > stageNum || task.status === "graded";
-                            const isCurrent = task.currentStage === stageNum && task.status !== "graded";
-
-                            return (
-                                <div key={stage} className="flex flex-col items-center relative z-10 flex-1">
-                                    <div className={`
-                                        w-10 h-10 rounded-control flex items-center justify-center text-label font-bold border-4 transition-colors duration-300
-                                        ${isCompleted
-                                            ? "bg-success border-background text-success-foreground "
-                                            : isCurrent
-                                                ? "bg-primary border-background text-primary-foreground ring-4 ring-ring scale-110 "
-                                                : "bg-muted border-background text-muted-foreground"}
-                                    `}>
-                                        {isCompleted ? <CheckCircle className="w-5 h-5" /> : stageNum}
-                                    </div>
-                                    <span className={`text-meta mt-2 font-medium transition-colors duration-300 ${isCurrent ? "text-primary" : isCompleted ? "text-success" : "text-muted-foreground"}`}>
-                                        {stage}
-                                    </span>
-                                </div>
-                            );
-                        })}
-
-                        {/* Connecting Line - Active Progress (Partial implementation for visual simplified) */}
-                        {/* Real implementation needs exact widths which is hard in flex, visually the circles cover the line breaks */}
-                    </div>
-                </CardContent>
-            </Card>
-
-            <Dialog open={!!previewFile} onOpenChange={(open) => { if (!open) setPreviewFile(null); }}>
+            <Dialog
+                open={!!previewFile}
+                onOpenChange={(open) => {
+                    if (!open) setPreviewFile(null);
+                }}
+            >
                 <DialogContent className="max-w-5xl bg-card border-border text-foreground">
                     <DialogHeader>
                         <DialogTitle className="text-foreground">附件预览</DialogTitle>
-                        <DialogDescription className="text-muted-foreground">
-                            {previewFile?.name}
-                        </DialogDescription>
+                        <DialogDescription className="text-muted-foreground">{previewFile?.name}</DialogDescription>
                     </DialogHeader>
                     <div className="mt-4 rounded-surface border border-border bg-background p-2">
                         {previewType === "image" && (
@@ -441,9 +331,7 @@ export function TopicDetails() {
                         {previewType === "pdf" && (
                             <iframe title={previewFile?.name ?? "PDF预览"} src={previewUrl} tabIndex={-1} className="w-full h-[70vh] rounded-surface" />
                         )}
-                        {previewType === "video" && (
-                            <video src={previewUrl} controls className="max-h-[70vh] w-full rounded-surface bg-overlay" />
-                        )}
+                        {previewType === "video" && <video src={previewUrl} controls className="max-h-[70vh] w-full rounded-surface bg-overlay" />}
                     </div>
                 </DialogContent>
             </Dialog>

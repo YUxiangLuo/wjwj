@@ -471,6 +471,14 @@ try {
     await browser(student, "set", "viewport", "1280", "800");
     const task = tasks.find(item => item.name === name);
     assert(task, "Published task did not reach student");
+    await page(student, `/student/task/${task.id}`, '[data-testid="student-task-action"]');
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(student, "set", "viewport", String(width), String(height));
+        await evaluate(student, 'scrollTo({top:0,behavior:"instant"})');
+        assert(await evaluate(student, `(() => {const a=document.querySelector('[data-testid="student-task-action"] a');const r=a.getBoundingClientRect();return r.top>=0 && r.bottom<=innerHeight && r.right<=innerWidth && document.documentElement.scrollWidth<=innerWidth;})()`), `Task primary action must be visible without scrolling at ${width}px`);
+        await browser(student, "screenshot", join(artifacts, `task-primary-action-${width}.png`));
+    }
+    await browser(student, "set", "viewport", "1280", "800");
     const experimentPath = `/api/student/tasks/${task.id}/experiment`;
     const stageUrl = `/student/task/${task.id}/experiment`;
     let experiment = await api<ExperimentData>(student, experimentPath);

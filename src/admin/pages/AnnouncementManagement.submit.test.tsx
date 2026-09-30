@@ -89,3 +89,45 @@ test("announcement deletion identifies the exact object before the destructive r
     await waitFor(() => expect(deletes).toBe(1));
     await waitFor(() => expect(view.queryByRole("alertdialog")).toBeNull());
 });
+
+test.each(["取消", "关闭", "Escape"])("announcement %s protects unsaved fields until discard is confirmed", async (action) => {
+    dom = installDomGlobals();
+    globalThis.fetch = (async () => Response.json({ success: true, data: [] })) as unknown as typeof fetch;
+    const { AnnouncementManagement } = await import("./AnnouncementManagement");
+    const view = render(<AnnouncementManagement />);
+    fireEvent.click(view.getByRole("button", { name: "新建公告" }));
+    fireEvent.change(view.getByLabelText("标题"), { target: { value: "未保存标题" } });
+    fireEvent.change(view.getByLabelText("内容"), { target: { value: "未保存正文" } });
+    const confirm = mock(() => false);
+    window.confirm = confirm;
+    const dismiss = () => action === "Escape"
+        ? fireEvent.keyDown(view.getByRole("dialog"), { key: "Escape", code: "Escape" })
+        : fireEvent.click(view.getByRole("button", { name: action }));
+    dismiss();
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect((view.getByLabelText("标题") as HTMLInputElement).value).toBe("未保存标题");
+    expect((view.getByLabelText("内容") as HTMLTextAreaElement).value).toBe("未保存正文");
+    confirm.mockImplementation(() => true);
+    dismiss();
+    await waitFor(() => expect(view.queryByRole("dialog")).toBeNull());
+    fireEvent.click(view.getByRole("button", { name: "新建公告" }));
+    expect((view.getByLabelText("标题") as HTMLInputElement).value).toBe("");
+});
+
+test("unchanged announcement closes silently, but editing an existing body requires confirmation", async () => {
+    dom = installDomGlobals();
+    globalThis.fetch = (async () => Response.json({ success: true, data: [{ id: 7, title: "原公告", content: "原正文", targetScope: "all", status: 0 }] })) as unknown as typeof fetch;
+    const { AnnouncementManagement } = await import("./AnnouncementManagement");
+    const view = render(<AnnouncementManagement />);
+    fireEvent.click(await view.findByRole("button", { name: "编辑" }));
+    const confirm = mock(() => false);
+    window.confirm = confirm;
+    fireEvent.click(view.getByRole("button", { name: "取消" }));
+    await waitFor(() => expect(view.queryByRole("dialog")).toBeNull());
+    expect(confirm).not.toHaveBeenCalled();
+    fireEvent.click(view.getByRole("button", { name: "编辑" }));
+    fireEvent.change(view.getByLabelText("内容"), { target: { value: "改后的正文" } });
+    fireEvent.click(view.getByRole("button", { name: "关闭" }));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect((view.getByLabelText("内容") as HTMLTextAreaElement).value).toBe("改后的正文");
+});

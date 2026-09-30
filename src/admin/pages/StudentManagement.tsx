@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Eye, ChevronLeft, ChevronRight, Loader2, RotateCcw, Search, Users } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
+import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -43,6 +44,30 @@ const PAGE_SIZE = 20;
 export function StudentManagement() {
     const location = useLocation();
     const navigate = useNavigate();
+    const { confirm, dialog } = useConfirmDialog();
+    const resetPending = useRef(false);
+    const [resetting, setResetting] = useState(false);
+    const resetPassword = async (student: Student) => {
+        if (resetPending.current) return;
+        resetPending.current = true;
+        setResetting(true);
+        try {
+            if (!await confirm({
+                title: "重置学生密码？",
+                description: `将把 ${student.name}（${student.studentId}）的密码重置为学号，原密码将失效。`,
+                confirmLabel: "确认重置",
+                tone: "destructive",
+            })) return;
+            const response = await studentApi.resetPassword(student.id);
+            if (response.success) toast.success("密码已重置为学号");
+            else toast.error(response.error?.message ?? "重置失败，请重试");
+        } catch {
+            toast.error("重置失败，请重试");
+        } finally {
+            resetPending.current = false;
+            setResetting(false);
+        }
+    };
     const requestedClassId = useMemo(() => {
         const value = new URLSearchParams(location.search).get("classId");
         return value && /^[1-9]\d*$/.test(value) ? value : "all";
@@ -231,14 +256,8 @@ export function StudentManagement() {
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                onClick={async () => {
-                                                    const response = await studentApi.resetPassword(item.id);
-                                                    if (response.success) {
-                                                        toast.success("密码已重置为学号");
-                                                    } else {
-                                                        toast.error(response.error?.message);
-                                                    }
-                                                }}
+                                                disabled={resetting}
+                                                onClick={() => void resetPassword(item)}
                                             >
                                                 <RotateCcw className="mr-1 h-4 w-4" />重置密码
                                             </Button>
@@ -280,6 +299,7 @@ export function StudentManagement() {
                 )}
             </CardContent>
 
+            {dialog}
             <Dialog open={selected !== null} onOpenChange={(open) => {
                 if (!open) { cancelExperiments(); setSelected(null); }
             }}>

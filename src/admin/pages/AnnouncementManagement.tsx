@@ -53,6 +53,14 @@ export function AnnouncementManagement() {
     const [deletePending, setDeletePending] = useState(false);
     const pending = useRef(false);
 
+    const requestOpenChange = (nextOpen: boolean) => {
+        if (!nextOpen && pending.current) return;
+        const initial = editing ?? emptyForm;
+        const dirty = form.title !== initial.title || form.content !== initial.content || form.targetScope !== initial.targetScope;
+        if (!nextOpen && dirty && !window.confirm("关闭会丢弃公告未保存的修改。确定关闭吗？")) return;
+        setOpen(nextOpen);
+    };
+
     const load = async () => {
         return run(async () => requireApiData(await announcementApi.list(), "公告加载失败"), setRows);
     };
@@ -189,10 +197,7 @@ export function AnnouncementManagement() {
 
             <Dialog
                 open={open}
-                onOpenChange={(nextOpen) => {
-                    if (!nextOpen && pending.current) return;
-                    setOpen(nextOpen);
-                }}
+                onOpenChange={requestOpenChange}
             >
                 <DialogContent className="max-w-2xl" showCloseButton={!submitting}>
                     <DialogHeader>
@@ -240,7 +245,7 @@ export function AnnouncementManagement() {
                         <Button
                             variant="outline"
                             disabled={submitting}
-                            onClick={() => setOpen(false)}
+                            onClick={() => requestOpenChange(false)}
                         >
                             取消
                         </Button>
