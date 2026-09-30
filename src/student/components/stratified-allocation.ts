@@ -20,19 +20,17 @@ export function allocateNeymanSampleCounts(params: {
     const counts: number[] = caps.map((cap) => cap > 0 ? 1 : 0);
     let remaining = target - counts.reduce((sum, n) => sum + n, 0);
     if (remaining < 0 || target > caps.reduce((sum, cap) => sum + cap, 0)) return null;
-    // A common rescaling preserves the minimizer while avoiding squared overflow.
-    const maxStd = stdDevs.reduce((maximum, value) => Math.max(maximum, value), 0);
-    const weights = caps.map((cap, i) => maxStd > 0 ? cap * (stdDevs[i]! / maxStd) : 0);
-    const scale = weights.reduce((maximum, value) => Math.max(maximum, value), 0);
-    const coefficients = weights.map((weight) => scale > 0 ? (weight / scale) ** 2 : 0);
+    // Compare log marginal gains: global rescaling followed by squaring can
+    // erase small strata that still matter after larger strata reach census.
+    const logCoefficients = caps.map((cap, i) => 2 * (Math.log(cap) + Math.log(stdDevs[i]!)));
     while (remaining > 0) {
         let best = -1;
-        let gain = -1;
+        let gain = -Infinity;
         for (let i = 0; i < caps.length; i++) {
             const n = counts[i]!;
             if (n >= caps[i]!) continue;
-            const nextGain = coefficients[i]! / (n * (n + 1));
-            if (nextGain > gain) { best = i; gain = nextGain; }
+            const nextGain = logCoefficients[i]! - Math.log(n) - Math.log(n + 1);
+            if (best < 0 || nextGain > gain) { best = i; gain = nextGain; }
         }
         if (best < 0) return null;
         counts[best]!++;

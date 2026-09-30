@@ -28,7 +28,9 @@ export function PlanningAssumptions({ params }: { params: SampleParams }) {
 
 export function PlanningOutcome({ params, sampleSize = params.finalSampleSize }: { params: SampleParams; sampleSize?: number }) {
     const precision = calculatePlannedPrecision(params, sampleSize);
-    if (!precision) return <p role="alert" className="text-label text-destructive">请填写有效的样本量和规划参数后查看精度。</p>;
+    if (!precision) return <p role="alert" className="text-label text-destructive">{params.populationSize === 1 && params.nonResponseRate > 0
+        ? "总体仅有 1 个单位且存在无回答，无法评估规划精度或判断是否达标；只有该单位实际回答后才是完整普查。"
+        : "请填写有效的样本量和规划参数后查看精度。"}</p>;
     return <div className="space-y-3" data-testid="planning-outcome" aria-live="polite" aria-atomic="true">
         <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-label font-medium text-foreground">{params.advancedPlanSource ? "按基础参数评估当前样本量" : "当前选择的预期精度"}</p>

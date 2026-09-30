@@ -9,6 +9,22 @@ import { calculateUnivariate } from "../variables/analysis";
 import type { VariableDefinition } from "../variables/types";
 import { computeDistributionRepresentativeness } from "./distributions";
 
+test("high-influence screening is invariant to measurement scale and sign", () => {
+    for (const scale of [1, 1e155, -1e155, 1e-170]) {
+        for (const concentrated of [true, false]) {
+            // Keep the balanced control's population variance representable too.
+            const population = Array.from({ length: 1000 }, (_, i) => ({ y: (concentrated ? Number(i === 0) : (i % 2) / 100) * scale }));
+            const target = buildAnalysisMetrics({ population,
+                fieldMapping: { numeric: ["y"], analysisTarget: { kind: "mean", field: "y" } },
+                samplingResults: { simple: { completed: true, sampleCount: 100, data: population.slice(1, 101) } },
+            }).target!.methods.simple;
+            // Singleton: 999/1000 of squared deviations; balanced: 1/1000.
+            expect(target.reliability.reasons.some(reason => reason.includes("总体含高影响单位"))).toBe(concentrated);
+            if (concentrated) expect(target.standardError! / Math.abs(scale)).toBeCloseTo(0.003, 12);
+        }
+    }
+});
+
 test("NFKC categories match population, sample and target during a census", () => {
     const population = ["Ａ", "Ａ", "B", "B"].map(category => ({ category }));
     const metrics = buildAnalysisMetrics({ population, fieldMapping: { others: ["category"], analysisTarget: { kind: "proportion", field: "category", value: "A" } },

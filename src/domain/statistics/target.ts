@@ -174,7 +174,11 @@ export function buildTargetAnalysis(params: {
                         reasons.push("事件或非事件数量偏少，对称正态区间可能覆盖不足");
                     }
                 } else {
-                    const squaredDeviations = populationValues.map((value) => (value - populationValue) ** 2);
+                    // The contribution fractions are scale invariant; normalize
+                    // before subtracting/squaring to avoid overflow and underflow.
+                    const scale = populationValues.reduce((max, value) => Math.max(max, Math.abs(value)), 0);
+                    const squaredDeviations = populationValues.map((value) => scale > 0
+                        ? (value / scale - populationValue / scale) ** 2 : 0);
                     const total = squaredDeviations.reduce((sum, value) => sum + value, 0);
                     if (total > 0 && squaredDeviations.some((value) => value > total * 0.1)) {
                         reasons.push("总体含高影响单位（单个单位占离差平方和超过 10%），需检查区间近似");

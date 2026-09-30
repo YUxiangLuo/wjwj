@@ -1,6 +1,19 @@
 import { expect, test } from "bun:test";
 import { calculatePlannedPrecision, formatPlanningError } from "./planned-precision";
+import { calculateSampleSizeMetrics, calculateFinitePopulationSampleSize } from "./sample-plan";
 const params = { populationSize: 160, estimationType: "proportion" as const, confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0 };
+
+test("singleton nonresponse has unavailable precision, while a completed census has zero error", () => {
+    for (const nonResponseRate of [0.01, 0.5]) {
+        const singleton = { ...params, populationSize: 1, nonResponseRate };
+        expect(calculatePlannedPrecision(singleton, 1)).toBeNull();
+        expect(calculateSampleSizeMetrics(singleton)).toBeNull();
+        expect(calculateFinitePopulationSampleSize(singleton)).toBe(1);
+    }
+    expect(calculatePlannedPrecision({ ...params, populationSize: 1 }, 1)?.marginOfError).toBe(0);
+    expect(calculateSampleSizeMetrics({ ...params, populationSize: 1 })?.marginOfError).toBe(0);
+    expect(calculatePlannedPrecision({ ...params, populationSize: 2, nonResponseRate: 0.5 }, 2)?.marginOfError).toBeCloseTo(0.98, 12);
+});
 
 test("160-unit planning evaluates the chosen count and the 113/114 precision boundary", () => {
     expect(calculatePlannedPrecision(params, 40)?.marginOfError).toBeCloseTo(0.13461335266971524, 12);

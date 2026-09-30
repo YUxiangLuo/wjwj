@@ -28,6 +28,7 @@ export function calculatePlannedPrecision(params: PrecisionInputs, invitations: 
         || !Number.isFinite(params.designEffect) || params.designEffect < 0.5 || params.designEffect > 5
         || !Number.isFinite(params.nonResponseRate) || params.nonResponseRate < 0 || params.nonResponseRate > 0.5) return null;
     const expectedCompleted = invitations * (1 - params.nonResponseRate);
+    if (N === 1 && expectedCompleted < 1) return null;
     const standardError = Math.sqrt(variance) * Math.sqrt(
         params.designEffect * finitePopulationVarianceFactor(N, expectedCompleted) / expectedCompleted,
     );

@@ -1,5 +1,19 @@
 import { expect, test } from "bun:test";
-import { allocateStratifiedSampleCounts, resolveStratumOverflow } from "./stratified-allocation";
+import { allocateNeymanSampleCounts, allocateStratifiedSampleCounts, resolveStratumOverflow } from "./stratified-allocation";
+
+test("Neyman preserves residual gains after a dominant stratum reaches census", () => {
+    const orders = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]];
+    for (const sd of [[1, 1e-170, 2e-170], [2 ** 600, 2 ** -600, 2 ** -599], [1, 0, Number.MIN_VALUE]]) {
+        for (const order of orders) {
+            // Five of six units: the only unsaturated layer must have the
+            // smallest SD. Its residual design variance is S_h²/18.
+            expect(allocateNeymanSampleCounts({
+                targetSampleSize: 5, populationCounts: [2, 2, 2], stdDevs: order.map(i => sd[i]!),
+            })).toEqual(order.map(i => i === 1 ? 1 : 2));
+        }
+    }
+    expect(allocateNeymanSampleCounts({ targetSampleSize: 4, populationCounts: [0, 2, 3], stdDevs: [0, 0, 0] })).toEqual([0, 2, 2]);
+});
 
 test("allocateStratifiedSampleCounts fills the rounding remainder for proportional defaults", () => {
     const counts = allocateStratifiedSampleCounts({

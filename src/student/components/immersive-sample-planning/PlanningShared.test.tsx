@@ -50,6 +50,17 @@ test("PlanningOutcome omits the census warning for a genuine sample", () => {
     expect(text).not.toContain("完整普查");
 });
 
+test("singleton nonresponse announces unavailable precision rather than zero error or success", () => {
+    const plan = params({ populationSize: 1, estimationType: "proportion", marginOfError: 5, finalSampleSize: 1, recommendedSize: 1, nonResponseRate: 0.5 });
+    const view = render(<PlanningOutcome params={plan} />);
+    expect(view.getByRole("alert").textContent).toContain("无法评估规划精度或判断是否达标");
+    expect(view.container.textContent).not.toContain("预计达到目标");
+    expect(view.container.textContent).not.toContain("±0");
+    view.unmount();
+    const card = render(<EnhancedMetricsCard metrics={calculateSampleSizeMetrics(plan)} />);
+    expect(card.container.textContent).toBe("");
+});
+
 test("ST-B2 planning views distinguish 458 invitations from 366.4 expected completions", () => {
     const plan = params({
         populationSize: 1000,

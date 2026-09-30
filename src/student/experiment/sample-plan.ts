@@ -202,6 +202,9 @@ export function calculateSampleSizeMetrics(params: {
     const n0 = (Math.pow(z, 2) * p * (1 - p)) / Math.pow(e, 2);
     const adjusted = applyDesignAdjustments(n0, N, deff, nrr);
     const expectedCompleted = adjusted.expectedCompleted;
+    // A fractional expected response count is not a singleton census. The
+    // planning FPC (N-m)/(N-1) is undefined here, not a zero-error estimate.
+    if (N === 1 && expectedCompleted < 1) return null;
     const fpc = finitePopulationVarianceFactor(N, expectedCompleted);
     const standardError = expectedCompleted > 0
         ? Math.sqrt(deff * p * (1 - p) / expectedCompleted * fpc)
