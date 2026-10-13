@@ -1,5 +1,6 @@
-import { afterEach, expect, mock, test } from "bun:test";
+import { afterEach, expect, mock, spyOn, test } from "bun:test";
 import { installDomGlobals } from "@/test-utils/dom";
+import { toast } from "sonner";
 
 const bootstrapDom = installDomGlobals();
 const { act, cleanup, fireEvent, render, waitFor } = await import("@testing-library/react");
@@ -13,6 +14,71 @@ mock.module("@/components/RichTextEditor", () => ({
 
 const originalFetch = globalThis.fetch;
 let dom: ReturnType<typeof installDomGlobals>;
+
+test("title-only stale edit omits the body and preserves fields after a failed save", async () => {
+    dom = installDomGlobals();
+    let payload: unknown;
+    globalThis.fetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === "PUT") {
+            payload = JSON.parse(String(init.body));
+            return Response.json({ success: false, error: { message: "保存失败" } });
+        }
+        return Response.json({ success: true, data: [{ id: 7, title: "旧标题", content: "旧正文", targetScope: "all", status: 0 }] });
+    }) as unknown as typeof fetch;
+    const { AnnouncementManagement } = await import("./AnnouncementManagement");
+    const view = render(<AnnouncementManagement />);
+    fireEvent.click(await view.findByRole("button", { name: "编辑" }));
+    fireEvent.change(view.getByLabelText("标题"), { target: { value: "新标题" } });
+    fireEvent.click(view.getByRole("button", { name: "保存草稿" }));
+    await waitFor(() => expect(payload).toEqual({ title: "新标题", status: 0 }));
+    expect((view.getByLabelText("内容") as HTMLTextAreaElement).value).toBe("旧正文");
+    expect((view.getByLabelText("标题") as HTMLInputElement).value).toBe("新标题");
+});
+
+test.each(["<p>   </p>", "<p><br></p>", "<p>&nbsp;</p>"])("blank rich body %s cannot be saved", async content => {
+    dom = installDomGlobals();
+    globalThis.fetch = (async () => Response.json({ success: true, data: [] })) as unknown as typeof fetch;
+    const { AnnouncementManagement } = await import("./AnnouncementManagement");
+    const view = render(<AnnouncementManagement />);
+    await waitFor(() => expect(view.getByText("暂无公告")).toBeTruthy());
+    fireEvent.click(view.getByRole("button", { name: "新建公告" }));
+    fireEvent.change(view.getByLabelText("标题"), { target: { value: "标题" } });
+    fireEvent.change(view.getByLabelText("内容"), { target: { value: content } });
+    expect((view.getByRole("button", { name: "保存草稿" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((view.getByRole("button", { name: "发布" }) as HTMLButtonElement).disabled).toBe(true);
+});
+
+test.each([0, 1])("list status %s reports failure, prevents duplicates and permits retry", async status => {
+    dom = installDomGlobals();
+    const errors = spyOn(toast, "error");
+    let writes = 0;
+    let resolveWrite!: (response: Response) => void;
+    globalThis.fetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === "PUT") {
+            writes++;
+            return await new Promise<Response>(resolve => { resolveWrite = resolve; });
+        }
+        return Response.json({ success: true, data: [{ id: 7, title: "公告", content: "正文", targetScope: "all", status }] });
+    }) as unknown as typeof fetch;
+    try {
+        const { AnnouncementManagement } = await import("./AnnouncementManagement");
+        const view = render(<AnnouncementManagement />);
+        const button = await view.findByRole("button", { name: status ? "撤下" : "发布" }) as HTMLButtonElement;
+        fireEvent.click(button);
+        fireEvent.click(button);
+        expect(writes).toBe(1);
+        expect(button.disabled).toBe(true);
+        await act(async () => resolveWrite(Response.json({ success: false, error: { message: "状态修改失败" } })));
+        expect(errors).toHaveBeenCalledWith("状态修改失败");
+        expect(button.disabled).toBe(false);
+        fireEvent.click(button);
+        expect(writes).toBe(2);
+        await act(async () => resolveWrite(Response.json({ success: true, data: { success: true } })));
+        await waitFor(() => expect(button.disabled).toBe(false));
+    } finally {
+        errors.mockRestore();
+    }
+});
 
 afterEach(async () => {
     await act(async () => cleanup());

@@ -23,11 +23,35 @@ export function TeacherManagement() {
     const [saving, setSaving] = useState(false);
     const { confirm, dialog } = useConfirmDialog();
     const pending = useRef(false);
+    const resetPending = useRef(false);
+    const [resetting, setResetting] = useState(false);
     const mounted = useRef(true);
     useEffect(() => {
         mounted.current = true;
         return () => { mounted.current = false; };
     }, []);
+    const resetPassword = async (teacher: Teacher) => {
+        if (resetPending.current) return;
+        resetPending.current = true;
+        setResetting(true);
+        try {
+            if (!await confirm({
+                title: "重置教师密码？",
+                description: `将把 ${teacher.name}（${teacher.employeeId}）的密码重置为工号，原密码将失效，全部登录会话将失效，教师需要重新登录。`,
+                confirmLabel: "确认重置",
+                tone: "destructive",
+            }) || !mounted.current) return;
+            const response = await teacherApi.resetPassword(teacher.id);
+            if (!mounted.current) return;
+            if (response.success) toast.success("密码已重置为工号");
+            else toast.error(response.error?.message ?? "重置失败，请重试");
+        } catch {
+            if (mounted.current) toast.error("重置失败，请重试");
+        } finally {
+            resetPending.current = false;
+            if (mounted.current) setResetting(false);
+        }
+    };
     const closeEditor = () => {
         if (pending.current) return;
         setCreating(false);
@@ -94,7 +118,7 @@ export function TeacherManagement() {
                     <Table aria-label="教师列表"><TableHeader><TableRow><TableHead>工号</TableHead><TableHead>姓名</TableHead><TableHead>班级数</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader><TableBody>{rows.length === 0 ? (
                         <TableRow><TableCell colSpan={4} className="py-12 text-center"><div className="flex flex-col items-center gap-3 text-muted-foreground"><Search className="h-6 w-6" /><p>{search.trim() ? `未找到与“${search.trim()}”匹配的教师` : "暂无教师数据"}</p>{search.trim() && <Button variant="outline" size="sm" onClick={() => { setSearch(""); void load(""); }}>清除搜索</Button>}</div></TableCell></TableRow>
                     ) : rows.map((row) => (
-                        <TableRow key={row.id}><TableCell className="font-mono">{row.employeeId}</TableCell><TableCell>{row.name}</TableCell><TableCell>{row.classCount}</TableCell><TableCell><div className="flex justify-end gap-1"><Button variant="ghost" size="sm" onClick={() => { setEditing(row); setForm({ employeeId: row.employeeId, name: row.name }); }}><Pencil className="mr-1 h-4 w-4" />编辑</Button><Button variant="ghost" size="sm" onClick={async () => { const response = await teacherApi.resetPassword(row.id); response.success ? toast.success("密码已重置为工号") : toast.error(response.error?.message); }}><RotateCcw className="mr-1 h-4 w-4" />重置密码</Button><Button variant="ghost" size="sm" data-testid={`admin-teacher-delete-${row.id}`} disabled={deleteBlockers(row).length > 0} title={deleteBlockers(row).length > 0 ? `仍有 ${deleteBlockers(row).join("、")}，无法删除` : "删除教师"} onClick={() => void handleDelete(row)}><Trash2 className="mr-1 h-4 w-4" />删除</Button></div></TableCell></TableRow>
+                        <TableRow key={row.id}><TableCell className="font-mono">{row.employeeId}</TableCell><TableCell>{row.name}</TableCell><TableCell>{row.classCount}</TableCell><TableCell><div className="flex justify-end gap-1"><Button variant="ghost" size="sm" onClick={() => { setEditing(row); setForm({ employeeId: row.employeeId, name: row.name }); }}><Pencil className="mr-1 h-4 w-4" />编辑</Button><Button variant="ghost" size="sm" disabled={resetting} onClick={() => void resetPassword(row)}><RotateCcw className="mr-1 h-4 w-4" />重置密码</Button><Button variant="ghost" size="sm" data-testid={`admin-teacher-delete-${row.id}`} disabled={deleteBlockers(row).length > 0} title={deleteBlockers(row).length > 0 ? `仍有 ${deleteBlockers(row).join("、")}，无法删除` : "删除教师"} onClick={() => void handleDelete(row)}><Trash2 className="mr-1 h-4 w-4" />删除</Button></div></TableCell></TableRow>
                     ))}</TableBody></Table>
                 )}
             </CardContent>

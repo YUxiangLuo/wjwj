@@ -5,6 +5,7 @@ export function AppToaster() {
         <Toaster
             richColors
             position="top-right"
+            offset={{ top: 80 }}
             toastOptions={{
                 classNames: {
                     toast: "!rounded-overlay !border-border !bg-card !text-foreground",

@@ -34,6 +34,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { formatDateTimeDisplay } from "@/utils/format";
+import { getRichTextPlainText } from "@/utils/rich-text";
 import { announcementApi, type Announcement } from "../api-client";
 
 const emptyForm = {
@@ -52,6 +53,8 @@ export function AnnouncementManagement() {
     const [announcementToDelete, setAnnouncementToDelete] = useState<Announcement | null>(null);
     const [deletePending, setDeletePending] = useState(false);
     const pending = useRef(false);
+    const statusPending = useRef(new Set<number>());
+    const [statusPendingIds, setStatusPendingIds] = useState(new Set<number>());
 
     const requestOpenChange = (nextOpen: boolean) => {
         if (!nextOpen && pending.current) return;
@@ -71,11 +74,20 @@ export function AnnouncementManagement() {
 
     const save = async (publish: boolean) => {
         if (pending.current) return;
+        if (!form.title.trim() || !getRichTextPlainText(form.content)) {
+            toast.error("公告标题或内容无效");
+            return;
+        }
         pending.current = true;
         setSubmitting(true);
         try {
             const response = editing
-                ? await announcementApi.update(editing.id, { ...form, status: publish ? 1 : 0 })
+                ? await announcementApi.update(editing.id, {
+                    ...(form.title !== editing.title ? { title: form.title } : {}),
+                    ...(form.content !== editing.content ? { content: form.content } : {}),
+                    ...(form.targetScope !== editing.targetScope ? { targetScope: form.targetScope } : {}),
+                    status: publish ? 1 : 0,
+                })
                 : await announcementApi.create({ ...form, publish });
             if (!response.success) {
                 toast.error(response.error?.message ?? "保存失败");
@@ -86,9 +98,32 @@ export function AnnouncementManagement() {
             setForm(emptyForm);
             toast.success(publish ? "公告已发布" : "草稿已保存");
             void load();
+        } catch {
+            toast.error("保存失败，请重试");
         } finally {
             pending.current = false;
             setSubmitting(false);
+        }
+    };
+
+    const changeStatus = async (item: Announcement) => {
+        if (statusPending.current.has(item.id)) return;
+        statusPending.current.add(item.id);
+        setStatusPendingIds(new Set(statusPending.current));
+        try {
+            const response = item.status === 1
+                ? await announcementApi.unpublish(item.id)
+                : await announcementApi.publish(item.id);
+            if (!response.success) {
+                toast.error(response.error?.message ?? "公告状态修改失败，请重试");
+                return;
+            }
+            await load();
+        } catch {
+            toast.error("公告状态修改失败，请重试");
+        } finally {
+            statusPending.current.delete(item.id);
+            setStatusPendingIds(new Set(statusPending.current));
         }
     };
 
@@ -165,12 +200,8 @@ export function AnnouncementManagement() {
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={async () => {
-                                            const response = item.status === 1
-                                                ? await announcementApi.unpublish(item.id)
-                                                : await announcementApi.publish(item.id);
-                                            if (response.success) void load();
-                                        }}
+                                        disabled={statusPendingIds.has(item.id)}
+                                        onClick={() => void changeStatus(item)}
                                     >
                                         <Send className="mr-1 h-4 w-4" />
                                         {item.status === 1 ? "撤下" : "发布"}
@@ -199,12 +230,12 @@ export function AnnouncementManagement() {
                 open={open}
                 onOpenChange={requestOpenChange}
             >
-                <DialogContent className="max-w-2xl" showCloseButton={!submitting}>
-                    <DialogHeader>
+                <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-2xl flex-col" showCloseButton={!submitting}>
+                    <DialogHeader className="shrink-0">
                         <DialogTitle>{editing ? "编辑公告" : "新建公告"}</DialogTitle>
                         <DialogDescription>填写公告标题、展示对象和正文，可保存草稿或直接发布。</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4">
+                    <div className="min-h-0 min-w-0 space-y-4 overflow-y-auto">
                         <div className="space-y-2">
                             <Label htmlFor="announcement-title">标题</Label>
                             <Input
@@ -238,10 +269,11 @@ export function AnnouncementManagement() {
                                 id="announcement-content"
                                 value={form.content}
                                 onChange={(content) => setForm({ ...form, content })}
+                                editorClassName="[overflow-wrap:anywhere]"
                             />
                         </div>
                     </div>
-                    <DialogFooter>
+                    <DialogFooter className="shrink-0">
                         <Button
                             variant="outline"
                             disabled={submitting}
@@ -251,13 +283,13 @@ export function AnnouncementManagement() {
                         </Button>
                         <Button
                             variant="secondary"
-                            disabled={submitting || !form.title.trim() || !form.content.trim()}
+                            disabled={submitting || !form.title.trim() || !getRichTextPlainText(form.content)}
                             onClick={() => void save(false)}
                         >
                             保存草稿
                         </Button>
                         <Button
-                            disabled={submitting || !form.title.trim() || !form.content.trim()}
+                            disabled={submitting || !form.title.trim() || !getRichTextPlainText(form.content)}
                             onClick={() => void save(true)}
                         >
                             发布

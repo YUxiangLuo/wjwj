@@ -15,6 +15,37 @@ afterEach(async () => {
     dom?.restore();
 });
 const rows = [1, 2].map(id => ({ id, employeeId: `T00${id}`, name: `教师${id}`, status: 1, classCount: 0, createdAt: "2026-01-01" }));
+test("teacher reset names the target, warns about sessions, allows cancellation and blocks duplicate writes", async () => {
+    dom = installDomGlobals();
+    let writes = 0;
+    const response = Promise.withResolvers<Response>();
+    globalThis.fetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === "POST") { writes++; return response.promise; }
+        return Response.json({ success: true, data: rows });
+    }) as unknown as typeof fetch;
+    const { TeacherManagement } = await import("./TeacherManagement");
+    const view = render(<TeacherManagement />);
+    await waitFor(() => expect(view.getAllByRole("button", { name: "重置密码" })).toHaveLength(2));
+    const reset = view.getAllByRole("button", { name: "重置密码" })[0]!;
+    fireEvent.click(reset);
+    expect(writes).toBe(0);
+    const confirmation = view.getByRole("alertdialog");
+    expect(confirmation.textContent).toContain("教师1");
+    expect(confirmation.textContent).toContain("T001");
+    expect(confirmation.textContent).toContain("全部登录会话");
+    fireEvent.click(view.getByRole("button", { name: "取消" }));
+    await waitFor(() => expect((reset as HTMLButtonElement).disabled).toBe(false));
+    expect(writes).toBe(0);
+    fireEvent.click(reset);
+    fireEvent.click(view.getByRole("button", { name: "确认重置" }));
+    await waitFor(() => expect(writes).toBe(1));
+    expect((reset as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(reset);
+    expect(writes).toBe(1);
+    await act(async () => response.resolve(Response.json({ success: true, data: {} })));
+    await waitFor(() => expect((reset as HTMLButtonElement).disabled).toBe(false));
+});
+
 test("pending save prevents duplicates and keeps the editor locked until completion", async () => {
     dom = installDomGlobals(); let writes = 0; let resolve!: (response: Response) => void;
     globalThis.fetch = (async (_url: RequestInfo | URL, init?: RequestInit) => init?.method === "PUT" ? (writes++, await new Promise<Response>(r => { resolve = r; })) : Response.json({ success: true, data: rows })) as unknown as typeof fetch;

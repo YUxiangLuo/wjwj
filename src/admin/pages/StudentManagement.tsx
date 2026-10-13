@@ -95,25 +95,29 @@ export function StudentManagement() {
     } = {}) => {
         setPage(nextPage);
         return runList(
-            async () => requireApiData(await studentApi.listPaged({
-                classId: nextClassId,
-                search: nextSearch || undefined,
-                page: nextPage,
-                pageSize: PAGE_SIZE,
-            }), "学生列表加载失败"),
-            (data) => {
+            async () => {
+                const [studentsResponse, classesResponse] = await Promise.all([
+                    studentApi.listPaged({
+                        classId: nextClassId,
+                        search: nextSearch || undefined,
+                        page: nextPage,
+                        pageSize: PAGE_SIZE,
+                    }),
+                    classApi.list(),
+                ]);
+                return {
+                    data: requireApiData(studentsResponse, "学生列表加载失败"),
+                    classes: requireApiData(classesResponse, "班级选项加载失败"),
+                };
+            },
+            ({ data, classes }) => {
+                setClasses(classes);
                 setStudents(data.items);
                 setTotal(data.total);
                 setPage(data.page);
             },
         );
     };
-
-    useEffect(() => {
-        void classApi.list().then((response) => {
-            if (response.data) setClasses(response.data);
-        });
-    }, []);
 
     useEffect(() => {
         setClassId(requestedClassId);
@@ -332,6 +336,11 @@ export function StudentManagement() {
                                 <TableRow>
                                     <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
                                         {experimentsLoading ? "正在加载实验记录…" : experimentsError ?? "暂无实验记录"}
+                                        {!experimentsLoading && experimentsError && selected && (
+                                            <div className="mt-3">
+                                                <Button variant="outline" onClick={() => void openExperiments(selected)}>重试加载实验记录</Button>
+                                            </div>
+                                        )}
                                     </TableCell>
                                 </TableRow>
                             )}

@@ -11,6 +11,7 @@ import { deleteAuditEventsForEntities, hashEntityIdentifier, writeAuditEvent } f
 import { getAdminUser } from "./auth";
 import { STUDENT_USER_TYPE } from "../../student/routes/auth";
 import { TEACHER_USER_TYPE } from "../../teacher/routes/auth";
+import { getRichTextPlainText } from "../../utils/rich-text";
 
 function parseId(req: Request, name = "id") {
     return getPositiveRouteId(req, name);
@@ -496,7 +497,7 @@ const announcementRoutes: RouteDefinition = {
         const title = stringValue(body.title).trim();
         const content = stringValue(body.content).trim();
         const targetScope = body.targetScope ?? "all";
-        if (!title || title.length > 100 || !content || content.length > 10_000) {
+        if (!title || title.length > 100 || !getRichTextPlainText(content) || content.length > 10_000) {
             return error("公告标题或内容无效", "VALIDATION_ERROR");
         }
         if (body.publish !== undefined && typeof body.publish !== "boolean") {
@@ -526,7 +527,7 @@ const announcementUpdateRoutes: RouteDefinition = {
         }
         if (body.content !== undefined) {
             const content = stringValue(body.content).trim();
-            if (!content || content.length > 10_000) return error("公告内容无效", "VALIDATION_ERROR");
+            if (!getRichTextPlainText(content) || content.length > 10_000) return error("公告内容无效", "VALIDATION_ERROR");
             updates.content = content;
         }
         if (body.targetScope !== undefined) {
@@ -538,6 +539,11 @@ const announcementUpdateRoutes: RouteDefinition = {
         if (body.status !== undefined) {
             if (body.status !== 0 && body.status !== 1) return error("公告状态无效", "VALIDATION_ERROR");
             updates.status = body.status;
+        }
+        if (updates.status === 1 && updates.content === undefined) {
+            const [existing] = await db.select({ content: announcement.content }).from(announcement).where(eq(announcement.id, id));
+            if (!existing) return error("公告不存在", "NOT_FOUND", 404);
+            if (!getRichTextPlainText(existing.content)) return error("公告内容无效", "VALIDATION_ERROR");
         }
         const changed = await db
             .update(announcement)
@@ -560,6 +566,11 @@ function makeAnnouncementStatusRoute(status: 0 | 1): RouteDefinition {
         async PUT(req) {
             const id = parseId(req);
             if (!id) return error("无效的公告ID", "INVALID_ID");
+            if (status === 1) {
+                const [existing] = await db.select({ content: announcement.content }).from(announcement).where(eq(announcement.id, id));
+                if (!existing) return error("公告不存在", "NOT_FOUND", 404);
+                if (!getRichTextPlainText(existing.content)) return error("公告内容无效", "VALIDATION_ERROR");
+            }
             const changed = await db
                 .update(announcement)
                 .set({ status, updatedAt: new Date() })

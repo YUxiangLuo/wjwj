@@ -138,6 +138,7 @@ export function ClassManagement() {
             loadClasses();
         } else {
             toast.error(res.error?.message ?? "删除失败");
+            if (res.error?.code === "CLASS_IN_USE") void loadClasses();
         }
     }
 
