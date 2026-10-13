@@ -36,6 +36,22 @@ test.each([
     expect(label.nextElementSibling?.textContent).toBe(expected);
 });
 
+test.each([0.9999, 0.9999600000000001, 1 - Number.EPSILON, 1])("PPS receipt preserves whether probability %s is a certainty", (probability) => {
+    const count = probability === 1 ? 2 : 1;
+    const view = render(<ImmersiveSamplingAnimation method="pps" populationSize={2} sampleSize={count}
+        randomStart={0.3} sizeField="size" ppsProbabilitySummary={{ populationCount: 2, probabilitySum: count,
+            minInclusionProbability: probability === 1 ? 1 : 1 - probability, maxInclusionProbability: probability, certaintyUnitCount: probability === 1 ? 2 : 0 }}
+        sampledData={[]} onClose={() => {}} />);
+    fireEvent.click(view.getByTestId("immersive-sampling-skip"));
+    const label = [...view.getByTestId("sampling-animation-receipt").querySelectorAll("dt")].find(element => element.textContent === "纳入概率范围")!;
+    const maximum = label.nextElementSibling!.textContent!.split("–")[1]!;
+    if (probability === 1) expect(maximum).toBe("1");
+    else {
+        expect(maximum).not.toBe("1");
+        expect(maximum === "<1" || Number(maximum) < 1).toBe(true);
+    }
+});
+
 test("PPS illustration uses certainty-unit redistribution, not duplicate-hit advancement", async () => {
     const view = render(<ImmersiveSamplingAnimation method="pps" populationSize={10} sampleSize={7} randomStart={0.1145} sizeField="size" ppsProbabilitySummary={{ populationCount: 10, probabilitySum: 7, minInclusionProbability: .13989362870504474, maxInclusionProbability: 1, certaintyUnitCount: 3 }} sampledData={[]} onClose={() => {}} />);
     const grid = await waitFor(() => view.getByTestId("sampling-animation-dot-grid"), { timeout: 1500 });
@@ -397,6 +413,35 @@ test.each([false, true])("Escape restores focus after sampling, opener replaced=
     await waitFor(() => expect(document.activeElement).toBe(
         replaceOpener ? view.getByRole("button", { name: "重新抽样" }) : opener,
     ));
+});
+
+test("dynamic reduced motion keeps focus inside results when the focused replay disappears", async () => {
+    const originalMatchMedia = window.matchMedia;
+    let listener: (() => void) | undefined;
+    const media = {
+        matches: false,
+        addEventListener: (_: string, callback: () => void) => { listener = callback; },
+        removeEventListener: () => { listener = undefined; },
+    };
+    window.matchMedia = (() => media) as unknown as typeof window.matchMedia;
+    try {
+        const view = render(<ImmersiveSamplingAnimation method="simple" populationSize={8} sampleSize={3}
+            seed={43} sampledData={[]} onClose={() => {}} />);
+        fireEvent.click(view.getByTestId("immersive-sampling-skip"));
+        const close = view.getByTestId("immersive-sampling-return");
+        view.getByTestId("immersive-sampling-replay").focus();
+        await act(async () => { media.matches = true; listener!(); });
+        expect(view.queryByTestId("immersive-sampling-replay")).toBeNull();
+        expect(document.activeElement === close).toBe(true);
+        await act(async () => { media.matches = false; listener!(); });
+        expect(view.getByTestId("immersive-sampling-replay")).toBeTruthy();
+        expect(document.activeElement === close).toBe(true);
+        await act(async () => { media.matches = true; listener!(); });
+        expect(document.activeElement === close).toBe(true);
+    } finally {
+        await act(async () => cleanup());
+        window.matchMedia = originalMatchMedia;
+    }
 });
 
 test("reduced-motion users go directly to results without a replay control", async () => {

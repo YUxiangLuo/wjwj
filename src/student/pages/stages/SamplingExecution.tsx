@@ -408,7 +408,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
         <div className="min-w-0 space-y-4" data-testid="student-stage-sampling">
             {censusPlan && (
                 <p role="status" data-testid="student-sampling-census-notice" className="rounded-surface border border-warning-border bg-warning-muted p-3 text-label text-warning">
-                    规划样本量等于总体规模，本次为完整普查：各方法都会抽取全部单位，估计结果与抽样误差相同，无法比较方法差异。
+                    规划样本量等于总体规模；是否完成普查，以各方法实际入样量为准。只有实际抽取全部总体单位时，才是完整普查，设计标准误为 0。
                 </p>
             )}
             {statsState === "loading" && (

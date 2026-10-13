@@ -123,6 +123,7 @@ export function getSystematicPopulationDotClass(index: number, scanIndex: number
 function formatProbability(value: number) {
     if (!Number.isFinite(value)) return "—";
     if (value > 0 && value < 0.0001) return value.toExponential(2);
+    if (value > 0.9999 && value < 1) return "<1";
     return value.toLocaleString("zh-CN", { maximumFractionDigits: 4 });
 }
 
@@ -539,11 +540,11 @@ export function ImmersiveSamplingAnimation({
         };
     }, [fallbackFocusRef]);
 
-    // The close control changes when the animation reaches its completed phase.
-    // Keep a deterministic focus target through that automatic transition.
+    // Completion and reduced motion can remove the focused playback control.
+    // Keep a deterministic focus target through either transition.
     useEffect(() => {
         if (!overlayRef.current?.contains(document.activeElement) || document.activeElement === overlayRef.current) closeButtonRef.current?.focus();
-    }, [phase.type]);
+    }, [phase.type, prefersReducedMotion]);
 
     const handleOverlayKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
         if (event.key !== "Tab") return;

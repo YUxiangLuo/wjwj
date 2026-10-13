@@ -218,14 +218,18 @@ test("stratified configuration stays mounted but hidden when another method is s
     expect(panel.className).toContain("data-[state=inactive]:hidden");
 });
 
-test("SamplingExecution flags a census plan (n equals N)", async () => {
+test("SamplingExecution distinguishes a census plan from a smaller saved PPS sample", async () => {
     mockExperimentContext.populationSize = 13;
     mockExperimentContext.experiment = {
         ...mockExperimentContext.experiment,
         samplePlan: { finalSampleSize: 13, confidenceLevel: "95", marginOfError: 5 },
+        samplingResults: { pps: { completed: true, sampleCount: 11, sizeField: "size", data: [] } },
     };
     const view = render(<SamplingExecution onPrev={() => undefined} />);
-    await waitFor(() => expect(view.getByTestId("student-sampling-census-notice")).toBeTruthy());
+    const notice = await waitFor(() => view.getByTestId("student-sampling-census-notice"));
+    expect(notice.textContent).toContain("以各方法实际入样量为准");
+    expect(notice.textContent).not.toContain("本次为完整普查");
+    expect(notice.textContent).not.toContain("各方法都会抽取全部单位");
 });
 
 test("SamplingExecution blocks the stage when sample plan is missing", async () => {
