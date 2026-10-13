@@ -7,6 +7,7 @@ import type { RouteDefinition } from "../../server/route-types";
 import { resolveStoragePath } from "../../server/storage-files";
 import { getStudentTaskAccessError, getStudentTopicAttachmentAccessError } from "../experiment/task-access";
 import { readPopulationData } from "../experiment/population-data";
+import { getSubmissionSourceConflict } from "../experiment/submission-source";
 import {
     hydrateSamplingResults,
     inspectSamplingResultsStorage,
@@ -81,6 +82,8 @@ const exportRoutes: RouteDefinition = {
         const [exp] = await db
             .select({
                 samplingResults: experiment.samplingResults,
+                status: experiment.status,
+                submissionSnapshot: experiment.submissionSnapshot,
                 excelFilePath: topic.excelFilePath,
                 fieldMapping: topic.fieldMapping,
             })
@@ -98,6 +101,8 @@ const exportRoutes: RouteDefinition = {
         if (!inspection.ok) return error(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
         let results = storedResults;
         if (inspection.needsPopulation) {
+            const conflict = await getSubmissionSourceConflict(exp, exp.excelFilePath);
+            if (conflict) return error(conflict.message, conflict.code, 409);
             if (!exp.excelFilePath) return error("总体数据为空或读取失败", "READ_FAILED", 500);
             const population = await readPopulationData(exp.excelFilePath, exp.fieldMapping);
             if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);

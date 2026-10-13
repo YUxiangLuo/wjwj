@@ -39,6 +39,40 @@ function experiment(taskId: number, overrides: Record<string, unknown> = {}) {
 const conflict = () => Response.json({ success: false, error: { code: "VERSION_CONFLICT", message: "记录已变化" } }, { status: 409 });
 type Operation = "save" | "save-conflict" | "reopen";
 
+test("successful reopen retry clears the visible network error and opens the requested stage", async () => {
+    const dom = installDomGlobals("http://localhost/student/task/1/experiment");
+    const originalFetch = globalThis.fetch;
+    let attempts = 0;
+    try {
+        globalThis.fetch = (async (input: RequestInfo | URL) => {
+            const url = String(input);
+            if (url.endsWith("/reopen")) {
+                attempts += 1;
+                if (attempts === 1) throw new TypeError("Failed to fetch");
+                return Response.json({ success: true, data: experiment(1, { version: 6, currentStage: 1, stage1CompletedAt: null, stage2CompletedAt: null, stage3CompletedAt: null }) });
+            }
+            if (url.endsWith("/experiment")) return Response.json({ success: true, data: experiment(1) });
+            if (url.endsWith("/analysis-metrics")) return Response.json({ success: true, data: { numericFields: [], categoricalFields: [], numeric: {}, categorical: {} } });
+            if (url.endsWith("/tasks/1")) return Response.json({ success: true, data: { id: 1, topicId: 3, name: "重试实验", status: "in_progress", currentStage: 4, publishedAt: "2026-03-01T00:00:00Z", deadline: "2099-03-01T00:00:00Z", populationSize: 1000, attachments: [], recommendQuestions: [] } });
+            throw new Error(`Unexpected request: ${url}`);
+        }) as typeof fetch;
+        const view = render(<MemoryRouter initialEntries={["/task/1/experiment"]}><Routes><Route path="/task/:taskId/experiment" element={<ExperimentLayout />} /></Routes></MemoryRouter>);
+        const reopen = async () => {
+            fireEvent.click(await waitFor(() => view.getByRole("button", { name: /查看已完成阶段 1/ })));
+            fireEvent.click(await waitFor(() => view.getByRole("button", { name: "重新编辑此阶段" })));
+            fireEvent.click(await waitFor(() => view.getByRole("button", { name: "确认重新编辑" })));
+        };
+        await reopen();
+        const errorMessage = "网络连接失败，请检查网络后重试";
+        await waitFor(() => expect(view.getByText(errorMessage)).toBeTruthy());
+        await reopen();
+        await waitFor(() => expect(view.getByRole("button", { name: /当前阶段 1：问卷预试/ })).toBeTruthy());
+        await waitFor(() => expect(view.queryByText(errorMessage)).toBeNull());
+        expect(attempts).toBe(2);
+        expect(view.getByRole("heading", { name: "问卷预试" })).toBeTruthy();
+    } finally { cleanup(); globalThis.fetch = originalFetch; dom.restore(); }
+});
+
 async function setup(operation: Operation) {
     const pending = Promise.withResolvers<Response>();
     let started = false;

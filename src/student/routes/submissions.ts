@@ -17,17 +17,7 @@ import type { TargetAnalysisMetrics } from "../../domain/experiment/analysis-typ
 import { getStudentTaskAccessError } from "../experiment/task-access";
 import { requireAuth } from "./auth";
 import { resolveSamplingPolicy } from "../../lib/sampling-policy";
-import { resolveStoragePath } from "../../server/storage-files";
-
-async function matchesSnapshotFile(path: string, expected: unknown) {
-    if (typeof expected !== "string" || !/^[a-f0-9]{64}$/.test(expected)) return false;
-    try {
-        const bytes = await Bun.file(resolveStoragePath(path)).arrayBuffer();
-        return new Bun.CryptoHasher("sha256").update(bytes).digest("hex") === expected;
-    } catch {
-        return false;
-    }
-}
+import { matchesSnapshotFile } from "../experiment/submission-source";
 
 function score(value: string | null) {
     return value == null ? null : Number(value);

@@ -93,6 +93,36 @@ test("export route hydrates compact sampling indices from the immutable populati
     }
 });
 
+test("frozen exports reject changed or missing source bytes and recover after restoration", async () => {
+    const path = `/storage/frozen-export-${crypto.randomUUID()}.csv`;
+    const absolute = `${process.cwd()}${path}`;
+    const original = "id,city\n1,北京\n2,上海\n";
+    const hash = new Bun.CryptoHasher("sha256").update(original).digest("hex");
+    try {
+        for (const status of ["submitted", "graded"]) {
+            for (const state of ["original", "changed", "missing", "restored"] as const) {
+                if (state === "missing") await Bun.file(absolute).delete();
+                else await Bun.write(absolute, state === "changed" ? original.replace("上海", "广州") : original);
+                const module = await loadFilesRoutes({ select: [[{
+                    status, excelFilePath: path,
+                    submissionSnapshot: { populationFileSha256: hash },
+                    samplingResults: { simple: { completed: true, sampleCount: 1, indices: [1] } },
+                }]] });
+                const response = await module.exportRoutes.GET!(withRouteParam(
+                    createRequest("https://example.com/api/student/tasks/40/export?type=simple"), "40",
+                ));
+                if (state === "changed" || state === "missing") {
+                    expect(response.status).toBe(409);
+                    expect(await response.json()).toMatchObject({ error: { code: "SOURCE_CONFLICT" } });
+                } else {
+                    expect(response.status).toBe(200);
+                    expect(await response.text()).toContain("上海");
+                }
+            }
+        }
+    } finally { await Bun.file(absolute).delete().catch(() => undefined); }
+});
+
 test("compact export returns READ_FAILED when population storage is missing", async () => {
     const module = await loadFilesRoutes({
         select: [[{

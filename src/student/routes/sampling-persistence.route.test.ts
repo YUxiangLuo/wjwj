@@ -286,6 +286,36 @@ test("stage completion atomically persists server-determined PPS unavailability"
     expect((updates[1]?.set as { samplingResults?: unknown }).samplingResults).toBeUndefined();
 });
 
+test("frozen experiment and analysis reads reject changed sources, while editable experiments remain usable", async () => {
+    const path = `/storage/frozen-read-${crypto.randomUUID()}.csv`;
+    const absolute = `${process.cwd()}${path}`;
+    const original = "id,gender,weight\n1,A,1\n2,A,2\n3,B,3\n4,B,4\n";
+    const hash = new Bun.CryptoHasher("sha256").update(original).digest("hex");
+    try {
+        for (const status of ["submitted", "graded", "in_progress", "rejected"]) {
+            for (const changed of [false, true, false]) {
+                await Bun.write(absolute, changed ? original.replace("4,B,4", "4,B,9") : original);
+                for (const route of ["experimentRoutes", "analysisMetricsRoutes"] as const) {
+                    const { module } = await load(record({
+                        status,
+                        submissionSnapshot: { populationFileSha256: hash },
+                        samplingResults: { simple: { completed: true, serverGenerated: true, seed: 2026, sampleCount: 2, indices: [3, 2] } },
+                    }), undefined, undefined, path);
+                    const request = new Request("https://example.com/api/student/tasks/3/experiment");
+                    (request as Request & { params: Record<string, string> }).params = { id: "3" };
+                    const response = await module[route].GET!(request);
+                    const conflict = changed && (status === "submitted" || status === "graded");
+                    expect(response.status).toBe(conflict ? 409 : 200);
+                    const body = await response.json() as any;
+                    if (conflict) expect(body.error.code).toBe("SOURCE_CONFLICT");
+                    else if (route === "experimentRoutes") expect(body.data.samplingResults.simple.data[0].weight).toBe(changed ? 9 : 4);
+                    else expect(body.data.numeric.weight.methods.simple.estimate).toBe(changed ? 6 : 3.5);
+                }
+            }
+        }
+    } finally { await Bun.file(absolute).delete().catch(() => undefined); }
+});
+
 test("population-backed routes return READ_FAILED when population storage is unreadable", async () => {
     const missingPath = `/storage/missing-${crypto.randomUUID()}.xlsx`;
     const originalConsoleError = console.error;

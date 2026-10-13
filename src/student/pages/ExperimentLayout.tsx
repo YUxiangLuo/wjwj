@@ -126,6 +126,7 @@ function ExperimentWorkspace() {
         const response = await experimentApi.reopenStage(numericTaskId, reopenStage, experiment.version);
         if (!mounted.current) return;
         if (response.success && response.data) {
+            setSaveError(null);
             setExperiment(response.data);
         }
         else {

@@ -8,6 +8,7 @@ import type { RouteDefinition } from "../../server/route-types";
 import { analysisService } from "../experiment/analysis-service";
 import { populationStatsService, populationRevisionKey } from "../experiment/population-stats-service";
 import { readPopulationData } from "../experiment/population-data";
+import { getSubmissionSourceConflict } from "../experiment/submission-source";
 import { normalizeSamplePlanData } from "../experiment/sample-plan-display";
 import {
     previewSamplingMethodResult,
@@ -83,6 +84,8 @@ async function resolveExperimentSamplingResults(
     if (!inspection.needsPopulation) return { ok: true as const, value: stored };
 
     const taskInfo = await findStudentTaskSamplingInfo(taskId, classId);
+    const conflict = await getSubmissionSourceConflict(record, taskInfo?.excelFilePath ?? null);
+    if (conflict) return conflict;
     if (!taskInfo?.excelFilePath) return { ok: false as const, code: "READ_FAILED", message: "总体数据为空或读取失败" };
     const population = await readPopulationData(taskInfo.excelFilePath, taskInfo.fieldMapping);
     if (!population.length) return { ok: false as const, code: "READ_FAILED", message: "总体数据为空或读取失败" };
@@ -313,7 +316,7 @@ const experimentRoutes: RouteDefinition = {
         if (!record) return error("创建实验记录失败", "CREATE_FAILED", 500);
         const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
         const response = await buildExperimentResponse(record, populationSize, taskId, auth.student.classId);
-        if (!response.ok) return error(response.message, response.code, 500);
+        if (!response.ok) return error(response.message, response.code, response.code === "SOURCE_CONFLICT" ? 409 : 500);
         return json(response.value);
     },
 };
@@ -565,7 +568,10 @@ const analysisMetricsRoutes: RouteDefinition = {
         if (accessError) return accessError;
         const record = await loadOwnedExperiment(auth.student.id, taskId);
         const taskInfo = await findStudentTaskSamplingInfo(taskId, auth.student.classId);
-        if (!record || !taskInfo?.excelFilePath) return error("实验或总体数据不存在", "NOT_FOUND", 404);
+        if (!record) return error("实验或总体数据不存在", "NOT_FOUND", 404);
+        const conflict = await getSubmissionSourceConflict(record, taskInfo?.excelFilePath ?? null);
+        if (conflict) return error(conflict.message, conflict.code, 409);
+        if (!taskInfo?.excelFilePath) return error("实验或总体数据不存在", "NOT_FOUND", 404);
         try {
             const job = {
                 populationPath: taskInfo.excelFilePath,
