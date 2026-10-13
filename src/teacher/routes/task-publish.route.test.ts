@@ -151,6 +151,42 @@ test("task deletion with confirmation removes the graded submissions", async () 
         [{ id: 91 }],
         [{ status: "graded", count: 1 }],
     ]);
-    expect(await module.deleteTeacherTask({ teacherId: 9, taskId: 88, confirm: true })).toEqual({ ok: true });
+    expect(await module.deleteTeacherTask({ teacherId: 9, taskId: 88, confirm: true,
+        expectedImpact: { experiments: 1, submitted: 0, graded: 1 } })).toEqual({ ok: true });
     expect(operations.some((item) => item.kind === "delete" && item.table === task)).toBe(true);
+});
+
+test("task deletion rejects a stale confirmed preview without deleting any rows", async () => {
+    const { module, operations } = await load([
+        [{ id: 88, classId: 101 }],
+        [{ id: 91 }, { id: 92 }],
+        [{ status: "graded", count: 2 }],
+    ]);
+    expect(await module.deleteTeacherTask({
+        teacherId: 9, taskId: 88, confirm: true,
+        expectedImpact: { experiments: 1, submitted: 0, graded: 1 },
+    })).toMatchObject({ ok: false, code: "DELETION_IMPACT_CHANGED", status: 409 });
+    expect(operations.some((item) => item.kind === "delete" || item.kind === "insert")).toBe(false);
+});
+
+test("task deletion compares all preview counts even without confirmation", async () => {
+    for (const expectedImpact of [
+        { experiments: 0, submitted: 0, graded: 0 },
+        { experiments: 2, submitted: 1, graded: 0 },
+        { experiments: 2, submitted: 0, graded: 1 },
+    ]) {
+        const { module, operations } = await load([
+            [{ id: 88 }], [{ id: 91 }, { id: 92 }], [{ status: "in_progress", count: 2 }],
+        ]);
+        expect(await module.deleteTeacherTask({ teacherId: 9, taskId: 88, expectedImpact }))
+            .toMatchObject({ ok: false, code: "DELETION_IMPACT_CHANGED", status: 409 });
+        expect(operations.some((item) => item.kind === "delete" || item.kind === "insert")).toBe(false);
+    }
+});
+
+test("confirmed task deletion requires a preview", async () => {
+    const { module, operations } = await load([[{ id: 88 }], [], []]);
+    expect(await module.deleteTeacherTask({ teacherId: 9, taskId: 88, confirm: true }))
+        .toMatchObject({ ok: false, code: "DELETION_IMPACT_CHANGED", status: 409 });
+    expect(operations.some((item) => item.kind === "delete" || item.kind === "insert")).toBe(false);
 });

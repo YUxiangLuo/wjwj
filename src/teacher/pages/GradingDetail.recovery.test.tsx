@@ -30,6 +30,29 @@ function ListLocation() { const location = useLocation(); return <p data-testid=
 function SubmissionSwitcher() { const navigate = useNavigate(); return <button onClick={() => navigate("/grading/8")}>切换到提交 8</button>; }
 function page(entry = "/grading/7") { return render(<TeacherIdContext.Provider value={9}><MemoryRouter initialEntries={[entry]}><SubmissionSwitcher /><Routes><Route path="/grading/:submissionId" element={<GradingDetail />} /><Route path="/grading" element={<ListLocation />} /></Routes></MemoryRouter></TeacherIdContext.Provider>); }
 
+test("excess precision blocks submission visibly and half-cent preview matches confirmation", async () => {
+    let writes = 0;
+    globalThis.fetch = (async (_input, init) => {
+        if (init?.method === "POST") writes++;
+        return Response.json({ success: true, data: { ...record(), weights: { questionnaire: 50, process: 20, report: 30 } } });
+    }) as typeof fetch;
+    const view = page();
+    await waitFor(() => expect(view.getByLabelText("教师评语")).toBeTruthy());
+    fireEvent.change(view.getByLabelText("问卷设计（50%）"), { target: { value: "1.005" } });
+    expect(view.getByText("分项分数最多保留两位小数。")).toBeTruthy();
+    expect((view.getByText("提交评分") as HTMLButtonElement).disabled).toBe(true);
+    expect(view.getByTestId("teacher-grading-panel").textContent).toContain("加权总分：—");
+    fireEvent.click(view.getByText("提交评分"));
+    expect(writes).toBe(0);
+    for (const [label, value] of [["问卷设计（50%）", "1.01"], ["实验过程（20%）", "1"], ["实验报告（30%）", "1"]]) {
+        fireEvent.change(view.getByLabelText(label!), { target: { value } });
+    }
+    expect(view.getByTestId("teacher-grading-panel").textContent).toContain("加权总分：1.01");
+    fireEvent.click(view.getByText("提交评分"));
+    expect(view.getByText("确认提交评分？加权总分为 1.01。")).toBeTruthy();
+    expect(writes).toBe(0);
+});
+
 test("initial request failure is retryable rather than a missing submission", async () => {
     let requests = 0;
     globalThis.fetch = (async () => ++requests === 1

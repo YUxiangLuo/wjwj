@@ -1,7 +1,7 @@
 import { RequestError } from "@/components/RequestError";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useState, useEffect, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Users, Clock, Search, FileEdit, Eye } from "lucide-react";
 import { StatusBadge, type StatusBadgeIntent } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -60,6 +60,7 @@ const STATUSES_WITH_SUBMISSION: StatusKey[] = ["submitted", "graded", "rejected"
 export function TaskProgressDetail() {
     const { taskId } = useParams();
     const navigate = useNavigate();
+    const { search } = useLocation();
     const [data, setData] = useState<TaskProgressData | null>(null);
     const { loading, error: loadError, run, cancel } = useAsyncLoad("任务进度加载失败");
     const [searchTerm, setSearchTerm] = useState("");
@@ -108,7 +109,7 @@ export function TaskProgressDetail() {
                 </div>
             )}
             <div className="flex items-center gap-4">
-                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-muted" onClick={() => navigate("/task")}>
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-muted" onClick={() => navigate(`/task${search}`)}>
                     <ArrowLeft className="w-4 h-4 mr-1" />
                     返回列表
                 </Button>

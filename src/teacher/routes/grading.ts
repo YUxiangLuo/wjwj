@@ -2,7 +2,7 @@ import { and, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, experiment, samplingAttempt, student, task, teacher, topic } from "../../db/schema";
 import { validateObservedVersion } from "../../lib/observed-version";
-import { scoringWeightsFrom } from "../../lib/scoring-weights";
+import { isValidScore, scoringWeightsFrom, weightedScore } from "../../lib/scoring-weights";
 import { error, getPositiveRouteId, getSearchParams, json, parseBody, parsePagination, stringValue } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { normalizeSamplePlanData } from "../../student/experiment/sample-plan-display";
@@ -304,6 +304,9 @@ const gradingDetailRoutes: RouteDefinition = {
         if (scores.some((value) => typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 100)) {
             return error("分项分数需在 0-100 之间", "VALIDATION_ERROR", 400);
         }
+        if (scores.some(value => !isValidScore(value))) {
+            return error("分项分数最多保留两位小数", "VALIDATION_ERROR", 400);
+        }
         if (body.comment !== undefined && typeof body.comment !== "string") {
             return error("教师评语格式无效", "VALIDATION_ERROR", 400);
         }
@@ -311,11 +314,11 @@ const gradingDetailRoutes: RouteDefinition = {
         if (comment.length > 2_000) return error("教师评语不能超过2000字", "VALIDATION_ERROR", 400);
         const snapshot = parseStoredJson<{ weightConfig?: unknown }>(row.submissionSnapshot);
         const weights = scoringWeightsFrom(snapshot?.weightConfig ?? row.weightConfig);
-        const total = (
-            body.scoreQuestionnaire! * weights.questionnaire
-            + body.scoreProcess! * weights.process
-            + body.scoreReport! * weights.report
-        ) / 100;
+        const total = weightedScore({
+            questionnaire: body.scoreQuestionnaire!,
+            process: body.scoreProcess!,
+            report: body.scoreReport!,
+        }, weights);
         const now = new Date();
         const updated = await db.transaction(async (tx) => {
             if (!(await lockGradingClass(tx, experimentId, current.id))) return null;

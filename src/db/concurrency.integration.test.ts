@@ -339,6 +339,33 @@ pgTest("hard deleting a student requires confirming the cascaded submissions", a
     expect(await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, experiment.id))).toHaveLength(0);
 });
 
+pgTest("task DELETE binds confirmation to the current preview and cannot bypass it via query", async () => {
+    const group = await fixture();
+    const { experiment, taskId } = await addSubmission(group);
+    const routes = await import("../teacher/routes/topic-task");
+    const token = await session(2, group.teachers[0]!.id);
+    const cookie = `teacher_session=${token}`;
+    const params = { id: String(taskId) };
+    const preview = await teacherAuth.withTeacherAuth(routes.taskDeletionPreviewRoutes).GET!(request("GET", params, undefined, cookie));
+    const { impact } = (await preview.json()).data;
+    expect(impact).toEqual({ experiments: 1, submitted: 1, graded: 0 });
+    const remove = (body?: unknown, query = "") => teacherAuth.withTeacherAuth(routes.taskItemRoutes).DELETE!(request("DELETE", params, body, cookie, query));
+    const missing = await remove(undefined, "?confirm=1");
+    expect(missing.status).toBe(409);
+    expect(await missing.json()).toMatchObject({ error: { code: "DELETION_IMPACT_CHANGED" } });
+    expect((await remove({ confirm: "true", expectedImpact: impact })).status).toBe(400);
+    expect((await remove({ confirm: true, expectedImpact: { ...impact, experiments: -1 } })).status).toBe(400);
+    await application.db.update(schema.experiment).set({ status: "graded" }).where(eq(schema.experiment.id, experiment.id));
+    const stale = await remove({ confirm: true, expectedImpact: impact });
+    expect(stale.status).toBe(409);
+    expect(await stale.json()).toMatchObject({ error: { code: "DELETION_IMPACT_CHANGED" } });
+    expect(await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, experiment.id))).toHaveLength(1);
+    const refreshed = await taskService.getTaskDeletionImpact({ teacherId: group.teachers[0]!.id, taskId });
+    expect((await remove({ expectedImpact: refreshed }, "?confirm=1")).status).toBe(200);
+    expect(await application.db.select().from(schema.task).where(eq(schema.task.id, taskId))).toHaveLength(0);
+    expect(await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, experiment.id))).toHaveLength(0);
+});
+
 for (const entity of ["student", "task"] as const) {
     for (const first of ["submit", "delete"] as const) {
         pgTest(`${first}-first ${entity} deletion serializes existing submissions before counting the cascade`, async () => {

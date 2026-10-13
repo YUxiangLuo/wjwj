@@ -135,9 +135,9 @@ export const teacherApi = {
     getTasks: () => request<Task[]>("/api/teacher/tasks"),
     createTask: (data: { topicId: number; classIds: number[]; deadline?: string }) => request<{ success: boolean }>("/api/teacher/tasks", { method: "POST", body: JSON.stringify(data) }),
     extendTaskDeadline: (id: number, deadline: string) => request<{ success: boolean }>(`/api/teacher/tasks/${id}/extend`, { method: "PUT", body: JSON.stringify({ deadline }) }),
-    deleteTask: (id: number, options?: { confirm?: boolean }) => request<{ success: boolean }>(
-        `/api/teacher/tasks/${id}${options?.confirm ? "?confirm=1" : ""}`,
-        { method: "DELETE" },
+    deleteTask: (id: number, options?: { confirm?: boolean; expectedImpact?: DeletionImpact }) => request<{ success: boolean }>(
+        `/api/teacher/tasks/${id}`,
+        { method: "DELETE", body: JSON.stringify(options ?? {}) },
     ),
     getTaskDeletionImpact: (id: number) => request<{ impact: DeletionImpact; requiresConfirmation: boolean }>(`/api/teacher/tasks/${id}/deletion-preview`),
     getTaskProgress: (id: number) => request<TaskProgressData>(`/api/teacher/tasks/${id}/progress`),

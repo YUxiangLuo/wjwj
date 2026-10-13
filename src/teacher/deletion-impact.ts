@@ -14,6 +14,20 @@ export type DeletionImpact = {
     graded: number;
 };
 
+export function isDeletionImpact(value: unknown): value is DeletionImpact {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const impact = value as DeletionImpact;
+    return [impact.experiments, impact.submitted, impact.graded].every(
+        (count) => Number.isSafeInteger(count) && count >= 0,
+    ) && impact.submitted + impact.graded <= impact.experiments;
+}
+
+export function deletionImpactsEqual(expected: DeletionImpact, current: DeletionImpact) {
+    return expected.experiments === current.experiments
+        && expected.submitted === current.submitted
+        && expected.graded === current.graded;
+}
+
 export async function loadDeletionImpact(
     tx: Pick<typeof db, "select">,
     where: SQL | undefined,

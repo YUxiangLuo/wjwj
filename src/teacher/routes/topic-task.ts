@@ -5,6 +5,7 @@ import { spreadsheetRequestExceedsLimit } from "../../lib/spreadsheet";
 import { buildAttachmentDownloadResponse } from "../../server/attachment-download";
 import { error, getPositiveRouteId, getSearchParams, json, parseBody, parseFormData } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
+import { isDeletionImpact } from "../deletion-impact";
 import { requireTopicOwner } from "../topic/access";
 import {
     copyTopicWithResources,
@@ -356,8 +357,16 @@ const taskItemRoutes: RouteDefinition = {
         const taskId = parsePositiveRouteId(req);
         if (!taskId) return error("Invalid ID", "INVALID_ID");
 
-        const confirm = getSearchParams(req).get("confirm") === "1";
-        const result = await deleteTeacherTask({ teacherId: currentTeacherId, taskId, confirm });
+        const body = req.body ? await parseBody<{ confirm?: unknown; expectedImpact?: unknown }>(req) : {};
+        if ((body.confirm !== undefined && typeof body.confirm !== "boolean")
+            || (body.expectedImpact !== undefined && !isDeletionImpact(body.expectedImpact))) {
+            return error("删除确认参数无效", "VALIDATION_ERROR", 400);
+        }
+        const confirm = body.confirm === true || getSearchParams(req).get("confirm") === "1";
+        const result = await deleteTeacherTask({
+            teacherId: currentTeacherId, taskId, confirm,
+            expectedImpact: body.expectedImpact,
+        });
         if (!result.ok) {
             return error(result.message, result.code, result.status);
         }

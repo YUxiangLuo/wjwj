@@ -4,7 +4,7 @@ import { class_, experiment, samplingAttempt, task, topic } from "../../db/schem
 import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
 import { deleteAuditEventsForEntities, writeAuditEvent } from "../../server/audit-event";
 import { validateTopicPublishReadiness } from "./validation";
-import { deletionRequiresConfirmation, loadDeletionImpact } from "../deletion-impact";
+import { deletionImpactsEqual, deletionRequiresConfirmation, loadDeletionImpact, type DeletionImpact } from "../deletion-impact";
 
 interface TaskServiceFailure {
     ok: false;
@@ -200,6 +200,7 @@ export async function deleteTeacherTask(params: {
     teacherId: number;
     taskId: number;
     confirm?: boolean;
+    expectedImpact?: DeletionImpact;
 }): Promise<TaskServiceSuccess | TaskServiceFailure | TaskDeletionConfirmationRequired> {
     return db.transaction(async (tx) => {
         await acquireStorageMutationLock(tx);
@@ -220,6 +221,10 @@ export async function deleteTeacherTask(params: {
             .orderBy(experiment.id)
             .for("update");
         const impact = await loadDeletionImpact(tx, eq(experiment.taskId, params.taskId));
+        if ((params.confirm && params.expectedImpact === undefined)
+            || (params.expectedImpact !== undefined && !deletionImpactsEqual(params.expectedImpact, impact))) {
+            return fail("删除范围已发生变化，请刷新预览后重新确认", "DELETION_IMPACT_CHANGED", 409);
+        }
         if (!params.confirm && deletionRequiresConfirmation(impact)) {
             return {
                 ok: false,

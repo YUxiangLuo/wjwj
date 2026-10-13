@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, expect, mock, test } from "bun:test";
-import type { Task, Topic } from "../api-client";
+import type { Task, Topic, DeletionImpact } from "../api-client";
 import { installDomGlobals } from "@/test-utils/dom";
 
 const bootstrapDom = installDomGlobals();
 const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
-const { MemoryRouter } = await import("react-router-dom");
+const { MemoryRouter, Routes, Route } = await import("react-router-dom");
 
 const toastError = mock(() => undefined);
 const toastSuccess = mock(() => undefined);
@@ -14,7 +14,7 @@ const getTasks = mock(async () => ({ success: true, data: [] as Task[] }));
 const getTopics = mock(async () => ({ success: true, data: [] as Topic[] }));
 const getClasses = mock(async () => ({ success: true, data: [] }));
 const createTask = mock(async (_body: unknown) => ({ success: true }));
-const deleteTask = mock(async (_id: number, _options?: { confirm?: boolean }) => ({ success: true }));
+const deleteTask = mock(async (_id: number, _options?: { confirm?: boolean; expectedImpact?: DeletionImpact }) => ({ success: true }));
 const getTaskDeletionImpact = mock(async (_id: number) => ({
     success: true,
     data: { impact: { experiments: 2, submitted: 1, graded: 1 }, requiresConfirmation: true },
@@ -27,6 +27,7 @@ mock.module("../api-client", () => ({
     teacherApi: {
         ...realClient.teacherApi,
         getTasks,
+        getTaskProgress: async () => ({ success: true, data: { task: { topicName: "咖啡馆调查", className: "统计一班", deadline: null }, counts: {}, students: [] } }),
         createTask,
         deleteTask,
         getTaskDeletionImpact,
@@ -37,6 +38,7 @@ mock.module("../api-client", () => ({
 }));
 
 const { TaskManagement } = await import("./TaskManagement");
+const { TaskProgressDetail } = await import("./TaskProgressDetail");
 bootstrapDom.restore();
 
 const day = 86_400_000;
@@ -167,7 +169,7 @@ test("deleting a task requires irreversible confirmation then reloads", async ()
     expect(view.getByTestId("teacher-task-delete-impact").textContent).toContain("已批改 1 条");
 
     fireEvent.click(view.getByTestId("teacher-task-delete-confirm"));
-    await waitFor(() => expect(deleteTask).toHaveBeenCalledWith(1, { confirm: true }));
+    await waitFor(() => expect(deleteTask).toHaveBeenCalledWith(1, { confirm: true, expectedImpact: { experiments: 2, submitted: 1, graded: 1 } }));
     await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("任务已删除"));
 });
 
@@ -184,7 +186,43 @@ test("deleting a task without hand-in work needs no extra confirmation flag", as
     await waitFor(() => expect(view.getByTestId("teacher-task-delete-impact").textContent).toContain("还没有学生实验记录"));
 
     fireEvent.click(view.getByTestId("teacher-task-delete-confirm"));
-    await waitFor(() => expect(deleteTask).toHaveBeenCalledWith(1, { confirm: false }));
+    await waitFor(() => expect(deleteTask).toHaveBeenCalledWith(1, { confirm: false, expectedImpact: { experiments: 0, submitted: 0, graded: 0 } }));
+});
+
+test("stale deletion refreshes the displayed impact and waits for renewed consent", async () => {
+    getTasks.mockResolvedValue({ success: true, data: [openTask] });
+    deleteTask.mockResolvedValueOnce({ success: false, error: { code: "DELETION_IMPACT_CHANGED", message: "删除范围已变化" } } as never);
+    getTaskDeletionImpact.mockResolvedValueOnce({ success: true, data: { impact: { experiments: 2, submitted: 1, graded: 1 }, requiresConfirmation: true } })
+        .mockResolvedValueOnce({ success: true, data: { impact: { experiments: 3, submitted: 2, graded: 1 }, requiresConfirmation: true } });
+    const view = renderPage();
+    await waitFor(() => expect(view.getByTestId("teacher-task-delete-open-1")).toBeTruthy());
+    fireEvent.click(view.getByTestId("teacher-task-delete-open-1"));
+    await waitFor(() => expect(view.getByTestId("teacher-task-delete-impact").textContent).toContain("2 条学生实验"));
+    fireEvent.click(view.getByTestId("teacher-task-delete-confirm"));
+    await waitFor(() => expect(view.getByTestId("teacher-task-delete-impact").textContent).toContain("3 条学生实验"));
+    expect(toastSuccess).not.toHaveBeenCalled();
+    expect(view.getByRole("alertdialog")).toBeTruthy();
+    fireEvent.click(view.getByTestId("teacher-task-delete-confirm"));
+    await waitFor(() => expect(deleteTask).toHaveBeenLastCalledWith(1, { confirm: true, expectedImpact: { experiments: 3, submitted: 2, graded: 1 } }));
+    await waitFor(() => expect(view.queryByRole("alertdialog")).toBeNull());
+});
+
+test("task class and search filters survive progress navigation and return", async () => {
+    getTasks.mockResolvedValue({ success: true, data: [openTask, upcomingTask, expiredTask] });
+    const view = render(<MemoryRouter initialEntries={["/task?className=统计一班&keyword=咖啡"]}>
+        <Routes><Route path="/task" element={<TaskManagement />} /><Route path="/task/:taskId/progress" element={<TaskProgressDetail />} /></Routes>
+    </MemoryRouter>);
+    await waitFor(() => expect(view.getByTestId("teacher-task-row-1")).toBeTruthy());
+    expect(view.queryByTestId("teacher-task-row-2")).toBeNull();
+    expect(view.queryByTestId("teacher-task-row-3")).toBeNull();
+    fireEvent.click(view.getByRole("link", { name: /进度/ }));
+    await waitFor(() => expect(view.getByRole("button", { name: /返回列表/ })).toBeTruthy());
+    fireEvent.click(view.getByRole("button", { name: /返回列表/ }));
+    await waitFor(() => expect(view.getByTestId("teacher-task-row-1")).toBeTruthy());
+    expect((view.getByTestId("teacher-task-search") as HTMLInputElement).value).toBe("咖啡");
+    expect(view.getByTestId("teacher-task-class-filter").textContent).toBe("统计一班");
+    expect(view.queryByTestId("teacher-task-row-2")).toBeNull();
+    expect(view.queryByTestId("teacher-task-row-3")).toBeNull();
 });
 
 test("publishing without a template or class is rejected before the API call", async () => {

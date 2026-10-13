@@ -22,6 +22,7 @@ import { teacherApi, teacherResourceUrl, type SubmissionDetail } from "../api-cl
 import { AnalysisAppendices } from "@/components/AnalysisAppendices";
 import { TargetMetricsPanel } from "@/student/components/TargetMetricsPanel";
 import { clearTeacherDraft, readTeacherDraft, useTeacherId, writeTeacherDraft } from "../teacher-draft";
+import { isValidScore, weightedScore } from "@/lib/scoring-weights";
 
 interface GradingDraft {
     version: number;
@@ -44,13 +45,14 @@ function isGradingDraft(value: GradingDraft | null): value is GradingDraft {
 function parseScoreField(value: string) {
     if (value.trim() === "") return null;
     const parsed = Number(value);
-    if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) return null;
+    if (!isValidScore(parsed)) return null;
     return parsed;
 }
 
 function scoreFieldMessage(scores: { questionnaire: string; process: string; report: string }) {
     const values = [scores.questionnaire, scores.process, scores.report];
-    if (values.some((value) => value.trim() !== "" && parseScoreField(value) === null)) return "分项分数需在 0–100 之间。";
+    if (values.some((value) => value.trim() !== "" && (!Number.isFinite(Number(value)) || Number(value) < 0 || Number(value) > 100))) return "分项分数需在 0–100 之间。";
+    if (values.some((value) => value.trim() !== "" && parseScoreField(value) === null)) return "分项分数最多保留两位小数。";
     if (values.some((value) => value.trim() === "")) return "请填写三项分数后再提交。";
     return null;
 }
@@ -121,11 +123,11 @@ export function GradingDetail() {
     const scoresReady = parsedScores.questionnaire !== null && parsedScores.process !== null && parsedScores.report !== null;
     const total = useMemo(() => {
         if (!scoresReady) return null;
-        return (
-            parsedScores.questionnaire! * weights.questionnaire
-            + parsedScores.process! * weights.process
-            + parsedScores.report! * weights.report
-        ) / 100;
+        return weightedScore({
+            questionnaire: parsedScores.questionnaire!,
+            process: parsedScores.process!,
+            report: parsedScores.report!,
+        }, weights);
     }, [parsedScores, scoresReady, weights]);
     const grade = async (continueGrading = false) => {
         if (!data || !scoresReady || !canGrade || mutationInFlight.current) return;
@@ -289,6 +291,7 @@ export function GradingDetail() {
                                             type="number"
                                             min={0}
                                             max={100}
+                                            step={0.01}
                                             value={scores[key]}
                                             placeholder="0–100"
                                             disabled={!canGrade}

@@ -29,6 +29,30 @@ const row = {
     submissionSnapshot: { weightConfig: { questionnaire: 50, process: 20, report: 30 } },
 };
 
+test("grading rejects excess precision in every component without writes", async () => {
+    for (const key of ["scoreQuestionnaire", "scoreProcess", "scoreReport"]) {
+        const { module, operations } = await load(row);
+        const response = await module.gradingDetailRoutes.POST!(post("99", {
+            observedVersion: 7, scoreQuestionnaire: 1, scoreProcess: 2, scoreReport: 3, [key]: 1.005,
+        }));
+        expect(response.status).toBe(400);
+        expect(await response.json()).toMatchObject({ error: { code: "VALIDATION_ERROR", message: "分项分数最多保留两位小数" } });
+        expect(operations.some(item => item.kind === "update" || item.kind === "insert")).toBe(false);
+    }
+});
+
+test("grading rounds an unequal frozen-weight half-cent total up consistently", async () => {
+    const { module, operations } = await load(row);
+    const response = await module.gradingDetailRoutes.POST!(post("99", {
+        observedVersion: 7, scoreQuestionnaire: 1.01, scoreProcess: 1, scoreReport: 1,
+    }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ data: { totalScore: 1.01 } });
+    expect(operations.find(item => item.kind === "update" && item.table === experiment)?.set)
+        .toMatchObject({ scoreQuestionnaire: "1.01", scoreProcess: "1", scoreReport: "1", totalScore: "1.01", version: 8 });
+    expect(operations.find(item => item.kind === "insert")?.values).toMatchObject({ details: { totalScore: 1.01 } });
+});
+
 test("grading updates the same experiment with weighted scores", async () => {
     const { module, operations } = await load(row);
     const response = await module.gradingDetailRoutes.POST!(post("99", { observedVersion: 7, scoreQuestionnaire: 80, scoreProcess: 90, scoreReport: 100, comment: "完成良好" }));

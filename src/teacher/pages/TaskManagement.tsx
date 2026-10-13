@@ -18,7 +18,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Search, Clock, Plus, BarChart3, Trash2 } from "lucide-react";
-import { teacherApi, type Task, type Topic, type TeacherClass } from "../api-client";
+import { teacherApi, type Task, type Topic, type TeacherClass, type DeletionImpact } from "../api-client";
 import { describeCascadeImpact } from "@/lib/deletion-impact-copy";
 import { TaskExtendDialog } from "../components/TaskExtendDialog";
 import { TaskPublishDialog } from "../components/TaskPublishDialog";
@@ -75,6 +75,7 @@ export function TaskManagement() {
         loading: boolean;
         requiresConfirmation: boolean;
         summary: string | null;
+        impact?: DeletionImpact;
     } | null>(null);
 
     // Data for modal
@@ -86,8 +87,17 @@ export function TaskManagement() {
     const [selectedTopicId, setSelectedTopicId] = useState<string>("");
     const [selectedClassIds, setSelectedClassIds] = useState<number[]>([]);
     const [deadline, setDeadline] = useState("");
-    const [classFilter, setClassFilter] = useState("all");
-    const [searchTerm, setSearchTerm] = useState("");
+    const classFilter = searchParams.get("className") || "all";
+    const searchTerm = searchParams.get("keyword") ?? "";
+    const listSearch = searchParams.toString();
+    function updateFilter(key: string, value: string) {
+        setSearchParams(previous => {
+            const next = new URLSearchParams(previous);
+            if (value) next.set(key, value);
+            else next.delete(key);
+            return next;
+        }, { replace: true });
+    }
 
     useEffect(() => {
         loadTasks();
@@ -202,32 +212,33 @@ export function TaskManagement() {
                 loading: false,
                 requiresConfirmation: res.data.requiresConfirmation,
                 summary: describeCascadeImpact(res.data.impact, "task"),
+                impact: res.data.impact,
             });
         } else {
-            // Unknown impact: let the server decide and report on confirm.
-            setDeleteImpact({ loading: false, requiresConfirmation: false, summary: null });
+            setDeleteImpact({ loading: false, requiresConfirmation: false, summary: "删除范围加载失败，请重试后再确认。" });
         }
     }
 
     async function confirmDeleteTask() {
-        if (!taskToDelete) return;
+        if (!taskToDelete || deleteSubmitting || deleteImpact?.loading) return;
+        if (!deleteImpact?.impact) {
+            await openDeleteDialog(taskToDelete);
+            return;
+        }
         setDeleteSubmitting(true);
         try {
             const res = await teacherApi.deleteTask(taskToDelete.id, {
                 confirm: deleteImpact?.requiresConfirmation === true,
+                expectedImpact: deleteImpact.impact,
             });
             if (res.success) {
                 toast.success("任务已删除");
                 setTaskToDelete(null);
                 setDeleteImpact(null);
                 await loadTasks();
-            } else if (res.error?.code === "SUBMISSIONS_EXIST") {
-                // Keep the dialog open so the next click is an explicit confirmation.
-                setDeleteImpact({
-                    loading: false,
-                    requiresConfirmation: true,
-                    summary: res.error.message,
-                });
+            } else if (res.error?.code === "SUBMISSIONS_EXIST" || res.error?.code === "DELETION_IMPACT_CHANGED") {
+                toast.error("删除范围已变化，请核对最新数量后再次确认。");
+                await openDeleteDialog(taskToDelete);
             } else {
                 toast.error("删除失败: " + (res.error?.message ?? ""));
             }
@@ -285,11 +296,11 @@ export function TaskManagement() {
                                 data-testid="teacher-task-search"
                                 placeholder="搜索实验模板"
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={(e) => updateFilter("keyword", e.target.value)}
                                 className="pl-9 bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
                             />
                         </div>
-                        <Select value={classFilter} onValueChange={setClassFilter}>
+                        <Select value={classFilter} onValueChange={value => updateFilter("className", value === "all" ? "" : value)}>
                             <SelectTrigger aria-label="按班级筛选任务" data-testid="teacher-task-class-filter" className="bg-card border-input text-foreground w-40">
                                 <SelectValue placeholder="全部班级" />
                             </SelectTrigger>
@@ -350,7 +361,7 @@ export function TaskManagement() {
                                         <TableCell className="sticky right-0 z-10 bg-card text-right group-hover:bg-muted">
                                             <div className="flex flex-wrap items-center justify-end gap-2">
                                                 <Button variant="ghost" size="sm" asChild className="h-8 text-muted-foreground hover:text-success hover:bg-success-muted">
-                                                    <Link to={`/task/${task.id}/progress`}>
+                                                    <Link to={`/task/${task.id}/progress${listSearch ? `?${listSearch}` : ""}`}>
                                                         <BarChart3 className="w-3.5 h-3.5 mr-1" />
                                                         进度
                                                     </Link>
@@ -460,11 +471,11 @@ export function TaskManagement() {
                         <Button
                             type="button"
                             variant="destructive"
-                            disabled={deleteSubmitting}
+                            disabled={deleteSubmitting || deleteImpact?.loading}
                             data-testid="teacher-task-delete-confirm"
                             onClick={() => void confirmDeleteTask()}
                         >
-                            {deleteSubmitting ? "删除中…" : "永久删除"}
+                            {deleteSubmitting ? "删除中…" : !deleteImpact?.loading && !deleteImpact?.impact ? "重试加载" : "永久删除"}
                         </Button>
                     </AlertDialogFooter>
                 </AlertDialogContent>
