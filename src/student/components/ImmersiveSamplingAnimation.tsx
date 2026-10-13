@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef, memo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, memo, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { X, Users, Target, Layers, Shuffle, ChevronLeft, ChevronRight, Loader2, CheckCircle2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,8 @@ interface Props {
     onSkipRest?: () => void;
     /** External run/rerun control that should regain focus when the overlay closes. */
     restoreFocusTo?: HTMLElement | null;
+    /** Live replacement control when the first-run opener has unmounted. */
+    fallbackFocusRef?: RefObject<HTMLElement | null>;
     /** Sampled data rows returned from API — when set, displayed as a table in complete phase */
     sampledData?: Array<Record<string, unknown>>;
     /** Total count of sampled rows (may exceed displayed rows) */
@@ -239,6 +241,7 @@ export function ImmersiveSamplingAnimation({
     onClose,
     onSkipRest,
     restoreFocusTo,
+    fallbackFocusRef,
     sampledData,
     sampledTotal,
 }: Props) {
@@ -530,10 +533,11 @@ export function ImmersiveSamplingAnimation({
             document.removeEventListener("keydown", handleEscape);
             const opener = restoreFocusRef.current;
             requestAnimationFrame(() => {
-                if (opener?.isConnected) opener.focus();
+                const target = opener?.isConnected ? opener : fallbackFocusRef?.current;
+                if (target?.isConnected) target.focus();
             });
         };
-    }, []);
+    }, [fallbackFocusRef]);
 
     // The close control changes when the animation reaches its completed phase.
     // Keep a deterministic focus target through that automatic transition.

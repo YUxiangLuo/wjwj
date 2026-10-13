@@ -95,7 +95,7 @@ export function formatMarginOfError(
     if (normalizeSamplePlanEstimationType(estimationType) === "mean") {
         return `±${Number(marginOfError.toPrecision(6))}${options?.meanSuffix ?? ""}`;
     }
-    return `±${marginOfError}%`;
+    return `±${marginOfError} 个百分点`;
 }
 
 /** Preserve parameter magnitude and useful precision without floating-point tails. */

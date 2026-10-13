@@ -1,5 +1,6 @@
 import { afterAll, afterEach, beforeAll, expect, test } from "bun:test";
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { useRef, useState } from "react";
 import { installDomGlobals } from "@/test-utils/dom";
 import { ImmersiveSamplingAnimation } from "./ImmersiveSamplingAnimation";
 import { SamplingMethodExplanation } from "./SamplingMethodExplanation";
@@ -368,6 +369,34 @@ test("pause cancels phase timers and single stepping preserves position across s
     expect(view.getByTestId("sampling-animation-receipt")).toBeTruthy();
     expect(view.getByTestId("sampling-animation-final-diagram").querySelectorAll('[data-selected="true"]')).toHaveLength(3);
     expect(view.getByText("方法说明")).toBeTruthy();
+});
+
+test.each([false, true])("Escape restores focus after sampling, opener replaced=%s", async (replaceOpener) => {
+    function SamplingFlow() {
+        const [open, setOpen] = useState(false);
+        const [completed, setCompleted] = useState(false);
+        const opener = useRef<HTMLButtonElement | null>(null);
+        const rerun = useRef<HTMLButtonElement | null>(null);
+        return <>
+            {(!completed || !replaceOpener) && <button onClick={(event) => {
+                opener.current = event.currentTarget;
+                setCompleted(true);
+                setOpen(true);
+            }}>开始抽样</button>}
+            {completed && <button ref={rerun}>重新抽样</button>}
+            {open && <ImmersiveSamplingAnimation method="simple" populationSize={8} sampleSize={3}
+                restoreFocusTo={opener.current} fallbackFocusRef={rerun} onClose={() => setOpen(false)} />}
+        </>;
+    }
+    const view = render(<SamplingFlow />);
+    const opener = view.getByRole("button", { name: "开始抽样" });
+    opener.focus();
+    fireEvent.click(opener);
+    await view.findByTestId("sampling-animation-receipt");
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(document.activeElement).toBe(
+        replaceOpener ? view.getByRole("button", { name: "重新抽样" }) : opener,
+    ));
 });
 
 test("reduced-motion users go directly to results without a replay control", async () => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, type Ref } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -82,6 +82,7 @@ export interface StratifiedSamplingTabProps {
     setExecuting: (method: MethodKey | null) => void;
     onResult: (result: StratifiedResult) => void;
     onAnimate: (layers: StratifiedLayer[], stratifyBy: string, opener: HTMLElement | null) => void;
+    rerunRef?: Ref<HTMLButtonElement>;
     buildSavePayload: (stratifiedResult: StratifiedResult) => void;
     executionTime: number | null;
     setExecutionTime: (ms: number) => void;
@@ -102,6 +103,7 @@ export function StratifiedSamplingTab({
     setExecuting,
     onResult,
     onAnimate,
+    rerunRef,
     buildSavePayload,
     executionTime,
     setExecutionTime,
@@ -506,6 +508,7 @@ export function StratifiedSamplingTab({
                                     disabled={executing !== null || !isStratifiedValid || layers.length === 0 || refreshRequired}
                                     rerunTestId="student-sampling-stratified-rerun"
                                     rerunLabel="重新执行分层抽样"
+                                    rerunRef={rerunRef}
                                 />
                             )}
                         </CardContent>

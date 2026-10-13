@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, RefreshCw } from "lucide-react";
 import { IconTile } from "@/components/IconTile";
+import type { Ref } from "react";
 
 interface SamplingSuccessStateProps {
     summary: string;
@@ -8,9 +9,10 @@ interface SamplingSuccessStateProps {
     disabled: boolean;
     rerunTestId: string;
     rerunLabel: string;
+    rerunRef?: Ref<HTMLButtonElement>;
 }
 
-export function SamplingSuccessState({ summary, onRerun, disabled, rerunTestId, rerunLabel }: SamplingSuccessStateProps) {
+export function SamplingSuccessState({ summary, onRerun, disabled, rerunTestId, rerunLabel, rerunRef }: SamplingSuccessStateProps) {
     return (
         <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-4 rounded-surface border border-success-border bg-success-muted p-4" role="status">
@@ -22,6 +24,7 @@ export function SamplingSuccessState({ summary, onRerun, disabled, rerunTestId, 
                     <p className="mt-1 text-label text-success">{summary}</p>
                 </div>
                 <Button
+                    ref={rerunRef}
                     variant="outline"
                     size="sm"
                     onClick={onRerun}

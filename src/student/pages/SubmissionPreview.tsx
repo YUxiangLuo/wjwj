@@ -1,7 +1,7 @@
 import { StudentStatusPage } from "../components/StudentStatusPage";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useEffect, useState } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link, Navigate } from "react-router-dom";
 import { ArrowLeft, FileText, Send, Loader2, AlertCircle, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
@@ -149,6 +149,9 @@ export function SubmissionPreview() {
     }
 
     if (!task || !experiment) return <StudentStatusPage title="提交预览" message="未找到实验数据，请先完成实验各阶段。" />;
+    if (experiment.status === "submitted" || experiment.status === "graded") {
+        return <Navigate to={`/task/${taskId}/result`} replace />;
+    }
 
     const questionnaire = experiment.questionnaire;
     const questionnaireQuestions = questionnaire?.questions ?? [];

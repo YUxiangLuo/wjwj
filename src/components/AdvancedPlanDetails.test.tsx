@@ -15,7 +15,7 @@ test("reviewers can distinguish base assumptions from applied cost assumptions a
     const view = render(<SamplePlanSnapshot populationSize={100} value={{ confidenceLevel: "90", marginOfError: 10, designEffect: 1, nonResponseRate: 0, recommendedSize: 41, finalSampleSize: 100, advancedPlanSource: "cost", advancedPlans: [cost] }} />);
     expect(view.getByText("90%")).toBeTruthy();
     expect(view.getByText("99%")).toBeTruthy();
-    expect(view.getByText("±10%")).toBeTruthy();
+    expect(view.getByText("±10 个百分点")).toBeTruthy();
     expect(view.getByText("±1 个百分点")).toBeTruthy();
     expect(view.getByText("预算充足；预期精度未达标")).toBeTruthy();
     expect(view.getByTestId("advanced-plan-details").textContent).toContain("应用时间：2026/09/08 07:17；");

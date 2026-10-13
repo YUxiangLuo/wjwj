@@ -60,6 +60,30 @@ const submittableExperiment = {
     },
 };
 
+test.each(["submitted", "graded", "in_progress", "rejected"])("preview deep links respect %s status", async (status) => {
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => Response.json({
+        success: true,
+        data: String(input).endsWith("/experiment")
+            ? { ...submittableExperiment, status }
+            : { id: 12, name: "策略实验", attachments: [], recommendQuestions: [] },
+    })) as unknown as typeof fetch;
+    const view = render(
+        <MemoryRouter initialEntries={["/task/12/preview"]}>
+            <Routes>
+                <Route path="/task/:taskId/preview" element={<SubmissionPreview />} />
+                <Route path="/task/:taskId/result" element={<h1>冻结提交结果</h1>} />
+            </Routes>
+        </MemoryRouter>,
+    );
+    if (status === "submitted" || status === "graded") {
+        await view.findByRole("heading", { name: "冻结提交结果" });
+        expect(view.queryByTestId("student-preview-submit")).toBeNull();
+    } else {
+        await view.findByTestId("student-preview-submit");
+        expect(view.queryByRole("heading", { name: "冻结提交结果" })).toBeNull();
+    }
+});
+
 test("submission previews distinguish selected, unselected, and disabled sampling methods", async () => {
     const experiment = {
         id: 4,

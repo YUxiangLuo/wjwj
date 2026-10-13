@@ -1,5 +1,11 @@
 import { expect, test } from "bun:test";
-import { formatSamplePlanNumber, normalizeSamplePlanData } from "./sample-plan-display";
+import { formatMarginOfError, formatSamplePlanNumber, normalizeSamplePlanData } from "./sample-plan-display";
+
+test("margin labels distinguish percentage points from absolute mean error", () => {
+    expect(formatMarginOfError(5, "proportion")).toBe("±5 个百分点");
+    expect(formatMarginOfError(2.5, "mean", { meanSuffix: " 分钟" })).toBe("±2.5 分钟");
+    expect(formatMarginOfError(5, undefined)).toBe("±5 个百分点");
+});
 
 test("sample-plan numbers retain useful precision without floating-point tails", () => {
     expect(formatSamplePlanNumber(66.79239999999999)).toBe("66.7924");

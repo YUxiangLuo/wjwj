@@ -200,6 +200,12 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const [isCompleting, setIsCompleting] = useState(false);
     const [animation, setAnimation] = useState<Omit<ComponentProps<typeof ImmersiveSamplingAnimation>, "onClose" | "onSkipRest"> | null>(null);
     const animationOpenerRef = useRef<HTMLElement | null>(null);
+    const rerunFocusRefs = {
+        simple: useRef<HTMLButtonElement>(null),
+        systematic: useRef<HTMLButtonElement>(null),
+        pps: useRef<HTMLButtonElement>(null),
+        stratified: useRef<HTMLButtonElement>(null),
+    };
 
     const rememberAnimationOpener = () => {
         animationOpenerRef.current = typeof document !== "undefined"
@@ -522,6 +528,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                             disabled={executing !== null || refreshRequired}
                                             rerunTestId="student-sampling-simple-rerun"
                                             rerunLabel="重新执行简单随机抽样"
+                                            rerunRef={rerunFocusRefs.simple}
                                         />
                                     )}
                                 </CardContent>
@@ -627,6 +634,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                             disabled={executing !== null || systematicInterval === null || refreshRequired}
                                             rerunTestId="student-sampling-systematic-rerun"
                                             rerunLabel="重新执行系统抽样"
+                                            rerunRef={rerunFocusRefs.systematic}
                                         />
                                     )}
                                 </CardContent>
@@ -761,6 +769,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                             disabled={executing !== null || !hasPpsNumericField || !ppsSizeField || !isPpsSizeValid || refreshRequired}
                                             rerunTestId="student-sampling-pps-rerun"
                                             rerunLabel="重新执行 PPS 抽样"
+                                            rerunRef={rerunFocusRefs.pps}
                                         />
                                     )}
                                     <PpsProbabilityExplanation result={ppsResult} />
@@ -803,6 +812,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                         analysisTarget={experiment?.analysisTarget?.target}
                         stratumNumericStats={stratumNumericStats}
                         initialResult={initialResults?.stratified ?? null}
+                        rerunRef={rerunFocusRefs.stratified}
                         executing={executing}
                         setExecuting={setExecuting}
                         onResult={(result) => {
@@ -851,6 +861,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
             {animation && (
                 <ImmersiveSamplingAnimation
                     {...animation}
+                    fallbackFocusRef={rerunFocusRefs[animation.method]}
                     onClose={() => setAnimation(null)}
                     onSkipRest={() => { persistSkipSamplingAnimation(); setShowAnimation(false); }}
                 />
