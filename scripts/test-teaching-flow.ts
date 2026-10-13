@@ -146,6 +146,7 @@ async function completeQuestionnairePreview(session: string, questionCount: numb
 
 async function login(session: string, role: "student" | "teacher" | "admin", account: string, password = account) {
     await page(session, `/${role}/login`, "input[type=password]");
+    assert(await evaluate(session, '[...document.querySelectorAll("input")].every(input => input.value === "")'), `${role} login must not prefill credentials with DEV_AUTH_MODE=0`);
     await browser(session, "fill", "input:not([type=password])", account);
     await browser(session, "fill", "input[type=password]", password);
     await browser(session, "click", "button[type=submit]");
@@ -157,7 +158,7 @@ try {
     // migrate, seed, reset or drop the database named by TEST_DATABASE_URL itself.
     await admin.unsafe(`CREATE DATABASE "${databaseName}"`);
     databaseCreated = true;
-    for (const name of ["public", "node_modules", "bunfig.toml"]) await symlink(join(root, name), join(workdir, name));
+    for (const name of ["public", "node_modules", "bunfig.toml", "scripts"]) await symlink(join(root, name), join(workdir, name));
     await command([process.execPath, join(root, "src/db/migrate.ts")]);
     await command([process.execPath, join(root, "src/db/seeds/default.ts")], workdir);
     const reservation = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response() });

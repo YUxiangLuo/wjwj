@@ -104,7 +104,7 @@ function ppsReference(sizes: number[], n: number, y: number[]) {
 }
 try {
     await admin.unsafe(`CREATE DATABASE "${database}"`); created = true;
-    for (const file of ["public", "node_modules", "bunfig.toml"]) await symlink(join(root, file), join(workdir, file));
+    for (const file of ["public", "node_modules", "bunfig.toml", "scripts"]) await symlink(join(root, file), join(workdir, file));
     await command([process.execPath, "src/db/migrate.ts"]);
     await command([process.execPath, join(root, "src/db/seeds/default.ts")], workdir, { DEMO_MODE: "1", SEED_ADMIN_PASSWORD: "compatibility-test-only" });
     const reservation = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response() });
