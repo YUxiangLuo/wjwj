@@ -20,7 +20,14 @@ function rawCategoryValue(input: string | number | boolean | null) {
 
 export function AnalysisResultTable({ record }: { record: SavedAnalysisView }) {
     const result = record.result;
-    const caption = <caption className="mb-3 text-left text-meta text-muted-foreground">{result.weighted ? "设计加权比率点估计（不提供标准误、置信区间或加权分位数）" : "未加权样本描述；分位数采用 R7，SD 不是标准误"} · 样本 {result.sampleCount} · 有效 {result.validCount} · 缺失 {result.missingCount}{record.variable.unit && ` · 单位：${record.variable.unit}`}{result.kind === "categorical" && " · 各类别比例独立四舍五入，显示合计可能不等于 100%；底层计算使用未舍入值"}</caption>;
+    const description = result.kind === "numeric"
+        ? result.weighted
+            ? "设计加权比率点估计（不提供标准误、置信区间或加权分位数）；不声明估计量无偏。"
+            : "未加权样本描述；分位数采用 R7，SD 是样本标准差，不是标准误；不提供置信区间。"
+        : result.weighted
+            ? "设计加权类别比例；原始频数未加权，加权比例以有效记录的权重和为分母；不提供标准误或置信区间，不声明估计量无偏。"
+            : "未加权类别频数与样本比例；比例以有效样本数为分母；不提供置信区间。";
+    const caption = <caption className="mb-3 text-left text-meta text-muted-foreground">{description} · 样本 {result.sampleCount} · 有效 {result.validCount} · 缺失 {result.missingCount}{record.variable.unit && ` · 单位：${record.variable.unit}`}{result.kind === "categorical" && " · 各类别比例独立四舍五入，显示合计可能不等于 100%；底层计算使用未舍入值"}</caption>;
     if (result.kind === "numeric") {
         const rows = [
             ["样本数", result.sampleCount], ["有效数", result.validCount], ["缺失数", result.missingCount], ["均值", result.mean],
@@ -43,7 +50,6 @@ export function AnalysisAppendices({ records }: { records: SavedAnalysisView[] }
             <p className="mt-1 text-meta text-muted-foreground">数据来源标识 {record.source} · 字典修订号 {record.dictionaryRevision} · 抽样代次 {record.samplingGeneration} · 算法版本 {record.algorithmVersion}</p>
             {record.stale && <p className="mt-2 text-label text-warning">此结果来源已过期，仅供查看；请移除引用或重新运行后再提交。</p>}
             <div className="mt-3 overflow-x-auto"><AnalysisResultTable record={record} /></div>
-            <p className="mt-3 text-meta text-muted-foreground">{record.result.weighted ? "加权结果不声明估计量无偏。类别表中的原始频数未加权，与加权比例分开列示。" : "本表为描述统计，不提供置信区间。"}</p>
         </article>)}
     </section>;
 }

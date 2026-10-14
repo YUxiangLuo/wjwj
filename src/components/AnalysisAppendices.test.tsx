@@ -93,6 +93,36 @@ test("weighted numeric output leaves unimplemented dispersion and quantiles unav
     expect((html.match(/>—</g) ?? [])).toHaveLength(6);
 });
 
+test.each([false, true])("table and appendix share type-appropriate caveats (weighted=%s)", (weighted) => {
+    for (const kind of ["numeric", "categorical"] as const) {
+        const record: SavedAnalysisView = {
+            ...base,
+            config: { ...base.config, weighted },
+            result: kind === "numeric"
+                ? { kind, weighted, sampleCount: 2, validCount: 2, missingCount: 0, mean: 3, sampleStandardDeviation: weighted ? null : Math.SQRT2, min: weighted ? null : 2, max: weighted ? null : 4, q1: weighted ? null : 2.5, median: weighted ? null : 3, q3: weighted ? null : 3.5 }
+                : { kind, weighted, sampleCount: 2, validCount: 2, missingCount: 0, categories: [{ value: "甲", label: "甲", count: 2, proportion: 1 }] },
+        };
+        const table = renderToStaticMarkup(<AnalysisResultTable record={record} />);
+        const appendix = renderToStaticMarkup(<AnalysisAppendices records={[record]} />);
+        const caption = table.match(/<caption[^>]*>(.*?)<\/caption>/s)![1]!;
+        expect(appendix).toContain(table);
+        expect(caption).toContain("置信区间");
+        if (weighted) expect(caption).toContain("不声明估计量无偏");
+        if (kind === "categorical") {
+            expect(caption).not.toContain("R7");
+            expect(caption).not.toContain("SD");
+            expect(caption).not.toContain("分位数");
+            expect(caption).toContain(weighted ? "原始频数未加权" : "有效样本数为分母");
+            if (weighted) expect(caption).toContain("有效记录的权重和为分母");
+        } else if (!weighted) {
+            expect(caption).toContain("R7");
+            expect(caption).toContain("SD");
+            expect(caption).toContain("不是标准误");
+        }
+        expect(appendix.match(/不声明估计量无偏/g) ?? []).toHaveLength(weighted ? 1 : 0);
+    }
+});
+
 test("appendix uses the same user-facing sampling method names as the analysis UI", () => {
     const record: SavedAnalysisView = {
         ...base,
