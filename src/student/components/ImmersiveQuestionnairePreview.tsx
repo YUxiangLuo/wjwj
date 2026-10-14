@@ -543,6 +543,9 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     <span className="w-1 h-1 rounded-circle bg-input" />
                                     <span>约 {estimatedMinutes} 分钟</span>
                                 </div>
+                                <p className="text-label text-muted-foreground">
+                                    本次交互自检需逐题作答后才能标记完成，可随时关闭返回修改。若没有符合实际情况的选项，请先修订问卷，不必勉强选择；正式调查的自愿参与与跳题规则需另行设置。
+                                </p>
                                 {totalQuestions === 0 ? (
                                     <p className="text-label text-warning">
                                         当前没有题目，将直接进入结束语页；也可关闭预览返回编辑。

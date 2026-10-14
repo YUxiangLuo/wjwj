@@ -465,7 +465,7 @@ export function MultiVariableSamplePlan({
                                                 </div>
                                                 {variable.type === "mean" && (
                                                     <p className="text-meta text-primary">
-                                                        这里使用相对误差：绝对误差限 e = 相对误差 × 估计均值。它与左侧主流程里的绝对误差限不是同一语义。
+                                                        绝对误差限 e =（上方相对误差百分数 ÷ 100）× |估计均值|。左侧主流程直接填写绝对误差限，两者单位不同。
                                                     </p>
                                                 )}
                                             </div>

@@ -25,7 +25,7 @@ interface CostScenario {
     id: string;
     name: string;
     fixedCost: number;      // 固定成本（培训、督导等）
-    variableCostPerUnit: number; // 单位样本成本（元/样本）
+    variableCostPerUnit: number; // 每个发放单位的成本（含未完成者）
     totalBudget: number;     // 总预算
 }
 
@@ -251,7 +251,7 @@ export function PrecisionCostTradeoff({
                             <p className="text-meta text-muted-foreground">培训、督导、设备等固定支出</p>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="precision-variable-cost" className="text-meta text-foreground">单位样本成本（元/样本）</Label>
+                            <Label htmlFor="precision-variable-cost" className="text-meta text-foreground">单位发放成本（元/单位）</Label>
                             <Input
                                 id="precision-variable-cost"
                                 type="number"
@@ -264,7 +264,7 @@ export function PrecisionCostTradeoff({
                                 })}
                                 className="bg-card border-primary text-foreground"
                             />
-                            <p className="text-meta text-muted-foreground">每个样本的调查费用（访问费、礼品等）</p>
+                            <p className="text-meta text-muted-foreground">按发放单位数计费，未完成者也计入成本；不按成功回收份数计费。</p>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="precision-total-budget" className="text-meta text-foreground">总预算（元）</Label>
@@ -293,9 +293,9 @@ export function PrecisionCostTradeoff({
                         </span>
                     </div>
                     <div className="flex justify-between text-label">
-                        <span className="text-foreground">单位成本</span>
+                        <span className="text-foreground">单位发放成本</span>
                         <span className="font-mono text-primary">
-                            ¥{currentScenario.variableCostPerUnit}/样本
+                            ¥{currentScenario.variableCostPerUnit}/发放单位
                         </span>
                     </div>
                     <div className="flex justify-between text-label font-medium">

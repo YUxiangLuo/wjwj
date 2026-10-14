@@ -264,11 +264,12 @@ export function ClusterSamplingCalculator({
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-primary">估计群内相关系数 (ρ)</span>
+                                        <span className="text-primary">模型隐含群内相关系数 (ρ)</span>
                                         <span className="font-mono font-bold text-primary">
                                             {result.intraClassCorrelation === null ? "不适用" : result.intraClassCorrelation.toFixed(3)}
                                         </span>
                                     </div>
+                                    <p className="text-muted-foreground">由输入设计效应与群结构假设反推，不是根据观测数据估计的 ICC。</p>
                                 </div>
                             </div>
 

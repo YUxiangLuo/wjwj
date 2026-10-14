@@ -103,6 +103,6 @@ test("CVBasedSampleSizeCalculator 在均值估计下不再把左侧主流程描�
     );
     const text = view.container.textContent ?? "";
 
-    expect(text).toContain("左侧常规面板的均值误差限公式同样含 Z²");
+    expect(text).toContain("左侧常规面板的均值误差限公式");
     expect(text).not.toContain("左侧决策面板的比例估计法则");
 });

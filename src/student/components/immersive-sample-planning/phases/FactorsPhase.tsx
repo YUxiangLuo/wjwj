@@ -379,7 +379,7 @@ function VariabilityContent() {
                     <div className="rounded-surface bg-primary-muted p-4">
                         <p className="text-label text-primary font-medium">
                             以<strong>所需样本量最大的那个指标</strong>为准来确定样本量，
-                            从而保证所有指标都能达到预期精度。
+                            在各指标的规划假设成立时，满足各自的精度要求。这不保证每次抽样的实际误差，也不等于所有指标的联合置信保证。
                         </p>
                     </div>
                 </div>

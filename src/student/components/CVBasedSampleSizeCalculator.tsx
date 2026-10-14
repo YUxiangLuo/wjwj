@@ -126,12 +126,12 @@ export function CVBasedSampleSizeCalculator({
                                 </p>
                             )}
                             <p className="text-info leading-relaxed">
-                                <span className="font-medium">为何 n 往往比「误差限公式」小？</span>
+                                <span className="font-medium">CV 与误差限如何换算？</span>
                                 本工具按 SE(ȳ)/ȳ ≤ 目标 CV 推导，核心为 n ∝ (CV<sub>总体</sub>/CV<sub>目标</sub>)²，
                                 <strong className="font-semibold">不含 Z 值</strong>；左侧常规面板
-                                {estimationType === "mean" ? "的均值误差限公式" : "的误差限公式"}同样含 Z²，
-                                但目标是控制误差限而非 CV，二者不是同一套目标，数值不可直接对比。下方「置信水平」仅用于说明如何把 CV 换算成
-                                置信区间相对半宽（Z×CV），<strong className="font-semibold">不参与上式求 n</strong>。
+                                {estimationType === "mean" ? "的均值误差限公式" : "的误差限公式"}包含 Z²。
+                                在相同正态近似下，置信区间相对半宽 = Z × CV；比较样本量前应统一精度目标与其他假设，不能据此认为 CV 法更省样本。
+                                下方「置信水平」仅用于半宽换算，<strong className="font-semibold">不参与上式求 n</strong>。
                             </p>
                         </div>
                     </div>
