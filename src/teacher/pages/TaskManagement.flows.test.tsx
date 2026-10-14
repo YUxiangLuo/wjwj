@@ -271,7 +271,7 @@ test("class search preserves hidden choices; publishing locks input and failed r
     expect(createTask).toHaveBeenCalledTimes(2);
 });
 
-test("opening the extend dialog targets the selected task", async () => {
+test("extending a task requires a date and cancelling resets the selection", async () => {
     getTasks.mockResolvedValue({ success: true, data: [openTask] });
     const view = renderPage();
     await waitFor(() => expect(view.getByTestId("teacher-task-extend-open-1")).toBeTruthy());
@@ -280,4 +280,12 @@ test("opening the extend dialog targets the selected task", async () => {
 
     expect(view.getByRole("heading", { name: "延长截止时间" })).toBeTruthy();
     expect(view.getByTestId("teacher-task-extend-deadline")).toBeTruthy();
+    expect((view.getByTestId("teacher-task-extend-submit") as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(view.getByTestId("teacher-task-extend-deadline"));
+    fireEvent.change(view.getByLabelText("时（24 小时）"), { target: { value: "15" } });
+    expect((view.getByTestId("teacher-task-extend-submit") as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.keyDown(view.getByLabelText("时（24 小时）"), { key: "Escape" });
+    fireEvent.click(view.getByRole("button", { name: "取消" }));
+    fireEvent.click(view.getByTestId("teacher-task-extend-open-1"));
+    expect((view.getByTestId("teacher-task-extend-submit") as HTMLButtonElement).disabled).toBe(true);
 });
