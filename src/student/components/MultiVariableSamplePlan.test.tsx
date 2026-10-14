@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, expect, mock, test } from "bun:test";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { installDomGlobals } from "@/test-utils/dom";
 import {
     calculateSurveyVariableRequiredSampleSize,
@@ -109,6 +109,45 @@ test("比例变量把 UI 中小于 1% 的误差限按百分数换算", () => {
     const variable = proportionVar({ marginOfError: 0.5, estimatedValue: 0.5 });
 
     expect(calculateSurveyVariableRequiredSampleSize(variable, 10_000)).toBe(7935);
+});
+
+test("无效变量不展示有效样本量建议，修正后恢复建议与应用", async () => {
+    const view = render(
+        <MultiVariableSamplePlan
+            populationSize={96}
+            initialVariables={[
+                proportionVar({ id: "valid", name: "有效变量", marginOfError: 20 }),
+                proportionVar({ id: "mean", name: "均值变量", type: "mean", estimatedValue: 0, estimatedStdDev: 20 }),
+            ]}
+            onVariablesChange={() => {}}
+            onApplyToPlan={() => {}}
+        />,
+    );
+    fireEvent.click(view.getByRole("button", { name: "展开变量：均值变量" }));
+    expect(view.getByText("建议总样本量").nextElementSibling?.textContent).toBe("无法计算");
+    expect(view.getByText("所需样本量").nextElementSibling?.textContent).toBe("无法计算");
+    expect(view.queryByText("需 n ≥ 0")).toBeNull();
+    expect(view.queryByText(/^max =/)).toBeNull();
+    expect(view.queryByText("各变量样本量需求对比")).toBeNull();
+    expect((view.getByRole("button", { name: "应用到样本量规划" }) as HTMLButtonElement).disabled).toBe(true);
+
+    view.rerender(
+        <MultiVariableSamplePlan
+            key="corrected"
+            populationSize={96}
+            initialVariables={[
+                proportionVar({ id: "valid", name: "有效变量", marginOfError: 20 }),
+                proportionVar({ id: "mean", name: "均值变量", type: "mean", estimatedValue: 100, estimatedStdDev: 20 }),
+            ]}
+            onVariablesChange={() => {}}
+            onApplyToPlan={() => {}}
+        />,
+    );
+    // ceil(96 × (1.96² × 20² / 5²) / (95 + 1.96² × 20² / 5²)) = 38
+    await waitFor(() => expect(view.getByText("建议总样本量").nextElementSibling?.textContent).toBe("38"));
+    expect(view.queryByRole("alert")).toBeNull();
+    expect(view.getByText("各变量样本量需求对比")).toBeTruthy();
+    expect((view.getByRole("button", { name: "应用到样本量规划" }) as HTMLButtonElement).disabled).toBe(false);
 });
 
 test("非法比例、置信水平和误差限不能回退为可应用的样本量", () => {

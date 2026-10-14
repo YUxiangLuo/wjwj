@@ -265,7 +265,7 @@ export function MultiVariableSamplePlan({
                                                     <span className="px-1.5 py-0.5 rounded-control bg-primary text-primary-foreground">
                                                         {importanceConfig.label}
                                                     </span>
-                                                    <span>需 n ≥ {variable.requiredSampleSize.toLocaleString()}</span>
+                                                    <span>{variableErrors.some(error => error.id === variable.id) ? "无法计算" : `需 n ≥ ${variable.requiredSampleSize.toLocaleString()}`}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -476,7 +476,7 @@ export function MultiVariableSamplePlan({
                                             <div className="flex items-center justify-between">
                                                 <span className="text-meta text-muted-foreground">所需样本量</span>
                                                 <span className="text-subheading font-bold tabular-nums text-info">
-                                                    {variable.requiredSampleSize.toLocaleString()}
+                                                    {variableErrors.some(error => error.id === variable.id) ? "无法计算" : variable.requiredSampleSize.toLocaleString()}
                                                 </span>
                                             </div>
                                         </div>
@@ -527,7 +527,7 @@ export function MultiVariableSamplePlan({
                                             </span>
                                         </div>
                                         <span className="font-mono text-primary">
-                                            max = {maxSampleSize.toLocaleString()}
+                                            {vars.some(variable => variableErrors.some(error => error.id === variable.id)) ? "无法计算" : `max = ${maxSampleSize.toLocaleString()}`}
                                         </span>
                                     </div>
                                 );
@@ -539,7 +539,7 @@ export function MultiVariableSamplePlan({
                         <div className="flex justify-between items-center">
                             <span className="font-bold text-primary">建议总样本量</span>
                             <span className="text-page-title font-bold tabular-nums text-info">
-                                {recommendedSampleSize.toLocaleString()}
+                                {hasInvalidVariables ? "无法计算" : recommendedSampleSize.toLocaleString()}
                             </span>
                         </div>
 
@@ -562,7 +562,7 @@ export function MultiVariableSamplePlan({
                 )}
 
                 {/* 各变量样本量对比 */}
-                {variables.length > 1 && (
+                {variables.length > 1 && !hasInvalidVariables && (
                     <div className="rounded-surface border border-primary bg-background p-3">
                         <div className="text-meta font-medium text-primary mb-3">
                             各变量样本量需求对比
