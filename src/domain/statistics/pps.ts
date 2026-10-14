@@ -87,13 +87,21 @@ export function estimateWeightedValue(
     if (valueScale === 0) return 0;
     const minimumProbability = valid.reduce((minimum, item) => Math.min(minimum, item.probability), Infinity);
     const numerator = new StableSum();
+    const unscaledNumerator = new StableSum();
     const denominator = new StableSum();
+    let productUnderflow = false;
     for (const item of valid) {
         // min(π)/π is proportional to 1/π without overflowing for tiny π.
         const normalizedWeight = minimumProbability / item.probability;
+        const product = normalizedWeight * item.value;
+        // Subnormal products lose precision even when they do not round to zero.
+        if (item.value !== 0 && normalizedWeight > 0 && Math.abs(product) < 2 ** -1022) productUnderflow = true;
+        unscaledNumerator.add(product);
         numerator.add(normalizedWeight * (item.value / valueScale));
         denominator.add(normalizedWeight);
     }
+    // Preserve cancellation residuals unless original-unit products/sums lose range.
+    if (denominator.value > 0 && !productUnderflow && Number.isFinite(unscaledNumerator.value)) return unscaledNumerator.value / denominator.value;
     return denominator.value > 0 ? (numerator.value / denominator.value) * valueScale : null;
 }
 

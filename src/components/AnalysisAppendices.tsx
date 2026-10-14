@@ -1,6 +1,9 @@
 import type { SavedAnalysisView } from "@/domain/variables/types";
 
-const value = (input: number | null, digits = 4) => input == null ? "—" : input.toLocaleString("zh-CN", { maximumFractionDigits: digits });
+const value = (input: number | null, digits = 4) => input == null ? "—" : input.toLocaleString("zh-CN", {
+    maximumFractionDigits: digits,
+    notation: input !== 0 && Math.abs(input) < 10 ** -digits ? "scientific" : "standard",
+});
 const methodLabels: Record<SavedAnalysisView["config"]["method"], string> = {
     simple: "简单随机抽样",
     systematic: "系统抽样",

@@ -35,7 +35,7 @@ import {
     type AdvancedTab,
     type AdvancedNonStandardSampleSource,
 } from "../../../components/sample-planning/advancedTabs";
-import { DomainEstimationManager, type Domain } from "../../../components/DomainEstimationManager";
+import { DomainEstimationManager, isDomainDraftValid, type Domain } from "../../../components/DomainEstimationManager";
 import { PrecisionCostTradeoff } from "../../../components/PrecisionCostTradeoff";
 import { DesignEffectEstimator } from "../../../components/DesignEffectEstimator";
 import { MultiVariableSamplePlan, type SurveyVariable } from "../../../components/MultiVariableSamplePlan";
@@ -545,7 +545,9 @@ export function DecisionPhase({
                                 </Button>
                                 <Button
                                     type="button"
+                                    disabled={!isDomainDraftValid(domainDraft, N, params.estimationType)}
                                     onClick={() => {
+                                        if (!isDomainDraftValid(domainDraft, N, params.estimationType)) return;
                                         onDomainsChange(domainDraft);
                                         toast.success("已应用子总体设置");
                                         closeAdvancedDialog();

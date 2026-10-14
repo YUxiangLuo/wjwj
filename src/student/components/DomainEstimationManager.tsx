@@ -32,6 +32,15 @@ export interface Domain {
     requiredSampleSize: number;
 }
 
+export function isDomainDraftValid(domains: Domain[], totalPopulationSize: number, estimationType: "proportion" | "mean" = "proportion") {
+    return domains.every(domain =>
+        Number.isInteger(domain.populationSize) && domain.populationSize >= 1 && domain.populationSize <= totalPopulationSize
+        && Number.isFinite(domain.marginOfError)
+        && domain.marginOfError >= (estimationType === "mean" ? 0.1 : 1)
+        && (estimationType === "mean" || domain.marginOfError <= 20)
+    ) && domains.reduce((sum, domain) => sum + domain.populationSize, 0) <= totalPopulationSize;
+}
+
 interface DomainEstimationManagerProps {
     totalPopulationSize: number;
     stratifiedFields: string[];
@@ -77,7 +86,7 @@ export function DomainEstimationManager({
     // 计算每个域的所需样本量
     useEffect(() => {
         const updatedDomains = domains.map(domain => {
-            const requiredSampleSize = isMeanEstimation
+            const requiredSampleSize = !isDomainDraftValid([domain], totalPopulationSize, estimationType) ? 0 : isMeanEstimation
                 ? calculateMeanEstimationSampleSize({
                     confidenceLevel: domain.confidenceLevel,
                     marginOfError: domain.marginOfError,
@@ -88,7 +97,7 @@ export function DomainEstimationManager({
                 }) ?? 0
                 : calculateFinitePopulationSampleSize({
                     confidenceLevel: domain.confidenceLevel,
-                    marginOfError: domain.marginOfError,
+                    marginOfError: domain.marginOfError / 100,
                     populationSize: domain.populationSize,
                     designEffect: 1, // 假设简单随机抽样
                     nonResponseRate: 0,
@@ -163,7 +172,7 @@ export function DomainEstimationManager({
         }) ?? 0
         : calculateFinitePopulationSampleSize({
             confidenceLevel: defaultConfidenceLevel,
-            marginOfError: resolvedDefaultMarginOfError,
+            marginOfError: resolvedDefaultMarginOfError / 100,
             populationSize: totalPopulationSize,
             designEffect: 1,
             nonResponseRate: 0,
@@ -198,6 +207,12 @@ export function DomainEstimationManager({
             </CardHeader>
 
             <CardContent className="space-y-4">
+                {!isDomainDraftValid(domains, totalPopulationSize, estimationType) && (
+                    <p role="alert" className="text-meta text-destructive">
+                        请修正子总体设置：规模须为 1 至 {totalPopulationSize} 的整数且合计不超过总体规模；
+                        {isMeanEstimation ? "绝对误差限须至少为 0.1。" : "允许误差须为 1 至 20 个百分点。"}
+                    </p>
+                )}
                 {isMeanEstimation && !(Number(populationVariance) > 0) && (
                     <div className="rounded-surface border border-destructive-border bg-destructive-muted p-3">
                         <div className="flex items-start gap-2 text-meta text-destructive">
@@ -272,7 +287,7 @@ export function DomainEstimationManager({
                                             <div className="text-meta text-foreground">
                                                 N = {domain.populationSize.toLocaleString()} | 需 n ≥{" "}
                                                 <span className="font-semibold text-info tabular-nums">
-                                                    {domain.requiredSampleSize.toLocaleString()}
+                                                    {isDomainDraftValid([domain], totalPopulationSize, estimationType) ? domain.requiredSampleSize.toLocaleString() : "待修正"}
                                                 </span>
                                             </div>
                                         </div>
@@ -326,7 +341,7 @@ export function DomainEstimationManager({
                                             id={`domain-population-${domain.id}`}
                                             type="number"
                                             value={domain.populationSize}
-                                            onChange={(e) => updateDomain(domain.id, { populationSize: parseInt(e.target.value) || 0 })}
+                                            onChange={(e) => updateDomain(domain.id, { populationSize: Number(e.target.value) || 0 })}
                                             className="bg-card border-primary text-foreground"
                                             min={1}
                                             max={totalPopulationSize}
@@ -398,7 +413,7 @@ export function DomainEstimationManager({
                                         <div className="flex items-center justify-between">
                                             <span className="text-meta text-primary">所需样本量</span>
                                             <span className="text-subheading font-bold tabular-nums text-info">
-                                                {domain.requiredSampleSize.toLocaleString()}
+                                                {isDomainDraftValid([domain], totalPopulationSize, estimationType) ? domain.requiredSampleSize.toLocaleString() : "待修正"}
                                             </span>
                                         </div>
                                         <p className="text-meta text-primary mt-1">
@@ -423,7 +438,7 @@ export function DomainEstimationManager({
                 </Button>
 
                 {/* 总样本量计算 */}
-                {domains.length > 0 && (
+                {domains.length > 0 && isDomainDraftValid(domains, totalPopulationSize, estimationType) && (
                     <div className="rounded-surface border-2 border-primary bg-background p-4 ">
                         <div className="flex items-center gap-2 mb-3">
                             <Calculator className="w-5 h-5 text-primary" />
@@ -491,7 +506,7 @@ export function DomainEstimationManager({
                 )}
 
                 {/* 方案对比（课件例7.2） */}
-                {domains.length >= 2 && (
+                {domains.length >= 2 && isDomainDraftValid(domains, totalPopulationSize, estimationType) && (
                     <SchemeComparison domains={domains} baseSampleSize={baseSampleSize} />
                 )}
             </CardContent>

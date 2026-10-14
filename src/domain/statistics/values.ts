@@ -45,6 +45,12 @@ export function scaledMean(values: number[]) {
     const center = minimum / 2 + maximum / 2;
     const scale = values.reduce((maximum, value) => Math.max(maximum, Math.abs(value - center)), 0);
     if (scale === 0) return center;
+    // Scaling first can underflow a tiny residual before opposing large terms
+    // cancel. Sum centered values in their original units when that sum is finite.
+    const unscaled = new StableSum();
+    for (const value of values) unscaled.add(value - center);
+    if (Number.isFinite(unscaled.value)) return center + unscaled.value / values.length;
+    // Retain the overflow-safe path when the sum exceeds the numeric range.
     const sum = new StableSum();
     for (const value of values) sum.add((value - center) / scale);
     return center + (sum.value / values.length) * scale;

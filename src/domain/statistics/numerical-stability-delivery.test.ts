@@ -1,8 +1,44 @@
 import { expect, test } from "bun:test";
 import { buildAnalysisMetrics } from "./analysis";
 import { sampleVariance } from "./values";
-import { performSystematicSampling } from "./sampling";
+import { estimateWeightedMean } from "./pps";
+import { performPPSSampling, performSystematicSampling } from "./sampling";
 import { computeSystematicExactMeanSe } from "./systematic";
+import { calculateUnivariate } from "../variables/analysis";
+
+test("PPS and saved weighted means preserve subnormal observations with unequal design weights", () => {
+    const tiny = Number.MIN_VALUE;
+    // Weights [1,1,1,2]: constant mean=tiny; varying mean=11*tiny/5,
+    // which rounds to 2*tiny. The latter catches nonzero product rounding too.
+    for (const [values, expected] of [
+        [[tiny, tiny, tiny, tiny, tiny], tiny],
+        [[3 * tiny, 3 * tiny, 3 * tiny, tiny, tiny], 2 * tiny],
+        [[-tiny, -tiny, -tiny, -tiny, -tiny], -tiny],
+    ] as const) {
+        const population = [2, 2, 2, 1, 1].map((size, i) => ({ size, x: values[i]! }));
+        const sample = performPPSSampling(population, "size", 4, () => .25);
+        expect(sample.inclusionProbabilities).toEqual([1, 1, 1, .5]);
+        expect(estimateWeightedMean(sample.data, "x", sample.inclusionProbabilities)).toBe(expected);
+        const result = calculateUnivariate({ population, indices: sample.indices,
+            variable: { field: "x", label: "数值", unit: "", kind: "continuous", categories: [], missing: [] },
+            weighted: true, weights: sample.inclusionProbabilities.map(p => 1 / p) });
+        expect(result).toMatchObject({ kind: "numeric", mean: expected });
+    }
+});
+
+test("population and census estimates retain a tiny signed-cancellation residual", () => {
+    const population = [1e150, 1e-180, -1e150].map(y => ({ y }));
+    const metrics = buildAnalysisMetrics({ population,
+        fieldMapping: { numeric: ["y"], analysisTarget: { kind: "mean", field: "y" } },
+        samplingResults: { simple: { completed: true, sampleCount: 3, data: population } },
+    });
+    const expected = 1e-180 / 3;
+    expect(metrics.target!.populationValue! / expected).toBeCloseTo(1, 14);
+    expect(metrics.target!.methods.simple.estimate! / expected).toBeCloseTo(1, 14);
+    expect(estimateWeightedMean(population, "y", [1, 1, 1])! / expected).toBeCloseTo(1, 14);
+    const unequal = [1e150, -2e150, 1e-180].map(y => ({ y }));
+    expect(estimateWeightedMean(unequal, "y", [.5, 1, .25])! / (4e-180 / 7)).toBeCloseTo(1, 14);
+});
 
 test("ST-N03 subnormal variances do not collapse representable design SEs", () => {
     for (const scale of [1, 1e-155, 1e-160]) {

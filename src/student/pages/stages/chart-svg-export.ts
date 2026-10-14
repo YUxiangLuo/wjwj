@@ -33,6 +33,7 @@ interface ChartSvgParams {
     series: ChartSeries[];
     fileName: string;
     unit?: string;
+    notes?: string[];
 }
 
 export interface ChartSvgTheme {
@@ -54,17 +55,18 @@ function resolveSeriesColor(styles: CSSStyleDeclaration, color: string) {
 }
 
 export function buildChartSvg(params: ChartSvgParams, theme: ChartSvgTheme) {
-    const { title, rows, series, unit = "" } = params;
+    const { title, rows, series, unit = "", notes = [] } = params;
     if (rows.length === 0 || series.length === 0) return null;
 
     const values = rows.flatMap((row) => series.map((s) => row.values[s.key] ?? 0));
     const scale = chartScale(values);
 
     const width = 1080;
-    const height = 620;
+    const noteLines = notes.flatMap((note) => note.match(/.{1,60}/gu) ?? []);
+    const height = 620 + noteLines.length * 24;
     const margin = { top: 90, right: 60, bottom: 150, left: 90 };
     const plotWidth = width - margin.left - margin.right;
-    const plotHeight = height - margin.top - margin.bottom;
+    const plotHeight = 620 - margin.top - margin.bottom;
     const zeroY = margin.top + scale.max / scale.range * plotHeight;
     const groupWidth = plotWidth / rows.length;
     const barGroupWidth = groupWidth * 0.72;
@@ -128,6 +130,7 @@ export function buildChartSvg(params: ChartSvgParams, theme: ChartSvgTheme) {
   <line x1="${margin.left}" y1="${zeroY}" x2="${margin.left + plotWidth}" y2="${zeroY}" stroke="${escapeXml(theme.mutedForeground)}" stroke-width="1.2" />
   <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${margin.top + plotHeight}" stroke="${escapeXml(theme.mutedForeground)}" stroke-width="1.2" />
   ${bars}
+  ${noteLines.map((note, index) => `<text x="${margin.left}" y="${620 + index * 24}" fill="${escapeXml(theme.mutedForeground)}" font-size="14">${escapeXml(note)}</text>`).join("\n")}
 </svg>`.trim();
 
     return svg;

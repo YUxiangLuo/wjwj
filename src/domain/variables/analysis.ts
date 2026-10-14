@@ -26,12 +26,20 @@ function weightedMean(values: number[], weights: number[]): number | null {
     if (valueScale === 0) return 0;
     const weightScale = weights.reduce((maximum, weight) => Math.max(maximum, weight), 0);
     const numerator = new Sum(), denominator = new Sum();
+    const unscaledNumerator = new Sum();
+    let productUnderflow = false;
     for (let i = 0; i < values.length; i++) {
         const weight = weights[i]! / weightScale;
+        const product = weight * values[i]!;
+        // Subnormal products lose precision even when they do not round to zero.
+        if (values[i] !== 0 && weight > 0 && Math.abs(product) < 2 ** -1022) productUnderflow = true;
+        unscaledNumerator.add(product);
         numerator.add(weight * (values[i]! / valueScale));
         denominator.add(weight);
     }
     if (!(denominator.value > 0)) throw new Error("权重总和无效");
+    // Preserve cancellation residuals unless original-unit products/sums lose range.
+    if (!productUnderflow && Number.isFinite(unscaledNumerator.value)) return finite(unscaledNumerator.value / denominator.value);
     return finite((numerator.value / denominator.value) * valueScale);
 }
 

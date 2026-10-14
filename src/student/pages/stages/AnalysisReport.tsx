@@ -48,8 +48,10 @@ interface AnalysisReportProps {
     onSubmit: () => void;
 }
 
-type ZoomChartType = "mean" | "dist" | "error" | "represent" | null;
+type ZoomChartType = "mean" | "dist" | "error" | "representNumeric" | "representCategorical" | null;
 type AnalysisWorkspace = "overview" | "charts" | "univariate" | "records" | "report";
+
+const DEVIATION_DISCLAIMER = "数值相对偏差（%）与分类分布偏差（百分点）使用独立尺度，不可横比；接近总体也不能单独证明样本无偏或具有整体代表性。";
 
 // ---------------------------------------------------------------------------
 // ChartBars — horizontal bar chart component
@@ -403,6 +405,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     const representativenessRows = useMemo(() => {
         const rows: ChartRow[] = [];
+        const categoricalRows: ChartRow[] = [];
 
         for (const field of numericFields) {
             const fieldMetrics = analysisMetrics?.numeric[field];
@@ -438,11 +441,11 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             }
 
             if (hasValue) {
-                rows.push({ label: `${field}（分布偏差）`, values });
+                categoricalRows.push({ label: `${field}（分布偏差）`, values });
             }
         }
 
-        return rows;
+        return { numeric: rows, categorical: categoricalRows };
     }, [analysisMetrics, categoricalFields, completedAnalysisMethods, numericFields]);
 
     // ---- Series ----
@@ -485,7 +488,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     const representSeries = useMemo<ChartSeries[]>(() => {
         const availableMethodKeys = completedAnalysisMethods.filter((method) =>
-            representativenessRows.some((row) => Object.prototype.hasOwnProperty.call(row.values, method))
+            [...representativenessRows.numeric, ...representativenessRows.categorical].some((row) => Object.prototype.hasOwnProperty.call(row.values, method))
         );
 
         return availableMethodKeys.map((key) => ({
@@ -502,13 +505,15 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         rows: ChartRow[];
         series: ChartSeries[];
         unit?: string;
+        notes?: string[];
         emptyMessage: string;
         downloadFileName: string;
     }>>(() => ({
         mean: { title: "均值对比", rows: meanRows, series: meanSeries, emptyMessage: "暂无可用于均值分析的数值字段", downloadFileName: `mean_${sanitizeFileName(selectedNumericField)}.svg` },
         dist: { title: "分布对比", rows: distributionRows, series: distributionSeries, unit: "%", emptyMessage: "暂无可用于分布分析的分类字段", downloadFileName: `distribution_${sanitizeFileName(selectedCategoricalField)}.svg` },
         error: { title: "设计标准误", rows: errorRows, series: errorSeries, emptyMessage: "暂无可用于标准误分析的数值字段", downloadFileName: `error_${sanitizeFileName(selectedNumericField)}.svg` },
-        represent: { title: "与已知总体的描述性偏差", rows: representativenessRows, series: representSeries, unit: "%", emptyMessage: "暂无可用于总体对照偏差分析的数据", downloadFileName: "population-deviation.svg" },
+        representNumeric: { title: "数值均值相对偏差（%）", rows: representativenessRows.numeric, series: representSeries, unit: "%", notes: ["数值：|估计−总体均值|/|总体均值| × 100%；总体均值为零时不展示。", DEVIATION_DISCLAIMER], emptyMessage: "暂无可用于均值相对偏差分析的数据", downloadFileName: "population-deviation-numeric.svg" },
+        representCategorical: { title: "分类分布偏差（百分点）", rows: representativenessRows.categorical, series: representSeries, unit: "百分点", notes: ["分类：完整类别空间上各类占比绝对差的平均（单位：百分点）。", DEVIATION_DISCLAIMER], emptyMessage: "暂无可用于分类分布偏差分析的数据", downloadFileName: "population-deviation-categorical.svg" },
     }), [meanRows, meanSeries, distributionRows, distributionSeries, errorRows, errorSeries, representSeries, representativenessRows, selectedNumericField, selectedCategoricalField]);
 
     const activeZoom = zoomChart ? chartConfig[zoomChart] : null;
@@ -551,6 +556,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             series: cfg.series,
             fileName: cfg.downloadFileName,
             unit: cfg.unit,
+            notes: cfg.notes,
         });
     };
 
@@ -665,15 +671,13 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 </TabsContent>
 
                                 <TabsContent value="represent" data-testid="student-analysis-representativeness-chart">
-                                    <ChartTabPanel
-                                        description="描述当前样本与已知虚拟总体的差异：数值行为 |估计−总体均值|/|总体均值|，分类行为完整类别空间上各类占比绝对差的平均（单位：百分点）。两套百分数不可横比，接近总体也不能单独证明样本无偏或具有整体代表性。"
-                                        rows={representativenessRows}
-                                        series={representSeries}
-                                        unit="%"
-                                        emptyMessage="暂无可用于总体对照偏差分析的数据"
-                                        onZoom={() => setZoomChart("represent")}
-                                        onDownload={() => downloadChart("represent")}
-                                    />
+                                    {(["representNumeric", "representCategorical"] as const).map((type) => {
+                                        const cfg = chartConfig[type];
+                                        return <section key={type} aria-label={cfg.title} className="mt-5">
+                                            <h3 className="text-subheading font-semibold">{cfg.title}</h3>
+                                            <ChartTabPanel description={cfg.notes!.join(" ")} rows={cfg.rows} series={cfg.series} unit={cfg.unit} emptyMessage={cfg.emptyMessage} onZoom={() => setZoomChart(type)} onDownload={() => downloadChart(type)} />
+                                        </section>;
+                                    })}
                                 </TabsContent>
                             </Tabs>
                 </CardContent></Card>
@@ -759,7 +763,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         </Dialog>
         <Dialog open={zoomChart !== null} onOpenChange={open => {if (!open) setZoomChart(null);}}>
             <DialogContent className="w-[calc(100vw-3rem)] max-w-6xl max-h-[90vh] overflow-y-auto bg-card" data-testid="student-analysis-zoom-dialog">
-                <DialogHeader><DialogTitle>{activeZoom?.title}（放大）</DialogTitle><DialogDescription>放大查看当前图表，关闭后返回原来的位置。</DialogDescription></DialogHeader>
+                <DialogHeader><DialogTitle>{activeZoom?.title}（放大）</DialogTitle><DialogDescription>{activeZoom?.notes?.join(" ") ?? "放大查看当前图表，关闭后返回原来的位置。"}</DialogDescription></DialogHeader>
                 {activeZoom && <ChartBars rows={activeZoom.rows} series={activeZoom.series} unit={activeZoom.unit} emptyMessage={activeZoom.emptyMessage} heightClass="h-[65vh]"/>}
             </DialogContent>
         </Dialog>

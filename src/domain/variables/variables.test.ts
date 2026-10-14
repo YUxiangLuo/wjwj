@@ -216,6 +216,26 @@ test("A02 extreme scales are reliable or explicitly rejected, never NaN/Infinity
     expect(JSON.stringify(tiny)).not.toMatch(/NaN|Infinity/);
 });
 
+test("means retain representable residuals after extreme signed cancellation", () => {
+    for (const [large, residual] of [[1e150, 1e-180], [1e200, 1e-200]] as const) {
+        // Exact opposing terms cancel; vary order so compensation must retain the residual.
+        for (const values of [[large, -large, residual], [large, residual, -large], [residual, -large, large]]) {
+            for (const weighted of [false, true]) {
+                const result = univariate({ population: values.map(x => ({ x })), indices: [0, 1, 2], variable: continuous,
+                    weighted, ...(weighted ? { weights: [1, 1, 1] } : {}) });
+                expect(result.mean! / (residual / 3)).toBeCloseTo(1, 14);
+            }
+        }
+    }
+    const unequal = univariate({ population: [1e150, -2e150, 1e-180].map(x => ({ x })), indices: [0, 1, 2],
+        variable: continuous, weighted: true, weights: [2, 1, 4] });
+    expect(unequal.mean! / (4e-180 / 7)).toBeCloseTo(1, 14);
+    // The unscaled sum can overflow while the mean remains representable.
+    const overflow = univariate({ population: [1e308, 1e308, 0].map(x => ({ x })), indices: [0, 1, 2],
+        variable: continuous, weighted: true, weights: [1, 1, 1] });
+    expect(overflow.mean! / 1e308).toBeCloseTo(2 / 3, 14);
+});
+
 // ---------------------------------------------------------------------------
 // 全总体字典校验与类别上限。
 // ---------------------------------------------------------------------------

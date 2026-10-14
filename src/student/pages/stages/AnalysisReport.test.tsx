@@ -334,7 +334,7 @@ test("AnalysisReport excludes unselected methods from every analysis chart", asy
                         stratified: {},
                     },
                     representativeness: {
-                        simple: 0,
+                        simple: 6.35,
                         systematic: 0,
                         pps: 50,
                         stratified: 50,
@@ -355,6 +355,23 @@ test("AnalysisReport excludes unselected methods from every analysis chart", asy
         expect(chart.queryByText("PPS抽样")).toBeNull();
         expect(chart.queryByText("分层抽样")).toBeNull();
     }
+
+    const numeric = view.getByRole("region", { name: "数值均值相对偏差（%）" });
+    const categorical = view.getByRole("region", { name: "分类分布偏差（百分点）" });
+    expect(numeric.textContent).toContain("10.00%");
+    expect(numeric.textContent).not.toContain("类别（分布偏差）");
+    expect(categorical.textContent).toContain("6.35百分点");
+    expect(categorical.textContent).not.toContain("数值（均值偏差）");
+    const numericBar = numeric.querySelector<HTMLElement>('[style*="background-color"]');
+    const categoricalBar = categorical.querySelector<HTMLElement>('[style*="background-color"]');
+    expect(numericBar?.style.width).toBe("0%");
+    expect(categoricalBar?.style.width).toBe("100%");
+    expect(numeric.querySelectorAll<HTMLElement>('[style*="background-color"]')[1]?.style.width).toBe("100%");
+    await act(async () => within(categorical).getByRole("button", { name: "放大图表" }).click());
+    const zoom = view.getByTestId("student-analysis-zoom-dialog");
+    expect(zoom.textContent).toContain("6.35百分点");
+    expect(zoom.textContent).toContain("使用独立尺度，不可横比");
+    expect(zoom.textContent).not.toContain("数值（均值偏差）");
 });
 
 test("the mean chart plots the population truth beside every estimate", async () => {

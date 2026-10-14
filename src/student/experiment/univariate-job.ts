@@ -6,7 +6,7 @@ import { readVariableSource } from "../../server/variable-source";
 import { replaySamplingSection } from "./sampling-replay";
 import { hydrateSamplingResults } from "./sampling-storage";
 
-export const UNIVARIATE_ALGORITHM_VERSION = "univariate-design-v2";
+export const UNIVARIATE_ALGORITHM_VERSION = "univariate-design-v3";
 
 export interface UnivariateJob {
     populationPath: string;

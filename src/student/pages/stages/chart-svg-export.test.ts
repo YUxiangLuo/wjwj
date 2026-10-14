@@ -41,3 +41,18 @@ test("chart SVG uses the light theme supplied by the shared theme source", () =>
     expect(svg).toContain('stroke="#e2e8f0"');
     expect(svg).not.toContain("#020617");
 });
+
+test("deviation SVG retains explicit percentage-point units and escaped standalone context", () => {
+    const svg = buildChartSvg({
+        title: "分类分布偏差（百分点）", fileName: "categorical.svg", unit: "百分点",
+        rows: [{ label: "年龄", values: { simple: 6.349206349 } }],
+        series: [{ key: "simple", label: "简单随机", color: "blue" }],
+        notes: ["各类占比绝对差的平均", "独立尺度，不可横比；不能单独证明样本无偏或具有整体代表性。", "<说明>&"],
+    }, { background: "white", foreground: "black", mutedForeground: "gray", border: "gray" })!;
+    expect(svg).toContain("6.35百分点");
+    expect(svg).not.toContain("6.35%");
+    expect(svg).toContain("各类占比绝对差的平均");
+    expect(svg).toContain("独立尺度，不可横比");
+    expect(svg).toContain("&lt;说明&gt;&amp;");
+    expect(svg).toContain('height="692"');
+});

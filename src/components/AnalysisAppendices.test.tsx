@@ -65,6 +65,17 @@ test("ST-B5 keeps duplicate display labels distinguishable by raw JSON type", ()
     expect(html).toContain("各类别比例独立四舍五入，显示合计可能不等于 100%；底层计算使用未舍入值");
 });
 
+test("small nonzero appendix statistics remain distinguishable from zero", () => {
+    const record: SavedAnalysisView = { ...base, result: {
+        kind: "numeric", weighted: false, sampleCount: 3, validCount: 3, missingCount: 0,
+        mean: 4e-8, sampleStandardDeviation: Math.sqrt(13) * 1e-8,
+        min: -1e-8, q1: 0, median: 0.0001, q3: 0.00009999, max: 8e-8,
+    } };
+    const html = renderToStaticMarkup(<AnalysisResultTable record={record} />);
+    for (const text of ["4E-8", "3.6056E-8", "-1E-8", "0.0001", "9.999E-5", "8E-8"]) expect(html).toContain(`>${text}<`);
+    expect(html).toContain(">0<");
+});
+
 test("weighted numeric output leaves unimplemented dispersion and quantiles unavailable", () => {
     const record: SavedAnalysisView = {
         ...base,

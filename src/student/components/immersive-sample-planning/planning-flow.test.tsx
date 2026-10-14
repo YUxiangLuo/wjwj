@@ -21,6 +21,35 @@ function start(options: Partial<ComponentProps<typeof ImmersiveSamplePlanning>> 
 function editSize(value: string) { fireEvent.change(screen.getByRole("spinbutton", { name: "最终样本量" }), { target: { value } }); }
 function next() { fireEvent.click(screen.getByTestId("immersive-sp-decision-next")); }
 
+test("domain draft blocks invalid precision and population while 1/5 percent-point controls retain correct samples", async () => {
+    const { onDraftChange } = start();
+    fireEvent.click(screen.getByRole("button", { name: "子总体估计" }));
+    fireEvent.click(screen.getByRole("button", { name: "添加子总体" }));
+    const margin = screen.getByRole("spinbutton", { name: "允许误差 (%)" });
+    const population = screen.getByRole("spinbutton", { name: "子总体规模 (N)" });
+    const apply = screen.getByRole("button", { name: "应用到样本量规划" }) as HTMLButtonElement;
+    for (const value of ["0.5", "", "0", "21"]) {
+        fireEvent.change(margin, { target: { value } });
+        expect(apply.disabled).toBe(true);
+        fireEvent.click(apply);
+        expect(screen.getByRole("alert").textContent).toContain("1 至 20");
+        expect(screen.getByText(/N = 80/).textContent).toContain("待修正");
+        expect(onDraftChange).not.toHaveBeenCalled();
+    }
+    for (const [value, expected] of [["1", 80], ["5", 67]] as const) {
+        fireEvent.change(margin, { target: { value } });
+        await waitFor(() => expect(screen.getByText(/N = 80/).textContent).toContain(`需 n ≥ ${expected}`));
+        expect(apply.disabled).toBe(false);
+    }
+    for (const value of ["0", "161", "80.5"]) {
+        fireEvent.change(population, { target: { value } });
+        expect(apply.disabled).toBe(true);
+    }
+    fireEvent.change(population, { target: { value: "80" } });
+    fireEvent.click(apply);
+    expect(onDraftChange.mock.calls.at(-1)![0].domains[0]).toEqual(expect.objectContaining({ populationSize: 80, marginOfError: 5, requiredSampleSize: 67 }));
+});
+
 test("opening a fresh plan does not create a draft until the student edits it", () => {
     const { onDraftChange } = start({}, true);
     expect(onDraftChange).not.toHaveBeenCalled();
