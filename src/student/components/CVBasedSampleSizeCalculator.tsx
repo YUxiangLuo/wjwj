@@ -349,12 +349,12 @@ export function CVBasedSampleSizeCalculator({
                     </div>
                 )}
 
-                {/* 分层抽样中的 CV 准则（课件第24页） */}
+                {/* 分层抽样中的 CV 准则 */}
                 <div className="rounded-surface border border-auxiliary-border bg-auxiliary-muted p-3">
                     <div className="flex items-start gap-2">
                         <Info className="w-4 h-4 text-auxiliary shrink-0 mt-0.5" />
                         <div className="text-meta text-auxiliary-strong space-y-1.5">
-                            <p className="font-medium">给定变异系数确定分层抽样样本量（课件第24页）</p>
+                            <p className="font-medium">给定变异系数确定分层抽样样本量</p>
                             <p className="text-auxiliary-strong leading-relaxed">
                                 在分层抽样中，可先给定总体估计值的变异系数 <em>C</em>，再由各层方差与分配系数推导所需样本量：
                             </p>

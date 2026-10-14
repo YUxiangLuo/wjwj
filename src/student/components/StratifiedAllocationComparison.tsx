@@ -501,7 +501,7 @@ function calculateSizeMeasureNAllocation(layers: LayerInfo[], totalSampleSize: n
     return {
         method: "sizeMeasure",
         name: "与 Nₕ×Ȳₕ 成比例",
-        description: "按课件模型使各层样本量与 Nₕ×Ȳₕ 成比例；不是一般估计问题的通用最优分配",
+        description: "各层样本量按层规模与层均值的乘积分配；不是一般估计问题的通用最优分配",
         allocation,
         totalVariance,
         efficiency: null,
@@ -531,7 +531,7 @@ function calculateSqrtSizeMeasureNAllocation(layers: LayerInfo[], totalSampleSiz
     return {
         method: "sqrtSizeMeasure",
         name: "与 √(Nₕ×Ȳₕ) 成比例",
-        description: "按课件模型与 √(Nₕ×Ȳₕ) 成比例，在两种份额规则间折中；不代表普遍方差最优",
+        description: "各层样本量按层规模与层均值乘积的平方根分配；不代表普遍方差最优",
         allocation,
         totalVariance,
         efficiency: null,

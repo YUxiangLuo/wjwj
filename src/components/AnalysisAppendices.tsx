@@ -40,10 +40,10 @@ export function AnalysisAppendices({ records }: { records: SavedAnalysisView[] }
         {records.map((record, index) => <article className="rounded-surface border border-border bg-card p-4" key={record.id}>
             <h3 className="text-subheading font-semibold">附录 {index + 1}：{record.config.question}</h3>
             <p className="mt-1 text-meta text-muted-foreground">{record.variable.label}（{record.variable.field}） · {methodLabels[record.config.method]} · {record.result.weighted ? "加权" : "未加权"}</p>
-            <p className="mt-1 text-meta text-muted-foreground">来源 {record.source} · 字典 revision {record.dictionaryRevision} · 抽样 generation {record.samplingGeneration} · 算法 {record.algorithmVersion}</p>
+            <p className="mt-1 text-meta text-muted-foreground">数据来源标识 {record.source} · 字典修订号 {record.dictionaryRevision} · 抽样代次 {record.samplingGeneration} · 算法版本 {record.algorithmVersion}</p>
             {record.stale && <p className="mt-2 text-label text-warning">此结果来源已过期，仅供查看；请移除引用或重新运行后再提交。</p>}
             <div className="mt-3 overflow-x-auto"><AnalysisResultTable record={record} /></div>
-            <p className="mt-3 text-meta text-muted-foreground">分位数采用 R7；SD 是样本标准差，不是标准误。{record.result.weighted ? "加权结果不提供置信区间，也不声明估计量无偏。原始频数未加权，与加权比例分开列示。" : "本表为描述统计，不提供置信区间。"}</p>
+            <p className="mt-3 text-meta text-muted-foreground">{record.result.weighted ? "加权结果不声明估计量无偏。类别表中的原始频数未加权，与加权比例分开列示。" : "本表为描述统计，不提供置信区间。"}</p>
         </article>)}
     </section>;
 }

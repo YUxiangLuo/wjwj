@@ -523,7 +523,7 @@ function SchemeComparison({ domains, baseSampleSize }: { domains: Domain[]; base
             <div className="flex items-center gap-2 mb-3">
                 <Info className="w-4 h-4 text-auxiliary" />
                 <span className="font-medium text-label text-auxiliary-strong">
-                    方案对比（课件例 7.2）
+                    整体估计与分域估计的样本量对比
                 </span>
             </div>
 
