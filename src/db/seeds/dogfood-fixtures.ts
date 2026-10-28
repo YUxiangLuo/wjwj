@@ -46,7 +46,7 @@ export const DOGFOOD_MAIN_TASK_PROGRESS = {
     rejected: 0,
 } as const;
 
-export const HAPPINESS_POPULATION_PATH = "/storage/topics/seed-population-youth-happiness-v2.xlsx";
+export const HAPPINESS_POPULATION_PATH = "/storage/topics/seed-population-youth-happiness-v3.xlsx";
 export const READING_POPULATION_PATH = "/storage/topics/seed-population-reading-hours.csv";
 export const EMPLOYMENT_POPULATION_PATH = "/storage/topics/seed-population-employment-intent.csv";
 export const DINING_POPULATION_PATH = "/storage/topics/seed-population-dining-wait.csv";

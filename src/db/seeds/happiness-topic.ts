@@ -29,7 +29,7 @@ export const happinessQuestionnaire: QuestionnaireData = {
         { id: "hq4", section: "main", type: "scale", content: "总体而言，您如何评价自己目前的健康状况？", scaleMin: 1, scaleMax: 5, scaleMinLabel: "很差", scaleMaxLabel: "很好" },
         { id: "hq5", section: "main", type: "scale", content: "过去一个月，日常生活支出给您带来的经济压力有多大？", scaleMin: 1, scaleMax: 5, scaleMinLabel: "几乎没有", scaleMaxLabel: "非常大" },
         { id: "hq12", section: "main", type: "numeric", content: "过去一周，您平均每晚实际睡眠约多少小时？（不含午睡）", unit: "小时/晚", numericMin: 0, numericMax: 24, decimalPlaces: 1 },
-        { id: "hq13", section: "main", type: "numeric", content: "过去一周，您用于运动、兴趣活动或与亲友休闲相聚的时间总计约多少小时？（没有则填0）", unit: "小时/周", numericMin: 0, numericMax: 168, decimalPlaces: 1 },
+        { id: "hq13", section: "main", type: "numeric", content: "过去一周，您用于运动、兴趣活动或与亲友休闲相聚的时间总计约多少小时？（没有则填0.0，请保留一位小数）", unit: "小时/周", numericMin: 0, numericMax: 168, decimalPlaces: 1 },
         { id: "hq14", section: "main", type: "single", content: "您对近3个月使用过的社区公共活动、运动或文化服务，总体满意程度如何？", options: ["非常不满意", "比较不满意", "一般", "比较满意", "非常满意", "近3个月未使用过"] },
         { id: "hq6", section: "main", type: "multiple", content: "目前您最希望改善哪些方面的生活体验？（最多选三项）", options: ["学习与职业发展", "收入与日常支出", "身心休息与运动", "家庭关系", "朋友与社交", "居住环境", "社区公共服务"], minSelect: 1, maxSelect: 3 },
         { id: "hq10", section: "background", type: "numeric", content: "您目前的周岁年龄是多少？", unit: "岁", numericMin: 18, numericMax: 35, decimalPlaces: 0 },

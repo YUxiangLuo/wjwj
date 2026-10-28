@@ -2,7 +2,7 @@ import { SQL } from "bun";
 import { expect, test } from "bun:test";
 import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { assertTestDatabaseIsMigrated } from "../src/db/test-database-guard";
 import { databaseNameFromUrl } from "../src/db/destructive-confirmation";
 import { DOGFOOD_NAMES, HAPPINESS_POPULATION_PATH } from "../src/db/seeds/dogfood-fixtures";
@@ -137,7 +137,7 @@ pgTest("happiness refresh refuses an existing different version without changing
         expect(await f.snapshot()).toEqual(before);
         expect(await Bun.file(f.target).text()).toBe("existing different workbook");
         expect((await readdir(dirname(f.target))).sort()).toEqual([
-            "seed-population-youth-happiness-v2.xlsx", "seed-population-youth-happiness.xlsx",
+            basename(HAPPINESS_POPULATION_PATH), "seed-population-youth-happiness.xlsx",
         ]);
     } finally { await f.cleanup(); }
 });

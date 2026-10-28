@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, expect, mock, test } from "bun:test";
 import { installDomGlobals } from "@/test-utils/dom";
 import type { QuestionnaireData } from "../api-client";
+import * as XLSX from "xlsx";
+import { happinessQuestionnaire } from "../../db/seeds/happiness-topic";
+import { buildHappinessWorkbook } from "../../db/seeds/happiness-materials";
+import { createYouthHappinessPopulation } from "../../db/seeds/dogfood-fixtures";
 
 const bootstrapDom = installDomGlobals();
 const { cleanup, fireEvent, render } = await import("@testing-library/react");
@@ -20,6 +24,21 @@ const questionnaire: QuestionnaireData = {
         { id: "last", type: "boolean", content: "最后一题？" },
     ],
 };
+
+test("the happiness leisure hint gives an accepted zero answer in both the questionnaire and downloadable brief", () => {
+    const leisure = happinessQuestionnaire.questions.find(question => question.id === "hq13")!;
+    const suggestedZero = /没有则填(\d+(?:\.\d+)?)/.exec(leisure.content)?.[1];
+    expect(suggestedZero).toBeDefined();
+    const workbook = XLSX.read(buildHappinessWorkbook(createYouthHappinessPopulation()), { type: "buffer" });
+    const brief = XLSX.utils.sheet_to_json<{ 项目: string; 说明: string }>(workbook.Sheets["调查说明"]!);
+    expect(brief.find(row => row.项目 === "推荐题8（numeric）")?.说明).toBe(leisure.content);
+    const view = render(<ImmersiveQuestionnairePreview questionnaire={{ ...happinessQuestionnaire, questions: [leisure] }} onComplete={() => {}} onClose={() => {}} />);
+    fireEvent.click(view.getByTestId("immersive-preview-start"));
+    fireEvent.change(view.getByTestId("questionnaire-preview-numeric"), { target: { value: suggestedZero } });
+    expect((view.getByTestId("immersive-preview-next") as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(view.getByTestId("immersive-preview-next"));
+    expect((view.getByTestId("immersive-preview-submit") as HTMLButtonElement).disabled).toBe(false);
+});
 
 test("numeric questions request explicit continuation before and after valid input", () => {
     const view = render(<ImmersiveQuestionnairePreview questionnaire={{ ...questionnaire, questions: [

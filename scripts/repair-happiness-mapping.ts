@@ -2,7 +2,7 @@ import { and, asc, count, eq, inArray } from "drizzle-orm";
 import { validateDatabaseConfirmation } from "../src/db/destructive-confirmation";
 import { experiment, task, teacher, topic } from "../src/db/schema";
 import { acquireStorageMutationLock } from "../src/db/storage-mutation-lock";
-import { DOGFOOD_NAMES, HAPPINESS_POPULATION_PATH } from "../src/db/seeds/dogfood-fixtures";
+import { DOGFOOD_NAMES } from "../src/db/seeds/dogfood-fixtures";
 import { happinessFieldMapping } from "../src/db/seeds/happiness-topic";
 import { validateDictionary } from "../src/domain/variables/dictionary";
 import { canonicalJson, readVariableSource } from "../src/server/variable-source";
@@ -49,7 +49,7 @@ async function repair() {
             const isOld = canonicalJson(selected.mapping) === canonicalJson(oldMapping);
             const isFixed = canonicalJson(selected.mapping) === canonicalJson(happinessFieldMapping);
             const blockedReasons: string[] = [];
-            if (selected.path !== HAPPINESS_POPULATION_PATH) blockedReasons.push("总体文件不是已知 v2 seed 路径，拒绝覆盖");
+            if (selected.path !== "/storage/topics/seed-population-youth-happiness-v2.xlsx") blockedReasons.push("总体文件不是已知 v2 seed 路径，拒绝覆盖");
             if (!isOld && !isFixed) blockedReasons.push("字段映射不是已知旧版或修复版，拒绝覆盖教师自定义内容");
 
             let nextDictionary: typeof selected.dictionary = null;

@@ -31,7 +31,7 @@ async function refresh() {
             .where(and(eq(topic.name, DOGFOOD_NAMES.topicA), eq(teacher.employeeId, "T001"))).for("update", { of: topic });
         if (matches.length !== 1) throw new Error("必须恰好匹配 T001 的一个青年幸福感演示课题");
         const selected = matches[0]!;
-        if (!["/storage/topics/seed-population-youth-happiness.xlsx", HAPPINESS_POPULATION_PATH].includes(selected.path ?? "")) {
+        if (!["/storage/topics/seed-population-youth-happiness.xlsx", "/storage/topics/seed-population-youth-happiness-v2.xlsx", HAPPINESS_POPULATION_PATH].includes(selected.path ?? "")) {
             throw new Error("总体文件不是已知 seed 文件，拒绝覆盖教师自定义课题");
         }
         const tasks = await tx.select({ id: task.id, classId: task.classId }).from(task).where(eq(task.topicId, selected.id)).for("update");
