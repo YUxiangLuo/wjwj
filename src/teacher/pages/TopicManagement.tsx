@@ -54,6 +54,7 @@ export function TopicManagement() {
         numeric: [],
         others: [],
     });
+    const [savedFieldMapping, setSavedFieldMapping] = useState<FieldMappingState | null>(null);
     const [attachments, setAttachments] = useState<TopicDetail["attachments"]>([]);
     const [recommendQuestions, setRecommendQuestions] = useState<Question[]>([]);
     const [weightConfig, setWeightConfig] = useState({ questionnaire: 30, process: 30, report: 40 });
@@ -112,21 +113,23 @@ export function TopicManagement() {
     }
 
     async function loadTopicDetail(id: number) {
-        await detailLoad.run(async () => requireApiData(await teacherApi.getTopicDetail(id), "实验模板详情加载失败"), (data) => {
+        return detailLoad.run(async () => requireApiData(await teacherApi.getTopicDetail(id), "实验模板详情加载失败"), (data) => {
             const topicRow = data.topic;
             if (topicRow && typeof topicRow.status === "number") {
                 setEditingTopicPublished(topicRow.status === 1);
             }
             const mapping = data.topic?.fieldMapping ?? null;
             const parsed = typeof mapping === "string" ? (() => { try { return JSON.parse(mapping); } catch { return null; } })() : mapping;
-            setFieldMapping({
+            const loadedMapping: FieldMappingState = {
                 identifier: parsed?.identifier ?? undefined,
                 stratified: parsed?.stratified ?? [],
                 numeric: parsed?.numeric ?? [],
                 others: parsed?.others ?? [],
                 analysisTarget: parsed?.analysisTarget,
                 studyContract: parsed?.studyContract,
-            });
+            };
+            setFieldMapping(loadedMapping);
+            setSavedFieldMapping(parsed ? loadedMapping : null);
             if (data.excelInfo?.columns?.length) {
                 setColumns(data.excelInfo.columns);
             }
@@ -209,6 +212,7 @@ export function TopicManagement() {
         setExcelInfo(null);
         setColumns([]);
         setFieldMapping({ stratified: [], numeric: [], others: [] });
+        setSavedFieldMapping(null);
         setAttachments([]);
         setRecommendQuestions([]);
         setWeightConfig({ questionnaire: 30, process: 30, report: 40 });
@@ -218,6 +222,7 @@ export function TopicManagement() {
 
     function openEditModal(topic: Topic) {
         setSaveError(null);
+        setSavedFieldMapping(null);
         setEditingTopicId(topic.id);
         setTopicWizardMode("edit");
         setEditingTopicPublished(topic.status === 1);
@@ -302,40 +307,45 @@ export function TopicManagement() {
             });
             setColumns(res.data.columns ?? []);
             setFieldMapping({ stratified: [], numeric: [], others: [] });
+            setSavedFieldMapping(null);
         } else {
             reportSaveError(res.error?.message ?? "总体数据上传失败，请重新选择文件后重试。");
         }
     }
 
-    async function handleSaveFieldMapping() {
-        if (!editingTopicId) return;
+    async function handleSaveFieldMapping(advance = true): Promise<boolean> {
+        if (!editingTopicId) return false;
         setSaveError(null);
         if (editingTopicPublished) {
             setSaveError(null);
-            setCurrentStep(4);
-            return;
+            if (advance) setCurrentStep(4);
+            return true;
         }
         if (!fieldMapping.identifier) {
             reportSaveError("请选择标识符字段");
-            return;
+            return false;
         }
         // 新课题要求研究合同完整；仅有旧版对照变量的历史课题保持可保存（兼容）。
         if (parseStudyContract(fieldMapping) !== null || fieldMapping.studyContract !== undefined) {
             if (!isStudyContractComplete(fieldMapping.studyContract)) {
                 reportSaveError("请完成研究合同：研究问题、目标总体、分析单位和对照变量");
-                return;
+                return false;
             }
         } else if (!fieldMapping.analysisTarget?.field || (fieldMapping.analysisTarget.kind === "proportion" && !fieldMapping.analysisTarget.value)) {
             reportSaveError("请指定对照变量");
-            return;
+            return false;
         }
         const res = await teacherApi.updateFieldMapping(editingTopicId, fieldMapping);
         if (res.success) {
-            await loadTopicDetail(editingTopicId);
+            // Keep dictionary editing blocked until the persisted mapping has
+            // been read back. useAsyncLoad reports failures as false, not throws.
+            if (!await loadTopicDetail(editingTopicId)) return false;
             setSaveError(null);
-            setCurrentStep(4);
+            if (advance) setCurrentStep(4);
+            return true;
         } else {
             reportSaveError(res.error?.message ?? "字段配置保存失败，请重试；本页输入已保留。");
+            return false;
         }
     }
 
@@ -622,11 +632,12 @@ export function TopicManagement() {
                 onExcelUpload={handleExcelUpload}
                 columns={columns}
                 fieldMapping={fieldMapping}
+                fieldMappingNeedsSave={savedFieldMapping === null || JSON.stringify(fieldMapping) !== JSON.stringify(savedFieldMapping)}
                 setFieldMapping={setFieldMapping}
                 attachments={attachments}
                 uploadingAttachment={uploadingAttachment}
                 onAttachmentUpload={handleUploadAttachment}
-                onRefreshTopicDetail={loadTopicDetail}
+                onRefreshTopicDetail={async id => { await loadTopicDetail(id); }}
                 recommendQuestions={recommendQuestions}
                 setRecommendQuestions={setRecommendQuestions}
                 weightConfig={weightConfig}

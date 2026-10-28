@@ -77,6 +77,24 @@ test("a frozen template renders the dictionary read-only without a save action",
     expect(view.queryByText("明确确认并保存")).toBeNull();
 });
 
+test("unpersisted field configuration disables writes without discarding a dictionary draft", async () => {
+    const view = render(<VariableDictionaryEditor topicId={7} />);
+    const input = await view.findByLabelText("value 标签") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "待确认标签" } });
+    view.rerender(<VariableDictionaryEditor topicId={7} disabled />);
+    expect(input.disabled).toBe(true);
+    expect((view.getByText("明确确认并保存") as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(view.getByText("明确确认并保存"));
+    expect(updateVariableDictionary).not.toHaveBeenCalled();
+    expect(input.value).toBe("待确认标签");
+    view.rerender(<VariableDictionaryEditor topicId={7} />);
+    expect(input.disabled).toBe(false);
+    fireEvent.click(view.getByText("明确确认并保存"));
+    await waitFor(() => expect(updateVariableDictionary).toHaveBeenCalledTimes(1));
+    const body = updateVariableDictionary.mock.calls[0]![1] as { dictionary: VariableDictionary };
+    expect(body.dictionary.variables[0]!.label).toBe("待确认标签");
+});
+
 test("dirty state follows raw input, reverts and successful reload; cancelling reload preserves invalid input", async () => {
     const state = mock((_state: { dirty: boolean; busy: boolean }) => {});
     const view = render(<VariableDictionaryEditor topicId={7} onStateChange={state} />);

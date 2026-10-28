@@ -14,7 +14,7 @@ function parseScalar(value: string): RawValue {
     throw new Error("请输入 JSON 标量（文本需带双引号）");
 }
 
-export function VariableDictionaryEditor({ topicId, readOnly = false, onStateChange }: { topicId: number; readOnly?: boolean; onStateChange?: (state: { dirty: boolean; busy: boolean }) => void }) {
+export function VariableDictionaryEditor({ topicId, readOnly = false, disabled = false, onStateChange }: { topicId: number; readOnly?: boolean; disabled?: boolean; onStateChange?: (state: { dirty: boolean; busy: boolean }) => void }) {
     const [snapshot, setSnapshot] = useState<VariableDictionaryResponse | null>(null);
     const [draft, setDraft] = useState<VariableDictionary | null>(null);
     const [loading, setLoading] = useState(true);
@@ -32,7 +32,7 @@ export function VariableDictionaryEditor({ topicId, readOnly = false, onStateCha
         return () => window.removeEventListener("beforeunload", warn);
     }, [dirty, saving]);
     function reload() {
-        if (saving || (dirty && !window.confirm("重新载入会丢弃变量字典中未保存的修改。继续吗？"))) return;
+        if (disabled || saving || (dirty && !window.confirm("重新载入会丢弃变量字典中未保存的修改。继续吗？"))) return;
         void load();
     }
 
@@ -56,7 +56,7 @@ export function VariableDictionaryEditor({ topicId, readOnly = false, onStateCha
         setDraft((current) => current ? { ...current, variables: current.variables.map((item, i) => i === index ? { ...item, ...patch } : item) } : current);
     }
     async function save() {
-        if (!snapshot || !draft) return;
+        if (!snapshot || !draft || readOnly || disabled || snapshot.locked || loading || saving) return;
         setSaving(true); setError(null);
         try {
             const variables = draft.variables.map(variable => {
@@ -80,14 +80,14 @@ export function VariableDictionaryEditor({ topicId, readOnly = false, onStateCha
         finally { setSaving(false); }
     }
     if (loading) return <div role="status" className="text-label text-muted-foreground">正在读取变量字典…</div>;
-    if (!draft) return <div className="space-y-3"><p className="text-label text-destructive">{error}</p><Button variant="outline" onClick={reload}>重新载入</Button></div>;
-    const locked = readOnly || snapshot?.locked || saving;
+    if (!draft) return <div className="space-y-3"><p className="text-label text-destructive">{error}</p><Button variant="outline" disabled={disabled} onClick={reload}>重新载入</Button></div>;
+    const locked = readOnly || snapshot?.locked || saving || disabled;
     return <div className="space-y-4">
         <div className="flex items-center justify-between gap-3">
             <div><h3 className="text-section-title">变量字典</h3><p className="text-label text-muted-foreground">逐字段确认标签、单位、测量类型、类别顺序与缺失编码。</p></div>
-            {!readOnly && !snapshot?.locked && <Button onClick={save} disabled={saving}>{saving ? "保存中…" : "明确确认并保存"}</Button>}
+            {!readOnly && !snapshot?.locked && <Button onClick={save} disabled={locked}>{saving ? "保存中…" : "明确确认并保存"}</Button>}
         </div>
-        {error && <div role="alert" className="rounded-surface border border-destructive-border bg-destructive-muted p-3 text-label text-destructive">{error} <Button data-testid="teacher-dictionary-reload" variant="outline" className="ml-2" disabled={saving} onClick={reload}>重新载入</Button></div>}
+        {error && <div role="alert" className="rounded-surface border border-destructive-border bg-destructive-muted p-3 text-label text-destructive">{error} <Button data-testid="teacher-dictionary-reload" variant="outline" className="ml-2" disabled={saving || disabled} onClick={reload}>重新载入</Button></div>}
         {draft.variables.map((variable, index) => <section key={variable.field} className="rounded-surface border border-border bg-background p-4 space-y-3">
             <div className="text-subheading font-medium">{variable.field}</div>
             <div className="grid grid-cols-3 gap-3">

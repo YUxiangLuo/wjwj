@@ -56,6 +56,8 @@ interface TopicWizardDialogProps {
     onExcelUpload: (file: File) => void;
     columns: string[];
     fieldMapping: FieldMappingState;
+    /** Compared with the last successfully loaded server mapping, not the step's draft baseline. */
+    fieldMappingNeedsSave: boolean;
     setFieldMapping: (value: FieldMappingState | ((prev: FieldMappingState) => FieldMappingState)) => void;
     attachments: TopicDetail["attachments"];
     uploadingAttachment: boolean;
@@ -68,7 +70,7 @@ interface TopicWizardDialogProps {
     samplingPolicy: SamplingPolicyV1;
     setSamplingPolicy: (value: SamplingPolicyV1 | ((prev: SamplingPolicyV1) => SamplingPolicyV1)) => void;
     onSubmitTopic: () => void;
-    onSaveFieldMapping: () => void;
+    onSaveFieldMapping: (advance?: boolean) => Promise<boolean>;
     onSaveSamplingPolicy: () => void;
     onSaveRecommendQuestions: () => void;
     onSaveWeights: () => void;
@@ -95,6 +97,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
         onExcelUpload,
         columns,
         fieldMapping,
+        fieldMappingNeedsSave,
         setFieldMapping,
         attachments,
         saveError,
@@ -124,6 +127,9 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
     const errorRef = useRef<HTMLDivElement>(null);
     const dictionaryDetailsRef = useRef<HTMLDetailsElement>(null);
     const [dictionaryState, setDictionaryState] = useState({ dirty: false, busy: false });
+    const [dictionaryLoadVersion, setDictionaryLoadVersion] = useState(0);
+    const [mappingSavedNotice, setMappingSavedNotice] = useState(false);
+    const mappingNeedsSave = !isPublishedTopic && fieldMappingNeedsSave;
     const [fieldSearch, setFieldSearch] = useState("");
     const [selectedFieldsOnly, setSelectedFieldsOnly] = useState(false);
     const matchingFields = columns.filter(field => field.toLocaleLowerCase().includes(fieldSearch.trim().toLocaleLowerCase()));
@@ -152,6 +158,23 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
         setActionError("变量字典有未保存的修改，请先点击“明确确认并保存”。");
         return false;
     }
+    async function saveMappingForDictionary() {
+        if (dictionaryState.dirty && !window.confirm("保存字段配置会重新载入变量字典，未保存的字典修改将被丢弃。继续吗？")) return;
+        if (await onSaveFieldMapping(false)) {
+            // A fast response can batch loading states without unmounting the
+            // editor. Explicitly discard the old source only after persistence.
+            // Capture the reloaded value on the next render, including any
+            // server normalization (JSONB can reorder nested object keys).
+            baseline.current = null;
+            setDictionaryLoadVersion(version => version + 1);
+            setMappingSavedNotice(true);
+        }
+    }
+    useEffect(() => {
+        if (mappingSavedNotice && dictionaryDetailsRef.current) dictionaryDetailsRef.current.open = true;
+    }, [mappingSavedNotice, loadingDetail]);
+    useEffect(() => { setMappingSavedNotice(false); }, [open, editingTopicId, currentStep]);
+    useEffect(() => { if (mappingNeedsSave) setMappingSavedNotice(false); }, [mappingNeedsSave]);
     function goToStep(step: number) {
         if (busy || pendingRef.current || loadingDetail || detailError || step === currentStep) return;
         if ((formDirty || dictionaryState.dirty) && !window.confirm("切换步骤会丢弃本步未保存的修改。继续吗？")) return;
@@ -175,7 +198,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
         stepRef.current?.focus({ preventScroll: true });
         setActionError(null);
     }, [currentStep, open]);
-    async function runAction(action: () => void | Promise<void>) {
+    async function runAction(action: () => void | Promise<unknown>) {
         if (pendingRef.current || busy || loadingDetail) return;
         pendingRef.current = true;
         setPending(true);
@@ -682,12 +705,17 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     analysisCategoryValues={analysisCategoryValues}
                                     disabled={Boolean(isPublishedTopic)}
                                 />
+                                {mappingNeedsSave && <div role="status" className="space-y-3 rounded-surface border border-warning-border bg-warning-muted p-4 text-label text-warning">
+                                    <p>字段配置尚未保存，请先保存，再核对变量字典。更改字段角色或对照变量会使已保存的字典失效，需要重新确认。</p>
+                                    <Button data-testid="teacher-topic-save-mapping" variant="outline" disabled={busy || !canProceedMapping} onClick={() => void runAction(saveMappingForDictionary)}>保存字段配置并载入字典</Button>
+                                </div>}
+                                {mappingSavedNotice && !mappingNeedsSave && <p role="status" className="text-label text-info">字段配置已保存，请核对并保存下方变量字典。不需要单变量分析时，可直接继续。</p>}
                                 {editingTopicId && <details ref={dictionaryDetailsRef} data-testid="teacher-variable-dictionary" className="rounded-surface border border-border bg-background p-4">
                                     <summary data-testid="teacher-variable-dictionary-toggle" className="cursor-pointer text-label font-medium text-foreground focus-visible:outline-2 focus-visible:outline-ring">
                                         变量字典（按需配置，单独保存）{dictionaryState.dirty ? " · 未保存" : ""}
                                     </summary>
                                     <p className="mt-2 text-meta text-muted-foreground">核对字段标签、单位、类别顺序和缺失编码；不随“保存并继续”一起保存。</p>
-                                    <div className="mt-4"><VariableDictionaryEditor topicId={editingTopicId} readOnly={isPublishedTopic} onStateChange={setDictionaryState} /></div>
+                                    <div className="mt-4"><VariableDictionaryEditor key={`${editingTopicId}-${dictionaryLoadVersion}`} topicId={editingTopicId} readOnly={isPublishedTopic} disabled={mappingNeedsSave} onStateChange={setDictionaryState} /></div>
                                 </details>}
                             </div>
                         )}
@@ -1014,11 +1042,14 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             {!loadingDetail && currentStep === 3 && (
                                 <Button
                                     data-testid="teacher-topic-next"
-                                    onClick={() => { if (canLeaveDictionary()) void runAction(onSaveFieldMapping); }}
+                                    onClick={() => {
+                                        if (mappingNeedsSave) void runAction(saveMappingForDictionary);
+                                        else if (canLeaveDictionary()) void runAction(() => onSaveFieldMapping());
+                                    }}
                                     disabled={busy || (!isPublishedTopic && !canProceedMapping)}
                                     className="bg-primary hover:bg-primary-hover text-primary-foreground"
                                 >
-                                    {isPublishedTopic ? "下一步" : "保存并继续"}
+                                    {isPublishedTopic ? "下一步" : mappingNeedsSave ? "保存字段配置" : "保存并继续"}
                                 </Button>
                             )}
                             {!loadingDetail && currentStep === 4 && (

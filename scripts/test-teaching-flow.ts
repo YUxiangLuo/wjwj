@@ -20,7 +20,7 @@ databaseUrl.pathname = `/${databaseName}`;
 const workdir = await mkdtemp(join(tmpdir(), "wj-teaching-"));
 const artifacts = resolve(process.env.TEACHING_TEST_ARTIFACTS ?? join(root, "test-results/teaching-flow"));
 await mkdir(artifacts, { recursive: true });
-for (const name of ["student-failure.png", "teacher-failure.png", "result.json", "teacher-dictionary.png", "numeric-variable-binding.png", "sampling-pps-policy.png", "sampling-animation-exact.png", "sampling-animation-receipt.png", "sampling-animation-zoom-200.png", "sampling-animation-zoom-200-pagination.png", "sampling-animation-zoom-200-draw.png", "stage4-saved-analysis.png", "teacher-submitted-appendix.png", "stale-analysis-warning.png", "empty-path-narrow.png"]) {
+for (const name of ["student-failure.png", "teacher-failure.png", "result.json", "teacher-dictionary.png", "teacher-dictionary-save-order.png", "numeric-variable-binding.png", "sampling-pps-policy.png", "sampling-animation-exact.png", "sampling-animation-receipt.png", "sampling-animation-zoom-200.png", "sampling-animation-zoom-200-pagination.png", "sampling-animation-zoom-200-draw.png", "stage4-saved-analysis.png", "teacher-submitted-appendix.png", "stale-analysis-warning.png", "empty-path-narrow.png"]) {
     await Bun.file(join(artifacts, name)).delete().catch(() => undefined);
 }
 const adminTestPassword = `Test-${crypto.randomUUID()}`;
@@ -364,6 +364,40 @@ try {
     await eventually(async () => (await api<{ revision: number; dictionary: { variables: Array<{ field: string; label: string }> } | null }>(teacher, `/api/teacher/topics/${copied.id}/variables`)).dictionary?.variables.some(variable => variable.field === continuousVariable.field && variable.label === dictionaryLabel), "Dictionary UI save did not persist");
     const staleConflict = await evaluate<{ status: number; code?: string }>(teacher, `(async()=>{const r=await fetch(${JSON.stringify(`/api/teacher/topics/${copied.id}/variables`)},{method:"PUT",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(${JSON.stringify({ source: dictionaryBefore.source, observedRevision: dictionaryBefore.revision, dictionary: dictionaryBefore.dictionary ?? { source: dictionaryBefore.source, revision: dictionaryBefore.revision, variables: dictionaryBefore.suggestion.variables } })})});const p=await r.json();return {status:r.status,code:p.error?.code}})()`);
     assert(staleConflict.status === 409 && staleConflict.code === "VARIABLE_REVISION_CONFLICT", "Stale dictionary update did not produce an optimistic conflict");
+
+    // Change and then restore an optional role. Each real mapping write must
+    // precede dictionary confirmation, including when a dictionary already exists.
+    await eventually(() => evaluate(teacher, '!document.querySelector("[data-testid=teacher-topic-next]").disabled'), "Initial dictionary confirmation must finish before changing field roles");
+    const policyBeforeRoleChanges = (await api<{ topic: { samplingPolicy: unknown } }>(teacher, `/api/teacher/topics/${copied.id}/detail`)).topic.samplingPolicy;
+    const optionalRole = await evaluate<string>(teacher, 'document.querySelector("input[data-testid^=teacher-topic-mapping-others-]:checked").dataset.testid');
+    const optionalRoleSelector = `[data-testid=${JSON.stringify(optionalRole)}]`;
+    let confirmedDictionary = await api<DictionarySnapshot>(teacher, `/api/teacher/topics/${copied.id}/variables`);
+    for (const checked of [false, true]) {
+        await activate(teacher, optionalRoleSelector);
+        assert(await evaluate(teacher, `document.querySelector(${JSON.stringify(optionalRoleSelector)}).checked===${checked}`), "Optional role change was not applied");
+        assert(await evaluate(teacher, 'document.body.textContent.includes("会使已保存的字典失效") && [...document.querySelectorAll("button")].find(button=>button.textContent.trim()==="明确确认并保存")?.disabled'), "Unsaved mapping must explain invalidation and disable dictionary confirmation");
+        assert((await api<DictionarySnapshot>(teacher, `/api/teacher/topics/${copied.id}/variables`)).revision === confirmedDictionary.revision, "Editing a local role must not mutate the saved dictionary");
+        await activate(teacher, '[data-testid="teacher-topic-save-mapping"]');
+        await eventually(() => evaluate(teacher, `document.querySelector('[data-testid="teacher-topic-step-3"]').getAttribute('aria-current')==='step' && document.querySelector('[data-testid="teacher-variable-dictionary"]')?.open && document.querySelector(${JSON.stringify(`input[aria-label="${continuousVariable.field} 标签"]`)})?.disabled===false && !document.querySelector('[data-testid="teacher-topic-next"]').disabled`), "Mapping save must stay on step 3 and load an editable dictionary");
+        const invalidated = await api<DictionarySnapshot>(teacher, `/api/teacher/topics/${copied.id}/variables`);
+        assert(invalidated.source !== confirmedDictionary.source && invalidated.revision === confirmedDictionary.revision + 1 && invalidated.dictionary === null, "Changed mapping must invalidate the old dictionary before reconfirmation");
+        assert(invalidated.suggestion.variables.find(variable => variable.field === continuousVariable.field)?.kind === continuousVariable.kind, "Numeric role must preserve a continuous suggestion after reloading");
+        await browser(teacher, "fill", `input[aria-label="${continuousVariable.field} 标签"]`, dictionaryLabel);
+        await browser(teacher, "fill", `input[aria-label="${continuousVariable.field} 单位"]`, continuousVariable.unit);
+        await namedButton(teacher, "明确确认并保存");
+        await eventually(async () => {
+            const saved = await api<DictionarySnapshot>(teacher, `/api/teacher/topics/${copied.id}/variables`);
+            return saved.revision === invalidated.revision + 1 && saved.dictionary?.source === invalidated.source
+                && saved.dictionary.variables.some(variable => variable.field === continuousVariable.field && variable.kind === continuousVariable.kind && variable.label === dictionaryLabel && variable.unit === continuousVariable.unit);
+        }, "Dictionary confirmation must use the reloaded source and revision");
+        await eventually(() => evaluate(teacher, '!document.querySelector("[data-testid=teacher-topic-next]").disabled'), "Dictionary save must finish before the next mapping change");
+        confirmedDictionary = await api<DictionarySnapshot>(teacher, `/api/teacher/topics/${copied.id}/variables`);
+    }
+    assert(confirmedDictionary.source === dictionaryBefore.source, "Restoring the optional role must restore the original source interpretation");
+    // Role changes intentionally reset the sampling policy. Restore this fixture's
+    // PPS requirement and permitted size field for the remaining teaching flow.
+    await api(teacher, `/api/teacher/topics/${copied.id}/sampling-policy`, "PUT", { samplingPolicy: policyBeforeRoleChanges });
+    await browser(teacher, "screenshot", join(artifacts, "teacher-dictionary-save-order.png"));
     const mappingRoute = `${baseUrl}/api/teacher/topics/${copied.id}/mapping`;
     await browser(teacher, "network", "route", mappingRoute, "--body", JSON.stringify({ success: false, error: { code: "TEST_UNAVAILABLE", message: "字段配置暂时无法保存，请重试" } }));
     await activate(teacher, '[data-testid="teacher-topic-next"]');
@@ -377,6 +411,13 @@ try {
     await browser(teacher, "network", "unroute", mappingRoute);
     await activate(teacher, '[data-testid="teacher-topic-next"]');
     await eventually(() => evaluate(teacher, `document.querySelector('[data-testid="teacher-topic-step-4"]').getAttribute('aria-current')==='step' && !document.querySelector('[data-testid="teacher-topic-save-error"]')`), "Successful mapping retry must advance and clear the error");
+    deepStrictEqual(await api<DictionarySnapshot>(teacher, `/api/teacher/topics/${copied.id}/variables`), confirmedDictionary, "Continuing after dictionary confirmation must retain its content and revision");
+    await activate(teacher, '[data-testid="teacher-topic-prev"]');
+    await eventually(() => evaluate(teacher, 'document.querySelector("[data-testid=teacher-topic-step-3]").getAttribute("aria-current")==="step" && !document.querySelector("[data-testid=teacher-topic-next]").disabled'), "Returning to fields must load the confirmed dictionary");
+    await activate(teacher, '[data-testid="teacher-topic-next"]');
+    await eventually(() => evaluate(teacher, 'document.querySelector("[data-testid=teacher-topic-step-4]").getAttribute("aria-current")==="step" && !document.querySelector("[data-testid=teacher-topic-next]").disabled'), "Continuing again must keep the unchanged mapping usable");
+    deepStrictEqual(await api<DictionarySnapshot>(teacher, `/api/teacher/topics/${copied.id}/variables`), confirmedDictionary, "Back and continue must not clear or revise the confirmed dictionary");
+    console.log("PASS mapping-before-dictionary persistence, explicit invalidation, source reload and repeated navigation");
     await browser(teacher, "set", "viewport", "1280", "800");
     await activate(teacher, '[data-testid="teacher-topic-next"]');
     await eventually(() => evaluate(teacher, 'document.querySelector("[data-testid=teacher-topic-step-5]").getAttribute("aria-current")==="step"'), "Sampling policy save must advance");

@@ -90,6 +90,13 @@ export async function teacherTemplateDogfood(h: Harness) {
         await fill("#teacher-field-search", "不存在的字段");
         assert.equal(await evaluate(teacher, `document.querySelector('${id("teacher-topic-next")}').disabled`), false, "Search must not unset mapping/target");
         await browser(teacher, "find", "role", "button", "click", "--name", "显示全部字段", "--exact");
+        assert.equal(await evaluate(teacher, `document.querySelector('${id("teacher-topic-next")}').textContent.trim()`), "保存字段配置", "New fields must be persisted before dictionary confirmation");
+        assert.equal(await evaluate(teacher, '[...document.querySelectorAll("button")].find(button=>button.textContent.trim()==="明确确认并保存")?.disabled'), true, "Unsaved fields must block dictionary confirmation");
+        await click(id("teacher-topic-next"));
+        await eventually(() => evaluate(teacher, `!document.querySelector('${id("teacher-topic-save-mapping")}') && document.querySelector('${id("teacher-variable-dictionary")}')?.open && document.body.textContent.includes('字段配置已保存，请核对') && [...document.querySelectorAll('button')].find(button=>button.textContent.trim()==='明确确认并保存')?.disabled===false && document.querySelector('${id("teacher-topic-next")}')?.disabled===false`), "Saved fields must offer a usable dictionary confirmation before continuing");
+        await step(3);
+        // This matrix checks sampling configurations without optional single-variable
+        // analysis; explicitly continue after reviewing the available dictionary step.
         await next(4);
         for (const [i, label] of ["系统抽样", "PPS抽样", "分层抽样"].entries()) {
             await select(`[aria-label="${label}要求"]`, profile.requirements[i]!);

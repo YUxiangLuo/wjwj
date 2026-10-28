@@ -49,6 +49,7 @@ function makeProps(overrides: Partial<Props> = {}): Props {
         onExcelUpload: () => undefined,
         columns: [],
         fieldMapping: { stratified: [], numeric: [], others: [] },
+        fieldMappingNeedsSave: false,
         setFieldMapping: () => undefined,
         attachments: [],
         uploadingAttachment: false,
@@ -61,7 +62,7 @@ function makeProps(overrides: Partial<Props> = {}): Props {
         samplingPolicy: buildDefaultSamplingPolicy(),
         setSamplingPolicy: () => undefined,
         onSubmitTopic: () => undefined,
-        onSaveFieldMapping: () => undefined,
+        onSaveFieldMapping: async () => true,
         onSaveSamplingPolicy: () => undefined,
         onSaveRecommendQuestions: () => undefined,
         onSaveWeights: () => undefined,
@@ -338,7 +339,7 @@ test("close and unload protect changed input but not edits reverted to the loade
 });
 
 test("mapping save cannot silently discard independent dictionary edits", async () => {
-    const save = mock(() => {});
+    const save = mock(async () => true);
     const props = makeProps({ editingTopicId: 7, currentStep: 3, fieldMapping: completeMapping, columns: ["id", "score"], onSaveFieldMapping: save });
     const view = render(<TopicWizardDialog {...props} />);
     const label = await view.findByLabelText("score 标签");
@@ -356,6 +357,65 @@ test("mapping save cannot silently discard independent dictionary edits", async 
     fireEvent.change(label, { target: { value: "分数" } });
     fireEvent.click(view.getByTestId("teacher-topic-next"));
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+});
+
+test("unpersisted mapping blocks dictionary editing and saves in place before continuing", async () => {
+    let finish!: (saved: boolean) => void;
+    const save = mock((_advance?: boolean) => new Promise<boolean>(resolve => { finish = resolve; }));
+    const advance = mock(() => {});
+    const props = makeProps({ editingTopicId: 7, currentStep: 3, fieldMapping: completeMapping,
+        fieldMappingNeedsSave: true, columns: ["id", "score"], onSaveFieldMapping: save, setCurrentStep: advance });
+    const view = render(<TopicWizardDialog {...props} />);
+    const label = await view.findByLabelText("score 标签") as HTMLInputElement;
+    expect(label.disabled).toBe(true);
+    expect((view.getByText("明确确认并保存") as HTMLButtonElement).disabled).toBe(true);
+    expect(view.getByText(/更改字段角色或对照变量会使已保存的字典失效/)).toBeTruthy();
+    fireEvent.click(view.getByTestId("teacher-topic-next"));
+    fireEvent.click(view.getByTestId("teacher-topic-save-mapping"));
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(save).toHaveBeenCalledWith(false);
+    await act(async () => finish(false));
+    expect(label.disabled).toBe(true);
+    expect(advance).not.toHaveBeenCalled();
+    expect(view.queryByText(/字段配置已保存，请核对/)).toBeNull();
+
+    fireEvent.click(view.getByTestId("teacher-topic-save-mapping"));
+    await act(async () => finish(true));
+    view.rerender(<TopicWizardDialog {...props} fieldMappingNeedsSave={false} />);
+    expect((await view.findByLabelText("score 标签") as HTMLInputElement).disabled).toBe(false);
+    expect(view.getByText(/字段配置已保存，请核对/)).toBeTruthy();
+    expect((view.getByTestId("teacher-variable-dictionary") as HTMLDetailsElement).open).toBe(true);
+    expect(advance).not.toHaveBeenCalled();
+});
+
+test("changing mapping with a dictionary draft requires consent and failed saves preserve both inputs", async () => {
+    const save = mock(async (_advance?: boolean) => { throw Error("offline"); });
+    const props = makeProps({ editingTopicId: 7, currentStep: 3, fieldMapping: completeMapping,
+        columns: ["id", "score", "group"], onSaveFieldMapping: save });
+    const view = render(<TopicWizardDialog {...props} />);
+    const label = await view.findByLabelText("score 标签") as HTMLInputElement;
+    fireEvent.change(label, { target: { value: "尚未保存的标签" } });
+    const changed = { ...completeMapping, others: ["group"] };
+    view.rerender(<TopicWizardDialog {...props} fieldMapping={changed} fieldMappingNeedsSave />);
+    const confirm = mock((_message?: string) => false);
+    window.confirm = confirm;
+    fireEvent.click(view.getByTestId("teacher-topic-next"));
+    await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
+    expect(confirm.mock.calls[0]?.[0]).toContain("未保存的字典修改将被丢弃");
+    expect(save).not.toHaveBeenCalled();
+    expect(label.value).toBe("尚未保存的标签");
+
+    confirm.mockReturnValue(true);
+    fireEvent.click(view.getByTestId("teacher-topic-save-mapping"));
+    await view.findByTestId("teacher-topic-save-error");
+    expect(save).toHaveBeenCalledWith(false);
+    expect(label.value).toBe("尚未保存的标签");
+    expect((view.getByTestId("teacher-topic-mapping-others-group") as HTMLInputElement).checked).toBe(true);
+    expect(label.disabled).toBe(true);
+    // Reverting the mapping restores access to the same unsaved dictionary.
+    view.rerender(<TopicWizardDialog {...props} />);
+    expect(label.disabled).toBe(false);
+    expect(label.value).toBe("尚未保存的标签");
 });
 
 for (const kind of ["mean", "proportion"] as const) test(`${kind}: target selection precedes research text without changing existing values`, () => {

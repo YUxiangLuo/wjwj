@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, expect, mock, test } from "bun:test";
-import type { Topic } from "../api-client";
+import type { Topic, TopicDetail, VariableDictionaryResponse } from "../api-client";
+import type { VariableDictionary } from "@/domain/variables/types";
+import type { FieldMappingState } from "../components/StudyContractEditor";
 import { installDomGlobals } from "@/test-utils/dom";
 
 const bootstrapDom = installDomGlobals();
@@ -16,6 +18,12 @@ const updateTopic = mock(async (_id: number, _body: unknown) => ({ success: true
 const checkTopicPublish = mock(async (_id: number): Promise<{ success: boolean; error?: { code: string; message: string } }> => ({ success: true }));
 const deleteTopic = mock(async (_id: number) => ({ success: true }));
 const createTopic = mock(async (_body: unknown): Promise<{ success: boolean; data?: { id: number }; error?: { code: string; message: string } }> => ({ success: true, data: { id: 44 } }));
+type ApiResult<T> = { success: boolean; data?: T; error?: { code: string; message: string } };
+const emptyDetail = (): ApiResult<TopicDetail> => ({ success: true, data: { topic: null, hasExcelFile: false, attachments: [], recommendQuestions: [] } });
+const getTopicDetail = mock(async (_id: number): Promise<ApiResult<TopicDetail>> => emptyDetail());
+const updateFieldMapping = mock(async (_id: number, _mapping: FieldMappingState): Promise<ApiResult<{ success: boolean }>> => ({ success: true, data: { success: true } }));
+const getVariableDictionary = mock(async (_id: number): Promise<ApiResult<VariableDictionaryResponse>> => ({ success: false }));
+const updateVariableDictionary = mock(async (_id: number, _body: { source: string; observedRevision: number; dictionary: VariableDictionary }): Promise<ApiResult<{ success: boolean; revision: number }>> => ({ success: false }));
 const realClient = await import("../api-client");
 mock.module("../api-client", () => ({
     ...realClient,
@@ -26,7 +34,10 @@ mock.module("../api-client", () => ({
         checkTopicPublish,
         deleteTopic,
         createTopic,
-        getTopicDetail: async () => ({ success: true, data: { topic: null, hasExcelFile: false, attachments: [], recommendQuestions: [] } }),
+        getTopicDetail,
+        updateFieldMapping,
+        getVariableDictionary,
+        updateVariableDictionary,
         uploadTopicExcel: async () => ({ success: true, data: { rowCount: 0, columns: [], preview: [] } }),
         copyTopic,
     },
@@ -57,6 +68,10 @@ beforeEach(() => {
     toastError.mockClear();
     toastSuccess.mockClear();
     copyTopic.mockClear();
+    getTopicDetail.mockReset().mockImplementation(async () => emptyDetail());
+    updateFieldMapping.mockReset().mockResolvedValue({ success: true, data: { success: true } });
+    getVariableDictionary.mockReset().mockResolvedValue({ success: false });
+    updateVariableDictionary.mockReset().mockResolvedValue({ success: false });
 });
 
 afterEach(async () => {
@@ -240,4 +255,163 @@ test("failed copying leaves the current filter and search intact", async () => {
     await waitFor(() => expect(toastError).toHaveBeenCalledWith("复制失败: 暂不可用"));
     expect((view.getByTestId("teacher-topic-search") as HTMLInputElement).value).toBe(published.name);
     expect(toastSuccess).not.toHaveBeenCalled();
+});
+
+// Keep real page/wizard/dictionary state transitions. The API fixture models the
+// server contract: changing field interpretation invalidates the old dictionary.
+function mappingDictionaryFixture() {
+    // PostgreSQL JSONB returns object keys in a normalized order. In particular,
+    // the saved target need not retain the editor's { kind, field } insertion order.
+    const persistedJson = (value: unknown) => JSON.stringify(value, (_key, item: unknown) =>
+        item && typeof item === "object" && !Array.isArray(item)
+            ? Object.fromEntries(Object.entries(item).sort(([left], [right]) => left.localeCompare(right)))
+            : item);
+    const initialMapping: FieldMappingState = {
+        identifier: "id", stratified: [], numeric: ["score"], others: [],
+        analysisTarget: { kind: "mean", field: "score" },
+    };
+    const variables: VariableDictionary["variables"] = [
+        { field: "id", label: "编号", unit: "", kind: "identifier", categories: [], missing: [] },
+        { field: "score", label: "原始分数", unit: "分", kind: "continuous", categories: [], missing: [] },
+        { field: "group", label: "组别", unit: "", kind: "nominal", categories: [{ value: "A", label: "A" }, { value: "B", label: "B" }], missing: [] },
+    ];
+    const state = {
+        mapping: structuredClone(initialMapping),
+        source: "original-source",
+        revision: 1,
+        dictionary: { source: "original-source", revision: 1, variables: structuredClone(variables) } as VariableDictionary | null,
+    };
+    getTopics.mockResolvedValue({ success: true, data: [draft] });
+    getTopicDetail.mockImplementation(async () => ({ success: true, data: {
+        topic: { ...draft, fieldMapping: structuredClone(state.mapping), excelRowCount: 4 },
+        hasExcelFile: true, attachments: [], recommendQuestions: [],
+        excelInfo: {
+            columns: ["id", "score", "group"],
+            preview: [{ id: "001", score: 1, group: "A" }, { id: "002", score: 2, group: "B" }],
+            columnValues: { id: ["001", "002", "003", "004"], score: ["1", "2", "3", "4"], group: ["A", "B"] },
+        },
+    } }));
+    updateFieldMapping.mockImplementation(async (_id, mapping) => {
+        if (persistedJson(mapping) !== persistedJson(state.mapping)) {
+            state.source = `saved-mapping-${state.revision + 1}`;
+            state.revision += 1;
+            state.dictionary = null;
+        }
+        state.mapping = JSON.parse(persistedJson(mapping)) as FieldMappingState;
+        return { success: true, data: { success: true } };
+    });
+    getVariableDictionary.mockImplementation(async () => ({ success: true, data: {
+        source: state.source, revision: state.revision, locked: false,
+        dictionary: state.dictionary ? structuredClone(state.dictionary) : null,
+        suggestion: { source: state.source, revision: state.revision, variables: structuredClone(variables) },
+    } }));
+    updateVariableDictionary.mockImplementation(async (_id, body) => {
+        if (body.source !== state.source || body.observedRevision !== state.revision) {
+            return { success: false, error: { code: "VARIABLE_SOURCE_CONFLICT", message: "总体数据或字段解释已变化，请重新载入" } };
+        }
+        state.revision += 1;
+        state.dictionary = { ...structuredClone(body.dictionary), revision: state.revision };
+        return { success: true, data: { success: true, revision: state.revision } };
+    });
+    return state;
+}
+
+async function openMappingEditor() {
+    const view = renderPage();
+    fireEvent.click(await view.findByTestId("teacher-topic-edit-1"));
+    await waitFor(() => expect((view.getByTestId("teacher-topic-jump-3") as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(view.getByTestId("teacher-topic-jump-3"));
+    await view.findByLabelText("score 标签");
+    await waitFor(() => expect((view.getByTestId("teacher-topic-next") as HTMLButtonElement).disabled).toBe(false));
+    return view;
+}
+
+test("a failed mapping save preserves its input and keeps dictionary saving blocked", async () => {
+    const state = mappingDictionaryFixture();
+    const view = await openMappingEditor();
+    fireEvent.click(view.getByTestId("teacher-topic-mapping-others-group"));
+    expect((view.getByLabelText("score 标签") as HTMLInputElement).disabled).toBe(true);
+    expect((view.getByRole("button", { name: "明确确认并保存" }) as HTMLButtonElement).disabled).toBe(true);
+    updateFieldMapping.mockResolvedValueOnce({ success: false, error: { code: "VALIDATION_ERROR", message: "字段保存失败，请重试" } });
+    fireEvent.click(view.getByTestId("teacher-topic-next"));
+    await waitFor(() => expect(view.getByTestId("teacher-topic-save-error").textContent).toContain("字段保存失败"));
+    expect(view.getByTestId("teacher-topic-step-3").getAttribute("aria-current")).toBe("step");
+    expect((view.getByTestId("teacher-topic-mapping-others-group") as HTMLInputElement).checked).toBe(true);
+    expect((view.getByLabelText("score 标签") as HTMLInputElement).disabled).toBe(true);
+    expect((view.getByRole("button", { name: "明确确认并保存" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(getTopicDetail).toHaveBeenCalledTimes(1);
+    expect(updateVariableDictionary).not.toHaveBeenCalled();
+    expect(state.dictionary?.variables.find(variable => variable.field === "score")?.label).toBe("原始分数");
+});
+
+test("a failed detail reload after mapping save cannot advance or expose the old dictionary", async () => {
+    const state = mappingDictionaryFixture();
+    const view = await openMappingEditor();
+    fireEvent.click(view.getByTestId("teacher-topic-mapping-others-group"));
+    getTopicDetail.mockResolvedValueOnce({ success: false, error: { code: "NETWORK_ERROR", message: "详情暂时无法读取" } });
+    fireEvent.click(view.getByTestId("teacher-topic-next"));
+    await view.findByText("详情暂时无法读取");
+    expect(updateFieldMapping).toHaveBeenCalledTimes(1);
+    expect(state.mapping.others).toEqual(["group"]);
+    expect(state.dictionary).toBeNull();
+    expect(view.getByTestId("teacher-topic-step-3").getAttribute("aria-current")).toBe("step");
+    expect(view.queryByLabelText("score 标签")).toBeNull();
+    expect(view.queryByRole("button", { name: "明确确认并保存" })).toBeNull();
+    expect(updateVariableDictionary).not.toHaveBeenCalled();
+
+    fireEvent.click(view.getByRole("button", { name: "重试加载" }));
+    await waitFor(() => expect((view.getByLabelText("score 标签") as HTMLInputElement).disabled).toBe(false));
+    expect(view.getByTestId("teacher-topic-step-3").getAttribute("aria-current")).toBe("step");
+    expect((view.getByTestId("teacher-topic-mapping-others-group") as HTMLInputElement).checked).toBe(true);
+});
+
+test("saving mapping stays on the step so the confirmed new-source dictionary survives continuing", async () => {
+    const state = mappingDictionaryFixture();
+    const view = await openMappingEditor();
+    fireEvent.click(view.getByTestId("teacher-topic-mapping-others-group"));
+    fireEvent.click(view.getByTestId("teacher-topic-next"));
+    await waitFor(() => expect((view.getByLabelText("score 标签") as HTMLInputElement).disabled).toBe(false));
+    await waitFor(() => expect((view.getByTestId("teacher-topic-next") as HTMLButtonElement).disabled).toBe(false));
+    expect(updateFieldMapping).toHaveBeenCalledTimes(1);
+    expect(view.getByTestId("teacher-topic-step-3").getAttribute("aria-current")).toBe("step");
+    expect(state.dictionary).toBeNull();
+
+    const label = view.getByLabelText("score 标签");
+    fireEvent.change(label, { target: { value: "已核对的新字典" } });
+    fireEvent.click(view.getByRole("button", { name: "明确确认并保存" }));
+    await waitFor(() => expect(state.dictionary?.variables.find(variable => variable.field === "score")?.label).toBe("已核对的新字典"));
+    await waitFor(() => expect((view.getByTestId("teacher-topic-next") as HTMLButtonElement).disabled).toBe(false));
+    const confirmed = structuredClone(state.dictionary);
+    const revision = state.revision;
+    expect(updateVariableDictionary.mock.calls[0]?.[1].source).toBe(state.source);
+    fireEvent.click(view.getByTestId("teacher-topic-next"));
+    await waitFor(() => expect(view.getByTestId("teacher-topic-step-4").getAttribute("aria-current")).toBe("step"));
+    expect(state.dictionary).toEqual(confirmed);
+    expect(state.revision).toBe(revision);
+
+    fireEvent.click(view.getByTestId("teacher-topic-prev"));
+    await waitFor(() => expect((view.getByLabelText("score 标签") as HTMLInputElement).value).toBe("已核对的新字典"));
+    await waitFor(() => expect((view.getByTestId("teacher-topic-next") as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(view.getByTestId("teacher-topic-next"));
+    await waitFor(() => expect(view.getByTestId("teacher-topic-step-4").getAttribute("aria-current")).toBe("step"));
+    expect(state.dictionary).toEqual(confirmed);
+    expect(state.revision).toBe(revision);
+});
+
+test("an in-place mapping save establishes a clean navigation baseline", async () => {
+    mappingDictionaryFixture();
+    const view = await openMappingEditor();
+    fireEvent.click(view.getByTestId("teacher-topic-mapping-others-group"));
+    fireEvent.click(view.getByTestId("teacher-topic-save-mapping"));
+    await waitFor(() => expect((view.getByLabelText("score 标签") as HTMLInputElement).disabled).toBe(false));
+    await waitFor(() => expect((view.getByTestId("teacher-topic-next") as HTMLButtonElement).disabled).toBe(false));
+    const confirm = mock(() => false);
+    window.confirm = confirm;
+    fireEvent.click(view.getByTestId("teacher-topic-prev"));
+    expect(confirm).not.toHaveBeenCalled();
+    expect(view.getByTestId("teacher-topic-step-2").getAttribute("aria-current")).toBe("step");
+    fireEvent.click(view.getByTestId("teacher-topic-next"));
+    await view.findByLabelText("score 标签");
+    expect((view.getByTestId("teacher-topic-mapping-others-group") as HTMLInputElement).checked).toBe(true);
+    expect(view.queryByTestId("teacher-topic-save-mapping")).toBeNull();
 });
