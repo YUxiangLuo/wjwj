@@ -48,7 +48,9 @@ bun run ci:local:full      # 发布前完整门禁；额外执行随机顺序和
 
 兼容性测试同样使用可创建临时库的 `TEST_DATABASE_URL`，独立计算点估计和设计标准误，核对教师发布、学生抽样/分析/提交、教师评分及双方导出。产物默认位于 `.amp/in/artifacts/topic-compatibility/`，可用 `COMPATIBILITY_ARTIFACTS` 指定目录。
 
-本项目不使用 GitHub Actions。执行 `bun run hooks:install` 可启用仓库内的 `pre-push` hook，在每次推送前自动运行 `ci:local`；克隆后需安装一次。`TEST_DATABASE_URL` 仅作为创建临时库的基准连接，其角色须有 `CREATE DATABASE` 权限，脚本不会迁移、清空或写入该基准库。发布前另行运行 `ci:local:full`。
+本项目不使用 GitHub Actions。执行 `bun run hooks:install` 可启用仓库内的 `pre-push` hook；克隆后需安装一次。hook 根据 Git 提供的待推送 SHA，在临时 worktree 中安装该提交的锁定依赖并运行本地 CI，结束后清理 worktree；不会把未提交修改当成已验证的提交。多分支推送逐个验证不同的提交，标签验证其指向的提交，纯删除或无更新不运行 CI。
+
+测试连接从当前 shell 或本地 `.env` 读取；`TEST_DATABASE_URL` 仅作为创建临时库的基准连接，其角色须有 `CREATE DATABASE` 权限，脚本不会迁移、清空或写入该基准库。检查未提交修改用 `bun run ci:local`，发布前另行运行 `ci:local:full`。
 
 测试保留统计边界、权限与会话、事务并发、文件安全、草稿/提交恢复及关键无障碍行为；普通展示、文案和演示数据快照不单独锁定。端到端测试负责教学闭环，不逐页重复同一规则。
 

@@ -5,6 +5,6 @@ root=$(git rev-parse --show-toplevel)
 cd "$root"
 
 if [ -x node_modules/.bin/bun ]; then
-    exec node_modules/.bin/bun run ci:local
+    exec node_modules/.bin/bun scripts/pre-push.ts
 fi
-exec bun run ci:local
+exec bun scripts/pre-push.ts
