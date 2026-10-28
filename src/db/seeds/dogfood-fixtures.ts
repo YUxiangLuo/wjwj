@@ -29,24 +29,24 @@ export const DOGFOOD_COUNTS = {
     student: 20,
     topic: 5,
     task: 8,
-    experiment: 18,
-    samplingAttempt: 13,
+    experiment: 9,
+    samplingAttempt: 10,
     announcement: 5,
     topicAttachment: 2,
 } as const;
 
 export const DOGFOOD_MAIN_TASK_PROGRESS = {
-    not_started: 3,
-    stage1: 1,
-    stage2: 1,
-    stage3: 1,
-    stage4: 1,
-    submitted: 1,
-    graded: 1,
-    rejected: 1,
+    not_started: 10,
+    stage1: 0,
+    stage2: 0,
+    stage3: 0,
+    stage4: 0,
+    submitted: 0,
+    graded: 0,
+    rejected: 0,
 } as const;
 
-export const HAPPINESS_POPULATION_PATH = "/storage/topics/seed-population-youth-happiness.xlsx";
+export const HAPPINESS_POPULATION_PATH = "/storage/topics/seed-population-youth-happiness-v2.xlsx";
 export const READING_POPULATION_PATH = "/storage/topics/seed-population-reading-hours.csv";
 export const EMPLOYMENT_POPULATION_PATH = "/storage/topics/seed-population-employment-intent.csv";
 export const DINING_POPULATION_PATH = "/storage/topics/seed-population-dining-wait.csv";
@@ -179,11 +179,20 @@ export function createYouthHappinessPopulation() {
     const residenceTypes = ["城区", "县镇", "农村"];
     const employmentStatuses = ["在校学习", "稳定就业", "灵活就业", "求职或待业"];
     return Array.from({ length: 240 }, (_, index) => {
-        const ageGroup = ageGroups[index % ageGroups.length]!;
-        const residenceType = residenceTypes[Math.floor(index / ageGroups.length) % residenceTypes.length]!;
-        const employmentStatus = employmentStatuses[(index * 5 + Math.floor(index / 12)) % employmentStatuses.length]!;
-        const socialSupport = 2 + Math.floor(fixtureNoise(index, 1) * 4);
-        const health = 2 + Math.floor(fixtureNoise(index, 2) * 4);
+        const ageIndex = index < 96 ? 0 : index < 180 ? 1 : 2;
+        const ageGroup = ageGroups[ageIndex]!;
+        const age = [18, 23, 28][ageIndex]! + Math.floor(fixtureNoise(index, 8) * [5, 5, 8][ageIndex]!);
+        const residenceIndex = (index * 17) % 240 < 132 ? 0 : (index * 17) % 240 < 204 ? 1 : 2;
+        const residenceType = residenceTypes[residenceIndex]!;
+        const community = [["青禾社区", "云溪社区", "新桥社区"], ["文景社区", "朝阳社区", "河畔社区"], ["溪口村", "田园村", "林下村"]][residenceIndex]![Math.floor(fixtureNoise(index, 9) * 3)]!;
+        const statusNoise = fixtureNoise(index, 10);
+        const thresholds = ageIndex === 0 ? [0.68, 0.84, 0.94] : ageIndex === 1 ? [0.12, 0.69, 0.88] : [0.02, 0.74, 0.93];
+        const employmentStatus = employmentStatuses[statusNoise < thresholds[0]! ? 0 : statusNoise < thresholds[1]! ? 1 : statusNoise < thresholds[2]! ? 2 : 3]!;
+        const housingNoise = fixtureNoise(index, 11);
+        const housing = employmentStatus === "在校学习" && housingNoise < 0.7 ? "学校或单位宿舍"
+            : residenceType === "农村" || housingNoise < 0.45 ? "与家人同住" : housingNoise < 0.7 ? "与他人合租" : "独居";
+        const socialSupport = 1 + Math.floor(fixtureNoise(index, 1) * 5);
+        const health = 1 + Math.floor(fixtureNoise(index, 2) * 5);
         const pressure = 1 + Math.floor(fixtureNoise(index, 3) * 5);
         // Deliberately create a visible between-stratum signal for the required
         // age-stratified exercise. These are synthetic teaching effects, not claims
@@ -197,13 +206,19 @@ export function createYouthHappinessPopulation() {
         );
         return {
             青年代号: `Y${String(index + 1).padStart(3, "0")}`,
+            年龄: age,
             年龄组: ageGroup,
+            居住社区: community,
             居住地类型: residenceType,
+            居住方式: housing,
             当前状态: employmentStatus,
             生活幸福感得分: Number(happiness.toFixed(1)),
             社会支持感: socialSupport,
             自评健康: health,
             经济压力: pressure,
+            每晚睡眠时长: Number(clamp(7.8 - pressure * 0.2 + (fixtureNoise(index, 12) - 0.5) * 2.4, 4, 10).toFixed(1)),
+            每周休闲时长: index % 29 === 0 ? 0 : Number((2 + fixtureNoise(index, 13) * 18).toFixed(1)),
+            社区服务满意度: index % 11 === 0 ? null : 1 + Math.floor(fixtureNoise(index, 14) * 5),
         };
     });
 }

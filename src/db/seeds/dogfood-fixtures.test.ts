@@ -45,7 +45,7 @@ describe("default demo research fixtures", () => {
         expect(topics.every((name) => !name.includes("设计阶段"))).toBe(true);
     });
 
-    test("youth happiness is deterministic, bounded and varied across a balanced frame", () => {
+    test("youth happiness is deterministic, bounded and varied across unequal age strata", () => {
         const first = createYouthHappinessPopulation();
         const second = createYouthHappinessPopulation();
         expect(first).toEqual(second);
@@ -55,9 +55,14 @@ describe("default demo research fixtures", () => {
         expect(new Set(first.map((row) => row.居住地类型))).toEqual(new Set(["城区", "县镇", "农村"]));
         expect(first.every((row) => row.生活幸福感得分 >= 0 && row.生活幸福感得分 <= 10)).toBe(true);
         expect(uniqueCount(first.map((row) => row.生活幸福感得分))).toBeGreaterThan(30);
-        for (const ageGroup of ["18—22岁", "23—27岁", "28—35岁"]) {
-            expect(first.filter((row) => row.年龄组 === ageGroup)).toHaveLength(80);
+        for (const [ageGroup, count] of [["18—22岁", 96], ["23—27岁", 84], ["28—35岁", 60]] as const) {
+            expect(first.filter((row) => row.年龄组 === ageGroup)).toHaveLength(count);
         }
+        expect(first.every(row => row.年龄 >= 18 && row.年龄 <= 35)).toBe(true);
+        expect(first.every(row => row.年龄组 === (row.年龄 <= 22 ? "18—22岁" : row.年龄 <= 27 ? "23—27岁" : "28—35岁"))).toBe(true);
+        expect(new Set(first.map(row => row.居住社区)).size).toBe(9);
+        expect(first.some(row => row.每周休闲时长 === 0)).toBe(true);
+        expect(first.some(row => row.社区服务满意度 === null)).toBe(true);
         const ageMeans = ["18—22岁", "23—27岁", "28—35岁"].map((ageGroup) => (
             mean(first.filter((row) => row.年龄组 === ageGroup).map((row) => row.生活幸福感得分))
         ));

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { questionSignature, validateQuestionBindings } from "./question-binding";
 import type { Question, QuestionnaireData } from "../../lib/questionnaire-types";
 import type { RawValue, VariableDictionary } from "./types";
+import { createHappinessDictionary, happinessQuestionnaire } from "../../db/seeds/happiness-topic";
 
 const dictionary: VariableDictionary = { source: "population.csv", revision: 2, variables: [
     { field: "sex", label: "性别", unit: "", kind: "nominal", categories: [{ value: 1, label: "男" }, { value: 2, label: "女" }], missing: [null] },
@@ -145,5 +146,54 @@ describe("question variable binding", () => {
         expect(() => validateQuestionBindings(data({ ...q, variableBinding: makeBinding("student_id") }), dictionary, 3)).toThrow(/标识符/);
         const text = { ...q, type: "text", variableBinding: makeBinding("sex") } as unknown as Question;
         expect(() => validateQuestionBindings(data(text), dictionary, 3)).toThrow(/题型不支持/);
+    });
+});
+
+describe("single-choice ordinal and explicit missing bindings", () => {
+    const happiness = createHappinessDictionary("happiness-source");
+    const serviceQuestion = happinessQuestionnaire.questions.find(question => question.id === "hq14")!;
+    function bound(values: RawValue[] = [1, 2, 3, 4, 5, null], question = serviceQuestion): Question {
+        return { ...question, variableBinding: { taskId: 1, source: happiness.source, revision: happiness.revision,
+            signature: questionSignature(question), mappings: [{ field: "社区服务满意度",
+                answers: values.map((value, index) => ({ answer: question.options![index]!, value })) }] } };
+    }
+    test("the actual service recommendation maps five ordered ratings and a nonuser answer to null", () => {
+        expect(() => validateQuestionBindings(data(bound()), happiness, 1)).not.toThrow();
+        const withoutMissing = { ...serviceQuestion, options: serviceQuestion.options!.slice(0, 5) };
+        expect(() => validateQuestionBindings(data(bound([1, 2, 3, 4, 5], withoutMissing)), happiness, 1)).not.toThrow();
+    });
+    test("an explicitly mapped missing option may appear first instead of being guessed from position", () => {
+        const reordered = { ...serviceQuestion, options: [serviceQuestion.options![5]!, ...serviceQuestion.options!.slice(0, 5)] };
+        expect(() => validateQuestionBindings(data(bound([null, 1, 2, 3, 4, 5], reordered)), happiness, 1)).not.toThrow();
+    });
+    test.each([
+        ["incomplete answer mapping", [1, 2, 3, 4, 5]],
+        ["duplicate valid category", [1, 1, 3, 4, 5, null]],
+        ["undeclared missing code", [1, 2, 3, 4, 5, 99]],
+        ["text null instead of JSON null", [1, 2, 3, 4, 5, "null"]],
+        ["missing answers replacing valid categories", [1, 2, 3, 4, null, null]],
+    ] as Array<[string, RawValue[]]>)("rejects %s", (_label, values) => {
+        expect(() => validateQuestionBindings(data(bound(values)), happiness, 1)).toThrow();
+    });
+    test("rejects duplicate answer labels and ordinal order changes", () => {
+        const duplicate = bound();
+        duplicate.variableBinding!.mappings[0]!.answers[5]!.answer = serviceQuestion.options![0]!;
+        expect(() => validateQuestionBindings(data(duplicate), happiness, 1)).toThrow(/答案映射不完整/);
+        expect(() => validateQuestionBindings(data(bound([5, 4, 3, 2, 1, null])), happiness, 1)).toThrow(/类别顺序递增/);
+    });
+    test("only declared missing codes are accepted, and at most one answer may be excluded", () => {
+        const changed = structuredClone(happiness);
+        changed.variables.find(variable => variable.field === "社区服务满意度")!.missing = [-99, null];
+        expect(() => validateQuestionBindings(data(bound([1, 2, 3, 4, 5, -99])), changed, 1)).not.toThrow();
+        const twoMissingOptions = { ...serviceQuestion, options: [...serviceQuestion.options!, "拒绝回答"] };
+        expect(() => validateQuestionBindings(data(bound([1, 2, 3, 4, 5, null, -99], twoMissingOptions)), changed, 1)).toThrow(/最多关联一个缺失选项/);
+        changed.variables.find(variable => variable.field === "社区服务满意度")!.missing = [];
+        expect(() => validateQuestionBindings(data(bound()), changed, 1)).toThrow();
+    });
+    test("nominal choices retain arbitrary bijections and can explicitly exclude one declared missing answer", () => {
+        const q: Question = { id: "q", type: "single", content: "性别", options: ["女", "男", "不愿回答"] };
+        q.variableBinding = { taskId: 3, source: dictionary.source, revision: 2, signature: questionSignature(q),
+            mappings: [{ field: "sex", answers: [{ answer: "女", value: 2 }, { answer: "男", value: 1 }, { answer: "不愿回答", value: null }] }] };
+        expect(() => validateQuestionBindings(data(q), dictionary, 3)).not.toThrow();
     });
 });

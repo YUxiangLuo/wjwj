@@ -175,6 +175,19 @@ try {
     }, "Test server failed to start");
 
     await login(teacher, "teacher", "T001");
+    const seedTopics = await api<Array<{ id: number; name: string }>>(teacher, "/api/teacher/topics");
+    const happinessSource = seedTopics.find(item => item.name === DOGFOOD_NAMES.topicA);
+    assert(happinessSource, "Seeded happiness topic missing");
+    const happinessCopy = await api<{ id: number }>(teacher, `/api/teacher/topics/${happinessSource.id}/copy`, "POST");
+    try {
+        await api(teacher, `/api/teacher/topics/${happinessCopy.id}`, "PUT", { status: 1 });
+        const copyVariables = await api<{ dictionary: { variables: Array<{ field: string; kind: string; missing: unknown[] }> } | null }>(teacher, `/api/teacher/topics/${happinessCopy.id}/variables`);
+        const service = copyVariables.dictionary?.variables.find(variable => variable.field === "社区服务满意度");
+        assert(service?.kind === "ordinal" && service.missing.includes(null), "Publication must preserve ordinal service satisfaction and missing nonusers");
+    } finally {
+        await api(teacher, `/api/teacher/topics/${happinessCopy.id}`, "DELETE");
+    }
+    console.log("PASS happiness seed copies and publishes with its nullable ordinal dictionary intact");
     const templateMatrix = await teacherTemplateDogfood({ teacher, artifacts, workdir, browser, evaluate, api, page, eventually });
     await login(administrator, "admin", "admin", adminTestPassword);
     for (const [session, role, endpoint, panel, ready] of [
@@ -248,13 +261,13 @@ try {
     }
     console.log("PASS teacher/admin list hierarchy, three desktop viewports and search recovery");
     const seededPending = await api<{ items: Array<{ id: number; topic: string }> }>(teacher, "/api/teacher/grading?status=pending&page=1&pageSize=20");
-    const seededGrading = seededPending.items.find(item => item.topic === DOGFOOD_NAMES.topicA);
+    const seededGrading = seededPending.items.find(item => item.topic === DOGFOOD_NAMES.topicB);
     assert(seededGrading, "Seeded pending grading item missing");
     const seededTeacherDetail = await api<{ samplingResults: Record<string, unknown> }>(teacher, `/api/teacher/grading/${seededGrading.id}`);
     assert(Object.keys(seededTeacherDetail.samplingResults).length > 0, "Seeded teacher grading detail did not hydrate sampling results");
     await login(seedStudent, "student", DOGFOOD_ANCHORS.submitted);
     const seededTasks = await api<StudentTask[]>(seedStudent, "/api/student/tasks");
-    const seededTask = seededTasks.find(item => item.name === DOGFOOD_NAMES.topicA);
+    const seededTask = seededTasks.find(item => item.name === DOGFOOD_NAMES.topicB);
     assert(seededTask, "Seeded submitted student task missing");
     const seededStudentDetail = await api<{ snapshot: { samplingResults: Record<string, unknown> } }>(seedStudent, `/api/student/tasks/${seededTask.id}/submission`);
     assert(Object.keys(seededStudentDetail.snapshot.samplingResults).length > 0, "Seeded student submission did not hydrate sampling results");

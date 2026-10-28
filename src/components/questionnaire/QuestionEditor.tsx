@@ -17,6 +17,7 @@ import { Plus, Trash2, GripVertical } from "lucide-react";
 import type { Question, QuestionSection, QuestionType } from "@/lib/questionnaire-types";
 import { QUESTION_SECTION_LABELS } from "@/lib/questionnaire-templates";
 import { getDuplicateOptionIndexes } from "@/lib/questionnaire-options";
+import { questionSignature } from "@/domain/variables/question-binding";
 
 interface QuestionEditorProps {
     open: boolean;
@@ -207,9 +208,12 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
             if (numericMax !== "") savedQuestion.numericMax = Number(numericMax);
         }
         if (question?.variableBinding) {
-            const oldSemantic = { ...question, id: savedQuestion.id, variableBinding: undefined };
-            const nextSemantic = { ...savedQuestion, variableBinding: undefined };
-            if (JSON.stringify(oldSemantic) === JSON.stringify(nextSemantic)) savedQuestion.variableBinding = question.variableBinding;
+            const signature = questionSignature(question);
+            // Seed objects and JSONB reads can have different property orders.
+            // Preserve only a still-valid association with unchanged semantics.
+            if (question.variableBinding.signature === signature && questionSignature(savedQuestion) === signature) {
+                savedQuestion.variableBinding = question.variableBinding;
+            }
         }
 
         onSave(savedQuestion);

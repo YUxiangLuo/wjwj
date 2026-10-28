@@ -42,7 +42,7 @@
     "db:reset:demo": "bun run db:clean && bun run db:migrate && bun run db:seed:demo",
     "storage:audit": "bun run scripts/audit-storage.ts",
     "storage:clean": "bun run scripts/audit-storage.ts --delete",
-    "test:db": "REQUIRE_TEST_DATABASE=1 bun test --isolate src/db/postgresql.integration.test.ts src/db/concurrency.integration.test.ts src/db/variable-analysis.integration.test.ts src/db/variable-dictionary.integration.test.ts src/db/variable-permissions.integration.test.ts"
+    "test:db": "REQUIRE_TEST_DATABASE=1 bun test --isolate src/db/postgresql.integration.test.ts src/db/concurrency.integration.test.ts src/db/variable-analysis.integration.test.ts src/db/variable-dictionary.integration.test.ts src/db/variable-permissions.integration.test.ts scripts/refresh-happiness-demo.integration.test.ts"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",

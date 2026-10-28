@@ -20,7 +20,6 @@ import { buildPopulationNumericStats, getPpsEligibleNumericFields, parseTopicFie
 import { validateQuestionnaireForSubmit, validateReportForSubmit, validateSamplePlanForSubmit } from "../../student/experiment/submit-validation";
 import { buildTaskProgressSnapshot } from "../../teacher/topic/task-progress";
 import {
-    computeYouthHappinessPlan,
     DINING_PPS_SIZE_FIELD,
     DINING_POPULATION_PATH,
     DOGFOOD_ANCHORS,
@@ -34,9 +33,13 @@ import {
     QUESTIONNAIRE_TEMPLATE_ATTACHMENT_PATH,
     READING_POPULATION_PATH,
 } from "./dogfood-fixtures";
+import { happinessVariables } from "./happiness-topic";
+import { readVariableSource } from "../../server/variable-source";
+import { validateDictionary } from "../../domain/variables/dictionary";
 import { DEMO_STUDENT_ACCOUNTS } from "./demo-accounts";
 import { filterPpsEligibleFields, parseSamplingPolicy } from "../../lib/sampling-policy";
 import { validateRecommendQuestionsPayload } from "../../lib/validate-question";
+import { validateMappedPopulationData, validatePrimaryTargetDictionary, validateTopicPublishReadiness } from "../../teacher/topic/validation";
 
 function check(condition: unknown, message: string): asserts condition {
     if (!condition) throw new Error(message);
@@ -82,7 +85,8 @@ async function verify() {
         .select({ id: task.id, classId: task.classId })
         .from(task)
         .innerJoin(topic, eq(task.topicId, topic.id))
-        .where(eq(topic.name, DOGFOOD_NAMES.topicA));
+        .innerJoin(class_, eq(task.classId, class_.id))
+        .where(and(eq(topic.name, DOGFOOD_NAMES.topicA), eq(class_.name, DOGFOOD_NAMES.mainClass)));
     check(aTask, "Active A task is missing");
 
     const progressRows = await db
@@ -101,6 +105,23 @@ async function verify() {
     const progress = buildTaskProgressSnapshot(progressRows);
     const expectedProgress = DOGFOOD_MAIN_TASK_PROGRESS;
     check(JSON.stringify(progress.counts) === JSON.stringify(expectedProgress), `A progress buckets differ: ${JSON.stringify(progress.counts)}`);
+
+    const happinessExperiments = await db.select({ id: experiment.id }).from(experiment)
+        .innerJoin(task, eq(experiment.taskId, task.id)).innerJoin(topic, eq(task.topicId, topic.id))
+        .where(eq(topic.name, DOGFOOD_NAMES.topicA));
+    check(happinessExperiments.length === 0, "Every happiness task, including historical classes, must start without experiments");
+    const [happinessTopic] = await db.select().from(topic).where(eq(topic.name, DOGFOOD_NAMES.topicA));
+    check(happinessTopic?.excelFilePath, "Happiness population missing");
+    // Runtime analysis interprets the stored mapping, not the seed constants.
+    // Reading the constants here would conceal a dictionary made stale by a
+    // database restore or a partial update of the topic's field roles.
+    const happinessSource = await readVariableSource(happinessTopic.excelFilePath, happinessTopic.fieldMapping);
+    const confirmedDictionary = validateDictionary(happinessTopic.variableDictionary, happinessSource.rows, happinessSource.source);
+    check(confirmedDictionary.revision === happinessTopic.variableRevision, "Happiness dictionary revision differs");
+    check(confirmedDictionary.variables.length === 14, "Happiness dictionary must cover all 14 fields");
+    const targetDictionaryError = validatePrimaryTargetDictionary(happinessTopic.fieldMapping, confirmedDictionary, happinessSource.rows);
+    check(!targetDictionaryError, `Happiness target dictionary is invalid: ${targetDictionaryError}`);
+    check(Array.isArray(happinessTopic.recommendQuestions) && happinessTopic.recommendQuestions.length === 14, "Happiness must offer 14 recommended questions");
 
     const teacherCredentialRows = await db.select({
         employeeId: teacher.employeeId,
@@ -155,28 +176,23 @@ async function verify() {
         .innerJoin(task, eq(experiment.taskId, task.id))
         .innerJoin(topic, eq(task.topicId, topic.id))
         .where(eq(experiment.currentStage, 4));
-    // 13 份完成全部四阶段的实验：主任务 4、阅读 1、比例 2、服务时段 3、绿色通勤 1、历史归档 2。
-    check(authoritative.length === 13, `Expected 13 stage4/terminal authoritative fixtures, got ${authoritative.length}`);
+    // 7 份终态示例：阅读 1、毕业去向 2、服务时段 3、绿色通勤 1。
+    check(authoritative.length === 7, `Expected 7 stage4/terminal authoritative fixtures, got ${authoritative.length}`);
 
-    function checkAuthoritativeMethods(label: string, value: unknown, ppsDisabled: boolean, allowChoicePair = false) {
+    function checkAuthoritativeMethods(label: string, value: unknown, ppsDisabled: boolean) {
         const results = value as Record<string, Record<string, unknown> | undefined> | null;
-        const expectedMethods = allowChoicePair
-            ? (["simple", "systematic"] as const)
-            : ppsDisabled
+        const expectedMethods = ppsDisabled
                 ? (["simple", "systematic", "stratified"] as const)
                 : (["simple", "systematic", "pps", "stratified"] as const);
         for (const method of expectedMethods) {
             check(results?.[method]?.serverGenerated === true, `${label}/${method} is not server generated`);
-        }
-        if (allowChoicePair) {
-            check(!results?.pps && !results?.stratified, `${label} must contain only the selected method pair`);
         }
         for (const method of expectedMethods.filter((method) => method !== "pps")) {
             const section = results?.[method];
             check(!Array.isArray(section?.data), `${label}/${method} unexpectedly embeds sampled rows`);
             check(Array.isArray(section?.indices) && section.indices.length === section.sampleCount, `${label}/${method} has invalid replay indices`);
         }
-        if (allowChoicePair || ppsDisabled) {
+        if (ppsDisabled) {
             check(!results?.pps, `${label} must not contain a disabled PPS result`);
             return results;
         }
@@ -195,12 +211,11 @@ async function verify() {
             || row.topicName === DOGFOOD_NAMES.topicB
             || row.topicName === DOGFOOD_NAMES.topicC
             || row.topicName === DOGFOOD_NAMES.topicE;
-        const hasChoicePair = row.studentId === DOGFOOD_ANCHORS.choicePair && row.topicName === DOGFOOD_NAMES.topicA;
-        const liveResults = checkAuthoritativeMethods(label, row.results, hasDisabledPps, hasChoicePair);
+        const liveResults = checkAuthoritativeMethods(label, row.results, hasDisabledPps);
         if (row.status !== "in_progress") {
             const storedSnapshot = row.snapshot as Record<string, unknown> | null;
             check(storedSnapshot, `${label} has no submission snapshot`);
-            const snapshotResults = checkAuthoritativeMethods(`${label}/snapshot`, storedSnapshot.samplingResults, hasDisabledPps, hasChoicePair);
+            const snapshotResults = checkAuthoritativeMethods(`${label}/snapshot`, storedSnapshot.samplingResults, hasDisabledPps);
             check(stableJson(snapshotResults) === stableJson(liveResults), `${label} snapshot sampling results differ from the live record`);
             check(stableJson(storedSnapshot.questionnaire) === stableJson(row.questionnaire), `${label} snapshot questionnaire differs from the live record`);
             check(stableJson(storedSnapshot.samplePlan) === stableJson(row.samplePlan), `${label} snapshot sample plan differs from the live record`);
@@ -261,22 +276,6 @@ async function verify() {
         "Expected exactly one mean PPS-disabled fixture",
     );
 
-    const auditRows = await db
-        .select({ method: samplingAttempt.method, seed: samplingAttempt.seed, sampleCount: samplingAttempt.sampleCount })
-        .from(samplingAttempt)
-        .innerJoin(experiment, eq(samplingAttempt.experimentId, experiment.id))
-        .innerJoin(student, eq(experiment.studentId, student.id))
-        .innerJoin(task, eq(experiment.taskId, task.id))
-        .innerJoin(topic, eq(task.topicId, topic.id))
-        .where(and(eq(student.studentId, DOGFOOD_ANCHORS.submitted), eq(topic.name, DOGFOOD_NAMES.topicA)))
-        .orderBy(asc(samplingAttempt.createdAt));
-    const { recommendedSize: expectedPpsSampleCount } = computeYouthHappinessPlan();
-    check(JSON.stringify(auditRows) === JSON.stringify([
-        { method: "simple", seed: 202601, sampleCount: expectedPpsSampleCount },
-        { method: "systematic", seed: 202602, sampleCount: expectedPpsSampleCount },
-        { method: "stratified", seed: 202604, sampleCount: expectedPpsSampleCount },
-    ]), `Sampling attempt fixtures differ: ${JSON.stringify(auditRows)}`);
-
     const auditCoverage = await db
         .select({
             studentId: student.studentId,
@@ -294,7 +293,7 @@ async function verify() {
         .orderBy(asc(student.studentId), asc(topic.name), asc(samplingAttempt.method));
     const auditedScenarioKeys = new Set(auditCoverage.map((row) => `${row.studentId}|${row.topicName}`));
     check(auditCoverage.length === DOGFOOD_COUNTS.samplingAttempt, `Sampling audit coverage differs: ${auditCoverage.length}`);
-    check(auditedScenarioKeys.size === 4, `Expected four audited research scenarios, got ${[...auditedScenarioKeys].join(", ")}`);
+    check(auditedScenarioKeys.size === 3, `Expected three audited research scenarios, got ${[...auditedScenarioKeys].join(", ")}`);
     for (const key of auditedScenarioKeys) {
         const expectedMethods = key.endsWith(`|${DOGFOOD_NAMES.topicD}`) ? 4 : 3;
         check(auditCoverage.filter((row) => `${row.studentId}|${row.topicName}` === key).length === expectedMethods, `${key} does not cover ${expectedMethods} sampling methods`);
@@ -337,13 +336,10 @@ async function verify() {
         ));
     const visibleKeys = visible.map((row) => `${row.studentId}|${row.topicName}`).sort();
     const expectedVisible = [
-        `${DOGFOOD_ANCHORS.submitted}|${DOGFOOD_NAMES.topicA}`,
         `${DOGFOOD_ANCHORS.submitted}|${DOGFOOD_NAMES.topicB}`,
         `${DOGFOOD_ANCHORS.submitted}|${DOGFOOD_NAMES.topicC}`,
         `${DOGFOOD_ANCHORS.submitted}|${DOGFOOD_NAMES.topicE}`,
-        `${DOGFOOD_ANCHORS.graded}|${DOGFOOD_NAMES.topicA}`,
         `${DOGFOOD_ANCHORS.graded}|${DOGFOOD_NAMES.topicC}`,
-        `${DOGFOOD_ANCHORS.rejected}|${DOGFOOD_NAMES.topicA}`,
         `${DOGFOOD_ANCHORS.auditedSecondary}|${DOGFOOD_NAMES.topicD}`,
         `P2603|${DOGFOOD_NAMES.topicD}`,
         `P2604|${DOGFOOD_NAMES.topicD}`,
@@ -427,6 +423,7 @@ async function verify() {
             rowCount: topic.excelRowCount,
             fieldMapping: topic.fieldMapping,
             samplingPolicy: topic.samplingPolicy,
+            weightConfig: topic.weightConfig,
             recommendQuestions: topic.recommendQuestions,
         })
         .from(topic)
@@ -437,8 +434,8 @@ async function verify() {
         [DOGFOOD_NAMES.topicA]: {
             path: HAPPINESS_POPULATION_PATH,
             rowCount: 240,
-            columns: ["青年代号", "年龄组", "居住地类型", "当前状态", "生活幸福感得分", "社会支持感", "自评健康", "经济压力"],
-            ppsFields: ["生活幸福感得分", "社会支持感", "自评健康", "经济压力"],
+            columns: happinessVariables.map(variable => variable.field),
+            ppsFields: ["生活幸福感得分", "社会支持感", "自评健康", "经济压力", "年龄", "每晚睡眠时长"],
             targetKind: "mean",
             targetValue: undefined,
             targetQuestion: { id: "hq2", type: "numeric", unit: "分" },
@@ -558,9 +555,21 @@ async function verify() {
         const file = Bun.file(resolveStoragePath(storedTopic.path));
         check(await file.exists(), `${storedTopic.name} population file is missing: ${storedTopic.path}`);
         check(file.size > 0, `${storedTopic.name} population file is empty: ${storedTopic.path}`);
-        const parsed = await parseSpreadsheetFile(await file.arrayBuffer(), storedTopic.path);
+        const parsed = await parseSpreadsheetFile(await file.arrayBuffer(), storedTopic.path, { numericFields: mapping.numeric ?? [] });
         check(parsed.rowCount === storedTopic.rowCount, `${storedTopic.name} parsed row count differs: ${parsed.rowCount}`);
         check(JSON.stringify(parsed.columns) === JSON.stringify(expected.columns), `${storedTopic.name} columns differ: ${JSON.stringify(parsed.columns)}`);
+        // Seed insertion bypasses the teacher publish endpoint. Apply the same
+        // contracts here so a published fixture can also be copied and published.
+        const populationError = validateMappedPopulationData(parsed, mapping);
+        check(!populationError, `${storedTopic.name} population cannot be published: ${populationError}`);
+        const publishError = validateTopicPublishReadiness({
+            excelFilePath: storedTopic.path,
+            fieldMapping: mapping,
+            samplingPolicy: storedTopic.samplingPolicy,
+            weightConfig: storedTopic.weightConfig as Record<string, unknown> | null,
+            rows: parsed.rows,
+        });
+        check(!publishError, `${storedTopic.name} cannot be published: ${publishError}`);
         const eligiblePpsFields = getPpsEligibleNumericFields(parsed.rows, mapping.numeric ?? []);
         check(JSON.stringify(eligiblePpsFields) === JSON.stringify(expected.ppsFields), `${storedTopic.name} PPS eligibility differs: ${JSON.stringify(eligiblePpsFields)}`);
         if (samplingPolicy.methods.pps !== "disabled") {

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createApiClient } from "@/lib/api-client";
+import { createRequestId } from "@/lib/request-id";
 import { Button } from "@/components/ui/button";
 import { AnalysisResultTable } from "@/components/AnalysisAppendices";
 import type { AnalysisConfig, SavedAnalysisView, VariableDictionary } from "@/domain/variables/types";
@@ -48,21 +49,26 @@ export function UnivariateWorkspace({ taskId, observedVersion, completedMethods,
     const run = async () => {
         if (refreshRequired || running || config.question.trim().length < 5 || config.question.trim().length > 500 || !config.field || records.length >= capacity) return;
         setRunning(true); setError(null);
-        const key = signature(config);
-        if (!pending.current || pending.current.signature !== key) pending.current = { signature: key, requestId: crypto.randomUUID() };
-        const response = await client.request<SavedAnalysisView>(`/api/student/tasks/${taskId}/analyses`, { method: "POST", body: JSON.stringify({ requestId: pending.current.requestId, observedVersion, config: { ...config, question: config.question.trim() } }) });
-        setRunning(false);
-        if (!response.success || !response.data) {
-            const conflict = ["VERSION_CONFLICT", "SOURCE_CONFLICT", "DICTIONARY_CONFLICT", "SAMPLING_CONFLICT"].includes(response.error?.code ?? "");
-            if (conflict) {
-                onRefreshRequired();
+        try {
+            const key = signature(config);
+            if (!pending.current || pending.current.signature !== key) pending.current = { signature: key, requestId: createRequestId() };
+            const response = await client.request<SavedAnalysisView>(`/api/student/tasks/${taskId}/analyses`, { method: "POST", body: JSON.stringify({ requestId: pending.current.requestId, observedVersion, config: { ...config, question: config.question.trim() } }) });
+            if (!response.success || !response.data) {
+                const conflict = ["VERSION_CONFLICT", "SOURCE_CONFLICT", "DICTIONARY_CONFLICT", "SAMPLING_CONFLICT"].includes(response.error?.code ?? "");
+                if (conflict) {
+                    onRefreshRequired();
+                    return;
+                }
+                setError(response.error?.message ?? "执行失败，配置已保留，可以重新执行。");
                 return;
             }
-            setError(response.error?.message ?? "执行失败，配置已保留，可以重新执行。");
-            return;
+            setRecords(current => [response.data!, ...current.filter(item => item.id !== response.data!.id)]);
+            pending.current = null;
+        } catch {
+            setError("执行失败，配置已保留，可以重新执行；若仍失败，请刷新页面或更换浏览器。");
+        } finally {
+            setRunning(false);
         }
-        setRecords(current => [response.data!, ...current.filter(item => item.id !== response.data!.id)]);
-        pending.current = null;
     };
     const toggleReference = (record: SavedAnalysisView) => {
         if (references.includes(record.id)) return onReferencesChange(references.filter(id => id !== record.id));

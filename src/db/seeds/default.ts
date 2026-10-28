@@ -60,21 +60,10 @@ import { parseTopicFieldMapping } from "../../domain/statistics/population";
 import type { TargetAnalysisMetrics } from "../../domain/experiment/analysis-types";
 import type { SamplePlanData, SamplingResultsData } from "../../domain/experiment/types";
 
-const happinessQuestionnaire = {
-    title: "青年幸福感调查（受访者视角试填）",
-    welcomeText: "您好！本调查用于了解18—35岁青年对近期生活的总体评价及相关生活感受。课堂预试答案不会进入正式估计；题目不用于心理诊断，您可以跳出任何令您不适的作答情境。",
-    endingText: "感谢您的认真作答。正式研究的主指标是0—10分生活幸福感自评，结论只描述本次合成总体，不用于个体诊断或因果判断。",
-    questions: [
-        { id: "hq1", section: "screening", type: "boolean", content: "您是否已年满18岁且不超过35岁？" },
-        { id: "hq2", section: "main", type: "numeric", content: "总体而言，您对目前生活的幸福感评价是多少分？", unit: "分", numericMin: 0, numericMax: 10, decimalPlaces: 1 },
-        { id: "hq3", section: "main", type: "scale", content: "过去一个月，您感受到来自家人、朋友或同伴的支持程度如何？", scaleMin: 1, scaleMax: 5, scaleMinLabel: "很少支持", scaleMaxLabel: "很多支持" },
-        { id: "hq4", section: "main", type: "scale", content: "您如何评价自己目前的健康状况？", scaleMin: 1, scaleMax: 5, scaleMinLabel: "很差", scaleMaxLabel: "很好" },
-        { id: "hq5", section: "main", type: "scale", content: "过去一个月，经济压力给您带来的困扰程度如何？", scaleMin: 1, scaleMax: 5, scaleMinLabel: "几乎没有", scaleMaxLabel: "非常严重" },
-        { id: "hq6", section: "main", type: "multiple", content: "目前哪些方面最影响您的生活感受？（最多选三项）", options: ["学习或工作", "收入与支出", "身体健康", "家庭关系", "朋友与社交", "居住环境"], minSelect: 1, maxSelect: 3 },
-        { id: "hq7", section: "background", type: "single", content: "您目前的主要状态是？", options: ["在校学习", "稳定就业", "灵活就业", "求职或待业"] },
-        { id: "hq8", section: "background", type: "single", content: "您目前主要居住地属于？", options: ["城区", "县镇", "农村"] },
-    ],
-};
+import { HAPPINESS_DESCRIPTION, happinessQuestionnaire, happinessFieldMapping, createHappinessDictionary } from "./happiness-topic";
+import { buildHappinessWorkbook } from "./happiness-materials";
+import { readVariableSource } from "../../server/variable-source";
+import { validateDictionary } from "../../domain/variables/dictionary";
 
 const readingQuestionnaire = {
     title: "学生课外阅读调查（受访者视角试填）",
@@ -234,20 +223,6 @@ const graduateReportContent = `<h2>研究问题</h2><p>本研究估计某综合�
 const diningReportContent = `<h2>研究问题</h2><p>本研究估计两个教学周内选定的六个观测日中，两校区四个食堂午间高峰96个服务时段的平均等待分钟数，分析单位是一个十五分钟服务时段，而不是一名学生。</p><h2>抽样设计</h2><p>按校区分层，并以抽样框中事先已知的历史同期客流量作为 PPS 规模变量，比较简单随机、系统、PPS 与分层抽样。每个抽中时段从开始后最先入队的5名就餐者（不足5名则全部）站到队尾起计时，到窗口开始受理时停止，再计算时段算术平均；无人入队时按预先约定把时段等待负担记为0并记录观察人数0。等待时间和实际开放窗口数只在抽中时段现场记录，不参与事前纳入概率计算。</p><h2>结果解释</h2><p>各服务时段在目标估计中等权，因此结果不是按就餐人数加权的个人平均等待。合成总体刻意让等待时间与时段、历史同期客流量和开放窗口数相关，用于教学比较；单次样本的均值差异不能解释为现实食堂服务措施的因果效果。</p>`;
 const greenCommuteReportContent = `<h2>研究问题</h2><p>本研究估计某高校正常教学周学生典型到校通勤记录中绿色通勤方式所占比例，绿色通勤定义为步行、自行车或公共交通。</p><h2>抽样设计</h2><p>按95%置信水平和±9个百分点规划得到样本量90。完成简单随机、系统和按住宿片区分层抽样；通勤距离描述的是个体特征而不是单位规模，因此PPS不适用。抽样框按住宿片区成组，并在组内按四个登记时段固定轮换，系统抽样间隔K=4会让不同随机起点固定抽中不同登记时段。</p><h2>结果解释</h2><p>系统样本一次更接近总体比例并不能证明设计更优，应比较不同随机起点并说明周期结构风险。结果表示通勤记录比例，不应直接解释为总体学生人数，也不能外推到其他学校或非正常教学周。</p>`;
 
-const happinessFieldMapping = {
-    identifier: "青年代号",
-    numeric: ["生活幸福感得分", "社会支持感", "自评健康", "经济压力"],
-    stratified: ["年龄组", "居住地类型", "当前状态"],
-    others: [],
-    analysisTarget: { kind: "mean" as const, field: "生活幸福感得分" },
-    studyContract: {
-        version: 1 as const,
-        researchQuestion: "示范地区18—35岁青年生活幸福感自评的平均水平是多少？",
-        targetPopulation: "示范地区调查时点所有18—35岁青年",
-        unitOfAnalysis: "一名18—35岁青年",
-        target: { kind: "mean" as const, field: "生活幸福感得分" },
-    },
-};
 const readingFieldMapping = {
     identifier: "编号",
     numeric: ["每周阅读时长"],
@@ -322,9 +297,7 @@ async function writePopulationFixtures(
     const greenCommuteTarget = resolve(process.cwd(), GREEN_COMMUTE_POPULATION_PATH.slice(1));
     await mkdir(dirname(happinessTarget), { recursive: true });
 
-    const happinessWorkbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(happinessWorkbook, XLSX.utils.json_to_sheet(happinessPopulation), "总体数据");
-    await Bun.write(happinessTarget, XLSX.write(happinessWorkbook, { type: "buffer", bookType: "xlsx" }));
+    await Bun.write(happinessTarget, buildHappinessWorkbook(happinessPopulation));
 
     for (const [target, population] of [
         [meanTarget, meanPopulation],
@@ -428,7 +401,8 @@ async function buildSamplingFixtures(
     greenCommutePopulation: Array<Record<string, unknown>>,
 ) {
     const happinessSampleSize = happinessRecommendedSize;
-    const [age1 = 0, age2 = 0, age3 = 0] = allocateIntegerShares(happinessSampleSize, [1, 1, 1]);
+    const ageCounts = ["18—22岁", "23—27岁", "28—35岁"].map(age => happinessPopulation.filter(row => row.年龄组 === age).length);
+    const [age1 = 0, age2 = 0, age3 = 0] = allocateIntegerShares(happinessSampleSize, ageCounts);
     const [college1 = 0, college2 = 0, college3 = 0] = allocateIntegerShares(readingRecommendedSize, [1 / 3, 1 / 3, 1 / 3]);
     const graduateCollegeCounts = allocateIntegerShares(graduateRecommendedSize, [0.25, 0.25, 0.25, 0.25]);
     const diningCampusCounts = allocateIntegerShares(diningRecommendedSize, [0.5, 0.5]);
@@ -442,9 +416,9 @@ async function buildSamplingFixtures(
                 stratifyBy: "年龄组",
                 seed: 202604,
                 layers: [
-                    { name: "18—22岁", ratio: 1 / 3, sampleCount: age1 },
-                    { name: "23—27岁", ratio: 1 / 3, sampleCount: age2 },
-                    { name: "28—35岁", ratio: 1 / 3, sampleCount: age3 },
+                    { name: "18—22岁", ratio: ageCounts[0]! / happinessPopulation.length, sampleCount: age1 },
+                    { name: "23—27岁", ratio: ageCounts[1]! / happinessPopulation.length, sampleCount: age2 },
+                    { name: "28—35岁", ratio: ageCounts[2]! / happinessPopulation.length, sampleCount: age3 },
                 ],
             },
             targetSampleSize: happinessSampleSize,
@@ -649,22 +623,16 @@ async function seed() {
     // Real submissions freeze target estimates for both student results and
     // teacher grading. Demo submissions must expose the same material.
     const seedTargets = {
-        happiness: seedTargetMetrics({ population: happinessPopulation, fieldMapping: happinessFieldMapping, samplingResults: happinessResults, samplePlan: happinessPlan, topicName: DOGFOOD_NAMES.topicA }),
         reading: seedTargetMetrics({ population: meanPopulation, fieldMapping: readingFieldMapping, samplingResults: meanResults, samplePlan: readingPlan, topicName: DOGFOOD_NAMES.topicB }),
         graduate: seedTargetMetrics({ population: graduatePopulation, fieldMapping: graduateFieldMapping, samplingResults: graduateResults, samplePlan: graduatePlan, topicName: DOGFOOD_NAMES.topicC }),
         dining: seedTargetMetrics({ population: diningPopulation, fieldMapping: diningFieldMapping, samplingResults: diningResults, samplePlan: diningPlan, topicName: DOGFOOD_NAMES.topicD }),
         greenCommute: seedTargetMetrics({ population: greenCommutePopulation, fieldMapping: greenCommuteFieldMapping, samplingResults: greenCommuteResults, samplePlan: greenCommutePlan, topicName: DOGFOOD_NAMES.topicE }),
     };
-    const compactHappinessResults = compactSamplingResults(happinessResults);
-    const compactHappinessChoiceResults = compactSamplingResults({
-        simple: happinessResults.simple,
-        systematic: happinessResults.systematic,
-    });
     const compactMeanResults = compactSamplingResults(meanResults);
     const compactGraduateResults = compactSamplingResults(graduateResults);
     const compactDiningResults = compactSamplingResults(diningResults);
     const compactGreenCommuteResults = compactSamplingResults(greenCommuteResults);
-    if (!compactHappinessResults || !compactHappinessChoiceResults || !compactMeanResults || !compactGraduateResults || !compactDiningResults || !compactGreenCommuteResults) {
+    if (!compactMeanResults || !compactGraduateResults || !compactDiningResults || !compactGreenCommuteResults) {
         throw new Error("Dogfood sampling fixtures could not be compacted");
     }
 
@@ -692,7 +660,7 @@ async function seed() {
     const semesterByName = Object.fromEntries(semesterRows.map((row) => [row.name, row]));
 
     // 主班承载主任务；副班承载服务时段课题；数据科学班用于演示"新建空班级"；
-    // 历史班保留上学期已截止任务与归档成绩。
+    // 历史班保留上学期已截止任务，幸福感仍不预置学生实验。
     const classRows = await db.insert(class_).values([
         { name: DOGFOOD_NAMES.mainClass, semesterId: semesterByName[DOGFOOD_NAMES.currentSemester]!.id, teacherId: teachersById.T001!.id, createdAt: day(-45), updatedAt: day(-45) },
         { name: DOGFOOD_NAMES.secondaryClass, semesterId: semesterByName[DOGFOOD_NAMES.currentSemester]!.id, teacherId: teachersById.T001!.id, createdAt: day(-42), updatedAt: day(-42) },
@@ -719,10 +687,14 @@ async function seed() {
     )))).returning();
     const studentsById = Object.fromEntries(studentRows.map((row) => [row.studentId, row]));
 
+    const happinessSource = await readVariableSource(HAPPINESS_POPULATION_PATH, happinessFieldMapping);
+    const happinessDictionary = validateDictionary(createHappinessDictionary(happinessSource.source), happinessSource.rows, happinessSource.source);
     const validTopicValues = {
         teacherId: teachersById.T001!.id,
         excelFilePath: HAPPINESS_POPULATION_PATH,
         excelRowCount: happinessPopulation.length,
+        variableDictionary: happinessDictionary,
+        variableRevision: happinessDictionary.revision,
         fieldMapping: happinessFieldMapping,
         weightConfig,
         recommendQuestions: happinessQuestionnaire.questions,
@@ -732,7 +704,7 @@ async function seed() {
         updatedAt: day(-7),
     };
     const topicRows = await db.insert(topic).values([
-        { ...validTopicValues, name: DOGFOOD_NAMES.topicA, description: "旗舰课题：估计18—35岁青年0—10分生活幸福感自评均值，要求年龄分层并禁用PPS；强调非临床诊断、非因果和合成数据边界。" },
+        { ...validTopicValues, name: DOGFOOD_NAMES.topicA, description: HAPPINESS_DESCRIPTION },
         {
             teacherId: teachersById.T001!.id,
             name: DOGFOOD_NAMES.topicB,
@@ -812,31 +784,6 @@ async function seed() {
         if (!row) throw new Error(`Seed task is missing: ${topicName} / ${className}`);
         return row;
     };
-    const aTask = taskFor(DOGFOOD_NAMES.topicA, DOGFOOD_NAMES.mainClass);
-
-    const happinessCompletedBase = {
-        currentStage: 4,
-        questionnaire: happinessQuestionnaire,
-        samplePlan: happinessPlan,
-        samplingResults: compactHappinessResults,
-        reportContent,
-        stage1CompletedAt: day(-5),
-        stage2CompletedAt: day(-4),
-        stage3CompletedAt: day(-3),
-        stage4CompletedAt: day(-2),
-    } as const;
-    const happinessSnapshot = (studentId: string, topicName: string = DOGFOOD_NAMES.topicA) => snapshot({
-        topicName,
-        studentName: studentsById[studentId]!.name,
-        populationSize: 240,
-        populationFileSha256: populationFileHashes.happiness,
-        questionnaire: happinessQuestionnaire,
-        samplePlan: happinessPlan,
-        samplingResults: compactHappinessResults,
-        reportContent,
-        samplingPolicy: happinessSamplingPolicy,
-        targetMetrics: seedTargets.happiness,
-    });
     const graduateCompletedBase = {
         currentStage: 4,
         questionnaire: graduateQuestionnaire,
@@ -908,14 +855,7 @@ async function seed() {
     });
 
     const experimentRows = await db.insert(experiment).values([
-        // 主任务：10 名主班学生精确覆盖 8 个进度桶（3 人未开始）。
-        { studentId: studentsById[DOGFOOD_ANCHORS.stage1]!.id, taskId: aTask.id, currentStage: 1, status: "in_progress", questionnaire: happinessQuestionnaire, createdAt: day(-2), updatedAt: day(-2) },
-        { studentId: studentsById.S2602!.id, taskId: aTask.id, currentStage: 2, status: "in_progress", questionnaire: happinessQuestionnaire, stage1CompletedAt: day(-2), createdAt: day(-3), updatedAt: day(-2) },
-        { studentId: studentsById.S2603!.id, taskId: aTask.id, currentStage: 3, status: "in_progress", questionnaire: happinessQuestionnaire, samplePlan: happinessPlan, stage1CompletedAt: day(-3), stage2CompletedAt: day(-2), createdAt: day(-4), updatedAt: day(-2) },
-        { ...happinessCompletedBase, samplingResults: compactHappinessChoiceResults, studentId: studentsById[DOGFOOD_ANCHORS.choicePair]!.id, taskId: aTask.id, status: "in_progress", reportContent: "<p>已按模板要求完成简单随机与系统抽样，正在比较所选方法并撰写实验报告。</p>", stage4CompletedAt: null, createdAt: day(-6), updatedAt: day(-1) },
-        { ...happinessCompletedBase, studentId: studentsById[DOGFOOD_ANCHORS.submitted]!.id, taskId: aTask.id, status: "submitted", submissionSnapshot: happinessSnapshot(DOGFOOD_ANCHORS.submitted), submittedAt: day(-1), createdAt: day(-7), updatedAt: day(-1) },
-        { ...happinessCompletedBase, studentId: studentsById[DOGFOOD_ANCHORS.graded]!.id, taskId: aTask.id, status: "graded", submissionSnapshot: happinessSnapshot(DOGFOOD_ANCHORS.graded), submittedAt: day(-2), scoreQuestionnaire: "92", scoreProcess: "88", scoreReport: "90", totalScore: "90.00", teacherComment: "主指标定义清楚，分层比较和非因果边界说明完整。", gradedByTeacherId: teachersById.T001!.id, gradedAt: day(-1), createdAt: day(-7), updatedAt: day(-1) },
-        { ...happinessCompletedBase, studentId: studentsById[DOGFOOD_ANCHORS.rejected]!.id, taskId: aTask.id, version: 2, status: "rejected", submissionSnapshot: happinessSnapshot(DOGFOOD_ANCHORS.rejected), submittedAt: day(-2), rejectReason: "请说明为什么青年个体没有适合本课题的PPS规模变量，并避免将分组差异解释为因果关系。", gradedByTeacherId: teachersById.T001!.id, gradedAt: day(-1), createdAt: day(-7), updatedAt: day(-1) },
+        // 青年幸福感不预置实验：所有班级的学生均从未开始进入完整流程。
         // 阅读子课题：PPS 不适用的终态样本（需要说明策略而不是执行失败）。
         {
             studentId: studentsById[DOGFOOD_ANCHORS.submitted]!.id,
@@ -946,14 +886,10 @@ async function seed() {
         { ...diningCompletedBase, studentId: studentsById[DOGFOOD_ANCHORS.auditedSecondary]!.id, taskId: taskFor(DOGFOOD_NAMES.topicD, DOGFOOD_NAMES.secondaryClass).id, status: "submitted", submissionSnapshot: diningSnapshot(DOGFOOD_ANCHORS.auditedSecondary), submittedAt: day(-1), createdAt: day(-4), updatedAt: day(-1) },
         { ...diningCompletedBase, studentId: studentsById.P2603!.id, taskId: taskFor(DOGFOOD_NAMES.topicD, DOGFOOD_NAMES.secondaryClass).id, status: "graded", submissionSnapshot: diningSnapshot("P2603"), submittedAt: day(-1), scoreQuestionnaire: "86", scoreProcess: "92", scoreReport: "88", totalScore: "88.60", teacherComment: "分析单位界定清楚，建议补充时段代表性说明。", gradedByTeacherId: teachersById.T001!.id, gradedAt: day(-1), createdAt: day(-4), updatedAt: day(-1) },
         { ...diningCompletedBase, studentId: studentsById.P2604!.id, taskId: taskFor(DOGFOOD_NAMES.topicD, DOGFOOD_NAMES.secondaryClass).id, version: 2, status: "rejected", submissionSnapshot: diningSnapshot("P2604"), submittedAt: day(-2), rejectReason: "请区分服务时段与就餐学生两个分析单位，并补充客流量作为规模变量的理由。", gradedByTeacherId: teachersById.T001!.id, gradedAt: day(-1), createdAt: day(-4), updatedAt: day(-1) },
-        // 历史班：上学期同一主课题的归档成绩。
-        { ...happinessCompletedBase, studentId: studentsById.H2501!.id, taskId: taskFor(DOGFOOD_NAMES.topicA, DOGFOOD_NAMES.historyClass).id, status: "graded", submissionSnapshot: happinessSnapshot("H2501"), submittedAt: day(-192), scoreQuestionnaire: "90", scoreProcess: "85", scoreReport: "88", totalScore: "87.70", teacherComment: "上学期归档样本，作为历史班级的对照数据。", gradedByTeacherId: teachersById.T003!.id, gradedAt: day(-191), createdAt: day(-198), updatedAt: day(-191) },
-        { ...happinessCompletedBase, studentId: studentsById.H2502!.id, taskId: taskFor(DOGFOOD_NAMES.topicA, DOGFOOD_NAMES.historyClass).id, status: "graded", submissionSnapshot: happinessSnapshot("H2502"), submittedAt: day(-192), scoreQuestionnaire: "84", scoreProcess: "88", scoreReport: "86", totalScore: "86.00", teacherComment: "上学期归档样本，抽样方法比较略显简略。", gradedByTeacherId: teachersById.T003!.id, gradedAt: day(-191), createdAt: day(-198), updatedAt: day(-191) },
     ]).returning({ id: experiment.id, studentId: experiment.studentId, taskId: experiment.taskId });
 
-    // 四组服务端抽样审计记录：幸福感、毕业意向和绿色通勤各三种可用方法，服务时段课题四种方法。
+    // 三组服务端抽样审计记录：毕业意向和绿色通勤各三种方法，服务时段课题四种方法。
     const auditedRuns = [
-        { studentId: DOGFOOD_ANCHORS.submitted, topicName: DOGFOOD_NAMES.topicA, className: DOGFOOD_NAMES.mainClass, results: happinessResults },
         { studentId: DOGFOOD_ANCHORS.submitted, topicName: DOGFOOD_NAMES.topicC, className: DOGFOOD_NAMES.mainClass, results: graduateResults },
         { studentId: DOGFOOD_ANCHORS.auditedSecondary, topicName: DOGFOOD_NAMES.topicD, className: DOGFOOD_NAMES.secondaryClass, results: diningResults },
         { studentId: DOGFOOD_ANCHORS.submitted, topicName: DOGFOOD_NAMES.topicE, className: DOGFOOD_NAMES.mainClass, results: greenCommuteResults },

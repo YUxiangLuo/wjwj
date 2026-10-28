@@ -26,7 +26,7 @@ export function questionSignature(question: Question): string {
     return JSON.stringify(signaturePayload(question));
 }
 
-function categories(variable: VariableDefinition) {
+export function bindingCategories(variable: VariableDefinition) {
     const missing = new Set(variable.missing.map(valueKey));
     return variable.categories.filter(category => !missing.has(valueKey(category.value)));
 }
@@ -60,12 +60,30 @@ function assertBindingShape(value: unknown, label: string): asserts value is Var
 }
 
 function assertCategoryBijection(mapping: NonNullable<Question["variableBinding"]>["mappings"][number], expectedAnswers: string[], variable: VariableDefinition, label: string) {
-    const valid = categories(variable);
+    const valid = bindingCategories(variable);
     if (mapping.answers.length !== expectedAnswers.length || valid.length !== expectedAnswers.length) throw new Error(`${label}与字段“${variable.field}”的有效类别数量不一致`);
     if (new Set(mapping.answers.map(item => item.answer)).size !== expectedAnswers.length || expectedAnswers.some(answer => !mapping.answers.some(item => item.answer === answer))) throw new Error(`${label}的答案映射不完整`);
     const values = mapping.answers.map(item => valueKey(item.value));
     const validValues = new Set(valid.map(item => valueKey(item.value)));
     if (new Set(values).size !== values.length || values.some(value => !validValues.has(value))) throw new Error(`${label}必须与全部有效类别一一对应`);
+}
+
+function assertSingleMapping(mapping: VariableBinding["mappings"][number], options: string[], variable: VariableDefinition, label: string) {
+    if (variable.kind !== "nominal" && variable.kind !== "ordinal") throw new Error(`${label}单选题只能关联名义或有序变量`);
+    if (mapping.answers.length !== options.length || new Set(mapping.answers.map(item => item.answer)).size !== options.length
+        || options.some(option => !mapping.answers.some(item => item.answer === option))) throw new Error(`${label}的答案映射不完整`);
+    const missing = new Set(variable.missing.map(valueKey));
+    const missingAnswers = mapping.answers.filter(item => missing.has(valueKey(item.value)));
+    if (missingAnswers.length > 1) throw new Error(`${label}单选题最多关联一个缺失选项`);
+    const validAnswers = mapping.answers.filter(item => !missing.has(valueKey(item.value)));
+    const validOptions = options.filter(option => !missingAnswers.some(item => item.answer === option));
+    assertCategoryBijection({ ...mapping, answers: validAnswers }, validOptions, variable, label);
+    if (variable.kind === "ordinal") {
+        const byAnswer = new Map(validAnswers.map(item => [item.answer, valueKey(item.value)]));
+        if (validOptions.some((answer, i) => byAnswer.get(answer) !== valueKey(bindingCategories(variable)[i]!.value))) {
+            throw new Error(`${label}的有效选项必须按字段类别顺序递增`);
+        }
+    }
 }
 
 export function validateQuestionBindings(questionnaire: QuestionnaireData, dictionary: VariableDictionary | null, taskId: number): void {
@@ -112,7 +130,9 @@ export function validateQuestionBindings(questionnaire: QuestionnaireData, dicti
                 const expectedAnswers = Array.from({ length: max - min + 1 }, (_, i) => String(min + i));
                 assertCategoryBijection(mapping, expectedAnswers, variable, label);
                 const byAnswer = new Map(mapping.answers.map(item => [item.answer, valueKey(item.value)]));
-                if (expectedAnswers.some((answer, i) => byAnswer.get(answer) !== valueKey(categories(variable)[i]!.value))) throw new Error(`${label}的评分答案必须按字段类别顺序递增`);
+                if (expectedAnswers.some((answer, i) => byAnswer.get(answer) !== valueKey(bindingCategories(variable)[i]!.value))) throw new Error(`${label}的评分答案必须按字段类别顺序递增`);
+            } else if (question.type === "single") {
+                assertSingleMapping(mapping, question.options ?? [], variable, label);
             } else {
                 if (variable.kind !== "nominal") throw new Error(`${label}只能关联名义变量`);
                 assertCategoryBijection(mapping, question.type === "boolean" ? ["是", "否"] : question.options ?? [], variable, label);

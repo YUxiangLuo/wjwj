@@ -14,7 +14,28 @@ type PopulationCacheEntry = {
 };
 
 const populationCache: PopulationCacheEntry[] = [];
-const populationReadsInFlight = new Map<string, Promise<Record<string, any>[]>>();
+type PopulationFileSnapshot = { buffer: ArrayBuffer; hash: string };
+const populationFileReadsInFlight = new Map<string, Promise<PopulationFileSnapshot>>();
+const populationParsesInFlight = new Map<string, Promise<Record<string, any>[]>>();
+
+async function readPopulationFile(fullPath: string) {
+    const inFlight = populationFileReadsInFlight.get(fullPath);
+    if (inFlight) return await inFlight;
+
+    // Overlapping requests share one byte snapshot, including its hash. Keep it
+    // only while reading: later requests must read again, even for cache hits,
+    // because size/mtime can remain identical after the contents are replaced.
+    const readPromise = (async () => {
+        const buffer = await Bun.file(fullPath).arrayBuffer();
+        return { buffer, hash: new Bun.CryptoHasher("sha256").update(buffer).digest("hex") };
+    })();
+    populationFileReadsInFlight.set(fullPath, readPromise);
+    try {
+        return await readPromise;
+    } finally {
+        if (populationFileReadsInFlight.get(fullPath) === readPromise) populationFileReadsInFlight.delete(fullPath);
+    }
+}
 
 function getCachedPopulation(cacheKey: string) {
     const index = populationCache.findIndex((entry) => entry.key === cacheKey);
@@ -46,7 +67,8 @@ function cachePopulation(fullPath: string, cacheKey: string, rows: Record<string
 
 export function clearPopulationDataCacheForTests() {
     populationCache.length = 0;
-    populationReadsInFlight.clear();
+    populationFileReadsInFlight.clear();
+    populationParsesInFlight.clear();
 }
 
 export async function readPopulationData(filePath: string, fieldMapping?: unknown): Promise<Record<string, any>[]> {
@@ -59,18 +81,17 @@ export async function readPopulationData(filePath: string, fieldMapping?: unknow
     }
 
     try {
-        const file = Bun.file(fullPath);
         const numericFields = parseTopicFieldMapping(fieldMapping)?.numeric ?? [];
-        const cacheKey = `${fullPath}:${file.size}:${file.lastModified}:${numericFields.join("\u001f")}`;
+        const { buffer, hash } = await readPopulationFile(fullPath);
+        const cacheKey = JSON.stringify([fullPath, hash, numericFields]);
         const cached = getCachedPopulation(cacheKey);
         if (cached) return cached;
 
-        const inFlight = populationReadsInFlight.get(cacheKey);
+        const inFlight = populationParsesInFlight.get(cacheKey);
         if (inFlight) return await inFlight;
 
         const readPromise = (async () => {
-            const fileBuffer = await file.arrayBuffer();
-            const parsed = await parseSpreadsheetFile(fileBuffer, filePath, {
+            const parsed = await parseSpreadsheetFile(buffer, fullPath, {
                 includeColumnValues: false,
                 numericFields,
             });
@@ -79,17 +100,17 @@ export async function readPopulationData(filePath: string, fieldMapping?: unknow
             for (const row of parsed.rows) Object.freeze(row);
             Object.freeze(parsed.rows);
             const estimatedBytes = Math.max(
-                file.size * 4,
+                buffer.byteLength * 4,
                 parsed.rowCount * Math.max(1, parsed.colCount) * 64,
             );
             cachePopulation(fullPath, cacheKey, parsed.rows, estimatedBytes);
             return parsed.rows;
         })();
-        populationReadsInFlight.set(cacheKey, readPromise);
+        populationParsesInFlight.set(cacheKey, readPromise);
         try {
             return await readPromise;
         } finally {
-            populationReadsInFlight.delete(cacheKey);
+            if (populationParsesInFlight.get(cacheKey) === readPromise) populationParsesInFlight.delete(cacheKey);
         }
     } catch (error) {
         console.error("Failed to read population data:", error);
