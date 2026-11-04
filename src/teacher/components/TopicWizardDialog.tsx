@@ -714,7 +714,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     <summary data-testid="teacher-variable-dictionary-toggle" className="cursor-pointer text-label font-medium text-foreground focus-visible:outline-2 focus-visible:outline-ring">
                                         变量字典（按需配置，单独保存）{dictionaryState.dirty ? " · 未保存" : ""}
                                     </summary>
-                                    <p className="mt-2 text-meta text-muted-foreground">核对字段标签、单位、类别顺序和缺失编码；不随“保存并继续”一起保存。</p>
+                                    <p className="mt-2 text-meta text-muted-foreground">核对字段标签、单位、类别顺序和缺失值处理规则；不随“保存并继续”一起保存。</p>
                                     <div className="mt-4"><VariableDictionaryEditor key={`${editingTopicId}-${dictionaryLoadVersion}`} topicId={editingTopicId} readOnly={isPublishedTopic} disabled={mappingNeedsSave} onStateChange={setDictionaryState} /></div>
                                 </details>}
                             </div>

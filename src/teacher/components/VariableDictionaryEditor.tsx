@@ -8,10 +8,29 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowDown, ArrowUp } from "lucide-react";
 
 function scalarText(value: RawValue) { return JSON.stringify(value); }
-function parseScalar(value: string): RawValue {
-    const parsed: unknown = JSON.parse(value);
-    if (parsed === null || typeof parsed === "string" || typeof parsed === "boolean" || (typeof parsed === "number" && Number.isFinite(parsed))) return parsed;
-    throw new Error("请输入 JSON 标量（文本需带双引号）");
+function parseMissingValues(input: string): RawValue[] {
+    const parsed: unknown = JSON.parse(input);
+    if (!Array.isArray(parsed)) throw new Error("缺失编码必须是 JSON 数组");
+    return parsed.map((value: unknown) => {
+        if (value === null || typeof value === "string" || typeof value === "boolean" || (typeof value === "number" && Number.isFinite(value))) return value;
+        throw new Error("缺失编码仅支持 null、文本、有限数值或布尔值；文本需带双引号");
+    });
+}
+
+function missingValuesDescription(input: string) {
+    try {
+        const missing = parseMissingValues(input);
+        if (!missing.length) return "未指定缺失值";
+        return missing.map(value => {
+            if (value === null) return "空白单元格";
+            if (value === "") return "空文本";
+            if (typeof value === "string") return `文本 ${scalarText(value)}`;
+            if (typeof value === "number") return `数值 ${value}`;
+            return value ? "逻辑值 true（真）" : "逻辑值 false（假）";
+        }).join("、") + "按缺失值处理";
+    } catch {
+        return "格式有误，请展开高级设置检查";
+    }
 }
 
 export function VariableDictionaryEditor({ topicId, readOnly = false, disabled = false, onStateChange }: { topicId: number; readOnly?: boolean; disabled?: boolean; onStateChange?: (state: { dirty: boolean; busy: boolean }) => void }) {
@@ -60,9 +79,7 @@ export function VariableDictionaryEditor({ topicId, readOnly = false, disabled =
         setSaving(true); setError(null);
         try {
             const variables = draft.variables.map(variable => {
-                const list: unknown = JSON.parse(missingInputs[variable.field] ?? "[]");
-                if (!Array.isArray(list)) throw new Error(`${variable.field} 的缺失编码必须是 JSON 标量数组`);
-                const missing = list.map(value => parseScalar(JSON.stringify(value)));
+                const missing = parseMissingValues(missingInputs[variable.field] ?? "[]");
                 const keys = new Set(missing.map(valueKey));
                 const restored = variable.kind === "nominal" || variable.kind === "ordinal"
                     ? variable.missing.filter(value => !keys.has(valueKey(value)) && !variable.categories.some(category => valueKey(category.value) === valueKey(value)))
@@ -84,9 +101,10 @@ export function VariableDictionaryEditor({ topicId, readOnly = false, disabled =
     const locked = readOnly || snapshot?.locked || saving || disabled;
     return <div className="space-y-4">
         <div className="flex items-center justify-between gap-3">
-            <div><h3 className="text-section-title">变量字典</h3><p className="text-label text-muted-foreground">逐字段确认标签、单位、测量类型、类别顺序与缺失编码。</p></div>
+            <div><h3 className="text-section-title">变量字典</h3><p className="text-label text-muted-foreground">{readOnly || snapshot?.locked ? "查看各字段的标签、单位、测量类型、类别顺序与缺失值处理规则。" : "逐字段确认标签、单位、测量类型、类别顺序与缺失值处理规则。"}</p></div>
             {!readOnly && !snapshot?.locked && <Button onClick={save} disabled={locked}>{saving ? "保存中…" : "明确确认并保存"}</Button>}
         </div>
+        <p className="text-label text-muted-foreground">标记为缺失的值不作为该变量的有效数据。以下是处理规则，不代表数据中一定存在缺失。</p>
         {error && <div role="alert" className="rounded-surface border border-destructive-border bg-destructive-muted p-3 text-label text-destructive">{error} <Button data-testid="teacher-dictionary-reload" variant="outline" className="ml-2" disabled={saving || disabled} onClick={reload}>重新载入</Button></div>}
         {draft.variables.map((variable, index) => <section key={variable.field} className="rounded-surface border border-border bg-background p-4 space-y-3">
             <div className="text-subheading font-medium">{variable.field}</div>
@@ -102,7 +120,17 @@ export function VariableDictionaryEditor({ topicId, readOnly = false, disabled =
                 <Input disabled={locked} maxLength={120} aria-label={`${variable.field} 类别标签 ${categoryIndex + 1}`} value={category.label} onChange={e => update(index, { categories: variable.categories.map((item, i) => i === categoryIndex ? { ...item, label: e.target.value } : item) })} />
                 <div className="flex gap-1"><Button type="button" variant="outline" size="icon" disabled={locked || categoryIndex === 0} aria-label="类别上移" onClick={() => { const categories = [...variable.categories]; [categories[categoryIndex - 1], categories[categoryIndex]] = [categories[categoryIndex]!, categories[categoryIndex - 1]!]; update(index, { categories }); }}><ArrowUp /></Button><Button type="button" variant="outline" size="icon" disabled={locked || categoryIndex === variable.categories.length - 1} aria-label="类别下移" onClick={() => { const categories = [...variable.categories]; [categories[categoryIndex], categories[categoryIndex + 1]] = [categories[categoryIndex + 1]!, categories[categoryIndex]!]; update(index, { categories }); }}><ArrowDown /></Button></div>
             </div>)}</div>}
-            <div><label className="text-label font-medium" htmlFor={`missing-${index}`}>缺失编码（JSON 标量数组）</label><Input id={`missing-${index}`} disabled={locked} value={missingInputs[variable.field] ?? "[]"} onChange={e => setMissingInputs(current => ({ ...current, [variable.field]: e.target.value }))} /></div>
+            <div className="space-y-2">
+                <p className="text-label" data-testid={`teacher-missing-summary-${index}`}><span className="font-medium">缺失值处理：</span><span className="whitespace-pre-wrap break-words">{missingValuesDescription(missingInputs[variable.field] ?? "[]")}</span></p>
+                {!readOnly && !snapshot?.locked && <details className="rounded-control border border-border p-3">
+                    <summary data-testid={`teacher-missing-settings-${index}`} className="cursor-pointer text-label text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring">高级设置：自定义缺失值</summary>
+                    <div className="mt-3 space-y-2">
+                        <label className="text-label font-medium" htmlFor={`missing-${index}`}>缺失值编码（高级）</label>
+                        <Input id={`missing-${index}`} aria-describedby={`missing-help-${index}`} disabled={locked} value={missingInputs[variable.field] ?? "[]"} onChange={e => setMissingInputs(current => ({ ...current, [variable.field]: e.target.value }))} />
+                        <p id={`missing-help-${index}`} className="text-meta text-muted-foreground">仅在数据使用特殊编码表示缺失时修改。请填写 JSON 数组，例如 [null, "NA", -999]；null 表示空白单元格，文本需带双引号。数值 0 只有列入这里才会按缺失值处理。</p>
+                    </div>
+                </details>}
+            </div>
         </section>)}
     </div>;
 }

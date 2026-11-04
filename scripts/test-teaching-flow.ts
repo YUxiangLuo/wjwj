@@ -352,10 +352,16 @@ try {
     await activate(teacher, '[data-testid="teacher-topic-next"]');
     assert(await evaluate(teacher, 'document.querySelector("[data-testid=teacher-variable-dictionary]").open'), "Blocked mapping save must reopen the unsaved dictionary");
     assert(await evaluate(teacher, 'document.querySelector("[data-testid=teacher-topic-save-error]")?.textContent.includes("变量字典有未保存的修改") && document.querySelector("[data-testid=teacher-topic-step-3]").getAttribute("aria-current")==="step"'), "Mapping save must not discard dictionary edits");
+    assert(await evaluate(teacher, '!document.querySelector("[data-testid=teacher-missing-settings-0]").parentElement.open'), "Advanced missing-value settings should be collapsed by default");
+    await evaluate(teacher, 'document.querySelector("[data-testid=teacher-missing-settings-0]").scrollIntoView({block:"center",behavior:"instant"})');
+    await eventually(() => evaluate(teacher, '(() => { const summary=document.querySelector("[data-testid=teacher-missing-settings-0]"), r=summary.getBoundingClientRect(), content=document.querySelector("[data-testid=teacher-topic-scroll-content]").getBoundingClientRect(); return r.top>=content.top && r.bottom<=content.bottom && summary.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)); })()'), "Advanced missing-value settings must be visible above the fixed footer");
+    await browser(teacher, "click", '[data-testid="teacher-missing-settings-0"]');
+    await eventually(() => evaluate(teacher, 'document.querySelector("[data-testid=teacher-missing-settings-0]").parentElement.open'), "Advanced missing-value settings must open before editing");
     const missingBefore = await evaluate<string>(teacher, 'document.querySelector("#missing-0").value');
     await browser(teacher, "fill", "#missing-0", "[broken");
+    await eventually(() => evaluate(teacher, 'document.querySelector("[data-testid=teacher-missing-summary-0]").textContent.includes("格式有误")'), "Missing-value description must reflect the invalid draft before saving");
     await namedButton(teacher, "明确确认并保存");
-    await eventually(() => evaluate(teacher, 'document.querySelector("[role=alert]")?.textContent.includes("请填写 JSON 数组")'), "Invalid missing values lack actionable Chinese feedback");
+    await eventually(() => evaluate(teacher, '[...document.querySelectorAll("[role=alert]")].some(alert => alert.textContent.includes("请填写 JSON 数组"))'), "Invalid missing values lack actionable Chinese feedback");
     assert(await evaluate(teacher, `document.querySelector("#missing-0").value === "[broken" && document.querySelector(${JSON.stringify(`input[aria-label="${continuousVariable.field} 标签"]`)}).value === ${JSON.stringify(dictionaryLabel)}`), "Validation failure lost dictionary inputs");
     assert((await api<DictionarySnapshot>(teacher, `/api/teacher/topics/${copied.id}/variables`)).revision === dictionaryBefore.revision, "Invalid JSON changed the saved dictionary");
     await browser(teacher, "fill", "#missing-0", missingBefore);
