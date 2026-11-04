@@ -39,7 +39,6 @@ export function Dashboard() {
         { key: "teachers", label: "教师", value: stats?.teacherCount ?? null },
         { key: "classes", label: "班级", value: stats?.classCount ?? null },
         { key: "students", label: "学生", value: stats?.studentCount ?? null },
-        { key: "pending", label: "待批改", value: stats?.pendingItems ?? null },
     ];
 
     return (
@@ -58,7 +57,7 @@ export function Dashboard() {
                 </div>
             )}
 
-            <dl aria-label="管理概览" className="grid grid-cols-[1.5fr_repeat(4,minmax(0,1fr))] gap-5 border-b border-border pb-5">
+            <dl aria-label="管理概览" className="grid grid-cols-[1.5fr_repeat(3,minmax(0,1fr))] gap-5 border-b border-border pb-5">
                 {cards.map(({ key, label, value }) => (
                     <div key={key} className="min-w-0">
                         <dt className="text-label text-muted-foreground">{label}</dt>
