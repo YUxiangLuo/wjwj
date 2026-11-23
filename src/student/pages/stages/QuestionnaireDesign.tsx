@@ -62,6 +62,7 @@ interface QuestionnaireStepValidation {
     endingText: boolean;
     questionCount: boolean;
     optionCount: boolean;
+    targetBindingPassed?: boolean;
     previewCompleted: boolean;
 }
 
@@ -70,7 +71,7 @@ export function canAdvanceQuestionnaireStep(step: 1 | 2 | 3 | 4, validation: Que
         case 1:
             return validation.title && validation.welcomeText;
         case 2:
-            return validation.questionCount && validation.optionCount;
+            return validation.questionCount && validation.optionCount && (validation.targetBindingPassed ?? true);
         case 3:
             return validation.endingText;
         case 4:
@@ -331,8 +332,13 @@ export function QuestionnaireDesign() {
                 duplicate = true;
                 return prev;
             }
-            const baseQuestion: Question = { ...rq, id: generateId(), recommendSourceId: rq.id };
-            if (dictionary && experiment?.taskId && !baseQuestion.variableBinding) {
+            const baseQuestion: Question = {
+                ...rq,
+                id: generateId(),
+                recommendSourceId: rq.id,
+                variableBinding: undefined,
+            };
+            if (dictionary && experiment?.taskId) {
                 const autoBound = autoBindQuestionnaireVariables({
                     questionnaire: { title, welcomeText, endingText, questions: [...prev, baseQuestion] },
                     dictionary,
@@ -348,14 +354,24 @@ export function QuestionnaireDesign() {
         }
     };
 
+    const allRecommendedImported = useMemo(
+        () => recommendQuestions.length > 0 && recommendQuestions.every((rq) => questions.some((q) => q.recommendSourceId === rq.id)),
+        [recommendQuestions, questions],
+    );
+
     const handleUseAllRecommend = () => {
-        if (recommendQuestions.length === 0) return;
+        if (recommendQuestions.length === 0 || allRecommendedImported) return;
         setQuestions((prev) => {
             const existingSourceIds = new Set(prev.map((q) => q.recommendSourceId).filter(Boolean));
             const additions = recommendQuestions
                 .filter((rq) => !existingSourceIds.has(rq.id))
                 .slice(0, Math.max(0, 50 - prev.length))
-                .map((rq) => ({ ...rq, id: generateId(), recommendSourceId: rq.id }));
+                .map((rq) => ({
+                    ...rq,
+                    id: generateId(),
+                    recommendSourceId: rq.id,
+                    variableBinding: undefined,
+                }));
             const merged = [...prev, ...additions];
             if (dictionary && experiment?.taskId) {
                 return autoBindQuestionnaireVariables({
@@ -427,6 +443,7 @@ export function QuestionnaireDesign() {
         endingText: endingTextLength >= 20 && endingTextLength <= 1000,
         questionCount: questions.length >= 5 && questions.length <= 50,
         optionCount: invalidOptionQuestions.length === 0,
+        targetBindingPassed,
         previewCompleted: isPreviewValid,
     };
 
@@ -717,12 +734,12 @@ export function QuestionnaireDesign() {
                                                     size="sm"
                                                     variant="outline"
                                                     onClick={handleUseAllRecommend}
-                                                    disabled={questions.length >= 50}
+                                                    disabled={questions.length >= 50 || allRecommendedImported}
                                                     data-testid="student-questionnaire-use-all-recommend"
                                                     className="w-full border-primary-border bg-primary-muted text-primary hover:bg-primary-muted hover:text-primary"
                                                 >
                                                     <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                                                    一键导入全部推荐题并绑定
+                                                    {allRecommendedImported ? "全部推荐题已在问卷中" : "一键导入全部推荐题并绑定"}
                                                 </Button>
                                             </div>
                                         )}
@@ -949,9 +966,14 @@ export function QuestionnaireDesign() {
                                             </span>
                                         </div>
                                         {!targetBindingPassed && (
-                                            <Button type="button" size="sm" variant="outline" onClick={handleAutoBindVariables} className="h-7 px-2 text-meta">
-                                                智能绑定
-                                            </Button>
+                                            <div className="flex shrink-0 items-center gap-1.5">
+                                                <Button type="button" size="sm" variant="outline" onClick={handleAutoBindVariables} className="h-7 px-2 text-meta">
+                                                    智能绑定
+                                                </Button>
+                                                <Button type="button" size="sm" variant="ghost" onClick={() => setStep(2)} className="h-7 px-2 text-meta">
+                                                    去题目列表
+                                                </Button>
+                                            </div>
                                         )}
                                     </div>
                                 )}

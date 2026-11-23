@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ClipboardCheck, Layers, ShieldCheck, Sparkles } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,11 +7,12 @@ import { FieldworkFunnelChart } from "@/components/charts/FieldworkFunnelChart";
 import { StratumComparisonChart } from "@/components/charts/StratumComparisonChart";
 import { WaveDeltaScorecard, type WaveSnapshotMetric } from "@/components/charts/WaveDeltaScorecard";
 import type { ExperimentWaveView } from "@/domain/experiment/types";
-import type {
-    AdjustmentActionKey,
-    AdjustmentIssueKey,
-    AdjustmentPlan,
-    MethodFieldworkDiagnostics,
+import {
+    resolveCleaningConfig,
+    type AdjustmentActionKey,
+    type AdjustmentIssueKey,
+    type AdjustmentPlan,
+    type MethodFieldworkDiagnostics,
 } from "@/domain/fieldwork";
 import type { ResolvedAnalysisTarget } from "@/lib/analysis-target";
 import { SAMPLING_METHODS, type SamplingMethod } from "@/lib/sampling-policy";
@@ -54,11 +55,12 @@ export function buildWaveSnapshotMetric(
 ): WaveSnapshotMetric | null {
     const method = (preferredMethod && wave.diagnostics?.[preferredMethod] ? preferredMethod : pickPrimaryWaveMethod(wave));
     if (!method) return null;
-    const diag = wave.diagnostics[method];
+    const diag = wave.diagnostics?.[method];
     if (!diag) return null;
-    const cleanedEst = diag.estimates.find((e) => e.key === "cleaned_design");
+    const cleanedEst = (diag.estimates ?? []).find((e) => e.key === "cleaned_design");
     const isPct = unitLabel === "%";
     const scale = isPct ? 100 : 1;
+    const rawSe = cleanedEst?.standardError;
     return {
         waveNumber: wave.waveNumber,
         label: wave.label,
@@ -68,7 +70,7 @@ export function buildWaveSnapshotMetric(
         effectiveRatePct: diag.effectiveRatePct,
         invalidCleanedCount: Math.max(0, diag.completedRawCount - diag.cleanedValidCount),
         maxStratumBiasPp: diag.maxStratumBiasPp,
-        primaryStandardError: cleanedEst?.standardError != null ? cleanedEst.standardError * scale : null,
+        primaryStandardError: rawSe != null && Number.isFinite(rawSe) ? rawSe * scale : null,
         unitLabel,
     };
 }
@@ -78,7 +80,7 @@ function renderWaveMethodDiagnostics(
     targetKind?: "mean" | "proportion",
     unitLabel?: string,
 ) {
-    const isPct = targetKind === "proportion";
+    const isPct = targetKind === "proportion" || unitLabel === "%";
     return (
         <div className="space-y-4">
             <FieldworkFunnelChart
@@ -116,21 +118,21 @@ function renderWaveMethodDiagnostics(
                 totalEstimatedCost={diag.totalEstimatedCost}
             />
 
-            {diag.stratumField && diag.strata.length > 0 && (
+            {diag.stratumField && (diag.strata ?? []).length > 0 && (
                 <StratumComparisonChart
                     stratumField={diag.stratumField}
                     rows={diag.strata}
                 />
             )}
 
-            {diag.estimates.length > 0 && (
+            {(diag.estimates ?? []).length > 0 && (
                 <ConfidenceIntervalPlot
                     title="多口径点估计与置信区间森林对比图"
                     subtitle="同屏检验废卷清洗前后、客群无回答权重校准后与完整入样基准的估计差异"
                     populationValue={diag.populationTruth}
                     isPercentage={isPct}
                     unit={unitLabel ?? ""}
-                    rows={diag.estimates.map((item) => ({
+                    rows={(diag.estimates ?? []).map((item) => ({
                         key: item.key,
                         label: item.label,
                         sublabel: `${item.description}（n=${item.sampleSize}）`,
@@ -170,7 +172,17 @@ export function WaveLoopSnapshot({
     const firstMetric = firstWave ? buildWaveSnapshotMetric(firstWave, "simple", effectiveUnit) ?? buildWaveSnapshotMetric(firstWave, undefined, effectiveUnit) : null;
     const finalMetric = finalWave ? buildWaveSnapshotMetric(finalWave, undefined, effectiveUnit) : null;
 
-    const [selectedWave, setSelectedWave] = useState<string>(() => String(finalWave?.waveNumber ?? firstWave?.waveNumber ?? 1));
+    const defaultWaveKey = String(finalWave?.waveNumber ?? firstWave?.waveNumber ?? 1);
+    const [selectedWave, setSelectedWave] = useState<string>(defaultWaveKey);
+    const effectiveSelectedWave = waves.some((w) => String(w.waveNumber) === selectedWave)
+        ? selectedWave
+        : defaultWaveKey;
+
+    useEffect(() => {
+        if (waves.length > 0 && !waves.some((w) => String(w.waveNumber) === selectedWave)) {
+            setSelectedWave(defaultWaveKey);
+        }
+    }, [waves, selectedWave, defaultWaveKey]);
 
     return (
         <div className="space-y-5" data-testid="wave-loop-snapshot">
@@ -191,7 +203,7 @@ export function WaveLoopSnapshot({
                         <div className="min-w-0 space-y-2">
                             <p className="text-meta font-semibold text-muted-foreground">首轮试投识别的核心问题</p>
                             <div className="flex flex-wrap gap-1.5">
-                                {adjustmentPlan.identifiedIssues.map((issue) => (
+                                {(adjustmentPlan.identifiedIssues ?? []).map((issue) => (
                                     <StatusBadge key={issue} intent="warning" className="whitespace-normal text-left">
                                         {ADJUSTMENT_ISSUE_LABELS[issue] ?? issue}
                                     </StatusBadge>
@@ -201,7 +213,7 @@ export function WaveLoopSnapshot({
                         <div className="min-w-0 space-y-2">
                             <p className="text-meta font-semibold text-muted-foreground">正式轮采取的调优动作</p>
                             <div className="flex flex-wrap gap-1.5">
-                                {adjustmentPlan.plannedActions.map((action) => (
+                                {(adjustmentPlan.plannedActions ?? []).map((action) => (
                                     <StatusBadge key={action} intent="success" className="whitespace-normal text-left">
                                         {ADJUSTMENT_ACTION_LABELS[action] ?? action}
                                     </StatusBadge>
@@ -223,7 +235,7 @@ export function WaveLoopSnapshot({
                     暂无多波次问卷发放与质检记录
                 </div>
             ) : (
-                <Tabs value={selectedWave} onValueChange={setSelectedWave} className="space-y-4">
+                <Tabs value={effectiveSelectedWave} onValueChange={setSelectedWave} className="space-y-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                             <Layers className="h-4 w-4 text-primary" />
@@ -240,6 +252,7 @@ export function WaveLoopSnapshot({
 
                     {waves.map((wave) => {
                         const diagMethods = SAMPLING_METHODS.filter((m) => Boolean(wave.diagnostics?.[m]));
+                        const cleaning = resolveCleaningConfig(wave.cleaningConfig);
                         return (
                             <TabsContent key={wave.waveNumber} value={String(wave.waveNumber)} className="space-y-4">
                                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-surface border border-border bg-muted px-4 py-3 text-meta">
@@ -263,8 +276,8 @@ export function WaveLoopSnapshot({
                                         <ShieldCheck className="h-4 w-4 text-success" />
                                         <span className="text-muted-foreground">
                                             质检规则：
-                                            {wave.cleaningConfig.removeSpeeders ? "剔除闪电卷" : "保留闪电卷"} ·{" "}
-                                            {wave.cleaningConfig.removeStraightliners ? "剔除直线卷" : "保留直线卷"}
+                                            {cleaning.removeSpeeders ? "剔除闪电卷" : "保留闪电卷"} ·{" "}
+                                            {cleaning.removeStraightliners ? "剔除直线卷" : "保留直线卷"}
                                         </span>
                                     </div>
                                 </div>
@@ -275,7 +288,7 @@ export function WaveLoopSnapshot({
                                     </div>
                                 ) : diagMethods.length === 1 ? (
                                     renderWaveMethodDiagnostics(
-                                        wave.diagnostics[diagMethods[0]!]!,
+                                        wave.diagnostics![diagMethods[0]!]!,
                                         analysisTarget?.target.kind,
                                         unitLabel,
                                     )
@@ -292,7 +305,7 @@ export function WaveLoopSnapshot({
                                         {diagMethods.map((m) => (
                                             <TabsContent key={m} value={m}>
                                                 {renderWaveMethodDiagnostics(
-                                                    wave.diagnostics[m]!,
+                                                    wave.diagnostics![m]!,
                                                     analysisTarget?.target.kind,
                                                     unitLabel,
                                                 )}

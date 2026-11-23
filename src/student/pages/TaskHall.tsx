@@ -138,23 +138,25 @@ interface TaskCardProps {
 
 function TaskCard({ task }: TaskCardProps) {
     const navigate = useNavigate();
-    const expired = isDeadlinePassed(task.deadline) && (task.status === "not_started" || task.status === "in_progress");
+    const notOpenYet = isTaskNotOpenYet(task.publishedAt);
+    const expired = isDeadlinePassed(task.deadline) && ACTIVE_TASK_STATUSES.includes(task.status);
     const status = expired
         ? { label: "已截止", intent: "neutral" as StatusBadgeIntent }
-        : statusConfig[task.status];
-    const notOpenYet = isTaskNotOpenYet(task.publishedAt);
+        : notOpenYet && ACTIVE_TASK_STATUSES.includes(task.status)
+            ? { label: "未开放", intent: "info" as StatusBadgeIntent }
+            : statusConfig[task.status];
     const colorSeed = Math.imul(task.topicId, 0x9e3779b1) >>> 0;
     const colorTone = Math.floor((colorSeed / 0x100000000) * 6);
 
     const getActionButton = () => {
-        if (notOpenYet) {
+        if (notOpenYet && ACTIVE_TASK_STATUSES.includes(task.status)) {
             return { text: "未开放", variant: "outline" as const };
+        }
+        if (expired) {
+            return { text: "已截止", variant: "outline" as const };
         }
         switch (task.status) {
             case "not_started":
-                if (isDeadlinePassed(task.deadline)) {
-                    return { text: "已截止", variant: "outline" as const };
-                }
                 return { text: "开始立项调研", variant: "default" as const };
             case "in_progress":
                 return { text: "继续闭环实验", variant: "default" as const };
@@ -353,7 +355,7 @@ export function TaskHall() {
         const ongoing = tasks.filter(isTaskOngoing).length;
         const submitted = tasks.filter((t) => t.status === "submitted").length;
         const gradedTasks = tasks.filter((t) => t.status === "graded");
-        const scored = gradedTasks.filter((t) => typeof t.score === "number");
+        const scored = gradedTasks.filter((t) => typeof t.score === "number" && Number.isFinite(t.score));
         const avgScore = scored.length > 0
             ? (scored.reduce((acc, item) => acc + (item.score ?? 0), 0) / scored.length).toFixed(1)
             : "—";
@@ -390,7 +392,7 @@ export function TaskHall() {
             </div>
 
             {tasks.length > 0 && (
-                <div className="grid grid-cols-4 gap-4" data-testid="student-hall-kpis">
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,13rem),1fr))] gap-4" data-testid="student-hall-kpis">
                     <KpiStatCard
                         label="可执行调研课题"
                         value={hallMetrics.actionable}
@@ -434,7 +436,10 @@ export function TaskHall() {
                                 <Sparkles className="h-3.5 w-3.5" />
                                 推荐优先推进
                             </StatusBadge>
-                            {spotlightTask.status === "in_progress" && spotlightTask.currentStage >= 1 && spotlightTask.currentStage <= 5 && (
+                            {spotlightTask.status === "rejected" && (
+                                <StatusBadge intent="destructive">退回重调</StatusBadge>
+                            )}
+                            {(spotlightTask.status === "in_progress" || spotlightTask.status === "rejected") && spotlightTask.currentStage >= 1 && spotlightTask.currentStage <= 5 && (
                                 <span className="text-meta font-medium text-primary">
                                     当前位于第 {spotlightTask.currentStage} 阶段 · {stageNames[spotlightTask.currentStage - 1]}
                                 </span>
@@ -462,7 +467,7 @@ export function TaskHall() {
             )}
 
             {/* Filter Header */}
-            <div className="flex flex-row items-center justify-between gap-4 border-b border-border pb-4">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
                 <h2 className="text-section-title font-semibold text-foreground flex items-center gap-2">
                     <LayoutDashboard className="w-5 h-5 text-primary" />
                     全部商业统计课题

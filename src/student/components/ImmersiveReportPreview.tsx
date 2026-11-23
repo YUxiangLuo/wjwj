@@ -326,6 +326,14 @@ function QuestionnaireSection({ questionnaire }: { questionnaire: ExperimentData
                                         {q.scaleMinLabel && ` (${q.scaleMinLabel} ~ ${q.scaleMaxLabel})`}
                                     </span>
                                 )}
+                                {q.type === "numeric" && (
+                                    <span className="inline-block text-meta text-muted-foreground bg-muted px-2 py-1 rounded-control">
+                                        数值题{q.unit ? `（${q.unit}）` : ""} · 小数位 {q.decimalPlaces ?? 0}
+                                        {(q.numericMin !== undefined || q.numericMax !== undefined)
+                                            ? ` · 范围 [${q.numericMin ?? "-∞"}, ${q.numericMax ?? "+∞"}]`
+                                            : ""}
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -358,29 +366,25 @@ function SamplingSection({
 
     const advancedSourceLabel = getAdvancedPlanSourceLabel(samplePlan?.advancedPlanSource);
 
-    const methodCards: { key: MethodKey; label: string; color: string; data: { completed?: boolean; unavailable?: boolean; sampleCount?: number; seed?: number; interval?: number; kValue?: number; randomStart?: number; stratifyBy?: string; sizeField?: string; layers?: Array<{ name: string; sampleCount: number }> } | undefined }[] = [
+    const methodCards: { key: MethodKey; label: string; data: { completed?: boolean; unavailable?: boolean; sampleCount?: number; seed?: number; interval?: number; kValue?: number; randomStart?: number; stratifyBy?: string; sizeField?: string; layers?: Array<{ name: string; sampleCount: number }> } | undefined }[] = [
         {
             key: "simple" as const,
             label: "简单随机抽样",
-            color: "indigo",
             data: samplingResults.simple,
         },
         {
             key: "systematic" as const,
             label: "系统抽样",
-            color: "teal",
             data: samplingResults.systematic,
         },
         {
             key: "pps" as const,
             label: "PPS抽样",
-            color: "purple",
             data: samplingResults.pps,
         },
         {
             key: "stratified" as const,
             label: "分层抽样",
-            color: "amber",
             data: samplingResults.stratified,
         },
     ].filter((method) => samplingPolicy.methods[method.key] !== "disabled");

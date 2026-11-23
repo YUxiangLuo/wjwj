@@ -85,6 +85,15 @@ function QuestionPreview({ question, index }: { question: Question; index: numbe
                                 )}
                             </div>
                         )}
+                        {question.type === "numeric" && (
+                            <div className="text-meta text-muted-foreground bg-card inline-flex flex-wrap items-center gap-2 px-3 py-1.5 rounded-control border border-input">
+                                <span>数值题{question.unit ? `（单位：${question.unit}）` : ""}</span>
+                                <span>小数位：{question.decimalPlaces ?? 0}</span>
+                                {(question.numericMin !== undefined || question.numericMax !== undefined) && (
+                                    <span>范围：[{question.numericMin ?? "-∞"}, {question.numericMax ?? "+∞"}]</span>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
         </div>
@@ -270,10 +279,10 @@ export function SubmissionPreview() {
                             </TabsTrigger>
                         </TabsList>
 
-                        <TabsContent value="report" className="mt-6 space-y-4 animate-in fade-in-50 slide-in-from-bottom-2">
+                        <TabsContent value="report" className="mt-6 space-y-4">
                             <div className="min-h-[300px] rounded-surface bg-muted p-6">
                                 <div className="border-b border-border py-4 first:pt-0">
-                                    <h2 className="text-body font-semibold text-foreground mb-3">阶段一：问卷预试</h2>
+                                    <h2 className="text-body font-semibold text-foreground mb-3">阶段一：商业问卷设计</h2>
                                     <div className="text-label text-foreground space-y-1">
                                         <p>问卷标题：{questionnaire?.title || "未填写"}</p>
                                         <p>题目数量：{questionnaireQuestions.length} 题</p>
@@ -281,13 +290,28 @@ export function SubmissionPreview() {
                                             <p key={question.id ?? index} className="text-muted-foreground">第 {index + 1} 题：{question.content}</p>
                                         ))}
                                         {questionnaireQuestions.length > 3 && (
-                                            <p className="text-meta text-muted-foreground">其余题目见「问卷参考」。</p>
+                                            <p className="text-meta text-muted-foreground">其余题目见「正式轮问卷核对」。</p>
                                         )}
                                     </div>
                                 </div>
 
+                                {(experiment.waves?.length ?? 0) > 0 && (
+                                    <div className="border-b border-border py-4">
+                                        <h2 className="text-body font-semibold text-foreground mb-3">阶段二至三：首轮试投、回收质检与调优决策</h2>
+                                        <div className="text-label text-foreground space-y-1">
+                                            <p>已完成波次数：共 {experiment.waves!.length} 轮（含首轮试投及正式调优投放）</p>
+                                            {experiment.adjustmentPlan && (
+                                                <p className="text-muted-foreground">
+                                                    调优依据摘要：{experiment.adjustmentPlan.rationale}
+                                                </p>
+                                            )}
+                                            <p className="text-meta text-muted-foreground">完整漏斗、客群结构偏差与森林对比图见「试投质检与二轮调优轨迹」。</p>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="border-b border-border py-4">
-                                    <h2 className="text-body font-semibold text-foreground mb-3">阶段二：样本量规划</h2>
+                                    <h2 className="text-body font-semibold text-foreground mb-3">阶段四：正式轮样本量规划</h2>
                                     {samplePlan ? (
                                         <div className="text-label text-foreground space-y-1">
                                             <p>估计类型：{getEstimationTypeLabel(samplePlan.estimationType)}</p>
@@ -300,7 +324,7 @@ export function SubmissionPreview() {
                                                 {formatMarginOfError(samplePlan.marginOfError, samplePlan.estimationType)}
                                             </p>
                                             {samplePlan.estimationType === "mean" && samplePlan.populationVariance != null && (
-                                                <p>总体方差 σ²：{formatSamplePlanNumber(samplePlan.populationVariance)}</p>
+                                                <p>规划代入方差：{formatSamplePlanNumber(samplePlan.populationVariance)}</p>
                                             )}
                                             <p>建议样本量：{samplePlan.recommendedSize}</p>
                                             <p>最终样本量：{samplePlan.finalSampleSize}</p>
@@ -316,7 +340,7 @@ export function SubmissionPreview() {
                                 </div>
 
                                 <div className="border-b border-border py-4">
-                                    <h2 className="text-body font-semibold text-foreground mb-3">阶段三：抽样执行</h2>
+                                    <h2 className="text-body font-semibold text-foreground mb-3">阶段四：正式轮抽样与投放执行</h2>
                                     <div className="text-label text-foreground space-y-1">
                                         {samplingMethodRows.map((row) => (
                                             <p key={row.method} data-testid={`student-preview-sampling-${row.method}`}>{row.label}：{row.status}</p>
@@ -327,7 +351,7 @@ export function SubmissionPreview() {
                                 <div className="pt-4">
                                     <h2 className="text-body font-semibold text-foreground mb-3 flex items-center gap-2">
                                         <FileText className="w-4 h-4 text-success" />
-                                        阶段四：分析报告
+                                        阶段五：商务分析与决策报告
                                     </h2>
                                     {reportContent ? (
                                         <RichTextContent
@@ -352,7 +376,7 @@ export function SubmissionPreview() {
                             </TabsContent>
                         )}
 
-                        <TabsContent value="questionnaire" className="mt-6 space-y-4 animate-in fade-in-50 slide-in-from-bottom-2">
+                        <TabsContent value="questionnaire" className="mt-6 space-y-4">
                             <div className="rounded-surface bg-muted p-6">
                                 {!questionnaire ? (
                                     <div className="text-label text-muted-foreground italic">暂无问卷内容</div>

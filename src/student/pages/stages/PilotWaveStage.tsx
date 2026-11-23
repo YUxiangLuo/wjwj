@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
     AlertCircle, ArrowRight, Calculator, CheckCircle2, ChevronLeft,
@@ -34,6 +34,18 @@ const METHOD_LABELS: Record<MethodKey, string> = {
     systematic: "系统抽样",
 };
 
+function parseStrictNumber(raw: string): number {
+    const trimmed = raw.trim();
+    if (!trimmed) return Number.NaN;
+    return Number(trimmed);
+}
+
+function parseStrictInteger(raw: string): number {
+    const trimmed = raw.trim();
+    if (!trimmed || !/^-?\d+$/.test(trimmed)) return Number.NaN;
+    return Number.parseInt(trimmed, 10);
+}
+
 export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
     const {
         experiment,
@@ -68,33 +80,46 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
     const [ppsEligibleFields, setPpsEligibleFields] = useState<string[]>([]);
     const [stratumNumericStats, setStratumNumericStats] = useState<Record<string, Record<string, Record<string, { mean: number; stdDev: number }>>>>({});
 
-    // Pilot Plan Form State
+    // Pilot Plan Form State (string-backed to preserve raw user input & catch 0 / negative / NaN / empty)
     const [confidenceLevel, setConfidenceLevel] = useState<string>(savedPlan?.confidenceLevel ?? "95");
-    const [marginOfError, setMarginOfError] = useState<number>(
-        savedPlan?.marginOfError ?? (estimationType === "mean" ? 3 : 8),
+    const [marginOfErrorInput, setMarginOfErrorInput] = useState<string>(
+        String(savedPlan?.marginOfError ?? (estimationType === "mean" ? 3 : 8)),
     );
     const [varianceSource, setVarianceSource] = useState<"prior_estimate" | "population">(
         savedPlan?.varianceSource === "population" ? "population" : "prior_estimate",
     );
-    const [priorStdDev, setPriorStdDev] = useState<number>(() => {
+    const priorStdDevEditedRef = useRef(false);
+    const [priorStdDevInput, setPriorStdDevInput] = useState<string>(() => {
         if (savedPlan?.populationVariance && savedPlan.populationVariance > 0) {
-            return Number(Math.sqrt(savedPlan.populationVariance).toFixed(2));
+            return String(Number(Math.sqrt(savedPlan.populationVariance).toFixed(2)));
         }
-        return 12;
+        return "12";
     });
-    const [designEffect, setDesignEffect] = useState<number>(savedPlan?.designEffect ?? 1);
-    const [nonResponsePct, setNonResponsePct] = useState<number>(
-        savedPlan ? Math.round(savedPlan.nonResponseRate * 100) : 10,
+    const [designEffectInput, setDesignEffectInput] = useState<string>(String(savedPlan?.designEffect ?? 1));
+    const [nonResponsePctInput, setNonResponsePctInput] = useState<string>(
+        String(savedPlan ? Math.round(savedPlan.nonResponseRate * 100) : 10),
     );
-    const [customFinalSize, setCustomFinalSize] = useState<number | null>(savedPlan?.finalSampleSize ?? null);
+    const [customFinalSizeInput, setCustomFinalSizeInput] = useState<string | null>(
+        savedPlan?.finalSampleSize != null ? String(savedPlan.finalSampleSize) : null,
+    );
     const [savingPlan, setSavingPlan] = useState(false);
+
+    const marginOfError = parseStrictNumber(marginOfErrorInput);
+    const priorStdDev = parseStrictNumber(priorStdDevInput);
+    const designEffect = parseStrictNumber(designEffectInput);
+    const nonResponsePct = parseStrictNumber(nonResponsePctInput);
 
     // Sampling & Dispatch State
     const enabledMethods = useMemo(
         () => SAMPLING_METHODS.filter((m) => samplingPolicy.methods[m] !== "disabled"),
         [samplingPolicy],
     );
-    const [activeMethod, setActiveMethod] = useState<MethodKey>("simple");
+    const [activeMethod, setActiveMethod] = useState<MethodKey>(() => enabledMethods[0] ?? "simple");
+    useEffect(() => {
+        if (enabledMethods.length > 0 && !enabledMethods.includes(activeMethod)) {
+            setActiveMethod(enabledMethods[0]!);
+        }
+    }, [enabledMethods, activeMethod]);
     const [executingMethod, setExecutingMethod] = useState<MethodKey | null>(null);
     const [executionTime, setExecutionTime] = useState<number | null>(null);
     const [ppsSizeField, setPpsSizeField] = useState<string>(waveSampling?.pps?.sizeField ?? "");
@@ -130,8 +155,8 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                 const sigma2 = stat ? finitePopulationS2ToSigma2(stat.variance, stat.count) : null;
                 if (sigma2 != null && sigma2 > 0) {
                     setPopulationVariance(sigma2);
-                    if (!savedPlan?.populationVariance) {
-                        setPriorStdDev(Number(Math.max(1, Math.sqrt(sigma2) * 0.8).toFixed(1)));
+                    if (!savedPlan?.populationVariance && !priorStdDevEditedRef.current) {
+                        setPriorStdDevInput(String(Number(Math.max(1, Math.sqrt(sigma2) * 0.8).toFixed(1))));
                     }
                 }
             }
@@ -148,35 +173,71 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
         };
     }, [taskId, statsReloadKey, estimationType, analysisTarget?.field, experiment?.analysisTarget?.inferred]);
 
-    const activeVariance = useMemo(() => {
+    const activeVariance = useMemo<number | null | undefined>(() => {
         if (estimationType !== "mean") return undefined;
-        if (varianceSource === "population" && populationVariance && populationVariance > 0) {
-            return populationVariance;
+        if (varianceSource === "population") {
+            return populationVariance && populationVariance > 0 ? populationVariance : null;
         }
-        return priorStdDev > 0 ? Number((priorStdDev * priorStdDev).toFixed(4)) : 100;
+        if (!Number.isFinite(priorStdDev) || priorStdDev <= 0) return null;
+        const squared = Number((priorStdDev * priorStdDev).toFixed(4));
+        return Number.isFinite(squared) && squared > 0 ? squared : null;
     }, [estimationType, varianceSource, populationVariance, priorStdDev]);
+
+    const safeNrrFraction = Number.isFinite(nonResponsePct)
+        ? Math.min(0.5, Math.max(0, nonResponsePct / 100))
+        : 0.1;
 
     const stepDetails = useMemo(() => calculateSampleSizeStepDetails({
         estimationType,
         confidenceLevel,
-        marginOfError: marginOfError > 0 ? marginOfError : 1,
+        marginOfError: Number.isFinite(marginOfError) && marginOfError > 0 ? marginOfError : 1,
         populationSize: N,
-        populationVariance: activeVariance,
-        designEffect: designEffect > 0 ? designEffect : 1,
-        nonResponseRate: Math.min(0.5, Math.max(0, nonResponsePct / 100)),
-    }), [estimationType, confidenceLevel, marginOfError, N, activeVariance, designEffect, nonResponsePct]);
+        populationVariance: activeVariance ?? 100,
+        designEffect: Number.isFinite(designEffect) && designEffect >= 0.5 && designEffect <= 5 ? designEffect : 1,
+        nonResponseRate: safeNrrFraction,
+    }), [estimationType, confidenceLevel, marginOfError, N, activeVariance, designEffect, safeNrrFraction]);
 
     const bounds = useMemo(() => getFinalSampleSizeBounds(N, 1), [N]);
     const recommendedSize = Math.max(bounds.min, Math.min(bounds.max, stepDetails.n3 || bounds.min));
-    const effectiveFinalSize = customFinalSize ?? recommendedSize;
-    const isFinalSizeValid = Number.isInteger(effectiveFinalSize)
+    const effectiveFinalSize = customFinalSizeInput === null
+        ? recommendedSize
+        : parseStrictInteger(customFinalSizeInput);
+    const isFinalSizeValid = Number.isSafeInteger(effectiveFinalSize)
         && effectiveFinalSize >= bounds.min
         && effectiveFinalSize <= bounds.max;
 
+    const planValidationError = useMemo<string | null>(() => {
+        if (!Number.isFinite(marginOfError) || marginOfError <= 0) {
+            return "请输入大于 0 的试投允许误差限";
+        }
+        if (estimationType === "proportion" && marginOfError > 50) {
+            return "比例估计允许误差限 E 不能超过 50%";
+        }
+        if (!Number.isFinite(nonResponsePct) || nonResponsePct < 0 || nonResponsePct > 50) {
+            return "先验预估无回答率需在 0%–50% 之间";
+        }
+        if (estimationType === "mean") {
+            if (varianceSource === "prior_estimate" && (activeVariance == null || activeVariance <= 0)) {
+                return "经验先验标准差 σ₀ 必须为大于 0 的有限数值";
+            }
+            if (varianceSource === "population" && (activeVariance == null || activeVariance <= 0)) {
+                return statsLoading ? null : "当前抽样框总体方差不可用，请切换为经验先验标准差";
+            }
+        }
+        if (!Number.isFinite(designEffect) || designEffect < 0.5 || designEffect > 5) {
+            return "设计效应 deff 需在 0.5–5 之间";
+        }
+        if (!isFinalSizeValid) {
+            return `首轮试投发放量需为 ${bounds.min}–${bounds.max.toLocaleString()} 之间的整数`;
+        }
+        return null;
+    }, [marginOfError, estimationType, nonResponsePct, varianceSource, activeVariance, statsLoading, designEffect, isFinalSizeValid, bounds]);
+
     // Reference Pilot Cost Calculation
-    const expectedCompletes = Math.round(effectiveFinalSize * (1 - Math.min(0.5, Math.max(0, nonResponsePct / 100))));
+    const displaySizeForCost = isFinalSizeValid ? effectiveFinalSize : recommendedSize;
+    const expectedCompletes = Math.round(displaySizeForCost * (1 - safeNrrFraction));
     const estimatedPilotCost =
-        effectiveFinalSize * fieldworkConfig.contactCostPerUnit
+        displaySizeForCost * fieldworkConfig.contactCostPerUnit
         + expectedCompletes * fieldworkConfig.incentiveCostPerComplete;
     const estimatedUnitCost = expectedCompletes > 0 ? estimatedPilotCost / expectedCompletes : null;
 
@@ -189,15 +250,14 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
             varianceSource,
         } : {}),
         designEffect,
-        nonResponseRate: Math.min(0.5, Math.max(0, nonResponsePct / 100)),
+        nonResponseRate: Math.min(0.5, Math.max(0, Math.round(nonResponsePct) / 100)),
         recommendedSize,
         finalSampleSize: effectiveFinalSize,
     }), [estimationType, confidenceLevel, marginOfError, activeVariance, varianceSource, designEffect, nonResponsePct, recommendedSize, effectiveFinalSize]);
 
     const handleSavePilotPlan = async () => {
-        if (!taskId || !experiment || refreshRequired || !isFinalSizeValid) return;
-        if (marginOfError <= 0 || (estimationType === "proportion" && marginOfError > 50)) {
-            toast.error("请输入有效的允许误差限");
+        if (!taskId || !experiment || refreshRequired || planValidationError !== null) {
+            if (planValidationError) toast.error(planValidationError);
             return;
         }
         setSavingPlan(true);
@@ -206,7 +266,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
             const res = await experimentApi.saveWavePlan(taskId, experiment.version, payload);
             if (res.success && res.data) {
                 updateExperiment(res.data);
-                setCustomFinalSize(res.data.samplePlan?.finalSampleSize ?? payload.finalSampleSize);
+                setCustomFinalSizeInput(String(res.data.samplePlan?.finalSampleSize ?? payload.finalSampleSize));
                 toast.success("首轮试投样本量方案已保存");
             } else if (res.error?.code === "VERSION_CONFLICT") {
                 requireRefresh();
@@ -288,12 +348,31 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
         }
     };
 
-    const dispatchedDiagMethod = useMemo(
-        () => completedPilotMethods.find((m) => Boolean(wave1?.diagnostics?.[m])) ?? null,
+    const allPilotMethodsDispatched = useMemo(
+        () => completedPilotMethods.length > 0 && completedPilotMethods.every((m) => Boolean(wave1?.diagnostics?.[m])),
         [completedPilotMethods, wave1?.diagnostics],
     );
+    const hasStalePilotSampling = completedPilotMethods.length > 0 && !allPilotMethodsDispatched;
+    const dispatchedDiagMethod = useMemo(() => {
+        if (completedPilotMethods.includes(activeMethod) && wave1?.diagnostics?.[activeMethod]) {
+            return activeMethod;
+        }
+        return completedPilotMethods.find((m) => Boolean(wave1?.diagnostics?.[m])) ?? null;
+    }, [activeMethod, completedPilotMethods, wave1?.diagnostics]);
     const pilotDiag = dispatchedDiagMethod ? wave1?.diagnostics?.[dispatchedDiagMethod] ?? null : null;
-    const canCompletePilot = hasSavedPlan && completedPilotMethods.length > 0 && Boolean(pilotDiag);
+    const isPlanDirty = useMemo(() => {
+        if (!savedPlan || planValidationError !== null) return false;
+        return savedPlan.finalSampleSize !== effectiveFinalSize
+            || savedPlan.confidenceLevel !== confidenceLevel
+            || Math.abs(savedPlan.marginOfError - marginOfError) > 1e-6
+            || Math.abs(savedPlan.designEffect - designEffect) > 1e-6
+            || Math.round(savedPlan.nonResponseRate * 100) !== Math.round(nonResponsePct)
+            || (estimationType === "mean" && (
+                (savedPlan.varianceSource ?? "prior_estimate") !== varianceSource
+                || (activeVariance != null && savedPlan.populationVariance != null && Math.abs(savedPlan.populationVariance - activeVariance) > 1e-3)
+            ));
+    }, [savedPlan, planValidationError, effectiveFinalSize, confidenceLevel, marginOfError, designEffect, nonResponsePct, estimationType, varianceSource, activeVariance]);
+    const canCompletePilot = hasSavedPlan && planValidationError === null && !isPlanDirty && allPilotMethodsDispatched;
 
     const handleCompleteStage = async () => {
         if (!canCompletePilot || !savedPlan || completing || refreshRequired) return;
@@ -319,7 +398,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                 </div>
             )}
 
-            <div className="grid grid-cols-[minmax(0,1fr)_21rem] items-start gap-5">
+            <div className="grid grid-cols-[minmax(0,1fr)_19.5rem] items-start gap-5">
                 {/* Left Studio Canvas: 3 Sequential Pilot Steps */}
                 <div className="min-w-0 space-y-5">
                     {/* Step 1: Pilot Sample Size & Reference Cost */}
@@ -335,8 +414,10 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                         正式大规模调研前，通常缺乏真实的拒访率与客群方差参数。请基于经验假设确定首轮试投发放规模。
                                     </CardDescription>
                                 </div>
-                                {hasSavedPlan ? (
+                                {hasSavedPlan && !isPlanDirty ? (
                                     <StatusBadge intent="success">已锁定试投量 {planSavedSize} 份</StatusBadge>
+                                ) : hasSavedPlan && isPlanDirty ? (
+                                    <StatusBadge intent="warning">参数已改待重新保存</StatusBadge>
                                 ) : (
                                     <StatusBadge intent="warning">待保存试投方案</StatusBadge>
                                 )}
@@ -350,7 +431,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                         value={confidenceLevel}
                                         onValueChange={(v) => {
                                             setConfidenceLevel(v);
-                                            setCustomFinalSize(null);
+                                            setCustomFinalSizeInput(null);
                                         }}
                                     >
                                         <SelectTrigger aria-label="选择试投置信水平" className="bg-background">
@@ -373,10 +454,11 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                         type="number"
                                         min={0.1}
                                         step={estimationType === "mean" ? 0.5 : 1}
-                                        value={marginOfError}
+                                        value={marginOfErrorInput}
+                                        aria-invalid={!Number.isFinite(marginOfError) || marginOfError <= 0 || (estimationType === "proportion" && marginOfError > 50) || undefined}
                                         onChange={(e) => {
-                                            setMarginOfError(Number(e.target.value));
-                                            setCustomFinalSize(null);
+                                            setMarginOfErrorInput(e.target.value);
+                                            setCustomFinalSizeInput(null);
                                         }}
                                         className="bg-background tabular-nums"
                                     />
@@ -392,10 +474,11 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                         min={0}
                                         max={50}
                                         step={1}
-                                        value={nonResponsePct}
+                                        value={nonResponsePctInput}
+                                        aria-invalid={!Number.isFinite(nonResponsePct) || nonResponsePct < 0 || nonResponsePct > 50 || undefined}
                                         onChange={(e) => {
-                                            setNonResponsePct(Math.min(50, Math.max(0, Math.round(Number(e.target.value) || 0))));
-                                            setCustomFinalSize(null);
+                                            setNonResponsePctInput(e.target.value);
+                                            setCustomFinalSizeInput(null);
                                         }}
                                         className="bg-background tabular-nums"
                                     />
@@ -410,7 +493,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                             value={varianceSource}
                                             onValueChange={(v) => {
                                                 setVarianceSource(v as "prior_estimate" | "population");
-                                                setCustomFinalSize(null);
+                                                setCustomFinalSizeInput(null);
                                             }}
                                         >
                                             <SelectTrigger aria-label="选择方差来源" className="bg-card">
@@ -428,17 +511,19 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                     {varianceSource === "prior_estimate" ? (
                                         <div className="space-y-2">
                                             <Label htmlFor="pilot-prior-sd" className="text-foreground">
-                                                经验先验标准差 σ₀（方差 = {formatStatistic(priorStdDev * priorStdDev, 1)}）
+                                                经验先验标准差 σ₀（方差 = {Number.isFinite(priorStdDev) && priorStdDev > 0 ? formatStatistic(priorStdDev * priorStdDev, 1) : "—"}）
                                             </Label>
                                             <Input
                                                 id="pilot-prior-sd"
                                                 type="number"
                                                 min={0.1}
                                                 step={0.5}
-                                                value={priorStdDev}
+                                                value={priorStdDevInput}
+                                                aria-invalid={!Number.isFinite(priorStdDev) || priorStdDev <= 0 || undefined}
                                                 onChange={(e) => {
-                                                    setPriorStdDev(Math.max(0.1, Number(e.target.value) || 1));
-                                                    setCustomFinalSize(null);
+                                                    priorStdDevEditedRef.current = true;
+                                                    setPriorStdDevInput(e.target.value);
+                                                    setCustomFinalSizeInput(null);
                                                 }}
                                                 className="bg-card tabular-nums"
                                             />
@@ -456,13 +541,13 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
 
                             <div className="grid grid-cols-2 gap-4 rounded-surface border border-border bg-muted p-4">
                                 <div className="space-y-2">
-                                    <div className="flex items-center justify-between text-meta text-muted-foreground">
+                                    <div className="flex flex-wrap items-center justify-between gap-2 text-meta text-muted-foreground">
                                         <span>公式四步推导（{stepDetails.formulaLabel}）</span>
                                         <span className="font-mono tabular-nums text-foreground">
                                             n₀={stepDetails.n0} → FPC={stepDetails.n2} → 推荐邀约 {recommendedSize} 份
                                         </span>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
                                         <Label htmlFor="pilot-final-size" className="shrink-0 text-label font-semibold text-foreground">
                                             首轮试投发放量：
                                         </Label>
@@ -471,8 +556,9 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                             type="number"
                                             min={bounds.min}
                                             max={bounds.max}
-                                            value={effectiveFinalSize}
-                                            onChange={(e) => setCustomFinalSize(Math.round(Number(e.target.value) || 0))}
+                                            value={customFinalSizeInput ?? String(recommendedSize)}
+                                            aria-invalid={!isFinalSizeValid || undefined}
+                                            onChange={(e) => setCustomFinalSizeInput(e.target.value)}
                                             data-testid="student-pilot-final-size"
                                             className="h-9 w-28 bg-card font-mono font-bold tabular-nums"
                                         />
@@ -480,7 +566,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                             type="button"
                                             variant="outline"
                                             size="sm"
-                                            onClick={() => setCustomFinalSize(recommendedSize)}
+                                            onClick={() => setCustomFinalSizeInput(null)}
                                             className="bg-card text-meta"
                                         >
                                             设为推荐值 {recommendedSize}
@@ -500,13 +586,24 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                         <span className="tabular-nums">¥{formatStatistic(estimatedPilotCost, 0)}</span>
                                     </div>
                                     <p className="mt-1 text-meta text-muted-foreground tabular-nums">
-                                        触达 ¥{fieldworkConfig.contactCostPerUnit}×{effectiveFinalSize} + 预期完答礼金 ¥{fieldworkConfig.incentiveCostPerComplete}×{expectedCompletes}
+                                        触达 ¥{fieldworkConfig.contactCostPerUnit}×{displaySizeForCost} + 预期完答礼金 ¥{fieldworkConfig.incentiveCostPerComplete}×{expectedCompletes}
                                         {estimatedUnitCost !== null ? `（单份预期有效成本 ¥${formatStatistic(estimatedUnitCost, 1)}）` : ""}
                                     </p>
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-between gap-3 pt-1">
+                            {planValidationError && (
+                                <p role="alert" data-testid="student-pilot-plan-error" className="text-meta font-medium text-destructive">
+                                    {planValidationError}
+                                </p>
+                            )}
+                            {!planValidationError && isPlanDirty && (
+                                <p role="status" className="text-meta text-warning">
+                                    您已修改首轮样本量参数，请点击右侧「更新首轮样本量方案」使新方案生效。
+                                </p>
+                            )}
+
+                            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
                                 <div className="flex items-center gap-2 text-meta text-muted-foreground">
                                     <Label htmlFor="pilot-deff" className="text-meta">设计效应 deff：</Label>
                                     <Input
@@ -515,10 +612,11 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                         step={0.1}
                                         min={0.5}
                                         max={5}
-                                        value={designEffect}
+                                        value={designEffectInput}
+                                        aria-invalid={!Number.isFinite(designEffect) || designEffect < 0.5 || designEffect > 5 || undefined}
                                         onChange={(e) => {
-                                            setDesignEffect(Math.max(0.5, Number(e.target.value) || 1));
-                                            setCustomFinalSize(null);
+                                            setDesignEffectInput(e.target.value);
+                                            setCustomFinalSizeInput(null);
                                         }}
                                         className="h-8 w-20 bg-background text-center font-mono text-meta"
                                     />
@@ -526,7 +624,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                 <Button
                                     type="button"
                                     onClick={() => void handleSavePilotPlan()}
-                                    disabled={savingPlan || !isFinalSizeValid || statsLoading || refreshRequired}
+                                    disabled={savingPlan || planValidationError !== null || statsLoading || refreshRequired}
                                     data-testid="student-pilot-save-plan"
                                 >
                                     {savingPlan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
@@ -688,7 +786,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
 
                     {/* Step 3: Virtual Questionnaire Dispatch */}
                     <Card
-                        className={`rounded-surface border ${pilotDiag ? "border-success-border bg-card" : "border-primary-border bg-card"}`}
+                        className={`rounded-surface border ${allPilotMethodsDispatched ? "border-success-border bg-card" : "border-primary-border bg-card"}`}
                         data-testid="student-pilot-dispatch-card"
                     >
                         <CardHeader className="border-b border-border pb-4">
@@ -702,8 +800,10 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                         系统将按您设计的阶段一问卷题量、隐私说明、变量绑定和数值范围，模拟受访者的真实触达、拒访、弃答及敷衍作答行为。
                                     </CardDescription>
                                 </div>
-                                {pilotDiag ? (
+                                {allPilotMethodsDispatched ? (
                                     <StatusBadge intent="success">首轮问卷已回收</StatusBadge>
+                                ) : hasStalePilotSampling ? (
+                                    <StatusBadge intent="warning">名单已更新待重发</StatusBadge>
                                 ) : (
                                     <StatusBadge intent="primary">待发放回收</StatusBadge>
                                 )}
@@ -728,18 +828,29 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                     type="button"
                                     size="lg"
                                     onClick={() => void handleDispatchPilot()}
-                                    disabled={completedPilotMethods.length === 0 || dispatching || refreshRequired}
+                                    disabled={completedPilotMethods.length === 0 || isPlanDirty || planValidationError !== null || dispatching || refreshRequired}
                                     data-testid="student-pilot-dispatch"
                                 >
                                     {dispatching ? (
                                         <><Loader2 className="mr-2 h-4 w-4 animate-spin" />正在发放并回收答卷…</>
                                     ) : (
-                                        <><Sparkles className="mr-2 h-4 w-4" />{pilotDiag ? "重新模拟发放试投问卷" : "发放首轮试投问卷"}</>
+                                        <><Sparkles className="mr-2 h-4 w-4" />{allPilotMethodsDispatched ? "重新模拟发放试投问卷" : "发放首轮试投问卷"}</>
                                     )}
                                 </Button>
                             </div>
 
-                            {pilotDiag && (
+                            {hasStalePilotSampling && (
+                                <div
+                                    role="status"
+                                    data-testid="student-pilot-stale-dispatch-warning"
+                                    className="flex items-start gap-2.5 rounded-control border border-warning-border bg-warning-muted px-4 py-3 text-meta text-warning"
+                                >
+                                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                                    <span>您已重新抽取或新增试投受访者名单，请点击上方「发放首轮试投问卷」同步最新名单的回收数据后再进入质检诊断阶段。</span>
+                                </div>
+                            )}
+
+                            {pilotDiag && !hasStalePilotSampling && (
                                 <div className="space-y-4" data-testid="student-pilot-dispatch-result">
                                     <FieldworkFunnelChart
                                         targetRequiredCount={savedPlan ? Math.round(savedPlan.finalSampleSize * (1 - savedPlan.nonResponseRate)) : undefined}
@@ -807,7 +918,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                             <CardDescription>完成三步闭环即可进入阶段三质检台</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-3 pt-4 text-label">
-                            <div className={`flex items-center gap-2.5 rounded-control border p-3 ${hasSavedPlan ? "border-success-border bg-success-muted text-success" : "border-border bg-background text-muted-foreground"}`}>
+                            <div className={`flex items-center gap-2.5 rounded-control border p-3 ${hasSavedPlan && !isPlanDirty && !planValidationError ? "border-success-border bg-success-muted text-success" : "border-border bg-background text-muted-foreground"}`}>
                                 <CheckCircle2 className="h-4 w-4 shrink-0" />
                                 <span>1. 保存试投样本量规划{hasSavedPlan ? `（${planSavedSize} 份）` : ""}</span>
                             </div>
@@ -815,9 +926,11 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                 <CheckCircle2 className="h-4 w-4 shrink-0" />
                                 <span>2. 抽取首轮受访者名单{completedPilotMethods.length > 0 ? "（已就绪）" : ""}</span>
                             </div>
-                            <div className={`flex items-center gap-2.5 rounded-control border p-3 ${pilotDiag ? "border-success-border bg-success-muted text-success" : "border-border bg-background text-muted-foreground"}`}>
+                            <div className={`flex items-center gap-2.5 rounded-control border p-3 ${allPilotMethodsDispatched ? "border-success-border bg-success-muted text-success" : hasStalePilotSampling ? "border-warning-border bg-warning-muted text-warning" : "border-border bg-background text-muted-foreground"}`}>
                                 <CheckCircle2 className="h-4 w-4 shrink-0" />
-                                <span>3. 发放问卷并回收试投答卷{pilotDiag ? `（有效 ${pilotDiag.cleanedValidCount} 份）` : ""}</span>
+                                <span>
+                                    3. {hasStalePilotSampling ? "名单已更新，需重新发放问卷" : `发放问卷并回收试投答卷${pilotDiag && allPilotMethodsDispatched ? `（有效 ${pilotDiag.cleanedValidCount} 份）` : ""}`}
+                                </span>
                             </div>
                         </CardContent>
                     </Card>

@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, GripVertical } from "lucide-react";
 import type { Question, QuestionSection, QuestionType } from "@/lib/questionnaire-types";
@@ -250,20 +249,30 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                     {!isEditing && (
                         <div className="space-y-2">
                             <Label className="text-muted-foreground">题目类型</Label>
-                            <Tabs value={type} onValueChange={(v) => setType(v as QuestionType)}>
-                                <TabsList className="grid grid-cols-5 w-full bg-background border border-border p-1" data-testid="student-question-type-list">
-                                    {(Object.keys(questionTypeLabels) as QuestionType[]).map((t) => (
-                                        <TabsTrigger
-                                            key={t}
-                                            value={t}
-                                            data-testid={`student-question-type-${t}`}
-                                            className="text-meta data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-muted-foreground data-[state=inactive]:hover:text-foreground"
-                                        >
-                                            {questionTypeLabels[t]}
-                                        </TabsTrigger>
-                                    ))}
-                                </TabsList>
-                            </Tabs>
+                            <div
+                                role="radiogroup"
+                                aria-label="题目类型"
+                                className="grid w-full grid-cols-5 gap-1 rounded-control border border-border bg-background p-1"
+                                data-testid="student-question-type-list"
+                            >
+                                {(Object.keys(questionTypeLabels) as QuestionType[]).map((t) => (
+                                    <button
+                                        key={t}
+                                        type="button"
+                                        role="radio"
+                                        aria-checked={type === t}
+                                        data-testid={`student-question-type-${t}`}
+                                        onClick={() => setType(t)}
+                                        className={`rounded-control px-2 py-1.5 text-meta font-medium ${
+                                            type === t
+                                                ? "bg-primary text-primary-foreground"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        }`}
+                                    >
+                                        {questionTypeLabels[t]}
+                                    </button>
+                                ))}
+                            </div>
                             <p className="text-meta text-muted-foreground pl-1">
                                 {questionTypeDescriptions[type]}
                             </p>

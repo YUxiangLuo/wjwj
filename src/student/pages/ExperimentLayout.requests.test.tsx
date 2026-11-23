@@ -65,10 +65,10 @@ test("successful reopen retry clears the visible network error and opens the req
         };
         await reopen();
         const errorMessage = "网络连接失败，请检查网络后重试";
-        await waitFor(() => expect(view.getByText(errorMessage)).toBeTruthy());
+        await waitFor(() => expect(view.queryByText(errorMessage) !== null).toBe(true));
         await reopen();
-        await waitFor(() => expect(view.getByRole("button", { name: /当前阶段 1：商业问卷设计/ })).toBeTruthy());
-        await waitFor(() => expect(view.queryByText(errorMessage)).toBeNull());
+        await waitFor(() => expect(view.queryByRole("button", { name: /当前阶段 1：商业问卷设计/ }) !== null).toBe(true));
+        await waitFor(() => expect(view.queryByText(errorMessage) === null).toBe(true));
         expect(attempts).toBe(2);
         expect(view.getAllByRole("heading", { name: "商业问卷设计" }).length).toBeGreaterThan(0);
     } finally { cleanup(); globalThis.fetch = originalFetch; dom.restore(); }
@@ -154,5 +154,59 @@ test("exiting through the actual exit link during report save is not undone by i
         await finish();
         expect(view.getByTestId("location").textContent).toBe("/task/1");
         expect(view.queryByText("提交预览") === null).toBe(true);
+    } finally { cleanup(); globalThis.fetch = originalFetch; dom.restore(); }
+});
+
+test("inspecting Stage 2 shows Wave 1 snapshot and double-clicking reopen dispatches only once", async () => {
+    const dom = installDomGlobals("http://localhost/student/task/1/experiment");
+    const originalFetch = globalThis.fetch;
+    const pendingReopen = Promise.withResolvers<Response>();
+    let reopenCalls = 0;
+    try {
+        globalThis.fetch = (async (input: RequestInfo | URL) => {
+            const url = String(input);
+            if (url.endsWith("/reopen")) {
+                reopenCalls += 1;
+                return pendingReopen.promise;
+            }
+            if (url.endsWith("/experiment")) {
+                return Response.json({
+                    success: true,
+                    data: experiment(1, {
+                        waves: [
+                            {
+                                waveNumber: 1,
+                                kind: "pilot",
+                                label: "第 1 轮 · 首轮试投",
+                                questionnaire: { title: "首轮冻结问卷", welcomeText: "欢迎", endingText: "感谢", questions: [] },
+                                samplePlan: { estimationType: "mean", confidenceLevel: "95", marginOfError: 3, populationVariance: 100, designEffect: 1, nonResponseRate: 0.1, recommendedSize: 35, finalSampleSize: 35 },
+                                samplingResults: { simple: { completed: true, sampleCount: 35, data: [] } },
+                                completedAt: "2026-03-01T00:00:00Z",
+                            },
+                        ],
+                    }),
+                });
+            }
+            if (url.endsWith("/variables")) return Response.json({ success: true, data: { dictionary: null } });
+            if (url.endsWith("/analysis-metrics")) return Response.json({ success: true, data: { numericFields: [], categoricalFields: [], numeric: {}, categorical: {} } });
+            if (url.endsWith("/tasks/1")) return Response.json({ success: true, data: { id: 1, topicId: 3, name: "试投检视实验", status: "in_progress", currentStage: 5, publishedAt: "2026-03-01T00:00:00Z", deadline: "2099-03-01T00:00:00Z", populationSize: 1000, attachments: [], recommendQuestions: [] } });
+            throw new Error(`Unexpected request: ${url}`);
+        }) as typeof fetch;
+
+        const view = render(<MemoryRouter initialEntries={["/task/1/experiment"]}><Routes><Route path="/task/:taskId/experiment" element={<ExperimentLayout />} /></Routes></MemoryRouter>);
+        fireEvent.click(await waitFor(() => view.getByRole("button", { name: /查看已完成阶段 2/ })));
+        await waitFor(() => expect(view.queryByTestId("wave-loop-snapshot") !== null).toBe(true));
+        expect(view.container.textContent).toContain("35 份");
+
+        fireEvent.click(view.getByRole("button", { name: "重新编辑此阶段" }));
+        const confirmBtn = await waitFor(() => view.getByRole("button", { name: "确认重新编辑" }));
+        fireEvent.click(confirmBtn);
+        fireEvent.click(confirmBtn);
+        expect(reopenCalls).toBe(1);
+
+        await act(async () => {
+            pendingReopen.resolve(Response.json({ success: true, data: experiment(1, { version: 6, currentStage: 2, stage2CompletedAt: null, stage3CompletedAt: null, stage4CompletedAt: null }) }));
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
     } finally { cleanup(); globalThis.fetch = originalFetch; dom.restore(); }
 });

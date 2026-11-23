@@ -187,10 +187,51 @@ test("WaveLoopSnapshot renders multi-wave delta scorecard, adjustment plan, funn
         />,
     );
 
-    expect(view.getByTestId("wave-loop-snapshot")).toBeTruthy();
-    expect(view.getByTestId("wave-delta-scorecard")).toBeTruthy();
-    expect(view.getByTestId("fieldwork-funnel-chart")).toBeTruthy();
-    expect(view.getByTestId("confidence-interval-plot")).toBeTruthy();
-    expect(view.getByTestId("stratum-comparison-chart")).toBeTruthy();
-    expect(view.getByText(/首轮试投发现普通会员拒访率偏高/)).toBeTruthy();
+    expect(view.queryByTestId("wave-loop-snapshot") !== null).toBe(true);
+    expect(view.queryByTestId("wave-delta-scorecard") !== null).toBe(true);
+    expect(view.queryByTestId("fieldwork-funnel-chart") !== null).toBe(true);
+    expect(view.queryByTestId("confidence-interval-plot") !== null).toBe(true);
+    expect(view.queryByTestId("stratum-comparison-chart") !== null).toBe(true);
+    expect(view.queryByText(/首轮试投发现普通会员拒访率偏高/) !== null).toBe(true);
+});
+
+test("WaveLoopSnapshot reconciles selectedWave when waves prop shrinks and formats proportion %", () => {
+    const wave1 = makeWave(1, "pilot", makeDiagnostics({
+        method: "simple",
+        populationTruth: 0.65,
+        estimates: [
+            {
+                key: "cleaned_design",
+                label: "质检有效样本设计估计",
+                description: "比例估计",
+                sampleSize: 25,
+                estimate: 0.64,
+                standardError: 0.04,
+                halfWidth: 0.078,
+            },
+        ],
+    }));
+    const wave2 = makeWave(2, "main", makeDiagnostics({
+        method: "stratified",
+        populationTruth: 0.65,
+        estimates: [
+            {
+                key: "cleaned_design",
+                label: "质检有效样本设计估计",
+                description: "二轮比例估计",
+                sampleSize: 68,
+                estimate: 0.652,
+                standardError: 0.025,
+                halfWidth: 0.049,
+            },
+        ],
+    }));
+
+    const view = render(<WaveLoopSnapshot waves={[wave1, wave2]} unitLabel="%" />);
+    expect(view.queryByText("65.20%") !== null).toBe(true);
+
+    // Shrinking waves to [wave1] must reconcile selectedWave from "2" back to "1" instead of rendering an empty tab
+    view.rerender(<WaveLoopSnapshot waves={[wave1]} unitLabel="%" />);
+    expect(view.queryByTestId("fieldwork-funnel-chart") !== null).toBe(true);
+    expect(view.queryByText("64.00%") !== null).toBe(true);
 });
