@@ -1118,4 +1118,85 @@ describe("Diagnostics mathematical invariants, zero-count guards, post-stratific
         expect(blankStratifyDiag.maxStratumBiasPp).not.toBeNull();
         expect(blankStratifyDiag.estimates.find((e) => e.key === "nonresponse_calibrated")?.estimate).toBeCloseTo(56.4, 12);
     });
+
+    test("preserves exact spreadsheet column keys with leading/trailing spaces across burden, simulation, config, and diagnostics", () => {
+        const paddedDict: VariableDictionary = {
+            source: "padded-src",
+            revision: 1,
+            variables: [
+                { field: " 编号 ", label: "编号", kind: "identifier", unit: "", missing: [], categories: [] },
+                { field: " 测量值 ", label: "测量值", kind: "continuous", unit: "万元", missing: [], categories: [] },
+                {
+                    field: " 分层 ",
+                    label: "分层",
+                    kind: "nominal",
+                    unit: "",
+                    missing: [],
+                    categories: [
+                        { value: "小层", label: "小层" },
+                        { value: "大层", label: "大层" },
+                    ],
+                },
+            ],
+        };
+        const baseQ: Question = { id: "q0", type: "numeric", content: "填写测量值", unit: "万元", decimalPlaces: 2 };
+        const binding = buildAutoVariableBindingForQuestion({
+            question: baseQ,
+            dictionary: paddedDict,
+            taskId: 9,
+            preferredField: " 测量值 ",
+        });
+        expect(binding).not.toBeNull();
+        const questionnaire: QuestionnaireData = {
+            title: "精确列名兼容测试",
+            welcomeText: cleanWelcome,
+            endingText: "感谢配合",
+            questions: [{ ...baseQ, variableBinding: binding! }],
+        };
+        validateQuestionBindings(questionnaire, paddedDict, 9);
+
+        const burden = evaluateQuestionnaireBurden(questionnaire, paddedDict, { kind: "mean", field: " 测量值 " });
+        expect(burden.primaryTargetBound).toBe(true);
+        expect(burden.primaryTargetQuestionIndex).toBe(0);
+        expect(burden.boundFields).toEqual([" 测量值 "]);
+        expect(burden.unboundVariables).toEqual([" 分层 "]);
+
+        expect(validateFieldworkConfig({ stratumField: " 分层 " }, [" 分层 "])).toBeNull();
+        expect(resolveFieldworkConfig({ stratumField: " 分层 " }).stratumField).toBe(" 分层 ");
+
+        const paddedPop = [
+            { " 编号 ": "0001", " 测量值 ": 10, " 分层 ": "小层", " 规模 ": 2 },
+            { " 编号 ": "0002", " 测量值 ": 20, " 分层 ": "小层", " 规模 ": 4 },
+            { " 编号 ": "0003", " 测量值 ": 40, " 分层 ": "大层", " 规模 ": 8 },
+            { " 编号 ": "0004", " 测量值 ": 50, " 分层 ": "大层", " 规模 ": 10 },
+        ];
+        const fw = simulateMethodFieldwork({
+            method: "pps",
+            population: paddedPop,
+            indices: [0, 2],
+            questionnaire,
+            dictionary: paddedDict,
+            analysisTarget: { kind: "mean", field: " 测量值 " },
+            fieldworkConfig: { stratumField: " 分层 ", baseUnitNonResponseRate: 0 },
+            dispatchSeed: 77,
+        });
+        const diag = buildMethodFieldworkDiagnostics({
+            method: "pps",
+            population: paddedPop,
+            samplingIndices: [0, 2],
+            inclusionProbabilities: [2 / 12, 8 / 12],
+            sizeField: " 规模 ",
+            fieldworkConfig: { stratumField: " 分层 ", baseUnitNonResponseRate: 0 },
+            fieldworkResult: fw,
+            questionnaire,
+            dictionary: paddedDict,
+            frameFields: [" 编号 ", " 测量值 ", " 分层 ", " 规模 "],
+            identifierField: " 编号 ",
+            analysisTarget: { kind: "mean", field: " 测量值 " },
+        });
+        assertNoNonFiniteOrNegZero(diag);
+        expect(diag.stratumField).toBe(" 分层 ");
+        expect(diag.strata).toHaveLength(2);
+        expect(diag.estimates.find((e) => e.key === "full_invited_benchmark")?.standardError).not.toBeNull();
+    });
 });

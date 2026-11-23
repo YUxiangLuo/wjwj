@@ -542,19 +542,19 @@ export function buildMethodFieldworkDiagnostics(params: {
         }
     }
 
-    // Subgroup / Stratum response diagnostics
+    // Subgroup / Stratum response diagnostics (preserve exact spreadsheet column keys; ignore blank strings)
     const normalizedStratifyBy = typeof params.stratifyBy === "string" && params.stratifyBy.trim()
-        ? params.stratifyBy.trim()
+        ? params.stratifyBy
         : undefined;
     const normalizedSizeField = typeof params.sizeField === "string" && params.sizeField.trim()
-        ? params.sizeField.trim()
+        ? params.sizeField
         : undefined;
     const normalizedIdentifierField = typeof params.identifierField === "string" && params.identifierField.trim()
-        ? params.identifierField.trim()
+        ? params.identifierField
         : undefined;
     const fallbackFrameStratum = params.frameFields
-        .map((f) => (typeof f === "string" ? f.trim() : ""))
-        .find((f) => f.length > 0 && f !== normalizedIdentifierField);
+        .filter((f): f is string => typeof f === "string" && f.trim().length > 0)
+        .find((f) => f !== normalizedIdentifierField);
 
     const chosenStratumField =
         normalizedStratifyBy

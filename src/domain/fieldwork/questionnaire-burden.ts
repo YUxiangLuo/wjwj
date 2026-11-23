@@ -40,8 +40,9 @@ export function resolveQuestionBoundFields(question: Question | null | undefined
     }
     const fields: string[] = [];
     for (const mapping of question.variableBinding.mappings) {
+        // Spreadsheet column names are exact keys (may carry leading/trailing spaces); check non-blank without trimming.
         if (mapping && typeof mapping.field === "string" && mapping.field.trim()) {
-            fields.push(mapping.field.trim());
+            fields.push(mapping.field);
         }
     }
     return [...new Set(fields)];

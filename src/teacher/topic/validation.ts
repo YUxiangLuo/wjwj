@@ -111,9 +111,8 @@ export function validateTopicFieldworkConfigStrict(
         if (typeof obj.stratumField !== "string") {
             return "差异化应答分层字段格式无效";
         }
-        const field = obj.stratumField.trim();
-        if (field !== "" && allowedStrataFields !== undefined && !allowedStrataFields.includes(field)) {
-            return `差异化应答分层字段“${field}”不在已映射的分层变量中`;
+        if (obj.stratumField.trim() !== "" && allowedStrataFields !== undefined && !allowedStrataFields.includes(obj.stratumField)) {
+            return `差异化应答分层字段“${obj.stratumField}”不在已映射的分层变量中`;
         }
     }
     if (obj.stratumNonResponseRates !== undefined && obj.stratumNonResponseRates !== null) {

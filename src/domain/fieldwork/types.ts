@@ -158,7 +158,7 @@ export function resolveFieldworkConfig(raw: unknown): FieldworkSimulationConfig 
             ? raw.preset
             : "balanced";
     const stratumField = typeof raw.stratumField === "string" && raw.stratumField.trim()
-        ? raw.stratumField.trim()
+        ? raw.stratumField
         : undefined;
     const baseUnitNonResponseRate = clampNumber(
         raw.baseUnitNonResponseRate,
@@ -224,11 +224,10 @@ export function validateFieldworkConfig(raw: unknown, allowedStrataFields?: stri
         if (typeof raw.stratumField !== "string") {
             return "差异化应答分层字段格式无效";
         }
-        const field = raw.stratumField.trim();
-        if (field !== "" && allowedStrataFields !== undefined && !allowedStrataFields.includes(field)) {
+        if (raw.stratumField.trim() !== "" && allowedStrataFields !== undefined && !allowedStrataFields.includes(raw.stratumField)) {
             return allowedStrataFields.length === 0
-                ? `当前课题未配置分层变量，不能设置差异化应答分层字段“${field}”`
-                : `差异化应答分层字段“${field}”不在已映射的分层变量中`;
+                ? `当前课题未配置分层变量，不能设置差异化应答分层字段“${raw.stratumField}”`
+                : `差异化应答分层字段“${raw.stratumField}”不在已映射的分层变量中`;
         }
     }
 

@@ -113,7 +113,7 @@ export function parseAnalysisRequest(body: unknown): { requestId: string; observ
         method: rawConfig.method as AnalysisConfig["method"],
         field: rawConfig.field,
         weighted: rawConfig.weighted,
-        ...(typeof rawConfig.groupByField === "string" && rawConfig.groupByField.trim() ? { groupByField: rawConfig.groupByField.trim() } : {}),
+        ...(typeof rawConfig.groupByField === "string" && rawConfig.groupByField.trim() ? { groupByField: rawConfig.groupByField } : {}),
         ...(typeof rawConfig.waveNumber === "number" ? { waveNumber: rawConfig.waveNumber } : {}),
         ...(rawConfig.datasetMode === "cleaned_respondents" || rawConfig.datasetMode === "full_invited" ? { datasetMode: rawConfig.datasetMode } : {}),
     };
