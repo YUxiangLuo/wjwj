@@ -117,6 +117,7 @@ export function calculateUnivariate({
         const value = row[variable.field];
         const key = valueKey(value);
         if (missingKeys.has(key)) return null;
+        if (value === null && (variable.kind === "continuous" || !categoryIndex.has(key))) return null;
         if (variable.kind === "continuous") return interpretNumeric(value, variable);
         const index = categoryIndex.get(key);
         if (index === undefined) throw new Error(`字段“${variable.field}”含字典外类别`);
@@ -237,7 +238,7 @@ export function calculateCrossTab({
 
         const gRaw = row[groupVariable.field];
         const gKey = valueKey(gRaw);
-        if (groupMissing.has(gKey)) return;
+        if (groupMissing.has(gKey) || (gRaw === null && !groupCatIndex.has(gKey))) return;
         const gIdx = groupCatIndex.get(gKey);
         if (gIdx === undefined) {
             throw new Error(`字段“${groupVariable.field}”含字典外类别`);
@@ -245,7 +246,7 @@ export function calculateCrossTab({
 
         const tRaw = row[variable.field];
         const tKey = valueKey(tRaw);
-        if (targetMissing.has(tKey)) return;
+        if (targetMissing.has(tKey) || (tRaw === null && (variable.kind === "continuous" || !targetCatIndex.has(tKey)))) return;
 
         const bucket = buckets[gIdx]!;
         const w = weighted ? weights![pos]! : 1;

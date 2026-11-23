@@ -1032,4 +1032,90 @@ describe("Diagnostics mathematical invariants, zero-count guards, post-stratific
         expect(fullBench.standardError!).toBeCloseTo(Math.SQRT2 / 3, 12);
         assertNoNonFiniteOrNegZero(diag);
     });
+
+    test("materializeFieldworkSample fails closed on length or position mismatch (ST-S08 / ST-A04) and diagnostics normalizes blank stratifyBy", () => {
+        const fw: MethodFieldworkResult = {
+            method: "pps",
+            dispatchSeed: 40,
+            dispatchedAt: "2026-11-23T00:00:00Z",
+            invitedCount: 2,
+            records: [
+                { populationIndex: 0, disposition: "valid_complete", durationSec: 35, answeredQuestionCount: 2 },
+                { populationIndex: 6, disposition: "valid_complete", durationSec: 35, answeredQuestionCount: 2 },
+            ],
+        };
+
+        // 1. Stale/mismatched samplingIndices length -> fail closed to empty arrays, never mispairing inclusionProbabilities
+        const mismatchedLen = materializeFieldworkSample({
+            population: strataPop,
+            samplingIndices: [0, 6, 8],
+            inclusionProbabilities: [0.1, 0.5, 0.4],
+            fieldworkResult: fw,
+            questionnaire: qSimple,
+            frameFields: ["id", "grp"],
+            analysisTarget: { kind: "mean", field: "y" },
+        });
+        expect(mismatchedLen).toEqual({
+            cleanedRows: [],
+            cleanedIndices: [],
+            cleanedInclusionProbabilities: [],
+            uncleanedRows: [],
+            uncleanedIndices: [],
+            uncleanedInclusionProbabilities: [],
+        });
+
+        // 2. Mismatched inclusionProbabilities length -> fail closed
+        const mismatchedProbLen = materializeFieldworkSample({
+            population: strataPop,
+            samplingIndices: [0, 6],
+            inclusionProbabilities: [0.1],
+            fieldworkResult: fw,
+            questionnaire: qSimple,
+            frameFields: ["id", "grp"],
+            analysisTarget: { kind: "mean", field: "y" },
+        });
+        expect(mismatchedProbLen.cleanedRows).toEqual([]);
+        expect(mismatchedProbLen.cleanedInclusionProbabilities).toEqual([]);
+
+        // 3. Swapped populationIndex order vs samplingIndices -> fail closed so probs[idx] never pairs with wrong unit
+        const swappedPos = materializeFieldworkSample({
+            population: strataPop,
+            samplingIndices: [6, 0],
+            inclusionProbabilities: [0.5, 0.1],
+            fieldworkResult: fw,
+            questionnaire: qSimple,
+            frameFields: ["id", "grp"],
+            analysisTarget: { kind: "mean", field: "y" },
+        });
+        expect(swappedPos.cleanedRows).toEqual([]);
+
+        // 4. Empty/whitespace stratifyBy falls back cleanly to config.stratumField / frameFields
+        const blankStratifyDiag = buildMethodFieldworkDiagnostics({
+            method: "simple",
+            population: strataPop,
+            samplingIndices: [0, 2, 6, 8],
+            stratifyBy: "   ",
+            fieldworkConfig: { stratumField: "grp" },
+            fieldworkResult: {
+                method: "simple",
+                dispatchSeed: 41,
+                dispatchedAt: "2026-11-23T00:00:00Z",
+                invitedCount: 4,
+                records: [0, 2, 6, 8].map((populationIndex) => ({
+                    populationIndex,
+                    disposition: "valid_complete" as const,
+                    durationSec: 40,
+                    answeredQuestionCount: 2,
+                })),
+            },
+            questionnaire: qSimple,
+            frameFields: ["id", "  ", "grp"],
+            identifierField: "id",
+            analysisTarget: { kind: "mean", field: "y" },
+        });
+        expect(blankStratifyDiag.stratumField).toBe("grp");
+        expect(blankStratifyDiag.strata).toHaveLength(2);
+        expect(blankStratifyDiag.maxStratumBiasPp).not.toBeNull();
+        expect(blankStratifyDiag.estimates.find((e) => e.key === "nonresponse_calibrated")?.estimate).toBeCloseTo(56.4, 12);
+    });
 });

@@ -431,4 +431,98 @@ describe("Subgroup cross-tab (calculateCrossTab) adversarial & mathematical regr
             expect(JSON.stringify(base)).not.toMatch(/NaN|Infinity/);
         }
     });
+
+    test("masked respondent null cells are treated as item-missing when null is not in missing or categories, while preserving declared null categories", () => {
+        const contNoNullMissing: VariableDefinition = {
+            field: "spend",
+            label: "支出",
+            unit: "元",
+            kind: "continuous",
+            categories: [],
+            missing: [-99], // null is NOT in missing; comes from fieldwork masking/skipping
+        };
+        const catNoNullMissing: VariableDefinition = {
+            field: "sat",
+            label: "满意",
+            unit: "",
+            kind: "ordinal",
+            categories: [
+                { value: 1, label: "不满意" },
+                { value: 2, label: "满意" },
+            ],
+            missing: [],
+        };
+        const grpNoNullMissing: VariableDefinition = {
+            field: "tier",
+            label: "等级",
+            unit: "",
+            kind: "nominal",
+            categories: [
+                { value: "VIP", label: "VIP" },
+                { value: "STD", label: "STD" },
+            ],
+            missing: [],
+        };
+
+        const maskedRows = [
+            { tier: "VIP", spend: 20, sat: 2 },
+            { tier: "VIP", spend: null, sat: null }, // masked respondent skip/unbound -> item-missing
+            { tier: "VIP", spend: -99, sat: 1 },     // declared missing -99 on spend
+            { tier: null, spend: 50, sat: 2 },       // masked group -> excluded in crosstab
+            { tier: "STD", spend: 10, sat: 1 },
+        ];
+        const idx = [0, 1, 2, 3, 4];
+
+        // Unweighted univariate treats masked null as missingCount without throwing
+        const uniCont = calculateUnivariate({
+            population: maskedRows,
+            indices: idx,
+            variable: contNoNullMissing,
+            weighted: false,
+        });
+        expect(uniCont).toMatchObject({ kind: "numeric", sampleCount: 5, validCount: 3, missingCount: 2 });
+
+        const uniCat = calculateUnivariate({
+            population: maskedRows,
+            indices: idx,
+            variable: catNoNullMissing,
+            weighted: false,
+        });
+        expect(uniCat).toMatchObject({ kind: "categorical", sampleCount: 5, validCount: 4, missingCount: 1 });
+
+        // Weighted univariate still fails closed because population/respondent frame has missingness
+        expect(() => calculateUnivariate({
+            population: maskedRows,
+            indices: [0, 4],
+            variable: contNoNullMissing,
+            weighted: true,
+            weights: [1, 1],
+        })).toThrow(/完整总体/);
+
+        // Cross-tab treats masked null on group or target as missing without throwing
+        const crossCont = calculateCrossTab({
+            rows: maskedRows,
+            indices: idx,
+            variable: contNoNullMissing,
+            groupVariable: grpNoNullMissing,
+            weighted: true,
+            weights: [2, 5, 5, 5, 1],
+        });
+        expect(crossCont.sampleCount).toBe(5);
+        expect(crossCont.validCount).toBe(2);
+        expect(crossCont.missingCount).toBe(3);
+        expect(crossCont.groups[0]).toMatchObject({ groupValue: "VIP", validCount: 1, mean: 20 });
+        expect(crossCont.groups[1]).toMatchObject({ groupValue: "STD", validCount: 1, mean: 10 });
+
+        const crossCat = calculateCrossTab({
+            rows: maskedRows,
+            indices: idx,
+            variable: catNoNullMissing,
+            groupVariable: grpNoNullMissing,
+            weighted: false,
+        });
+        expect(crossCat.validCount).toBe(3);
+        expect(crossCat.missingCount).toBe(2);
+        expect(crossCat.groups[0]!.categories!.map((c) => c.count)).toEqual([1, 1]);
+    });
 });

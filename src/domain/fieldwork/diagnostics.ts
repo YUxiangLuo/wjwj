@@ -543,10 +543,23 @@ export function buildMethodFieldworkDiagnostics(params: {
     }
 
     // Subgroup / Stratum response diagnostics
+    const normalizedStratifyBy = typeof params.stratifyBy === "string" && params.stratifyBy.trim()
+        ? params.stratifyBy.trim()
+        : undefined;
+    const normalizedSizeField = typeof params.sizeField === "string" && params.sizeField.trim()
+        ? params.sizeField.trim()
+        : undefined;
+    const normalizedIdentifierField = typeof params.identifierField === "string" && params.identifierField.trim()
+        ? params.identifierField.trim()
+        : undefined;
+    const fallbackFrameStratum = params.frameFields
+        .map((f) => (typeof f === "string" ? f.trim() : ""))
+        .find((f) => f.length > 0 && f !== normalizedIdentifierField);
+
     const chosenStratumField =
-        params.stratifyBy
+        normalizedStratifyBy
         ?? config.stratumField
-        ?? params.frameFields.find((f) => f !== params.identifierField)
+        ?? fallbackFrameStratum
         ?? null;
     const strata: StratumDiagnosticRow[] = [];
     let maxStratumBiasPp: number | null = null;
@@ -677,8 +690,8 @@ export function buildMethodFieldworkDiagnostics(params: {
         .slice(0, 12)
         .map((r) => {
             const row = params.population[r.populationIndex] ?? {};
-            const unitId = params.identifierField && row[params.identifierField] != null
-                ? String(row[params.identifierField])
+            const unitId = normalizedIdentifierField && row[normalizedIdentifierField] != null
+                ? String(row[normalizedIdentifierField])
                 : `#${r.populationIndex + 1}`;
             const reason =
                 r.disposition === "careless_speeder"
@@ -718,7 +731,7 @@ export function buildMethodFieldworkDiagnostics(params: {
             populationTruth = clampProportionIfNeeded(scaledMean(popVals), target);
         }
 
-        const designStrataSpecs = params.method === "stratified" && params.stratifyBy && params.layers?.length
+        const designStrataSpecs = params.method === "stratified" && normalizedStratifyBy && params.layers?.length
             ? params.layers.map((l) => ({ key: stratumKey(l.name), frameCount: l.count }))
             : null;
 
@@ -727,11 +740,11 @@ export function buildMethodFieldworkDiagnostics(params: {
             popIndices: number[],
             probs?: number[],
         ) => {
-            if (designStrataSpecs && params.stratifyBy) {
+            if (designStrataSpecs && normalizedStratifyBy) {
                 return computeStratifiedRespondentEstimateAndSe({
                     rows,
                     popIndices,
-                    stratumField: params.stratifyBy,
+                    stratumField: normalizedStratifyBy,
                     strataSpecs: designStrataSpecs,
                     target,
                     missingMap,
@@ -796,10 +809,10 @@ export function buildMethodFieldworkDiagnostics(params: {
                     const minP = probs.reduce((acc, p) => Math.min(acc, p), Infinity);
                     baseWeightsForCalibration = probs.map((p) => minP / p);
                 }
-            } else if (params.method === "stratified" && params.stratifyBy && params.stratifyBy !== chosenStratumField && params.layers?.length) {
+            } else if (params.method === "stratified" && normalizedStratifyBy && normalizedStratifyBy !== chosenStratumField && params.layers?.length) {
                 const layerMap = new Map(params.layers.map((l) => [stratumKey(l.name), l]));
                 baseWeightsForCalibration = materialized.cleanedRows.map((r) => {
-                    const layer = layerMap.get(stratumKey(r[params.stratifyBy!]));
+                    const layer = layerMap.get(stratumKey(r[normalizedStratifyBy]));
                     return layer && layer.sampleCount > 0 ? layer.count / layer.sampleCount : 1;
                 });
             }
@@ -874,21 +887,21 @@ export function buildMethodFieldworkDiagnostics(params: {
                     interval: populationSize / fullN,
                     sampleCount: fullN,
                 });
-            } else if (params.method === "stratified" && params.stratifyBy && params.layers?.length) {
+            } else if (params.method === "stratified" && normalizedStratifyBy && params.layers?.length) {
                 fullEstimate = clampProportionIfNeeded(
-                    computeStratifiedValueEstimate(fullInvitedRows, params.stratifyBy, params.layers, populationSize, accessor),
+                    computeStratifiedValueEstimate(fullInvitedRows, normalizedStratifyBy, params.layers, populationSize, accessor),
                     target,
                 );
-                fullSe = computeStratifiedValueSe(params.population, params.stratifyBy, params.layers, populationSize, accessor);
+                fullSe = computeStratifiedValueSe(params.population, normalizedStratifyBy, params.layers, populationSize, accessor);
             } else if (params.method === "pps" && hasProbs) {
                 fullEstimate = clampProportionIfNeeded(
                     estimateWeightedValue(fullInvitedRows, accessor, fullInvitedProbs),
                     target,
                 );
-                if (params.sizeField) {
+                if (normalizedSizeField) {
                     const ctx = buildPpsStandardErrorContext(
                         params.population,
-                        params.sizeField,
+                        normalizedSizeField,
                         fullN,
                         [{ key: "__target__", accessor }],
                         0,

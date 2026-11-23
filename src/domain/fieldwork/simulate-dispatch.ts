@@ -474,12 +474,26 @@ export function materializeFieldworkSample(params: {
     const uncleanedProbs: number[] = [];
 
     const records = Array.isArray(params.fieldworkResult?.records) ? params.fieldworkResult.records : [];
-    const checkIndexAlignment = params.samplingIndices.length === records.length;
+    const hasAlignedIndices = Array.isArray(params.samplingIndices) && params.samplingIndices.length === records.length;
+    const hasAlignedProbs = params.inclusionProbabilities === undefined
+        || (Array.isArray(params.inclusionProbabilities) && params.inclusionProbabilities.length === records.length);
+    const hasExactPositionMatch = hasAlignedIndices && records.every(
+        (rec, idx) => Boolean(rec) && Number.isSafeInteger(rec.populationIndex) && params.samplingIndices[idx] === rec.populationIndex,
+    );
+
+    if (!hasAlignedIndices || !hasAlignedProbs || !hasExactPositionMatch) {
+        return {
+            cleanedRows: [],
+            cleanedIndices: [],
+            ...(params.inclusionProbabilities !== undefined ? { cleanedInclusionProbabilities: [] } : {}),
+            uncleanedRows: [],
+            uncleanedIndices: [],
+            ...(params.inclusionProbabilities !== undefined ? { uncleanedInclusionProbabilities: [] } : {}),
+        };
+    }
 
     records.forEach((rec, idx) => {
-        if (!rec || !Number.isSafeInteger(rec.populationIndex)) return;
         const popIdx = rec.populationIndex;
-        if (checkIndexAlignment && params.samplingIndices[idx] !== popIdx) return;
         const sourceRow = params.population[popIdx];
         if (!sourceRow) return;
         const prob = params.inclusionProbabilities?.[idx];
