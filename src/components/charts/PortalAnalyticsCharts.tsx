@@ -287,6 +287,7 @@ export function TaskProgressExecutiveCharts({
         const centerSubLabel = activeMeta ? "当前筛选人数" : "总人数";
 
         return {
+            animation: false,
             tooltip: buildExecutiveTooltip(
                 {
                     trigger: "item",
@@ -370,6 +371,7 @@ export function TaskProgressExecutiveCharts({
         const xAxisMax = Math.max(4, Math.ceil(maxCount * 1.28));
 
         return {
+            animation: false,
             grid: buildExecutiveGrid({
                 left: 8,
                 right: 20,
@@ -722,6 +724,7 @@ export function GradeSubmissionFunnelCard({
     const funnelOption = useMemo<ExecutiveChartOption>(() => {
         const safeMax = Math.max(1, metrics.total);
         return {
+            animation: false,
             tooltip: buildExecutiveTooltip(
                 {
                     trigger: "item",
@@ -860,6 +863,14 @@ function mapScoreToHistogramAxis(score: number): number {
     return clamped;
 }
 
+export function resolveHistogramMarkLineAlign(
+    score: number,
+): "left" | "center" | "right" {
+    if (score > 93) return "right";
+    if (score < 55) return "left";
+    return "center";
+}
+
 export function GradeScoreHistogramCard({
     scores,
 }: {
@@ -923,6 +934,7 @@ export function GradeScoreHistogramCard({
                     show: true,
                     position: "end",
                     distance: 4,
+                    align: resolveHistogramMarkLineAlign(average),
                     color: tokens.primary,
                     fontFamily: CHART_FONT_FAMILY,
                     fontSize: 12,
@@ -944,6 +956,7 @@ export function GradeScoreHistogramCard({
                         show: true,
                         position: "end",
                         distance: 4,
+                        align: resolveHistogramMarkLineAlign(average),
                         color: tokens.primary,
                         fontFamily: CHART_FONT_FAMILY,
                         fontSize: 12,
@@ -965,6 +978,7 @@ export function GradeScoreHistogramCard({
                         show: true,
                         position: closeTogether ? "insideEndTop" : "end",
                         distance: closeTogether ? 6 : 4,
+                        align: resolveHistogramMarkLineAlign(median),
                         color: tokens.auxiliaryStrong,
                         fontFamily: CHART_FONT_FAMILY,
                         fontSize: 12,
@@ -976,6 +990,7 @@ export function GradeScoreHistogramCard({
         }
 
         return {
+            animation: false,
             grid: buildExecutiveGrid({
                 left: 10,
                 right: 16,
@@ -1190,6 +1205,7 @@ export function GradeRubricRadarBarCard({
 
     const radarOption = useMemo<ExecutiveChartOption>(() => {
         return {
+            animation: false,
             tooltip: buildExecutiveTooltip(
                 {
                     trigger: "item",
@@ -1296,6 +1312,7 @@ export function GradeRubricRadarBarCard({
 
     const barOption = useMemo<ExecutiveChartOption>(() => {
         return {
+            animation: false,
             grid: buildExecutiveGrid({
                 left: 10,
                 right: 64,
@@ -1348,6 +1365,7 @@ export function GradeRubricRadarBarCard({
                 {
                     name: "分项平均得分",
                     type: "bar",
+                    z: 4,
                     barWidth: 16,
                     showBackground: true,
                     backgroundStyle: {
@@ -1357,7 +1375,10 @@ export function GradeRubricRadarBarCard({
                     label: {
                         show: dimensions.hasAnyScore,
                         position: "right",
-                        distance: 8,
+                        distance: 6,
+                        backgroundColor: tokens.card,
+                        padding: [2, 5],
+                        borderRadius: 4,
                         color: tokens.foreground,
                         fontFamily: CHART_FONT_FAMILY,
                         fontSize: 12,
@@ -1383,6 +1404,7 @@ export function GradeRubricRadarBarCard({
                     markLine:
                         overallAverage !== null
                             ? {
+                                z: 2,
                                 silent: true,
                                 symbol: ["none", "none"],
                                 lineStyle: {
@@ -1394,6 +1416,12 @@ export function GradeRubricRadarBarCard({
                                     show: true,
                                     position: "start",
                                     distance: 6,
+                                    align:
+                                        overallAverage > 92
+                                            ? "right"
+                                            : overallAverage < 10
+                                                ? "left"
+                                                : "center",
                                     color: tokens.primary,
                                     fontFamily: CHART_FONT_FAMILY,
                                     fontSize: 12,
@@ -1576,6 +1604,7 @@ export function TeacherActiveTasksStructureCard({
         ];
 
         return {
+            animation: false,
             grid: buildExecutiveGrid({
                 left: 12,
                 right: 20,
@@ -1831,6 +1860,7 @@ export function AdminPlatformOverviewCharts({
         const maxVal = Math.max(4, ...items.map((item) => item.value));
 
         return {
+            animation: false,
             grid: buildExecutiveGrid({
                 left: 10,
                 right: 64,

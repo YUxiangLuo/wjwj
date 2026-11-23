@@ -9,6 +9,7 @@ import {
     GradeSubmissionFunnelCard,
     TaskProgressExecutiveCharts,
     TeacherActiveTasksStructureCard,
+    resolveHistogramMarkLineAlign,
     type TaskProgressFilterValue,
 } from "./PortalAnalyticsCharts";
 
@@ -147,6 +148,9 @@ describe("PortalAnalyticsCharts ECharts SVG rendering, interactions, edge cases 
         }
         expect(view.container.innerHTML).not.toContain("NaN");
         expect(view.getAllByText("86.2 分").length).toBeGreaterThanOrEqual(1);
+        expect(resolveHistogramMarkLineAlign(98.5)).toBe("right");
+        expect(resolveHistogramMarkLineAlign(52.0)).toBe("left");
+        expect(resolveHistogramMarkLineAlign(84.6)).toBe("center");
         expect(await getAccessibilityViolations(view.container)).toEqual([]);
 
         // Verify empty / all-null scores render "—" in tiles and never "0.0 分" or NaN
