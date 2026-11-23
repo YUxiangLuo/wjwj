@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, notInArray } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment, experimentWave } from "../../db/schema";
 import type { ExperimentWaveView, SamplePlanData, SamplingResultsData } from "../../domain/experiment/types";
@@ -245,6 +245,7 @@ export function verifyExperimentWavesReplay(params: {
         for (const method of SAMPLING_METHODS) {
             const fw = wave.fieldwork.methods[method];
             if (!fw) continue;
+            if (fw.method !== method) return false;
             const section = (wave.samplingResults as Record<string, unknown> | null)?.[method] as Record<string, unknown> | undefined;
             if (!section || !Array.isArray(section.indices)) return false;
             const valid = verifyMethodFieldworkReplay({
@@ -328,5 +329,23 @@ export async function syncExperimentWaveRow(
             diagnosticsSummary: diagnosticsSummary ?? null,
             completedAt: completedDate,
         });
+    }
+}
+
+export async function syncExperimentWavesSnapshot(
+    executor: DbExecutor,
+    experimentId: number,
+    waves: StoredExperimentWave[],
+) {
+    if (waves.length === 0) {
+        await executor.delete(experimentWave).where(eq(experimentWave.experimentId, experimentId));
+        return;
+    }
+    const keepNumbers = waves.map((w) => w.waveNumber);
+    await executor
+        .delete(experimentWave)
+        .where(and(eq(experimentWave.experimentId, experimentId), notInArray(experimentWave.waveNumber, keepNumbers)));
+    for (const wave of waves) {
+        await syncExperimentWaveRow(executor, experimentId, wave);
     }
 }

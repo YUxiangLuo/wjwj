@@ -5,6 +5,7 @@ import { ExperimentStatus } from "@/domain/experiment/status";
 import { getRequiredStratifiedMinimum } from "./final-sample-bounds";
 import { resolveAnalysisTarget } from "../../lib/analysis-target";
 import { canonicalizeRichTextHtmlForStorage } from "../../server/rich-text";
+import { canonicalJson } from "../../server/variable-source";
 import { validateQuestionBindings } from "../../domain/variables/question-binding";
 import type { VariableDictionary } from "../../domain/variables/types";
 import type { QuestionnaireData } from "../../lib/questionnaire-types";
@@ -15,7 +16,7 @@ import {
     validateAdjustmentPlan,
     type StoredExperimentWave,
 } from "../../domain/fieldwork";
-import { isCompletedSamplingResult, SAMPLING_METHODS } from "../../lib/sampling-policy";
+import { isCompletedSamplingResult, resolveSamplingPolicy, SAMPLING_METHODS } from "../../lib/sampling-policy";
 import { ensureActiveWave, parseStoredWaves } from "./fieldwork-wave-service";
 import { compactSamplingResults } from "./sampling-storage";
 import {
@@ -111,26 +112,23 @@ export function buildStageCompletionUpdates(params: {
                 return fail(`请至少将核心商业研究指标「${resolvedTarget.target.field}」绑定到问卷中的对应题目，否则发放后无法回收核心数据`);
             }
         }
-        const existingWaves = parseStoredWaves(record.wavesData);
-        const wave1: StoredExperimentWave = existingWaves.find((w) => w.waveNumber === 1)
-            ? {
-                ...existingWaves.find((w) => w.waveNumber === 1)!,
-                questionnaire: questionnaire as QuestionnaireData,
-            }
-            : {
-                waveNumber: 1,
-                kind: "pilot",
-                label: "第 1 轮 · 首轮试投",
-                questionnaire: questionnaire as QuestionnaireData,
-                samplePlan: null,
-                samplingResults: null,
-                fieldwork: null,
-                cleaningConfig: { ...DEFAULT_CLEANING_CONFIG },
-                completedAt: null,
-            };
-        const nextWaves = [wave1, ...existingWaves.filter((w) => w.waveNumber !== 1)].sort((a, b) => a.waveNumber - b.waveNumber);
+        const wave1: StoredExperimentWave = {
+            waveNumber: 1,
+            kind: "pilot",
+            label: "第 1 轮 · 首轮试投",
+            questionnaire: questionnaire as QuestionnaireData,
+            samplePlan: null,
+            samplingResults: null,
+            fieldwork: null,
+            cleaningConfig: { ...DEFAULT_CLEANING_CONFIG },
+            completedAt: null,
+        };
+        const nextWaves = [wave1];
 
         updates.questionnaire = questionnaire;
+        updates.samplePlan = null;
+        updates.samplingResults = null;
+        updates.adjustmentPlan = null;
         updates.activeWaveNumber = 1;
         updates.wavesData = nextWaves;
         updates.stage1CompletedAt = now;
@@ -140,6 +138,7 @@ export function buildStageCompletionUpdates(params: {
 
     // 阶段 2：首轮试投规划、抽样与发放（Wave 1）
     if (stage === 2) {
+        const storedWaves = parseStoredWaves(record.wavesData);
         const { waves, activeWave } = ensureActiveWave({ ...record, activeWaveNumber: 1 });
         const rawSamplePlan = payload.samplePlan ?? activeWave.samplePlan ?? parseStoredJson(record.samplePlan);
         if (!rawSamplePlan || typeof rawSamplePlan !== "object" || Array.isArray(rawSamplePlan)) {
@@ -154,13 +153,31 @@ export function buildStageCompletionUpdates(params: {
         });
         if (varianceError) return fail(varianceError);
 
-        const waveSampling = activeWave.samplingResults ?? compactSamplingResults(parseStoredJson(record.samplingResults));
+        const prevTargetSize = getTargetSampleSizeFromSamplePlan(activeWave.samplePlan);
+        const nextTargetSize = getTargetSampleSizeFromSamplePlan(samplePlan);
+        if (prevTargetSize !== null && prevTargetSize !== nextTargetSize) {
+            return fail("样本量规划已变更，请先保存最新规划并重新完成首轮抽样与问卷发放", "FIELDWORK_REQUIRED", 409);
+        }
+
+        const waveSampling = storedWaves.some((w) => w.waveNumber === 1)
+            ? activeWave.samplingResults
+            : (activeWave.samplingResults ?? compactSamplingResults(parseStoredJson(record.samplingResults)));
+        const policy = resolveSamplingPolicy(params.samplingPolicy);
         const completedMethods = SAMPLING_METHODS.filter((m) => isCompletedSamplingResult((waveSampling as Record<string, unknown> | null)?.[m]));
         if (completedMethods.length === 0) {
             return fail("请先执行至少一种抽样方法抽取首轮试投受访者名单", "SAMPLING_RESULTS_REQUIRED", 409);
         }
-        const hasFieldwork = completedMethods.some((m) => Boolean(activeWave.fieldwork?.methods?.[m]?.records?.length));
-        if (!hasFieldwork) {
+        for (const method of completedMethods) {
+            if (policy.methods[method] === "disabled") {
+                return fail("首轮试投包含当前实验模板已禁用的抽样方法", "SAMPLING_METHOD_DISABLED", 409);
+            }
+            const section = (waveSampling as Record<string, Record<string, unknown> | undefined>)[method];
+            if (section?.serverGenerated !== true) {
+                return fail("请使用系统生成的有效抽样名单", "SAMPLING_RESULTS_REQUIRED", 409);
+            }
+        }
+        const hasAllFieldwork = completedMethods.every((m) => Boolean(activeWave.fieldwork?.methods?.[m]?.records?.length));
+        if (!hasAllFieldwork) {
             return fail("请点击“发放首轮试投问卷”完成受访者模拟回收后再进入质检诊断阶段", "FIELDWORK_REQUIRED", 409);
         }
 
@@ -210,9 +227,14 @@ export function buildStageCompletionUpdates(params: {
         const nextWaves = existingWave2
             ? waves
             : [...waves, wave2].sort((a, b) => a.waveNumber - b.waveNumber);
+        const nextActiveWaveNumber = existingWave2 ? Math.max(2, record.activeWaveNumber) : 2;
+        const targetActiveWave = nextWaves.find((w) => w.waveNumber === nextActiveWaveNumber) ?? wave2;
 
         updates.adjustmentPlan = adjustmentPlan;
-        updates.activeWaveNumber = existingWave2 ? Math.max(2, record.activeWaveNumber) : 2;
+        updates.activeWaveNumber = nextActiveWaveNumber;
+        updates.questionnaire = targetActiveWave.questionnaire;
+        updates.samplePlan = targetActiveWave.samplePlan;
+        updates.samplingResults = (targetActiveWave.samplingResults as Record<string, unknown> | null) ?? null;
         updates.wavesData = nextWaves;
         updates.stage3CompletedAt = now;
         updates.currentStage = 4;
@@ -221,6 +243,7 @@ export function buildStageCompletionUpdates(params: {
 
     // 阶段 4：调整思路与二轮正式投放（Wave 2+）
     if (stage === 4) {
+        const storedWaves = parseStoredWaves(record.wavesData);
         const targetWaveNum = Math.max(2, record.activeWaveNumber || 2);
         const { waves, activeWave } = ensureActiveWave({ ...record, activeWaveNumber: targetWaveNum });
 
@@ -240,8 +263,14 @@ export function buildStageCompletionUpdates(params: {
                 return fail(`二轮问卷仍须保持核心研究指标「${resolvedTarget.target.field}」已绑定`);
             }
         }
+        if (
+            payload.questionnaire !== undefined
+            && canonicalJson(effectiveQuestionnaire) !== canonicalJson(normalizeQuestionnairePayload(activeWave.questionnaire))
+        ) {
+            return fail("正式轮问卷已修改但尚未保存并重新投放，请先保存修订问卷并重新执行问卷发放回收", "FIELDWORK_REQUIRED", 409);
+        }
 
-        const rawSamplePlan = payload.samplePlan ?? activeWave.samplePlan ?? parseStoredJson(record.samplePlan);
+        const rawSamplePlan = payload.samplePlan ?? activeWave.samplePlan ?? (storedWaves.length === 0 ? parseStoredJson(record.samplePlan) : null);
         if (!rawSamplePlan || typeof rawSamplePlan !== "object" || Array.isArray(rawSamplePlan)) {
             return fail("请完成正式投放轮次的样本量重算与保存");
         }
@@ -259,7 +288,15 @@ export function buildStageCompletionUpdates(params: {
         });
         if (varianceError) return fail(varianceError);
 
-        const waveSampling = activeWave.samplingResults ?? compactSamplingResults(parseStoredJson(record.samplingResults));
+        const prevTargetSize = getTargetSampleSizeFromSamplePlan(activeWave.samplePlan);
+        const nextTargetSize = getTargetSampleSizeFromSamplePlan(samplePlan);
+        if (prevTargetSize !== null && prevTargetSize !== nextTargetSize) {
+            return fail("正式轮样本量规划已变更，请先保存最新规划并重新完成抽样与问卷投放", "FIELDWORK_REQUIRED", 409);
+        }
+
+        const waveSampling = storedWaves.length > 0
+            ? activeWave.samplingResults
+            : (activeWave.samplingResults ?? compactSamplingResults(parseStoredJson(record.samplingResults)));
         const samplingError = validateSamplingResultsForSubmit(
             waveSampling,
             getTargetSampleSizeFromSamplePlan(samplePlan),
@@ -341,8 +378,15 @@ export function buildStageReopenUpdates(params: {
         updates.stage4CompletedAt = null;
         updates.stage5CompletedAt = null;
     } else if (stage === 2) {
+        const wave1 = waves.find((w) => w.waveNumber === 1);
+        const hadFormalWave = waves.some((w) => w.waveNumber > 1);
         updates.activeWaveNumber = 1;
         updates.wavesData = waves.filter((w) => w.waveNumber === 1).map((w) => ({ ...w, completedAt: null }));
+        if (wave1) {
+            updates.questionnaire = wave1.questionnaire;
+            if (wave1.samplePlan !== null || hadFormalWave) updates.samplePlan = wave1.samplePlan;
+            if (wave1.samplingResults !== null || hadFormalWave) updates.samplingResults = wave1.samplingResults;
+        }
         updates.adjustmentPlan = null;
         updates.reportContent = null;
         updates.stage2CompletedAt = null;
@@ -350,8 +394,15 @@ export function buildStageReopenUpdates(params: {
         updates.stage4CompletedAt = null;
         updates.stage5CompletedAt = null;
     } else if (stage === 3) {
+        const wave1 = waves.find((w) => w.waveNumber === 1);
+        const hadFormalWave = waves.some((w) => w.waveNumber > 1);
         updates.activeWaveNumber = 1;
         updates.wavesData = waves.filter((w) => w.waveNumber === 1);
+        if (wave1) {
+            updates.questionnaire = wave1.questionnaire;
+            if (wave1.samplePlan !== null || hadFormalWave) updates.samplePlan = wave1.samplePlan;
+            if (wave1.samplingResults !== null || hadFormalWave) updates.samplingResults = wave1.samplingResults;
+        }
         updates.reportContent = null;
         updates.stage3CompletedAt = null;
         updates.stage4CompletedAt = null;
@@ -360,7 +411,9 @@ export function buildStageReopenUpdates(params: {
         const activeNum = Math.max(2, record.activeWaveNumber || 2);
         const activeWave = waves.find((w) => w.waveNumber === activeNum);
         updates.activeWaveNumber = activeNum;
-        updates.wavesData = waves.map((w) => (w.waveNumber === activeNum ? { ...w, completedAt: null } : w));
+        updates.wavesData = waves
+            .filter((w) => w.waveNumber <= activeNum)
+            .map((w) => (w.waveNumber === activeNum ? { ...w, completedAt: null } : w));
         if (activeWave) {
             updates.questionnaire = activeWave.questionnaire;
             updates.samplePlan = activeWave.samplePlan;

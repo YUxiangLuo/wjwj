@@ -17,6 +17,7 @@ let sampling: typeof import("../student/experiment/sampling-service");
 let variableSource: typeof import("../server/variable-source");
 let submitService: typeof import("../student/experiment/submit-service");
 let updateService: typeof import("../student/experiment/update-service");
+let waveService: typeof import("../student/experiment/fieldwork-wave-service");
 let raw: SQL;
 const fixtures: Array<{ semester: number; teacher: number; cls: number; topic: number; task: number; students: number[] }> = [];
 const files: string[] = [];
@@ -27,12 +28,13 @@ beforeAll(async () => {
     application = await import("./index");
     raw = new SQL(url!);
     await assertTestDatabaseIsMigrated(raw);
-    [service, sampling, variableSource, submitService, updateService] = await Promise.all([
+    [service, sampling, variableSource, submitService, updateService, waveService] = await Promise.all([
         import("../student/experiment/saved-analysis-service"),
         import("../student/experiment/sampling-service"),
         import("../server/variable-source"),
         import("../student/experiment/submit-service"),
         import("../student/experiment/update-service"),
+        import("../student/experiment/fieldwork-wave-service"),
     ]);
 });
 
@@ -549,8 +551,48 @@ async function submittableFixture() {
     const samplePlan = { estimationType: "mean", confidenceLevel: "95", marginOfError: 10, populationVariance: 200, designEffect: 1, nonResponseRate: 0, recommendedSize: 4, finalSampleSize: 4 };
     const simpleStored = await replay("simple");
     const systematicStored = await replay("systematic");
+    const loadedSource = await variableSource.readVariableSource(f.storagePath, f.mapping);
     const now = new Date();
     const nowIso = now.toISOString();
+    const wave1Base = {
+        waveNumber: 1,
+        kind: "pilot" as const,
+        label: "第 1 轮 · 首轮试投",
+        questionnaire,
+        samplePlan,
+        samplingResults: { simple: simpleStored },
+        fieldwork: null,
+        cleaningConfig: { ...DEFAULT_CLEANING_CONFIG },
+        completedAt: nowIso,
+    };
+    const wave2Base = {
+        waveNumber: 2,
+        kind: "main" as const,
+        label: "第 2 轮 · 调优正式投放",
+        questionnaire,
+        samplePlan,
+        samplingResults: { simple: simpleStored, systematic: systematicStored },
+        fieldwork: null,
+        cleaningConfig: { ...DEFAULT_CLEANING_CONFIG },
+        completedAt: nowIso,
+    };
+    const w1Dispatch = waveService.simulateWaveDispatchForCompletedMethods({
+        wave: wave1Base,
+        population: loadedSource.designRows,
+        fieldMapping: f.mapping,
+        fieldworkConfig: null,
+        dictionary: f.dictionary,
+        seed: 202601,
+    });
+    const w2Dispatch = waveService.simulateWaveDispatchForCompletedMethods({
+        wave: wave2Base,
+        population: loadedSource.designRows,
+        fieldMapping: f.mapping,
+        fieldworkConfig: null,
+        dictionary: f.dictionary,
+        seed: 202602,
+    });
+    if (!w1Dispatch.ok || !w2Dispatch.ok) throw new Error("Failed to simulate fieldwork in submittableFixture");
     const [record] = await application.db.update(schema.experiment).set({
         status: "in_progress", currentStage: 5, activeWaveNumber: 2, version: f.experiment.version + 1,
         questionnaire, samplePlan,
@@ -562,28 +604,8 @@ async function submittableFixture() {
             updatedAt: nowIso,
         },
         wavesData: [
-            {
-                waveNumber: 1,
-                kind: "pilot",
-                label: "第 1 轮 · 首轮试投",
-                questionnaire,
-                samplePlan,
-                samplingResults: { simple: simpleStored },
-                fieldwork: null,
-                cleaningConfig: { ...DEFAULT_CLEANING_CONFIG },
-                completedAt: nowIso,
-            },
-            {
-                waveNumber: 2,
-                kind: "main",
-                label: "第 2 轮 · 调优正式投放",
-                questionnaire,
-                samplePlan,
-                samplingResults: { simple: simpleStored, systematic: systematicStored },
-                fieldwork: null,
-                cleaningConfig: { ...DEFAULT_CLEANING_CONFIG },
-                completedAt: nowIso,
-            },
+            { ...wave1Base, fieldwork: w1Dispatch.fieldwork },
+            { ...wave2Base, fieldwork: w2Dispatch.fieldwork },
         ],
         reportContent: `<p>${"报告正文用于验证冻结与提交路径。".repeat(9)}</p>`,
         analysisReferences: [], submissionSnapshot: null, submittedAt: null,
@@ -888,3 +910,74 @@ pgTest("a version change while analysis waits for its write lock rejects the res
     expect(outcome.error).toMatchObject({ code: "VERSION_CONFLICT", status: 409 });
     expect(await application.db.select().from(schema.savedAnalysis).where(eq(schema.savedAnalysis.experimentId, f.experiment.id))).toHaveLength(0);
 }, 10_000);
+
+pgTest("multi-wave stage reopen cleans relational experiment_wave rows and submit verifies fieldwork replay", async () => {
+    const f = await submittableFixture();
+    const reload = async () => (await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, f.experiment.id)))[0]!;
+    const currentWaves = waveService.parseStoredWaves(f.record.wavesData);
+    const wave3 = {
+        ...currentWaves[1]!,
+        waveNumber: 3,
+        kind: "refinement" as const,
+        label: "第 3 轮 · 进阶微调投放",
+    };
+    const threeWaves = [...currentWaves, wave3];
+    await application.db.update(schema.experiment).set({
+        activeWaveNumber: 3,
+        wavesData: threeWaves,
+    }).where(eq(schema.experiment.id, f.experiment.id));
+    await waveService.syncExperimentWavesSnapshot(application.db, f.experiment.id, threeWaves);
+    expect(await application.db.select().from(schema.experimentWave).where(eq(schema.experimentWave.experimentId, f.experiment.id))).toHaveLength(3);
+
+    // Tampered fieldwork record in Wave 3 must fail replay verification at submit
+    const tamperedWave3 = structuredClone(wave3);
+    tamperedWave3.fieldwork!.methods.simple!.records[0]!.durationSec = 999_999;
+    await application.db.update(schema.experiment).set({
+        wavesData: [currentWaves[0]!, currentWaves[1]!, tamperedWave3],
+    }).where(eq(schema.experiment.id, f.experiment.id));
+    const tamperedRec = await reload();
+    expect(await submitService.submitStudentExperiment({
+        experimentRecord: tamperedRec,
+        observedVersion: tamperedRec.version,
+        taskInfo: f.taskInfo,
+        student: f.student,
+    })).toMatchObject({ ok: false, code: "INVALID_SAMPLING_STORAGE" });
+
+    // Cross-method slot swap in fieldwork.methods must also fail replay verification
+    const slotSwappedWave3 = structuredClone(wave3);
+    slotSwappedWave3.fieldwork!.methods.systematic = { ...slotSwappedWave3.fieldwork!.methods.simple! };
+    await application.db.update(schema.experiment).set({
+        wavesData: [currentWaves[0]!, currentWaves[1]!, slotSwappedWave3],
+    }).where(eq(schema.experiment.id, f.experiment.id));
+    const slotSwappedRec = await reload();
+    expect(await submitService.submitStudentExperiment({
+        experimentRecord: slotSwappedRec,
+        observedVersion: slotSwappedRec.version,
+        taskInfo: f.taskInfo,
+        student: f.student,
+    })).toMatchObject({ ok: false, code: "INVALID_SAMPLING_STORAGE" });
+
+    // Restore valid 3 waves, then reopen Stage 3 via route: Wave 2 & 3 rows in experiment_wave must be deleted
+    await application.db.update(schema.experiment).set({ wavesData: threeWaves }).where(eq(schema.experiment.id, f.experiment.id));
+    const token = await session(3, f.students[0]!.id);
+    const { stageReopenRoutes } = await import("../student/routes/experiment");
+    const beforeReopen3 = await reload();
+    const reopen3Res = await stageReopenRoutes.POST!(routeRequest(
+        "POST",
+        { id: String(f.task.id), stage: "3" },
+        { cookie: `student_session=${token}`, body: { observedVersion: beforeReopen3.version } },
+    ));
+    expect(reopen3Res.status).toBe(200);
+    const waveRowsAfterStage3Reopen = await application.db.select().from(schema.experimentWave).where(eq(schema.experimentWave.experimentId, f.experiment.id));
+    expect(waveRowsAfterStage3Reopen.map((r) => r.waveNumber)).toEqual([1]);
+
+    // Reopen Stage 1 via route: all experiment_wave rows must be deleted
+    const beforeReopen1 = await reload();
+    const reopen1Res = await stageReopenRoutes.POST!(routeRequest(
+        "POST",
+        { id: String(f.task.id), stage: "1" },
+        { cookie: `student_session=${token}`, body: { observedVersion: beforeReopen1.version } },
+    ));
+    expect(reopen1Res.status).toBe(200);
+    expect(await application.db.select().from(schema.experimentWave).where(eq(schema.experimentWave.experimentId, f.experiment.id))).toHaveLength(0);
+}, 30_000);

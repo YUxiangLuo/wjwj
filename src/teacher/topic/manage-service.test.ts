@@ -282,3 +282,52 @@ test("assigned topics cannot be deleted and retain their files", async () => {
         await Bun.file(`${process.cwd()}${attachmentPath}`).delete().catch(() => undefined);
     }
 });
+
+test("field mapping sanitizes stale fieldworkConfig.stratumField and updateTopicFieldworkConfig rejects unmapped strata", async () => {
+    const meanPath = `/storage/uploads/fw-sanitize-${crypto.randomUUID()}.csv`;
+    await Bun.write(`${process.cwd()}${meanPath}`, "id,value\n1,10\n2,20\n");
+    const { module, operations } = await loadManageService({
+        select: [
+            [{
+                excelFilePath: meanPath,
+                status: 0,
+                fieldMapping: { identifier: "id", stratified: ["old_tier"], numeric: ["value"] },
+                fieldworkConfig: {
+                    version: 1,
+                    preset: "stratum_differential",
+                    baseUnitNonResponseRate: 0.2,
+                    stratumField: "old_tier",
+                    stratumNonResponseRates: { VIP: 0.05 },
+                    baseSpeederRate: 0.05,
+                    baseStraightlinerRate: 0.05,
+                    baseItemSkipRate: 0.02,
+                    contactCostPerUnit: 2,
+                    incentiveCostPerComplete: 10,
+                },
+            }],
+            [],
+            [{ status: 0, fieldMapping: { identifier: "id", stratified: [], numeric: ["value"] } }],
+            [],
+        ],
+    });
+    try {
+        expect(await module.updateTopicFieldMapping({
+            teacherId: 9,
+            topicId: 12,
+            fieldMapping: { identifier: "id", stratified: [], numeric: ["value"], analysisTarget: { kind: "mean", field: "value" } },
+        })).toEqual({ ok: true });
+        const mappingUpdate = operations.find((op) => op.kind === "update")?.set as Record<string, any>;
+        expect(mappingUpdate.fieldworkConfig.preset).toBe("balanced");
+        expect(mappingUpdate.fieldworkConfig.stratumField).toBeUndefined();
+        expect(mappingUpdate.fieldworkConfig.stratumNonResponseRates).toBeUndefined();
+
+        const rejectedFw = await module.updateTopicFieldworkConfig({
+            teacherId: 9,
+            topicId: 12,
+            fieldworkConfig: { version: 1, preset: "stratum_differential", baseUnitNonResponseRate: 0.2, stratumField: "old_tier" },
+        });
+        expect(rejectedFw).toMatchObject({ ok: false, code: "VALIDATION_ERROR" });
+    } finally {
+        await Bun.file(`${process.cwd()}${meanPath}`).delete().catch(() => undefined);
+    }
+});

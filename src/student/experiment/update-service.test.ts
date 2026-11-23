@@ -379,3 +379,225 @@ test("a non-string report payload is rejected by type instead of a misleading wo
     });
     expect(empty.ok === false && empty.message).toBe("本实验要求报告内容不少于100字");
 });
+
+test("stage 2 requires fieldwork for every completed method and rejects undispatched plan size edits", () => {
+    const q = validQuestionnaire();
+    const partialFieldworkRecord = record({
+        wavesData: [{
+            waveNumber: 1,
+            kind: "pilot",
+            label: "第 1 轮 · 首轮试投",
+            questionnaire: q,
+            samplePlan: { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 132, finalSampleSize: 50 },
+            samplingResults: {
+                simple: { completed: true, sampleCount: 50, serverGenerated: true },
+                systematic: { completed: true, sampleCount: 50, interval: 4, serverGenerated: true },
+            },
+            fieldwork: fieldworkFor(["simple"]),
+            cleaningConfig: { removeSpeeders: true, removeStraightliners: true, requirePrimaryTargetValid: true },
+            completedAt: null,
+        }],
+    });
+    expect(buildStageCompletionUpdates({
+        experimentRecord: partialFieldworkRecord,
+        stage: 2,
+        payload: {},
+        populationSize: 200,
+        deadlinePassed: false,
+    })).toMatchObject({ ok: false, code: "FIELDWORK_REQUIRED", status: 409 });
+
+    const planChangedRecord = record({
+        wavesData: [{
+            waveNumber: 1,
+            kind: "pilot",
+            label: "第 1 轮 · 首轮试投",
+            questionnaire: q,
+            samplePlan: { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 132, finalSampleSize: 50 },
+            samplingResults: { simple: { completed: true, sampleCount: 50, serverGenerated: true } },
+            fieldwork: fieldworkFor(["simple"]),
+            cleaningConfig: { removeSpeeders: true, removeStraightliners: true, requirePrimaryTargetValid: true },
+            completedAt: null,
+        }],
+    });
+    expect(buildStageCompletionUpdates({
+        experimentRecord: planChangedRecord,
+        stage: 2,
+        payload: {
+            samplePlan: { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 132, finalSampleSize: 80 },
+        },
+        populationSize: 200,
+        deadlinePassed: false,
+    })).toMatchObject({ ok: false, code: "FIELDWORK_REQUIRED", status: 409 });
+});
+
+test("stage 3 clears top-level pilot samplingResults and stage 4 rejects undispatched questionnaire or plan edits", () => {
+    const q1 = validQuestionnaire();
+    const q2 = { ...validQuestionnaire(), title: "二轮修订问卷" };
+    const plan1 = { confidenceLevel: "95", marginOfError: 8, designEffect: 1, nonResponseRate: 0, recommendedSize: 86, finalSampleSize: 30 };
+    const plan2 = { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0.2, recommendedSize: 165, finalSampleSize: 60 };
+
+    const stage3Result = buildStageCompletionUpdates({
+        experimentRecord: record({
+            currentStage: 3,
+            stage2CompletedAt: new Date("2026-01-02T00:00:00Z"),
+            samplePlan: plan1,
+            samplingResults: { simple: { completed: true, sampleCount: 30, serverGenerated: true } },
+            wavesData: [{
+                waveNumber: 1,
+                kind: "pilot",
+                label: "第 1 轮 · 首轮试投",
+                questionnaire: q1,
+                samplePlan: plan1,
+                samplingResults: { simple: { completed: true, sampleCount: 30, serverGenerated: true } },
+                fieldwork: fieldworkFor(["simple"]),
+                cleaningConfig: { removeSpeeders: true, removeStraightliners: true, requirePrimaryTargetValid: true },
+                completedAt: "2026-01-02T00:00:00Z",
+            }],
+        }),
+        stage: 3,
+        payload: {
+            adjustmentPlan: {
+                identifiedIssues: ["unit_nonresponse_gap"],
+                plannedActions: ["recalibrate_sample_size"],
+                rationale: "首轮试投后根据实测拒访率重算二轮正式样本量并优化问卷。",
+            },
+        },
+        populationSize: 200,
+        deadlinePassed: false,
+    });
+    expect(stage3Result.ok).toBe(true);
+    if (!stage3Result.ok) return;
+    expect(stage3Result.updates.samplingResults).toBeNull();
+
+    const stage4EmptyWave2 = record({
+        currentStage: 4,
+        activeWaveNumber: 2,
+        stage2CompletedAt: new Date("2026-01-02T00:00:00Z"),
+        stage3CompletedAt: new Date("2026-01-03T00:00:00Z"),
+        samplingResults: {
+            simple: { completed: true, sampleCount: 60, serverGenerated: true },
+            systematic: { completed: true, sampleCount: 60, interval: 3, serverGenerated: true },
+        },
+        wavesData: [
+            {
+                waveNumber: 1,
+                kind: "pilot",
+                label: "Wave 1",
+                questionnaire: q1,
+                samplePlan: plan1,
+                samplingResults: { simple: { completed: true, sampleCount: 30, serverGenerated: true } },
+                fieldwork: fieldworkFor(["simple"]),
+                cleaningConfig: { removeSpeeders: true, removeStraightliners: true, requirePrimaryTargetValid: true },
+                completedAt: "2026-01-02T00:00:00Z",
+            },
+            {
+                waveNumber: 2,
+                kind: "main",
+                label: "Wave 2",
+                questionnaire: q1,
+                samplePlan: plan2,
+                samplingResults: null,
+                fieldwork: null,
+                cleaningConfig: { removeSpeeders: true, removeStraightliners: true, requirePrimaryTargetValid: true },
+                completedAt: null,
+            },
+        ],
+    });
+    expect(buildStageCompletionUpdates({
+        experimentRecord: stage4EmptyWave2,
+        stage: 4,
+        payload: {},
+        populationSize: 200,
+        deadlinePassed: false,
+    }).ok).toBe(false);
+
+    const stage4Dispatched = record({
+        currentStage: 4,
+        activeWaveNumber: 2,
+        stage2CompletedAt: new Date("2026-01-02T00:00:00Z"),
+        stage3CompletedAt: new Date("2026-01-03T00:00:00Z"),
+        wavesData: [
+            {
+                waveNumber: 1,
+                kind: "pilot",
+                label: "Wave 1",
+                questionnaire: q1,
+                samplePlan: plan1,
+                samplingResults: { simple: { completed: true, sampleCount: 30, serverGenerated: true } },
+                fieldwork: fieldworkFor(["simple"]),
+                cleaningConfig: { removeSpeeders: true, removeStraightliners: true, requirePrimaryTargetValid: true },
+                completedAt: "2026-01-02T00:00:00Z",
+            },
+            {
+                waveNumber: 2,
+                kind: "main",
+                label: "Wave 2",
+                questionnaire: q1,
+                samplePlan: plan2,
+                samplingResults: {
+                    simple: { completed: true, sampleCount: 60, serverGenerated: true },
+                    systematic: { completed: true, sampleCount: 60, interval: 3, serverGenerated: true },
+                },
+                fieldwork: fieldworkFor(["simple", "systematic"]),
+                cleaningConfig: { removeSpeeders: true, removeStraightliners: true, requirePrimaryTargetValid: true },
+                completedAt: null,
+            },
+        ],
+    });
+    expect(buildStageCompletionUpdates({
+        experimentRecord: stage4Dispatched,
+        stage: 4,
+        payload: { questionnaire: q2 },
+        populationSize: 200,
+        deadlinePassed: false,
+        samplingPolicy: { version: 1, methods: { simple: "required", systematic: "optional", pps: "disabled", stratified: "disabled" } },
+    })).toMatchObject({ ok: false, code: "FIELDWORK_REQUIRED", status: 409 });
+
+    expect(buildStageCompletionUpdates({
+        experimentRecord: stage4Dispatched,
+        stage: 4,
+        payload: { samplePlan: { ...plan2, finalSampleSize: 80 } },
+        populationSize: 200,
+        deadlinePassed: false,
+        samplingPolicy: { version: 1, methods: { simple: "required", systematic: "optional", pps: "disabled", stratified: "disabled" } },
+    })).toMatchObject({ ok: false, code: "FIELDWORK_REQUIRED", status: 409 });
+});
+
+test("reopening stage 2 or 3 after multi-wave formal stage restores Wave 1 top-level data and drops Wave 2/3", () => {
+    const q1 = { ...validQuestionnaire(), title: "首轮试投问卷" };
+    const q2 = { ...validQuestionnaire(), title: "二轮正式问卷" };
+    const plan1 = { confidenceLevel: "95", marginOfError: 8, finalSampleSize: 30 };
+    const plan2 = { confidenceLevel: "95", marginOfError: 5, finalSampleSize: 80 };
+    const sr1 = { simple: { completed: true, sampleCount: 30, serverGenerated: true } };
+    const sr2 = { simple: { completed: true, sampleCount: 80, serverGenerated: true }, systematic: { completed: true, sampleCount: 80, serverGenerated: true } };
+
+    const stage5MultiWave = record({
+        currentStage: 5,
+        activeWaveNumber: 3,
+        questionnaire: q2,
+        samplePlan: plan2,
+        samplingResults: sr2,
+        adjustmentPlan: { identifiedIssues: ["unit_nonresponse_gap"], plannedActions: ["recalibrate_sample_size"], rationale: "调整说明理由超过十五个字。" },
+        reportContent: "<p>报告</p>",
+        stage2CompletedAt: new Date("2026-01-02T00:00:00Z"),
+        stage3CompletedAt: new Date("2026-01-03T00:00:00Z"),
+        stage4CompletedAt: new Date("2026-01-04T00:00:00Z"),
+        stage5CompletedAt: new Date("2026-01-05T00:00:00Z"),
+        wavesData: [
+            { waveNumber: 1, kind: "pilot", label: "Wave 1", questionnaire: q1, samplePlan: plan1, samplingResults: sr1, fieldwork: fieldworkFor(["simple"]), cleaningConfig: { removeSpeeders: true, removeStraightliners: true, requirePrimaryTargetValid: true }, completedAt: "2026-01-02T00:00:00Z" },
+            { waveNumber: 2, kind: "main", label: "Wave 2", questionnaire: q2, samplePlan: plan2, samplingResults: sr2, fieldwork: fieldworkFor(["simple", "systematic"]), cleaningConfig: { removeSpeeders: true, removeStraightliners: true, requirePrimaryTargetValid: true }, completedAt: "2026-01-03T12:00:00Z" },
+            { waveNumber: 3, kind: "refinement", label: "Wave 3", questionnaire: q2, samplePlan: plan2, samplingResults: sr2, fieldwork: fieldworkFor(["simple", "systematic"]), cleaningConfig: { removeSpeeders: true, removeStraightliners: true, requirePrimaryTargetValid: true }, completedAt: "2026-01-04T00:00:00Z" },
+        ],
+    });
+
+    for (const stage of [2, 3] as const) {
+        const reopened = buildStageReopenUpdates({ experimentRecord: stage5MultiWave, stage, deadlinePassed: false });
+        expect(reopened.ok).toBe(true);
+        if (!reopened.ok) return;
+        expect(reopened.updates.activeWaveNumber).toBe(1);
+        expect(reopened.updates.questionnaire).toEqual(q1);
+        expect(reopened.updates.samplePlan).toEqual(plan1);
+        expect(reopened.updates.samplingResults).toEqual(sr1);
+        expect((reopened.updates.wavesData as Array<{ waveNumber: number }>).map((w) => w.waveNumber)).toEqual([1]);
+    }
+});

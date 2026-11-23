@@ -519,3 +519,161 @@ test("a required PPS whose size field is unusable completes stage 4 instead of t
 
     expect(response.status).toBe(200);
 });
+
+test("fieldwork dispatch rejects invalid seeds and blocks stage 4 dispatch before formal sampling policy completes", async () => {
+    const q = validQuestionnaire();
+    const plan = { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 50, finalSampleSize: 2 };
+    const csvPath = `/storage/dispatch-gate-${crypto.randomUUID()}.csv`;
+    await Bun.write(`${process.cwd()}${csvPath}`, "id,group\n1,A\n2,A\n3,B\n4,B\n");
+    try {
+        const incompleteWave2 = experimentRecord({
+            currentStage: 4,
+            activeWaveNumber: 2,
+            stage2CompletedAt: new Date("2026-01-02T00:00:00Z"),
+            stage3CompletedAt: new Date("2026-01-03T00:00:00Z"),
+            wavesData: [{
+                waveNumber: 2,
+                kind: "main",
+                label: "Wave 2",
+                questionnaire: q,
+                samplePlan: plan,
+                samplingResults: { simple: { completed: true, sampleCount: 2, indices: [0, 1], serverGenerated: true } },
+                fieldwork: null,
+                cleaningConfig: { removeSpeeders: true, removeStraightliners: true, requirePrimaryTargetValid: true },
+                completedAt: null,
+            }],
+        });
+        const { module, operations } = await load(incompleteWave2, {
+            select: Array.from({ length: 6 }, () => [incompleteWave2]),
+            samplingInfo: {
+                excelFilePath: csvPath,
+                fieldMapping: { identifier: "id", stratified: ["group"] },
+                samplingPolicy: { version: 1, methods: { simple: "required", systematic: "optional", pps: "disabled", stratified: "required" } },
+            },
+        });
+
+        // Invalid/negative/huge seed rejected at boundary with 400
+        for (const badSeed of [-5, 1.5, "bad", Number.MAX_SAFE_INTEGER + 1]) {
+            const seedReq = new Request("https://example.com/api/student/tasks/3/experiment/fieldwork/dispatch", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ observedVersion: 6, seed: badSeed }),
+            });
+            (seedReq as Request & { params?: Record<string, string> }).params = { id: "3" };
+            const seedRes = await module.fieldworkDispatchRoutes.POST!(seedReq);
+            expect(seedRes.status).toBe(400);
+        }
+
+        // Valid seed in Stage 4 still rejected with 409 because required stratified sampling is not completed
+        const dispatchReq = new Request("https://example.com/api/student/tasks/3/experiment/fieldwork/dispatch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ observedVersion: 6, seed: 2026 }),
+        });
+        (dispatchReq as Request & { params?: Record<string, string> }).params = { id: "3" };
+        const dispatchRes = await module.fieldworkDispatchRoutes.POST!(dispatchReq);
+        expect(dispatchRes.status).toBe(409);
+        expect(await dispatchRes.json()).toMatchObject({ error: { code: "SAMPLING_RESULTS_REQUIRED" } });
+        expect(operations.some((op) => op.kind === "update")).toBe(false);
+    } finally {
+        await Bun.file(`${process.cwd()}${csvPath}`).delete().catch(() => undefined);
+    }
+});
+
+test("fieldwork cleaning and new-wave routes enforce wave caps, wave ownership, and full dispatch prerequisites", async () => {
+    const q = validQuestionnaire();
+    const plan = { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 50, finalSampleSize: 50 };
+    const stage4Record = experimentRecord({
+        currentStage: 4,
+        activeWaveNumber: 2,
+        stage2CompletedAt: new Date("2026-01-02T00:00:00Z"),
+        stage3CompletedAt: new Date("2026-01-03T00:00:00Z"),
+        wavesData: [
+            { waveNumber: 1, kind: "pilot", label: "Wave 1", questionnaire: q, samplePlan: plan, samplingResults: { simple: { completed: true, sampleCount: 50, serverGenerated: true } }, fieldwork: fieldworkFor(["simple"]), cleaningConfig: { removeSpeeders: true, removeStraightliners: true, requirePrimaryTargetValid: true }, completedAt: "2026-01-02T00:00:00Z" },
+            {
+                waveNumber: 2,
+                kind: "main",
+                label: "Wave 2",
+                questionnaire: q,
+                samplePlan: plan,
+                samplingResults: {
+                    simple: { completed: true, sampleCount: 50, serverGenerated: true },
+                    systematic: { completed: true, sampleCount: 50, interval: 4, serverGenerated: true },
+                },
+                // systematic was re-sampled without re-dispatching
+                fieldwork: fieldworkFor(["simple"]),
+                cleaningConfig: { removeSpeeders: true, removeStraightliners: true, requirePrimaryTargetValid: true },
+                completedAt: null,
+            },
+        ],
+    });
+    const { module } = await load(stage4Record, {
+        select: Array.from({ length: 6 }, () => [stage4Record]),
+        samplingInfo: {
+            samplingPolicy: { version: 1, methods: { simple: "required", systematic: "optional", pps: "disabled", stratified: "disabled" } },
+        },
+    });
+
+    // Cleaning rejects invalid waveNumber and cross-stage Wave 1 mutation in Stage 4
+    const badWaveClean = new Request("https://example.com", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ observedVersion: 6, waveNumber: 9, cleaningConfig: { removeSpeeders: true } }),
+    });
+    (badWaveClean as Request & { params?: Record<string, string> }).params = { id: "3" };
+    expect((await module.fieldworkCleaningRoutes.POST!(badWaveClean)).status).toBe(400);
+
+    const badConfigClean = new Request("https://example.com", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ observedVersion: 6, waveNumber: 2, cleaningConfig: { unknownFlag: true } }),
+    });
+    (badConfigClean as Request & { params?: Record<string, string> }).params = { id: "3" };
+    expect((await module.fieldworkCleaningRoutes.POST!(badConfigClean)).status).toBe(400);
+
+    const crossWaveClean = new Request("https://example.com", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ observedVersion: 6, waveNumber: 1, cleaningConfig: { removeSpeeders: false } }),
+    });
+    (crossWaveClean as Request & { params?: Record<string, string> }).params = { id: "3" };
+    expect((await module.fieldworkCleaningRoutes.POST!(crossWaveClean)).status).toBe(409);
+
+    // new-wave rejects when a completed method in Wave 2 lacks dispatched fieldwork
+    const newWaveReq = new Request("https://example.com", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ observedVersion: 6 }),
+    });
+    (newWaveReq as Request & { params?: Record<string, string> }).params = { id: "3" };
+    const newWaveRes = await module.newWaveRoutes.POST!(newWaveReq);
+    expect(newWaveRes.status).toBe(409);
+    expect(await newWaveRes.json()).toMatchObject({ error: { code: "FIELDWORK_REQUIRED" } });
+
+    // 4-wave cap enforced with WAVE_LIMIT
+    const fourWavesRecord = experimentRecord({
+        currentStage: 4,
+        activeWaveNumber: 4,
+        wavesData: [1, 2, 3, 4].map((n) => ({
+            waveNumber: n,
+            kind: n === 1 ? "pilot" : n === 2 ? "main" : "refinement",
+            label: `Wave ${n}`,
+            questionnaire: q,
+            samplePlan: plan,
+            samplingResults: { simple: { completed: true, sampleCount: 50, serverGenerated: true } },
+            fieldwork: fieldworkFor(["simple"]),
+            cleaningConfig: { removeSpeeders: true, removeStraightliners: true, requirePrimaryTargetValid: true },
+            completedAt: n < 4 ? "2026-01-02T00:00:00Z" : null,
+        })),
+    });
+    const capped = await load(fourWavesRecord);
+    const capReq = new Request("https://example.com", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ observedVersion: 6 }),
+    });
+    (capReq as Request & { params?: Record<string, string> }).params = { id: "3" };
+    const capRes = await capped.module.newWaveRoutes.POST!(capReq);
+    expect(capRes.status).toBe(400);
+    expect(await capRes.json()).toMatchObject({ error: { code: "WAVE_LIMIT" } });
+});

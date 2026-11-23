@@ -67,6 +67,11 @@ test("A04 rejects malformed config and request identity", async () => {
         ["observedVersion zero", { ...validBody(), observedVersion: 0 }],
         ["observedVersion fractional", { ...validBody(), observedVersion: 1.5 }],
         ["observedVersion string", { ...validBody(), observedVersion: "6" }],
+        ["waveNumber zero", { ...validBody(), config: { ...validConfig, waveNumber: 0 } }],
+        ["waveNumber negative", { ...validBody(), config: { ...validConfig, waveNumber: -1 } }],
+        ["waveNumber above max 4", { ...validBody(), config: { ...validConfig, waveNumber: 5 } }],
+        ["waveNumber fractional", { ...validBody(), config: { ...validConfig, waveNumber: 1.5 } }],
+        ["datasetMode invalid", { ...validBody(), config: { ...validConfig, datasetMode: "raw" } }],
         ["body array", [validBody()]],
         ["body null", null],
         ["body primitive", "config"],
@@ -126,4 +131,22 @@ test("A04 rejects unanalysable variables and unfinished sampling results before 
     const staleVersion = await callRoute({ select: [[context], [], []] }, { ...validBody(), observedVersion: 5 });
     expect(staleVersion.response.status).toBe(409);
     expect(staleVersion.body.error?.code).toBe("VERSION_CONFLICT");
+
+    // Non-existent waveNumber must reject instead of silently falling back to top-level samplingResults
+    const missingWave = await callRoute(
+        { select: [[{ ...context, record: { ...context.record, wavesData: [{ waveNumber: 1, kind: "pilot", label: "W1", questionnaire: { title: "t", welcomeText: "w", endingText: "e", questions: [] }, samplePlan: null, samplingResults: context.record.samplingResults, fieldwork: null, cleaningConfig: {}, completedAt: null }] } }], []] },
+        { ...validBody(), config: { ...validConfig, waveNumber: 3 } },
+    );
+    expect(missingWave.response.status).toBe(400);
+    expect(missingWave.body.error?.message).toMatch(/波次不存在/);
+
+    // Continuous or self groupByField must reject before worker execution
+    const badGroup = await callRoute({ select: [[context], []] }, { ...validBody(), config: { ...validConfig, groupByField: "score" } });
+    expect(badGroup.response.status).toBe(400);
+    expect(badGroup.body.error?.message).toMatch(/分组维度/);
+
+    // cleaned_respondents without dispatched fieldwork must reject with 409 MISSING_FIELDWORK
+    const missingFieldwork = await callRoute({ select: [[context], []] }, { ...validBody(), config: { ...validConfig, datasetMode: "cleaned_respondents" } });
+    expect(missingFieldwork.response.status).toBe(409);
+    expect(missingFieldwork.body.error?.code).toBe("MISSING_FIELDWORK");
 });

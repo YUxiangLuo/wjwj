@@ -4,7 +4,7 @@ import { experiment } from "../../db/schema";
 import { validateObservedVersion } from "../../lib/observed-version";
 import { resolveAnalysisTarget, resolveStudyContract, type ResolvedStudyContract } from "../../lib/analysis-target";
 import { scoringWeightsFrom, type ScoringWeights } from "../../lib/scoring-weights";
-import { resolveSamplingPolicy, type SamplingPolicyV1 } from "../../lib/sampling-policy";
+import { isCompletedSamplingResult, resolveSamplingPolicy, SAMPLING_METHODS, type SamplingPolicyV1 } from "../../lib/sampling-policy";
 import { readVariableSource } from "../../server/variable-source";
 import { finitePopulationS2ToSigma2 } from "./sample-plan";
 import { buildPopulationNumericStats, parseTopicFieldMapping } from "../../domain/statistics/population";
@@ -114,7 +114,10 @@ export function validateExperimentSubmission(params: {
     const storedWaves = parseStoredWaves(record.wavesData);
     const populationSize = normalizePopulationSize(params.taskInfo.populationSize);
 
-    if (storedWaves.length < 2) {
+    const activeFormalWaveNumber = Math.max(2, record.activeWaveNumber || 2);
+    const pilotWave = storedWaves.find((w) => w.waveNumber === 1);
+    const formalWave = storedWaves.find((w) => w.waveNumber === activeFormalWaveNumber);
+    if (storedWaves.length < 2 || !pilotWave || !formalWave) {
         return fail("请完成首轮试投诊断与至少一轮调优正式投放后再提交", "INCOMPLETE");
     }
 
@@ -242,6 +245,16 @@ export async function submitStudentExperiment(params: {
                 fieldMapping: params.taskInfo.fieldMapping,
             }))) {
                 return fail(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
+            }
+            const completedMethods = SAMPLING_METHODS.filter((m) =>
+                isCompletedSamplingResult((w.samplingResults as Record<string, unknown> | null)?.[m])
+                && (w.samplingResults as Record<string, Record<string, unknown> | undefined> | null)?.[m]?.serverGenerated === true,
+            );
+            if (
+                completedMethods.length > 0
+                && completedMethods.some((m) => !w.fieldwork?.methods?.[m]?.records?.length)
+            ) {
+                return fail("请先完成各轮次的问卷发放回收后再提交", "INCOMPLETE", 400);
             }
         }
         if (!verifyExperimentWavesReplay({

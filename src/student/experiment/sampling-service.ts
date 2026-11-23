@@ -30,16 +30,22 @@ export function parseSamplingSeed(rawSeed: unknown) {
 
     if (!(rawSeed === undefined || rawSeed === null || rawSeed === "")) {
         if (typeof rawSeed === "number") {
+            if (!Number.isFinite(rawSeed) || rawSeed !== Math.floor(rawSeed)) {
+                return { seed: undefined, errorMessage: "seed 需为非负整数" };
+            }
+            if (rawSeed < 0) {
+                return { seed: undefined, errorMessage: "seed 需为非负整数" };
+            }
             if (!Number.isSafeInteger(rawSeed)) {
-                return { seed: undefined, errorMessage: rawSeed !== Math.floor(rawSeed) ? "seed 需为整数" : "seed 值超出安全整数范围" };
+                return { seed: undefined, errorMessage: "seed 值超出安全整数范围" };
             }
             seed = rawSeed;
         } else if (typeof rawSeed === "string") {
             const trimmedSeed = rawSeed.trim();
             if (!trimmedSeed) {
                 seed = undefined;
-            } else if (!/^-?\d+$/.test(trimmedSeed)) {
-                return { seed: undefined, errorMessage: "seed 需为整数" };
+            } else if (!/^\d+$/.test(trimmedSeed)) {
+                return { seed: undefined, errorMessage: "seed 需为非负整数" };
             } else {
                 seed = Number.parseInt(trimmedSeed, 10);
                 if (!Number.isSafeInteger(seed)) {
@@ -47,7 +53,7 @@ export function parseSamplingSeed(rawSeed: unknown) {
                 }
             }
         } else {
-            return { seed: undefined, errorMessage: "seed 需为整数" };
+            return { seed: undefined, errorMessage: "seed 需为非负整数" };
         }
     }
 

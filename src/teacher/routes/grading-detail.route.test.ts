@@ -16,6 +16,7 @@ test("grading detail prefers the immutable submission snapshot", async () => {
         samplePlan: { confidenceLevel: "90", marginOfError: 4, recommendedSize: 210, finalSampleSize: 240 },
         samplingResults: { simple: { completed: true, sampleCount: 240, data: Array.from({ length: 240 }, () => ({})) } },
         samplingPolicy: { version: 1, methods: { simple: "required", systematic: "optional", pps: "disabled", stratified: "optional" } },
+        variableDictionary: { source: "frozen-hash", revision: 2, variables: [] },
         reportContent: "提交时报告",
         weightConfig: { questionnaire: 40, process: 35, report: 25 },
         analysisAppendices: [{ id: 8, stale: false }],
@@ -28,7 +29,7 @@ test("grading detail prefers the immutable submission snapshot", async () => {
             reportContent: "当前报告", samplePlan: null, questionnaire: null, samplingResults: null,
             scoreQuestionnaire: null, scoreProcess: null, scoreReport: null, totalScore: null, teacherComment: null, rejectReason: null, gradedAt: null, gradedByName: null,
         }],
-        [{ id: 5, method: "simple", seed: 2026, sampleCount: 240, details: { completed: true }, createdAt: attemptTime }],
+        [{ id: 5, waveNumber: 2, method: "simple", seed: 2026, sampleCount: 240, details: { completed: true }, createdAt: attemptTime }],
     ] });
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => createTeacherAuthModuleMock());
@@ -39,9 +40,11 @@ test("grading detail prefers the immutable submission snapshot", async () => {
     expect(payload.data.samplePlan).toMatchObject({ finalSampleSize: 240, designEffect: 1, nonResponseRate: 0 });
     expect(payload.data.weights).toEqual({ questionnaire: 40, process: 35, report: 25 });
     expect(payload.data.samplingPolicy).toEqual(snapshot.samplingPolicy);
+    expect(payload.data.variableDictionary).toEqual(snapshot.variableDictionary);
     expect(payload.data.analysisAppendices).toEqual(snapshot.analysisAppendices);
     expect(payload.data.samplingAttempts).toEqual([{
         id: 5,
+        waveNumber: 2,
         method: "simple",
         seed: 2026,
         sampleCount: 240,

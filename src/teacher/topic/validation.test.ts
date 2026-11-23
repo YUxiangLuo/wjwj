@@ -5,6 +5,7 @@ import {
     validateIdentifierFieldValues,
     validateNumericFieldValues,
     validateTopicPublishReadiness,
+    validateTopicFieldworkConfigStrict,
     validateStratifiedValueCardinality,
     validateTopicAttachmentUpload,
     validateTopicFieldMappingColumns,
@@ -464,4 +465,14 @@ test("publish readiness rejects a required PPS when no numeric column is all pos
         samplingPolicy: { ...policy("required"), ppsSizeFields: ["不存在的字段"] },
         rows: [{ 编号: "1", 得分: 10, 规模: 3 }, { 编号: "2", 得分: 20, 规模: 5 }],
     })).toContain("没有非目标数值字段");
+
+    // Stale stratumField or out-of-range fieldworkConfig blocks publish readiness even when stratified is []
+    expect(validateTopicFieldworkConfigStrict({ preset: "stratum_differential", stratumField: "旧分层" }, [])).toContain("不在已映射的分层变量中");
+    expect(validateTopicFieldworkConfigStrict({ baseSpeederRate: 0.9 }, ["组别"])).toContain("闪电敷衍卷");
+    expect(validateTopicFieldworkConfigStrict({ baseUnitNonResponseRate: true }, ["组别"])).toContain("无回答率");
+    expect(validateTopicPublishReadiness({
+        ...base,
+        samplingPolicy: policy("optional"),
+        fieldworkConfig: { version: 1, preset: "stratum_differential", stratumField: "已删除列", baseUnitNonResponseRate: 0.2 },
+    })).toContain("虚拟发放配置无效");
 });

@@ -224,6 +224,7 @@ const gradingDetailRoutes: RouteDefinition = {
             reportContent?: string;
             weightConfig?: unknown;
             samplingPolicy?: unknown;
+            variableDictionary?: unknown;
             populationFileSha256?: string | null;
             analysisAppendices?: unknown[];
             targetMetrics?: TargetAnalysisMetrics | null;
@@ -233,6 +234,7 @@ const gradingDetailRoutes: RouteDefinition = {
         const samplingAttempts = await db
             .select({
                 id: samplingAttempt.id,
+                waveNumber: samplingAttempt.waveNumber,
                 method: samplingAttempt.method,
                 seed: samplingAttempt.seed,
                 sampleCount: samplingAttempt.sampleCount,
@@ -283,6 +285,7 @@ const gradingDetailRoutes: RouteDefinition = {
             waves: Array.isArray(snapshot?.waves) ? snapshot.waves : [],
             studyContract: snapshot?.studyContract ?? resolveStudyContract(row.fieldMapping, { topicName: row.topicName }),
             fieldworkConfig: resolveFieldworkConfig(snapshot?.fieldworkConfig ?? row.fieldworkConfig),
+            variableDictionary: snapshot?.variableDictionary ?? null,
             reportContent: snapshot?.reportContent ?? row.reportContent ?? "",
             analysisAppendices: snapshot?.analysisAppendices ?? [],
             targetMetrics: snapshot?.targetMetrics ?? null,

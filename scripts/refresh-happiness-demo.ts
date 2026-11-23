@@ -4,7 +4,7 @@ import { experiment, samplingAttempt, student, task, teacher, topic } from "../s
 import { validateDatabaseConfirmation } from "../src/db/destructive-confirmation";
 import { acquireStorageMutationLock } from "../src/db/storage-mutation-lock";
 import { createYouthHappinessPopulation, DOGFOOD_NAMES, HAPPINESS_POPULATION_PATH } from "../src/db/seeds/dogfood-fixtures";
-import { createHappinessDictionary, happinessFieldMapping, happinessQuestionnaire, HAPPINESS_DESCRIPTION } from "../src/db/seeds/happiness-topic";
+import { createHappinessDictionary, happinessFieldMapping, happinessQuestionnaire, HAPPINESS_DESCRIPTION, teaPricingFieldworkConfig } from "../src/db/seeds/happiness-topic";
 import { buildHappinessWorkbook } from "../src/db/seeds/happiness-materials";
 import { validateDictionary } from "../src/domain/variables/dictionary";
 import { readVariableSource } from "../src/server/variable-source";
@@ -57,6 +57,7 @@ async function refresh() {
         await tx.update(topic).set({
             description: HAPPINESS_DESCRIPTION, excelFilePath: HAPPINESS_POPULATION_PATH,
             excelRowCount: 240, fieldMapping: happinessFieldMapping,
+            fieldworkConfig: teaPricingFieldworkConfig,
             recommendQuestions: happinessQuestionnaire.questions,
             variableDictionary: dictionary, variableRevision: dictionary.revision, updatedAt: new Date(),
         }).where(eq(topic.id, selected.id));

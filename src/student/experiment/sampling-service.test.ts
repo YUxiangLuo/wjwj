@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { executeSamplingAction } from "./sampling-service";
+import { executeSamplingAction, parseSamplingSeed } from "./sampling-service";
 import { verifySamplingReplay } from "./sampling-replay";
 
 const population = Array.from({ length: 200 }, (_, i) => ({
@@ -319,4 +319,35 @@ test("PPS sampling rejects fields that have no positive numeric size values", as
     if (result.ok) return;
 
     expect(result.errorMessage).toBe("规模变量需在总体中对每个单位都为正数");
+});
+
+test("parseSamplingSeed and executeSamplingAction accept zero seed and reject negative, fractional, or unsafe seeds", async () => {
+    expect(parseSamplingSeed(undefined)).toEqual({ seed: undefined, errorMessage: null });
+    expect(parseSamplingSeed("")).toEqual({ seed: undefined, errorMessage: null });
+    expect(parseSamplingSeed(0)).toEqual({ seed: 0, errorMessage: null });
+    expect(parseSamplingSeed("0")).toEqual({ seed: 0, errorMessage: null });
+
+    for (const invalidSeed of [-1, -999999, "-1", "-42", 1.5, "1.5", "1e5", "abc", true, {}, [1], Number.MAX_SAFE_INTEGER + 1, "9007199254740992"]) {
+        const parsed = parseSamplingSeed(invalidSeed);
+        expect(parsed.errorMessage, `seed=${JSON.stringify(invalidSeed)}`).toBeTruthy();
+
+        const action = await executeSamplingAction({
+            method: "simple",
+            rawParams: { sampleSize: 10, seed: invalidSeed },
+            targetSampleSize: 10,
+            population,
+            fieldMapping: null,
+        });
+        expect(action.ok, `action seed=${JSON.stringify(invalidSeed)}`).toBe(false);
+    }
+
+    const zeroSeedResult = await executeSamplingAction({
+        method: "simple",
+        rawParams: { sampleSize: 10, seed: 0 },
+        targetSampleSize: 10,
+        population,
+        fieldMapping: null,
+    });
+    expect(zeroSeedResult.ok).toBe(true);
+    if (zeroSeedResult.ok) expect(zeroSeedResult.result.seed).toBe(0);
 });

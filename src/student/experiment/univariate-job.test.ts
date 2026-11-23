@@ -111,3 +111,94 @@ test("worker rejects forged seeds, indices, layer identity, probabilities and ch
         await Bun.file(fixture.absolute).delete();
     }
 });
+
+test("worker rejects cleaned_respondents mode when fieldwork or questionnaire is missing", async () => {
+    const fixture = await buildTrustedFixture();
+    try {
+        const replay = await executeSamplingAction({
+            method: "simple",
+            population: fixture.source.designRows,
+            fieldMapping: fixture.fieldMapping,
+            targetSampleSize: 2,
+            rawParams: { seed: 713, sampleSize: 2 },
+        });
+        expect(replay.ok).toBe(true);
+        if (!replay.ok) return;
+        const section = { ...replay.result, serverGenerated: true };
+        const res = await runUnivariateJob({
+            populationPath: fixture.path,
+            fieldMapping: fixture.fieldMapping,
+            dictionary: fixture.dictionary,
+            samplingResult: section,
+            fieldworkResult: null,
+            questionnaire: null,
+            config: { method: "simple", field: "y", question: "有效答卷均值是多少？", weighted: false, datasetMode: "cleaned_respondents" },
+        });
+        expect(res).toMatchObject({ ok: false, code: "MISSING_FIELDWORK" });
+    } finally {
+        await Bun.file(fixture.absolute).delete();
+    }
+});
+
+test("worker normalizes NFKC stratified layer names when recomputing cleaned_respondents weights", async () => {
+    const path = `/storage/test/univariate-nfkc-${crypto.randomUUID()}.csv`;
+    const absolute = `${process.cwd()}${path}`;
+    await Bun.write(absolute, "id,y,g\n01,10,Ａ\n02,20,A\n03,30,Ｂ\n04,40,B\n");
+    try {
+        const fieldMapping = { identifier: "id", numeric: ["y"], stratified: ["g"] };
+        const source = await readVariableSource(path, fieldMapping);
+        const dictionary = suggestDictionary(source.rows, source.source, 1);
+        dictionary.variables = dictionary.variables.map((v) => v.field === "y" ? { ...v, kind: "continuous", categories: [] } : v);
+        const replay = await executeSamplingAction({
+            method: "stratified",
+            population: source.designRows,
+            fieldMapping,
+            targetSampleSize: 4,
+            rawParams: { seed: 42, stratifyBy: "g", layers: [{ name: "Ａ", sampleCount: 2 }, { name: "Ｂ", sampleCount: 2 }] },
+        });
+        expect(replay.ok).toBe(true);
+        if (!replay.ok) return;
+        const indices = replay.result.indices!;
+        // Drop one respondent so activeIndices.length < indices.length, exercising adjustedLayers
+        const fieldworkResult = {
+            method: "stratified" as const,
+            dispatchSeed: 100,
+            dispatchedAt: "2026-01-01T00:00:00Z",
+            invitedCount: 4,
+            records: indices.map((popIdx, pos) => ({
+                populationIndex: popIdx,
+                disposition: pos === 0 ? ("refused" as const) : ("valid_complete" as const),
+                durationSec: 120,
+                answeredQuestionCount: 5,
+            })),
+        };
+        const res = await runUnivariateJob({
+            populationPath: path,
+            fieldMapping,
+            dictionary,
+            samplingResult: { ...replay.result, serverGenerated: true },
+            fieldworkResult,
+            questionnaire: {
+                title: "问卷",
+                welcomeText: "欢迎参与本次调查研究",
+                endingText: "感谢您的配合与支持",
+                questions: [{
+                    id: "q1",
+                    type: "numeric",
+                    content: "数值",
+                    variableBinding: {
+                        taskId: 1,
+                        source: dictionary.source,
+                        revision: dictionary.revision,
+                        signature: "sig",
+                        mappings: [{ field: "y", answers: [] }],
+                    },
+                }],
+            },
+            config: { method: "stratified", field: "y", question: "清洗后加权均值是多少？", weighted: true, datasetMode: "cleaned_respondents" },
+        });
+        expect(res.ok).toBe(true);
+    } finally {
+        await Bun.file(absolute).delete().catch(() => undefined);
+    }
+});

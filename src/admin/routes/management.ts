@@ -412,7 +412,7 @@ const studentRoutes: RouteDefinition = {
                       studentId: experiment.studentId,
                       currentStage: experiment.currentStage,
                       status: experiment.status,
-                      stage4CompletedAt: experiment.stage4CompletedAt,
+                      stage5CompletedAt: experiment.stage5CompletedAt,
                   })
                   .from(experiment)
                   .where(inArray(experiment.studentId, ids))
@@ -443,7 +443,7 @@ const studentExperimentsRoutes: RouteDefinition = {
                 taskName: topic.name,
                 currentStage: experiment.currentStage,
                 status: experiment.status,
-                stage4CompletedAt: experiment.stage4CompletedAt,
+                stage5CompletedAt: experiment.stage5CompletedAt,
                 submitTime: experiment.submittedAt,
                 score: experiment.totalScore,
                 lastUpdate: experiment.updatedAt,

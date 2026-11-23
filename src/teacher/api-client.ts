@@ -70,6 +70,7 @@ export interface SubmissionDetail extends GradingItem {
     fieldworkConfig?: FieldworkSimulationConfig | null;
     samplingAttempts?: Array<{
         id: number;
+        waveNumber?: number;
         method: "simple" | "systematic" | "pps" | "stratified";
         seed: number;
         sampleCount: number;

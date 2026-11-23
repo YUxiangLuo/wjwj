@@ -98,7 +98,10 @@ export function parseAnalysisRequest(body: unknown): { requestId: string; observ
     if (rawConfig.groupByField !== undefined && rawConfig.groupByField !== "" && typeof rawConfig.groupByField !== "string") {
         throw new AnalysisConflict("分组变量格式无效");
     }
-    if (rawConfig.waveNumber !== undefined && (!Number.isSafeInteger(rawConfig.waveNumber) || Number(rawConfig.waveNumber) < 1)) {
+    if (
+        rawConfig.waveNumber !== undefined
+        && (!Number.isSafeInteger(rawConfig.waveNumber) || Number(rawConfig.waveNumber) < 1 || Number(rawConfig.waveNumber) > 4)
+    ) {
         throw new AnalysisConflict("实验波次编号无效");
     }
     if (rawConfig.datasetMode !== undefined && rawConfig.datasetMode !== "cleaned_respondents" && rawConfig.datasetMode !== "full_invited") {
@@ -146,13 +149,39 @@ export async function createSavedAnalysis(studentId: number, classId: number, ta
     }
     const variable = dictionary.variables.find(item => item.field === request.config.field);
     if (!variable || variable.kind === "identifier") throw new AnalysisConflict("所选变量不可用于分析");
+    if (request.config.groupByField) {
+        const groupVariable = dictionary.variables.find(item => item.field === request.config.groupByField);
+        if (!groupVariable || (groupVariable.kind !== "nominal" && groupVariable.kind !== "ordinal")) {
+            throw new AnalysisConflict("分组维度须为字典中的名义或有序分类变量");
+        }
+        if (request.config.groupByField === request.config.field) {
+            throw new AnalysisConflict("分组维度不能与目标分析变量相同");
+        }
+    }
 
     const waves = parseStoredWaves(initial.record.wavesData);
-    const chosenWaveNumber = request.config.waveNumber ?? initial.record.activeWaveNumber ?? 2;
-    const chosenWave = waves.find((w) => w.waveNumber === chosenWaveNumber);
-    const samplingContainer = (chosenWave?.samplingResults ?? initial.record.samplingResults) as Record<string, Record<string, unknown>> | null;
+    const activeWaveNum = Math.max(1, initial.record.activeWaveNumber ?? 2);
+    const chosenWaveNumber = request.config.waveNumber ?? activeWaveNum;
+    let chosenWave: ReturnType<typeof parseStoredWaves>[number] | undefined;
+    let samplingContainer: Record<string, Record<string, unknown>> | null;
+    if (waves.length > 0) {
+        chosenWave = waves.find((w) => w.waveNumber === chosenWaveNumber);
+        if (!chosenWave) throw new AnalysisConflict("指定的实验波次不存在");
+        samplingContainer = chosenWave.samplingResults as Record<string, Record<string, unknown>> | null;
+    } else {
+        if (request.config.waveNumber !== undefined && request.config.waveNumber !== activeWaveNum) {
+            throw new AnalysisConflict("指定的实验波次不存在");
+        }
+        samplingContainer = initial.record.samplingResults as Record<string, Record<string, unknown>> | null;
+    }
     const samplingResult = samplingContainer?.[request.config.method];
     if (!samplingResult) throw new AnalysisConflict("请先完成所选波次与抽样方法");
+    if (
+        request.config.datasetMode === "cleaned_respondents"
+        && (!chosenWave?.fieldwork?.methods?.[request.config.method] || !chosenWave?.questionnaire)
+    ) {
+        throw new AnalysisConflict("所选波次与抽样方法尚未生成问卷发放回收记录，无法按质检有效答卷口径分析", "MISSING_FIELDWORK", 409);
+    }
 
     let data: Awaited<ReturnType<typeof univariateService.run>>;
     try {
@@ -170,8 +199,13 @@ export async function createSavedAnalysis(studentId: number, classId: number, ta
             signal,
         });
     } catch (cause) {
-        if (cause instanceof WorkerServiceError && cause.code === "SOURCE_MISMATCH") {
-            throw new AnalysisConflict("总体文件或字段解释已变化，请联系教师重新确认来源", "SOURCE_CONFLICT", 409);
+        if (cause instanceof WorkerServiceError) {
+            if (cause.code === "SOURCE_MISMATCH") {
+                throw new AnalysisConflict("总体文件或字段解释已变化，请联系教师重新确认来源", "SOURCE_CONFLICT", 409);
+            }
+            if (["MISSING_FIELDWORK", "EMPTY_RESPONDENTS", "EMPTY_STRATUM_RESPONDENTS", "INVALID_GROUP_VARIABLE"].includes(cause.code)) {
+                throw new AnalysisConflict(cause.message, cause.code, 409);
+            }
         }
         throw cause;
     }

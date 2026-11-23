@@ -40,6 +40,7 @@ test("submission endpoint returns the task's current experiment result", async (
             samplingResults: { simple: { completed: true, sampleCount: 60, data: Array.from({ length: 60 }, () => ({})) } },
             reportContent: "<p>提交时报告</p>",
             weightConfig: { questionnaire: 40, process: 35, report: 25 },
+            variableDictionary: { source: "frozen-src", revision: 3, variables: [] },
             analysisAppendices: [{ id: 7, stale: false }],
         },
     }]] });
@@ -73,6 +74,7 @@ test("submission endpoint returns the task's current experiment result", async (
             samplePlan: { finalSampleSize: 60 },
             samplingResults: { simple: { sampleCount: 60 } },
             reportContent: "<p>提交时报告</p>",
+            variableDictionary: { source: "frozen-src", revision: 3, variables: [] },
             analysisAppendices: [{ id: 7, stale: false }],
         },
     });
