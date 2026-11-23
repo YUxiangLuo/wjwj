@@ -58,7 +58,7 @@ function AdminWorkspace({ user, onLogout }: { user: AdminUser; onLogout: () => P
                 sidebarIcon={BarChart3}
                 menuItems={menu}
                 sidebarFooter={
-                    <div className="flex items-center gap-3"><Avatar className="h-9 w-9"><AvatarFallback className="bg-navigation-active text-navigation-active-foreground">{user.username.charAt(0).toUpperCase()}</AvatarFallback></Avatar><div><p className="text-label font-medium">{user.username}</p><p className="text-meta text-navigation-muted">管理员</p></div></div>
+                    <div className="flex items-center gap-3"><Avatar className="h-9 w-9"><AvatarFallback className="bg-navigation-active text-navigation-active-foreground">{user.username.charAt(0).toUpperCase()}</AvatarFallback></Avatar><div className="min-w-0 flex-1"><p className="truncate text-label font-medium">{user.username}</p><p className="truncate text-meta text-navigation-muted">管理员</p></div></div>
                 }
                 pageTitle={title}
                 pageSubtitle="商务统计虚拟仿真实验平台 · 系统管理控制台"

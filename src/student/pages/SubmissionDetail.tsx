@@ -144,6 +144,12 @@ export function SubmissionDetailPage() {
                                         <WaveLoopSnapshot
                                             waves={detail.snapshot.waves}
                                             adjustmentPlan={detail.snapshot.adjustmentPlan}
+                                            analysisTarget={detail.snapshot.targetMetrics?.contract
+                                                ? {
+                                                    target: detail.snapshot.targetMetrics.contract.contract.target,
+                                                    inferred: detail.snapshot.targetMetrics.contract.inferred,
+                                                }
+                                                : null}
                                             unitLabel={detail.snapshot.targetMetrics?.unit ?? ""}
                                         />
                                     </TabsContent>

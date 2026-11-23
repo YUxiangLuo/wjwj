@@ -16,9 +16,11 @@ test("questionnaire step 1 requires title and welcome text", () => {
     expect(canAdvanceQuestionnaireStep(1, baseValidation)).toBe(true);
 });
 
-test("questionnaire step 2 requires enough valid questions", () => {
+test("questionnaire step 2 requires enough valid questions and primary target binding when present", () => {
     expect(canAdvanceQuestionnaireStep(2, { ...baseValidation, questionCount: false })).toBe(false);
     expect(canAdvanceQuestionnaireStep(2, { ...baseValidation, optionCount: false })).toBe(false);
+    expect(canAdvanceQuestionnaireStep(2, { ...baseValidation, targetBindingPassed: false })).toBe(false);
+    expect(canAdvanceQuestionnaireStep(2, { ...baseValidation, targetBindingPassed: true })).toBe(true);
     expect(canAdvanceQuestionnaireStep(2, baseValidation)).toBe(true);
 });
 

@@ -10,8 +10,16 @@ import { questionTypeLabels } from "@/lib/questionnaire-labels";
 import type { QuestionType } from "@/lib/questionnaire-types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { resolveStudyContract } from "@/lib/analysis-target";
+import { resolveFieldworkConfig, type FieldworkPreset } from "@/domain/fieldwork";
 import { resolveSamplingPolicy, SAMPLING_METHODS } from "@/lib/sampling-policy";
 import { VariableDictionaryEditor } from "./VariableDictionaryEditor";
+
+const FIELDWORK_PRESET_LABELS: Record<FieldworkPreset, string> = {
+    balanced: "常规均衡实地回收",
+    stratum_differential: "细分客群差异化拒访",
+    high_burden_sensitive: "问卷题量负担高敏感",
+    peak_congestion: "高峰拥堵漏接场景",
+};
 
 type TabKey = "basic" | "data" | "variables" | "mapping" | "sampling" | "attachments" | "questions" | "weights";
 
@@ -87,6 +95,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
         detail?.topic?.name ?? topic?.name ?? "",
     );
     const samplingPolicy = resolveSamplingPolicy(detail?.topic?.samplingPolicy);
+    const fieldworkConfig = resolveFieldworkConfig(detail?.topic?.fieldworkConfig);
     const samplingMethodLabels = { simple: "简单随机抽样", systematic: "系统抽样", pps: "PPS抽样", stratified: "分层抽样" } as const;
 
     const weightConfig = (() => {
@@ -134,6 +143,8 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                     {TABS.map(({ key, label, icon: Icon }) => (
                         <button
                             key={key}
+                            type="button"
+                            aria-pressed={activeTab === key}
                             onClick={() => setActiveTab(key)}
                             className={`flex items-center gap-1.5 px-3 py-2 text-meta font-medium rounded-control transition-none border-b-2 whitespace-nowrap ${
                                 activeTab === key
@@ -160,7 +171,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                         <>
                             {/* Basic Info Tab */}
                             {activeTab === "basic" && (
-                                <div className="space-y-4 py-4 animate-in fade-in duration-300">
+                                <div className="space-y-4 py-4">
                                     <div className="space-y-2">
                                         <div className="text-meta font-medium text-muted-foreground uppercase tracking-wider">实验模板名称</div>
                                         <div className="text-body text-foreground font-medium">{topic.name}</div>
@@ -180,14 +191,14 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
 
                             {/* Data overview Tab */}
                             {activeTab === "data" && (
-                                <div className="space-y-4 py-4 animate-in fade-in duration-300">
+                                <div className="space-y-4 py-4">
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="bg-background border border-border rounded-surface p-4 text-center">
-                                            <div className="text-page-title font-bold text-foreground">{detail?.topic?.excelRowCount ?? topic.dataRows ?? 0}</div>
+                                            <div className="text-page-title font-bold tabular-nums text-foreground">{detail?.topic?.excelRowCount ?? topic.dataRows ?? 0}</div>
                                             <div className="text-meta text-muted-foreground mt-1">数据行数</div>
                                         </div>
                                         <div className="bg-background border border-border rounded-surface p-4 text-center">
-                                            <div className="text-page-title font-bold text-foreground">{detail?.excelInfo?.columns?.length ?? 0}</div>
+                                            <div className="text-page-title font-bold tabular-nums text-foreground">{detail?.excelInfo?.columns?.length ?? 0}</div>
                                             <div className="text-meta text-muted-foreground mt-1">数据列数</div>
                                         </div>
                                         <div className="bg-background border border-border rounded-surface p-4 text-center">
@@ -240,7 +251,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
 
                             {/* Field Mapping Tab */}
                             {activeTab === "mapping" && (
-                                <div className="space-y-4 py-4 animate-in fade-in duration-300">
+                                <div className="space-y-4 py-4">
                                     {resolvedStudyContract && (
                                         <div
                                             className="space-y-3 rounded-surface border border-primary-border bg-primary-muted p-4"
@@ -273,6 +284,12 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                                             : `${resolvedStudyContract.contract.target.field} 中「${resolvedStudyContract.contract.target.value}」的比例`}
                                                     </dd>
                                                 </div>
+                                                {resolvedStudyContract.contract.businessDecision && (
+                                                    <div className="col-span-2 rounded-control bg-background p-3">
+                                                        <dt className="text-meta text-muted-foreground">支撑的商业管理决策</dt>
+                                                        <dd className="mt-1 text-foreground">{resolvedStudyContract.contract.businessDecision}</dd>
+                                                    </div>
+                                                )}
                                             </dl>
                                         </div>
                                     )}
@@ -338,7 +355,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
 
                             {/* Attachments Tab */}
                             {activeTab === "sampling" && (
-                                <div className="space-y-4 py-4 animate-in fade-in duration-300">
+                                <div className="space-y-4 py-4">
                                     <p className="rounded-surface border border-info-border bg-info-muted p-3 text-label text-info">
                                         学生必须完成所有必做方法，并至少实际完成两种启用的方法。
                                     </p>
@@ -371,11 +388,35 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                             );
                                         })}
                                     </div>
+                                    <div className="space-y-3 rounded-surface border border-border bg-background p-4" data-testid="teacher-topic-view-fieldwork-config">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="text-label font-semibold text-foreground">虚拟问卷投放环境参数</div>
+                                            <StatusBadge intent="info">{FIELDWORK_PRESET_LABELS[fieldworkConfig.preset]}</StatusBadge>
+                                        </div>
+                                        <dl className="grid grid-cols-3 gap-3 text-meta">
+                                            <div className="rounded-control bg-card border border-border p-3">
+                                                <dt className="text-muted-foreground">基准单元无回答率</dt>
+                                                <dd className="mt-1 font-semibold tabular-nums text-foreground">{Math.round(fieldworkConfig.baseUnitNonResponseRate * 100)}%</dd>
+                                            </div>
+                                            <div className="rounded-control bg-card border border-border p-3">
+                                                <dt className="text-muted-foreground">闪电 / 直线废卷率</dt>
+                                                <dd className="mt-1 font-semibold tabular-nums text-foreground">
+                                                    {Math.round(fieldworkConfig.baseSpeederRate * 100)}% / {Math.round(fieldworkConfig.baseStraightlinerRate * 100)}%
+                                                </dd>
+                                            </div>
+                                            <div className="rounded-control bg-card border border-border p-3">
+                                                <dt className="text-muted-foreground">触达 / 完答参考成本</dt>
+                                                <dd className="mt-1 font-semibold tabular-nums text-foreground">
+                                                    {fieldworkConfig.contactCostPerUnit} 元 / {fieldworkConfig.incentiveCostPerComplete} 元
+                                                </dd>
+                                            </div>
+                                        </dl>
+                                    </div>
                                 </div>
                             )}
 
                             {activeTab === "attachments" && (
-                                <div className="space-y-3 py-4 animate-in fade-in duration-300">
+                                <div className="space-y-3 py-4">
                                     {detail?.attachments && detail.attachments.length > 0 ? (
                                         detail.attachments.map((a) => (
                                             <div key={a.id} className="flex items-center justify-between p-3 bg-background border border-border rounded-surface hover:border-input transition-none">
@@ -420,7 +461,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
 
                             {/* Questions Tab */}
                             {activeTab === "questions" && (
-                                <div className="space-y-3 py-4 animate-in fade-in duration-300">
+                                <div className="space-y-3 py-4">
                                     {detail?.recommendQuestions && detail.recommendQuestions.length > 0 ? (
                                         detail.recommendQuestions.map((q, idx) => (
                                             <div key={q.id} className="bg-background border border-border rounded-surface p-4 space-y-2">
@@ -436,10 +477,19 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                                         选项：{q.options.join("；")}
                                                     </div>
                                                 )}
+                                                {q.type === "boolean" && (
+                                                    <div className="pl-9 text-meta text-muted-foreground">选项：是 / 否</div>
+                                                )}
                                                 {q.type === "scale" && (
                                                     <div className="pl-9 text-meta text-muted-foreground">
                                                         量表 {q.scaleMin ?? 1}–{q.scaleMax ?? 10}
                                                         {(q.scaleMinLabel || q.scaleMaxLabel) && `（${q.scaleMinLabel ?? ""} — ${q.scaleMaxLabel ?? ""}）`}
+                                                    </div>
+                                                )}
+                                                {q.type === "numeric" && (q.unit || q.numericMin !== undefined || q.numericMax !== undefined) && (
+                                                    <div className="pl-9 text-meta tabular-nums text-muted-foreground">
+                                                        {q.unit ? `单位：${q.unit}` : "数值题"}
+                                                        {(q.numericMin !== undefined || q.numericMax !== undefined) && ` · 量程 ${q.numericMin ?? "-∞"} ～ ${q.numericMax ?? "+∞"}`}
                                                     </div>
                                                 )}
                                             </div>
@@ -452,24 +502,24 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
 
                             {/* Weights Tab */}
                             {activeTab === "weights" && (
-                                <div className="space-y-6 py-4 animate-in fade-in duration-300">
+                                <div className="space-y-6 py-4">
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="bg-background border border-border rounded-surface p-6 text-center space-y-2">
                                             <div className="text-meta font-medium text-muted-foreground uppercase tracking-wider">问卷设计</div>
-                                            <div className="text-display font-bold text-primary">{weightConfig.questionnaire}%</div>
+                                            <div className="text-display font-bold tabular-nums text-primary">{weightConfig.questionnaire}%</div>
                                         </div>
                                         <div className="bg-background border border-border rounded-surface p-6 text-center space-y-2">
                                             <div className="text-meta font-medium text-muted-foreground uppercase tracking-wider">实验过程</div>
-                                            <div className="text-display font-bold text-info">{weightConfig.process}%</div>
+                                            <div className="text-display font-bold tabular-nums text-info">{weightConfig.process}%</div>
                                         </div>
                                         <div className="bg-background border border-border rounded-surface p-6 text-center space-y-2">
                                             <div className="text-meta font-medium text-muted-foreground uppercase tracking-wider">实验报告</div>
-                                            <div className="text-display font-bold text-warning">{weightConfig.report}%</div>
+                                            <div className="text-display font-bold tabular-nums text-warning">{weightConfig.report}%</div>
                                         </div>
                                     </div>
                                     <div className="flex items-center justify-center gap-2">
                                         <span className="text-label text-muted-foreground">总权重：</span>
-                                        <span className={`text-subheading font-bold ${(weightConfig.questionnaire + weightConfig.process + weightConfig.report) === 100 ? "text-success" : "text-destructive"}`}>
+                                        <span className={`text-subheading font-bold tabular-nums ${(weightConfig.questionnaire + weightConfig.process + weightConfig.report) === 100 ? "text-success" : "text-destructive"}`}>
                                             {weightConfig.questionnaire + weightConfig.process + weightConfig.report}%
                                         </span>
                                     </div>
@@ -491,7 +541,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                 </div>
 
                 <DialogFooter className="border-t border-border pt-4 flex-shrink-0">
-                    <Button onClick={() => onOpenChange(false)} className="bg-muted hover:bg-input text-foreground">关闭</Button>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>关闭</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

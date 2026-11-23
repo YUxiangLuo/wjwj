@@ -1,6 +1,6 @@
 import type { SavedAnalysisView } from "@/domain/variables/types";
 
-const value = (input: number | null | undefined, digits = 4) => input == null ? "—" : input.toLocaleString("zh-CN", {
+const value = (input: number | null | undefined, digits = 4) => (input == null || !Number.isFinite(input)) ? "—" : input.toLocaleString("zh-CN", {
     maximumFractionDigits: digits,
     notation: input !== 0 && Math.abs(input) < 10 ** -digits ? "scientific" : "standard",
 });
@@ -51,7 +51,13 @@ export function AnalysisResultTable({ record }: { record: SavedAnalysisView }) {
                         </tr>
                     </thead>
                     <tbody>
-                        {result.groups.map((grp, idx) => (
+                        {result.groups.length === 0 ? (
+                            <tr className="border-b border-border">
+                                <td colSpan={result.weighted ? 3 : 4} className="p-4 text-center text-muted-foreground">
+                                    当前分组维度下暂无有效交叉样本记录（请确认该分组变量与目标指标均已有效回收）
+                                </td>
+                            </tr>
+                        ) : result.groups.map((grp, idx) => (
                             <tr className="border-b border-border" key={`${String(grp.groupValue)}-${idx}`}>
                                 <td className="p-2 font-medium">{grp.groupLabel}</td>
                                 <td className="p-2 text-right tabular-nums">{grp.validCount}</td>
@@ -63,7 +69,7 @@ export function AnalysisResultTable({ record }: { record: SavedAnalysisView }) {
                 </table>
             );
         }
-        const headers = result.groups[0]?.categories ?? [];
+        const headers = result.groups.find((grp) => (grp.categories?.length ?? 0) > 0)?.categories ?? [];
         return (
             <table className="w-full text-label">
                 {caption}
@@ -77,7 +83,13 @@ export function AnalysisResultTable({ record }: { record: SavedAnalysisView }) {
                     </tr>
                 </thead>
                 <tbody>
-                    {result.groups.map((grp, idx) => (
+                    {result.groups.length === 0 ? (
+                        <tr className="border-b border-border">
+                            <td colSpan={2 + headers.length} className="p-4 text-center text-muted-foreground">
+                                当前分组维度下暂无有效交叉样本记录（请确认该分组变量与目标指标均已有效回收）
+                            </td>
+                        </tr>
+                    ) : result.groups.map((grp, idx) => (
                         <tr className="border-b border-border" key={`${String(grp.groupValue)}-${idx}`}>
                             <td className="p-2 font-medium">{grp.groupLabel}</td>
                             <td className="p-2 text-right tabular-nums">{grp.validCount}</td>
@@ -120,7 +132,14 @@ export function AnalysisAppendices({ records }: { records: SavedAnalysisView[] }
             </p>
             <p className="mt-1 text-meta text-muted-foreground">数据来源标识 {record.source} · 字典修订号 {record.dictionaryRevision} · 抽样代次 {record.samplingGeneration} · 算法版本 {record.algorithmVersion}</p>
             {record.stale && <p className="mt-2 text-label text-warning">此结果来源已过期，仅供查看；请移除引用或重新运行后再提交。</p>}
-            <div className="mt-3 overflow-x-auto"><AnalysisResultTable record={record} /></div>
+            <div
+                role="region"
+                aria-label={`附录 ${index + 1} 数据表`}
+                tabIndex={0}
+                className="mt-3 overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+                <AnalysisResultTable record={record} />
+            </div>
         </article>)}
     </section>;
 }

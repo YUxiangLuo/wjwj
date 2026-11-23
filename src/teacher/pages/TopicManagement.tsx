@@ -370,14 +370,26 @@ export function TopicManagement() {
             reportSaveError(res.error?.message ?? "抽样策略保存失败，请重试；本页输入已保留。");
             return;
         }
-        const fwChanged = JSON.stringify(fieldworkConfig) !== JSON.stringify(savedFieldworkConfig);
+        const sanitizedFieldwork: FieldworkSimulationConfig =
+            (fieldworkConfig.stratumField && !fieldMapping.stratified.includes(fieldworkConfig.stratumField))
+            || (fieldMapping.stratified.length === 0 && fieldworkConfig.preset === "stratum_differential")
+                ? (() => {
+                    const { stratumField: _sf, stratumNonResponseRates: _sr, ...rest } = fieldworkConfig;
+                    return {
+                        ...rest,
+                        preset: rest.preset === "stratum_differential" ? "balanced" : rest.preset,
+                    };
+                })()
+                : fieldworkConfig;
+        const fwChanged = JSON.stringify(sanitizedFieldwork) !== JSON.stringify(savedFieldworkConfig);
         if (fwChanged && typeof teacherApi.updateFieldworkConfig === "function") {
-            const fwRes = await teacherApi.updateFieldworkConfig(editingTopicId, fieldworkConfig);
+            const fwRes = await teacherApi.updateFieldworkConfig(editingTopicId, sanitizedFieldwork);
             if (!fwRes.success) {
                 reportSaveError(fwRes.error?.message ?? "虚拟发放环境配置保存失败，请重试。");
                 return;
             }
-            setSavedFieldworkConfig(fieldworkConfig);
+            setFieldworkConfig(sanitizedFieldwork);
+            setSavedFieldworkConfig(sanitizedFieldwork);
         }
         setSaveError(null);
         setCurrentStep(5);
@@ -625,6 +637,7 @@ export function TopicManagement() {
                         setExcelInfo(null);
                         setColumns([]);
                         setFieldMapping({ stratified: [], numeric: [], others: [] });
+                        setSavedFieldMapping(null);
                         setAttachments([]);
                         setRecommendQuestions([]);
                         setWeightConfig({ questionnaire: 30, process: 30, report: 40 });
@@ -693,7 +706,7 @@ export function TopicManagement() {
                             {confirmDialog.type === "published" && `“${confirmDialog.topic?.name}”已发布。接下来选择班级和截止时间，生成实验任务。`}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    {confirmDialog.type === "publish" && <p role="status" className="text-label text-muted-foreground">{confirmBusy ? "正在检查或发布，请稍候…" : publishReady ? "检查通过：总体数据、研究目标、抽样策略、评分规则及变量字典一致性。正式发布时将再次检查。" : "请处理以下问题后重新检查。"}</p>}
+                    {confirmDialog.type === "publish" && <p role="status" className="text-label text-muted-foreground">{confirmBusy ? "正在检查或发布，请稍候…" : publishReady ? "检查通过：总体数据、研究目标、抽样策略、虚拟投放参数、评分规则及变量字典一致性。正式发布时将再次检查。" : "请处理以下问题后重新检查。"}</p>}
                     {confirmError && <p role="alert" className="rounded-surface border border-destructive-border bg-destructive-muted p-3 text-label text-destructive">{confirmError}</p>}
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={confirmBusy}>

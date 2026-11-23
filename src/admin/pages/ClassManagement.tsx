@@ -167,7 +167,7 @@ export function ClassManagement() {
     }, [classes, searchTerm]);
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="space-y-6">
             {optionsLoad.error && <RequestError message={optionsLoad.error} onRetry={() => void loadInitialData()} />}
             <PageHeader border={false}>
                 <div />
@@ -188,7 +188,7 @@ export function ClassManagement() {
                 <PageHeader as={CardHeader} className="flex-wrap">
                     <div>
                         <CardTitle className="text-section-title text-foreground">班级列表</CardTitle>
-                        <p className="text-meta text-muted-foreground mt-1">共 {filteredClasses.length} 条数据</p>
+                        <p className="text-meta text-muted-foreground mt-1">{loading || loadError ? "共 - 条数据" : `共 ${filteredClasses.length} 条数据`}</p>
                     </div>
                     <div className="flex flex-wrap gap-3 flex-row w-auto">
                         <Input
@@ -388,13 +388,13 @@ export function ClassManagement() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-foreground">所属学期</Label>
-                            <Input value={editingClass?.semesterName ?? ""} disabled className="bg-card border-input text-muted-foreground" />
+                            <Label htmlFor="editClassSemester" className="text-foreground">所属学期</Label>
+                            <Input id="editClassSemester" value={editingClass?.semesterName ?? ""} disabled className="bg-card border-input text-muted-foreground" />
                             <p className="text-meta text-muted-foreground">学期不可更改</p>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-foreground">授课教师</Label>
-                            <Input value={editingClass?.teacherName ?? ""} disabled className="bg-card border-input text-muted-foreground" />
+                            <Label htmlFor="editClassTeacher" className="text-foreground">授课教师</Label>
+                            <Input id="editClassTeacher" value={editingClass?.teacherName ?? ""} disabled className="bg-card border-input text-muted-foreground" />
                             <p className="text-meta text-muted-foreground">授课教师不可更改</p>
                         </div>
                     </div>

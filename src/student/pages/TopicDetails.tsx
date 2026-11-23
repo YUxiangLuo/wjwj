@@ -176,7 +176,7 @@ export function TopicDetails() {
                         <div className="flex flex-wrap items-center gap-2.5">
                             <h1 className="text-page-title font-bold text-foreground break-words">{task.name}</h1>
                             <StatusBadge intent={effectiveStatus.intent}>{effectiveStatus.label}</StatusBadge>
-                            {task.activeWaveNumber && task.activeWaveNumber >= 1 && task.status === "in_progress" && (
+                            {task.activeWaveNumber && task.activeWaveNumber >= 1 && (task.status === "in_progress" || task.status === "rejected") && (
                                 <StatusBadge intent="info">当前第 {task.activeWaveNumber} 轮投放</StatusBadge>
                             )}
                         </div>
@@ -218,7 +218,7 @@ export function TopicDetails() {
             <ol aria-label="实验进度概览" className="grid grid-cols-5 gap-2.5 rounded-surface border border-border bg-card p-3">
                 {stageNames.map((stage, index) => {
                     const completed = task.currentStage > index + 1 || task.status === "graded" || task.status === "submitted";
-                    const current = !completed && task.currentStage === index + 1;
+                    const current = !completed && task.status !== "not_started" && task.currentStage === index + 1;
                     return (
                         <li
                             key={stage}
@@ -251,7 +251,7 @@ export function TopicDetails() {
 
             {/* Business Decision Contract Cards */}
             {contract && (
-                <section aria-label="商业调研立项任务书" className="grid grid-cols-3 gap-4" data-testid="student-task-study-contract">
+                <section aria-label="商业调研立项任务书" className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,17rem),1fr))] gap-4" data-testid="student-task-study-contract">
                     <div className="rounded-surface border border-border bg-card p-4 space-y-1.5">
                         <div className="flex items-center gap-2 text-meta font-semibold text-primary">
                             <BriefcaseBusiness className="h-4 w-4" />

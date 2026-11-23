@@ -249,7 +249,7 @@ export function StudentManagement() {
                                                 value={item.progress}
                                                 className="h-1.5 w-24"
                                             />
-                                            <span aria-hidden="true" className="text-meta text-muted-foreground">{item.progress}%</span>
+                                            <span aria-hidden="true" className="text-meta tabular-nums text-muted-foreground">{item.progress}%</span>
                                         </div>
                                     </TableCell>
                                     <TableCell>
@@ -326,10 +326,10 @@ export function StudentManagement() {
                             {experiments.map((item) => (
                                 <TableRow key={item.id}>
                                     <TableCell>{item.taskName ?? "未命名任务"}</TableCell>
-                                    <TableCell>第 {item.currentStage} 阶段</TableCell>
+                                    <TableCell className="tabular-nums">第 {item.currentStage} 阶段</TableCell>
                                     <TableCell>{item.statusText}</TableCell>
-                                    <TableCell>{item.progress}%</TableCell>
-                                    <TableCell>{item.score ?? "-"}</TableCell>
+                                    <TableCell className="tabular-nums">{item.progress}%</TableCell>
+                                    <TableCell className="tabular-nums">{item.score ?? "-"}</TableCell>
                                 </TableRow>
                             ))}
                             {!experiments.length && (

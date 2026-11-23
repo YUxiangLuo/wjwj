@@ -370,8 +370,13 @@ try {
     const seededPending = await api<{ items: Array<{ id: number; topic: string }> }>(teacher, "/api/teacher/grading?status=pending&page=1&pageSize=20");
     const seededGrading = seededPending.items.find(item => item.topic === DOGFOOD_NAMES.topicB);
     assert(seededGrading, "Seeded pending grading item missing");
-    const seededTeacherDetail = await api<{ samplingResults: Record<string, unknown> }>(teacher, `/api/teacher/grading/${seededGrading.id}`);
+    const seededTeacherDetail = await api<{ samplingResults: Record<string, unknown>; waves: unknown[]; adjustmentPlan: unknown }>(teacher, `/api/teacher/grading/${seededGrading.id}`);
     assert(Object.keys(seededTeacherDetail.samplingResults).length > 0, "Seeded teacher grading detail did not hydrate sampling results");
+    assert(Array.isArray(seededTeacherDetail.waves) && seededTeacherDetail.waves.length === 2 && Boolean(seededTeacherDetail.adjustmentPlan), "Seeded teacher grading detail did not hydrate two-wave loop and adjustment plan");
+    await page(teacher, `/teacher/grading/${seededGrading.id}`, "#grading-score-report");
+    await namedButton(teacher, "试投质检与调优");
+    await visible(teacher, '[data-testid="wave-loop-snapshot"]');
+    await visible(teacher, '[data-testid="adjustment-plan-snapshot"]');
     await login(seedStudent, "student", DOGFOOD_ANCHORS.submitted);
     const seededTasks = await api<StudentTask[]>(seedStudent, "/api/student/tasks");
     const seededTask = seededTasks.find(item => item.name === DOGFOOD_NAMES.topicB);
@@ -533,6 +538,14 @@ try {
     deepStrictEqual(await api<DictionarySnapshot>(teacher, `/api/teacher/topics/${copied.id}/variables`), confirmedDictionary, "Back and continue must not clear or revise the confirmed dictionary");
     console.log("PASS mapping-before-dictionary persistence, explicit invalidation, source reload and repeated navigation");
     await browser(teacher, "set", "viewport", "1280", "800");
+    const initialFwNrr = await evaluate<string>(teacher, 'document.querySelector("#fw-base-nrr").value');
+    await browser(teacher, "fill", "#fw-base-nrr", "33");
+    await browser(teacher, "click", '[data-testid="teacher-topic-prev"]');
+    assert(JSON.stringify(await browser(teacher, "dialog", "status")).includes("本步未保存"), "Unsaved fieldworkConfig edits must trigger discard confirmation");
+    await browser(teacher, "dialog", "accept");
+    await eventually(() => evaluate(teacher, 'document.querySelector("[data-testid=teacher-topic-step-3]").getAttribute("aria-current")==="step"'), "Accepting fieldworkConfig discard must return to step 3");
+    await activate(teacher, '[data-testid="teacher-topic-next"]');
+    await eventually(() => evaluate(teacher, `document.querySelector("[data-testid=teacher-topic-step-4]").getAttribute("aria-current")==="step" && document.querySelector("#fw-base-nrr").value===${JSON.stringify(initialFwNrr)}`), "Discarded fieldworkConfig edits must revert to baseline");
     await activate(teacher, '[data-testid="teacher-topic-next"]');
     await eventually(() => evaluate(teacher, 'document.querySelector("[data-testid=teacher-topic-step-5]").getAttribute("aria-current")==="step"'), "Sampling policy save must advance");
     await activate(teacher, '[data-testid="teacher-topic-next"]');
@@ -1128,7 +1141,7 @@ try {
     await browser(teacher, "screenshot", join(artifacts, "teacher-export.png"));
     console.log("PASS UI grading, student result and Excel export");
     // =====================================================================
-    // 空功能路径：无字典、无关联、无分析引用的完整四阶段（规划 T3 §9.5）
+    // 空功能路径：无字典、无关联、无分析引用的完整五阶段（规划 T3 §9.5）
     // =====================================================================
     const emptyTopicName = "浏览器回归：无字典空功能路径";
     const emptyPopulation = ["id,score,group", ...Array.from({ length: 300 }, (_, index) => `${String(index + 1).padStart(3, "0")},${20 + (index % 61)},${index % 3 === 0 ? "A" : "B"}`)].join("\n");

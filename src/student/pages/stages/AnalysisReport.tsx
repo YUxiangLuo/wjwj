@@ -215,7 +215,11 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         restoredDraft?.reportContent ?? experiment?.reportContent ?? "",
     );
     const [analysisReferences, setAnalysisReferences] = useState<number[]>(restoredDraft?.analysisReferences ?? experiment?.analysisReferences ?? []);
-    const [staleAnalysisReferences, setStaleAnalysisReferences] = useState<number[]>([]);
+    const [staleAnalysisReferences, setStaleAnalysisReferences] = useState<number[]>(() => {
+        const initialRefs = restoredDraft?.analysisReferences ?? experiment?.analysisReferences ?? [];
+        const appendices = experiment?.analysisAppendices ?? [];
+        return appendices.filter((item) => item.stale && initialRefs.includes(item.id)).map((item) => item.id);
+    });
     const [workspace, setWorkspace, workspaceNavigationRef] = useSectionNavigation<AnalysisWorkspace>(restoredDraft?.workspace && ["overview", "waves", "charts", "univariate", "records", "report"].includes(restoredDraft.workspace) ? restoredDraft.workspace : "overview", '[data-testid="student-experiment-navigation"]');
     const reportDraft = useMemo(() => ({ reportContent, analysisReferences, workspace }), [reportContent, analysisReferences, workspace]);
     const reportBaseline = useMemo(() => ({
@@ -777,7 +781,14 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         <StageActions>
             <Button variant="outline" onClick={onPrev} data-testid="student-analysis-prev">查看抽样记录</Button>
             {workspace === "report" ? <div className="flex flex-col items-end gap-1">
-                {staleAnalysisReferences.length > 0 && <p role="alert" className="text-meta text-warning">有 {staleAnalysisReferences.length} 条已引用分析来源过期。请到“单变量分析”明确移除或重新运行后再保存。</p>}
+                {staleAnalysisReferences.length > 0 && (
+                    <div role="alert" className="flex flex-wrap items-center gap-2 text-meta text-warning">
+                        <span>有 {staleAnalysisReferences.length} 条已引用分析来源过期。请到“客群交叉与单变量分析”明确移除或重新运行后再保存。</span>
+                        <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-meta" onClick={() => setWorkspace("univariate")}>
+                            前往处理
+                        </Button>
+                    </div>
+                )}
                 <p className={`text-meta ${reportTextLength > maxLength ? "text-destructive" : isValidLength ? "text-success" : "text-muted-foreground"}`} role="status" data-testid="student-analysis-length-status">
                     <span className="tabular-nums">{reportTextLength} / {maxLength} 字</span> · {reportLengthHint}
                 </p>

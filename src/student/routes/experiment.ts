@@ -15,7 +15,7 @@ import {
 } from "../experiment/sampling-results-preview";
 import { trimSamplingAttempts } from "../experiment/sampling-attempt-retention";
 import { PPS_UNAVAILABLE_REASON } from "../experiment/sampling-messages";
-import { executeSamplingAction, type SamplingMethod } from "../experiment/sampling-service";
+import { executeSamplingAction, parseSamplingSeed, type SamplingMethod } from "../experiment/sampling-service";
 import {
     compactSamplingMethodResult,
     hydrateSamplingResults,
@@ -31,6 +31,7 @@ import {
     validateMeanPlanVariance,
     validateQuestionnaireForSubmit,
     validateSamplePlanForSubmit,
+    validateSamplingResultsForSubmit,
 } from "../experiment/submit-validation";
 import { resolveAnalysisTarget, resolveStudyContract } from "../../lib/analysis-target";
 import {
@@ -38,6 +39,7 @@ import {
     filterPpsEligibleFields,
     isCompletedSamplingResult,
     resolveSamplingPolicy,
+    SAMPLING_METHODS,
     type SamplingMethod as PolicySamplingMethod,
     applyPpsAvailability,
 } from "../../lib/sampling-policy";
@@ -75,6 +77,7 @@ import {
     parseStoredWaves,
     simulateWaveDispatchForCompletedMethods,
     syncExperimentWaveRow,
+    syncExperimentWavesSnapshot,
 } from "../experiment/fieldwork-wave-service";
 
 function getTaskId(req: Request) {
@@ -293,8 +296,13 @@ async function prepareStoredSamplingResultsForFormalCompletion(params: {
 }) {
     let authoritativeRecord = params.record;
     const activeWaveNum = Math.max(2, authoritativeRecord.activeWaveNumber || 2);
+    const initialStoredWaves = parseStoredWaves(authoritativeRecord.wavesData);
     let { activeWave } = ensureActiveWave({ ...authoritativeRecord, activeWaveNumber: activeWaveNum });
-    let stored = (activeWave.samplingResults ?? parseStoredJson<StoredSamplingResults>(authoritativeRecord.samplingResults) ?? {}) as StoredSamplingResults;
+    let stored = (
+        initialStoredWaves.length > 0
+            ? (activeWave.samplingResults ?? {})
+            : (activeWave.samplingResults ?? parseStoredJson<StoredSamplingResults>(authoritativeRecord.samplingResults) ?? {})
+    ) as StoredSamplingResults;
     const policy = resolveSamplingPolicy(params.taskInfo?.samplingPolicy);
 
     if (policy.methods.pps !== "disabled" && !isServerGeneratedResult(stored.pps)) {
@@ -517,9 +525,7 @@ const stageCompleteRoutes: RouteDefinition = {
                 .returning();
             if (!row) return null;
             if (Array.isArray(result.updates.wavesData)) {
-                for (const w of result.updates.wavesData as StoredExperimentWave[]) {
-                    await syncExperimentWaveRow(tx, row.id, w);
-                }
+                await syncExperimentWavesSnapshot(tx, row.id, result.updates.wavesData as StoredExperimentWave[]);
             }
             return row;
         });
@@ -545,6 +551,8 @@ const stageReopenRoutes: RouteDefinition = {
         const versionResult = validateObservedVersion(body.observedVersion, record.version);
         if (!versionResult.ok) return error(versionResult.message, versionResult.code, versionResult.status);
         const schedule = await findStudentTaskSchedule(taskId, auth.student.classId);
+        const openError = ensureTaskIsOpen(schedule?.openTime);
+        if (openError) return error(openError.message, openError.code, openError.status);
         const result = buildStageReopenUpdates({
             experimentRecord: record,
             stage,
@@ -552,11 +560,18 @@ const stageReopenRoutes: RouteDefinition = {
         });
         if (!result.ok) return error(result.message, result.code, result.status);
         const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
-        const [updated] = await db
-            .update(experiment)
-            .set(result.updates)
-            .where(matchesObservedExperiment(record, versionResult.value))
-            .returning();
+        const updated = await db.transaction(async (tx) => {
+            const [row] = await tx
+                .update(experiment)
+                .set(result.updates)
+                .where(matchesObservedExperiment(record, versionResult.value))
+                .returning();
+            if (!row) return null;
+            if (Array.isArray(result.updates.wavesData)) {
+                await syncExperimentWavesSnapshot(tx, row.id, result.updates.wavesData as StoredExperimentWave[]);
+            }
+            return row;
+        });
         if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         const response = await buildExperimentResponse(updated, populationSize, taskId, auth.student.classId);
         if (!response.ok) return error(response.message, response.code, 500);
@@ -770,22 +785,71 @@ const fieldworkDispatchRoutes: RouteDefinition = {
         const body = await parseBody<{ observedVersion?: unknown; seed?: unknown }>(req);
         const versionResult = validateObservedVersion(body.observedVersion, record.version);
         if (!versionResult.ok) return error(versionResult.message, versionResult.code, versionResult.status);
-        const optionalSeed = typeof body.seed === "number" && Number.isSafeInteger(body.seed) ? body.seed : undefined;
+        const parsedSeed = parseSamplingSeed(body.seed);
+        if (parsedSeed.errorMessage) return error(parsedSeed.errorMessage, "VALIDATION_ERROR", 400);
 
         const taskInfo = await findStudentTaskSamplingInfo(taskId, auth.student.classId);
         if (!taskInfo?.excelFilePath) return error("未找到总体的Excel数据文件", "NO_DATA_FILE");
         const population = await readPopulationData(taskInfo.excelFilePath, taskInfo.fieldMapping);
         if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
+        const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
 
-        const activeWaveNum = record.currentStage === 2 ? 1 : Math.max(2, record.activeWaveNumber || 2);
-        const { waves, activeWave } = ensureActiveWave({ ...record, activeWaveNumber: activeWaveNum });
+        let dispatchRecord = record;
+        if (dispatchRecord.currentStage === 4) {
+            const prepared = await prepareStoredSamplingResultsForFormalCompletion({
+                record: dispatchRecord,
+                taskInfo,
+                signal: req.signal,
+            });
+            if (!prepared.ok) return prepared.response;
+            dispatchRecord = prepared.record;
+        }
+
+        const activeWaveNum = dispatchRecord.currentStage === 2 ? 1 : Math.max(2, dispatchRecord.activeWaveNumber || 2);
+        const storedWaves = parseStoredWaves(dispatchRecord.wavesData);
+        const { waves, activeWave } = ensureActiveWave({ ...dispatchRecord, activeWaveNumber: activeWaveNum });
+        const effectivePlan = storedWaves.length > 0
+            ? activeWave.samplePlan
+            : (activeWave.samplePlan ?? parseStoredJson(dispatchRecord.samplePlan));
+        const targetSampleSize = getTargetSampleSizeFromSamplePlan(effectivePlan);
+        if (targetSampleSize === null) {
+            return error("请先保存当前波次的样本量规划后再执行问卷发放", "VALIDATION_ERROR", 400);
+        }
+
+        if (dispatchRecord.currentStage === 4) {
+            const samplingErr = validateSamplingResultsForSubmit(
+                activeWave.samplingResults,
+                targetSampleSize,
+                populationSize ?? population.length,
+                taskInfo.samplingPolicy,
+            );
+            if (samplingErr) return error(samplingErr, "SAMPLING_RESULTS_REQUIRED", 409);
+        } else {
+            const policy = resolveSamplingPolicy(taskInfo.samplingPolicy);
+            const completedMethods = SAMPLING_METHODS.filter((m) =>
+                isCompletedSamplingResult((activeWave.samplingResults as Record<string, unknown> | null)?.[m]),
+            );
+            if (completedMethods.length === 0) {
+                return error("请先执行至少一种抽样方法获取受访者名单后再发放问卷", "SAMPLING_RESULTS_REQUIRED", 409);
+            }
+            for (const method of completedMethods) {
+                if (policy.methods[method] === "disabled") {
+                    return error("当前波次包含实验模板已禁用的抽样方法", "SAMPLING_METHOD_DISABLED", 409);
+                }
+                const section = (activeWave.samplingResults as Record<string, Record<string, unknown> | undefined>)[method];
+                if (!isServerGeneratedResult(section)) {
+                    return error("请使用系统生成的有效抽样名单", "SAMPLING_RESULTS_REQUIRED", 409);
+                }
+            }
+        }
+
         const simResult = simulateWaveDispatchForCompletedMethods({
             wave: activeWave,
             population,
             fieldMapping: taskInfo.fieldMapping,
             fieldworkConfig: taskInfo.fieldworkConfig,
             dictionary: taskInfo.variableDictionary,
-            seed: optionalSeed,
+            seed: parsedSeed.seed,
         });
         if (!simResult.ok) return error(simResult.message, "VALIDATION_ERROR", 400);
 
@@ -794,22 +858,21 @@ const fieldworkDispatchRoutes: RouteDefinition = {
             fieldwork: simResult.fieldwork,
         };
         const nextWaves = waves.map((w) => (w.waveNumber === activeWaveNum ? nextWave : w));
-        const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
 
         const updated = await db.transaction(async (tx) => {
             const [row] = await tx
                 .update(experiment)
                 .set({
-                    version: record.version + 1,
+                    version: dispatchRecord.version + 1,
                     activeWaveNumber: activeWaveNum,
                     wavesData: nextWaves,
                     samplingGeneration: sql`${experiment.samplingGeneration} + 1`,
                     updatedAt: new Date(),
                 })
-                .where(matchesObservedExperiment(record, versionResult.value))
+                .where(matchesObservedExperiment(dispatchRecord, versionResult.value))
                 .returning();
             if (!row) return null;
-            await syncExperimentWaveRow(tx, record.id, nextWave);
+            await syncExperimentWaveRow(tx, dispatchRecord.id, nextWave);
             return row;
         });
         if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
@@ -840,9 +903,29 @@ const fieldworkCleaningRoutes: RouteDefinition = {
         const versionResult = validateObservedVersion(body.observedVersion, record.version);
         if (!versionResult.ok) return error(versionResult.message, versionResult.code, versionResult.status);
 
-        const targetWaveNum = typeof body.waveNumber === "number" && Number.isInteger(body.waveNumber) && body.waveNumber >= 1
-            ? body.waveNumber
-            : (record.currentStage === 3 ? 1 : (record.activeWaveNumber || 1));
+        if (
+            body.waveNumber !== undefined
+            && (typeof body.waveNumber !== "number" || !Number.isSafeInteger(body.waveNumber) || body.waveNumber < 1 || body.waveNumber > 4)
+        ) {
+            return error("实验波次编号无效", "VALIDATION_ERROR", 400);
+        }
+        if (!body.cleaningConfig || typeof body.cleaningConfig !== "object" || Array.isArray(body.cleaningConfig)) {
+            return error("质检清洗规则格式无效", "VALIDATION_ERROR", 400);
+        }
+        const allowedCleaningKeys = new Set(["removeSpeeders", "removeStraightliners", "requirePrimaryTargetValid"]);
+        for (const [key, val] of Object.entries(body.cleaningConfig as Record<string, unknown>)) {
+            if (!allowedCleaningKeys.has(key) || (val !== undefined && typeof val !== "boolean")) {
+                return error("质检清洗规则参数无效", "VALIDATION_ERROR", 400);
+            }
+        }
+
+        const expectedWaveNum = (record.currentStage === 2 || record.currentStage === 3)
+            ? 1
+            : Math.max(2, record.activeWaveNumber || 2);
+        const targetWaveNum = body.waveNumber !== undefined ? body.waveNumber : expectedWaveNum;
+        if (targetWaveNum !== expectedWaveNum) {
+            return error("当前阶段仅允许调整当前活动波次的质检清洗规则", "INVALID_STAGE_ORDER", 409);
+        }
         const waves = parseStoredWaves(record.wavesData);
         const existing = waves.find((w) => w.waveNumber === targetWaveNum);
         if (!existing) return error("指定的实验波次不存在", "NOT_FOUND", 404);
@@ -898,14 +981,38 @@ const newWaveRoutes: RouteDefinition = {
         if (!versionResult.ok) return error(versionResult.message, versionResult.code, versionResult.status);
 
         const waves = parseStoredWaves(record.wavesData);
-        if (waves.length >= 4) {
+        const prevWave = waves.at(-1);
+        const nextWaveNumber = (prevWave?.waveNumber ?? 2) + 1;
+        if (waves.length >= 4 || nextWaveNumber > 4) {
             return error("单次实验最多支持 4 轮投放迭代（含首轮试投）", "WAVE_LIMIT", 400);
         }
-        const prevWave = waves.at(-1);
-        if (!prevWave?.fieldwork) {
-            return error("请先完成当前轮次的问卷发放回收，再追加新一轮微调波次", "VALIDATION_ERROR", 400);
+        if (!prevWave || prevWave.waveNumber < 2) {
+            return error("请先进入正式调优轮次并完成投放后再追加微调波次", "INVALID_STAGE_ORDER", 409);
         }
-        const nextWaveNumber = (prevWave?.waveNumber ?? 2) + 1;
+        const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
+        const taskInfo = await findStudentTaskSamplingInfo(taskId, auth.student.classId);
+        const prevTargetSize = getTargetSampleSizeFromSamplePlan(prevWave.samplePlan);
+        if (prevTargetSize === null) {
+            return error("请先完成当前轮次的样本量规划、抽样与问卷发放，再追加新一轮微调波次", "VALIDATION_ERROR", 400);
+        }
+        const prevSamplingError = validateSamplingResultsForSubmit(
+            prevWave.samplingResults,
+            prevTargetSize,
+            populationSize,
+            taskInfo?.samplingPolicy,
+        );
+        if (prevSamplingError) {
+            return error(prevSamplingError, "SAMPLING_RESULTS_REQUIRED", 409);
+        }
+        const prevCompletedMethods = SAMPLING_METHODS.filter((m) =>
+            isCompletedSamplingResult((prevWave.samplingResults as Record<string, unknown> | null)?.[m]),
+        );
+        const prevAllDispatched = prevCompletedMethods.length > 0
+            && prevCompletedMethods.every((m) => Boolean(prevWave.fieldwork?.methods?.[m]?.records?.length));
+        if (!prevAllDispatched) {
+            return error("请先完成当前轮次的问卷发放回收，再追加新一轮微调波次", "FIELDWORK_REQUIRED", 409);
+        }
+
         const createdWave: StoredExperimentWave = {
             waveNumber: nextWaveNumber,
             kind: "refinement",
@@ -917,8 +1024,14 @@ const newWaveRoutes: RouteDefinition = {
             cleaningConfig: prevWave.cleaningConfig ? { ...prevWave.cleaningConfig } : { ...DEFAULT_CLEANING_CONFIG },
             completedAt: null,
         };
-        const nextWaves = [...waves.map((w) => (w.waveNumber === prevWave.waveNumber ? { ...w, completedAt: w.completedAt ?? new Date().toISOString() } : w)), createdWave];
-        const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
+        const finalizedPrevWave: StoredExperimentWave = {
+            ...prevWave,
+            completedAt: prevWave.completedAt ?? new Date().toISOString(),
+        };
+        const nextWaves = [
+            ...waves.map((w) => (w.waveNumber === prevWave.waveNumber ? finalizedPrevWave : w)),
+            createdWave,
+        ];
 
         const updated = await db.transaction(async (tx) => {
             const [row] = await tx
@@ -926,6 +1039,8 @@ const newWaveRoutes: RouteDefinition = {
                 .set({
                     version: record.version + 1,
                     activeWaveNumber: nextWaveNumber,
+                    questionnaire: createdWave.questionnaire,
+                    samplePlan: createdWave.samplePlan,
                     samplingResults: null,
                     wavesData: nextWaves,
                     samplingGeneration: sql`${experiment.samplingGeneration} + 1`,
@@ -934,7 +1049,7 @@ const newWaveRoutes: RouteDefinition = {
                 .where(matchesObservedExperiment(record, versionResult.value))
                 .returning();
             if (!row) return null;
-            await syncExperimentWaveRow(tx, record.id, createdWave);
+            await syncExperimentWavesSnapshot(tx, record.id, nextWaves);
             return row;
         });
         if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
@@ -974,7 +1089,7 @@ const samplingActionRoutes: RouteDefinition = {
         if (!taskId) return error("无效的任务ID", "INVALID_ID");
         const accessError = await getStudentTaskAccessError(taskId, auth.student.classId);
         if (accessError) return accessError;
-        const body = await parseBody<{ method?: "simple" | "systematic" | "pps" | "stratified"; params?: unknown }>(req);
+        const body = await parseBody<{ method?: "simple" | "systematic" | "pps" | "stratified"; params?: unknown; observedVersion?: unknown }>(req);
         if (!body.method || !["simple", "systematic", "pps", "stratified"].includes(body.method)) {
             return error("无效的抽样方法", "VALIDATION_ERROR", 400);
         }
@@ -986,6 +1101,10 @@ const samplingActionRoutes: RouteDefinition = {
             || record.status === ExperimentStatus.GRADED
         ) {
             return error("当前阶段不能执行抽样", "INVALID_STAGE_ORDER", 409);
+        }
+        if (body.observedVersion !== undefined) {
+            const versionCheck = validateObservedVersion(body.observedVersion, record.version);
+            if (!versionCheck.ok) return error(versionCheck.message, versionCheck.code, versionCheck.status);
         }
         const schedule = await findStudentTaskSchedule(taskId, auth.student.classId);
         if (!schedule) return error("任务不存在", "NOT_FOUND", 404);
@@ -1009,13 +1128,20 @@ const samplingActionRoutes: RouteDefinition = {
         if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
 
         const activeWaveNum = record.currentStage === 2 ? 1 : Math.max(2, record.activeWaveNumber || 2);
+        const storedWaves = parseStoredWaves(record.wavesData);
         const { activeWave } = ensureActiveWave({ ...record, activeWaveNumber: activeWaveNum });
-        const effectivePlan = activeWave.samplePlan ?? parseStoredJson(record.samplePlan);
+        const effectivePlan = storedWaves.length > 0
+            ? activeWave.samplePlan
+            : (activeWave.samplePlan ?? parseStoredJson(record.samplePlan));
+        const targetSampleSize = getTargetSampleSizeFromSamplePlan(effectivePlan);
+        if (targetSampleSize === null) {
+            return error("请先保存当前波次的样本量规划后再执行抽样", "VALIDATION_ERROR", 400);
+        }
 
         const result = await executeSamplingAction({
             method: body.method,
             rawParams: body.params,
-            targetSampleSize: getTargetSampleSizeFromSamplePlan(effectivePlan),
+            targetSampleSize,
             population,
             fieldMapping: taskInfo.fieldMapping,
         });

@@ -15,12 +15,13 @@ import { canonicalizeRichTextHtmlForStorage } from "../../server/rich-text";
 import { deleteAuditEventsForEntities } from "../../server/audit-event";
 import { readVariableSource } from "../../server/variable-source";
 import { validateDictionary } from "../../domain/variables/dictionary";
-import { resolveFieldworkConfig, validateFieldworkConfig } from "../../domain/fieldwork";
+import { DEFAULT_FIELDWORK_CONFIG, resolveFieldworkConfig } from "../../domain/fieldwork";
 import {
     validateMappedPopulationData,
     validateParsedExcelUpload,
     validateTopicPublishReadiness,
     validateTopicFieldMappingConfig,
+    validateTopicFieldworkConfigStrict,
     validateTopicName,
     validateWeightConfig,
     validatePrimaryTargetDictionary,
@@ -106,6 +107,7 @@ export async function updateTeacherTopicBasics(params: {
                 excelFilePath: topic.excelFilePath,
                 fieldMapping: topic.fieldMapping,
                 samplingPolicy: topic.samplingPolicy,
+                fieldworkConfig: topic.fieldworkConfig,
                 weightConfig: topic.weightConfig,
                 variableDictionary: topic.variableDictionary,
             })
@@ -140,6 +142,7 @@ export async function updateTeacherTopicBasics(params: {
                 excelFilePath: topicInfo.excelFilePath,
                 fieldMapping: effectiveMapping as Record<string, unknown> | string | null | undefined,
                 samplingPolicy: topicInfo.samplingPolicy,
+                fieldworkConfig: topicInfo.fieldworkConfig,
                 weightConfig: topicInfo.weightConfig as Record<string, unknown> | string | null | undefined,
             };
             // Cheap checks first so a missing population still reports as such.
@@ -284,6 +287,7 @@ export async function replaceTopicExcelData(params: {
                     excelFilePath: filePath,
                     excelRowCount: parsed.rowCount,
                     fieldMapping: null,
+                    fieldworkConfig: { ...DEFAULT_FIELDWORK_CONFIG },
                     variableDictionary: null,
                     variableRevision: currentTopic.variableRevision + 1,
                     updatedAt: new Date(),
@@ -336,7 +340,13 @@ export async function updateTopicFieldMapping(params: {
     return db.transaction(async (tx) => {
         await acquireStorageMutationLock(tx);
         const [topicInfo] = await tx
-            .select({ excelFilePath: topic.excelFilePath, status: topic.status, fieldMapping: topic.fieldMapping, samplingPolicy: topic.samplingPolicy })
+            .select({
+                excelFilePath: topic.excelFilePath,
+                status: topic.status,
+                fieldMapping: topic.fieldMapping,
+                samplingPolicy: topic.samplingPolicy,
+                fieldworkConfig: topic.fieldworkConfig,
+            })
             .from(topic)
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)));
         if (!topicInfo) return fail("实验模板不存在", "NOT_FOUND", 404);
@@ -369,6 +379,23 @@ export async function updateTopicFieldMapping(params: {
             && (ppsEnabled || currentPolicy.methods.pps === "disabled")
             && (stratifiedEnabled || currentPolicy.methods.stratified === "disabled");
 
+        const currentFieldwork = topicInfo.fieldworkConfig
+            ? resolveFieldworkConfig(topicInfo.fieldworkConfig)
+            : null;
+        const nextStratifiedSet = new Set(params.fieldMapping.stratified ?? []);
+        const sanitizeStaleFieldwork = Boolean(
+            currentFieldwork?.stratumField && !nextStratifiedSet.has(currentFieldwork.stratumField),
+        );
+        const sanitizedFieldworkConfig = sanitizeStaleFieldwork && currentFieldwork
+            ? (() => {
+                const { stratumField: _sf, stratumNonResponseRates: _sr, ...rest } = currentFieldwork;
+                return {
+                    ...rest,
+                    preset: rest.preset === "stratum_differential" ? ("balanced" as const) : rest.preset,
+                };
+            })()
+            : undefined;
+
         const [updated] = await tx
             .update(topic)
             .set({
@@ -382,6 +409,7 @@ export async function updateTopicFieldMapping(params: {
                 ...(!preservePolicy ? {
                     samplingPolicy: buildDefaultSamplingPolicy({ ppsEnabled, stratifiedEnabled }),
                 } : {}),
+                ...(sanitizedFieldworkConfig ? { fieldworkConfig: sanitizedFieldworkConfig } : {}),
                 updatedAt: new Date(),
             })
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)))
@@ -451,7 +479,7 @@ export async function updateTopicFieldworkConfig(params: {
     topicId: number;
     fieldworkConfig: unknown;
 }) {
-    const basicErr = validateFieldworkConfig(params.fieldworkConfig);
+    const basicErr = validateTopicFieldworkConfigStrict(params.fieldworkConfig);
     if (basicErr) return fail(basicErr);
 
     return db.transaction(async (tx) => {
@@ -466,7 +494,7 @@ export async function updateTopicFieldworkConfig(params: {
             return fail("已发布或已分配实验任务的模板不能修改虚拟发放策略", "FORBIDDEN", 403);
         }
         const mapping = parseTopicFieldMapping(topicInfo.fieldMapping);
-        const strataErr = validateFieldworkConfig(params.fieldworkConfig, mapping?.stratified ?? []);
+        const strataErr = validateTopicFieldworkConfigStrict(params.fieldworkConfig, mapping?.stratified ?? []);
         if (strataErr) return fail(strataErr);
         const normalized = resolveFieldworkConfig(params.fieldworkConfig);
         const [updated] = await tx

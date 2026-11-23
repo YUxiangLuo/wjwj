@@ -2,8 +2,10 @@ import { calculateCrossTab, calculateUnivariate } from "../../domain/variables/a
 import { calculateDesignWeights, type SamplingDesign } from "../../domain/variables/design-weights";
 import { validateDictionary } from "../../domain/variables/dictionary";
 import type { AnalysisConfig, AnalysisResult, VariableDictionary } from "../../domain/variables/types";
-import { materializeFieldworkSample, type CleaningConfig, type MethodFieldworkResult } from "../../domain/fieldwork";
+import { materializeFieldworkSample, verifyMethodFieldworkReplay, type CleaningConfig, type MethodFieldworkResult } from "../../domain/fieldwork";
+import { stratumKey } from "../../domain/statistics/sampling";
 import type { QuestionnaireData } from "../../lib/questionnaire-types";
+import type { SamplingMethod } from "../../lib/sampling-policy";
 import { resolveAnalysisTarget } from "../../lib/analysis-target";
 import { readVariableSource } from "../../server/variable-source";
 import { getFrameFieldsFromMapping } from "./fieldwork-wave-service";
@@ -15,6 +17,7 @@ export const UNIVARIATE_ALGORITHM_VERSION = "business-analytics-v4";
 export interface UnivariateJob {
     populationPath: string;
     fieldMapping: unknown;
+    fieldworkConfig?: unknown;
     dictionary: VariableDictionary;
     config: AnalysisConfig;
     samplingResult: Record<string, unknown>;
@@ -80,9 +83,35 @@ export async function runUnivariateJob(job: UnivariateJob): Promise<UnivariateJo
         let activeIndices = indices as number[];
         let activeInclusionProbs = replay.result.inclusionProbabilities;
 
-        if (job.config.datasetMode === "cleaned_respondents" && job.fieldworkResult && job.questionnaire) {
+        if (job.config.datasetMode === "cleaned_respondents") {
+            if (!job.fieldworkResult || !job.questionnaire) {
+                return fail("MISSING_FIELDWORK", "所选波次尚未生成问卷发放回收记录，无法按质检有效答卷口径分析");
+            }
+            if (
+                job.fieldworkResult.method !== job.config.method
+                || job.fieldworkResult.invitedCount !== (indices as number[]).length
+                || !Array.isArray(job.fieldworkResult.records)
+                || job.fieldworkResult.records.length !== (indices as number[]).length
+            ) {
+                return fail("REPLAY_MISMATCH", "问卷发放回收记录无法由可信设计重演");
+            }
             const { frameFields } = getFrameFieldsFromMapping(job.fieldMapping);
             const target = resolveAnalysisTarget(job.fieldMapping)?.target ?? null;
+            if (job.fieldworkConfig !== undefined) {
+                const replayParams: Parameters<typeof verifyMethodFieldworkReplay>[0] & { expectedMethod?: SamplingMethod } = {
+                    stored: job.fieldworkResult,
+                    expectedMethod: job.config.method,
+                    population: current,
+                    indices: indices as number[],
+                    questionnaire: job.questionnaire,
+                    dictionary,
+                    analysisTarget: target,
+                    fieldworkConfig: job.fieldworkConfig,
+                };
+                if (!verifyMethodFieldworkReplay(replayParams)) {
+                    return fail("REPLAY_MISMATCH", "问卷发放回收记录无法由可信设计重演");
+                }
+            }
             const materialized = materializeFieldworkSample({
                 population: source.rows,
                 samplingIndices: indices as number[],
@@ -117,11 +146,14 @@ export async function runUnivariateJob(job: UnivariateJob): Promise<UnivariateJo
                 const sField = replay.result.stratifyBy;
                 const realizedCounts = new Map<string, number>();
                 for (const idx of activeIndices) {
-                    const key = String(current[idx]?.[sField] ?? "").trim().normalize("NFKC");
+                    const key = stratumKey(current[idx]?.[sField]);
                     realizedCounts.set(key, (realizedCounts.get(key) ?? 0) + 1);
                 }
                 const adjustedLayers = replay.result.layers
-                    .map((l) => ({ ...l, sampleCount: realizedCounts.get(l.name) ?? 0 }))
+                    .map((l) => {
+                        const normalizedName = stratumKey(l.name);
+                        return { ...l, name: normalizedName, sampleCount: realizedCounts.get(normalizedName) ?? 0 };
+                    })
                     .filter((l) => l.sampleCount > 0);
                 if (adjustedLayers.length !== replay.result.layers.length && job.config.weighted) {
                     return fail("EMPTY_STRATUM_RESPONDENTS", "质检后存在有效回收数为 0 的分层，无法直接计算分层加权估计，请改用未加权描述或在二轮补足该层样本");

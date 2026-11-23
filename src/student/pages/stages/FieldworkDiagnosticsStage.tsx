@@ -8,8 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/StatusBadge";
 import { KpiStatCard } from "@/components/KpiStatCard";
@@ -115,6 +114,7 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
     const [plannedActions, setPlannedActions] = useState<AdjustmentActionKey[]>(initialPlan.plannedActions);
     const [rationale, setRationale] = useState<string>(initialPlan.rationale);
     const [updatingCleaning, setUpdatingCleaning] = useState(false);
+    const [cleaningError, setCleaningError] = useState<string | null>(null);
     const [completing, setCompleting] = useState(false);
 
     const draftPlan = useMemo<AdjustmentPlan>(
@@ -139,6 +139,7 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
         if (!taskId || !experiment || updatingCleaning || refreshRequired) return;
         const nextConfig: CleaningConfig = { ...cleaningConfig, ...patch };
         setUpdatingCleaning(true);
+        setCleaningError(null);
         try {
             const res = await experimentApi.updateCleaningConfig(taskId, experiment.version, nextConfig, 1);
             if (res.success && res.data) {
@@ -147,8 +148,14 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
             } else if (res.error?.code === "VERSION_CONFLICT") {
                 requireRefresh();
             } else {
-                toast.error(res.error?.message ?? "更新质检规则失败");
+                const msg = res.error?.message ?? "更新质检规则失败，请重试";
+                setCleaningError(msg);
+                toast.error(msg);
             }
+        } catch {
+            const msg = "网络连接失败，更新质检规则未成功，请重试";
+            setCleaningError(msg);
+            toast.error(msg);
         } finally {
             setUpdatingCleaning(false);
         }
@@ -242,22 +249,28 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
     return (
         <div className="space-y-6" data-testid="student-stage-diagnostics">
             {availableMethods.length > 1 && (
-                <div className="flex items-center justify-between gap-3 rounded-surface border border-border bg-card px-4 py-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-surface border border-border bg-card px-4 py-2.5">
                     <span className="text-label font-medium text-foreground">切换查看首轮试投方法：</span>
-                    <Tabs value={selectedMethod} onValueChange={(v) => setSelectedMethod(v as SamplingMethod)}>
-                        <TabsList className="h-auto gap-1 bg-muted p-1">
-                            {availableMethods.map((m) => (
-                                <TabsTrigger key={m} value={m} className="px-3 py-1 text-meta">
-                                    {METHOD_NAMES[m]}
-                                </TabsTrigger>
-                            ))}
-                        </TabsList>
-                    </Tabs>
+                    <div role="group" aria-label="切换查看首轮试投方法" className="inline-flex flex-wrap gap-1 rounded-control bg-muted p-1">
+                        {availableMethods.map((m) => (
+                            <Button
+                                key={m}
+                                type="button"
+                                size="sm"
+                                variant={selectedMethod === m ? "default" : "ghost"}
+                                aria-pressed={selectedMethod === m}
+                                onClick={() => setSelectedMethod(m)}
+                                className="h-7 px-3 text-meta"
+                            >
+                                {METHOD_NAMES[m]}
+                            </Button>
+                        ))}
+                    </div>
                 </div>
             )}
 
             {/* Top Diagnostic KPI Strip */}
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,13rem),1fr))] gap-4">
                 <KpiStatCard
                     label="质检后有效回收率"
                     value={`${formatStatistic(diag.effectiveRatePct, 1)}%`}
@@ -336,7 +349,7 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
             />
 
             {/* Interactive QC Cleaning Workbench + Multi-Layer Forest Comparison */}
-            <div className="grid grid-cols-2 gap-5">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,26rem),1fr))] gap-5">
                 <Card className="rounded-surface border-border bg-card" data-testid="student-diagnostics-cleaning-card">
                     <CardHeader className="border-b border-border pb-4">
                         <div className="flex items-center justify-between gap-2">
@@ -349,10 +362,15 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                                     切换清洗规则，实时观察右侧森林图中「清洗后有效估计」相对「未质检含噪估计」的误差变化
                                 </CardDescription>
                             </div>
-                            {updatingCleaning && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+                            {updatingCleaning && <Loader2 className="h-4 w-4 animate-spin text-primary" aria-label="正在更新质检规则" />}
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4 pt-4">
+                        {cleaningError && (
+                            <div role="alert" className="rounded-control border border-destructive-border bg-destructive-muted px-3 py-2 text-meta text-destructive">
+                                {cleaningError}
+                            </div>
+                        )}
                         <div className="space-y-2.5">
                             <div className="flex items-center justify-between gap-3 rounded-control border border-border bg-background p-3">
                                 <div>
@@ -413,9 +431,9 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                                     role="region"
                                     aria-label="异常样本抽检日志"
                                     tabIndex={0}
-                                    className="max-h-52 overflow-y-auto rounded-control border border-border"
+                                    className="max-h-52 overflow-auto rounded-control border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 >
-                                    <Table>
+                                    <table className="w-full caption-bottom text-meta" aria-label="异常样本抽检日志表">
                                         <TableHeader className="bg-muted">
                                             <TableRow>
                                                 <TableHead>受访单元</TableHead>
@@ -432,12 +450,12 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                                                         <TableCell>
                                                             <StatusBadge intent={badge.intent}>{badge.label}</StatusBadge>
                                                         </TableCell>
-                                                        <TableCell className="text-meta text-muted-foreground">{item.reason}</TableCell>
+                                                        <TableCell className="whitespace-normal break-words text-meta text-muted-foreground">{item.reason}</TableCell>
                                                     </TableRow>
                                                 );
                                             })}
                                         </TableBody>
-                                    </Table>
+                                    </table>
                                 </div>
                             </div>
                         )}
@@ -480,8 +498,13 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                     <CardDescription>检查是否存在未绑定变量、中途弃答集中题或数值范围拦截真实客户值的问题</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-4">
-                    <div className="overflow-x-auto rounded-control border border-border">
-                        <Table aria-label="逐题填答质量诊断表">
+                    <div
+                        role="region"
+                        aria-label="逐题填答质量诊断区域"
+                        tabIndex={0}
+                        className="overflow-x-auto rounded-control border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                        <table aria-label="逐题填答质量诊断表" className="w-full caption-bottom text-meta">
                             <TableHeader className="bg-muted">
                                 <TableRow>
                                     <TableHead className="w-16">题号</TableHead>
@@ -529,7 +552,7 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                                     </TableRow>
                                 ))}
                             </TableBody>
-                        </Table>
+                        </table>
                     </div>
                 </CardContent>
             </Card>
@@ -561,7 +584,7 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-5 pt-5">
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-6">
                         <div className="space-y-2.5">
                             <Label className="text-foreground font-semibold">1. 首轮试投识别的数据与抽样问题（至少勾选 1 项）</Label>
                             <div className="space-y-2">
@@ -624,7 +647,9 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                             <Label htmlFor="adjustment-rationale" className="text-foreground font-semibold">
                                 3. 调优依据与二轮抽样统计思路说明（15–2000 字）
                             </Label>
-                            <span className="text-meta tabular-nums text-muted-foreground">{rationale.trim().length} / 2000 字</span>
+                            <span className={`text-meta tabular-nums ${rationale.trim().length > 2000 ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
+                                {rationale.trim().length} / 2000 字
+                            </span>
                         </div>
                         <Textarea
                             id="adjustment-rationale"

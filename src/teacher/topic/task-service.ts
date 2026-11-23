@@ -75,6 +75,7 @@ export async function publishTopicTasks(params: {
                 excelFilePath: topic.excelFilePath,
                 fieldMapping: topic.fieldMapping,
                 samplingPolicy: topic.samplingPolicy,
+                fieldworkConfig: topic.fieldworkConfig,
                 weightConfig: topic.weightConfig,
             })
             .from(topic)
@@ -90,6 +91,7 @@ export async function publishTopicTasks(params: {
             excelFilePath: topicRow.excelFilePath,
             fieldMapping: topicRow.fieldMapping as Record<string, unknown> | string | null | undefined,
             samplingPolicy: topicRow.samplingPolicy,
+            fieldworkConfig: topicRow.fieldworkConfig,
             weightConfig: topicRow.weightConfig as Record<string, unknown> | string | null | undefined,
         });
         if (publishReadinessError) {

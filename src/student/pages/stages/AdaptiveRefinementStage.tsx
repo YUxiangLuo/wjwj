@@ -18,7 +18,7 @@ import { VariableBindingDialog } from "@/components/questionnaire/VariableBindin
 import { FieldworkFunnelChart } from "@/components/charts/FieldworkFunnelChart";
 import { StratumComparisonChart } from "@/components/charts/StratumComparisonChart";
 import { WaveDeltaScorecard } from "@/components/charts/WaveDeltaScorecard";
-import { ADJUSTMENT_ACTION_LABELS, ADJUSTMENT_ISSUE_LABELS, buildWaveSnapshotMetric } from "@/components/WaveLoopSnapshot";
+import { ADJUSTMENT_ACTION_LABELS, ADJUSTMENT_ISSUE_LABELS, buildWaveSnapshotMetric, WaveLoopSnapshot } from "@/components/WaveLoopSnapshot";
 import { StageActions } from "../../components/StageActions";
 import { SamplePreviewTable } from "../../components/SamplePreviewTable";
 import { StratifiedSamplingTab } from "../../components/StratifiedSamplingTab";
@@ -62,6 +62,18 @@ const METHOD_LABELS: Record<MethodKey, string> = {
 
 type RefinementTab = "questionnaire" | "plan" | "sampling";
 
+function parseStrictNumber(raw: string): number {
+    const trimmed = raw.trim();
+    if (!trimmed) return Number.NaN;
+    return Number(trimmed);
+}
+
+function parseStrictInteger(raw: string): number {
+    const trimmed = raw.trim();
+    if (!trimmed || !/^-?\d+$/.test(trimmed)) return Number.NaN;
+    return Number.parseInt(trimmed, 10);
+}
+
 export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
     const {
         experiment,
@@ -84,17 +96,40 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
         [experiment?.waves],
     );
     const activeWaveNum = Math.max(2, experiment?.activeWaveNumber ?? 2);
+    const formalWaves = useMemo(
+        () => (experiment?.waves ?? []).filter((w) => w.waveNumber >= 2),
+        [experiment?.waves],
+    );
     const activeWave = useMemo(
         () => experiment?.waves?.find((w) => w.waveNumber === activeWaveNum)
-            ?? experiment?.waves?.filter((w) => w.waveNumber >= 2).at(-1)
+            ?? formalWaves.at(-1)
             ?? null,
-        [experiment?.waves, activeWaveNum],
+        [experiment?.waves, activeWaveNum, formalWaves],
+    );
+    const [viewingWaveNum, setViewingWaveNum] = useState<number>(activeWave?.waveNumber ?? activeWaveNum);
+    useEffect(() => {
+        setViewingWaveNum(activeWave?.waveNumber ?? activeWaveNum);
+    }, [activeWave?.waveNumber, activeWaveNum]);
+    const inspectedPriorWave = useMemo(
+        () => (viewingWaveNum !== (activeWave?.waveNumber ?? activeWaveNum)
+            ? formalWaves.find((w) => w.waveNumber === viewingWaveNum) ?? null
+            : null),
+        [viewingWaveNum, activeWave?.waveNumber, activeWaveNum, formalWaves],
     );
 
     const wave1Diag = useMemo(() => {
         if (!wave1?.diagnostics) return null;
         for (const m of ["simple", "stratified", "systematic", "pps"] as const) {
             if (wave1.diagnostics[m]) return wave1.diagnostics[m]!;
+        }
+        return null;
+    }, [wave1?.diagnostics]);
+
+    const verifiedEmpiricalVariance = useMemo<number | null>(() => {
+        if (!wave1?.diagnostics) return null;
+        for (const m of ["simple", "stratified", "systematic", "pps"] as const) {
+            const v = wave1.diagnostics[m]?.empiricalTargetVariance;
+            if (v != null && Number.isFinite(v) && v > 0) return v;
         }
         return null;
     }, [wave1?.diagnostics]);
@@ -147,21 +182,52 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
     const [ppsEligibleFields, setPpsEligibleFields] = useState<string[]>([]);
     const [stratumNumericStats, setStratumNumericStats] = useState<Record<string, Record<string, Record<string, { mean: number; stdDev: number }>>>>({});
 
-    // Wave 2+ Sample Plan State
+    // Wave 2+ Sample Plan State (string-backed to guard 0 / negative / NaN / empty)
     const savedWavePlan = activeWave?.samplePlan ?? experiment?.samplePlan ?? null;
+    const isPlanInheritedPrior = estimationType === "mean" && activeWave?.samplePlan?.varianceSource === "prior_estimate";
     const [confidenceLevel, setConfidenceLevel] = useState<string>(savedWavePlan?.confidenceLevel ?? "95");
-    const [marginOfError, setMarginOfError] = useState<number>(
-        savedWavePlan?.marginOfError ?? (estimationType === "mean" ? 2 : 5),
+    const [marginOfErrorInput, setMarginOfErrorInput] = useState<string>(
+        String(savedWavePlan?.marginOfError ?? (estimationType === "mean" ? 2 : 5)),
     );
     const [varianceSource, setVarianceSource] = useState<"wave1_empirical" | "population">(
-        savedWavePlan?.varianceSource === "wave1_empirical" ? "wave1_empirical" : "population",
+        savedWavePlan?.varianceSource === "wave1_empirical" && verifiedEmpiricalVariance !== null
+            ? "wave1_empirical"
+            : "population",
     );
-    const [designEffect, setDesignEffect] = useState<number>(savedWavePlan?.designEffect ?? 1);
-    const [nonResponsePct, setNonResponsePct] = useState<number>(
-        savedWavePlan ? Math.round(savedWavePlan.nonResponseRate * 100) : (wave1Diag?.empiricalNonResponseRatePct ?? 20),
+    const [designEffectInput, setDesignEffectInput] = useState<string>(String(savedWavePlan?.designEffect ?? 1));
+    const [nonResponsePctInput, setNonResponsePctInput] = useState<string>(
+        String(savedWavePlan ? Math.round(savedWavePlan.nonResponseRate * 100) : (wave1Diag?.empiricalNonResponseRatePct ?? 20)),
     );
-    const [customFinalSize, setCustomFinalSize] = useState<number | null>(savedWavePlan?.finalSampleSize ?? null);
+    const [customFinalSizeInput, setCustomFinalSizeInput] = useState<string | null>(
+        !isPlanInheritedPrior && savedWavePlan?.finalSampleSize != null ? String(savedWavePlan.finalSampleSize) : null,
+    );
     const [savingPlan, setSavingPlan] = useState(false);
+
+    useEffect(() => {
+        if (varianceSource === "wave1_empirical" && verifiedEmpiricalVariance === null) {
+            setVarianceSource("population");
+        }
+    }, [varianceSource, verifiedEmpiricalVariance]);
+
+    useEffect(() => {
+        const plan = activeWave?.samplePlan;
+        if (!plan) return;
+        const inheritedPrior = estimationType === "mean" && plan.varianceSource === "prior_estimate";
+        setConfidenceLevel(plan.confidenceLevel ?? "95");
+        setMarginOfErrorInput(String(plan.marginOfError ?? (estimationType === "mean" ? 2 : 5)));
+        setVarianceSource(
+            plan.varianceSource === "wave1_empirical" && verifiedEmpiricalVariance !== null
+                ? "wave1_empirical"
+                : "population",
+        );
+        setDesignEffectInput(String(plan.designEffect ?? 1));
+        setNonResponsePctInput(String(Math.round((plan.nonResponseRate ?? 0.2) * 100)));
+        setCustomFinalSizeInput(!inheritedPrior && plan.finalSampleSize != null ? String(plan.finalSampleSize) : null);
+    }, [activeWave?.waveNumber]);
+
+    const marginOfError = parseStrictNumber(marginOfErrorInput);
+    const designEffect = parseStrictNumber(designEffectInput);
+    const nonResponsePct = parseStrictNumber(nonResponsePctInput);
 
     // Wave 2+ Sampling & Dispatch State
     const waveSampling = (activeWave?.samplingResults ?? null) as SamplingResultsData | null;
@@ -172,15 +238,24 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
     );
     const [activeMethod, setActiveMethod] = useState<MethodKey>(() => {
         const reqMethod = enabledMethods.find((m) => effectivePolicy.methods[m] === "required" && m !== "simple");
-        return reqMethod ?? "simple";
+        return reqMethod ?? enabledMethods[0] ?? "simple";
     });
+    useEffect(() => {
+        if (enabledMethods.length > 0 && !enabledMethods.includes(activeMethod)) {
+            setActiveMethod(enabledMethods[0]!);
+        }
+    }, [enabledMethods, activeMethod]);
     const [executingMethod, setExecutingMethod] = useState<MethodKey | null>(null);
     const [executionTime, setExecutionTime] = useState<number | null>(null);
     const [ppsSizeField, setPpsSizeField] = useState<string>(waveSampling?.pps?.sizeField ?? "");
-    const [ppsSampleSize, setPpsSampleSize] = useState<number>(waveSampling?.pps?.sampleCount ?? (savedWavePlan?.finalSampleSize ?? 30));
+    const [ppsSampleSizeInput, setPpsSampleSizeInput] = useState<string>(
+        String(waveSampling?.pps?.sampleCount ?? (savedWavePlan?.finalSampleSize ?? 30)),
+    );
+    const ppsSampleSize = parseStrictInteger(ppsSampleSizeInput);
     const [samplingSeed, setSamplingSeed] = useState<string>("");
     const [dispatchSeed, setDispatchSeed] = useState<string>("");
     const [dispatching, setDispatching] = useState(false);
+    const [updatingWaveCleaning, setUpdatingWaveCleaning] = useState(false);
     const [creatingNewWave, setCreatingNewWave] = useState(false);
     const [completing, setCompleting] = useState(false);
 
@@ -228,9 +303,23 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
         };
     }, [taskId, statsReloadKey, estimationType, analysisTarget?.field, experiment?.analysisTarget?.inferred, N]);
 
+    const canonicalJson = useCallback((value: unknown): string => {
+        if (value === null || typeof value !== "object") return JSON.stringify(value);
+        if (Array.isArray(value)) return `[${value.map((item) => canonicalJson(item)).join(",")}]`;
+        const record = value as Record<string, unknown>;
+        const keys = Object.keys(record)
+            .filter((k) => record[k] !== undefined)
+            .sort();
+        return `{${keys.map((k) => `${JSON.stringify(k)}:${canonicalJson(record[k])}`).join(",")}}`;
+    }, []);
+
     const waveQuestionnaire = useMemo<QuestionnaireData>(
         () => ({ title: qTitle, welcomeText: qWelcome, endingText: qEnding, questions: qList }),
         [qTitle, qWelcome, qEnding, qList],
+    );
+    const isQuestionnaireDirty = useMemo(
+        () => canonicalJson(waveQuestionnaire) !== canonicalJson(sourceQ),
+        [canonicalJson, waveQuestionnaire, sourceQ],
     );
 
     const wave1Burden = useMemo(
@@ -241,40 +330,83 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
         () => evaluateQuestionnaireBurden(waveQuestionnaire, dictionary, analysisTarget),
         [waveQuestionnaire, dictionary, analysisTarget],
     );
+    const primaryTargetField = experiment?.analysisTarget && !experiment.analysisTarget.inferred
+        ? experiment.analysisTarget.target.field
+        : null;
+    const requiresTargetBinding = Boolean(dictionary && primaryTargetField);
+    const targetBindingPassed = !requiresTargetBinding || currentBurden.primaryTargetBound;
 
-    const activeVariance = useMemo(() => {
+    const activeVariance = useMemo<number | null | undefined>(() => {
         if (estimationType !== "mean") return undefined;
-        if (varianceSource === "wave1_empirical" && wave1Diag?.empiricalTargetVariance) {
-            return wave1Diag.empiricalTargetVariance;
+        if (varianceSource === "wave1_empirical" && verifiedEmpiricalVariance !== null) {
+            return verifiedEmpiricalVariance;
         }
-        return populationVariance ?? savedWavePlan?.populationVariance ?? 100;
-    }, [estimationType, varianceSource, wave1Diag?.empiricalTargetVariance, populationVariance, savedWavePlan?.populationVariance]);
+        if (populationVariance && populationVariance > 0) return populationVariance;
+        if (!isPlanInheritedPrior && savedWavePlan?.populationVariance && savedWavePlan.populationVariance > 0) {
+            return savedWavePlan.populationVariance;
+        }
+        return null;
+    }, [estimationType, varianceSource, verifiedEmpiricalVariance, populationVariance, isPlanInheritedPrior, savedWavePlan?.populationVariance]);
 
     const bounds = useMemo(() => getFinalSampleSizeBounds(N, minimumSampleSize), [N, minimumSampleSize]);
+    const safeNrrFraction = Number.isFinite(nonResponsePct)
+        ? Math.min(0.5, Math.max(0, nonResponsePct / 100))
+        : 0.2;
     const stepDetails = useMemo(() => calculateSampleSizeStepDetails({
         estimationType,
         confidenceLevel,
-        marginOfError: marginOfError > 0 ? marginOfError : 1,
+        marginOfError: Number.isFinite(marginOfError) && marginOfError > 0 ? marginOfError : 1,
         populationSize: N,
-        populationVariance: activeVariance,
-        designEffect: designEffect > 0 ? designEffect : 1,
-        nonResponseRate: Math.min(0.5, Math.max(0, nonResponsePct / 100)),
-    }), [estimationType, confidenceLevel, marginOfError, N, activeVariance, designEffect, nonResponsePct]);
+        populationVariance: activeVariance ?? 100,
+        designEffect: Number.isFinite(designEffect) && designEffect >= 0.5 && designEffect <= 5 ? designEffect : 1,
+        nonResponseRate: safeNrrFraction,
+    }), [estimationType, confidenceLevel, marginOfError, N, activeVariance, designEffect, safeNrrFraction]);
 
     const recommendedSize = Math.max(bounds.min, Math.min(bounds.max, stepDetails.n3 || bounds.min));
-    const effectiveFinalSize = customFinalSize ?? recommendedSize;
-    const isFinalSizeValid = Number.isInteger(effectiveFinalSize)
+    const effectiveFinalSize = customFinalSizeInput === null
+        ? recommendedSize
+        : parseStrictInteger(customFinalSizeInput);
+    const isFinalSizeValid = Number.isSafeInteger(effectiveFinalSize)
         && effectiveFinalSize >= bounds.min
         && effectiveFinalSize <= bounds.max;
 
+    const planValidationError = useMemo<string | null>(() => {
+        if (!Number.isFinite(marginOfError) || marginOfError <= 0) {
+            return "请输入大于 0 的正式轮目标误差限";
+        }
+        if (estimationType === "proportion" && marginOfError > 50) {
+            return "比例估计目标误差限 E 不能超过 50%";
+        }
+        if (!Number.isFinite(nonResponsePct) || nonResponsePct < 0 || nonResponsePct > 50) {
+            return "预期无回答/损耗率需在 0%–50% 之间";
+        }
+        if (estimationType === "mean" && (activeVariance == null || activeVariance <= 0)) {
+            return statsLoading ? null : "当前方差参数不可用，请检查总体或首轮有效样本数据";
+        }
+        if (!Number.isFinite(designEffect) || designEffect < 0.5 || designEffect > 5) {
+            return "设计效应 deff 需在 0.5–5 之间";
+        }
+        if (!isFinalSizeValid) {
+            return `正式轮发放样本量需为 ${bounds.min}–${bounds.max.toLocaleString()} 之间的整数`;
+        }
+        return null;
+    }, [marginOfError, estimationType, nonResponsePct, activeVariance, statsLoading, designEffect, isFinalSizeValid, bounds]);
+
     const handleImportWave1Empirical = () => {
         if (!wave1Diag) return;
-        setNonResponsePct(wave1Diag.empiricalNonResponseRatePct);
-        if (estimationType === "mean" && wave1Diag.empiricalTargetVariance && wave1Diag.empiricalTargetVariance > 0) {
-            setVarianceSource("wave1_empirical");
+        setNonResponsePctInput(String(wave1Diag.empiricalNonResponseRatePct));
+        setCustomFinalSizeInput(null);
+        if (estimationType === "proportion") {
+            toast.success(`已代入首轮实测无回答率（${wave1Diag.empiricalNonResponseRatePct}%）！`);
+            return;
         }
-        setCustomFinalSize(null);
-        toast.success(`已代入首轮实测无回答率（${wave1Diag.empiricalNonResponseRatePct}%）${estimationType === "mean" && wave1Diag.empiricalTargetStdDev ? `与实测样本标准差（s=${formatStatistic(wave1Diag.empiricalTargetStdDev, 2)}）` : ""}！`);
+        if (verifiedEmpiricalVariance !== null) {
+            setVarianceSource("wave1_empirical");
+            toast.success(`已代入首轮实测无回答率（${wave1Diag.empiricalNonResponseRatePct}%）与实测样本标准差（s=${formatStatistic(Math.sqrt(verifiedEmpiricalVariance), 2)}）！`);
+        } else {
+            setVarianceSource("population");
+            toast.info(`已代入首轮实测无回答率（${wave1Diag.empiricalNonResponseRatePct}%）；因首轮有效样本不足以计算正样本方差 s²，方差依据已采用抽样框总体方差。`);
+        }
     };
 
     const buildFormalPlanPayload = useCallback((): SamplePlanData => ({
@@ -286,13 +418,16 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
             varianceSource,
         } : {}),
         designEffect,
-        nonResponseRate: Math.min(0.5, Math.max(0, nonResponsePct / 100)),
+        nonResponseRate: Math.min(0.5, Math.max(0, Math.round(nonResponsePct) / 100)),
         recommendedSize,
         finalSampleSize: effectiveFinalSize,
     }), [estimationType, confidenceLevel, marginOfError, activeVariance, varianceSource, designEffect, nonResponsePct, recommendedSize, effectiveFinalSize]);
 
     const handleSaveWavePlan = async () => {
-        if (!taskId || !experiment || savingPlan || !isFinalSizeValid || refreshRequired) return;
+        if (!taskId || !experiment || savingPlan || planValidationError !== null || refreshRequired) {
+            if (planValidationError) toast.error(planValidationError);
+            return;
+        }
         setSavingPlan(true);
         try {
             const payload = buildFormalPlanPayload();
@@ -300,8 +435,8 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
             if (res.success && res.data) {
                 updateExperiment(res.data);
                 const nextN = res.data.samplePlan?.finalSampleSize ?? payload.finalSampleSize;
-                setCustomFinalSize(nextN);
-                setPpsSampleSize(nextN);
+                setCustomFinalSizeInput(String(nextN));
+                setPpsSampleSizeInput(String(nextN));
                 toast.success("正式轮样本量规划已保存，现在可执行升级后的抽样设计");
                 setActiveTab("sampling");
             } else if (res.error?.code === "VERSION_CONFLICT") {
@@ -315,12 +450,20 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
     };
 
     const handleSaveQuestionnaire = async () => {
-        if (!taskId || !experiment || savingQuestionnaire || refreshRequired) return;
+        if (!taskId || !experiment || savingQuestionnaire || !targetBindingPassed || refreshRequired) return;
         setSavingQuestionnaire(true);
         try {
             const res = await experimentApi.saveWaveQuestionnaire(taskId, experiment.version, waveQuestionnaire);
             if (res.success && res.data) {
                 updateExperiment(res.data);
+                const updatedWave = res.data.waves?.find((w) => w.waveNumber === (res.data?.activeWaveNumber ?? activeWaveNum));
+                const persistedQ = updatedWave?.questionnaire ?? res.data.questionnaire;
+                if (persistedQ) {
+                    setQTitle(persistedQ.title);
+                    setQWelcome(persistedQ.welcomeText);
+                    setQEnding(persistedQ.endingText);
+                    setQList(persistedQ.questions);
+                }
                 toast.success("正式轮修订问卷已保存（需在步骤 3 重新执行问卷发放）");
             } else if (res.error?.code === "VERSION_CONFLICT") {
                 requireRefresh();
@@ -348,12 +491,14 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
         }
     };
 
-    const lockedTargetN = activeWave?.samplePlan?.finalSampleSize ?? savedWavePlan?.finalSampleSize ?? 0;
+    const lockedTargetN = !isPlanInheritedPrior
+        ? (activeWave?.samplePlan?.finalSampleSize ?? 0)
+        : 0;
     useEffect(() => {
         if (lockedTargetN > 0) {
             const range = getSamplingAcceptedRange(lockedTargetN, N);
-            if (range && (ppsSampleSize < range.min || ppsSampleSize > range.max)) {
-                setPpsSampleSize(lockedTargetN);
+            if (range && (!Number.isSafeInteger(ppsSampleSize) || ppsSampleSize < range.min || ppsSampleSize > range.max)) {
+                setPpsSampleSizeInput(String(lockedTargetN));
             }
         }
     }, [lockedTargetN, N]);
@@ -440,14 +585,23 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
     };
 
     const handleToggleWaveCleaning = async (patch: Partial<CleaningConfig>) => {
-        if (!taskId || !experiment || !activeWave || refreshRequired) return;
+        if (!taskId || !experiment || !activeWave || updatingWaveCleaning || refreshRequired) return;
         const nextCleaning: CleaningConfig = { ...activeWave.cleaningConfig, ...patch };
-        const res = await experimentApi.updateCleaningConfig(taskId, experiment.version, nextCleaning, activeWave.waveNumber);
-        if (res.success && res.data) {
-            updateExperiment(res.data);
-            toast.success("正式轮质检清洗规则已更新");
-        } else if (res.error?.code === "VERSION_CONFLICT") {
-            requireRefresh();
+        setUpdatingWaveCleaning(true);
+        try {
+            const res = await experimentApi.updateCleaningConfig(taskId, experiment.version, nextCleaning, activeWave.waveNumber);
+            if (res.success && res.data) {
+                updateExperiment(res.data);
+                toast.success("正式轮质检清洗规则已更新");
+            } else if (res.error?.code === "VERSION_CONFLICT") {
+                requireRefresh();
+            } else {
+                toast.error(res.error?.message ?? "更新正式轮质检规则失败");
+            }
+        } catch {
+            toast.error("网络异常，更新质检规则失败，请重试");
+        } finally {
+            setUpdatingWaveCleaning(false);
         }
     };
 
@@ -470,7 +624,9 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
     };
 
     const canCompleteStage4 =
-        lockedTargetN >= bounds.min
+        !isQuestionnaireDirty
+        && targetBindingPassed
+        && lockedTargetN >= bounds.min
         && policyProgress.canComplete
         && allCompletedMethodsDispatched;
 
@@ -479,7 +635,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
         setCompleting(true);
         try {
             await completeStage(4, {
-                questionnaire: waveQuestionnaire,
+                questionnaire: activeWave.questionnaire,
                 samplePlan: activeWave.samplePlan,
             });
         } finally {
@@ -487,19 +643,32 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
         }
     };
 
-    const unitLabel = analysisTarget?.kind === "proportion" ? "%" : "";
+    const unitLabel = useMemo(() => {
+        if (analysisTarget?.kind === "proportion") return "%";
+        if (!analysisTarget?.field || !dictionary) return "";
+        return dictionary.variables.find((v) => v.field === analysisTarget.field)?.unit ?? "";
+    }, [analysisTarget, dictionary]);
     const firstWaveMetric = wave1 ? buildWaveSnapshotMetric(wave1, "simple", unitLabel) ?? buildWaveSnapshotMetric(wave1, undefined, unitLabel) : null;
-    const activeWaveMetric = activeWave ? buildWaveSnapshotMetric(activeWave, activeMethod, unitLabel) ?? buildWaveSnapshotMetric(activeWave, undefined, unitLabel) : null;
+    const scorecardTargetWave = useMemo(() => {
+        if (inspectedPriorWave) return inspectedPriorWave;
+        if (activeWave && Object.keys(activeWave.diagnostics ?? {}).length > 0) return activeWave;
+        return formalWaves.filter((w) => Object.keys(w.diagnostics ?? {}).length > 0).at(-1) ?? null;
+    }, [inspectedPriorWave, activeWave, formalWaves]);
+    const activeWaveMetric = scorecardTargetWave
+        ? buildWaveSnapshotMetric(scorecardTargetWave, activeMethod, unitLabel) ?? buildWaveSnapshotMetric(scorecardTargetWave, undefined, unitLabel)
+        : null;
     const activeDiag = activeWave?.diagnostics?.[activeMethod] ?? (completedFormalMethods[0] ? activeWave?.diagnostics?.[completedFormalMethods[0]] : null) ?? null;
 
     const ppsAcceptedRange = lockedTargetN > 0 ? getSamplingAcceptedRange(lockedTargetN, N) : null;
     const ppsMin = ppsAcceptedRange?.min ?? 1;
     const ppsMax = ppsAcceptedRange?.max ?? N;
+    const isPpsSampleSizeValid = Number.isSafeInteger(ppsSampleSize) && ppsSampleSize >= ppsMin && ppsSampleSize <= ppsMax;
     const systematicInterval = lockedTargetN > 0 ? getSystematicInterval(N, lockedTargetN) : null;
 
-    const expectedFormalCompletes = Math.round(effectiveFinalSize * (1 - Math.min(0.5, Math.max(0, nonResponsePct / 100))));
+    const displayFormalSize = isFinalSizeValid ? effectiveFinalSize : recommendedSize;
+    const expectedFormalCompletes = Math.round(displayFormalSize * (1 - safeNrrFraction));
     const estimatedFormalCost =
-        effectiveFinalSize * fieldworkConfig.contactCostPerUnit
+        displayFormalSize * fieldworkConfig.contactCostPerUnit
         + expectedFormalCompletes * fieldworkConfig.incentiveCostPerComplete;
 
     return (
@@ -534,20 +703,46 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                             {experiment?.adjustmentPlan?.plannedActions.map((a) => ADJUSTMENT_ACTION_LABELS[a] ?? a).join("；") || "结合首轮实测参数优化问卷、样本量与抽样策略"}
                         </p>
                     </div>
-                    {(experiment?.waves?.length ?? 0) < 4 && activeWave?.fieldwork && (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => void handleCreateExtraWave()}
-                            disabled={creatingNewWave || refreshRequired}
-                            data-testid="student-refinement-new-wave"
-                            className="bg-card"
-                        >
-                            {creatingNewWave ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Plus className="mr-1.5 h-3.5 w-3.5" />}
-                            追加第 {(experiment?.waves?.length ?? 2) + 1} 轮进阶微调
-                        </Button>
-                    )}
+                    <div className="flex flex-wrap items-center gap-2">
+                        {formalWaves.length >= 2 && (
+                            <div className="flex flex-wrap items-center gap-1 rounded-control border border-border bg-card p-1" data-testid="student-refinement-wave-switcher">
+                                {formalWaves.map((fw) => {
+                                    const isCurrentActive = fw.waveNumber === (activeWave?.waveNumber ?? activeWaveNum);
+                                    const isSelected = fw.waveNumber === viewingWaveNum;
+                                    return (
+                                        <button
+                                            key={fw.waveNumber}
+                                            type="button"
+                                            aria-pressed={isSelected}
+                                            onClick={() => setViewingWaveNum(fw.waveNumber)}
+                                            data-testid={`student-refinement-switch-wave-${fw.waveNumber}`}
+                                            className={`rounded-control px-2.5 py-1 text-meta font-medium ${
+                                                isSelected
+                                                    ? "bg-primary text-primary-foreground"
+                                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                            }`}
+                                        >
+                                            Wave {fw.waveNumber}{isCurrentActive ? "（当前）" : "（历史）"}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                        {(experiment?.waves?.length ?? 0) < 4 && canCompleteStage4 && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => void handleCreateExtraWave()}
+                                disabled={creatingNewWave || refreshRequired}
+                                data-testid="student-refinement-new-wave"
+                                className="bg-card"
+                            >
+                                {creatingNewWave ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Plus className="mr-1.5 h-3.5 w-3.5" />}
+                                追加第 {(experiment?.waves?.length ?? 2) + 1} 轮进阶微调
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </section>
 
@@ -556,12 +751,44 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                 <WaveDeltaScorecard firstWave={firstWaveMetric} finalWave={activeWaveMetric} />
             )}
 
-            {/* Three Studio Sub-Tabs */}
+            {inspectedPriorWave ? (
+                <Card className="rounded-surface border-border bg-card p-5" data-testid="student-refinement-prior-wave-view">
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
+                        <div>
+                            <h3 className="text-subheading font-semibold text-foreground">
+                                只读复盘：{inspectedPriorWave.label}
+                            </h3>
+                            <p className="text-meta text-muted-foreground">
+                                此波次已归档锁定，可对照查看历史漏斗与估计结果；返回当前第 {activeWave?.waveNumber ?? activeWaveNum} 轮可继续编辑与投放。
+                            </p>
+                        </div>
+                        <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => setViewingWaveNum(activeWave?.waveNumber ?? activeWaveNum)}
+                            data-testid="student-refinement-back-to-active-wave"
+                        >
+                            返回当前 Wave {activeWave?.waveNumber ?? activeWaveNum} 工作台
+                        </Button>
+                    </div>
+                    <WaveLoopSnapshot
+                        waves={[inspectedPriorWave]}
+                        analysisTarget={experiment?.analysisTarget}
+                        unitLabel={unitLabel}
+                    />
+                </Card>
+            ) : (
+            /* Three Studio Sub-Tabs */
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as RefinementTab)} className="space-y-5">
                 <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-surface border border-border bg-card p-1.5">
                     <TabsTrigger value="questionnaire" className="gap-2 py-2.5 text-label" data-testid="student-refinement-tab-questionnaire">
                         <FileEdit className="h-4 w-4" />
                         1. 问卷精简与规则修订（按需）
+                        {!targetBindingPassed ? (
+                            <StatusBadge intent="destructive">待绑定主指标</StatusBadge>
+                        ) : isQuestionnaireDirty ? (
+                            <StatusBadge intent="warning">未保存</StatusBadge>
+                        ) : null}
                     </TabsTrigger>
                     <TabsTrigger value="plan" className="gap-2 py-2.5 text-label" data-testid="student-refinement-tab-plan">
                         <Calculator className="h-4 w-4" />
@@ -587,7 +814,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                         <strong className="text-foreground">{currentBurden.estimatedDurationSec}s（{currentBurden.questionCount} 题）</strong>
                                     </CardDescription>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
                                     {dictionary && (
                                         <Button type="button" variant="outline" size="sm" onClick={handleAutoBindWaveQuestions}>
                                             <Sparkles className="mr-1.5 h-3.5 w-3.5 text-primary" />
@@ -597,6 +824,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                     <Button
                                         type="button"
                                         size="sm"
+                                        disabled={qList.length >= 50}
                                         onClick={() => {
                                             setEditingQuestion(undefined);
                                             setQuestionEditorOpen(true);
@@ -610,7 +838,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                         type="button"
                                         size="sm"
                                         onClick={() => void handleSaveQuestionnaire()}
-                                        disabled={savingQuestionnaire || qList.length < 5 || refreshRequired}
+                                        disabled={savingQuestionnaire || qList.length < 5 || qList.length > 50 || !targetBindingPassed || refreshRequired}
                                         data-testid="student-refinement-save-questionnaire"
                                     >
                                         {savingQuestionnaire ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />}
@@ -618,6 +846,16 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                     </Button>
                                 </div>
                             </div>
+                            {!targetBindingPassed && primaryTargetField && (
+                                <p role="alert" className="mt-3 rounded-control border border-destructive-border bg-destructive-muted px-3 py-2 text-meta text-destructive">
+                                    核心商业研究指标「{primaryTargetField}」尚未关联到题目，请点击「一键智能绑定变量」或题目右侧「关联变量」后再保存。
+                                </p>
+                            )}
+                            {isQuestionnaireDirty && targetBindingPassed && (
+                                <p role="status" className="mt-3 rounded-control border border-warning-border bg-warning-muted px-3 py-2 text-meta text-warning">
+                                    当前问卷有未保存的修订，请点击右上角「保存修订问卷」并在步骤 3 重新执行正式问卷投放。
+                                </p>
+                            )}
                         </CardHeader>
                         <CardContent className="divide-y divide-border pt-2">
                             {qList.map((q, idx) => (
@@ -720,12 +958,17 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                         className="border-primary-border bg-primary-muted text-primary hover:bg-primary-muted hover:text-primary"
                                     >
                                         <Sparkles className="mr-1.5 h-4 w-4" />
-                                        一键代入首轮实测无回答率与样本方差
+                                        {estimationType === "proportion" ? "一键代入首轮实测无回答率" : "一键代入首轮实测无回答率与样本方差"}
                                     </Button>
                                 )}
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-5 pt-5">
+                            {isPlanInheritedPrior && (
+                                <p role="status" className="rounded-control border border-info-border bg-info-muted px-3.5 py-2 text-meta text-info">
+                                    正式投放阶段须采用首轮实测样本方差 s² 或抽样框总体方差 σ²（不能沿用试投轮的先验猜测值），请核对下方参数并保存正式轮样本量。
+                                </p>
+                            )}
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                     <Label className="text-foreground">正式轮置信水平</Label>
@@ -733,7 +976,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                         value={confidenceLevel}
                                         onValueChange={(v) => {
                                             setConfidenceLevel(v);
-                                            setCustomFinalSize(null);
+                                            setCustomFinalSizeInput(null);
                                         }}
                                     >
                                         <SelectTrigger aria-label="选择正式轮置信水平" className="bg-background">
@@ -756,10 +999,11 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                         type="number"
                                         min={0.1}
                                         step={estimationType === "mean" ? 0.5 : 1}
-                                        value={marginOfError}
+                                        value={marginOfErrorInput}
+                                        aria-invalid={!Number.isFinite(marginOfError) || marginOfError <= 0 || (estimationType === "proportion" && marginOfError > 50) || undefined}
                                         onChange={(e) => {
-                                            setMarginOfError(Number(e.target.value));
-                                            setCustomFinalSize(null);
+                                            setMarginOfErrorInput(e.target.value);
+                                            setCustomFinalSizeInput(null);
                                         }}
                                         className="bg-background tabular-nums"
                                     />
@@ -776,10 +1020,11 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                         min={0}
                                         max={50}
                                         step={1}
-                                        value={nonResponsePct}
+                                        value={nonResponsePctInput}
+                                        aria-invalid={!Number.isFinite(nonResponsePct) || nonResponsePct < 0 || nonResponsePct > 50 || undefined}
                                         onChange={(e) => {
-                                            setNonResponsePct(Math.min(50, Math.max(0, Math.round(Number(e.target.value) || 0))));
-                                            setCustomFinalSize(null);
+                                            setNonResponsePctInput(e.target.value);
+                                            setCustomFinalSizeInput(null);
                                         }}
                                         className="bg-background tabular-nums"
                                     />
@@ -794,15 +1039,15 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                             value={varianceSource}
                                             onValueChange={(v) => {
                                                 setVarianceSource(v as "wave1_empirical" | "population");
-                                                setCustomFinalSize(null);
+                                                setCustomFinalSizeInput(null);
                                             }}
                                         >
                                             <SelectTrigger aria-label="选择正式轮方差参数依据" className="bg-card">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="wave1_empirical" disabled={!wave1Diag?.empiricalTargetVariance}>
-                                                    首轮质检后实测样本方差 s²（闭环实证推荐）
+                                                <SelectItem value="wave1_empirical" disabled={verifiedEmpiricalVariance === null}>
+                                                    首轮质检后实测样本方差 s²{verifiedEmpiricalVariance === null ? "（首轮有效样本不足以计算）" : "（闭环实证推荐）"}
                                                 </SelectItem>
                                                 <SelectItem value="population" disabled={!populationVariance}>
                                                     抽样框已知总体方差 σ²（教学基准）
@@ -826,13 +1071,13 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
 
                             <div className="grid grid-cols-2 gap-4 rounded-surface border border-border bg-muted p-4">
                                 <div className="space-y-2">
-                                    <div className="flex items-center justify-between text-meta text-muted-foreground">
+                                    <div className="flex flex-wrap items-center justify-between gap-2 text-meta text-muted-foreground">
                                         <span>四步推导（{stepDetails.formulaLabel}）</span>
                                         <span className="font-mono tabular-nums text-foreground">
                                             n₀={stepDetails.n0} → FPC={stepDetails.n2} → 推荐 {recommendedSize} 份
                                         </span>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
                                         <Label htmlFor="formal-final-size" className="shrink-0 text-label font-semibold text-foreground">
                                             正式轮发放样本量：
                                         </Label>
@@ -841,8 +1086,9 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                             type="number"
                                             min={bounds.min}
                                             max={bounds.max}
-                                            value={effectiveFinalSize}
-                                            onChange={(e) => setCustomFinalSize(Math.round(Number(e.target.value) || 0))}
+                                            value={customFinalSizeInput ?? String(recommendedSize)}
+                                            aria-invalid={!isFinalSizeValid || undefined}
+                                            onChange={(e) => setCustomFinalSizeInput(e.target.value)}
                                             data-testid="student-refinement-final-size"
                                             className="h-9 w-28 bg-card font-mono font-bold tabular-nums"
                                         />
@@ -850,14 +1096,14 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                             type="button"
                                             variant="outline"
                                             size="sm"
-                                            onClick={() => setCustomFinalSize(recommendedSize)}
+                                            onClick={() => setCustomFinalSizeInput(null)}
                                             className="bg-card text-meta"
                                         >
                                             采用推荐值 {recommendedSize}
                                         </Button>
                                     </div>
                                     <p className="text-meta text-muted-foreground">
-                                        首轮发放：{wave1?.samplePlan?.finalSampleSize ?? "—"} 份 → 正式轮规划：{effectiveFinalSize} 份（范围 {bounds.min}–{bounds.max}）
+                                        首轮发放：{wave1?.samplePlan?.finalSampleSize ?? "—"} 份 → 正式轮规划：{isFinalSizeValid ? effectiveFinalSize : "—"} 份（范围 {bounds.min}–{bounds.max}）
                                     </p>
                                 </div>
 
@@ -875,7 +1121,13 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-between pt-1">
+                            {planValidationError && (
+                                <p role="alert" data-testid="student-refinement-plan-error" className="text-meta font-medium text-destructive">
+                                    {planValidationError}
+                                </p>
+                            )}
+
+                            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
                                 <div className="flex items-center gap-2 text-meta text-muted-foreground">
                                     <Label htmlFor="formal-deff" className="text-meta">设计效应 deff：</Label>
                                     <Input
@@ -884,10 +1136,11 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                         step={0.1}
                                         min={0.5}
                                         max={5}
-                                        value={designEffect}
+                                        value={designEffectInput}
+                                        aria-invalid={!Number.isFinite(designEffect) || designEffect < 0.5 || designEffect > 5 || undefined}
                                         onChange={(e) => {
-                                            setDesignEffect(Math.max(0.5, Number(e.target.value) || 1));
-                                            setCustomFinalSize(null);
+                                            setDesignEffectInput(e.target.value);
+                                            setCustomFinalSizeInput(null);
                                         }}
                                         className="h-8 w-20 bg-background text-center font-mono text-meta"
                                     />
@@ -895,7 +1148,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                 <Button
                                     type="button"
                                     onClick={() => void handleSaveWavePlan()}
-                                    disabled={savingPlan || !isFinalSizeValid || statsLoading || refreshRequired}
+                                    disabled={savingPlan || planValidationError !== null || statsLoading || refreshRequired}
                                     data-testid="student-refinement-save-plan"
                                 >
                                     {savingPlan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
@@ -1001,8 +1254,9 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                                                                 type="number"
                                                                                 min={ppsMin}
                                                                                 max={ppsMax}
-                                                                                value={ppsSampleSize}
-                                                                                onChange={(e) => setPpsSampleSize(Number(e.target.value))}
+                                                                                value={ppsSampleSizeInput}
+                                                                                aria-invalid={!isPpsSampleSizeValid || undefined}
+                                                                                onChange={(e) => setPpsSampleSizeInput(e.target.value)}
                                                                                 data-testid="student-sampling-pps-sample-size"
                                                                                 className="h-9 w-28 bg-card font-mono"
                                                                             />
@@ -1027,7 +1281,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                                                 disabled={
                                                                     executingMethod !== null
                                                                     || refreshRequired
-                                                                    || (method === "pps" && (!ppsSizeField || ppsSampleSize < ppsMin || ppsSampleSize > ppsMax))
+                                                                    || (method === "pps" && (!ppsSizeField || !isPpsSampleSizeValid))
                                                                 }
                                                                 data-testid={`student-sampling-${method}-run`}
                                                             >
@@ -1095,7 +1349,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                                 向当前轮次已完成的所有抽样方法名单同步发放问卷，检验调优后的有效样本留存率与客群结构平衡度
                                             </CardDescription>
                                         </div>
-                                        {allCompletedMethodsDispatched ? (
+                                        {allCompletedMethodsDispatched && !isQuestionnaireDirty ? (
                                             <StatusBadge intent="success">正式轮全部名单已发放回收</StatusBadge>
                                         ) : (
                                             <StatusBadge intent="warning">待执行正式轮问卷发放</StatusBadge>
@@ -1109,6 +1363,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                                 <Switch
                                                     id="formal-clean-speeder"
                                                     checked={activeWave?.cleaningConfig.removeSpeeders ?? true}
+                                                    disabled={updatingWaveCleaning || refreshRequired}
                                                     onCheckedChange={(val) => void handleToggleWaveCleaning({ removeSpeeders: val })}
                                                 />
                                                 <Label htmlFor="formal-clean-speeder" className="cursor-pointer text-meta">剔除闪电卷</Label>
@@ -1117,6 +1372,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                                 <Switch
                                                     id="formal-clean-straight"
                                                     checked={activeWave?.cleaningConfig.removeStraightliners ?? true}
+                                                    disabled={updatingWaveCleaning || refreshRequired}
                                                     onCheckedChange={(val) => void handleToggleWaveCleaning({ removeStraightliners: val })}
                                                 />
                                                 <Label htmlFor="formal-clean-straight" className="cursor-pointer text-meta">剔除直线卷</Label>
@@ -1137,7 +1393,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                             type="button"
                                             size="lg"
                                             onClick={() => void handleDispatchFormal()}
-                                            disabled={completedFormalMethods.length === 0 || dispatching || refreshRequired}
+                                            disabled={completedFormalMethods.length === 0 || isQuestionnaireDirty || !targetBindingPassed || dispatching || refreshRequired}
                                             data-testid="student-refinement-dispatch"
                                         >
                                             {dispatching ? (
@@ -1148,7 +1404,39 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                         </Button>
                                     </div>
 
-                                    {!allCompletedMethodsDispatched && completedFormalMethods.length > 0 && (
+                                    {!targetBindingPassed && primaryTargetField && (
+                                        <div
+                                            role="alert"
+                                            data-testid="student-refinement-unbound-target-warning"
+                                            className="flex flex-wrap items-center justify-between gap-2 rounded-control border border-destructive-border bg-destructive-muted px-3.5 py-2 text-meta text-destructive"
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                <AlertCircle className="h-4 w-4 shrink-0" />
+                                                核心商业研究指标「{primaryTargetField}」尚未关联到问卷题目，请先前往步骤 1 绑定并保存问卷。
+                                            </span>
+                                            <Button type="button" variant="outline" size="sm" className="h-7 bg-card px-2 text-meta" onClick={() => setActiveTab("questionnaire")}>
+                                                前往关联主指标
+                                            </Button>
+                                        </div>
+                                    )}
+
+                                    {isQuestionnaireDirty && targetBindingPassed && (
+                                        <div
+                                            role="status"
+                                            data-testid="student-refinement-unsaved-questionnaire-warning"
+                                            className="flex flex-wrap items-center justify-between gap-2 rounded-control border border-warning-border bg-warning-muted px-3.5 py-2 text-meta text-warning"
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                <AlertCircle className="h-4 w-4 shrink-0" />
+                                                步骤 1 问卷存在未保存的修订，请先保存修订问卷再执行正式问卷投放。
+                                            </span>
+                                            <Button type="button" variant="outline" size="sm" className="h-7 bg-card px-2 text-meta" onClick={() => setActiveTab("questionnaire")}>
+                                                前往保存修订问卷
+                                            </Button>
+                                        </div>
+                                    )}
+
+                                    {!isQuestionnaireDirty && !allCompletedMethodsDispatched && completedFormalMethods.length > 0 && (
                                         <p className="flex items-center gap-2 text-meta text-warning">
                                             <AlertCircle className="h-4 w-4 shrink-0" />
                                             您已更新抽样名单或问卷，请点击「执行正式问卷投放与回收」获取最新实证答卷后再进入第五阶段。
@@ -1156,7 +1444,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                     )}
 
                                     {activeDiag && (
-                                        <div className="grid grid-cols-2 gap-4 pt-2">
+                                        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,28rem),1fr))] gap-4 pt-2">
                                             <FieldworkFunnelChart
                                                 totalEstimatedCost={activeDiag.totalEstimatedCost}
                                                 unitEffectiveCost={activeDiag.unitEffectiveCost}
@@ -1181,6 +1469,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                     )}
                 </TabsContent>
             </Tabs>
+            )}
 
             <StageActions>
                 <Button variant="outline" onClick={onPrev} disabled={completing} data-testid="student-refinement-prev">
@@ -1205,6 +1494,9 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                 onOpenChange={setQuestionEditorOpen}
                 question={editingQuestion}
                 onSave={(saved) => {
+                    if (editingQuestion?.variableBinding && !saved.variableBinding) {
+                        toast.info("题意或作答规则已修改，原变量关联已清除，请重新确认");
+                    }
                     setQList((prev) => {
                         const exists = prev.some((item) => item.id === saved.id);
                         return exists ? prev.map((item) => (item.id === saved.id ? saved : item)) : [...prev, saved];

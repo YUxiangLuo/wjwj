@@ -64,10 +64,12 @@ export function isStudyContractComplete(contract: StudyContract | null | undefin
     const questionLength = contract.researchQuestion?.trim().length ?? 0;
     const populationLength = contract.targetPopulation?.trim().length ?? 0;
     const unitLength = contract.unitOfAnalysis?.trim().length ?? 0;
+    const decisionLength = contract.businessDecision?.trim().length ?? 0;
     return Boolean(targetOk)
         && questionLength >= 5 && questionLength <= 300
         && populationLength >= 2 && populationLength <= 200
-        && unitLength >= 1 && unitLength <= 100;
+        && unitLength >= 1 && unitLength <= 100
+        && decisionLength <= 400;
 }
 
 /**
@@ -134,6 +136,11 @@ export function StudyContractEditor({
     const updateText = (key: "researchQuestion" | "businessDecision" | "targetPopulation" | "unitOfAnalysis", text: string) => {
         const previous = currentContract();
         if (!previous) return;
+        if (key === "businessDecision" && text === "") {
+            const { businessDecision: _omitted, ...rest } = previous;
+            writeContract(rest);
+            return;
+        }
         writeContract({ ...previous, [key]: text });
     };
 
@@ -142,7 +149,7 @@ export function StudyContractEditor({
             <div>
                 <Label className="text-foreground">研究目标（必填）</Label>
                 <p className="mt-1 text-meta text-muted-foreground">
-                    先选估计类型和字段，再核对研究问题、目标总体与分析单位。问卷预试答案不参与估计。
+                    先选估计类型和字段，再核对研究问题、目标总体、分析单位与商业管理决策。课堂受访者试填仅用于自检，虚拟发放则依据题目变量绑定采集观测值。
                 </p>
             </div>
 
@@ -273,7 +280,7 @@ export function StudyContractEditor({
                 <Input
                     value={contract?.businessDecision ?? ""}
                     disabled={disabled || !target}
-                    maxLength={300}
+                    maxLength={400}
                     placeholder="例如：确定夏季新品全国终端指导定价与黑金会员优惠券补贴策略"
                     aria-label="支撑的商业管理决策"
                     data-testid="teacher-contract-business-decision"

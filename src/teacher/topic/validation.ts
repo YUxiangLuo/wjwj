@@ -38,6 +38,7 @@ interface TopicPublishReadyInput {
     excelFilePath?: string | null;
     fieldMapping?: TopicFieldMappingInput | Record<string, unknown> | string | null;
     samplingPolicy?: unknown;
+    fieldworkConfig?: unknown;
     weightConfig?: TopicWeightConfigInput | Record<string, unknown> | string | null;
     /** Parsed population rows: enables the value-level PPS eligibility gate. */
     rows?: Array<Record<string, any>>;
@@ -63,7 +64,71 @@ function parseObjectLike<T extends object>(value: unknown): T | null {
         }
     }
 
-    return typeof value === "object" ? (value as T) : null;
+    return typeof value === "object" && !Array.isArray(value) ? (value as T) : null;
+}
+
+function strictFiniteNumber(value: unknown): number | null {
+    if (typeof value === "number") {
+        return Number.isFinite(value) ? value : null;
+    }
+    if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (!trimmed) return null;
+        const parsed = Number(trimmed);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+}
+
+export function validateTopicFieldworkConfigStrict(
+    raw: unknown,
+    allowedStrataFields?: string[],
+): string | null {
+    const parsed = typeof raw === "string" ? parseObjectLike<Record<string, unknown>>(raw) : raw;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return "虚拟发放配置格式无效";
+    }
+    const obj = parsed as Record<string, unknown>;
+    const validPresets = ["balanced", "stratum_differential", "high_burden_sensitive", "peak_congestion"];
+    if (obj.preset !== undefined && (typeof obj.preset !== "string" || !validPresets.includes(obj.preset))) {
+        return "虚拟发放预设场景无效";
+    }
+    const numericBounds: Array<[string, number, number, string]> = [
+        ["baseUnitNonResponseRate", 0, 0.75, "基准单元无回答率需在 0%–75% 之间"],
+        ["baseSpeederRate", 0, 0.35, "闪电敷衍卷基准比例需在 0%–35% 之间"],
+        ["baseStraightlinerRate", 0, 0.35, "直线作答废卷基准比例需在 0%–35% 之间"],
+        ["baseItemSkipRate", 0, 0.25, "普通题项随机漏答率需在 0%–25% 之间"],
+        ["contactCostPerUnit", 0, 10_000, "单份触达成本需在 0–10000 元之间"],
+        ["incentiveCostPerComplete", 0, 50_000, "单份完答激励成本需在 0–50000 元之间"],
+    ];
+    for (const [key, min, max, message] of numericBounds) {
+        if (obj[key] !== undefined) {
+            const val = strictFiniteNumber(obj[key]);
+            if (val === null || val < min || val > max) return message;
+        }
+    }
+    if (obj.stratumField !== undefined && obj.stratumField !== null) {
+        if (typeof obj.stratumField !== "string") {
+            return "差异化应答分层字段格式无效";
+        }
+        const field = obj.stratumField.trim();
+        if (field !== "" && allowedStrataFields !== undefined && !allowedStrataFields.includes(field)) {
+            return `差异化应答分层字段“${field}”不在已映射的分层变量中`;
+        }
+    }
+    if (obj.stratumNonResponseRates !== undefined && obj.stratumNonResponseRates !== null) {
+        if (typeof obj.stratumNonResponseRates !== "object" || Array.isArray(obj.stratumNonResponseRates)) {
+            return "分层无回答率配置格式无效";
+        }
+        for (const [stratumName, rateVal] of Object.entries(obj.stratumNonResponseRates as Record<string, unknown>)) {
+            if (!stratumName.trim()) return "分层无回答率配置包含空分层名称";
+            const rate = strictFiniteNumber(rateVal);
+            if (rate === null || rate < 0 || rate > 0.85) {
+                return `分层“${stratumName}”无回答率需在 0%–85% 之间`;
+            }
+        }
+    }
+    return null;
 }
 
 export function validateParsedExcelUpload(parsed: ParsedExcelFile) {
@@ -202,6 +267,14 @@ export function validateTopicPublishReadiness(topicInfo: TopicPublishReadyInput 
     const weightConfig = parseObjectLike<TopicWeightConfigInput>(topicInfo.weightConfig);
     if (!weightConfig || validateWeightConfig(weightConfig)) {
         return "实验模板需先完成评分规则配置后才能发布";
+    }
+
+    if (topicInfo.fieldworkConfig !== undefined && topicInfo.fieldworkConfig !== null) {
+        const fieldworkError = validateTopicFieldworkConfigStrict(
+            topicInfo.fieldworkConfig,
+            fieldMapping.stratified ?? [],
+        );
+        if (fieldworkError) return `实验模板虚拟发放配置无效：${fieldworkError}`;
     }
 
     return null;

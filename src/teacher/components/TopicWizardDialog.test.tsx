@@ -535,3 +535,86 @@ test("jump navigation respects missing population, load failures and ongoing sav
     await act(async () => finish());
     expect((view.getByTestId("teacher-topic-jump-7") as HTMLButtonElement).disabled).toBe(false);
 });
+
+test("step 4 fieldworkConfig edits trigger dirty protection, clamp bounds, guard NaN, and drop stale stratumField", () => {
+    const back = mock(() => {});
+    const policy = buildDefaultSamplingPolicy();
+    policy.methods.pps = "disabled";
+    policy.methods.stratified = "disabled";
+    const restorePolicy = mock(() => {});
+    const initialFw: Props["fieldworkConfig"] = {
+        version: 1,
+        preset: "stratum_differential",
+        baseUnitNonResponseRate: 0.16,
+        stratumField: "removed_stratum",
+        stratumNonResponseRates: { A: 0.25 },
+        baseSpeederRate: 0.06,
+        baseStraightlinerRate: 0.05,
+        baseItemSkipRate: 0.02,
+        contactCostPerUnit: 4,
+        incentiveCostPerComplete: 15,
+    };
+    let fwState: Props["fieldworkConfig"] = structuredClone(initialFw);
+    const setFw: Props["setFieldworkConfig"] = mock((updater) => {
+        fwState = typeof updater === "function" ? updater(fwState) : updater;
+    });
+
+    const props = makeProps({
+        currentStep: 4,
+        fieldMapping: completeMapping,
+        samplingPolicy: policy,
+        setSamplingPolicy: restorePolicy,
+        fieldworkConfig: fwState,
+        setFieldworkConfig: setFw,
+        setCurrentStep: back,
+    });
+    const view = render(<TopicWizardDialog {...props} />);
+
+    fireEvent.change(view.getByTestId("teacher-topic-fw-nrr"), { target: { value: "95" } });
+    expect(fwState.baseUnitNonResponseRate).toBe(0.75);
+    expect(fwState.preset).toBe("balanced");
+    expect(fwState.stratumField).toBeUndefined();
+    expect(fwState.stratumNonResponseRates).toBeUndefined();
+
+    fireEvent.change(view.getByTestId("teacher-topic-fw-speeder"), { target: { value: "1e309" } });
+    expect(Number.isFinite(fwState.baseSpeederRate)).toBe(true);
+    expect(fwState.baseSpeederRate).toBe(0.06);
+
+    fireEvent.change(view.getByTestId("teacher-topic-fw-contact-cost"), { target: { value: "999999" } });
+    expect(fwState.contactCostPerUnit).toBe(10_000);
+
+    fireEvent.change(view.getByTestId("teacher-topic-fw-incentive-cost"), { target: { value: "-20" } });
+    expect(fwState.incentiveCostPerComplete).toBe(0);
+
+    view.rerender(<TopicWizardDialog {...props} fieldworkConfig={fwState} />);
+    const confirm = mock(() => false);
+    window.confirm = confirm;
+    fireEvent.click(view.getByTestId("teacher-topic-prev"));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(back).not.toHaveBeenCalled();
+
+    confirm.mockReturnValue(true);
+    fireEvent.click(view.getByTestId("teacher-topic-prev"));
+    expect(restorePolicy).toHaveBeenCalledWith(policy);
+    expect(fwState).toEqual(initialFw);
+    expect(back).toHaveBeenCalledWith(3);
+});
+
+test("step 7 weight inputs ignore non-finite values so total weight never becomes NaN", () => {
+    let weights = { questionnaire: 30, process: 30, report: 40 };
+    const props = makeProps({
+        currentStep: 7,
+        weightConfig: weights,
+        setWeightConfig: (updater) => {
+            weights = typeof updater === "function" ? updater(weights) : updater;
+        },
+    });
+    const view = render(<TopicWizardDialog {...props} />);
+    fireEvent.change(view.getByTestId("teacher-topic-weight-questionnaire"), { target: { value: "1e309" } });
+    expect(weights.questionnaire).toBe(30);
+    fireEvent.change(view.getByTestId("teacher-topic-weight-questionnaire"), { target: { value: "" } });
+    expect(weights.questionnaire).toBe(0);
+    view.rerender(<TopicWizardDialog {...props} weightConfig={weights} />);
+    expect(view.container.textContent).not.toContain("NaN");
+    expect(view.getByText("70%")).toBeTruthy();
+});

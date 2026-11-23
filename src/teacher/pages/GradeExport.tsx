@@ -33,7 +33,7 @@ function MetricBars({
                     <div key={item.label} role="listitem" className="grid grid-cols-[7rem_1fr_5rem] items-center gap-3">
                         <span className="text-label text-foreground">{item.label}</span>
                         <div className="h-3 overflow-hidden rounded-control bg-muted"><div className="h-full rounded-control" style={{ width: `${(item.value ?? 0) / max * 100}%`, backgroundColor: item.color }} /></div>
-                        <span className="text-right text-label font-mono text-muted-foreground">{item.value === null ? "—" : `${item.value.toFixed(valueSuffix ? 1 : 0)}${valueSuffix}`}</span>
+                        <span className="text-right text-label font-mono tabular-nums text-muted-foreground">{item.value === null ? "—" : `${item.value.toFixed(valueSuffix ? 1 : 0)}${valueSuffix}`}</span>
                     </div>
                 ))}
             </CardContent>
@@ -169,7 +169,7 @@ export function GradeExport() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">应交人次</p>
-                            <p className="text-page-title font-semibold text-foreground mt-1">{loading || !analytics ? "-" : analytics.funnel.total}</p>
+                            <p className="text-page-title font-semibold tabular-nums text-foreground mt-1">{loading || !analytics ? "-" : analytics.funnel.total}</p>
                             <p className="mt-1 text-meta text-muted-foreground">按学生-任务人次统计</p>
                         </div>
                         <IconTile intent="info">
@@ -181,7 +181,7 @@ export function GradeExport() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">已批改人次</p>
-                            <p className="text-page-title font-semibold text-foreground mt-1">{loading || !analytics ? "-" : analytics.funnel.graded}</p>
+                            <p className="text-page-title font-semibold tabular-nums text-foreground mt-1">{loading || !analytics ? "-" : analytics.funnel.graded}</p>
                         </div>
                         <IconTile intent="success">
                             <CheckCircle2 className="w-5 h-5" />
@@ -192,7 +192,7 @@ export function GradeExport() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">总分均值</p>
-                            <p className="text-page-title font-semibold text-foreground mt-1">{loading ? "-" : analytics?.scores.average?.toFixed(1) ?? "-"}</p>
+                            <p className="text-page-title font-semibold tabular-nums text-foreground mt-1">{loading ? "-" : analytics?.scores.average?.toFixed(1) ?? "-"}</p>
                             <p className="mt-1 text-meta text-muted-foreground">仅统计已批改成绩</p>
                         </div>
                         <IconTile intent="warning">
@@ -204,7 +204,7 @@ export function GradeExport() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-meta text-muted-foreground font-medium uppercase tracking-wider">总分中位数</p>
-                            <p className="text-page-title font-semibold text-foreground mt-1">{loading ? "-" : analytics?.scores.median?.toFixed(1) ?? "-"}</p>
+                            <p className="text-page-title font-semibold tabular-nums text-foreground mt-1">{loading ? "-" : analytics?.scores.median?.toFixed(1) ?? "-"}</p>
                         </div>
                         <IconTile intent="auxiliary">
                             <FileSpreadsheet className="w-5 h-5" />
@@ -241,7 +241,7 @@ export function GradeExport() {
                         <MetricBars
                             title="已批改总分分布"
                             description={`共 ${analytics.scores.count} 个已批改成绩。`}
-                            items={analytics.scores.bands.map((item, index) => ({ label: item.label, value: item.count, color: `var(--chart-${index + 1})` }))}
+                            items={analytics.scores.bands.map((item, index) => ({ label: item.label, value: item.count, color: `var(--chart-${(index % 8) + 1})` }))}
                         />
                     </div>
 
@@ -264,7 +264,7 @@ export function GradeExport() {
     );
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="space-y-6">
             <p className="text-label text-muted-foreground">按学期、班级和实验模板分析学生任务人次，并支持单项与批量导出。</p>
             <Card data-testid="teacher-export-list">
                 <PageHeader as={CardHeader} className="flex-wrap">
@@ -328,7 +328,8 @@ export function GradeExport() {
                                         aria-label="选择全部导出任务"
                                         data-testid="teacher-export-check-all"
                                         type="checkbox"
-                                        className="rounded-control border-input bg-card text-primary focus:ring-ring w-4 h-4 cursor-pointer"
+                                        disabled={loading || preview.length === 0}
+                                        className="rounded-control border-input bg-card text-primary focus:ring-ring w-4 h-4 cursor-pointer disabled:cursor-not-allowed"
                                         checked={selectedTaskIds.length > 0 && selectedTaskIds.length === preview.length}
                                         onChange={(e) => {
                                             if (e.target.checked) {
@@ -383,13 +384,13 @@ export function GradeExport() {
                                     <TableCell>
                                         <div className="flex items-center gap-2">
                                             <Progress aria-label={`${task.topic}批改进度`} value={task.total > 0 ? Math.round((task.graded / task.total) * 100) : 0} className="w-20 h-1.5 bg-muted [&>div]:bg-success" />
-                                            <span className="text-meta text-muted-foreground">{task.graded}/{task.total}</span>
+                                            <span className="text-meta tabular-nums text-muted-foreground">{task.graded}/{task.total}</span>
                                             {task.graded === task.total && task.total > 0 && (
                                                 <StatusBadge intent="success" className="text-meta h-5">已完成</StatusBadge>
                                             )}
                                         </div>
                                     </TableCell>
-                                    <TableCell className="font-medium font-mono text-foreground">{task.graded > 0 ? task.avgScore.toFixed(1) : "-"}</TableCell>
+                                    <TableCell className="font-medium font-mono tabular-nums text-foreground">{task.graded > 0 ? task.avgScore.toFixed(1) : "-"}</TableCell>
                                     <TableCell className="text-right">
                                         <Button
                                             data-testid={`teacher-export-single-${task.taskId}`}

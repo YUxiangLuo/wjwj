@@ -15,11 +15,29 @@ const getTopicDetail = mock(async () => ({
                 stratified: ["校区"],
                 numeric: ["等待分钟", "历史同期客流量", "开放窗口数"],
                 others: [],
+                studyContract: {
+                    version: 1,
+                    researchQuestion: "食堂午间等待时间均值是多少？",
+                    targetPopulation: "全部午间履约波次",
+                    unitOfAnalysis: "一个15分钟履约波次",
+                    target: { kind: "mean", field: "等待分钟" },
+                    businessDecision: "优化午间高峰窗口排班配置",
+                },
             },
             samplingPolicy: {
                 version: 1,
                 methods: { simple: "required", systematic: "optional", pps: "required", stratified: "optional" },
                 ppsSizeFields: ["历史同期客流量"],
+            },
+            fieldworkConfig: {
+                version: 1,
+                preset: "peak_congestion",
+                baseUnitNonResponseRate: 0.22,
+                baseSpeederRate: 0.07,
+                baseStraightlinerRate: 0.04,
+                baseItemSkipRate: 0.02,
+                contactCostPerUnit: 5,
+                incentiveCostPerComplete: 18,
             },
         },
         hasExcelFile: true,
@@ -77,4 +95,10 @@ test("read-only sampling policy shows only the configured PPS size fields", asyn
     expect(view.getByText("PPS 规模变量")).toBeTruthy();
     expect(view.getByText("历史同期客流量")).toBeTruthy();
     expect(view.queryByText("开放窗口数")).toBeNull();
+    expect(view.getByTestId("teacher-topic-view-fieldwork-config").textContent).toContain("高峰拥堵漏接场景");
+    expect(view.getByTestId("teacher-topic-view-fieldwork-config").textContent).toContain("22%");
+    expect(view.getByTestId("teacher-topic-view-fieldwork-config").textContent).toContain("5 元 / 18 元");
+
+    fireEvent.click(view.getByRole("button", { name: "字段映射" }));
+    expect(view.getByTestId("teacher-topic-view-study-contract").textContent).toContain("优化午间高峰窗口排班配置");
 });

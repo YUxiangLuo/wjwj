@@ -230,3 +230,22 @@ test("an already-submitted retry accepts the older version without another write
     expect(result).toMatchObject({ ok: true, experimentId: 9 });
     expect(operations.filter((item) => item.kind === "update")).toHaveLength(0);
 });
+
+test("submit validates questionnaire options across stored waves as well as top-level questionnaire", async () => {
+    const { db, operations } = createMockDb({ update: [[{ id: 9 }]] });
+    mock.module("../../db", () => ({ db }));
+    const { submitStudentExperiment } = await import(`./submit-service.ts?wave-q=${crypto.randomUUID()}`);
+    const rec = validRecord();
+    rec.wavesData[0].questionnaire = {
+        ...validQuestionnaire(),
+        questions: [{ id: "bad", type: "single", content: "首轮重复选项", options: ["A", " A "] }, ...validQuestionnaire().questions.slice(1)],
+    };
+    const result = await submitStudentExperiment({
+        experimentRecord: rec,
+        observedVersion: 4,
+        taskInfo: { topicName: "抽样调查", populationSize: 200 },
+        student: { studentId: "S001", name: "学生一" },
+    });
+    expect(result).toMatchObject({ ok: false, code: "INCOMPLETE" });
+    expect(operations.filter((op) => op.kind === "update")).toHaveLength(0);
+});

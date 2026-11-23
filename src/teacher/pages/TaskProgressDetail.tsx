@@ -31,8 +31,8 @@ const STATUS_KEYS = Object.keys(STATUS_CONFIG) as StatusKey[];
 
 const PROGRESS_COLORS: Record<StatusKey, string> = {
     not_started: "bg-chart-1",
-    stage1: "bg-chart-2",
-    stage2: "bg-chart-3",
+    stage1: "bg-chart-3",
+    stage2: "bg-auxiliary",
     stage3: "bg-chart-4",
     stage4: "bg-chart-2",
     stage5: "bg-chart-5",
@@ -43,8 +43,8 @@ const PROGRESS_COLORS: Record<StatusKey, string> = {
 
 const RING_COLORS: Record<StatusKey, string> = {
     not_started: "var(--chart-1)",
-    stage1: "var(--chart-2)",
-    stage2: "var(--chart-3)",
+    stage1: "var(--chart-3)",
+    stage2: "var(--auxiliary)",
     stage3: "var(--chart-4)",
     stage4: "var(--chart-2)",
     stage5: "var(--chart-5)",
@@ -125,7 +125,7 @@ export function TaskProgressDetail() {
                             <Clock className="w-3 h-3" />
                             {data.task.deadline ? `截止：${formatDateTimeDisplay(data.task.deadline)}（UTC+8）` : "无截止时间"}
                         </span>
-                        <span>{total} 名学生</span>
+                        <span className="tabular-nums">{total} 名学生</span>
                     </div>
                 </div>
             </div>
@@ -173,7 +173,7 @@ export function TaskProgressDetail() {
                                         <>
                                             <circle cx={CHART_CENTER} cy={CHART_CENTER} r={RING_RADIUS} fill="none" className="stroke-border" strokeWidth={RING_STROKE} />
                                             {segments}
-                                            <text x={CHART_CENTER} y={CHART_CENTER - 8} textAnchor="middle" className="fill-foreground text-page-title font-bold" fontSize="28">{total}</text>
+                                            <text x={CHART_CENTER} y={CHART_CENTER - 8} textAnchor="middle" className="fill-foreground text-page-title font-bold tabular-nums" fontSize="28">{total}</text>
                                             <text x={CHART_CENTER} y={CHART_CENTER + 14} textAnchor="middle" className="fill-muted-foreground text-meta" fontSize="12">总人数</text>
                                         </>
                                     );
@@ -186,9 +186,9 @@ export function TaskProgressDetail() {
                                     if (count === 0) return null;
                                     return (
                                         <div key={key} className="flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-circle" style={{ backgroundColor: RING_COLORS[key] }} />
+                                            <span aria-hidden="true" className="w-2 h-2 rounded-circle" style={{ backgroundColor: RING_COLORS[key] }} />
                                             <span className="text-muted-foreground">{cfg.label}</span>
-                                            <span className={`font-medium ${cfg.color}`}>{count}</span>
+                                            <span className={`font-medium tabular-nums ${cfg.color}`}>{count}</span>
                                         </div>
                                     );
                                 })}
@@ -200,7 +200,11 @@ export function TaskProgressDetail() {
                     <Card className="min-w-0 flex-[2_1_28rem] border-0 bg-transparent">
                         <CardContent className="p-6 flex flex-col justify-center h-full gap-4">
                             <span className="text-label font-medium text-foreground">各阶段分布</span>
-                            <div className="flex h-4 rounded-control overflow-hidden bg-muted">
+                            <div
+                                role="img"
+                                aria-label={`各阶段人数占比：${STATUS_KEYS.filter((k) => (data.counts[k] ?? 0) > 0).map((k) => `${STATUS_CONFIG[k].label} ${data.counts[k] ?? 0} 人`).join("，")}`}
+                                className="flex h-4 rounded-control overflow-hidden bg-muted"
+                            >
                                 {STATUS_KEYS.map((key) => {
                                     const count = data.counts[key] ?? 0;
                                     if (count === 0) return null;
@@ -221,10 +225,10 @@ export function TaskProgressDetail() {
                                     const count = data.counts[key] ?? 0;
                                     return (
                                         <div key={key} className="flex items-center gap-2 text-meta">
-                                            <span className={`w-2 h-2 rounded-circle ${PROGRESS_COLORS[key]}`} />
+                                            <span aria-hidden="true" className={`w-2 h-2 rounded-circle ${PROGRESS_COLORS[key]}`} />
                                             <span className="text-muted-foreground">{cfg.label}</span>
-                                            <span className={`font-medium ${cfg.color}`}>{count}</span>
-                                            <span className="text-muted-foreground">({total > 0 ? Math.round((count / total) * 100) : 0}%)</span>
+                                            <span className={`font-medium tabular-nums ${cfg.color}`}>{count}</span>
+                                            <span className="text-muted-foreground tabular-nums">({total > 0 ? Math.round((count / total) * 100) : 0}%)</span>
                                         </div>
                                     );
                                 })}
@@ -275,10 +279,10 @@ export function TaskProgressDetail() {
                                                 {cfg.label}
                                             </StatusBadge>
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground text-label">
+                                        <TableCell className="text-muted-foreground text-label tabular-nums">
                                             {s.stage !== null ? `阶段 ${s.stage}` : "-"}
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground text-meta">
+                                        <TableCell className="text-muted-foreground text-meta tabular-nums">
                                             {s.lastActivity ? `${formatDateTimeDisplay(s.lastActivity)}（UTC+8）` : "-"}
                                         </TableCell>
                                         <TableCell className="text-right">

@@ -291,6 +291,8 @@ try {
                 const submitted = await api(student, `${prefix}/submission`);
                 const grading = await api(teacher, `/api/teacher/grading/${exp.id}`);
                 same(submitted.snapshot.waves.length, 2); same(grading.waves.length, 2);
+                same(grading.adjustmentPlan, submitted.snapshot.adjustmentPlan);
+                same(grading.studyContract, submitted.snapshot.studyContract);
                 same(submitted.snapshot.targetMetrics, metrics.target); same(grading.targetMetrics, metrics.target);
                 same(grading.analysisAppendices, submitted.snapshot.analysisAppendices);
                 same(grading.analysisAppendices.map((a: any) => a.id), references);

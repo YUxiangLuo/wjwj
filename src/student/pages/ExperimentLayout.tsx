@@ -85,6 +85,7 @@ function ExperimentWorkspace() {
     const { loading, error: loadError, run, cancel } = useAsyncLoad("实验加载失败，请重试");
     const [redirect, setRedirect] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [isReopening, setIsReopening] = useState(false);
     const [saveError, setSaveError] = useState<{ message: string; refresh: boolean } | null>(null);
     const [reopenStage, setReopenStage] = useState<number | null>(null);
     const [inspectStage, setInspectStage] = useState<number | null>(null);
@@ -155,18 +156,23 @@ function ExperimentWorkspace() {
     }, [experiment, numericTaskId, refreshRequired, requireRefresh]);
 
     const applyReopen = async () => {
-        if (!mounted.current || reopenStage === null || !experiment || refreshRequired) return;
-        const response = await experimentApi.reopenStage(numericTaskId, reopenStage, experiment.version);
-        if (!mounted.current) return;
-        if (response.success && response.data) {
-            setSaveError(null);
-            setExperiment(response.data);
-        } else {
-            const refresh = response.error?.code === "VERSION_CONFLICT";
-            if (refresh) requireRefresh();
-            else setSaveError({ message: response.error?.message ?? "无法重新编辑该阶段", refresh: false });
+        if (!mounted.current || reopenStage === null || !experiment || refreshRequired || isReopening) return;
+        setIsReopening(true);
+        try {
+            const response = await experimentApi.reopenStage(numericTaskId, reopenStage, experiment.version);
+            if (!mounted.current) return;
+            if (response.success && response.data) {
+                setSaveError(null);
+                setExperiment(response.data);
+            } else {
+                const refresh = response.error?.code === "VERSION_CONFLICT";
+                if (refresh) requireRefresh();
+                else setSaveError({ message: response.error?.message ?? "无法重新编辑该阶段", refresh: false });
+            }
+            setReopenStage(null);
+        } finally {
+            if (mounted.current) setIsReopening(false);
         }
-        setReopenStage(null);
     };
 
     const [now, setNow] = useState(Date.now());
@@ -219,14 +225,20 @@ function ExperimentWorkspace() {
 
     const reopenImpact =
         reopenStage === 1
-            ? "问卷草稿会保留；后续首轮试投、质检诊断、正式轮投放及商业报告将被重置。"
+            ? "问卷内容会保留；后续首轮试投、质检诊断、正式轮投放及商业报告将被重置，已保存分析卡片将过期且附录引用将清空。"
             : reopenStage === 2
-                ? "阶段一问卷会保留；二轮正式投放、调优决策单与商业报告将被重置，回到首轮试投。"
+                ? "阶段一问卷与首轮试投草稿会保留；调优决策单、二轮正式投放及商业报告将被清空，已保存分析卡片将过期且附录引用将清空。"
                 : reopenStage === 3
-                    ? "首轮试投回收数据会保留；二轮正式投放与商业报告将被清空，可重新调整清洗与调优单。"
+                    ? "首轮试投回收数据与调优决策单会保留；二轮正式投放及商业报告将被清空，已保存分析卡片将过期且附录引用将清空。"
                     : reopenStage === 4
-                        ? "首轮与当前正式轮数据会保留；商业报告确认状态将被重置，可继续微调正式轮抽样或追加波次。"
-                        : "商业决策报告内容会保留，但需要重新确认本阶段。";
+                        ? "首轮与当前正式轮抽样投放数据会保留；服务端已保存的商业报告正文与附录引用将被清空，历史分析卡片将标记为过期，可继续微调正式轮或追加波次。"
+                        : "商业决策报告内容与附录引用会保留，但需要重新确认本阶段。";
+
+    const wave1Snapshot = (experiment.waves ?? []).find((w) => w.waveNumber === 1) ?? null;
+    const formalWaveSnapshot =
+        (experiment.waves ?? []).find((w) => w.waveNumber === experiment.activeWaveNumber && w.waveNumber >= 2)
+        ?? (experiment.waves ?? []).filter((w) => w.waveNumber >= 2).at(-1)
+        ?? null;
 
     const waveBadgeLabel = experiment.activeWaveNumber && experiment.activeWaveNumber >= 2
         ? `Wave ${experiment.activeWaveNumber} · 正式调优轮`
@@ -262,7 +274,7 @@ function ExperimentWorkspace() {
                             </StatusBadge>
                         </div>
 
-                        <div className="flex shrink-0 items-center gap-1.5" data-testid="student-experiment-stages">
+                        <div className="flex flex-wrap items-center gap-1.5" data-testid="student-experiment-stages">
                             {stages.map((stage, index) => {
                                 const number = index + 1;
                                 const isCurrent = number === currentStage;
@@ -369,16 +381,28 @@ function ExperimentWorkspace() {
                         <DialogDescription>这是已完成阶段的只读快照。关闭查看后会返回当前阶段，不会清空或修改任何数据。</DialogDescription>
                     </DialogHeader>
                     <div className="py-2 space-y-4">
-                        {inspectStage === 1 && <QuestionnaireSnapshot questionnaire={experiment.questionnaire} />}
+                        {inspectStage === 1 && (
+                            <QuestionnaireSnapshot questionnaire={wave1Snapshot?.questionnaire ?? experiment.questionnaire} />
+                        )}
                         {inspectStage === 2 && (
-                            <WaveLoopSnapshot
-                                waves={(experiment.waves ?? []).filter((w) => w.waveNumber === 1)}
-                                analysisTarget={experiment.analysisTarget}
-                            />
+                            <div className="space-y-4">
+                                <WaveLoopSnapshot
+                                    waves={wave1Snapshot ? [wave1Snapshot] : []}
+                                    analysisTarget={experiment.analysisTarget}
+                                />
+                                <SamplePlanSnapshot
+                                    value={wave1Snapshot?.samplePlan ?? (currentStage <= 3 ? experiment.samplePlan : null)}
+                                    populationSize={experiment.populationSize}
+                                />
+                                <SamplingResultsSnapshot
+                                    value={wave1Snapshot?.samplingResults ?? (currentStage <= 3 ? experiment.samplingResults : null)}
+                                    samplingPolicy={experiment.samplingPolicy}
+                                />
+                            </div>
                         )}
                         {inspectStage === 3 && (
                             <WaveLoopSnapshot
-                                waves={(experiment.waves ?? []).filter((w) => w.waveNumber === 1)}
+                                waves={wave1Snapshot ? [wave1Snapshot] : []}
                                 adjustmentPlan={experiment.adjustmentPlan}
                                 analysisTarget={experiment.analysisTarget}
                             />
@@ -390,8 +414,14 @@ function ExperimentWorkspace() {
                                     adjustmentPlan={experiment.adjustmentPlan}
                                     analysisTarget={experiment.analysisTarget}
                                 />
-                                <SamplePlanSnapshot value={experiment.samplePlan} populationSize={experiment.populationSize} />
-                                <SamplingResultsSnapshot value={experiment.samplingResults} samplingPolicy={experiment.samplingPolicy} />
+                                <SamplePlanSnapshot
+                                    value={formalWaveSnapshot?.samplePlan ?? experiment.samplePlan}
+                                    populationSize={experiment.populationSize}
+                                />
+                                <SamplingResultsSnapshot
+                                    value={formalWaveSnapshot?.samplingResults ?? experiment.samplingResults}
+                                    samplingPolicy={experiment.samplingPolicy}
+                                />
                             </div>
                         )}
                     </div>
@@ -412,16 +442,16 @@ function ExperimentWorkspace() {
                 </DialogContent>
             </Dialog>
 
-            <AlertDialog open={reopenStage !== null} onOpenChange={(open) => !open && setReopenStage(null)}>
+            <AlertDialog open={reopenStage !== null} onOpenChange={(open) => { if (!open && !isReopening) setReopenStage(null); }}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>重新编辑“{reopenStage ? stages[reopenStage - 1]!.name : ""}”</AlertDialogTitle>
                         <AlertDialogDescription>{reopenImpact} 此操作不可撤销，确认后才能重新编辑。</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>取消</AlertDialogCancel>
-                        <AlertDialogAction variant="destructive" disabled={refreshRequired} onClick={() => void applyReopen()}>
-                            确认重新编辑
+                        <AlertDialogCancel disabled={isReopening}>取消</AlertDialogCancel>
+                        <AlertDialogAction variant="destructive" disabled={refreshRequired || isReopening} onClick={() => void applyReopen()}>
+                            {isReopening ? "正在重置…" : "确认重新编辑"}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

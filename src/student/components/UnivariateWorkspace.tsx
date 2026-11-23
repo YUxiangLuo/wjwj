@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { AnalysisResultTable } from "@/components/AnalysisAppendices";
 import type { AnalysisConfig, SavedAnalysisView, VariableDictionary } from "@/domain/variables/types";
 import type { ExperimentWaveView } from "@/domain/experiment/types";
+import { isCompletedSamplingResult, SAMPLING_METHODS } from "@/lib/sampling-policy";
 import { shortSourceHash } from "@/student/pages/stages/analysis-utils";
 
 const client = createApiClient("student");
@@ -45,14 +46,20 @@ export function UnivariateWorkspace({
 }) {
     const [dictionary, setDictionary] = useState<VariableDictionary | null>(null);
     const [records, setRecords] = useState<SavedAnalysisView[]>([]);
+    const [analysesLoaded, setAnalysesLoaded] = useState(false);
     const [capacity, setCapacity] = useState(20);
+    const defaultWaveNumber = useMemo(() => {
+        if (!waves || waves.length === 0) return activeWaveNumber;
+        if (activeWaveNumber && waves.some((w) => w.waveNumber === activeWaveNumber)) return activeWaveNumber;
+        return waves[waves.length - 1]!.waveNumber;
+    }, [waves, activeWaveNumber]);
     const [config, setConfig] = useState<AnalysisConfig>(() => ({
         question: "",
         method: completedMethods[0] ?? "simple",
         field: "",
         weighted: false,
         datasetMode: "cleaned_respondents",
-        ...(activeWaveNumber ? { waveNumber: activeWaveNumber } : {}),
+        ...(defaultWaveNumber ? { waveNumber: defaultWaveNumber } : {}),
     }));
     const [loading, setLoading] = useState(true);
     const [running, setRunning] = useState(false);
@@ -64,6 +71,19 @@ export function UnivariateWorkspace({
         () => variables.filter((item) => (item.kind === "nominal" || item.kind === "ordinal") && item.field !== config.field),
         [variables, config.field],
     );
+    const effectiveWaveNumber = useMemo(() => {
+        if (!waves || waves.length === 0) return config.waveNumber;
+        if (config.waveNumber && waves.some((w) => w.waveNumber === config.waveNumber)) return config.waveNumber;
+        return defaultWaveNumber;
+    }, [waves, config.waveNumber, defaultWaveNumber]);
+    const availableMethods = useMemo<AnalysisConfig["method"][]>(() => {
+        if (waves && waves.length > 0 && effectiveWaveNumber) {
+            const targetWave = waves.find((w) => w.waveNumber === effectiveWaveNumber);
+            const waveMethods = SAMPLING_METHODS.filter((m) => isCompletedSamplingResult(targetWave?.samplingResults?.[m]));
+            if (waveMethods.length > 0) return waveMethods;
+        }
+        return completedMethods;
+    }, [waves, effectiveWaveNumber, completedMethods]);
 
     const load = async () => {
         setLoading(true);
@@ -77,6 +97,7 @@ export function UnivariateWorkspace({
         if (analysesResponse.success) {
             setRecords(analysesResponse.data?.records ?? []);
             setCapacity(analysesResponse.data?.capacity ?? 20);
+            setAnalysesLoaded(true);
         }
         if (!dictionaryResponse.success || !analysesResponse.success) {
             setError(dictionaryResponse.error?.message ?? analysesResponse.error?.message ?? "分析工作区加载失败");
@@ -84,20 +105,49 @@ export function UnivariateWorkspace({
     };
 
     useEffect(() => {
+        setAnalysesLoaded(false);
         void load();
     }, [taskId]);
 
     useEffect(() => {
-        if (completedMethods.length > 0 && !completedMethods.includes(config.method)) {
-            setConfig((current) => ({ ...current, method: completedMethods[0]! }));
+        if (waves && waves.length > 0 && effectiveWaveNumber && config.waveNumber !== effectiveWaveNumber) {
+            setConfig((current) => ({ ...current, waveNumber: effectiveWaveNumber }));
         }
-    }, [completedMethods, config.method]);
+    }, [waves, effectiveWaveNumber, config.waveNumber]);
 
     useEffect(() => {
+        if (availableMethods.length > 0 && !availableMethods.includes(config.method)) {
+            setConfig((current) => ({ ...current, method: availableMethods[0]! }));
+        }
+    }, [availableMethods, config.method]);
+
+    useEffect(() => {
+        if (!dictionary) return;
+        setConfig((current) => {
+            const nextField = current.field && variables.some((v) => v.field === current.field) ? current.field : "";
+            const nextGroup = current.groupByField
+                && current.groupByField !== nextField
+                && variables.some((v) => v.field === current.groupByField && (v.kind === "nominal" || v.kind === "ordinal"))
+                ? current.groupByField
+                : undefined;
+            if (nextField === current.field && nextGroup === current.groupByField) return current;
+            const next: AnalysisConfig = { ...current, field: nextField };
+            if (nextGroup) next.groupByField = nextGroup;
+            else delete next.groupByField;
+            return next;
+        });
+    }, [dictionary, variables]);
+
+    useEffect(() => {
+        if (!analysesLoaded) return;
+        const recordById = new Map(records.map((r) => [r.id, r]));
         onStaleReferencesChange?.(
-            records.filter(record => record.stale && references.includes(record.id)).map(record => record.id),
+            references.filter((id) => {
+                const match = recordById.get(id);
+                return !match || match.stale;
+            }),
         );
-    }, [records, references, onStaleReferencesChange]);
+    }, [analysesLoaded, records, references, onStaleReferencesChange]);
 
     const update = (patch: Partial<AnalysisConfig>) => {
         const next: AnalysisConfig = { ...config, ...patch };
@@ -126,7 +176,7 @@ export function UnivariateWorkspace({
                 field: config.field,
                 weighted: config.weighted,
                 ...(config.groupByField ? { groupByField: config.groupByField } : {}),
-                ...(config.waveNumber ? { waveNumber: config.waveNumber } : {}),
+                ...(effectiveWaveNumber ? { waveNumber: effectiveWaveNumber } : {}),
                 ...(config.datasetMode ? { datasetMode: config.datasetMode } : {}),
             };
             const key = signature(payloadConfig);
@@ -214,7 +264,7 @@ export function UnivariateWorkspace({
                             />
                         </div>
 
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-4">
                             <div className="space-y-2">
                                 <Label className="text-foreground">抽样方法来源</Label>
                                 <Select
@@ -225,7 +275,7 @@ export function UnivariateWorkspace({
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {completedMethods.map((method) => (
+                                        {availableMethods.map((method) => (
                                             <SelectItem key={method} value={method}>
                                                 {methods[method]}
                                             </SelectItem>
@@ -276,12 +326,12 @@ export function UnivariateWorkspace({
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-3 items-center gap-4 rounded-surface border border-border bg-background p-3.5">
+                        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-center gap-4 rounded-surface border border-border bg-background p-3.5">
                             {waves && waves.length > 0 ? (
                                 <div className="space-y-1.5">
                                     <Label className="text-meta text-muted-foreground">数据所属波次</Label>
                                     <Select
-                                        value={String(config.waveNumber ?? activeWaveNumber ?? waves[waves.length - 1]!.waveNumber)}
+                                        value={String(effectiveWaveNumber ?? waves[waves.length - 1]!.waveNumber)}
                                         onValueChange={(val) => update({ waveNumber: Number(val) })}
                                     >
                                         <SelectTrigger aria-label="选择分析波次" className="h-9 bg-card">
@@ -419,7 +469,12 @@ export function UnivariateWorkspace({
                                         后续重抽样或重新发放已产生新批次数据，此旧分析卡片已过期；若已引用，请移出并重新执行。
                                     </p>
                                 )}
-                                <div className="mt-3 overflow-x-auto">
+                                <div
+                                    role="region"
+                                    aria-label={`分析卡片 ${record.id} 结果表`}
+                                    tabIndex={0}
+                                    className="mt-3 overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                >
                                     <AnalysisResultTable record={record} />
                                 </div>
                             </article>

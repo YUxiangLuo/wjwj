@@ -47,7 +47,7 @@ export function ClassManagement() {
     }, [classes, semesterFilter, searchTerm]);
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="space-y-6">
             <p className="text-label text-muted-foreground">查看班级名单与学期分布。</p>
 
             <dl aria-label="班级概览" className="grid grid-cols-3 gap-5 border-b border-border pb-5">

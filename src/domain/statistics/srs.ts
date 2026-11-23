@@ -11,10 +11,12 @@ export function computeSimpleRandomMeanSe(
 }
 
 export function computeSimpleRandomValueSe(populationVariance: number, populationSize: number, sampleSize: number, populationStandardDeviation = Math.sqrt(populationVariance)) {
-    if (sampleSize < 1 || populationSize < 1) return null;
+    if (!Number.isFinite(sampleSize) || !Number.isFinite(populationSize) || sampleSize < 1 || populationSize < 1) return null;
+    if (!Number.isFinite(populationVariance) || populationVariance < 0 || !Number.isFinite(populationStandardDeviation) || populationStandardDeviation < 0) return null;
     if (sampleSize >= populationSize || populationSize <= 1) return 0;
     const samplingFraction = sampleSize / populationSize;
-    return populationStandardDeviation * Math.sqrt((1 - samplingFraction) / sampleSize);
+    const se = populationStandardDeviation * Math.sqrt((1 - samplingFraction) / sampleSize);
+    return Number.isFinite(se) ? se : null;
 }
 
 /**

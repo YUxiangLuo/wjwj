@@ -296,3 +296,64 @@ for (const outcome of ["save-failed", "queue-failed", "empty"] as const) test(`c
     }
     expect(writes).toBe(1);
 });
+
+test("five-tab WaveLoopSnapshot falls back cleanly to questionnaire when switching to a wave-less submission", async () => {
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+        const id = Number(new URL(String(input), "http://localhost").pathname.split("/").at(-1));
+        return Response.json({
+            success: true,
+            data: id === 7
+                ? {
+                    ...record(),
+                    id: 7,
+                    adjustmentPlan: {
+                        identifiedIssues: ["unit_nonresponse_gap"],
+                        plannedActions: ["recalibrate_sample_size"],
+                        rationale: "根据首轮试投无回答率重新测算正式轮发放量。",
+                    },
+                    waves: [{
+                        waveNumber: 1,
+                        kind: "pilot",
+                        label: "第 1 轮 · 首轮试投",
+                        questionnaire: { title: "试投问卷", welcomeText: "欢迎", endingText: "感谢", questions: [] },
+                        samplePlan: { finalSampleSize: 40 },
+                        samplingResults: null,
+                        fieldwork: null,
+                        cleaningConfig: { removeSpeeders: true, removeStraightliners: true, requirePrimaryTargetValid: true },
+                        diagnostics: {},
+                        completedAt: "2026-10-01T00:00:00.000Z",
+                    }],
+                }
+                : { ...record(), id: 8, questionnaire: { title: "旧版问卷标题", welcomeText: "欢迎", endingText: "感谢", questions: [] } },
+        });
+    }) as unknown as typeof fetch;
+
+    const view = page();
+    await waitFor(() => expect(view.getByRole("tab", { name: "试投质检与调优" })).toBeTruthy());
+    fireEvent.keyDown(view.getByRole("tab", { name: "试投质检与调优" }), { key: "Enter" });
+    expect(view.getByTestId("wave-loop-snapshot")).toBeTruthy();
+
+    fireEvent.click(view.getByText("切换到提交 8"));
+    await waitFor(() => expect(view.queryByRole("tab", { name: "试投质检与调优" })).toBeNull());
+    expect(view.getByRole("tab", { name: "问卷" }).getAttribute("aria-selected")).toBe("true");
+    expect(view.getByText("旧版问卷标题")).toBeTruthy();
+});
+
+test("sampling tab renders waveNumber prefix on multi-wave samplingAttempts", async () => {
+    globalThis.fetch = (async () => Response.json({
+        success: true,
+        data: {
+            ...record(),
+            samplingAttempts: [
+                { id: 1, waveNumber: 1, method: "simple", seed: 101, sampleCount: 24, details: {}, createdAt: "2026-10-01T08:00:00.000Z" },
+                { id: 2, waveNumber: 2, method: "stratified", seed: 202, sampleCount: 48, details: {}, createdAt: "2026-10-01T09:00:00.000Z" },
+            ],
+        },
+    })) as unknown as typeof fetch;
+
+    const view = page();
+    await waitFor(() => expect(view.getByLabelText("教师评语")).toBeTruthy());
+    fireEvent.keyDown(view.getByRole("tab", { name: "抽样结果" }), { key: "Enter" });
+    expect(view.getByText("第 1 轮 · 简单随机 · 24 个")).toBeTruthy();
+    expect(view.getByText("第 2 轮 · 分层抽样 · 48 个")).toBeTruthy();
+});

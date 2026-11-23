@@ -177,3 +177,23 @@ test("export route reads serialized sampling results and returns csv", async () 
     expect(body).toContain("上海");
     expect(body).toContain("广州");
 });
+
+test("export route prefers frozen submissionSnapshot samplingResults when experiment is submitted", async () => {
+    const module = await loadFilesRoutes({
+        select: [[{
+            status: "submitted",
+            samplingResults: { simple: { data: [{ id: 1, city: "可变草稿值" }] } },
+            submissionSnapshot: {
+                samplingResults: { simple: { data: [{ id: 2, city: "冻结快照值" }] } },
+            },
+        }]],
+    });
+    const response = await module.exportRoutes.GET!(withRouteParam(
+        createRequest("https://example.com/api/student/tasks/40/export?type=simple"),
+        "40",
+    ));
+    expect(response.status).toBe(200);
+    const csv = await response.text();
+    expect(csv).toContain("冻结快照值");
+    expect(csv).not.toContain("可变草稿值");
+});

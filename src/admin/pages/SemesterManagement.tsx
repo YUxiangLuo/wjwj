@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { semesterApi, type Semester } from "../api-client";
@@ -174,7 +173,7 @@ export function SemesterManagement() {
     }, [semesters, searchTerm, statusFilter]);
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="space-y-6">
             <PageHeader border={false}>
                 <div>
                     <h2 className="text-subheading font-semibold text-foreground">学期管理</h2>
@@ -196,7 +195,7 @@ export function SemesterManagement() {
                 <PageHeader as={CardHeader}>
                     <div>
                         <CardTitle className="text-body text-foreground">学期列表</CardTitle>
-                        <p className="text-meta text-muted-foreground mt-1">共 {filteredSemesters.length} 条数据</p>
+                        <p className="text-meta text-muted-foreground mt-1">{loading || loadError ? "共 - 条数据" : `共 ${filteredSemesters.length} 条数据`}</p>
                     </div>
                     <div className="flex flex-wrap gap-3 flex-row w-auto">
                         <Input
@@ -240,10 +239,10 @@ export function SemesterManagement() {
                                             {semester.isCurrent ? (
                                                 <StatusBadge intent="success">当前学期</StatusBadge>
                                             ) : (
-                                                <Badge variant="secondary" className="bg-muted text-muted-foreground">历史学期</Badge>
+                                                <StatusBadge intent="neutral">历史学期</StatusBadge>
                                             )}
                                         </TableCell>
-                                        <TableCell className="text-foreground">
+                                        <TableCell className="text-foreground tabular-nums">
                                             <div className="flex items-center gap-2">
                                                 <School className="w-3.5 h-3.5 text-muted-foreground" />
                                                 {semester.classCount}
@@ -352,7 +351,7 @@ export function SemesterManagement() {
                             <Input
                                 id="editSemesterName"
                                 data-testid="semester-edit-name"
-                                placeholder="例如：2024-Fall"
+                                placeholder="例如：2026-2027-1"
                                 value={editName}
                                 onChange={(e) => setEditName(e.target.value)}
                                 className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"

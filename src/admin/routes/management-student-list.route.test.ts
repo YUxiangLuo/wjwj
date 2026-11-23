@@ -58,3 +58,33 @@ test("admin student list paginates and ignores retired account-state filters", a
     const legacyFilter = await module.studentRoutes.GET!(new Request("https://example.com/api/admin/students?status=normal"));
     expect(legacyFilter.status).toBe(200);
 });
+
+test("admin student list and student experiments compute 5-stage progress from stage5CompletedAt", async () => {
+    const { db } = createMockDb({
+        select: [
+            [{ id: 18, studentId: "S018", name: "阶段五学生", classId: 1, className: "统计一班", createdAt: new Date() }],
+            [{ studentId: 18, currentStage: 5, status: "in_progress", stage5CompletedAt: new Date() }],
+            [
+                { id: 1, taskName: "已完成阶段五", currentStage: 5, status: "in_progress", stage5CompletedAt: new Date(), submitTime: null, score: null, lastUpdate: new Date() },
+                { id: 2, taskName: "编写报告中", currentStage: 5, status: "in_progress", stage5CompletedAt: null, submitTime: null, score: null, lastUpdate: new Date() },
+            ],
+        ],
+    });
+    mock.module("../../db", () => ({ db }));
+    const module = await import(`./management.ts?stage5-progress=${crypto.randomUUID()}`);
+
+    const listRes = await module.studentRoutes.GET!(new Request("https://example.com/api/admin/students"));
+    expect(listRes.status).toBe(200);
+    expect(await listRes.json()).toMatchObject({ data: [{ studentId: "S018", progress: 100 }] });
+
+    const expReq = new Request("https://example.com/api/admin/students/18/experiments");
+    (expReq as Request & { params?: Record<string, string> }).params = { id: "18" };
+    const expRes = await module.studentExperimentsRoutes.GET!(expReq);
+    expect(expRes.status).toBe(200);
+    expect(await expRes.json()).toMatchObject({
+        data: [
+            { id: 1, progress: 100 },
+            { id: 2, progress: 80 },
+        ],
+    });
+});

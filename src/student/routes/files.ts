@@ -92,11 +92,18 @@ const exportRoutes: RouteDefinition = {
             .innerJoin(topic, eq(task.topicId, topic.id))
             .where(and(eq(experiment.studentId, currentStudent.id), eq(experiment.taskId, taskId)));
 
-        if (!exp?.samplingResults) {
+        if (!exp) {
+            return error("暂无抽样结果", "NO_DATA", 404);
+        }
+        const snapshot = (exp.status === "submitted" || exp.status === "graded")
+            ? parseStoredJson<{ samplingResults?: unknown }>(exp.submissionSnapshot)
+            : null;
+        const rawSamplingResults = snapshot?.samplingResults ?? exp.samplingResults;
+        if (!rawSamplingResults) {
             return error("暂无抽样结果", "NO_DATA", 404);
         }
 
-        const storedResults = parseStoredJson(exp.samplingResults);
+        const storedResults = parseStoredJson(rawSamplingResults);
         const inspection = inspectSamplingResultsStorage(storedResults);
         if (!inspection.ok) return error(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
         let results = storedResults;

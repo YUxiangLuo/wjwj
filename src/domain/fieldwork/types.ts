@@ -116,10 +116,24 @@ export const DEFAULT_FIELDWORK_CONFIG: FieldworkSimulationConfig = {
     incentiveCostPerComplete: 15,
 };
 
+function parseFiniteNumber(value: unknown): number | null {
+    if (typeof value === "number") {
+        return Number.isFinite(value) ? (Object.is(value, -0) ? 0 : value) : null;
+    }
+    if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (!trimmed) return null;
+        const parsed = Number(trimmed);
+        return Number.isFinite(parsed) ? (Object.is(parsed, -0) ? 0 : parsed) : null;
+    }
+    return null;
+}
+
 function clampNumber(value: unknown, fallback: number, min: number, max: number): number {
-    const parsed = typeof value === "number" ? value : Number(value);
-    if (!Number.isFinite(parsed)) return fallback;
-    return Math.min(max, Math.max(min, parsed));
+    const parsed = parseFiniteNumber(value);
+    if (parsed === null) return fallback;
+    const clamped = Math.min(max, Math.max(min, parsed));
+    return Object.is(clamped, -0) ? 0 : clamped;
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -146,12 +160,19 @@ export function resolveFieldworkConfig(raw: unknown): FieldworkSimulationConfig 
     const stratumField = typeof raw.stratumField === "string" && raw.stratumField.trim()
         ? raw.stratumField.trim()
         : undefined;
+    const baseUnitNonResponseRate = clampNumber(
+        raw.baseUnitNonResponseRate,
+        DEFAULT_FIELDWORK_CONFIG.baseUnitNonResponseRate,
+        0,
+        0.75,
+    );
     let stratumNonResponseRates: Record<string, number> | undefined;
     if (isPlainObject(raw.stratumNonResponseRates)) {
         const mapped: Record<string, number> = {};
         for (const [key, val] of Object.entries(raw.stratumNonResponseRates)) {
-            if (key.trim()) {
-                mapped[key.trim()] = clampNumber(val, 0.16, 0, 0.85);
+            const normalizedKey = key.trim().normalize("NFKC");
+            if (normalizedKey && normalizedKey !== "__proto__" && normalizedKey !== "constructor" && normalizedKey !== "prototype") {
+                mapped[normalizedKey] = clampNumber(val, baseUnitNonResponseRate, 0, 0.85);
             }
         }
         if (Object.keys(mapped).length > 0) stratumNonResponseRates = mapped;
@@ -160,7 +181,7 @@ export function resolveFieldworkConfig(raw: unknown): FieldworkSimulationConfig 
     return {
         version: 1,
         preset,
-        baseUnitNonResponseRate: clampNumber(raw.baseUnitNonResponseRate, DEFAULT_FIELDWORK_CONFIG.baseUnitNonResponseRate, 0, 0.75),
+        baseUnitNonResponseRate,
         ...(stratumField ? { stratumField } : {}),
         ...(stratumNonResponseRates ? { stratumNonResponseRates } : {}),
         baseSpeederRate: clampNumber(raw.baseSpeederRate, DEFAULT_FIELDWORK_CONFIG.baseSpeederRate, 0, 0.35),
@@ -171,22 +192,59 @@ export function resolveFieldworkConfig(raw: unknown): FieldworkSimulationConfig 
     };
 }
 
+function validateBoundedField(
+    rawValue: unknown,
+    min: number,
+    max: number,
+    errorMessage: string,
+): string | null {
+    if (rawValue === undefined) return null;
+    const parsed = parseFiniteNumber(rawValue);
+    if (parsed === null || parsed < min || parsed > max) return errorMessage;
+    return null;
+}
+
 export function validateFieldworkConfig(raw: unknown, allowedStrataFields?: string[]): string | null {
     if (!isPlainObject(raw)) return "虚拟发放配置格式无效";
     const validPresets = ["balanced", "stratum_differential", "high_burden_sensitive", "peak_congestion"];
-    if (raw.preset !== undefined && !validPresets.includes(String(raw.preset))) {
+    if (raw.preset !== undefined && (typeof raw.preset !== "string" || !validPresets.includes(raw.preset))) {
         return "虚拟发放预设场景无效";
     }
-    const baseNr = Number(raw.baseUnitNonResponseRate ?? 0.16);
-    if (!Number.isFinite(baseNr) || baseNr < 0 || baseNr > 0.75) {
-        return "基准单元无回答率需在 0%–75% 之间";
-    }
-    if (raw.stratumField !== undefined && raw.stratumField !== null && String(raw.stratumField).trim() !== "") {
-        const field = String(raw.stratumField).trim();
-        if (allowedStrataFields && allowedStrataFields.length > 0 && !allowedStrataFields.includes(field)) {
-            return `差异化应答分层字段“${field}”不在已映射的分层变量中`;
+
+    const numericChecks =
+        validateBoundedField(raw.baseUnitNonResponseRate, 0, 0.75, "基准单元无回答率需在 0%–75% 之间")
+        ?? validateBoundedField(raw.baseSpeederRate, 0, 0.35, "闪电敷衍卷基准比例需在 0%–35% 之间")
+        ?? validateBoundedField(raw.baseStraightlinerRate, 0, 0.35, "直线作答废卷基准比例需在 0%–35% 之间")
+        ?? validateBoundedField(raw.baseItemSkipRate, 0, 0.25, "普通题项随机漏答率需在 0%–25% 之间")
+        ?? validateBoundedField(raw.contactCostPerUnit, 0, 10_000, "单份触达参考成本需在 0–10000 元之间")
+        ?? validateBoundedField(raw.incentiveCostPerComplete, 0, 50_000, "单份完答激励参考成本需在 0–50000 元之间");
+    if (numericChecks) return numericChecks;
+
+    if (raw.stratumField !== undefined && raw.stratumField !== null) {
+        if (typeof raw.stratumField !== "string") {
+            return "差异化应答分层字段格式无效";
+        }
+        const field = raw.stratumField.trim();
+        if (field !== "" && allowedStrataFields !== undefined && !allowedStrataFields.includes(field)) {
+            return allowedStrataFields.length === 0
+                ? `当前课题未配置分层变量，不能设置差异化应答分层字段“${field}”`
+                : `差异化应答分层字段“${field}”不在已映射的分层变量中`;
         }
     }
+
+    if (raw.stratumNonResponseRates !== undefined && raw.stratumNonResponseRates !== null) {
+        if (!isPlainObject(raw.stratumNonResponseRates)) {
+            return "分层单元无回答率配置格式无效";
+        }
+        for (const [key, val] of Object.entries(raw.stratumNonResponseRates)) {
+            if (!key.trim()) return "分层单元无回答率包含空客群名称";
+            const parsed = parseFiniteNumber(val);
+            if (parsed === null || parsed < 0 || parsed > 0.85) {
+                return "各分层单元无回答率需在 0%–85% 之间";
+            }
+        }
+    }
+
     return null;
 }
 

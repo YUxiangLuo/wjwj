@@ -242,7 +242,7 @@ export function StudentManagement() {
     if (!classInfo && !loading) return <div className="p-12 text-center text-muted-foreground">未找到班级</div>;
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="space-y-6">
             {loadError && <RequestError message={loadError} onRetry={() => void loadData()} retrying={loading} backTo="/class" backLabel="返回班级列表" />}
             <div className="flex items-center gap-3">
                 <Button asChild variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-muted">
@@ -313,7 +313,7 @@ export function StudentManagement() {
                         <TableBody>
                             {filteredStudents.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                                    <TableCell colSpan={4} className="text-center py-12 text-muted-foreground">
                                         <div className="flex flex-col items-center gap-2">
                                             <div className="w-12 h-12 rounded-control bg-card border border-border flex items-center justify-center">
                                                 <Search className="w-5 h-5 text-muted-foreground" />
