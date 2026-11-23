@@ -146,6 +146,9 @@ export async function teacherTemplateDogfood(h: Harness) {
         await fill(id("teacher-contract-question"), `估计${profile.name}的${profile.kind === "mean" ? "平均值" : "目标类别比例"}`);
         await fill(id("teacher-contract-population"), "24个合成观测单位");
         await fill(id("teacher-contract-unit"), "一个观测单位");
+        if (p === 0) {
+            await fill(id("teacher-contract-business-decision"), "核定下财年重点企业客户拓展与顾问资源配置方案");
+        }
         await fill("#teacher-field-search", "不存在的字段");
         assert.equal(await evaluate(teacher, `document.querySelector('${id("teacher-topic-next")}').disabled`), false, "Search must not unset mapping/target");
         await clickNamedButton("显示全部字段");
@@ -159,6 +162,10 @@ export async function teacherTemplateDogfood(h: Harness) {
         await next(4);
         for (const [i, label] of ["系统抽样", "PPS抽样", "分层抽样"].entries()) {
             await select(`[aria-label="${label}要求"]`, profile.requirements[i]!);
+        }
+        if (p === 0) {
+            await fill(id("teacher-topic-fw-nrr"), "22");
+            await fill(id("teacher-topic-fw-contact-cost"), "6");
         }
         if (format === "csv") await browser(teacher, "screenshot", join(h.artifacts, `matrix-${p}-policy.png`));
         await next(5);
@@ -190,9 +197,14 @@ export async function teacherTemplateDogfood(h: Harness) {
         const topic = (await api<Array<{ id: number; name: string; status: number }>>(teacher, "/api/teacher/topics")).find(t => t.name === name);
         assert.ok(topic);
         assert.equal(topic.status, 0);
-        const detail = await api<{ topic: { fieldMapping: { studyContract: { target: unknown }; numeric: string[] }; samplingPolicy: { methods: unknown }; excelRowCount: number; weightConfig: unknown }; attachments: unknown[]; recommendQuestions: Array<{ content: string }> }>(teacher, `/api/teacher/topics/${topic.id}/detail`);
+        const detail = await api<{ topic: { fieldMapping: { studyContract: { target: unknown; businessDecision?: string }; numeric: string[] }; samplingPolicy: { methods: unknown }; fieldworkConfig?: { baseUnitNonResponseRate: number; contactCostPerUnit: number }; excelRowCount: number; weightConfig: unknown }; attachments: unknown[]; recommendQuestions: Array<{ content: string }> }>(teacher, `/api/teacher/topics/${topic.id}/detail`);
         const target = profile.kind === "mean" ? { kind: "mean", field: "测量值" } : { kind: "proportion", field: "类别", value: p === 7 ? "A" : "是" };
         assert.deepEqual(detail.topic.fieldMapping.studyContract.target, target);
+        if (p === 0) {
+            assert.equal(detail.topic.fieldMapping.studyContract.businessDecision, "核定下财年重点企业客户拓展与顾问资源配置方案");
+            assert.equal(detail.topic.fieldworkConfig?.baseUnitNonResponseRate, 0.22);
+            assert.equal(detail.topic.fieldworkConfig?.contactCostPerUnit, 6);
+        }
         assert.equal(detail.topic.excelRowCount, 24);
         assert.deepEqual(detail.topic.weightConfig, { questionnaire: 25, process: 31, report: 44 });
         assert.equal(detail.attachments.length, p === 0 ? 1 : 0);

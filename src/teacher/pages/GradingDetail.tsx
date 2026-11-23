@@ -67,6 +67,8 @@ export function GradingDetail() {
     const [section, selectSection, navigationRef] = useSectionNavigation<string>("questionnaire", "main > header");
     const mutationInFlight = useRef(false);
     const identityRef = useRef<HTMLHeadingElement>(null);
+    const submitTriggerRef = useRef<HTMLButtonElement>(null);
+    const confirmGradeRef = useRef<HTMLButtonElement>(null);
     const [data, setData] = useState<SubmissionDetail | null>(null);
     const { loading, error: loadError, run, cancel } = useAsyncLoad("批改记录加载失败");
     const [conflict, setConflict] = useState(false);
@@ -172,7 +174,8 @@ export function GradingDetail() {
         returnToList();
     };
     const reject = async () => {
-        if (!data || !canGrade || rejectReason.trim().length < 5 || mutationInFlight.current) return;
+        const trimmedReason = rejectReason.trim();
+        if (!data || !canGrade || trimmedReason.length < 5 || trimmedReason.length > 1000 || mutationInFlight.current) return;
         mutationInFlight.current = true;
         setSaving(true);
         const response = await teacherApi.rejectSubmission(id, data.version, rejectReason);
@@ -193,6 +196,8 @@ export function GradingDetail() {
     if (loading && !data) return <p role="status" aria-live="polite" className="py-12 text-center text-muted-foreground">加载中...</p>;
     if (!data) return <p className="py-12 text-center text-muted-foreground">未找到提交记录</p>;
     const canGrade = !saving && !conflict && !loading && !loadError && (data.status === "submitted" || data.status === "graded");
+    const hasWaveLoop = (data.waves?.length ?? 0) > 0 || Boolean(data.adjustmentPlan);
+    const activeSection = !hasWaveLoop && section === "waves" ? "questionnaire" : section;
     const scoreLabels = {
         questionnaire: `问卷设计（${weights.questionnaire}%）`,
         process: `实验过程（${weights.process}%）`,
@@ -219,9 +224,9 @@ export function GradingDetail() {
                     <p id="grading-student-identity" className="text-label text-muted-foreground">{data.className} · {data.studentId}</p>
                 </CardHeader>
                 <CardContent className="px-4">
-                    <Tabs ref={navigationRef} value={section} onValueChange={selectSection} className="scroll-mt-20">
-                        <TabsList className={`sticky top-16 z-20 grid w-full ${(data.waves?.length ?? 0) > 0 || data.adjustmentPlan ? "grid-cols-5" : "grid-cols-4"}`} aria-label="提交材料">
-                            {((data.waves?.length ?? 0) > 0 || data.adjustmentPlan) && (
+                    <Tabs ref={navigationRef} value={activeSection} onValueChange={selectSection} className="scroll-mt-20">
+                        <TabsList className={`sticky top-16 z-20 grid w-full ${hasWaveLoop ? "grid-cols-5" : "grid-cols-4"}`} aria-label="提交材料">
+                            {hasWaveLoop && (
                                 <TabsTrigger value="waves">试投质检与调优</TabsTrigger>
                             )}
                             <TabsTrigger value="questionnaire">问卷</TabsTrigger>
@@ -229,9 +234,10 @@ export function GradingDetail() {
                             <TabsTrigger value="sampling">抽样结果</TabsTrigger>
                             <TabsTrigger value="report">商业报告</TabsTrigger>
                         </TabsList>
-                        {((data.waves?.length ?? 0) > 0 || data.adjustmentPlan) && (
+                        {hasWaveLoop && (
                             <TabsContent value="waves" className="mt-4">
                                 <WaveLoopSnapshot
+                                    key={`${data.id}-${data.version}`}
                                     waves={data.waves}
                                     adjustmentPlan={data.adjustmentPlan}
                                     analysisTarget={data.studyContract ? { target: data.studyContract.contract.target, inferred: data.studyContract.inferred } : null}
@@ -309,6 +315,7 @@ export function GradingDetail() {
                                             value={scores[key]}
                                             placeholder="0–100"
                                             disabled={!canGrade}
+                                            className="tabular-nums"
                                             onChange={(event) => {
                                                 setScores((current) => ({ ...current, [key]: event.target.value }));
                                                 setDraftChanged(true);
@@ -320,11 +327,11 @@ export function GradingDetail() {
                         </div>
                         <div>
                             <Label htmlFor="grading-comment">教师评语</Label>
-                            <Textarea id="grading-comment" rows={3} value={comment} disabled={!canGrade} onChange={(event) => { setComment(event.target.value); setDraftChanged(true); }} />
+                            <Textarea id="grading-comment" rows={3} maxLength={2000} value={comment} disabled={!canGrade} onChange={(event) => { setComment(event.target.value); setDraftChanged(true); }} />
                         </div>
                         <div className="space-y-2 rounded-surface bg-muted p-3">
                             {!scoresReady && <p className="text-meta text-muted-foreground" role="status">{scoreFieldMessage(scores)}</p>}
-                            <p>加权总分：<span className="text-page-title font-bold text-primary">{total === null ? "—" : total.toFixed(2)}</span></p>
+                            <p>加权总分：<span className="text-page-title font-bold tabular-nums text-primary">{total === null ? "—" : total.toFixed(2)}</span></p>
                             <div className="flex flex-wrap gap-2">
                                 {data.status === "submitted" && <Button variant="destructive" disabled={!canGrade || saving} onClick={() => setRejectOpen(true)}>驳回修改</Button>}
                                 {gradeConfirmOpen ? (
@@ -335,15 +342,33 @@ export function GradingDetail() {
                                                     ? "三项得分都是 0，加权总分为 0.00。确认记为 0 分吗？"
                                                     : `确认提交评分？加权总分为 ${total?.toFixed(2) ?? "—"}。`)}
                                         </p>
-                                        <Button variant="outline" disabled={saving} onClick={() => setGradeConfirmOpen(false)}>取消</Button>
-                                        <Button data-testid="teacher-grade-confirm" disabled={!canGrade || !scoresReady} onClick={() => void grade()}>确认提交</Button>
+                                        <Button
+                                            variant="outline"
+                                            disabled={saving}
+                                            onClick={() => {
+                                                setGradeConfirmOpen(false);
+                                                requestAnimationFrame(() => submitTriggerRef.current?.focus());
+                                            }}
+                                        >
+                                            取消
+                                        </Button>
+                                        <Button ref={confirmGradeRef} data-testid="teacher-grade-confirm" disabled={!canGrade || !scoresReady} onClick={() => void grade()}>确认提交</Button>
                                         {data.status === "submitted" && <>
                                             <Button variant="outline" data-testid="teacher-grade-next" disabled={!canGrade || !scoresReady} onClick={() => void grade(true)}>保存并批改下一份</Button>
                                             <p className="w-full text-meta text-muted-foreground">{new URLSearchParams(search).has("taskId") ? "仅继续批改当前任务及搜索范围内的待批改作业。" : "继续批改当前搜索范围内的待批改作业。"}</p>
                                         </>}
                                     </>
                                 ) : (
-                                    <Button disabled={!canGrade || saving || !scoresReady} onClick={() => setGradeConfirmOpen(true)}>{saving ? "保存中..." : data.status === "graded" ? "更新评分" : "提交评分"}</Button>
+                                    <Button
+                                        ref={submitTriggerRef}
+                                        disabled={!canGrade || saving || !scoresReady}
+                                        onClick={() => {
+                                            setGradeConfirmOpen(true);
+                                            requestAnimationFrame(() => confirmGradeRef.current?.focus());
+                                        }}
+                                    >
+                                        {saving ? "保存中..." : data.status === "graded" ? "更新评分" : "提交评分"}
+                                    </Button>
                                 )}
                             </div>
                         </div>
@@ -357,13 +382,16 @@ export function GradingDetail() {
                         <DialogTitle>驳回实验</DialogTitle>
                         <DialogDescription>说明需要修改的内容；学生重新提交后原评分和驳回状态会被清除。</DialogDescription>
                     </DialogHeader>
-                    <div>
+                    <div className="space-y-1.5">
                         <Label htmlFor="grading-reject-reason">请说明需要修改的内容</Label>
-                        <Textarea id="grading-reject-reason" rows={5} value={rejectReason} disabled={saving} onChange={(event) => { setRejectReason(event.target.value); setDraftChanged(true); }} />
+                        <Textarea id="grading-reject-reason" rows={5} maxLength={1000} value={rejectReason} disabled={saving} onChange={(event) => { setRejectReason(event.target.value); setDraftChanged(true); }} />
+                        <p className="text-meta tabular-nums text-muted-foreground" role="status">
+                            需填写 5–1000 字（当前 {rejectReason.trim().length} 字）
+                        </p>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" disabled={saving} onClick={() => setRejectOpen(false)}>取消</Button>
-                        <Button variant="destructive" disabled={!canGrade || rejectReason.trim().length < 5} onClick={() => void reject()}>{saving ? "正在驳回…" : "确认驳回"}</Button>
+                        <Button variant="destructive" disabled={!canGrade || rejectReason.trim().length < 5 || rejectReason.trim().length > 1000} onClick={() => void reject()}>{saving ? "正在驳回…" : "确认驳回"}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

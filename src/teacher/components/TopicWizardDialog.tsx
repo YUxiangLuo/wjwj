@@ -83,6 +83,35 @@ interface TopicWizardDialogProps {
     onSaveWeights: () => void;
 }
 
+function parseBoundedInput(input: HTMLInputElement, min: number, max: number, fallback: number, decimals?: number): number {
+    if (input.validity?.badInput) return fallback;
+    const raw = input.value.trim();
+    if (raw === "") return min;
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) return fallback;
+    const clamped = Math.min(max, Math.max(min, parsed));
+    return decimals !== undefined ? Number(clamped.toFixed(decimals)) : clamped;
+}
+
+function parseWeightInput(input: HTMLInputElement, fallback: number): number {
+    if (input.validity?.badInput) return fallback;
+    const raw = input.value.trim();
+    if (raw === "") return 0;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function sanitizeFieldworkStrata(
+    config: FieldworkSimulationConfig,
+    allowedStrata: readonly string[],
+): FieldworkSimulationConfig {
+    if (config.stratumField && !allowedStrata.includes(config.stratumField)) {
+        const { stratumField: _sf, stratumNonResponseRates: _sr, ...rest } = config;
+        return rest;
+    }
+    return config;
+}
+
 export function TopicWizardDialog(props: TopicWizardDialogProps) {
     const {
         open,
@@ -147,7 +176,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
     const editMode = (mode ?? (editingTopicId ? "edit" : "create")) === "edit";
     const busy = pending || uploadingExcel || uploadingAttachment || Boolean(csvReviewFile) || dictionaryState.busy;
     const stepValue = JSON.stringify(currentStep === 1 ? [newTopicName, newTopicDesc]
-        : currentStep === 3 ? fieldMapping : currentStep === 4 ? samplingPolicy
+        : currentStep === 3 ? fieldMapping : currentStep === 4 ? [samplingPolicy, fieldworkConfig]
         : currentStep === 6 ? recommendQuestions : currentStep === 7 ? weightConfig : null);
     const baseline = useRef<{ step: number; value: string } | null>(null);
     const formDirty = Boolean(open && !loadingDetail && baseline.current?.step === currentStep && baseline.current.value !== stepValue);
@@ -191,7 +220,10 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
             const saved = JSON.parse(baseline.current.value);
             if (currentStep === 1) { setNewTopicName(saved[0]); setNewTopicDesc(saved[1]); }
             if (currentStep === 3) setFieldMapping(saved);
-            if (currentStep === 4) setSamplingPolicy(saved);
+            if (currentStep === 4) {
+                setSamplingPolicy(saved[0]);
+                setFieldworkConfig?.(saved[1]);
+            }
             if (currentStep === 6) setRecommendQuestions(saved);
             if (currentStep === 7) setWeightConfig(saved);
         }
@@ -330,7 +362,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                 <DialogHeader>
                     <DialogTitle className="text-section-title text-foreground">{editMode ? "编辑实验模板" : "创建实验模板"}</DialogTitle>
                     <DialogDescription className="sr-only">
-                        通过七个步骤配置实验模板的基础信息、总体数据、研究目标、抽样策略、教学资料、推荐题目和评分规则。
+                        通过七个步骤配置实验模板的基础信息、总体数据、研究目标、抽样策略与虚拟投放参数、教学资料、推荐题目和评分规则。
                     </DialogDescription>
                 </DialogHeader>
                     <div data-testid="teacher-topic-step-navigation" className="flex shrink-0 items-center gap-2 border-b border-border pb-3 overflow-x-auto scrollbar-thin scrollbar-thumb-border">
@@ -376,7 +408,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                     <div className="min-w-0 flex-1" inert={busy} aria-busy={busy}>
                         {detailError && onRetryDetail && <RequestError message={detailError} onRetry={onRetryDetail} />}
                         {loadingDetail && !detailError && currentStep > 1 && (
-                            <div role="status" aria-live="polite" className="flex flex-col items-center justify-center py-20 text-muted-foreground animate-in fade-in duration-200">
+                            <div role="status" aria-live="polite" className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                                 <Loader2 aria-hidden="true" className="w-6 h-6 animate-spin mb-3" />
                                 <span className="text-label">加载中...</span>
                             </div>
@@ -386,10 +418,10 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 <details className="rounded-surface border border-info-border bg-info-muted p-3 text-info">
                                     <summary className="cursor-pointer text-label font-semibold">实验模板如何生成学生实验</summary>
                                     <div className="mt-3 grid grid-cols-4 gap-3 text-meta">
-                                        <div className="rounded-surface border border-info-border bg-card p-3 text-foreground"><FileText className="mb-2 h-4 w-4 text-info" /><strong className="block">1. 配置模板</strong><span className="mt-1 block text-muted-foreground">总体数据、研究目标、抽样方法、资料与评分规则</span></div>
-                                        <div className="rounded-surface border border-info-border bg-card p-3 text-foreground"><Play className="mb-2 h-4 w-4 text-info" /><strong className="block">2. 发布模板</strong><span className="mt-1 block text-muted-foreground">发布状态下锁定总体、研究目标与字段、变量字典、抽样策略及评分规则</span></div>
+                                        <div className="rounded-surface border border-info-border bg-card p-3 text-foreground"><FileText className="mb-2 h-4 w-4 text-info" /><strong className="block">1. 配置模板</strong><span className="mt-1 block text-muted-foreground">总体数据、研究合同、抽样与虚拟投放、资料及评分规则</span></div>
+                                        <div className="rounded-surface border border-info-border bg-card p-3 text-foreground"><Play className="mb-2 h-4 w-4 text-info" /><strong className="block">2. 发布模板</strong><span className="mt-1 block text-muted-foreground">发布状态下锁定总体、研究目标与字段、变量字典、抽样策略、虚拟投放配置及评分规则</span></div>
                                         <div className="rounded-surface border border-info-border bg-card p-3 text-foreground"><School className="mb-2 h-4 w-4 text-info" /><strong className="block">3. 分配任务</strong><span className="mt-1 block text-muted-foreground">选择班级与截止时间；存在已分配任务时，另锁定名称、描述、推荐题和教学资料</span></div>
-                                        <div className="rounded-surface border border-info-border bg-card p-3 text-foreground"><Users className="mb-2 h-4 w-4 text-info" /><strong className="block">4. 学生完成</strong><span className="mt-1 block text-muted-foreground">问卷预试、样本量规划、抽样与分析报告</span></div>
+                                        <div className="rounded-surface border border-info-border bg-card p-3 text-foreground"><Users className="mb-2 h-4 w-4 text-info" /><strong className="block">4. 学生完成</strong><span className="mt-1 block text-muted-foreground">商业问卷设计、首轮试投、质检诊断、二轮调优与决策报告</span></div>
                                     </div>
                                     <p className="mt-3 text-meta leading-relaxed">完成七步配置并发布模板后，再分配到班级。</p>
                                 </details>
@@ -718,7 +750,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     <p>字段配置尚未保存，请先保存，再核对变量字典。更改字段角色或对照变量会使已保存的字典失效，需要重新确认。</p>
                                     <Button data-testid="teacher-topic-save-mapping" variant="outline" disabled={busy || !canProceedMapping} onClick={() => void runAction(saveMappingForDictionary)}>保存字段配置并载入字典</Button>
                                 </div>}
-                                {mappingSavedNotice && !mappingNeedsSave && <p role="status" className="text-label text-info">字段配置已保存，请核对并保存下方变量字典。不需要单变量分析时，可直接继续。</p>}
+                                {mappingSavedNotice && !mappingNeedsSave && <p role="status" className="text-label text-info">字段配置已保存，请核对并保存下方变量字典。不需要题目变量绑定与自主分析时，可直接继续。</p>}
                                 {editingTopicId && <details ref={dictionaryDetailsRef} data-testid="teacher-variable-dictionary" className="rounded-surface border border-border bg-background p-4">
                                     <summary data-testid="teacher-variable-dictionary-toggle" className="cursor-pointer text-label font-medium text-foreground focus-visible:outline-2 focus-visible:outline-ring">
                                         变量字典（按需配置，单独保存）{dictionaryState.dirty ? " · 未保存" : ""}
@@ -730,7 +762,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         )}
 
                         {!loadingDetail && currentStep === 4 && (
-                            <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+                            <div className="space-y-5">
                                 <div className="rounded-surface border border-info-border bg-info-muted px-4 py-3 text-label text-info">
                                     简单随机抽样固定为必做。学生还需完成至少一种已启用的方法，并完成所有标记为“必做”的方法。
                                     {isPublishedTopic ? "该实验模板已发布，抽样策略不可修改，仅可查看当前配置。" : null}
@@ -801,12 +833,12 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 <Select
                                                     value={fieldworkConfig.preset}
                                                     disabled={isPublishedTopic}
-                                                    onValueChange={(val) => setFieldworkConfig((prev) => ({
+                                                    onValueChange={(val) => setFieldworkConfig((prev) => sanitizeFieldworkStrata({
                                                         ...prev,
                                                         preset: val as FieldworkPreset,
-                                                    }))}
+                                                    }, fieldMapping.stratified))}
                                                 >
-                                                    <SelectTrigger aria-label="选择市场响应预设场景" className="bg-card">
+                                                    <SelectTrigger aria-label="选择市场响应预设场景" data-testid="teacher-topic-fw-preset" className="bg-card">
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent>
@@ -821,15 +853,17 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 <Label htmlFor="fw-base-nrr" className="text-meta text-foreground">基准单元无回答率 (%)</Label>
                                                 <Input
                                                     id="fw-base-nrr"
+                                                    data-testid="teacher-topic-fw-nrr"
                                                     type="number"
                                                     min={0}
                                                     max={75}
+                                                    step={1}
                                                     disabled={isPublishedTopic}
                                                     value={Math.round(fieldworkConfig.baseUnitNonResponseRate * 100)}
-                                                    onChange={(e) => setFieldworkConfig((prev) => ({
+                                                    onChange={(e) => setFieldworkConfig((prev) => sanitizeFieldworkStrata({
                                                         ...prev,
-                                                        baseUnitNonResponseRate: Math.min(0.75, Math.max(0, Number(e.target.value) / 100)),
-                                                    }))}
+                                                        baseUnitNonResponseRate: parseBoundedInput(e.target, 0, 75, Math.round(prev.baseUnitNonResponseRate * 100), 0) / 100,
+                                                    }, fieldMapping.stratified))}
                                                     className="bg-card tabular-nums"
                                                 />
                                             </div>
@@ -837,15 +871,17 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 <Label htmlFor="fw-careless-rate" className="text-meta text-foreground">闪电卷基准比例 (%)</Label>
                                                 <Input
                                                     id="fw-careless-rate"
+                                                    data-testid="teacher-topic-fw-speeder"
                                                     type="number"
                                                     min={0}
                                                     max={35}
+                                                    step={1}
                                                     disabled={isPublishedTopic}
                                                     value={Math.round(fieldworkConfig.baseSpeederRate * 100)}
-                                                    onChange={(e) => setFieldworkConfig((prev) => ({
+                                                    onChange={(e) => setFieldworkConfig((prev) => sanitizeFieldworkStrata({
                                                         ...prev,
-                                                        baseSpeederRate: Math.min(0.35, Math.max(0, Number(e.target.value) / 100)),
-                                                    }))}
+                                                        baseSpeederRate: parseBoundedInput(e.target, 0, 35, Math.round(prev.baseSpeederRate * 100), 0) / 100,
+                                                    }, fieldMapping.stratified))}
                                                     className="bg-card tabular-nums"
                                                 />
                                             </div>
@@ -855,15 +891,17 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 <Label htmlFor="fw-straight-rate" className="text-meta text-foreground">直线作答卷基准比例 (%)</Label>
                                                 <Input
                                                     id="fw-straight-rate"
+                                                    data-testid="teacher-topic-fw-straightliner"
                                                     type="number"
                                                     min={0}
                                                     max={35}
+                                                    step={1}
                                                     disabled={isPublishedTopic}
                                                     value={Math.round(fieldworkConfig.baseStraightlinerRate * 100)}
-                                                    onChange={(e) => setFieldworkConfig((prev) => ({
+                                                    onChange={(e) => setFieldworkConfig((prev) => sanitizeFieldworkStrata({
                                                         ...prev,
-                                                        baseStraightlinerRate: Math.min(0.35, Math.max(0, Number(e.target.value) / 100)),
-                                                    }))}
+                                                        baseStraightlinerRate: parseBoundedInput(e.target, 0, 35, Math.round(prev.baseStraightlinerRate * 100), 0) / 100,
+                                                    }, fieldMapping.stratified))}
                                                     className="bg-card tabular-nums"
                                                 />
                                             </div>
@@ -871,14 +909,17 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 <Label htmlFor="fw-contact-cost" className="text-meta text-foreground">单份触达发放成本 (元)</Label>
                                                 <Input
                                                     id="fw-contact-cost"
+                                                    data-testid="teacher-topic-fw-contact-cost"
                                                     type="number"
                                                     min={0}
+                                                    max={10000}
+                                                    step="any"
                                                     disabled={isPublishedTopic}
                                                     value={fieldworkConfig.contactCostPerUnit}
-                                                    onChange={(e) => setFieldworkConfig((prev) => ({
+                                                    onChange={(e) => setFieldworkConfig((prev) => sanitizeFieldworkStrata({
                                                         ...prev,
-                                                        contactCostPerUnit: Math.max(0, Number(e.target.value) || 0),
-                                                    }))}
+                                                        contactCostPerUnit: parseBoundedInput(e.target, 0, 10_000, prev.contactCostPerUnit, 2),
+                                                    }, fieldMapping.stratified))}
                                                     className="bg-card tabular-nums"
                                                 />
                                             </div>
@@ -886,14 +927,17 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 <Label htmlFor="fw-incentive-cost" className="text-meta text-foreground">单份完答礼金成本 (元)</Label>
                                                 <Input
                                                     id="fw-incentive-cost"
+                                                    data-testid="teacher-topic-fw-incentive-cost"
                                                     type="number"
                                                     min={0}
+                                                    max={50000}
+                                                    step="any"
                                                     disabled={isPublishedTopic}
                                                     value={fieldworkConfig.incentiveCostPerComplete}
-                                                    onChange={(e) => setFieldworkConfig((prev) => ({
+                                                    onChange={(e) => setFieldworkConfig((prev) => sanitizeFieldworkStrata({
                                                         ...prev,
-                                                        incentiveCostPerComplete: Math.max(0, Number(e.target.value) || 0),
-                                                    }))}
+                                                        incentiveCostPerComplete: parseBoundedInput(e.target, 0, 50_000, prev.incentiveCostPerComplete, 2),
+                                                    }, fieldMapping.stratified))}
                                                     className="bg-card tabular-nums"
                                                 />
                                             </div>
@@ -1022,6 +1066,15 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                                     : ""}
                                                             </p>
                                                         )}
+                                                        {q.type === "numeric" && (q.unit || q.numericMin !== undefined || q.numericMax !== undefined) && (
+                                                            <p className="text-meta tabular-nums text-muted-foreground mt-1">
+                                                                数值设置：
+                                                                {q.unit ? `单位「${q.unit}」` : "无单位"}
+                                                                {(q.numericMin !== undefined || q.numericMax !== undefined)
+                                                                    ? ` · 量程 ${q.numericMin ?? "-∞"} ～ ${q.numericMax ?? "+∞"}`
+                                                                    : ""}
+                                                            </p>
+                                                        )}
                                                     </div>
 
                                                     <div className="flex items-center gap-1 shrink-0">
@@ -1080,8 +1133,11 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 max={100}
                                                 disabled={isPublishedTopic}
                                                 value={weightConfig.questionnaire}
-                                                onChange={(e) => setWeightConfig(prev => ({ ...prev, questionnaire: Number(e.target.value) }))}
-                                                className="bg-card border-input text-foreground text-page-title font-bold h-16 text-center"
+                                                onChange={(e) => setWeightConfig(prev => ({
+                                                    ...prev,
+                                                    questionnaire: parseWeightInput(e.target, prev.questionnaire),
+                                                }))}
+                                                className="bg-card border-input text-foreground text-page-title font-bold tabular-nums h-16 text-center"
                                             />
                                             <span className="text-muted-foreground font-bold text-section-title">%</span>
                                         </div>
@@ -1097,8 +1153,11 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 max={100}
                                                 disabled={isPublishedTopic}
                                                 value={weightConfig.process}
-                                                onChange={(e) => setWeightConfig(prev => ({ ...prev, process: Number(e.target.value) }))}
-                                                className="bg-card border-input text-foreground text-page-title font-bold h-16 text-center"
+                                                onChange={(e) => setWeightConfig(prev => ({
+                                                    ...prev,
+                                                    process: parseWeightInput(e.target, prev.process),
+                                                }))}
+                                                className="bg-card border-input text-foreground text-page-title font-bold tabular-nums h-16 text-center"
                                             />
                                             <span className="text-muted-foreground font-bold text-section-title">%</span>
                                         </div>
@@ -1114,8 +1173,11 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 max={100}
                                                 disabled={isPublishedTopic}
                                                 value={weightConfig.report}
-                                                onChange={(e) => setWeightConfig(prev => ({ ...prev, report: Number(e.target.value) }))}
-                                                className="bg-card border-input text-foreground text-page-title font-bold h-16 text-center"
+                                                onChange={(e) => setWeightConfig(prev => ({
+                                                    ...prev,
+                                                    report: parseWeightInput(e.target, prev.report),
+                                                }))}
+                                                className="bg-card border-input text-foreground text-page-title font-bold tabular-nums h-16 text-center"
                                             />
                                             <span className="text-muted-foreground font-bold text-section-title">%</span>
                                         </div>
@@ -1123,7 +1185,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 </div>
                                 <div className="bg-background p-4 rounded-surface flex justify-between items-center border border-border">
                                     <span className="text-muted-foreground">当前总权重</span>
-                                    <span className={`text-page-title font-bold ${(weightConfig.questionnaire + weightConfig.process + weightConfig.report) === 100 ? "text-success" : "text-destructive"}`}>
+                                    <span className={`text-page-title font-bold tabular-nums ${(weightConfig.questionnaire + weightConfig.process + weightConfig.report) === 100 ? "text-success" : "text-destructive"}`}>
                                         {weightConfig.questionnaire + weightConfig.process + weightConfig.report}%
                                     </span>
                                 </div>

@@ -228,7 +228,7 @@ export function AuthLoginScreen({
                                         <a
                                             key={link.href}
                                             href={link.href}
-                                            className="inline-flex h-10 items-center justify-center rounded-control border border-border bg-secondary text-label font-medium text-secondary-foreground transition-none hover:border-primary-border hover:bg-primary-muted hover:text-primary"
+                                            className="inline-flex h-10 items-center justify-center rounded-control border border-border bg-secondary text-label font-medium text-secondary-foreground outline-none transition-none hover:border-primary-border hover:bg-primary-muted hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                         >
                                             {link.label}
                                         </a>
