@@ -128,12 +128,26 @@ export function ClassManagement() {
                                 ))}
                                 {filteredClasses.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center py-16 text-muted-foreground">
+                                        <TableCell colSpan={5} className="text-center py-16 text-muted-foreground whitespace-normal">
                                             <div className="flex flex-col items-center gap-2">
                                                 <div className="w-12 h-12 rounded-control bg-card border border-border flex items-center justify-center">
                                                     <Search className="w-5 h-5 text-muted-foreground" />
                                                 </div>
                                                 <p>暂无符合条件的数据</p>
+                                                {(searchTerm || semesterFilter !== "all") && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="mt-1"
+                                                        onClick={() => {
+                                                            setSearchTerm("");
+                                                            setSemesterFilter("all");
+                                                        }}
+                                                    >
+                                                        清空筛选条件
+                                                    </Button>
+                                                )}
                                             </div>
                                         </TableCell>
                                     </TableRow>

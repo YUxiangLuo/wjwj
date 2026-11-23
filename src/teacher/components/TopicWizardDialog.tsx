@@ -9,15 +9,17 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import type { TopicDetail, Question } from "../api-client";
 import { teacherApi } from "../api-client";
 import { QuestionEditor } from "@/components/questionnaire/QuestionEditor";
 import { questionTypeLabels, questionTypeBadgeColors } from "@/lib/questionnaire-labels";
+import { QUESTION_SECTION_LABELS } from "@/lib/questionnaire-templates";
 import type { QuestionType } from "@/lib/questionnaire-types";
 
 import { categoricalFieldsFromMapping, parseStudyContract } from "@/lib/analysis-target";
-import { isStudyContractComplete, StudyContractEditor, type FieldMappingState } from "./StudyContractEditor";
+import { getStudyContractMissingItems, isStudyContractComplete, StudyContractEditor, type FieldMappingState } from "./StudyContractEditor";
 import { VariableDictionaryEditor } from "./VariableDictionaryEditor";
 import {
     filterPpsEligibleFields,
@@ -99,6 +101,82 @@ function parseWeightInput(input: HTMLInputElement, fallback: number): number {
     if (raw === "") return 0;
     const parsed = Number(raw);
     return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+const FIELDWORK_PRESET_META: Record<FieldworkPreset, {
+    label: string;
+    baseUnitNonResponseRate: number;
+    baseSpeederRate: number;
+    baseStraightlinerRate: number;
+    baseItemSkipRate: number;
+    waveSummary: string;
+}> = {
+    balanced: {
+        label: "常规均衡实地回收",
+        baseUnitNonResponseRate: 0.16,
+        baseSpeederRate: 0.06,
+        baseStraightlinerRate: 0.05,
+        baseItemSkipRate: 0.02,
+        waveSummary: "首轮试投（Wave 1）呈现均衡触达损耗（基准无回答率 16%）与少量敷衍卷；学生可在正式轮（Wave 2）代入实测回收率与样本方差校准发放规模。",
+    },
+    stratum_differential: {
+        label: "细分客群差异化拒访",
+        baseUnitNonResponseRate: 0.22,
+        baseSpeederRate: 0.06,
+        baseStraightlinerRate: 0.05,
+        baseItemSkipRate: 0.02,
+        waveSummary: "不同细分客群存在显著拒访率梯度。首轮试投若仅用简单随机抽样，样本将向高响应客群偏移（无回答偏倚）；引导学生在正式轮升级为分层抽样或启用事后分层权重校准。",
+    },
+    high_burden_sensitive: {
+        label: "问卷题量负担高敏感",
+        baseUnitNonResponseRate: 0.20,
+        baseSpeederRate: 0.12,
+        baseStraightlinerRate: 0.10,
+        baseItemSkipRate: 0.04,
+        waveSummary: "中途弃答概率按 1.35 倍放大，且冗长问卷更易诱发闪电敷衍卷（12%）与直线作答卷（10%）。引导学生在首轮质检清洗废卷后，于正式轮精简问卷结构并优化数值量程。",
+    },
+    peak_congestion: {
+        label: "高峰拥堵漏接场景",
+        baseUnitNonResponseRate: 0.28,
+        baseSpeederRate: 0.07,
+        baseStraightlinerRate: 0.05,
+        baseItemSkipRate: 0.03,
+        waveSummary: "实地触达额外叠加 +4% 高峰拥堵漏接损耗（基准无回答率 28%），拒访与失联比例偏高。引导学生在首轮识别有效样本缺口后，于正式轮上调无回答膨胀系数重算样本量。",
+    },
+};
+
+function resolveStratumCategories(
+    stratumField: string | undefined,
+    excelInfo: TopicWizardDialogProps["excelInfo"],
+    existingRates?: Record<string, number>,
+): string[] {
+    if (!stratumField) return [];
+    const seen = new Set<string>();
+    const list: string[] = [];
+    const push = (raw: unknown) => {
+        const normalized = String(raw ?? "").trim().normalize("NFKC");
+        if (normalized && !seen.has(normalized)) {
+            seen.add(normalized);
+            list.push(normalized);
+        }
+    };
+    for (const val of excelInfo?.columnValues?.[stratumField] ?? []) push(val);
+    if (list.length === 0) {
+        for (const row of excelInfo?.preview ?? []) push(row?.[stratumField]);
+    }
+    for (const key of Object.keys(existingRates ?? {})) push(key);
+    return list.slice(0, 20);
+}
+
+function buildDefaultStratumRates(categories: readonly string[]): Record<string, number> {
+    if (categories.length === 0) return {};
+    if (categories.length === 1) return { [categories[0]!]: 0.22 };
+    const low = 0.08;
+    const high = 0.38;
+    return Object.fromEntries(categories.map((cat, idx) => {
+        const rate = low + ((high - low) * idx) / (categories.length - 1);
+        return [cat, Number(rate.toFixed(2))];
+    }));
 }
 
 function sanitizeFieldworkStrata(
@@ -216,7 +294,10 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
         }
     }
     useEffect(() => {
-        if (mappingSavedNotice && dictionaryDetailsRef.current) dictionaryDetailsRef.current.open = true;
+        if (mappingSavedNotice && !loadingDetail && dictionaryDetailsRef.current) {
+            dictionaryDetailsRef.current.open = true;
+            dictionaryDetailsRef.current.scrollIntoView?.({ block: "nearest", behavior: "instant" });
+        }
     }, [mappingSavedNotice, loadingDetail]);
     useEffect(() => { setMappingSavedNotice(false); }, [open, editingTopicId, currentStep]);
     useEffect(() => { if (mappingNeedsSave) setMappingSavedNotice(false); }, [mappingNeedsSave]);
@@ -304,6 +385,101 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
         }));
     }
 
+    function applyFieldworkPreset(nextPreset: FieldworkPreset) {
+        if (!setFieldworkConfig) return;
+        if (nextPreset === "stratum_differential" && fieldMapping.stratified.length === 0) return;
+        const meta = FIELDWORK_PRESET_META[nextPreset];
+        setFieldworkConfig((prev) => {
+            if (nextPreset === "stratum_differential") {
+                const chosenField = prev.stratumField && fieldMapping.stratified.includes(prev.stratumField)
+                    ? prev.stratumField
+                    : fieldMapping.stratified[0]!;
+                const categories = resolveStratumCategories(chosenField, excelInfo, prev.stratumNonResponseRates);
+                const rates = buildDefaultStratumRates(categories);
+                return sanitizeFieldworkStrata({
+                    ...prev,
+                    preset: nextPreset,
+                    baseUnitNonResponseRate: meta.baseUnitNonResponseRate,
+                    baseSpeederRate: meta.baseSpeederRate,
+                    baseStraightlinerRate: meta.baseStraightlinerRate,
+                    baseItemSkipRate: meta.baseItemSkipRate,
+                    stratumField: chosenField,
+                    ...(Object.keys(rates).length > 0 ? { stratumNonResponseRates: rates } : {}),
+                }, fieldMapping.stratified);
+            }
+            const { stratumField: _sf, stratumNonResponseRates: _sr, ...rest } = prev;
+            return sanitizeFieldworkStrata({
+                ...rest,
+                preset: nextPreset,
+                baseUnitNonResponseRate: meta.baseUnitNonResponseRate,
+                baseSpeederRate: meta.baseSpeederRate,
+                baseStraightlinerRate: meta.baseStraightlinerRate,
+                baseItemSkipRate: meta.baseItemSkipRate,
+            }, fieldMapping.stratified);
+        });
+    }
+
+    function handleGenerateRecommendQuestions() {
+        const target = fieldMapping.studyContract?.target ?? fieldMapping.analysisTarget;
+        const generated: Question[] = [];
+        const usedFields = new Set<string>();
+        const pushQuestionForField = (field: string, role: "target" | "numeric" | "stratified" | "others") => {
+            if (!field || usedFields.has(field)) return;
+            if (recommendQuestions.some((q) => q.content.includes(field))) return;
+            usedFields.add(field);
+            const id = `q_tpl_${Date.now()}_${generated.length}`;
+            if (role === "numeric" || (role === "target" && target?.kind === "mean")) {
+                generated.push({
+                    id,
+                    type: "numeric",
+                    section: role === "target" ? "main" : "main",
+                    content: `请如实填写您的「${field}」数值：`,
+                    decimalPlaces: 1,
+                    numericMin: 0,
+                });
+                return;
+            }
+            const cats = resolveStratumCategories(field, excelInfo).slice(0, 10);
+            const normalizedPair = cats.length === 2 && cats.includes("是") && cats.includes("否");
+            if (normalizedPair) {
+                generated.push({
+                    id,
+                    type: "boolean",
+                    section: role === "stratified" ? "background" : "main",
+                    content: `请问您的「${field}」情况是否为“是”？`,
+                });
+            } else if (cats.length >= 2) {
+                generated.push({
+                    id,
+                    type: "single",
+                    section: role === "stratified" ? "background" : "main",
+                    content: `请问您的「${field}」属于以下哪一类别？`,
+                    options: cats,
+                });
+            } else {
+                generated.push({
+                    id,
+                    type: "scale",
+                    section: "main",
+                    content: `请对「${field}」进行综合评分（1—5 分）：`,
+                    scaleMin: 1,
+                    scaleMax: 5,
+                    scaleMinLabel: "非常低",
+                    scaleMaxLabel: "非常高",
+                });
+            }
+        };
+        if (target?.field) pushQuestionForField(target.field, "target");
+        for (const f of fieldMapping.numeric) pushQuestionForField(f, "numeric");
+        for (const f of fieldMapping.stratified) pushQuestionForField(f, "stratified");
+        for (const f of fieldMapping.others) pushQuestionForField(f, "others");
+
+        const remainingSlots = Math.max(0, 30 - recommendQuestions.length);
+        const toAppend = generated.slice(0, remainingSlots);
+        if (toAppend.length === 0) return;
+        setRecommendQuestions((prev) => [...prev, ...toAppend]);
+    }
+
     const analysisTarget = fieldMapping.analysisTarget;
     const mappingRules = [
         { ok: Boolean(fieldMapping.identifier), text: "已选择 1 个标识符" },
@@ -372,7 +548,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         通过七个步骤配置实验模板的基础信息、总体数据、研究目标、抽样策略与虚拟投放参数、教学资料、推荐题目和评分规则。
                     </DialogDescription>
                 </DialogHeader>
-                    <div data-testid="teacher-topic-step-navigation" className="flex shrink-0 items-center gap-2 border-b border-border pb-3 overflow-x-auto scrollbar-thin scrollbar-thumb-border">
+                    <div data-testid="teacher-topic-step-navigation" className="flex shrink-0 items-center justify-between gap-1 border-b border-border pb-3 overflow-x-auto scrollbar-thin scrollbar-thumb-border">
                         {["基本信息", "总体数据", "研究目标与字段", "抽样策略", "教学资料", "推荐题目", "评分规则"].map((step, idx) => {
                             const isCompleted = !editMode && idx + 1 < currentStep;
                             const isCurrent = idx + 1 === currentStep;
@@ -392,7 +568,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     >
                                         {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5" /> : idx + 1}
                                     </span>
-                                    <span className={`text-meta ml-2 ${isCurrent ? "text-primary font-medium" : isCompleted ? "text-success" : "text-muted-foreground"}`}>{step}</span>
+                                    <span className={`text-meta ml-1.5 whitespace-nowrap ${isCurrent ? "text-primary font-medium" : isCompleted ? "text-success" : "text-muted-foreground"}`}>{step}</span>
                             </>;
                             return (
                                 <div key={step} className="flex items-center shrink-0">
@@ -405,7 +581,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         onClick={() => goToStep(idx + 1)}
                                         className="flex min-h-10 items-center rounded-control px-1 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed"
                                     >{indicator}</button> : <div className="flex items-center">{indicator}</div>}
-                                    {idx < 6 && <ChevronRight className="w-3 h-3 mx-2 text-muted-foreground" />}
+                                    {idx < 6 && <ChevronRight className="w-3 h-3 mx-1 text-muted-foreground shrink-0" />}
                                 </div>
                             );
                         })}
@@ -826,131 +1002,281 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 </div>
                                 {samplingPolicyError && <p className="rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3 text-label text-destructive">{samplingPolicyError}</p>}
 
-                                {setFieldworkConfig && (
-                                    <div className="space-y-4 rounded-surface border border-border bg-background p-4" data-testid="teacher-topic-fieldwork-config">
-                                        <div>
-                                            <h3 className="text-subheading font-semibold text-foreground">虚拟问卷投放环境与参考经费参数</h3>
-                                            <p className="mt-1 text-meta text-muted-foreground">
-                                                控制学生执行首轮试投及正式轮发放时的无回答率、敷衍废卷比例及单份参考成本（仅作教学成本效益参考，不阻断操作）。
-                                            </p>
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-4">
-                                            <div className="space-y-1.5">
-                                                <Label className="text-meta text-foreground">市场响应预设场景</Label>
-                                                <Select
-                                                    value={fieldworkConfig.preset}
-                                                    disabled={isPublishedTopic}
-                                                    onValueChange={(val) => setFieldworkConfig((prev) => sanitizeFieldworkStrata({
-                                                        ...prev,
-                                                        preset: val as FieldworkPreset,
-                                                    }, fieldMapping.stratified))}
+                                {setFieldworkConfig && (() => {
+                                    const activeStratumField = fieldworkConfig.stratumField && fieldMapping.stratified.includes(fieldworkConfig.stratumField)
+                                        ? fieldworkConfig.stratumField
+                                        : fieldMapping.stratified[0];
+                                    const stratumCategories = fieldworkConfig.preset === "stratum_differential"
+                                        ? resolveStratumCategories(activeStratumField, excelInfo, fieldworkConfig.stratumNonResponseRates)
+                                        : [];
+                                    const presetMeta = FIELDWORK_PRESET_META[fieldworkConfig.preset] ?? FIELDWORK_PRESET_META.balanced;
+                                    return (
+                                        <div className="space-y-4 rounded-surface border border-border bg-background p-4" data-testid="teacher-topic-fieldwork-config">
+                                            <div>
+                                                <h3 className="text-subheading font-semibold text-foreground">虚拟问卷投放环境与参考经费参数</h3>
+                                                <p className="mt-1 text-meta text-muted-foreground">
+                                                    控制学生执行首轮试投及正式轮发放时的无回答率、敷衍废卷比例及单份参考成本（仅作教学成本效益参考，不阻断操作）。
+                                                </p>
+                                            </div>
+                                            <div
+                                                data-testid="teacher-topic-fw-preset-summary"
+                                                className="rounded-control border border-info-border bg-info-muted px-3.5 py-2.5 text-meta text-info"
+                                            >
+                                                <span className="font-semibold">多波次教学效果（{presetMeta.label}）：</span>
+                                                {presetMeta.waveSummary}
+                                            </div>
+                                            {fieldMapping.stratified.length === 0 && (
+                                                <p
+                                                    data-testid="teacher-topic-fw-no-strata-hint"
+                                                    className="rounded-control border border-border bg-card px-3.5 py-2 text-meta text-muted-foreground"
                                                 >
-                                                    <SelectTrigger aria-label="选择市场响应预设场景" data-testid="teacher-topic-fw-preset" className="bg-card">
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="balanced">常规均衡实地回收</SelectItem>
-                                                        <SelectItem value="stratum_differential">细分客群差异化拒访</SelectItem>
-                                                        <SelectItem value="high_burden_sensitive">问卷题量负担高敏感</SelectItem>
-                                                        <SelectItem value="peak_congestion">高峰拥堵漏接场景</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
+                                                    当前研究未映射分层变量，「细分客群差异化拒访」预设不可选；如需模拟不同客群的拒访率差异，请返回第 3 步勾选分层变量。
+                                                </p>
+                                            )}
+                                            <div className="grid grid-cols-4 gap-4">
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-meta text-foreground">市场响应预设场景</Label>
+                                                    <Select
+                                                        value={fieldworkConfig.preset}
+                                                        disabled={isPublishedTopic}
+                                                        onValueChange={(val) => applyFieldworkPreset(val as FieldworkPreset)}
+                                                    >
+                                                        <SelectTrigger aria-label="选择市场响应预设场景" data-testid="teacher-topic-fw-preset" className="bg-card">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="balanced">常规均衡实地回收</SelectItem>
+                                                            <SelectItem value="stratum_differential" disabled={fieldMapping.stratified.length === 0}>
+                                                                细分客群差异化拒访
+                                                            </SelectItem>
+                                                            <SelectItem value="high_burden_sensitive">问卷题量负担高敏感</SelectItem>
+                                                            <SelectItem value="peak_congestion">高峰拥堵漏接场景</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <Label htmlFor="fw-base-nrr" className="text-meta text-foreground">基准单元无回答率 (%)</Label>
+                                                    <Input
+                                                        id="fw-base-nrr"
+                                                        data-testid="teacher-topic-fw-nrr"
+                                                        type="number"
+                                                        min={0}
+                                                        max={75}
+                                                        step={1}
+                                                        disabled={isPublishedTopic}
+                                                        value={Math.round(fieldworkConfig.baseUnitNonResponseRate * 100)}
+                                                        onChange={(e) => setFieldworkConfig((prev) => sanitizeFieldworkStrata({
+                                                            ...prev,
+                                                            baseUnitNonResponseRate: parseBoundedInput(e.target, 0, 75, Math.round(prev.baseUnitNonResponseRate * 100), 0) / 100,
+                                                        }, fieldMapping.stratified))}
+                                                        className="bg-card tabular-nums"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <Label htmlFor="fw-careless-rate" className="text-meta text-foreground">闪电卷基准比例 (%)</Label>
+                                                    <Input
+                                                        id="fw-careless-rate"
+                                                        data-testid="teacher-topic-fw-speeder"
+                                                        type="number"
+                                                        min={0}
+                                                        max={35}
+                                                        step={1}
+                                                        disabled={isPublishedTopic}
+                                                        value={Math.round(fieldworkConfig.baseSpeederRate * 100)}
+                                                        onChange={(e) => setFieldworkConfig((prev) => sanitizeFieldworkStrata({
+                                                            ...prev,
+                                                            baseSpeederRate: parseBoundedInput(e.target, 0, 35, Math.round(prev.baseSpeederRate * 100), 0) / 100,
+                                                        }, fieldMapping.stratified))}
+                                                        className="bg-card tabular-nums"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <Label htmlFor="fw-straight-rate" className="text-meta text-foreground">直线作答卷基准比例 (%)</Label>
+                                                    <Input
+                                                        id="fw-straight-rate"
+                                                        data-testid="teacher-topic-fw-straightliner"
+                                                        type="number"
+                                                        min={0}
+                                                        max={35}
+                                                        step={1}
+                                                        disabled={isPublishedTopic}
+                                                        value={Math.round(fieldworkConfig.baseStraightlinerRate * 100)}
+                                                        onChange={(e) => setFieldworkConfig((prev) => sanitizeFieldworkStrata({
+                                                            ...prev,
+                                                            baseStraightlinerRate: parseBoundedInput(e.target, 0, 35, Math.round(prev.baseStraightlinerRate * 100), 0) / 100,
+                                                        }, fieldMapping.stratified))}
+                                                        className="bg-card tabular-nums"
+                                                    />
+                                                </div>
                                             </div>
-                                            <div className="space-y-1.5">
-                                                <Label htmlFor="fw-base-nrr" className="text-meta text-foreground">基准单元无回答率 (%)</Label>
-                                                <Input
-                                                    id="fw-base-nrr"
-                                                    data-testid="teacher-topic-fw-nrr"
-                                                    type="number"
-                                                    min={0}
-                                                    max={75}
-                                                    step={1}
-                                                    disabled={isPublishedTopic}
-                                                    value={Math.round(fieldworkConfig.baseUnitNonResponseRate * 100)}
-                                                    onChange={(e) => setFieldworkConfig((prev) => sanitizeFieldworkStrata({
-                                                        ...prev,
-                                                        baseUnitNonResponseRate: parseBoundedInput(e.target, 0, 75, Math.round(prev.baseUnitNonResponseRate * 100), 0) / 100,
-                                                    }, fieldMapping.stratified))}
-                                                    className="bg-card tabular-nums"
-                                                />
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div className="space-y-1.5">
+                                                    <Label htmlFor="fw-item-skip-rate" className="text-meta text-foreground">普通题项随机漏答率 (%)</Label>
+                                                    <Input
+                                                        id="fw-item-skip-rate"
+                                                        data-testid="teacher-topic-fw-skip-rate"
+                                                        type="number"
+                                                        min={0}
+                                                        max={25}
+                                                        step={1}
+                                                        disabled={isPublishedTopic}
+                                                        value={Math.round(fieldworkConfig.baseItemSkipRate * 100)}
+                                                        onChange={(e) => setFieldworkConfig((prev) => sanitizeFieldworkStrata({
+                                                            ...prev,
+                                                            baseItemSkipRate: parseBoundedInput(e.target, 0, 25, Math.round(prev.baseItemSkipRate * 100), 0) / 100,
+                                                        }, fieldMapping.stratified))}
+                                                        className="bg-card tabular-nums"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <Label htmlFor="fw-contact-cost" className="text-meta text-foreground">单份触达发放成本 (元)</Label>
+                                                    <Input
+                                                        id="fw-contact-cost"
+                                                        data-testid="teacher-topic-fw-contact-cost"
+                                                        type="number"
+                                                        min={0}
+                                                        max={10000}
+                                                        step="any"
+                                                        disabled={isPublishedTopic}
+                                                        value={fieldworkConfig.contactCostPerUnit}
+                                                        onChange={(e) => setFieldworkConfig((prev) => sanitizeFieldworkStrata({
+                                                            ...prev,
+                                                            contactCostPerUnit: parseBoundedInput(e.target, 0, 10_000, prev.contactCostPerUnit, 2),
+                                                        }, fieldMapping.stratified))}
+                                                        className="bg-card tabular-nums"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <Label htmlFor="fw-incentive-cost" className="text-meta text-foreground">单份完答礼金成本 (元)</Label>
+                                                    <Input
+                                                        id="fw-incentive-cost"
+                                                        data-testid="teacher-topic-fw-incentive-cost"
+                                                        type="number"
+                                                        min={0}
+                                                        max={50000}
+                                                        step="any"
+                                                        disabled={isPublishedTopic}
+                                                        value={fieldworkConfig.incentiveCostPerComplete}
+                                                        onChange={(e) => setFieldworkConfig((prev) => sanitizeFieldworkStrata({
+                                                            ...prev,
+                                                            incentiveCostPerComplete: parseBoundedInput(e.target, 0, 50_000, prev.incentiveCostPerComplete, 2),
+                                                        }, fieldMapping.stratified))}
+                                                        className="bg-card tabular-nums"
+                                                    />
+                                                </div>
                                             </div>
-                                            <div className="space-y-1.5">
-                                                <Label htmlFor="fw-careless-rate" className="text-meta text-foreground">闪电卷基准比例 (%)</Label>
-                                                <Input
-                                                    id="fw-careless-rate"
-                                                    data-testid="teacher-topic-fw-speeder"
-                                                    type="number"
-                                                    min={0}
-                                                    max={35}
-                                                    step={1}
-                                                    disabled={isPublishedTopic}
-                                                    value={Math.round(fieldworkConfig.baseSpeederRate * 100)}
-                                                    onChange={(e) => setFieldworkConfig((prev) => sanitizeFieldworkStrata({
-                                                        ...prev,
-                                                        baseSpeederRate: parseBoundedInput(e.target, 0, 35, Math.round(prev.baseSpeederRate * 100), 0) / 100,
-                                                    }, fieldMapping.stratified))}
-                                                    className="bg-card tabular-nums"
-                                                />
-                                            </div>
+                                            {fieldworkConfig.preset === "stratum_differential" && fieldMapping.stratified.length > 0 && activeStratumField && (
+                                                <div
+                                                    data-testid="teacher-topic-fw-strata-panel"
+                                                    className="space-y-3 rounded-surface border border-primary-border bg-card p-4"
+                                                >
+                                                    <div className="flex flex-wrap items-center justify-between gap-3">
+                                                        <div>
+                                                            <div className="text-label font-semibold text-foreground">细分客群差异化无回答率配置</div>
+                                                            <p className="mt-0.5 text-meta text-muted-foreground">
+                                                                分别设定各客群层的单元拒访/失联率（0%–85%），未单独指定的类别回退至基准单元无回答率。
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <Select
+                                                                value={activeStratumField}
+                                                                disabled={isPublishedTopic}
+                                                                onValueChange={(nextField) => setFieldworkConfig((prev) => {
+                                                                    const nextCats = resolveStratumCategories(nextField, excelInfo);
+                                                                    return sanitizeFieldworkStrata({
+                                                                        ...prev,
+                                                                        stratumField: nextField,
+                                                                        stratumNonResponseRates: buildDefaultStratumRates(nextCats),
+                                                                    }, fieldMapping.stratified);
+                                                                })}
+                                                            >
+                                                                <SelectTrigger aria-label="选择差异化应答分层字段" data-testid="teacher-topic-fw-stratum-field" className="w-44 bg-background">
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    {fieldMapping.stratified.map((field) => (
+                                                                        <SelectItem key={field} value={field}>{field}</SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                            {!isPublishedTopic && stratumCategories.length > 1 && (
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => setFieldworkConfig((prev) => ({
+                                                                        ...prev,
+                                                                        stratumField: activeStratumField,
+                                                                        stratumNonResponseRates: buildDefaultStratumRates(stratumCategories),
+                                                                    }))}
+                                                                >
+                                                                    按梯度生成
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    {stratumCategories.length > 0 ? (
+                                                        <div className="space-y-2.5 pt-1">
+                                                            {stratumCategories.map((cat) => {
+                                                                const rate = fieldworkConfig.stratumNonResponseRates?.[cat] ?? fieldworkConfig.baseUnitNonResponseRate;
+                                                                const pct = Math.round(rate * 100);
+                                                                const updateStratumPct = (nextPct: number) => {
+                                                                    const clampedPct = Math.min(85, Math.max(0, Math.round(nextPct)));
+                                                                    setFieldworkConfig((prev) => {
+                                                                        const baseRates = Object.fromEntries(
+                                                                            stratumCategories.map((c) => [c, prev.stratumNonResponseRates?.[c] ?? prev.baseUnitNonResponseRate]),
+                                                                        );
+                                                                        return {
+                                                                            ...prev,
+                                                                            stratumField: activeStratumField,
+                                                                            stratumNonResponseRates: {
+                                                                                ...baseRates,
+                                                                                [cat]: Number((clampedPct / 100).toFixed(2)),
+                                                                            },
+                                                                        };
+                                                                    });
+                                                                };
+                                                                return (
+                                                                    <div key={cat} className="grid grid-cols-[9rem_1fr_5.5rem] items-center gap-3 rounded-control border border-border bg-background px-3 py-2">
+                                                                        <span className="truncate text-label font-medium text-foreground" title={cat}>{cat}</span>
+                                                                        <Slider
+                                                                            aria-label={`${cat} 单元无回答率滑块`}
+                                                                            min={0}
+                                                                            max={85}
+                                                                            step={1}
+                                                                            disabled={isPublishedTopic}
+                                                                            value={[pct]}
+                                                                            onValueChange={(vals) => { if (vals[0] !== undefined) updateStratumPct(vals[0]); }}
+                                                                        />
+                                                                        <div className="flex items-center gap-1">
+                                                                            <Input
+                                                                                aria-label={`${cat} 单元无回答率百分比`}
+                                                                                data-testid={`teacher-topic-fw-stratum-rate-${cat}`}
+                                                                                type="number"
+                                                                                min={0}
+                                                                                max={85}
+                                                                                step={1}
+                                                                                disabled={isPublishedTopic}
+                                                                                value={pct}
+                                                                                onChange={(e) => updateStratumPct(parseBoundedInput(e.target, 0, 85, pct, 0))}
+                                                                                className="h-8 bg-card px-2 text-right tabular-nums"
+                                                                            />
+                                                                            <span className="text-meta text-muted-foreground">%</span>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-meta text-muted-foreground">
+                                                            当前分层字段「{activeStratumField}」暂无预览类别值，将使用基准单元无回答率。
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
-                                        <div className="grid grid-cols-3 gap-4">
-                                            <div className="space-y-1.5">
-                                                <Label htmlFor="fw-straight-rate" className="text-meta text-foreground">直线作答卷基准比例 (%)</Label>
-                                                <Input
-                                                    id="fw-straight-rate"
-                                                    data-testid="teacher-topic-fw-straightliner"
-                                                    type="number"
-                                                    min={0}
-                                                    max={35}
-                                                    step={1}
-                                                    disabled={isPublishedTopic}
-                                                    value={Math.round(fieldworkConfig.baseStraightlinerRate * 100)}
-                                                    onChange={(e) => setFieldworkConfig((prev) => sanitizeFieldworkStrata({
-                                                        ...prev,
-                                                        baseStraightlinerRate: parseBoundedInput(e.target, 0, 35, Math.round(prev.baseStraightlinerRate * 100), 0) / 100,
-                                                    }, fieldMapping.stratified))}
-                                                    className="bg-card tabular-nums"
-                                                />
-                                            </div>
-                                            <div className="space-y-1.5">
-                                                <Label htmlFor="fw-contact-cost" className="text-meta text-foreground">单份触达发放成本 (元)</Label>
-                                                <Input
-                                                    id="fw-contact-cost"
-                                                    data-testid="teacher-topic-fw-contact-cost"
-                                                    type="number"
-                                                    min={0}
-                                                    max={10000}
-                                                    step="any"
-                                                    disabled={isPublishedTopic}
-                                                    value={fieldworkConfig.contactCostPerUnit}
-                                                    onChange={(e) => setFieldworkConfig((prev) => sanitizeFieldworkStrata({
-                                                        ...prev,
-                                                        contactCostPerUnit: parseBoundedInput(e.target, 0, 10_000, prev.contactCostPerUnit, 2),
-                                                    }, fieldMapping.stratified))}
-                                                    className="bg-card tabular-nums"
-                                                />
-                                            </div>
-                                            <div className="space-y-1.5">
-                                                <Label htmlFor="fw-incentive-cost" className="text-meta text-foreground">单份完答礼金成本 (元)</Label>
-                                                <Input
-                                                    id="fw-incentive-cost"
-                                                    data-testid="teacher-topic-fw-incentive-cost"
-                                                    type="number"
-                                                    min={0}
-                                                    max={50000}
-                                                    step="any"
-                                                    disabled={isPublishedTopic}
-                                                    value={fieldworkConfig.incentiveCostPerComplete}
-                                                    onChange={(e) => setFieldworkConfig((prev) => sanitizeFieldworkStrata({
-                                                        ...prev,
-                                                        incentiveCostPerComplete: parseBoundedInput(e.target, 0, 50_000, prev.incentiveCostPerComplete, 2),
-                                                    }, fieldMapping.stratified))}
-                                                    className="bg-card tabular-nums"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
+                                    );
+                                })()}
                             </div>
                         )}
 
@@ -1001,11 +1327,37 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
                         {!loadingDetail && currentStep === 6 && (
                             <div className="space-y-4">
-                                <div className="flex justify-between items-center">
-                                    <Label className="text-foreground">推荐题目</Label>
-                                    <Button data-testid="teacher-topic-question-add" size="sm" onClick={handleAddQuestion} className="bg-primary hover:bg-primary-hover">
-                                        + 添加题目
-                                    </Button>
+                                <div className="flex flex-wrap justify-between items-center gap-3">
+                                    <div>
+                                        <Label className="text-foreground">推荐题目（已配置 {recommendQuestions.length} / 30 题）</Label>
+                                        <p className="mt-0.5 text-meta text-muted-foreground">
+                                            学生设计问卷时可一键引用推荐题目；数值题与匹配类别选项的单选题可直接绑定课题变量。
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        {(fieldMapping.numeric.length + fieldMapping.stratified.length + fieldMapping.others.length) > 0 && recommendQuestions.length < 30 && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                data-testid="teacher-topic-question-generate"
+                                                onClick={handleGenerateRecommendQuestions}
+                                                className="border-primary-border bg-primary-muted text-primary hover:bg-primary-muted hover:text-primary"
+                                            >
+                                                <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                                                按映射字段生成推荐题
+                                            </Button>
+                                        )}
+                                        <Button
+                                            data-testid="teacher-topic-question-add"
+                                            size="sm"
+                                            disabled={recommendQuestions.length >= 30}
+                                            onClick={handleAddQuestion}
+                                            className="bg-primary hover:bg-primary-hover"
+                                        >
+                                            + 添加题目
+                                        </Button>
+                                    </div>
                                 </div>
                                 <div
                                     role="region"
@@ -1044,11 +1396,16 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                     </div>
 
                                                     <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-2 mb-1.5">
+                                                        <div className="flex flex-wrap items-center gap-2 mb-1.5">
                                                             <span className="text-muted-foreground text-meta font-mono">{idx + 1}.</span>
                                                             <span className={`text-meta px-2 py-0.5 rounded-control border ${badge}`}>
                                                                 {questionTypeLabels[qt] ?? "未知"}
                                                             </span>
+                                                            {q.section && QUESTION_SECTION_LABELS[q.section] && (
+                                                                <span className="text-meta px-2 py-0.5 rounded-control border border-border bg-card text-muted-foreground">
+                                                                    {QUESTION_SECTION_LABELS[q.section]}
+                                                                </span>
+                                                            )}
                                                         </div>
                                                         <p data-testid={`teacher-topic-question-content-${idx}`} className="text-label text-foreground leading-relaxed">
                                                             {q.content || <span className="text-muted-foreground italic">未填写题目内容</span>}
@@ -1121,83 +1478,115 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             </div>
                         )}
 
-                        {!loadingDetail && currentStep === 7 && (
-                            <div className="space-y-6">
-                                {isPublishedTopic ? (
-                                    <div className="rounded-surface border border-info-border bg-info-muted px-4 py-3 text-label text-info">
-                                        该实验模板已发布，评分规则不可修改，仅可查看当前权重。
-                                    </div>
-                                ) : null}
-                                <div className="grid grid-cols-3 gap-6">
-                                    <div className="bg-background border border-border rounded-surface p-6 space-y-4">
-                                        <Label htmlFor="teacher-topic-weight-questionnaire" className="text-foreground text-subheading">问卷设计权重</Label>
-                                        <div className="flex items-center gap-2">
-                                            <Input
-                                                id="teacher-topic-weight-questionnaire"
-                                                data-testid="teacher-topic-weight-questionnaire"
-                                                type="number"
-                                                min={0}
-                                                max={100}
-                                                disabled={isPublishedTopic}
-                                                value={weightConfig.questionnaire}
-                                                onChange={(e) => setWeightConfig(prev => ({
-                                                    ...prev,
-                                                    questionnaire: parseWeightInput(e.target, prev.questionnaire),
-                                                }))}
-                                                className="bg-card border-input text-foreground text-page-title font-bold tabular-nums h-16 text-center"
-                                            />
-                                            <span className="text-muted-foreground font-bold text-section-title">%</span>
+                        {!loadingDetail && currentStep === 7 && (() => {
+                            const qOut = weightConfig.questionnaire < 10 || weightConfig.questionnaire > 50;
+                            const pOut = weightConfig.process < 20 || weightConfig.process > 60;
+                            const rOut = weightConfig.report < 10 || weightConfig.report > 50;
+                            const sum = weightConfig.questionnaire + weightConfig.process + weightConfig.report;
+                            const weightsValid = !qOut && !pOut && !rOut && sum === 100;
+                            return (
+                                <div className="space-y-6">
+                                    {isPublishedTopic ? (
+                                        <div className="rounded-surface border border-info-border bg-info-muted px-4 py-3 text-label text-info">
+                                            该实验模板已发布，评分规则不可修改，仅可查看当前权重。
+                                        </div>
+                                    ) : (
+                                        <p className="text-meta text-muted-foreground">
+                                            配置三项成绩的加权比例（三项之和须等于 100%，发布后锁定为批改与总分计算基准）。
+                                        </p>
+                                    )}
+                                    <div className="grid grid-cols-3 gap-6">
+                                        <div className={`bg-background border rounded-surface p-6 space-y-3 ${!isPublishedTopic && qOut ? "border-destructive-border" : "border-border"}`}>
+                                            <div>
+                                                <Label htmlFor="teacher-topic-weight-questionnaire" className="text-foreground text-subheading">问卷设计权重</Label>
+                                                <p className={`mt-1 text-meta tabular-nums ${!isPublishedTopic && qOut ? "text-destructive" : "text-muted-foreground"}`}>允许范围：10% – 50%</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Input
+                                                    id="teacher-topic-weight-questionnaire"
+                                                    data-testid="teacher-topic-weight-questionnaire"
+                                                    type="number"
+                                                    min={10}
+                                                    max={50}
+                                                    aria-invalid={!isPublishedTopic && qOut}
+                                                    disabled={isPublishedTopic}
+                                                    value={weightConfig.questionnaire}
+                                                    onChange={(e) => setWeightConfig(prev => ({
+                                                        ...prev,
+                                                        questionnaire: parseWeightInput(e.target, prev.questionnaire),
+                                                    }))}
+                                                    className="bg-card border-input text-foreground text-page-title font-bold tabular-nums h-16 text-center"
+                                                />
+                                                <span className="text-muted-foreground font-bold text-section-title">%</span>
+                                            </div>
+                                        </div>
+                                        <div className={`bg-background border rounded-surface p-6 space-y-3 ${!isPublishedTopic && pOut ? "border-destructive-border" : "border-border"}`}>
+                                            <div>
+                                                <Label htmlFor="teacher-topic-weight-process" className="text-foreground text-subheading">实验过程权重</Label>
+                                                <p className={`mt-1 text-meta tabular-nums ${!isPublishedTopic && pOut ? "text-destructive" : "text-muted-foreground"}`}>允许范围：20% – 60%</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Input
+                                                    id="teacher-topic-weight-process"
+                                                    data-testid="teacher-topic-weight-process"
+                                                    type="number"
+                                                    min={20}
+                                                    max={60}
+                                                    aria-invalid={!isPublishedTopic && pOut}
+                                                    disabled={isPublishedTopic}
+                                                    value={weightConfig.process}
+                                                    onChange={(e) => setWeightConfig(prev => ({
+                                                        ...prev,
+                                                        process: parseWeightInput(e.target, prev.process),
+                                                    }))}
+                                                    className="bg-card border-input text-foreground text-page-title font-bold tabular-nums h-16 text-center"
+                                                />
+                                                <span className="text-muted-foreground font-bold text-section-title">%</span>
+                                            </div>
+                                        </div>
+                                        <div className={`bg-background border rounded-surface p-6 space-y-3 ${!isPublishedTopic && rOut ? "border-destructive-border" : "border-border"}`}>
+                                            <div>
+                                                <Label htmlFor="teacher-topic-weight-report" className="text-foreground text-subheading">实验报告权重</Label>
+                                                <p className={`mt-1 text-meta tabular-nums ${!isPublishedTopic && rOut ? "text-destructive" : "text-muted-foreground"}`}>允许范围：10% – 50%</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Input
+                                                    id="teacher-topic-weight-report"
+                                                    data-testid="teacher-topic-weight-report"
+                                                    type="number"
+                                                    min={10}
+                                                    max={50}
+                                                    aria-invalid={!isPublishedTopic && rOut}
+                                                    disabled={isPublishedTopic}
+                                                    value={weightConfig.report}
+                                                    onChange={(e) => setWeightConfig(prev => ({
+                                                        ...prev,
+                                                        report: parseWeightInput(e.target, prev.report),
+                                                    }))}
+                                                    className="bg-card border-input text-foreground text-page-title font-bold tabular-nums h-16 text-center"
+                                                />
+                                                <span className="text-muted-foreground font-bold text-section-title">%</span>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="bg-background border border-border rounded-surface p-6 space-y-4">
-                                        <Label htmlFor="teacher-topic-weight-process" className="text-foreground text-subheading">实验过程权重</Label>
-                                        <div className="flex items-center gap-2">
-                                            <Input
-                                                id="teacher-topic-weight-process"
-                                                data-testid="teacher-topic-weight-process"
-                                                type="number"
-                                                min={0}
-                                                max={100}
-                                                disabled={isPublishedTopic}
-                                                value={weightConfig.process}
-                                                onChange={(e) => setWeightConfig(prev => ({
-                                                    ...prev,
-                                                    process: parseWeightInput(e.target, prev.process),
-                                                }))}
-                                                className="bg-card border-input text-foreground text-page-title font-bold tabular-nums h-16 text-center"
-                                            />
-                                            <span className="text-muted-foreground font-bold text-section-title">%</span>
+                                    <div className="bg-background p-4 rounded-surface flex flex-wrap justify-between items-center gap-3 border border-border">
+                                        <div>
+                                            <span className="text-muted-foreground">当前总权重</span>
+                                            {!isPublishedTopic && !weightsValid && (
+                                                <p className="mt-0.5 text-meta text-destructive">
+                                                    {sum !== 100
+                                                        ? `当前总和为 ${sum}%，须调整至 100%`
+                                                        : "存在超出允许范围的分项权重，请按卡片范围提示调整"}
+                                                </p>
+                                            )}
                                         </div>
-                                    </div>
-                                    <div className="bg-background border border-border rounded-surface p-6 space-y-4">
-                                        <Label htmlFor="teacher-topic-weight-report" className="text-foreground text-subheading">实验报告权重</Label>
-                                        <div className="flex items-center gap-2">
-                                            <Input
-                                                id="teacher-topic-weight-report"
-                                                data-testid="teacher-topic-weight-report"
-                                                type="number"
-                                                min={0}
-                                                max={100}
-                                                disabled={isPublishedTopic}
-                                                value={weightConfig.report}
-                                                onChange={(e) => setWeightConfig(prev => ({
-                                                    ...prev,
-                                                    report: parseWeightInput(e.target, prev.report),
-                                                }))}
-                                                className="bg-card border-input text-foreground text-page-title font-bold tabular-nums h-16 text-center"
-                                            />
-                                            <span className="text-muted-foreground font-bold text-section-title">%</span>
-                                        </div>
+                                        <span className={`text-page-title font-bold tabular-nums ${weightsValid ? "text-success" : "text-destructive"}`}>
+                                            {sum}%
+                                        </span>
                                     </div>
                                 </div>
-                                <div className="bg-background p-4 rounded-surface flex justify-between items-center border border-border">
-                                    <span className="text-muted-foreground">当前总权重</span>
-                                    <span className={`text-page-title font-bold tabular-nums ${(weightConfig.questionnaire + weightConfig.process + weightConfig.report) === 100 ? "text-success" : "text-destructive"}`}>
-                                        {weightConfig.questionnaire + weightConfig.process + weightConfig.report}%
-                                    </span>
-                                </div>
-                            </div>
-                        )}
+                            );
+                        })()}
                     </div>
                 </div>
                 <DialogFooter className="border-t border-border pt-4 flex-shrink-0 flex-col">
@@ -1212,9 +1601,27 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             {displayedError}
                         </div>
                     ) : null}
-                    <div className="flex items-center justify-between w-full">
-                        <div className="text-meta text-muted-foreground" role="status">步骤 {currentStep} / 7{pending ? " · 正在保存…" : dictionaryState.busy ? " · 正在处理变量字典…" : busy ? " · 正在上传…" : ""}</div>
-                        <div className="flex gap-2">
+                    <div className="flex items-center justify-between gap-4 w-full">
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                            <div className="text-meta text-muted-foreground" role="status">步骤 {currentStep} / 7{pending ? " · 正在保存…" : dictionaryState.busy ? " · 正在处理变量字典…" : busy ? " · 正在上传…" : ""}</div>
+                            {!busy && !loadingDetail && !isPublishedTopic && (() => {
+                                const footerHint = currentStep === 2 && !excelInfo
+                                    ? "待完成：请先上传并确认总体数据文件（.xlsx 或 .csv）"
+                                    : currentStep === 3 && !canProceedMapping
+                                        ? `待完成：${getStudyContractMissingItems(fieldMapping).join("；")}`
+                                        : currentStep === 3 && dictionaryState.dirty
+                                            ? "提示：变量字典有未保存修改，请先点击「明确确认并保存」后再继续"
+                                            : currentStep === 4 && samplingPolicyError
+                                                ? `待修正：${samplingPolicyError}`
+                                                : null;
+                                return footerHint ? (
+                                    <p data-testid="teacher-topic-footer-hint" className="truncate text-meta text-warning" title={footerHint}>
+                                        {footerHint}
+                                    </p>
+                                ) : null;
+                            })()}
+                        </div>
+                        <div className="flex shrink-0 gap-2">
                             {currentStep > 1 && (
                                 <Button data-testid="teacher-topic-prev" variant="outline" disabled={busy || loadingDetail || Boolean(detailError)} onClick={() => goToStep(currentStep - 1)} className="border-input bg-muted text-foreground hover:text-foreground hover:bg-muted">上一步</Button>
                             )}

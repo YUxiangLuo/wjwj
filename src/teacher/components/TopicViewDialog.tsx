@@ -21,6 +21,13 @@ const FIELDWORK_PRESET_LABELS: Record<FieldworkPreset, string> = {
     peak_congestion: "高峰拥堵漏接场景",
 };
 
+const FIELDWORK_PRESET_DESCRIPTIONS: Record<FieldworkPreset, string> = {
+    balanced: "各客群应答概率均衡；学生首轮试投观察常规触达损耗，正式轮代入实测回收率与方差校准样本量。",
+    stratum_differential: "细分客群存在差异化拒访梯度；首轮等概率抽样易产生无回答结构偏倚，正式轮需通过分层抽样或权重校准修正。",
+    high_burden_sensitive: "中途弃答按 1.35 倍放大且高负担易诱发闪电/直线废卷；引导学生在质检清洗后精简问卷并优化量程。",
+    peak_congestion: "实地触达叠加 +4% 高峰拥堵漏接损耗；引导学生在试投后上调无回答膨胀系数重算正式轮样本量。",
+};
+
 type TabKey = "basic" | "data" | "variables" | "mapping" | "sampling" | "attachments" | "questions" | "weights";
 
 const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -113,7 +120,6 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
                 className="max-w-5xl h-[80vh] flex flex-col bg-card border-border text-foreground"
-                showCloseButton={false}
                 onInteractOutside={(e) => e.preventDefault()}
             >
                 <DialogHeader>
@@ -146,7 +152,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                             type="button"
                             aria-pressed={activeTab === key}
                             onClick={() => setActiveTab(key)}
-                            className={`flex items-center gap-1.5 px-3 py-2 text-meta font-medium rounded-control transition-none border-b-2 whitespace-nowrap ${
+                            className={`flex items-center gap-1.5 px-3 py-2 text-meta font-medium rounded-control transition-none border-b-2 whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                                 activeTab === key
                                     ? "text-primary border-primary bg-primary-muted"
                                     : "text-muted-foreground border-transparent hover:text-foreground hover:bg-muted"
@@ -389,11 +395,14 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                         })}
                                     </div>
                                     <div className="space-y-3 rounded-surface border border-border bg-background p-4" data-testid="teacher-topic-view-fieldwork-config">
-                                        <div className="flex items-center justify-between gap-3">
+                                        <div className="flex flex-wrap items-center justify-between gap-3">
                                             <div className="text-label font-semibold text-foreground">虚拟问卷投放环境参数</div>
                                             <StatusBadge intent="info">{FIELDWORK_PRESET_LABELS[fieldworkConfig.preset]}</StatusBadge>
                                         </div>
-                                        <dl className="grid grid-cols-3 gap-3 text-meta">
+                                        <p className="text-meta text-muted-foreground">
+                                            {FIELDWORK_PRESET_DESCRIPTIONS[fieldworkConfig.preset]}
+                                        </p>
+                                        <dl className="grid grid-cols-4 gap-3 text-meta">
                                             <div className="rounded-control bg-card border border-border p-3">
                                                 <dt className="text-muted-foreground">基准单元无回答率</dt>
                                                 <dd className="mt-1 font-semibold tabular-nums text-foreground">{Math.round(fieldworkConfig.baseUnitNonResponseRate * 100)}%</dd>
@@ -405,12 +414,32 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                                 </dd>
                                             </div>
                                             <div className="rounded-control bg-card border border-border p-3">
+                                                <dt className="text-muted-foreground">普通题项漏答率</dt>
+                                                <dd className="mt-1 font-semibold tabular-nums text-foreground">
+                                                    {Math.round(fieldworkConfig.baseItemSkipRate * 100)}%
+                                                </dd>
+                                            </div>
+                                            <div className="rounded-control bg-card border border-border p-3">
                                                 <dt className="text-muted-foreground">触达 / 完答参考成本</dt>
                                                 <dd className="mt-1 font-semibold tabular-nums text-foreground">
                                                     {fieldworkConfig.contactCostPerUnit} 元 / {fieldworkConfig.incentiveCostPerComplete} 元
                                                 </dd>
                                             </div>
                                         </dl>
+                                        {fieldworkConfig.stratumField && fieldworkConfig.stratumNonResponseRates && Object.keys(fieldworkConfig.stratumNonResponseRates).length > 0 && (
+                                            <div className="rounded-control border border-border bg-card p-3 space-y-2">
+                                                <div className="text-meta text-muted-foreground">
+                                                    差异化应答分层字段：<span className="font-medium text-foreground">{fieldworkConfig.stratumField}</span>
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {Object.entries(fieldworkConfig.stratumNonResponseRates).map(([stratum, rate]) => (
+                                                        <StatusBadge key={stratum} intent="warning" className="tabular-nums">
+                                                            {stratum}：无回答 {Math.round(rate * 100)}%
+                                                        </StatusBadge>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}

@@ -289,6 +289,21 @@ export function StudentManagement() {
                                 />
                             </div>
                             <Button type="submit" variant="outline">搜索</Button>
+                            {appliedSearch && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                        setSearchQuery("");
+                                        setAppliedSearch("");
+                                        setPage(1);
+                                        void loadData(true, { search: "", page: 1 });
+                                    }}
+                                >
+                                    清空
+                                </Button>
+                            )}
                         </form>
                         <Button data-testid="teacher-student-import-open" variant="outline" onClick={() => setShowImportModal(true)} className="border-input bg-muted text-foreground hover:bg-muted hover:text-foreground">
                             <Upload className="w-4 h-4 mr-2" />
@@ -313,12 +328,35 @@ export function StudentManagement() {
                         <TableBody>
                             {filteredStudents.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="text-center py-12 text-muted-foreground">
+                                    <TableCell colSpan={4} className="text-center py-12 text-muted-foreground whitespace-normal">
                                         <div className="flex flex-col items-center gap-2">
                                             <div className="w-12 h-12 rounded-control bg-card border border-border flex items-center justify-center">
                                                 <Search className="w-5 h-5 text-muted-foreground" />
                                             </div>
-                                            <p>暂无符合条件的数据</p>
+                                            {appliedSearch ? (
+                                                <>
+                                                    <p>暂无符合条件的数据</p>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="mt-1"
+                                                        onClick={() => {
+                                                            setSearchQuery("");
+                                                            setAppliedSearch("");
+                                                            setPage(1);
+                                                            void loadData(true, { search: "", page: 1 });
+                                                        }}
+                                                    >
+                                                        清空搜索条件
+                                                    </Button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <p className="text-label font-medium text-foreground">当前班级暂无学生名单</p>
+                                                    <p className="text-meta text-muted-foreground">可点击右上角「批量导入」上传名册，或点击「添加学生」逐条录入。</p>
+                                                </>
+                                            )}
                                         </div>
                                     </TableCell>
                                 </TableRow>

@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import {
     buildDefaultResearchQuestion,
+    parseStudyContract,
     resemblesGeneratedResearchQuestion,
     type AnalysisTarget,
     type StudyContract,
@@ -70,6 +71,46 @@ export function isStudyContractComplete(contract: StudyContract | null | undefin
         && populationLength >= 2 && populationLength <= 200
         && unitLength >= 1 && unitLength <= 100
         && decisionLength <= 400;
+}
+
+/** 汇总当前研究目标与字段映射尚未满足的必填项，供向导底栏与研究合同区即时提示。 */
+export function getStudyContractMissingItems(mapping: FieldMappingState): string[] {
+    const missing: string[] = [];
+    if (!mapping.identifier?.trim()) {
+        missing.push("选择 1 个标识符字段");
+    }
+    const contract = mapping.studyContract;
+    const target = contract?.target ?? mapping.analysisTarget;
+    if (!target?.kind) {
+        missing.push("选择研究目标估计类型（均值或比例）");
+        return missing;
+    }
+    if (!target.field) {
+        missing.push("选择研究目标对照字段");
+        return missing;
+    }
+    if (target.kind === "proportion" && !target.value) {
+        missing.push("选择比例目标的成功类别");
+    }
+    if (parseStudyContract(mapping) !== null || mapping.studyContract !== undefined) {
+        const questionLength = contract?.researchQuestion?.trim().length ?? 0;
+        const populationLength = contract?.targetPopulation?.trim().length ?? 0;
+        const unitLength = contract?.unitOfAnalysis?.trim().length ?? 0;
+        const decisionLength = contract?.businessDecision?.trim().length ?? 0;
+        if (questionLength < 5 || questionLength > 300) {
+            missing.push(`研究问题需 5–300 字（当前 ${questionLength} 字）`);
+        }
+        if (populationLength < 2 || populationLength > 200) {
+            missing.push(`目标总体需 2–200 字（当前 ${populationLength} 字）`);
+        }
+        if (unitLength < 1 || unitLength > 100) {
+            missing.push("填写分析单位");
+        }
+        if (decisionLength > 400) {
+            missing.push("商业管理决策不能超过 400 字");
+        }
+    }
+    return missing;
 }
 
 /**
@@ -232,7 +273,12 @@ export function StudyContractEditor({
             {!target && <p className="text-meta text-muted-foreground">均值需先在上方选择数值变量；比例需先选择分层变量或其他分类变量。</p>}
             {target && <p className="text-meta text-muted-foreground">如启用 PPS，规模变量不能与此目标字段相同。</p>}
             <div className="space-y-1.5">
-                <Label className="text-meta text-muted-foreground">研究问题</Label>
+                <div className="flex items-center justify-between gap-2">
+                    <Label className="text-meta text-muted-foreground">研究问题（5–300 字）</Label>
+                    <span className="text-meta tabular-nums text-muted-foreground">
+                        {(contract?.researchQuestion ?? (target ? buildDefaultResearchQuestion(topicName, target) : "")).trim().length}/300
+                    </span>
+                </div>
                 <Textarea
                     value={contract?.researchQuestion ?? (target ? buildDefaultResearchQuestion(topicName, target) : "")}
                     disabled={disabled || !target}
@@ -248,7 +294,7 @@ export function StudyContractEditor({
 
             <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                    <Label className="text-meta text-muted-foreground">目标总体</Label>
+                    <Label className="text-meta text-muted-foreground">目标总体（2–200 字）</Label>
                     <Input
                         value={contract?.targetPopulation ?? "上传总体数据中的全部单位"}
                         disabled={disabled || !target}
@@ -261,7 +307,7 @@ export function StudyContractEditor({
                     />
                 </div>
                 <div className="space-y-1.5">
-                    <Label className="text-meta text-muted-foreground">分析单位</Label>
+                    <Label className="text-meta text-muted-foreground">分析单位（1–100 字）</Label>
                     <Input
                         value={contract?.unitOfAnalysis ?? "总体数据中的一行记录"}
                         disabled={disabled || !target}

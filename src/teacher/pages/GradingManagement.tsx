@@ -164,6 +164,28 @@ export function GradingManagement() {
                         <div className="grid place-items-center gap-2 py-12 text-muted-foreground">
                             <ClipboardList className="h-8 w-8" />
                             <p className="text-label">{status === "pending" ? "当前没有待批改作业" : "暂无记录"}</p>
+                            {appliedKeyword ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        setKeyword("");
+                                        setSearchParams(listQuery(status, "", 1, taskId));
+                                    }}
+                                >
+                                    清空搜索词
+                                </Button>
+                            ) : status === "pending" ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setSearchParams(listQuery("all", "", 1, taskId))}
+                                >
+                                    查看全部状态记录
+                                </Button>
+                            ) : null}
                         </div>
                     )}
                     {pages > 1 && (

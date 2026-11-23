@@ -215,24 +215,24 @@ export function GradingDetail() {
                     </StatusBadge>
                 </div>
             </div>
-            <div className="flex items-start gap-5" data-testid="teacher-grading-workspace">
+            <div className="flex items-start gap-4" data-testid="teacher-grading-workspace">
             <Card className="min-w-0 flex-1 gap-3 py-4">
-                <CardHeader className="px-4">
+                <CardHeader className="px-3.5">
                     <CardTitle>
-                        <h2 ref={identityRef} tabIndex={-1} aria-describedby="grading-student-identity" className="text-section-title font-semibold">{data.studentName} · {data.topic}</h2>
+                        <h2 ref={identityRef} tabIndex={-1} aria-describedby="grading-student-identity" className="text-section-title font-semibold outline-none">{data.studentName} · {data.topic}</h2>
                     </CardTitle>
                     <p id="grading-student-identity" className="text-label text-muted-foreground">{data.className} · {data.studentId}</p>
                 </CardHeader>
-                <CardContent className="px-4">
+                <CardContent className="px-3.5">
                     <Tabs ref={navigationRef} value={activeSection} onValueChange={selectSection} className="scroll-mt-20">
-                        <TabsList className={`sticky top-16 z-20 grid w-full ${hasWaveLoop ? "grid-cols-5" : "grid-cols-4"}`} aria-label="提交材料">
+                        <TabsList className="sticky top-16 z-20 flex h-auto w-full flex-wrap justify-start gap-1 p-1" aria-label="提交材料">
                             {hasWaveLoop && (
-                                <TabsTrigger value="waves">试投质检与调优</TabsTrigger>
+                                <TabsTrigger value="waves" className="h-auto px-2.5 py-1.5 text-meta">试投质检与调优</TabsTrigger>
                             )}
-                            <TabsTrigger value="questionnaire">问卷</TabsTrigger>
-                            <TabsTrigger value="plan">正式轮方案</TabsTrigger>
-                            <TabsTrigger value="sampling">抽样结果</TabsTrigger>
-                            <TabsTrigger value="report">商业报告</TabsTrigger>
+                            <TabsTrigger value="questionnaire" className="h-auto px-2.5 py-1.5 text-meta">问卷</TabsTrigger>
+                            <TabsTrigger value="plan" className="h-auto px-2.5 py-1.5 text-meta">正式轮方案</TabsTrigger>
+                            <TabsTrigger value="sampling" className="h-auto px-2.5 py-1.5 text-meta">抽样结果</TabsTrigger>
+                            <TabsTrigger value="report" className="h-auto px-2.5 py-1.5 text-meta">商业报告</TabsTrigger>
                         </TabsList>
                         {hasWaveLoop && (
                             <TabsContent value="waves" className="mt-4">
@@ -293,30 +293,42 @@ export function GradingDetail() {
                 </CardContent>
             </Card>
             {data.status === "rejected" ? (
-                <Card className="sticky top-20 w-80 shrink-0 border-destructive-border">
+                <Card className="sticky top-20 w-[19rem] shrink-0 border-destructive-border">
                     <CardHeader><CardTitle className="flex items-center gap-2 text-destructive"><XCircle className="h-5 w-5" />驳回理由</CardTitle></CardHeader>
                     <CardContent><p className="whitespace-pre-wrap text-label">{data.rejectReason}</p></CardContent>
                 </Card>
             ) : (
-                <Card className="sticky top-20 max-h-[calc(100dvh-6rem)] w-80 shrink-0 gap-3 overflow-y-auto py-4" data-testid="teacher-grading-panel">
-                    <CardHeader className="border-b border-border px-4"><CardTitle className="text-section-title">评分</CardTitle><p className="break-words text-meta text-muted-foreground">{data.studentName} · {data.studentId}</p></CardHeader>
+                <Card className="sticky top-20 max-h-[calc(100dvh-6rem)] w-[19rem] shrink-0 gap-3 overflow-y-auto py-4" data-testid="teacher-grading-panel">
+                    <CardHeader className="border-b border-border px-4">
+                        <div className="flex items-center justify-between gap-2">
+                            <CardTitle className="text-section-title">评分</CardTitle>
+                            {data.status === "graded" && <StatusBadge intent="success">可重评</StatusBadge>}
+                        </div>
+                        <p className="break-words text-meta text-muted-foreground">{data.studentName} · {data.studentId}</p>
+                        {data.status === "graded" && (
+                            <p className="text-meta text-muted-foreground">修改分项或评语后点击「更新评分」即可覆盖原记录。</p>
+                        )}
+                    </CardHeader>
                     <CardContent className="space-y-3 px-4">
                         <div className="grid gap-2 grid-cols-3">
                             {(["questionnaire", "process", "report"] as const).map((key) => {
                                 const inputId = `grading-score-${key}`;
+                                const rawVal = scores[key];
+                                const fieldInvalid = rawVal.trim() !== "" && parseScoreField(rawVal) === null;
                                 return (
                                     <div key={key}>
-                                        <Label htmlFor={inputId} className="block text-meta">{scoreLabels[key]}</Label>
+                                        <Label htmlFor={inputId} className={`block text-meta ${fieldInvalid ? "text-destructive" : ""}`}>{scoreLabels[key]}</Label>
                                         <Input
                                             id={inputId}
                                             type="number"
                                             min={0}
                                             max={100}
                                             step={0.01}
-                                            value={scores[key]}
+                                            aria-invalid={fieldInvalid}
+                                            value={rawVal}
                                             placeholder="0–100"
                                             disabled={!canGrade}
-                                            className="tabular-nums"
+                                            className={`tabular-nums ${fieldInvalid ? "border-destructive" : ""}`}
                                             onChange={(event) => {
                                                 setScores((current) => ({ ...current, [key]: event.target.value }));
                                                 setDraftChanged(true);
@@ -331,7 +343,11 @@ export function GradingDetail() {
                             <Textarea id="grading-comment" rows={3} maxLength={2000} value={comment} disabled={!canGrade} onChange={(event) => { setComment(event.target.value); setDraftChanged(true); }} />
                         </div>
                         <div className="space-y-2 rounded-surface bg-muted p-3">
-                            {!scoresReady && <p className="text-meta text-muted-foreground" role="status">{scoreFieldMessage(scores)}</p>}
+                            {!scoresReady && (
+                                <p className={`text-meta ${([scores.questionnaire, scores.process, scores.report]).some((v) => v.trim() !== "" && parseScoreField(v) === null) ? "text-destructive" : "text-muted-foreground"}`} role="status">
+                                    {scoreFieldMessage(scores)}
+                                </p>
+                            )}
                             <p>加权总分：<span className="text-page-title font-bold tabular-nums text-primary">{total === null ? "—" : total.toFixed(2)}</span></p>
                             <div className="flex flex-wrap gap-2">
                                 {data.status === "submitted" && <Button variant="destructive" disabled={!canGrade || saving} onClick={() => setRejectOpen(true)}>驳回修改</Button>}

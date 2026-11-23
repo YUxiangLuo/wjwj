@@ -358,12 +358,27 @@ export function GradeExport() {
                                 </TableRow>
                             ) : preview.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground whitespace-normal">
                                         <div className="flex flex-col items-center gap-2">
                                             <div className="w-12 h-12 rounded-control bg-card border border-border flex items-center justify-center">
                                                 <Search className="w-6 h-6 text-muted-foreground" />
                                             </div>
                                             <p>暂无符合条件的数据</p>
+                                            {(semesterFilter !== "all" || classFilter !== "all" || topicFilter !== "all") && (
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="mt-1"
+                                                    onClick={() => {
+                                                        setSemesterFilter("all");
+                                                        setClassFilter("all");
+                                                        setTopicFilter("all");
+                                                    }}
+                                                >
+                                                    重置筛选条件
+                                                </Button>
+                                            )}
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -379,25 +394,25 @@ export function GradeExport() {
                                             onChange={() => toggleTask(task.taskId)}
                                         />
                                     </TableCell>
-                                    <TableCell className="font-medium text-foreground">{task.topic}</TableCell>
-                                    <TableCell className="text-foreground">{task.className}</TableCell>
+                                    <TableCell className="min-w-[11rem] whitespace-normal font-medium text-foreground leading-snug">{task.topic}</TableCell>
+                                    <TableCell className="min-w-[7.5rem] whitespace-normal text-foreground">{task.className}</TableCell>
                                     <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <Progress aria-label={`${task.topic}批改进度`} value={task.total > 0 ? Math.round((task.graded / task.total) * 100) : 0} className="w-20 h-1.5 bg-muted [&>div]:bg-success" />
+                                        <div className="flex items-center gap-2 whitespace-nowrap">
+                                            <Progress aria-label={`${task.topic}批改进度`} value={task.total > 0 ? Math.round((task.graded / task.total) * 100) : 0} className="w-16 h-1.5 bg-muted [&>div]:bg-success" />
                                             <span className="text-meta tabular-nums text-muted-foreground">{task.graded}/{task.total}</span>
                                             {task.graded === task.total && task.total > 0 && (
                                                 <StatusBadge intent="success" className="text-meta h-5">已完成</StatusBadge>
                                             )}
                                         </div>
                                     </TableCell>
-                                    <TableCell className="font-medium font-mono tabular-nums text-foreground">{task.graded > 0 ? task.avgScore.toFixed(1) : "-"}</TableCell>
-                                    <TableCell className="text-right">
+                                    <TableCell className="whitespace-nowrap font-medium font-mono tabular-nums text-foreground">{task.graded > 0 ? task.avgScore.toFixed(1) : "-"}</TableCell>
+                                    <TableCell className="whitespace-nowrap text-right">
                                         <Button
                                             data-testid={`teacher-export-single-${task.taskId}`}
                                             variant="ghost"
                                             size="sm"
                                             disabled={exporting}
-                                            className="h-8 text-muted-foreground hover:text-primary hover:bg-primary-muted"
+                                            className="h-8 px-2.5 text-muted-foreground hover:text-primary hover:bg-primary-muted"
                                             onClick={() => exportExcel(task.taskId)}
                                         >
                                             <Download className="w-3.5 h-3.5 mr-1" />

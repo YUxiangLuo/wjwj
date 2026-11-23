@@ -69,6 +69,7 @@ export function TaskManagement() {
     const [showExtendModal, setShowExtendModal] = useState(false);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [extendDeadline, setExtendDeadline] = useState("");
+    const [extendError, setExtendError] = useState<string | null>(null);
     const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
     const [deleteSubmitting, setDeleteSubmitting] = useState(false);
     const [deleteImpact, setDeleteImpact] = useState<{
@@ -187,8 +188,10 @@ export function TaskManagement() {
 
     async function handleExtendDeadline() {
         if (!selectedTask || !extendDeadline.trim()) return;
+        setExtendError(null);
         const deadlineIso = localWallClockToUtcIso(extendDeadline);
         if (!deadlineIso) {
+            setExtendError("截止时间格式无效");
             toast.error("截止时间格式无效");
             return;
         }
@@ -197,9 +200,12 @@ export function TaskManagement() {
             setShowExtendModal(false);
             setSelectedTask(null);
             setExtendDeadline("");
+            setExtendError(null);
             loadTasks();
         } else {
-            toast.error("延长失败: " + res.error?.message);
+            const msg = "延长失败: " + (res.error?.message ?? "请确认新截止时间晚于原截止时间");
+            setExtendError(msg);
+            toast.error(msg);
         }
     }
 
@@ -324,43 +330,43 @@ export function TaskManagement() {
                                     <TableHead className="text-muted-foreground">实验模板</TableHead>
                                     <TableHead className="text-muted-foreground">班级</TableHead>
                                     <TableHead className="text-muted-foreground">开放时间</TableHead>
-                                    <TableHead className="text-muted-foreground">截止时间</TableHead>
+                                    <TableHead className="text-muted-foreground">截止时间 (UTC+8)</TableHead>
                                     <TableHead className="text-muted-foreground">完成进度</TableHead>
                                     <TableHead className="text-muted-foreground">待批改</TableHead>
-                                    <TableHead className="sticky right-0 z-10 bg-secondary text-right text-muted-foreground">操作</TableHead>
+                                    <TableHead className="sticky right-0 z-10 border-l border-border bg-secondary text-right text-muted-foreground">操作</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {filteredTasks.map((task) => (
                                     <TableRow data-testid={`teacher-task-row-${task.id}`} key={task.id} className="group border-border hover:bg-muted transition-none">
-                                        <TableCell className="font-medium text-foreground">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <span>{task.topic}</span>
+                                        <TableCell className="min-w-[10.5rem] max-w-[15rem] whitespace-normal font-medium text-foreground">
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                                <span className="leading-snug">{task.topic}</span>
                                                 {isTaskNotOpenYet(task.publishedAt) && <StatusBadge intent="info">尚未开放</StatusBadge>}
                                                 {isTaskDeadlinePassed(task.deadline) && <StatusBadge intent="neutral">已截止</StatusBadge>}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-foreground">{task.className}</TableCell>
-                                        <TableCell className="text-muted-foreground text-meta">{formatDateTimeDisplay(task.publishedAt, "-")}</TableCell>
-                                        <TableCell className="text-muted-foreground text-meta">{task.deadline ? `${formatDateTimeDisplay(task.deadline)}（UTC+8）` : "无"}</TableCell>
+                                        <TableCell className="min-w-[7.5rem] whitespace-normal text-foreground">{task.className}</TableCell>
+                                        <TableCell className="text-muted-foreground text-meta tabular-nums">{formatDateTimeDisplay(task.publishedAt, "-")}</TableCell>
+                                        <TableCell className="text-muted-foreground text-meta tabular-nums">{task.deadline ? formatDateTimeDisplay(task.deadline) : "无"}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <Progress aria-label={`${task.topic}完成进度`} value={task.total > 0 ? Math.round((task.completed / task.total) * 100) : 0} className="w-20 h-1.5 bg-muted [&>div]:bg-success" />
-                                                <span className="text-meta text-muted-foreground">{task.completed}/{task.total}</span>
+                                                <Progress aria-label={`${task.topic}完成进度`} value={task.total > 0 ? Math.round((task.completed / task.total) * 100) : 0} className="w-16 h-1.5 bg-muted [&>div]:bg-success" />
+                                                <span className="text-meta tabular-nums text-muted-foreground">{task.completed}/{task.total}</span>
                                             </div>
                                         </TableCell>
                                         <TableCell>
                                             {task.pending && task.pending > 0 ? (
-                                                <StatusBadge intent="destructive">
+                                                <StatusBadge intent="warning">
                                                     {task.pending}
                                                 </StatusBadge>
                                             ) : (
                                                 <span className="text-muted-foreground text-meta">-</span>
                                             )}
                                         </TableCell>
-                                        <TableCell className="sticky right-0 z-10 bg-card text-right group-hover:bg-muted">
-                                            <div className="flex flex-wrap items-center justify-end gap-2">
-                                                <Button variant="ghost" size="sm" asChild className="h-8 text-muted-foreground hover:text-success hover:bg-success-muted">
+                                        <TableCell className="sticky right-0 z-10 border-l border-border bg-card text-right group-hover:bg-muted">
+                                            <div className="flex items-center justify-end gap-1 whitespace-nowrap">
+                                                <Button variant="ghost" size="sm" asChild className="h-8 px-2 text-muted-foreground hover:text-success hover:bg-success-muted">
                                                     <Link to={`/task/${task.id}/progress${listSearch ? `?${listSearch}` : ""}`}>
                                                         <BarChart3 className="w-3.5 h-3.5 mr-1" />
                                                         进度
@@ -373,14 +379,15 @@ export function TaskManagement() {
                                                     onClick={() => {
                                                         setSelectedTask(task);
                                                         setExtendDeadline("");
+                                                        setExtendError(null);
                                                         setShowExtendModal(true);
                                                     }}
-                                                    className="h-8 text-muted-foreground hover:text-primary hover:bg-primary-muted"
+                                                    className="h-8 px-2 text-muted-foreground hover:text-primary hover:bg-primary-muted"
                                                 >
                                                     <Clock className="w-3.5 h-3.5 mr-1" />
                                                     延时
                                                 </Button>
-                                                <Button variant="ghost" size="sm" asChild className="h-8 text-muted-foreground hover:text-destructive hover:bg-destructive-muted">
+                                                <Button variant="ghost" size="sm" asChild className="h-8 px-2 text-muted-foreground hover:text-primary hover:bg-primary-muted">
                                                     <Link to={`/grading?taskId=${task.id}`}>批改</Link>
                                                 </Button>
                                                 <Button
@@ -390,7 +397,7 @@ export function TaskManagement() {
                                                     type="button"
                                                     aria-label={`删除任务：${task.topic}`}
                                                     onClick={() => void openDeleteDialog(task)}
-                                                    className="h-8 text-muted-foreground hover:text-destructive hover:bg-destructive-muted"
+                                                    className="h-8 px-2 text-muted-foreground hover:text-destructive hover:bg-destructive-muted"
                                                     title="删除任务"
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5" />
@@ -401,12 +408,35 @@ export function TaskManagement() {
                                 ))}
                                 {filteredTasks.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-16 text-muted-foreground">
+                                        <TableCell colSpan={7} className="text-center py-16 text-muted-foreground whitespace-normal">
                                             <div className="flex flex-col items-center gap-2">
                                                 <div className="w-12 h-12 rounded-control bg-card border border-border flex items-center justify-center">
                                                     <Search className="w-5 h-5 text-muted-foreground" />
                                                 </div>
-                                                <p>暂无符合条件的数据</p>
+                                                {tasks.length === 0 ? (
+                                                    <>
+                                                        <p className="text-label font-medium text-foreground">还没有实验任务</p>
+                                                        <p className="text-meta text-muted-foreground">请先在「实验模板」中发布模板，再点击右上角「发布实验任务」分配到授课班级。</p>
+                                                        <Button asChild variant="outline" size="sm" className="mt-1">
+                                                            <Link to="/topic">查看实验模板</Link>
+                                                        </Button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <p>暂无符合条件的数据</p>
+                                                        {(searchTerm || classFilter !== "all") && (
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="mt-1"
+                                                                onClick={() => setSearchParams({}, { replace: true })}
+                                                            >
+                                                                清空筛选条件
+                                                            </Button>
+                                                        )}
+                                                    </>
+                                                )}
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -439,10 +469,11 @@ export function TaskManagement() {
 
             <TaskExtendDialog
                 open={showExtendModal}
-                onOpenChange={setShowExtendModal}
+                onOpenChange={(open) => { setShowExtendModal(open); if (!open) setExtendError(null); }}
                 selectedTask={selectedTask}
                 extendDeadline={extendDeadline}
-                onExtendDeadlineChange={setExtendDeadline}
+                onExtendDeadlineChange={(val) => { setExtendDeadline(val); setExtendError(null); }}
+                extendError={extendError}
                 onConfirm={handleExtendDeadline}
             />
 

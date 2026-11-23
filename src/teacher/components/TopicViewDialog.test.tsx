@@ -102,3 +102,77 @@ test("read-only sampling policy shows only the configured PPS size fields", asyn
     fireEvent.click(view.getByRole("button", { name: "字段映射" }));
     expect(view.getByTestId("teacher-topic-view-study-contract").textContent).toContain("优化午间高峰窗口排班配置");
 });
+
+test("read-only fieldwork config renders differential stratum rates and item skip rate", async () => {
+    getTopicDetail.mockResolvedValueOnce({
+        success: true,
+        data: {
+            topic: {
+                name: "茶饮会员支付意愿",
+                description: "测试分层拒访展示",
+                fieldMapping: {
+                    identifier: "会员编号",
+                    stratified: ["会员等级"],
+                    numeric: ["支付意愿"],
+                    others: [],
+                    studyContract: {
+                        version: 1,
+                        researchQuestion: "活跃会员最高支付意愿均值是多少元？",
+                        targetPopulation: "240名活跃会员",
+                        unitOfAnalysis: "一名活跃会员",
+                        target: { kind: "mean", field: "支付意愿" },
+                    },
+                },
+                samplingPolicy: {
+                    version: 1,
+                    methods: { simple: "required", systematic: "optional", pps: "disabled", stratified: "required" },
+                },
+                fieldworkConfig: {
+                    version: 1,
+                    preset: "stratum_differential",
+                    baseUnitNonResponseRate: 0.18,
+                    stratumField: "会员等级",
+                    stratumNonResponseRates: { 普通会员: 0.3, 银卡会员: 0.16, 黑金会员: 0.06 },
+                    baseSpeederRate: 0.07,
+                    baseStraightlinerRate: 0.05,
+                    baseItemSkipRate: 0.03,
+                    contactCostPerUnit: 2,
+                    incentiveCostPerComplete: 12,
+                },
+            },
+            hasExcelFile: true,
+            attachments: [],
+            recommendQuestions: [],
+            excelInfo: {
+                columns: ["会员编号", "会员等级", "支付意愿"],
+                preview: [],
+                ppsEligibleFields: [],
+            },
+        },
+    } as never);
+
+    const view = render(
+        <TopicViewDialog
+            open
+            onOpenChange={() => undefined}
+            topic={{
+                id: 9,
+                name: "茶饮会员支付意愿",
+                description: "测试分层拒访展示",
+                status: 1,
+                dataRows: 240,
+                createdAt: "2026-09-10T00:00:00.000Z",
+            }}
+        />,
+    );
+
+    await view.findByText("测试分层拒访展示");
+    fireEvent.click(view.getByRole("button", { name: "抽样策略" }));
+
+    const fwPanel = view.getByTestId("teacher-topic-view-fieldwork-config");
+    expect(fwPanel.textContent).toContain("细分客群差异化拒访");
+    expect(fwPanel.textContent).toContain("3%");
+    expect(fwPanel.textContent).toContain("差异化应答分层字段：会员等级");
+    expect(fwPanel.textContent).toContain("普通会员：无回答 30%");
+    expect(fwPanel.textContent).toContain("黑金会员：无回答 6%");
+});

@@ -56,17 +56,19 @@ export function Dashboard() {
     const statMeta = (label: string) => {
         switch (label) {
             case "我的班级":
-                return { to: "/class", icon: School, intent: "primary" as const, hint: "查看授课班级与学生名册" };
+                return { to: "/class", icon: School, intent: "primary" as const, hint: "授课班级与学生名册" };
             case "我的实验模板":
-                return { to: "/topic", icon: BookOpen, intent: "info" as const, hint: "配置商业案例与投放策略" };
+                return { to: "/topic", icon: BookOpen, intent: "info" as const, hint: "商业案例与投放配置" };
             case "待批改作业":
-                return { to: "/grading", icon: PenLine, intent: "warning" as const, hint: "检视多轮调优过程并评分" };
+                return { to: "/grading", icon: PenLine, intent: "warning" as const, hint: "多轮调优轨迹批改" };
             case "进行中实验任务":
-                return { to: "/task", icon: ClipboardList, intent: "success" as const, hint: "跟踪各班五阶段实训进度" };
+                return { to: "/task", icon: ClipboardList, intent: "success" as const, hint: "五阶段实训进度跟踪" };
             default:
                 return { to: undefined, icon: ClipboardList, intent: "neutral" as const, hint: undefined };
         }
     };
+
+    const topicCount = stats.find((item) => item.label === "我的实验模板")?.value ?? null;
 
     return (
         <div className="space-y-6">
@@ -136,8 +138,26 @@ export function Dashboard() {
                         <div className="py-10 text-center text-label text-destructive">活动任务加载失败，请重试</div>
                     ) : activeTasks.length === 0 ? (
                         <div className="py-10 text-center">
-                            <p className="text-label text-muted-foreground">当前没有已开放且未截止的实验任务</p>
-                            <Button asChild variant="outline" size="sm" className="mt-3"><Link to="/task">进入实验任务管理</Link></Button>
+                            <p className="text-label font-medium text-foreground">当前没有已开放且未截止的实验任务</p>
+                            {topicCount === 0 ? (
+                                <p className="mx-auto mt-1.5 max-w-lg text-meta text-muted-foreground">
+                                    尚未创建商业实验模板。请先完成七步模板配置并发布，再在实验任务中分配给授课班级。
+                                </p>
+                            ) : (
+                                <p className="mx-auto mt-1.5 max-w-lg text-meta text-muted-foreground">
+                                    可将已发布的商业实验模板分配给班级，或延长已截止任务的提交时间。
+                                </p>
+                            )}
+                            <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
+                                {topicCount === 0 && (
+                                    <Button asChild size="sm">
+                                        <Link to="/topic">前往创建实验模板</Link>
+                                    </Button>
+                                )}
+                                <Button asChild variant="outline" size="sm">
+                                    <Link to="/task">进入实验任务管理</Link>
+                                </Button>
+                            </div>
                         </div>
                     ) : activeTasks.map((item) => {
                         const progress = item.total > 0 ? Math.round(item.completed / item.total * 100) : 0;

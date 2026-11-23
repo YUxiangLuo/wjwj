@@ -357,3 +357,23 @@ test("sampling tab renders waveNumber prefix on multi-wave samplingAttempts", as
     expect(view.getByText("第 1 轮 · 简单随机 · 24 个")).toBeTruthy();
     expect(view.getByText("第 2 轮 · 分层抽样 · 48 个")).toBeTruthy();
 });
+
+test("marks only invalid score inputs with aria-invalid and surfaces re-grade status on graded records", async () => {
+    globalThis.fetch = (async () => Response.json({
+        success: true,
+        data: { ...record(), status: "graded", scoreQuestionnaire: 88, scoreProcess: 92, scoreReport: 90 },
+    })) as unknown as typeof fetch;
+
+    const view = page();
+    await waitFor(() => expect(view.getByText("可重评")).toBeTruthy());
+    const qInput = view.getByLabelText("问卷设计（30%）") as HTMLInputElement;
+    const pInput = view.getByLabelText("实验过程（30%）") as HTMLInputElement;
+    const rInput = view.getByLabelText("实验报告（40%）") as HTMLInputElement;
+    expect(qInput.getAttribute("aria-invalid")).toBe("false");
+
+    fireEvent.change(qInput, { target: { value: "105" } });
+    fireEvent.change(rInput, { target: { value: "88.555" } });
+    expect(qInput.getAttribute("aria-invalid")).toBe("true");
+    expect(pInput.getAttribute("aria-invalid")).toBe("false");
+    expect(rInput.getAttribute("aria-invalid")).toBe("true");
+});

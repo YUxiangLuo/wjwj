@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { RequestError } from "@/components/RequestError";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DatetimePicker24 } from "@/components/DatetimePicker24";
+import { localWallClockToUtcIso } from "@/lib/datetime";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { TeacherClass, Topic } from "../api-client";
@@ -136,7 +137,13 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
                             onChange={onDeadlineChange}
                             placeholder="选择日期与时间（24 小时制）"
                         />
-                        <p className="text-meta text-muted-foreground">所有教师和学生均按中国标准时间（UTC+8）查看该截止时刻。</p>
+                        {deadline.trim() && (() => {
+                            const iso = localWallClockToUtcIso(deadline);
+                            return iso && new Date(iso).getTime() <= Date.now() ? (
+                                <p className="text-meta text-warning">所选时间早于或等于当前时刻，发布时需使用未来截止时间。</p>
+                            ) : null;
+                        })()}
+                        <p className="text-meta text-muted-foreground">所有教师和学生均按中国标准时间（UTC+8）查看该截止时刻；留空表示长期开放。</p>
                     </div>
                 </div>}
                 {publishError && <p ref={errorRef} tabIndex={-1} role="alert" className="rounded-surface border border-destructive-border bg-destructive-muted p-3 text-label text-destructive">{publishError}</p>}
