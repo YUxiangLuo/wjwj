@@ -338,3 +338,22 @@ test("five-tab WaveLoopSnapshot falls back cleanly to questionnaire when switchi
     expect(view.getByRole("tab", { name: "问卷" }).getAttribute("aria-selected")).toBe("true");
     expect(view.getByText("旧版问卷标题")).toBeTruthy();
 });
+
+test("sampling tab renders waveNumber prefix on multi-wave samplingAttempts", async () => {
+    globalThis.fetch = (async () => Response.json({
+        success: true,
+        data: {
+            ...record(),
+            samplingAttempts: [
+                { id: 1, waveNumber: 1, method: "simple", seed: 101, sampleCount: 24, details: {}, createdAt: "2026-10-01T08:00:00.000Z" },
+                { id: 2, waveNumber: 2, method: "stratified", seed: 202, sampleCount: 48, details: {}, createdAt: "2026-10-01T09:00:00.000Z" },
+            ],
+        },
+    })) as unknown as typeof fetch;
+
+    const view = page();
+    await waitFor(() => expect(view.getByLabelText("教师评语")).toBeTruthy());
+    fireEvent.keyDown(view.getByRole("tab", { name: "抽样结果" }), { key: "Enter" });
+    expect(view.getByText("第 1 轮 · 简单随机 · 24 个")).toBeTruthy();
+    expect(view.getByText("第 2 轮 · 分层抽样 · 48 个")).toBeTruthy();
+});

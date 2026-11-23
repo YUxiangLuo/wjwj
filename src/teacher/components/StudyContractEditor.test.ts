@@ -75,10 +75,10 @@ test("isStudyContractComplete enforces target, lengths, and presence", () => {
     })).toBe(false);
     expect(isStudyContractComplete({
         ...buildDefaultStudyContract("学习情况调查", meanTarget),
-        businessDecision: "定".repeat(300),
+        businessDecision: "定".repeat(400),
     })).toBe(true);
     expect(isStudyContractComplete({
         ...buildDefaultStudyContract("学习情况调查", meanTarget),
-        businessDecision: "定".repeat(301),
+        businessDecision: "定".repeat(401),
     })).toBe(false);
 });

@@ -276,9 +276,10 @@ export function GradingDetail() {
                                                 pps: "PPS",
                                                 stratified: "分层抽样",
                                             }[attempt.method];
+                                            const waveNumber = (attempt as { waveNumber?: number | null }).waveNumber;
                                             return (
                                                 <div key={attempt.id} className="flex items-center justify-between rounded-surface bg-muted px-3 py-2 text-label">
-                                                    <span className="font-medium">{methodLabel} · {attempt.sampleCount.toLocaleString()} 个</span>
+                                                    <span className="font-medium tabular-nums">{waveNumber ? `第 ${waveNumber} 轮 · ` : ""}{methodLabel} · {attempt.sampleCount.toLocaleString()} 个</span>
                                                     <span className="text-meta text-muted-foreground">seed {attempt.seed} · {formatDateTimeDisplay(attempt.createdAt)}</span>
                                                 </div>
                                             );

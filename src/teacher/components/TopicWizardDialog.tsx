@@ -107,7 +107,14 @@ function sanitizeFieldworkStrata(
 ): FieldworkSimulationConfig {
     if (config.stratumField && !allowedStrata.includes(config.stratumField)) {
         const { stratumField: _sf, stratumNonResponseRates: _sr, ...rest } = config;
-        return rest;
+        return {
+            ...rest,
+            preset: rest.preset === "stratum_differential" ? "balanced" : rest.preset,
+        };
+    }
+    if (allowedStrata.length === 0 && config.preset === "stratum_differential") {
+        const { stratumField: _sf, stratumNonResponseRates: _sr, ...rest } = config;
+        return { ...rest, preset: "balanced" };
     }
     return config;
 }

@@ -371,10 +371,14 @@ export function TopicManagement() {
             return;
         }
         const sanitizedFieldwork: FieldworkSimulationConfig =
-            fieldworkConfig.stratumField && !fieldMapping.stratified.includes(fieldworkConfig.stratumField)
+            (fieldworkConfig.stratumField && !fieldMapping.stratified.includes(fieldworkConfig.stratumField))
+            || (fieldMapping.stratified.length === 0 && fieldworkConfig.preset === "stratum_differential")
                 ? (() => {
                     const { stratumField: _sf, stratumNonResponseRates: _sr, ...rest } = fieldworkConfig;
-                    return rest;
+                    return {
+                        ...rest,
+                        preset: rest.preset === "stratum_differential" ? "balanced" : rest.preset,
+                    };
                 })()
                 : fieldworkConfig;
         const fwChanged = JSON.stringify(sanitizedFieldwork) !== JSON.stringify(savedFieldworkConfig);

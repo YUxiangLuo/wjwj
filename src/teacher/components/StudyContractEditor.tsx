@@ -69,7 +69,7 @@ export function isStudyContractComplete(contract: StudyContract | null | undefin
         && questionLength >= 5 && questionLength <= 300
         && populationLength >= 2 && populationLength <= 200
         && unitLength >= 1 && unitLength <= 100
-        && decisionLength <= 300;
+        && decisionLength <= 400;
 }
 
 /**
@@ -280,7 +280,7 @@ export function StudyContractEditor({
                 <Input
                     value={contract?.businessDecision ?? ""}
                     disabled={disabled || !target}
-                    maxLength={300}
+                    maxLength={400}
                     placeholder="例如：确定夏季新品全国终端指导定价与黑金会员优惠券补贴策略"
                     aria-label="支撑的商业管理决策"
                     data-testid="teacher-contract-business-decision"

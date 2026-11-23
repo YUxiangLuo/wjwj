@@ -572,6 +572,7 @@ test("step 4 fieldworkConfig edits trigger dirty protection, clamp bounds, guard
 
     fireEvent.change(view.getByTestId("teacher-topic-fw-nrr"), { target: { value: "95" } });
     expect(fwState.baseUnitNonResponseRate).toBe(0.75);
+    expect(fwState.preset).toBe("balanced");
     expect(fwState.stratumField).toBeUndefined();
     expect(fwState.stratumNonResponseRates).toBeUndefined();
 
