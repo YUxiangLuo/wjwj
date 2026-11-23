@@ -15,30 +15,67 @@ class Sum {
     get value() { return this.total + this.correction; }
 }
 
+function normalizeZero(value: number): number {
+    return Object.is(value, -0) ? 0 : value;
+}
+
 function finite(value: number): number {
     if (!Number.isFinite(value)) throw new Error("统计计算发生数值溢出或尺度不可靠");
-    return value;
+    return normalizeZero(value);
 }
 
 function weightedMean(values: number[], weights: number[]): number | null {
     if (!values.length) return null;
-    const valueScale = values.reduce((maximum, value) => Math.max(maximum, Math.abs(value)), 0);
-    if (valueScale === 0) return 0;
     const weightScale = weights.reduce((maximum, weight) => Math.max(maximum, weight), 0);
+    if (!(weightScale > 0)) return null;
+
+    let minimum = Infinity;
+    let maximum = -Infinity;
+    let valueScale = 0;
+    for (const value of values) {
+        if (value < minimum) minimum = value;
+        if (value > maximum) maximum = value;
+        const abs = Math.abs(value);
+        if (abs > valueScale) valueScale = abs;
+    }
+    if (valueScale === 0) return 0;
+
+    // By Sterbenz's lemma, when all values share the same sign within a factor of 2,
+    // subtracting `minimum` is 100% bit-exact and prevents large-offset cancellation.
+    const sterbenzCenter =
+        (minimum > 0 && maximum <= 2 * minimum) || (maximum < 0 && minimum >= 2 * maximum)
+            ? minimum
+            : 0;
+
+    let shiftedScale = 0;
+    for (const value of values) {
+        shiftedScale = Math.max(shiftedScale, Math.abs(value - sterbenzCenter));
+    }
+    if (shiftedScale === 0) return normalizeZero(sterbenzCenter);
+
     const numerator = new Sum(), denominator = new Sum();
     const unscaledNumerator = new Sum();
     let productUnderflow = false;
     for (let i = 0; i < values.length; i++) {
+        const shifted = values[i]! - sterbenzCenter;
         const weight = weights[i]! / weightScale;
-        const product = weight * values[i]!;
-        if (values[i] !== 0 && weight > 0 && Math.abs(product) < 2 ** -1022) productUnderflow = true;
+        if (weights[i]! > 0 && weight === 0 && shifted !== 0) {
+            // Weight dynamic range exceeds 10^324; fail closed if weighted contribution could be non-negligible
+            if (Math.log2(weights[i]!) + Math.log2(Math.abs(shifted)) - Math.log2(weightScale) > -1074) {
+                throw new Error("统计计算发生数值溢出或尺度不可靠");
+            }
+        }
+        const product = weight * shifted;
+        if (shifted !== 0 && weight > 0 && Math.abs(product) < 2 ** -1022) productUnderflow = true;
         unscaledNumerator.add(product);
-        numerator.add(weight * (values[i]! / valueScale));
+        numerator.add(weight * (shifted / shiftedScale));
         denominator.add(weight);
     }
-    if (!(denominator.value > 0)) throw new Error("权重总和无效");
-    if (!productUnderflow && Number.isFinite(unscaledNumerator.value)) return finite(unscaledNumerator.value / denominator.value);
-    return finite((numerator.value / denominator.value) * valueScale);
+    if (!(denominator.value > 0)) return null;
+    const offset = !productUnderflow && Number.isFinite(unscaledNumerator.value)
+        ? unscaledNumerator.value / denominator.value
+        : (numerator.value / denominator.value) * shiftedScale;
+    return finite(sterbenzCenter + offset);
 }
 
 function quantileR7(sorted: number[], probability: number): number | null {
@@ -62,6 +99,7 @@ export function calculateUnivariate({
     weighted: boolean;
     weights?: number[];
 }): AnalysisResult {
+    if (variable.kind === "identifier") throw new Error("标识符变量不用于统计分析");
     if (weighted && (!weights || weights.length !== indices.length)) throw new Error("权重必须与样本索引一一对齐");
     if (!weighted && weights !== undefined) throw new Error("未加权分析不能传入权重");
     if (weights?.some(weight => !Number.isFinite(weight) || weight <= 0)) throw new Error("权重必须是有限正数");
@@ -71,7 +109,8 @@ export function calculateUnivariate({
         return population[index]!;
     });
     const missingKeys = new Set(variable.missing.map(valueKey));
-    const categoryIndex = new Map(variable.categories.map((category, index) => [valueKey(category.value), index]));
+    const activeCategories = variable.categories.filter(category => !missingKeys.has(valueKey(category.value)));
+    const categoryIndex = new Map(activeCategories.map((category, index) => [valueKey(category.value), index]));
 
     const read = (row: Record<string, unknown>) => {
         if (!Object.prototype.hasOwnProperty.call(row, variable.field)) throw new Error(`总体缺少字段“${variable.field}”`);
@@ -100,12 +139,12 @@ export function calculateUnivariate({
             sampleStandardDeviation = finite(computeSampleStandardDeviation(values));
         }
         return { kind: "numeric", weighted, sampleCount: rows.length, validCount: values.length, missingCount: rows.length - values.length,
-            mean, sampleStandardDeviation, min: sorted[0] ?? null, max: sorted.at(-1) ?? null,
+            mean, sampleStandardDeviation, min: sorted[0] !== undefined ? normalizeZero(sorted[0]) : null, max: sorted.at(-1) !== undefined ? normalizeZero(sorted.at(-1)!) : null,
             q1: quantileR7(sorted, .25), median: quantileR7(sorted, .5), q3: quantileR7(sorted, .75) };
     }
 
-    const counts = Array(variable.categories.length).fill(0) as number[];
-    const weightedCounts = Array(variable.categories.length).fill(0).map(() => new Sum());
+    const counts = Array(activeCategories.length).fill(0) as number[];
+    const weightedCounts = Array(activeCategories.length).fill(0).map(() => new Sum());
     let validCount = 0;
     const weightScale = weighted && weights!.length
         ? weights!.reduce((maximum, weight) => Math.max(maximum, weight), 0)
@@ -118,8 +157,8 @@ export function calculateUnivariate({
         counts[category] = counts[category]! + 1;
         if (weighted) { const weight = weights![i]! / weightScale; weightedCounts[category]!.add(weight); totalWeight.add(weight); }
     }
-    const categories = variable.categories.map((category, index) => ({ ...category, count: counts[index]!,
-        proportion: weighted ? (validCount ? finite(weightedCounts[index]!.value / totalWeight.value) : null) : (validCount ? counts[index]! / validCount : null) }));
+    const categories = activeCategories.map((category, index) => ({ ...category, count: counts[index]!,
+        proportion: weighted ? (validCount && totalWeight.value > 0 ? finite(weightedCounts[index]!.value / totalWeight.value) : null) : (validCount ? counts[index]! / validCount : null) }));
     return { kind: "categorical", weighted, sampleCount: rows.length, validCount, missingCount: rows.length - validCount, categories };
 }
 
@@ -138,23 +177,46 @@ export function calculateCrossTab({
     weighted: boolean;
     weights?: number[];
 }): CrossTabAnalysisResult {
+    if (variable.kind === "identifier") {
+        throw new Error("标识符变量不用于统计分析");
+    }
     if (groupVariable.kind !== "nominal" && groupVariable.kind !== "ordinal") {
         throw new Error("分组交叉对比的分组变量须为名义或有序分类变量");
+    }
+    if (variable.field === groupVariable.field) {
+        throw new Error("分组维度不能与目标分析变量相同");
     }
     if (weighted && (!weights || weights.length !== indices.length)) {
         throw new Error("权重必须与样本索引一一对齐");
     }
+    if (!weighted && weights !== undefined) {
+        throw new Error("未加权分析不能传入权重");
+    }
+    if (weights?.some((w) => !Number.isFinite(w) || w < 0)) {
+        throw new Error("权重必须为非负有限数");
+    }
+    if (new Set(indices).size !== indices.length) {
+        throw new Error("样本索引不能重复");
+    }
+    for (const index of indices) {
+        if (!Number.isSafeInteger(index) || index < 0 || index >= rows.length) {
+            throw new Error("样本索引无效");
+        }
+    }
 
     const groupMissing = new Set(groupVariable.missing.map(valueKey));
-    const groupCatIndex = new Map(groupVariable.categories.map((cat, idx) => [valueKey(cat.value), idx]));
-    const targetMissing = new Set(variable.missing.map(valueKey));
-    const targetCatIndex = new Map(variable.categories.map((cat, idx) => [valueKey(cat.value), idx]));
+    const activeGroupCategories = groupVariable.categories.filter((cat) => !groupMissing.has(valueKey(cat.value)));
+    const groupCatIndex = new Map(activeGroupCategories.map((cat, idx) => [valueKey(cat.value), idx]));
 
-    const buckets = groupVariable.categories.map(() => ({
+    const targetMissing = new Set(variable.missing.map(valueKey));
+    const activeTargetCategories = variable.categories.filter((cat) => !targetMissing.has(valueKey(cat.value)));
+    const targetCatIndex = new Map(activeTargetCategories.map((cat, idx) => [valueKey(cat.value), idx]));
+
+    const buckets = activeGroupCategories.map(() => ({
         numValues: [] as number[],
         numWeights: [] as number[],
-        catCounts: Array(variable.categories.length).fill(0) as number[],
-        catWeightedCounts: Array(variable.categories.length).fill(0).map(() => new Sum()),
+        catCounts: Array(activeTargetCategories.length).fill(0) as number[],
+        catWeightedCounts: Array(activeTargetCategories.length).fill(0).map(() => new Sum()),
         totalWeight: new Sum(),
         validCount: 0,
     }));
@@ -165,17 +227,25 @@ export function calculateCrossTab({
         : 1;
 
     indices.forEach((rowIndex, pos) => {
-        const row = rows[rowIndex];
-        if (!row) return;
+        const row = rows[rowIndex]!;
+        if (!Object.prototype.hasOwnProperty.call(row, groupVariable.field)) {
+            throw new Error(`总体缺少字段“${groupVariable.field}”`);
+        }
+        if (!Object.prototype.hasOwnProperty.call(row, variable.field)) {
+            throw new Error(`总体缺少字段“${variable.field}”`);
+        }
+
         const gRaw = row[groupVariable.field];
         const gKey = valueKey(gRaw);
         if (groupMissing.has(gKey)) return;
         const gIdx = groupCatIndex.get(gKey);
-        if (gIdx === undefined) return;
+        if (gIdx === undefined) {
+            throw new Error(`字段“${groupVariable.field}”含字典外类别`);
+        }
 
         const tRaw = row[variable.field];
         const tKey = valueKey(tRaw);
-        if (tRaw === null || tRaw === undefined || targetMissing.has(tKey)) return;
+        if (targetMissing.has(tKey)) return;
 
         const bucket = buckets[gIdx]!;
         const w = weighted ? weights![pos]! : 1;
@@ -189,18 +259,21 @@ export function calculateCrossTab({
             totalValid += 1;
         } else {
             const tIdx = targetCatIndex.get(tKey);
-            if (tIdx === undefined) return;
+            if (tIdx === undefined) {
+                throw new Error(`字段“${variable.field}”含字典外类别`);
+            }
             bucket.catCounts[tIdx] = bucket.catCounts[tIdx]! + 1;
-            if (weighted) {
-                bucket.catWeightedCounts[tIdx]!.add(w / weightScale);
-                bucket.totalWeight.add(w / weightScale);
+            if (weighted && weightScale > 0 && w > 0) {
+                const scaledW = w / weightScale;
+                bucket.catWeightedCounts[tIdx]!.add(scaledW);
+                bucket.totalWeight.add(scaledW);
             }
             bucket.validCount += 1;
             totalValid += 1;
         }
     });
 
-    const groups = groupVariable.categories.map((gCat, gIdx) => {
+    const groups = activeGroupCategories.map((gCat, gIdx) => {
         const bucket = buckets[gIdx]!;
         if (variable.kind === "continuous") {
             const mean = bucket.validCount > 0
@@ -217,7 +290,7 @@ export function calculateCrossTab({
                 sampleStandardDeviation: sd,
             };
         }
-        const categories = variable.categories.map((tCat, tIdx) => ({
+        const categories = activeTargetCategories.map((tCat, tIdx) => ({
             value: tCat.value,
             label: tCat.label,
             count: bucket.catCounts[tIdx]!,
