@@ -31,16 +31,16 @@ export function KpiStatCard({
     const isLongTextValue = typeof value === "string" && value.length > 6;
     const content = (
         <div className={cn(
-            "flex h-full flex-col justify-between gap-2 rounded-surface border border-border bg-card p-3.5 transition-none",
+            "flex h-full flex-col justify-between gap-2 rounded-surface border border-border bg-card p-3 transition-none",
             to && "hover:border-primary-border hover:bg-primary-muted",
             className,
         )}>
             <div className="min-w-0 space-y-1.5">
-                <div className="flex items-center justify-between gap-2">
-                    <p className="min-w-0 truncate text-meta font-medium text-muted-foreground" title={label}>{label}</p>
+                <div className="flex items-start justify-between gap-1.5">
+                    <p className="min-w-0 text-meta font-medium leading-snug text-muted-foreground">{label}</p>
                     {Icon && (
-                        <IconTile intent={intent} className="h-8 w-8">
-                            <Icon className="h-4 w-4" aria-hidden="true" />
+                        <IconTile intent={intent} className="h-7 w-7">
+                            <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                         </IconTile>
                     )}
                 </div>
@@ -58,7 +58,7 @@ export function KpiStatCard({
                 </div>
             </div>
             {(hint || to) && (
-                <div className="flex items-center justify-between gap-2 border-t border-border pt-2 text-meta text-muted-foreground">
+                <div className="flex items-center justify-between gap-1.5 border-t border-border pt-2 text-meta text-muted-foreground">
                     <span className="truncate">{hint ?? "点击查看明细"}</span>
                     {to && <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-primary" />}
                 </div>
