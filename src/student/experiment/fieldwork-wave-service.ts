@@ -128,10 +128,11 @@ export function buildWaveDiagnosticsMap(params: {
         const fw = params.wave.fieldwork.methods[method];
         const sr = (params.wave.samplingResults as Record<string, unknown>)[method] as Record<string, unknown> | undefined;
         if (!fw || !sr || !Array.isArray(sr.indices)) continue;
-        diagnostics[method] = buildMethodFieldworkDiagnostics({
+        const diagParams: Parameters<typeof buildMethodFieldworkDiagnostics>[0] & { sizeField?: string } = {
             method,
             population: params.population,
             samplingIndices: sr.indices as number[],
+            sizeField: typeof sr.sizeField === "string" ? sr.sizeField : undefined,
             inclusionProbabilities: Array.isArray(sr.inclusionProbabilities) ? (sr.inclusionProbabilities as number[]) : undefined,
             stratifyBy: typeof sr.stratifyBy === "string" ? sr.stratifyBy : undefined,
             layers: Array.isArray(sr.layers) ? (sr.layers as Array<{ name: string; count: number; sampleCount: number }>) : undefined,
@@ -144,7 +145,8 @@ export function buildWaveDiagnosticsMap(params: {
             identifierField,
             analysisTarget,
             confidenceLevel,
-        });
+        };
+        diagnostics[method] = buildMethodFieldworkDiagnostics(diagParams);
     }
 
     return diagnostics;
@@ -248,15 +250,17 @@ export function verifyExperimentWavesReplay(params: {
             if (fw.method !== method) return false;
             const section = (wave.samplingResults as Record<string, unknown> | null)?.[method] as Record<string, unknown> | undefined;
             if (!section || !Array.isArray(section.indices)) return false;
-            const valid = verifyMethodFieldworkReplay({
+            const replayParams: Parameters<typeof verifyMethodFieldworkReplay>[0] & { expectedMethod?: SamplingMethod } = {
                 stored: fw,
+                expectedMethod: method,
                 population: params.population,
                 indices: section.indices as number[],
                 questionnaire: wave.questionnaire,
                 dictionary: params.dictionary,
                 analysisTarget: target,
                 fieldworkConfig: params.fieldworkConfig,
-            });
+            };
+            const valid = verifyMethodFieldworkReplay(replayParams);
             if (!valid) return false;
         }
     }

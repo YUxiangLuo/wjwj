@@ -120,6 +120,10 @@ export function validateExperimentSubmission(params: {
     if (storedWaves.length < 2 || !pilotWave || !formalWave) {
         return fail("请完成首轮试投诊断与至少一轮调优正式投放后再提交", "INCOMPLETE");
     }
+    for (const w of storedWaves) {
+        const waveQuestionnaireError = validateQuestionnaireForSubmit(w.questionnaire);
+        if (waveQuestionnaireError) return fail(waveQuestionnaireError, "INCOMPLETE");
+    }
 
     const validationError =
         validateQuestionnaireForSubmit(questionnaire) ??
@@ -163,8 +167,13 @@ export async function submitStudentExperiment(params: {
     const populationSize = normalizePopulationSize(params.taskInfo.populationSize);
     const questionnaire = parseStoredJson<Record<string, unknown>>(params.experimentRecord.questionnaire);
     const dictionary = params.taskInfo.variableDictionary ?? null;
+    const storedWaves = parseStoredWaves(params.experimentRecord.wavesData);
+    const effectiveTaskId = params.taskInfo.taskId ?? params.experimentRecord.taskId;
     try {
-        validateQuestionBindings(questionnaire as any, dictionary, params.taskInfo.taskId ?? params.experimentRecord.taskId);
+        validateQuestionBindings(questionnaire as any, dictionary, effectiveTaskId);
+        for (const w of storedWaves) {
+            validateQuestionBindings(w.questionnaire as any, dictionary, effectiveTaskId);
+        }
     } catch (cause) {
         return fail(cause instanceof Error ? cause.message : "问卷变量关联无效", "INVALID_BINDING", 409);
     }
@@ -183,7 +192,6 @@ export async function submitStudentExperiment(params: {
         return fail("总体文件或字段解释已变化，请联系教师", "SOURCE_CONFLICT", 409);
     }
 
-    const storedWaves = parseStoredWaves(params.experimentRecord.wavesData);
     const resolvedTarget = resolveAnalysisTarget(params.taskInfo.fieldMapping);
     if (resolvedTarget?.target.kind === "mean" && sourceData) {
         const stat = buildPopulationNumericStats(sourceData.rows, [resolvedTarget.target.field])[resolvedTarget.target.field];
@@ -238,7 +246,22 @@ export async function submitStudentExperiment(params: {
             fieldMapping: params.taskInfo.fieldMapping,
         }))) return fail(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
 
+        const activeFormalWaveNumber = Math.max(2, params.experimentRecord.activeWaveNumber || 2);
         for (const w of storedWaves) {
+            const rawWaveSampling = w.samplingResults as Record<string, Record<string, unknown> | undefined> | null;
+            const hasUntrustedCompleted = SAMPLING_METHODS.some((m) =>
+                isCompletedSamplingResult(rawWaveSampling?.[m]) && rawWaveSampling?.[m]?.serverGenerated !== true,
+            );
+            if (hasUntrustedCompleted) {
+                return fail(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
+            }
+            const completedMethods = SAMPLING_METHODS.filter((m) =>
+                isCompletedSamplingResult(rawWaveSampling?.[m])
+                && rawWaveSampling?.[m]?.serverGenerated === true,
+            );
+            if ((w.waveNumber === 1 || w.waveNumber === activeFormalWaveNumber) && completedMethods.length === 0) {
+                return fail("请先完成各轮次的抽样与问卷发放回收后再提交", "INCOMPLETE", 400);
+            }
             if (w.samplingResults && !(await verifySamplingReplay({
                 samplingResults: w.samplingResults,
                 population: sourceData.designRows,
@@ -246,15 +269,17 @@ export async function submitStudentExperiment(params: {
             }))) {
                 return fail(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
             }
-            const completedMethods = SAMPLING_METHODS.filter((m) =>
-                isCompletedSamplingResult((w.samplingResults as Record<string, unknown> | null)?.[m])
-                && (w.samplingResults as Record<string, Record<string, unknown> | undefined> | null)?.[m]?.serverGenerated === true,
-            );
-            if (
-                completedMethods.length > 0
-                && completedMethods.some((m) => !w.fieldwork?.methods?.[m]?.records?.length)
-            ) {
-                return fail("请先完成各轮次的问卷发放回收后再提交", "INCOMPLETE", 400);
+            for (const m of completedMethods) {
+                const sectionIndices = rawWaveSampling?.[m]?.indices;
+                const fwRecords = w.fieldwork?.methods?.[m]?.records;
+                if (
+                    !Array.isArray(sectionIndices)
+                    || sectionIndices.length === 0
+                    || !Array.isArray(fwRecords)
+                    || fwRecords.length !== sectionIndices.length
+                ) {
+                    return fail("请先完成各轮次的问卷发放回收后再提交", "INCOMPLETE", 400);
+                }
             }
         }
         if (!verifyExperimentWavesReplay({

@@ -804,16 +804,20 @@ pgTest.each([1, 0.0002])("F-R1-01 mean planning variance is verified at stage 2 
         questions: Array.from({ length: 5 }, (_, index) => ({ id: `q${index}`, type: "boolean" as const, content: `第${index + 1}题是否完成？` })),
     };
     const pilotSampling = { simple: { ...f.storedResult, serverGenerated: true } };
+    const pilotIndices = f.storedResult.indices as number[];
     const pilotFieldwork: WaveFieldworkData = {
         methods: {
             simple: {
                 method: "simple",
                 dispatchSeed: 2026,
                 dispatchedAt: new Date().toISOString(),
-                invitedCount: 3,
-                records: [
-                    { populationIndex: 0, disposition: "valid_complete", durationSec: 90, answeredQuestionCount: 5 },
-                ],
+                invitedCount: pilotIndices.length,
+                records: pilotIndices.map((popIdx) => ({
+                    populationIndex: popIdx,
+                    disposition: "valid_complete" as const,
+                    durationSec: 90,
+                    answeredQuestionCount: 5,
+                })),
             },
         },
     };
@@ -956,6 +960,19 @@ pgTest("multi-wave stage reopen cleans relational experiment_wave rows and submi
         taskInfo: f.taskInfo,
         student: f.student,
     })).toMatchObject({ ok: false, code: "INVALID_SAMPLING_STORAGE" });
+
+    // Empty pilotWave samplingResults must also be rejected when sourceData is present
+    const emptyPilotWave = { ...currentWaves[0]!, samplingResults: {}, fieldwork: null };
+    await application.db.update(schema.experiment).set({
+        wavesData: [emptyPilotWave, currentWaves[1]!, wave3],
+    }).where(eq(schema.experiment.id, f.experiment.id));
+    const emptyPilotRec = await reload();
+    expect(await submitService.submitStudentExperiment({
+        experimentRecord: emptyPilotRec,
+        observedVersion: emptyPilotRec.version,
+        taskInfo: f.taskInfo,
+        student: f.student,
+    })).toMatchObject({ ok: false, code: "INCOMPLETE" });
 
     // Restore valid 3 waves, then reopen Stage 3 via route: Wave 2 & 3 rows in experiment_wave must be deleted
     await application.db.update(schema.experiment).set({ wavesData: threeWaves }).where(eq(schema.experiment.id, f.experiment.id));

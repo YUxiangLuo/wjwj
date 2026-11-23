@@ -188,6 +188,7 @@ export async function createSavedAnalysis(studentId: number, classId: number, ta
         data = await univariateService.run({
             populationPath: initial.template.excelFilePath,
             fieldMapping: initial.template.fieldMapping,
+            fieldworkConfig: initial.template.fieldworkConfig,
             dictionary,
             config: request.config,
             samplingResult,
