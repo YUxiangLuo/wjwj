@@ -131,13 +131,25 @@ test("TaskHall opens a simple read-only announcement", async () => {
     expect(fetchMock.mock.calls.filter(([input]) => String(input).includes("announcements")).length).toBe(1);
 });
 
-test("TaskHall rejected task continues the same experiment without resetting", async () => {
+test("TaskHall rejected task surfaces rejection reason in spotlight, links to snapshot, and recovers empty filters", async () => {
     installFetch([
-        buildTask({ id: 7, status: "rejected", name: "被驳回任务", progress: 100, currentStage: 4, rejectReason: "请补充数据分析" }),
+        buildTask({ id: 7, status: "rejected", name: "被驳回任务", progress: 100, currentStage: 5, rejectReason: "请补充数据分析" }),
+    ], [
+        buildAnnouncement({ id: 1, title: "通知一" }),
+        buildAnnouncement({ id: 2, title: "通知二" }),
     ]);
 
     const view = renderTaskHall();
     await waitFor(() => expect(view.getByTestId("student-task-primary-7")).toBeTruthy());
+    expect(view.getByTestId("student-hall-spotlight-rejection").textContent).toContain("请补充数据分析");
+    expect(view.getByText("共 2 条")).toBeTruthy();
+    expect(view.getByRole("link", { name: "查看批改详情" }).getAttribute("href")).toBe("/task/7/result");
+    expect(view.getByRole("link", { name: "查看被驳回任务退回快照" }).getAttribute("href")).toBe("/task/7/result");
+
+    fireEvent.click(view.getByTestId("student-filter-submitted"));
+    await waitFor(() => expect(view.queryByTestId("student-task-card-7") === null).toBe(true));
+    fireEvent.click(view.getByTestId("student-filter-reset"));
+    await waitFor(() => expect(view.queryByTestId("student-task-card-7") !== null).toBe(true));
 
     fireEvent.click(view.getByTestId("student-task-primary-7"));
 

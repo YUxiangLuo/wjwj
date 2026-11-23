@@ -88,3 +88,34 @@ test("ordinary five-point scales still bind without a missing-option prompt", as
     fireEvent.click(confirm(view));
     expect(() => validate(saved.mock.calls[0]![0])).not.toThrow();
 });
+
+test("screening boolean question with no matching dictionary variable explains why and hides empty combobox", () => {
+    const screeningBoolean: Question = {
+        id: "screen1",
+        section: "screening",
+        type: "boolean",
+        content: "您目前的周岁年龄是否在18岁至40岁之间？",
+    };
+    const view = render(
+        <VariableBindingDialog open question={screeningBoolean} dictionary={dictionary} taskId={1} onConfirm={() => {}} onOpenChange={() => {}} />,
+    );
+    expect(view.queryByRole("combobox", { name: "选择变量字段" }) === null).toBe(true);
+    expect(view.getByRole("alert").textContent).toContain("受访资格甄别题通常仅用于开场筛选");
+});
+
+test("already-bound fields on other questions display a duplicate-measurement hint", async () => {
+    const scale = happinessQuestionnaire.questions.find(item => item.id === "hq3")!;
+    const view = render(
+        <VariableBindingDialog
+            open
+            question={scale}
+            dictionary={dictionary}
+            taskId={1}
+            otherBoundFields={new Map([["健康低糖关注度", 4]])}
+            onConfirm={() => {}}
+            onOpenChange={() => {}}
+        />,
+    );
+    await select(view, "选择变量字段", "健康低糖关注度（健康低糖关注度） · 已在 Q4 绑定");
+    expect(view.getByText(/已在第 Q4 题绑定/)).toBeTruthy();
+});

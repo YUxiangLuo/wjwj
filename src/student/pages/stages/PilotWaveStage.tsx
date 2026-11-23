@@ -127,6 +127,10 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
     const [dispatchSeed, setDispatchSeed] = useState<string>("");
     const [dispatching, setDispatching] = useState(false);
     const [completing, setCompleting] = useState(false);
+    const [hasDispatchedInSession, setHasDispatchedInSession] = useState(false);
+    useEffect(() => {
+        setHasDispatchedInSession(false);
+    }, [experiment?.id]);
 
     useEffect(() => {
         if (!taskId) return;
@@ -184,7 +188,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
     }, [estimationType, varianceSource, populationVariance, priorStdDev]);
 
     const safeNrrFraction = Number.isFinite(nonResponsePct)
-        ? Math.min(0.5, Math.max(0, nonResponsePct / 100))
+        ? Math.min(0.5, Math.max(0, Number((nonResponsePct / 100).toFixed(4))))
         : 0.1;
 
     const stepDetails = useMemo(() => calculateSampleSizeStepDetails({
@@ -210,8 +214,8 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
         if (!Number.isFinite(marginOfError) || marginOfError <= 0) {
             return "请输入大于 0 的试投允许误差限";
         }
-        if (estimationType === "proportion" && marginOfError > 50) {
-            return "比例估计允许误差限 E 不能超过 50%";
+        if (estimationType === "proportion" && (marginOfError < 1 || marginOfError > 10)) {
+            return "比例估计允许误差限 E 需在 1%–10% 之间";
         }
         if (!Number.isFinite(nonResponsePct) || nonResponsePct < 0 || nonResponsePct > 50) {
             return "先验预估无回答率需在 0%–50% 之间";
@@ -250,10 +254,10 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
             varianceSource,
         } : {}),
         designEffect,
-        nonResponseRate: Math.min(0.5, Math.max(0, Math.round(nonResponsePct) / 100)),
+        nonResponseRate: safeNrrFraction,
         recommendedSize,
         finalSampleSize: effectiveFinalSize,
-    }), [estimationType, confidenceLevel, marginOfError, activeVariance, varianceSource, designEffect, nonResponsePct, recommendedSize, effectiveFinalSize]);
+    }), [estimationType, confidenceLevel, marginOfError, activeVariance, varianceSource, designEffect, safeNrrFraction, recommendedSize, effectiveFinalSize]);
 
     const handleSavePilotPlan = async () => {
         if (!taskId || !experiment || refreshRequired || planValidationError !== null) {
@@ -336,6 +340,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
         try {
             const res = await experimentApi.dispatchFieldwork(taskId, experiment.version, parsedSeed);
             if (res.success && res.data) {
+                setHasDispatchedInSession(true);
                 updateExperiment(res.data);
                 toast.success("首轮试投问卷已发放并完成虚拟受访者回收！");
             } else if (res.error?.code === "VERSION_CONFLICT") {
@@ -348,11 +353,16 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
         }
     };
 
+    const anyPilotMethodDispatched = useMemo(
+        () => Object.keys(wave1?.diagnostics ?? {}).length > 0 || Object.keys(wave1?.fieldwork?.methods ?? {}).length > 0,
+        [wave1?.diagnostics, wave1?.fieldwork?.methods],
+    );
     const allPilotMethodsDispatched = useMemo(
         () => completedPilotMethods.length > 0 && completedPilotMethods.every((m) => Boolean(wave1?.diagnostics?.[m])),
         [completedPilotMethods, wave1?.diagnostics],
     );
-    const hasStalePilotSampling = completedPilotMethods.length > 0 && !allPilotMethodsDispatched;
+    const hasEverDispatchedPilot = anyPilotMethodDispatched || hasDispatchedInSession;
+    const hasStalePilotSampling = completedPilotMethods.length > 0 && !allPilotMethodsDispatched && hasEverDispatchedPilot;
     const dispatchedDiagMethod = useMemo(() => {
         if (completedPilotMethods.includes(activeMethod) && wave1?.diagnostics?.[activeMethod]) {
             return activeMethod;
@@ -366,12 +376,12 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
             || savedPlan.confidenceLevel !== confidenceLevel
             || Math.abs(savedPlan.marginOfError - marginOfError) > 1e-6
             || Math.abs(savedPlan.designEffect - designEffect) > 1e-6
-            || Math.round(savedPlan.nonResponseRate * 100) !== Math.round(nonResponsePct)
+            || Math.abs(savedPlan.nonResponseRate - safeNrrFraction) > 1e-6
             || (estimationType === "mean" && (
                 (savedPlan.varianceSource ?? "prior_estimate") !== varianceSource
                 || (activeVariance != null && savedPlan.populationVariance != null && Math.abs(savedPlan.populationVariance - activeVariance) > 1e-3)
             ));
-    }, [savedPlan, planValidationError, effectiveFinalSize, confidenceLevel, marginOfError, designEffect, nonResponsePct, estimationType, varianceSource, activeVariance]);
+    }, [savedPlan, planValidationError, effectiveFinalSize, confidenceLevel, marginOfError, designEffect, safeNrrFraction, estimationType, varianceSource, activeVariance]);
     const canCompletePilot = hasSavedPlan && planValidationError === null && !isPlanDirty && allPilotMethodsDispatched;
 
     const handleCompleteStage = async () => {
@@ -385,6 +395,20 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
     };
 
     const systematicInterval = hasSavedPlan ? getSystematicInterval(N, planSavedSize) : null;
+    const practicalPilotTarget = Math.min(bounds.max, 30);
+    const pilotStageHint = planValidationError
+        ? `步骤 1 参数有误：${planValidationError}`
+        : !hasSavedPlan
+            ? "请先在「步骤 1」保存首轮试投样本量方案。"
+            : isPlanDirty
+                ? "步骤 1 样本量参数已修改但尚未保存，请点击「更新首轮样本量方案」后再继续。"
+                : completedPilotMethods.length === 0
+                    ? "请继续在「步骤 2」抽取至少一种首轮试投受访者名单。"
+                    : !allPilotMethodsDispatched
+                        ? hasStalePilotSampling
+                            ? "受访者名单已更新，请在「步骤 3」重新发放问卷同步回收数据。"
+                            : "名单已就绪，请在「步骤 3」点击「发放首轮试投问卷」完成模拟回收。"
+                        : "首轮试投三步闭环已完成，可进入阶段三开展废卷质检与偏差诊断。";
 
     return (
         <div className="space-y-6" data-testid="student-stage-pilot-wave">
@@ -434,7 +458,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                             setCustomFinalSizeInput(null);
                                         }}
                                     >
-                                        <SelectTrigger aria-label="选择试投置信水平" className="bg-background">
+                                        <SelectTrigger aria-label="选择试投置信水平" className="w-full min-w-0 bg-background [&>span]:truncate">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -447,15 +471,16 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
 
                                 <div className="space-y-2">
                                     <Label htmlFor="pilot-margin-error" className="text-foreground">
-                                        {estimationType === "mean" ? "试投允许绝对误差 e" : "试投允许比例误差 E (%)"}
+                                        {estimationType === "mean" ? "试投允许绝对误差 e" : "试投允许比例误差 E (1%–10%)"}
                                     </Label>
                                     <Input
                                         id="pilot-margin-error"
                                         type="number"
-                                        min={0.1}
-                                        step={estimationType === "mean" ? 0.5 : 1}
+                                        min={estimationType === "proportion" ? 1 : 0.1}
+                                        max={estimationType === "proportion" ? 10 : undefined}
+                                        step={0.5}
                                         value={marginOfErrorInput}
-                                        aria-invalid={!Number.isFinite(marginOfError) || marginOfError <= 0 || (estimationType === "proportion" && marginOfError > 50) || undefined}
+                                        aria-invalid={!Number.isFinite(marginOfError) || marginOfError <= 0 || (estimationType === "proportion" && (marginOfError < 1 || marginOfError > 10)) || undefined}
                                         onChange={(e) => {
                                             setMarginOfErrorInput(e.target.value);
                                             setCustomFinalSizeInput(null);
@@ -486,60 +511,67 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                             </div>
 
                             {estimationType === "mean" && (
-                                <div className="grid grid-cols-2 gap-4 rounded-surface border border-border bg-background p-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-foreground">均值规划的先验离散度来源</Label>
-                                        <Select
-                                            value={varianceSource}
-                                            onValueChange={(v) => {
-                                                setVarianceSource(v as "prior_estimate" | "population");
-                                                setCustomFinalSizeInput(null);
-                                            }}
-                                        >
-                                            <SelectTrigger aria-label="选择方差来源" className="bg-card">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="prior_estimate">行业经验先验标准差 σ₀（真实试投常用）</SelectItem>
-                                                <SelectItem value="population" disabled={!populationVariance}>
-                                                    抽样框总体基准方差 σ²（教学参考）
-                                                </SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    {varianceSource === "prior_estimate" ? (
-                                        <div className="space-y-2">
-                                            <Label htmlFor="pilot-prior-sd" className="text-foreground">
-                                                经验先验标准差 σ₀（方差 = {Number.isFinite(priorStdDev) && priorStdDev > 0 ? formatStatistic(priorStdDev * priorStdDev, 1) : "—"}）
-                                            </Label>
-                                            <Input
-                                                id="pilot-prior-sd"
-                                                type="number"
-                                                min={0.1}
-                                                step={0.5}
-                                                value={priorStdDevInput}
-                                                aria-invalid={!Number.isFinite(priorStdDev) || priorStdDev <= 0 || undefined}
-                                                onChange={(e) => {
-                                                    priorStdDevEditedRef.current = true;
-                                                    setPriorStdDevInput(e.target.value);
+                                <div className="space-y-3 rounded-surface border border-border bg-background p-4">
+                                    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-4">
+                                        <div className="min-w-0 space-y-2">
+                                            <Label className="text-foreground">均值规划的先验离散度来源</Label>
+                                            <Select
+                                                value={varianceSource}
+                                                onValueChange={(v) => {
+                                                    setVarianceSource(v as "prior_estimate" | "population");
                                                     setCustomFinalSizeInput(null);
                                                 }}
-                                                className="bg-card tabular-nums"
-                                            />
+                                            >
+                                                <SelectTrigger aria-label="选择方差来源" className="w-full min-w-0 bg-card [&>span]:truncate">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="prior_estimate">行业经验先验标准差 σ₀（真实试投常用）</SelectItem>
+                                                    <SelectItem value="population" disabled={!populationVariance}>
+                                                        抽样框总体基准方差 σ²（教学参考）
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                         </div>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            <Label className="text-foreground">抽样框已知总体方差 σ²</Label>
-                                            <div className="flex h-9 items-center rounded-control border border-border bg-muted px-3 font-mono text-label tabular-nums text-foreground">
-                                                {populationVariance ? formatStatistic(populationVariance, 2) : "加载中…"}
+
+                                        {varianceSource === "prior_estimate" ? (
+                                            <div className="min-w-0 space-y-2">
+                                                <Label htmlFor="pilot-prior-sd" className="text-foreground">
+                                                    经验先验标准差 σ₀（折算方差 σ₀² = {Number.isFinite(priorStdDev) && priorStdDev > 0 ? formatStatistic(priorStdDev * priorStdDev, 1) : "—"}）
+                                                </Label>
+                                                <Input
+                                                    id="pilot-prior-sd"
+                                                    type="number"
+                                                    min={0.1}
+                                                    step={0.5}
+                                                    value={priorStdDevInput}
+                                                    aria-invalid={!Number.isFinite(priorStdDev) || priorStdDev <= 0 || undefined}
+                                                    onChange={(e) => {
+                                                        priorStdDevEditedRef.current = true;
+                                                        setPriorStdDevInput(e.target.value);
+                                                        setCustomFinalSizeInput(null);
+                                                    }}
+                                                    className="bg-card tabular-nums"
+                                                />
                                             </div>
-                                        </div>
-                                    )}
+                                        ) : (
+                                            <div className="min-w-0 space-y-2">
+                                                <Label className="text-foreground">抽样框已知总体方差 σ²（及标准差 σ）</Label>
+                                                <div className="flex h-9 items-center rounded-control border border-border bg-muted px-3 font-mono text-meta tabular-nums text-foreground">
+                                                    {populationVariance
+                                                        ? `σ² = ${formatStatistic(populationVariance, 2)}（σ = ${formatStatistic(Math.sqrt(populationVariance), 2)}）`
+                                                        : "加载中…"}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p className="text-meta leading-relaxed text-muted-foreground">
+                                        概念提示：标准差 σ₀ 与目标指标同量纲（更容易按业务直觉估计波动幅度），样本量公式自动取平方 σ₀² 作为先验方差；首轮试投回收后可在阶段四直接代入实测样本方差 s² 重算正式轮样本量。
+                                    </p>
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-2 gap-4 rounded-surface border border-border bg-muted p-4">
+                            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-4 rounded-surface border border-border bg-muted p-4">
                                 <div className="space-y-2">
                                     <div className="flex flex-wrap items-center justify-between gap-2 text-meta text-muted-foreground">
                                         <span>公式四步推导（{stepDetails.formulaLabel}）</span>
@@ -571,10 +603,26 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                         >
                                             设为推荐值 {recommendedSize}
                                         </Button>
+                                        {isFinalSizeValid && effectiveFinalSize < 20 && practicalPilotTarget >= 20 && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setCustomFinalSizeInput(String(practicalPilotTarget))}
+                                                className="border-primary-border bg-primary-muted text-meta text-primary hover:bg-card hover:text-primary"
+                                            >
+                                                设为稳健试投量 {practicalPilotTarget}
+                                            </Button>
+                                        )}
                                     </div>
                                     <p className="text-meta text-muted-foreground">
                                         允许范围：{bounds.min} – {bounds.max.toLocaleString()} 份（总体 N = {N.toLocaleString()}）
                                     </p>
+                                    {isFinalSizeValid && effectiveFinalSize < 20 && practicalPilotTarget >= 20 && (
+                                        <p className="text-meta leading-relaxed text-info">
+                                            实务提示：当前试投仅 {effectiveFinalSize} 份，扣除拒访与废卷后有效样本可能偏少；实务中常投放 {practicalPilotTarget} 份左右以稳健探底各层应答率。
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div className="flex flex-col justify-between rounded-control border border-info-border bg-info-muted p-3">
@@ -804,8 +852,10 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                     <StatusBadge intent="success">首轮问卷已回收</StatusBadge>
                                 ) : hasStalePilotSampling ? (
                                     <StatusBadge intent="warning">名单已更新待重发</StatusBadge>
+                                ) : completedPilotMethods.length > 0 ? (
+                                    <StatusBadge intent="primary">名单就绪待发放</StatusBadge>
                                 ) : (
-                                    <StatusBadge intent="primary">待发放回收</StatusBadge>
+                                    <StatusBadge intent="neutral">待抽取名单后解锁</StatusBadge>
                                 )}
                             </div>
                         </CardHeader>
@@ -838,6 +888,27 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                     )}
                                 </Button>
                             </div>
+
+                            {completedPilotMethods.length === 0 && (
+                                <p role="status" data-testid="student-pilot-dispatch-locked-hint" className="rounded-control border border-dashed border-border bg-muted px-4 py-3 text-meta text-muted-foreground">
+                                    {!hasSavedPlan
+                                        ? "解锁说明：请先在上方完成「步骤 1 · 保存首轮样本量方案」并在「步骤 2 · 抽取受访者名单」，随后即可发放试投问卷。"
+                                        : "解锁说明：请先在上方「步骤 2」抽取至少一种试投受访者名单，随后即可点击「发放首轮试投问卷」。"}
+                                </p>
+                            )}
+
+                            {completedPilotMethods.length > 0 && isPlanDirty && (
+                                <p role="status" className="rounded-control border border-warning-border bg-warning-muted px-4 py-3 text-meta text-warning">
+                                    步骤 1 的样本量参数有未保存修改，请先在步骤 1 点击「更新首轮样本量方案」并重新核对抽样名单后再发放问卷。
+                                </p>
+                            )}
+
+                            {completedPilotMethods.length > 0 && !allPilotMethodsDispatched && !hasStalePilotSampling && !isPlanDirty && (
+                                <div role="status" className="flex items-center gap-2.5 rounded-control border border-primary-border bg-primary-muted px-4 py-3 text-meta text-primary">
+                                    <Sparkles className="h-4 w-4 shrink-0" />
+                                    <span>首轮受访者名单已就绪！请点击上方「发放首轮试投问卷」执行虚拟市场触达与回收模拟。</span>
+                                </div>
+                            )}
 
                             {hasStalePilotSampling && (
                                 <div
@@ -911,27 +982,52 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                 </div>
 
                 {/* Right Sticky Inspector: Pilot Readiness Checklist */}
-                <aside className="sticky top-28 space-y-4">
+                <aside className="sticky top-36 space-y-4">
                     <Card className="rounded-surface border-border bg-card">
                         <CardHeader className="border-b border-border pb-3">
                             <CardTitle className="text-subheading text-foreground">首轮试投通关清单</CardTitle>
                             <CardDescription>完成三步闭环即可进入阶段三质检台</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-3 pt-4 text-label">
-                            <div className={`flex items-center gap-2.5 rounded-control border p-3 ${hasSavedPlan && !isPlanDirty && !planValidationError ? "border-success-border bg-success-muted text-success" : "border-border bg-background text-muted-foreground"}`}>
-                                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                                <span>1. 保存试投样本量规划{hasSavedPlan ? `（${planSavedSize} 份）` : ""}</span>
-                            </div>
-                            <div className={`flex items-center gap-2.5 rounded-control border p-3 ${completedPilotMethods.length > 0 ? "border-success-border bg-success-muted text-success" : "border-border bg-background text-muted-foreground"}`}>
-                                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                                <span>2. 抽取首轮受访者名单{completedPilotMethods.length > 0 ? "（已就绪）" : ""}</span>
-                            </div>
-                            <div className={`flex items-center gap-2.5 rounded-control border p-3 ${allPilotMethodsDispatched ? "border-success-border bg-success-muted text-success" : hasStalePilotSampling ? "border-warning-border bg-warning-muted text-warning" : "border-border bg-background text-muted-foreground"}`}>
-                                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                                <span>
-                                    3. {hasStalePilotSampling ? "名单已更新，需重新发放问卷" : `发放问卷并回收试投答卷${pilotDiag && allPilotMethodsDispatched ? `（有效 ${pilotDiag.cleanedValidCount} 份）` : ""}`}
-                                </span>
-                            </div>
+                            {(() => {
+                                const step1Done = hasSavedPlan && !isPlanDirty && !planValidationError;
+                                const step2Done = completedPilotMethods.length > 0;
+                                const step3Done = allPilotMethodsDispatched;
+                                return (
+                                    <>
+                                        <div className={`flex items-center gap-2.5 rounded-control border p-3 ${step1Done ? "border-success-border bg-success-muted text-success" : isPlanDirty ? "border-warning-border bg-warning-muted text-warning" : "border-border bg-background text-muted-foreground"}`}>
+                                            {step1Done ? (
+                                                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                                            ) : isPlanDirty ? (
+                                                <AlertCircle className="h-4 w-4 shrink-0" />
+                                            ) : (
+                                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-circle border border-border bg-muted font-mono text-meta">1</span>
+                                            )}
+                                            <span>{step1Done ? `1. 保存试投样本量规划（${planSavedSize} 份）` : isPlanDirty ? "1. 参数已改动，需更新方案" : "1. 保存试投样本量规划"}</span>
+                                        </div>
+                                        <div className={`flex items-center gap-2.5 rounded-control border p-3 ${step2Done ? "border-success-border bg-success-muted text-success" : "border-border bg-background text-muted-foreground"}`}>
+                                            {step2Done ? (
+                                                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                                            ) : (
+                                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-circle border border-border bg-muted font-mono text-meta">2</span>
+                                            )}
+                                            <span>2. 抽取首轮受访者名单{step2Done ? "（已就绪）" : ""}</span>
+                                        </div>
+                                        <div className={`flex items-center gap-2.5 rounded-control border p-3 ${step3Done ? "border-success-border bg-success-muted text-success" : hasStalePilotSampling ? "border-warning-border bg-warning-muted text-warning" : "border-border bg-background text-muted-foreground"}`}>
+                                            {step3Done ? (
+                                                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                                            ) : hasStalePilotSampling ? (
+                                                <AlertCircle className="h-4 w-4 shrink-0" />
+                                            ) : (
+                                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-circle border border-border bg-muted font-mono text-meta">3</span>
+                                            )}
+                                            <span>
+                                                3. {hasStalePilotSampling ? "名单已更新，需重新发放问卷" : `发放问卷并回收试投答卷${pilotDiag && step3Done ? `（有效 ${pilotDiag.cleanedValidCount} 份）` : ""}`}
+                                            </span>
+                                        </div>
+                                    </>
+                                );
+                            })()}
                         </CardContent>
                     </Card>
 
@@ -949,10 +1045,15 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
             </div>
 
             <StageActions>
-                <Button variant="outline" onClick={onPrev} disabled={completing} data-testid="student-pilot-prev">
-                    <ChevronLeft className="mr-1 h-4 w-4" />
-                    查看阶段一问卷
-                </Button>
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+                    <Button variant="outline" onClick={onPrev} disabled={completing} data-testid="student-pilot-prev">
+                        <ChevronLeft className="mr-1 h-4 w-4" />
+                        查看阶段一问卷
+                    </Button>
+                    <p role="status" className="text-meta text-muted-foreground" data-testid="student-pilot-stage-hint">
+                        {pilotStageHint}
+                    </p>
+                </div>
                 <Button
                     onClick={() => void handleCompleteStage()}
                     disabled={!canCompletePilot || completing || refreshRequired}

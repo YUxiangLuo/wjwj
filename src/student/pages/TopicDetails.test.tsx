@@ -106,3 +106,29 @@ test.each(["submitted", "graded"] as const)("compact $status summary preserves r
     expect(view.getByText("完整说明仍可阅读")).toBeTruthy();
     if (status === "graded") expect(view.getByText("实验成绩：87")).toBeTruthy();
 });
+
+test("rejected task details surface actionable instructions and link to frozen submission snapshot", async () => {
+    const task: TaskDetail = {
+        id: 12,
+        topicId: 7,
+        name: "退回重调任务",
+        description: "<p>任务说明</p>",
+        publishedAt: "2020-01-01T00:00:00.000Z",
+        deadline: null,
+        status: "rejected",
+        currentStage: 5,
+        rejectReason: "请区分分析单位与观测单位",
+        populationSize: 96,
+        attachments: [],
+        recommendQuestions: [],
+    };
+    globalThis.fetch = mock(async () => Response.json({ success: true, data: task })) as unknown as typeof fetch;
+    const view = render(
+        <MemoryRouter initialEntries={["/task/12"]}>
+            <Routes><Route path="/task/:taskId" element={<TopicDetails />} /></Routes>
+        </MemoryRouter>,
+    );
+    const banner = await view.findByTestId("student-task-rejection-banner");
+    expect(banner.textContent).toContain("请区分分析单位与观测单位");
+    expect(view.getByRole("link", { name: "查看上次提交快照" }).getAttribute("href")).toBe("/task/12/result");
+});

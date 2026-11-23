@@ -26,7 +26,13 @@ import { QuestionEditor } from "@/components/questionnaire/QuestionEditor";
 import { VariableBindingDialog } from "@/components/questionnaire/VariableBindingDialog";
 import { createApiClient } from "@/lib/api-client";
 import type { VariableDictionary } from "@/domain/variables/types";
-import { autoBindQuestionnaireVariables, evaluateQuestionnaireBurden } from "@/domain/fieldwork";
+import { bindingCategories } from "@/domain/variables/question-binding";
+import {
+    autoBindQuestionnaireVariables,
+    buildAutoVariableBindingForQuestion,
+    evaluateQuestionnaireBurden,
+    resolveQuestionBoundFields,
+} from "@/domain/fieldwork";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { ImmersiveQuestionnairePreview } from "../../components/ImmersiveQuestionnairePreview";
 import { tasksApi } from "../../api-client";
@@ -84,6 +90,106 @@ export function getPreviewCompletionState(contentFingerprint: string) {
         previewCompleted: true,
         previewContentHash: contentFingerprint,
         previewOpen: false,
+    };
+}
+
+function normalizeToken(raw: unknown): string {
+    if (raw === null || raw === undefined) return "";
+    return String(raw).trim().normalize("NFKC").toLowerCase();
+}
+
+/**
+ * 在基础题干子串匹配之上，对具备唯一结构化特征（完全一致的单选题选项集、量表首尾锚点标签、
+ * 或唯一非空连续变量单位）的未绑定题目执行安全 1:1 自动匹配。
+ */
+export function smartBindQuestionnaireVariables(params: {
+    questionnaire: QuestionnaireData;
+    dictionary: VariableDictionary;
+    taskId: number;
+    targetField?: string;
+}): { questionnaire: QuestionnaireData; newlyBoundCount: number } {
+    const base = autoBindQuestionnaireVariables(params);
+    const usedFields = new Set<string>();
+    for (const q of base.questionnaire.questions) {
+        for (const f of resolveQuestionBoundFields(q)) usedFields.add(f);
+    }
+
+    let extraBoundCount = 0;
+    const nextQuestions = base.questionnaire.questions.map((question) => {
+        if (question.variableBinding?.mappings?.length) return question;
+        const unusedVars = params.dictionary.variables.filter(
+            (v) => v.kind !== "identifier" && !usedFields.has(v.field),
+        );
+        if (unusedVars.length === 0) return question;
+
+        let uniqueField: string | null = null;
+
+        if (question.type === "single" && Array.isArray(question.options) && question.options.length >= 2) {
+            const opts = question.options.map(normalizeToken);
+            const matches = unusedVars.filter((v) => {
+                if (v.kind !== "nominal" && v.kind !== "ordinal") return false;
+                const validCats = bindingCategories(v);
+                if (opts.length === validCats.length) {
+                    if (v.kind === "ordinal") {
+                        return opts.every((o, i) => o === normalizeToken(validCats[i]?.label) || o === normalizeToken(validCats[i]?.value));
+                    }
+                    const catSet = new Set(validCats.map((c) => normalizeToken(c.label)));
+                    return catSet.size === opts.length && opts.every((o) => catSet.has(o));
+                }
+                if (opts.length === validCats.length + 1 && v.missing.length > 0) {
+                    return opts.some((_, dropIdx) => {
+                        const rest = opts.filter((__, idx) => idx !== dropIdx);
+                        if (v.kind === "ordinal") {
+                            return rest.every((o, i) => o === normalizeToken(validCats[i]?.label) || o === normalizeToken(validCats[i]?.value));
+                        }
+                        const catSet = new Set(validCats.map((c) => normalizeToken(c.label)));
+                        return catSet.size === rest.length && rest.every((o) => catSet.has(o));
+                    });
+                }
+                return false;
+            });
+            if (matches.length === 1) uniqueField = matches[0]!.field;
+        } else if (question.type === "scale") {
+            const points = (question.scaleMax ?? 10) - (question.scaleMin ?? 1) + 1;
+            const minTok = normalizeToken(question.scaleMinLabel);
+            const maxTok = normalizeToken(question.scaleMaxLabel);
+            if (minTok && maxTok) {
+                const matches = unusedVars.filter((v) => {
+                    if (v.kind !== "ordinal") return false;
+                    const validCats = bindingCategories(v);
+                    if (validCats.length !== points || validCats.length < 2) return false;
+                    return normalizeToken(validCats[0]?.label) === minTok
+                        && normalizeToken(validCats[validCats.length - 1]?.label) === maxTok;
+                });
+                if (matches.length === 1) uniqueField = matches[0]!.field;
+            }
+        } else if (question.type === "numeric") {
+            const unitTok = (question.unit ?? "").trim();
+            if (unitTok) {
+                const matches = unusedVars.filter(
+                    (v) => v.kind === "continuous" && v.unit.trim() === unitTok,
+                );
+                if (matches.length === 1) uniqueField = matches[0]!.field;
+            }
+        }
+
+        if (!uniqueField) return question;
+        const binding = buildAutoVariableBindingForQuestion({
+            question,
+            dictionary: params.dictionary,
+            taskId: params.taskId,
+            preferredField: uniqueField,
+            excludeFields: usedFields,
+        });
+        if (!binding) return question;
+        for (const m of binding.mappings) usedFields.add(m.field);
+        extraBoundCount += 1;
+        return { ...question, variableBinding: binding };
+    });
+
+    return {
+        questionnaire: { ...base.questionnaire, questions: nextQuestions },
+        newlyBoundCount: base.newlyBoundCount + extraBoundCount,
     };
 }
 
@@ -339,7 +445,7 @@ export function QuestionnaireDesign() {
                 variableBinding: undefined,
             };
             if (dictionary && experiment?.taskId) {
-                const autoBound = autoBindQuestionnaireVariables({
+                const autoBound = smartBindQuestionnaireVariables({
                     questionnaire: { title, welcomeText, endingText, questions: [...prev, baseQuestion] },
                     dictionary,
                     taskId: experiment.taskId,
@@ -374,7 +480,7 @@ export function QuestionnaireDesign() {
                 }));
             const merged = [...prev, ...additions];
             if (dictionary && experiment?.taskId) {
-                return autoBindQuestionnaireVariables({
+                return smartBindQuestionnaireVariables({
                     questionnaire: { title, welcomeText, endingText, questions: merged },
                     dictionary,
                     taskId: experiment.taskId,
@@ -388,7 +494,7 @@ export function QuestionnaireDesign() {
 
     const handleAutoBindVariables = () => {
         if (!dictionary || !experiment?.taskId) return;
-        const result = autoBindQuestionnaireVariables({
+        const result = smartBindQuestionnaireVariables({
             questionnaire: questionnaireData,
             dictionary,
             taskId: experiment.taskId,
@@ -398,7 +504,7 @@ export function QuestionnaireDesign() {
             setQuestions(result.questionnaire.questions);
             toast.success(`已自动关联 ${result.newlyBoundCount} 道题目的数据字典变量`);
         } else {
-            toast.info("当前没有可自动匹配的新题目，请点击单题右侧“关联变量”手动指定");
+            toast.info("当前没有可自动匹配的新题目，甄别题无需绑定，其余题目可点击单题右侧“关联变量”手动指定");
         }
     };
 
@@ -620,12 +726,30 @@ export function QuestionnaireDesign() {
                                                             <Badge variant="outline" className={`${questionTypeColors[q.type]} px-2 py-0.5 text-meta whitespace-nowrap`}>
                                                                 {questionTypeLabels[q.type]}
                                                             </Badge>
-                                                            {q.variableBinding && <Badge variant="outline" className="border-success-border bg-success-muted text-success">已关联变量</Badge>}
+                                                            {q.variableBinding && (() => {
+                                                                const fields = resolveQuestionBoundFields(q);
+                                                                const isPrimary = Boolean(primaryTargetField && fields.includes(primaryTargetField));
+                                                                return (
+                                                                    <Badge variant="outline" className="border-success-border bg-success-muted text-success">
+                                                                        已关联变量{fields.length > 0 ? `：${fields.join("、")}` : ""}{isPrimary ? "（主指标）" : ""}
+                                                                    </Badge>
+                                                                );
+                                                            })()}
                                                             <Badge variant="outline" className="whitespace-nowrap border-border bg-card px-2 py-0.5 text-meta text-muted-foreground">
                                                                 {QUESTION_SECTION_LABELS[q.section ?? "main"]}
                                                             </Badge>
                                                         </div>
                                                         {q.options && q.options.length > 0 && <p className="text-meta leading-relaxed text-muted-foreground">选项：{q.options.join("；")}</p>}
+                                                        {q.type === "scale" && (
+                                                            <p className="text-meta leading-relaxed text-muted-foreground">
+                                                                量表：{q.scaleMin ?? 1}–{q.scaleMax ?? 5} 分（{q.scaleMinLabel || "最低"} — {q.scaleMaxLabel || "最高"}）
+                                                            </p>
+                                                        )}
+                                                        {q.type === "numeric" && (
+                                                            <p className="text-meta leading-relaxed text-muted-foreground">
+                                                                数值规则：{q.unit ? `单位「${q.unit}」 · ` : ""}范围 {q.numericMin ?? "不限"} ~ {q.numericMax ?? "不限"} · {q.decimalPlaces ?? 0} 位小数
+                                                            </p>
+                                                        )}
                                                     </div>
                                                     <div className="ml-auto flex shrink-0 flex-wrap gap-1">
                                                         {dictionary && <Button variant="ghost" size="sm" onClick={() => setBindingQuestion(q)}>{q.variableBinding ? "修改关联" : "关联变量"}</Button>}
@@ -889,7 +1013,12 @@ export function QuestionnaireDesign() {
                                                 开始受访者视角试填
                                             </Button>
                                             {!basicValidationPassed && (
-                                                <p className="text-meta text-warning">请先完成校验清单中的必填项</p>
+                                                <p className="text-meta text-warning">请先点击右侧校验清单中的快捷跳转补齐未完成项，即可解锁试填。</p>
+                                            )}
+                                            {basicValidationPassed && previewCompleted && !isPreviewValid && (
+                                                <p role="status" className="rounded-control border border-warning-border bg-warning-muted px-3 py-2 text-meta text-warning">
+                                                    问卷内容在上次试填后已发生修改，请重新完成一次受访者视角试填以核验最新版本。
+                                                </p>
                                             )}
                                         </div>
                                     </CardContent>
@@ -903,55 +1032,90 @@ export function QuestionnaireDesign() {
                                 <CardDescription className="text-muted-foreground">完成以下项目后可进入下一阶段</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-1.5">
-                                <div className={`flex items-center gap-2.5 px-3 py-2 rounded-surface border ${validation.title ? "bg-success-muted border-success-border" : "bg-destructive-muted border-destructive-border"}`}>
-                                    {validation.title ? (
-                                        <CheckCircle className="w-4 h-4 text-success shrink-0" />
-                                    ) : (
-                                        <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                                <div className={`flex items-center justify-between gap-2.5 px-3 py-2 rounded-surface border ${validation.title ? "bg-success-muted border-success-border" : "bg-destructive-muted border-destructive-border"}`}>
+                                    <div className="flex items-center gap-2.5">
+                                        {validation.title ? (
+                                            <CheckCircle className="w-4 h-4 text-success shrink-0" />
+                                        ) : (
+                                            <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                                        )}
+                                        <span className={`text-label ${validation.title ? "text-success" : "text-destructive"}`}>
+                                            问卷标题：{title ? "已填写" : "未填写"}
+                                        </span>
+                                    </div>
+                                    {!validation.title && (
+                                        <Button type="button" size="sm" variant="outline" onClick={() => setStep(1)} className="h-7 shrink-0 bg-card px-2 text-meta">
+                                            去填写
+                                        </Button>
                                     )}
-                                    <span className={`text-label ${validation.title ? "text-success" : "text-destructive"}`}>
-                                        问卷标题：{title ? "已填写" : "未填写"}
-                                    </span>
                                 </div>
-                                <div className={`flex items-center gap-2.5 px-3 py-2 rounded-surface border ${validation.welcomeText ? "bg-success-muted border-success-border" : "bg-destructive-muted border-destructive-border"}`}>
-                                    {validation.welcomeText ? (
-                                        <CheckCircle className="w-4 h-4 text-success shrink-0" />
-                                    ) : (
-                                        <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                                <div className={`flex items-center justify-between gap-2.5 px-3 py-2 rounded-surface border ${validation.welcomeText ? "bg-success-muted border-success-border" : "bg-destructive-muted border-destructive-border"}`}>
+                                    <div className="flex items-center gap-2.5">
+                                        {validation.welcomeText ? (
+                                            <CheckCircle className="w-4 h-4 text-success shrink-0" />
+                                        ) : (
+                                            <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                                        )}
+                                        <span className={`text-label ${validation.welcomeText ? "text-success" : "text-destructive"}`}>
+                                            欢迎语：{welcomeTextLength} 字 {validation.welcomeText ? "" : "(20-1000字)"}
+                                        </span>
+                                    </div>
+                                    {!validation.welcomeText && (
+                                        <Button type="button" size="sm" variant="outline" onClick={() => setStep(1)} className="h-7 shrink-0 bg-card px-2 text-meta">
+                                            去填写
+                                        </Button>
                                     )}
-                                    <span className={`text-label ${validation.welcomeText ? "text-success" : "text-destructive"}`}>
-                                        欢迎语：{welcomeTextLength} 字 {validation.welcomeText ? "" : "(20-1000字)"}
-                                    </span>
                                 </div>
-                                <div className={`flex items-center gap-2.5 px-3 py-2 rounded-surface border ${validation.questionCount ? "bg-success-muted border-success-border" : "bg-destructive-muted border-destructive-border"}`}>
-                                    {validation.questionCount ? (
-                                        <CheckCircle className="w-4 h-4 text-success shrink-0" />
-                                    ) : (
-                                        <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                                <div className={`flex items-center justify-between gap-2.5 px-3 py-2 rounded-surface border ${validation.questionCount ? "bg-success-muted border-success-border" : "bg-destructive-muted border-destructive-border"}`}>
+                                    <div className="flex items-center gap-2.5">
+                                        {validation.questionCount ? (
+                                            <CheckCircle className="w-4 h-4 text-success shrink-0" />
+                                        ) : (
+                                            <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                                        )}
+                                        <span className={`text-label ${validation.questionCount ? "text-success" : "text-destructive"}`}>
+                                            题目数量：{questions.length} 道 {validation.questionCount ? "" : "(本实验要求5-50道)"}
+                                        </span>
+                                    </div>
+                                    {!validation.questionCount && (
+                                        <Button type="button" size="sm" variant="outline" onClick={() => setStep(2)} className="h-7 shrink-0 bg-card px-2 text-meta">
+                                            去补齐
+                                        </Button>
                                     )}
-                                    <span className={`text-label ${validation.questionCount ? "text-success" : "text-destructive"}`}>
-                                        题目数量：{questions.length} 道 {validation.questionCount ? "" : "(本实验要求5-50道)"}
-                                    </span>
                                 </div>
-                                <div className={`flex items-center gap-2.5 px-3 py-2 rounded-surface border ${validation.optionCount ? "bg-success-muted border-success-border" : "bg-destructive-muted border-destructive-border"}`}>
-                                    {validation.optionCount ? (
-                                        <CheckCircle className="w-4 h-4 text-success shrink-0" />
-                                    ) : (
-                                        <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                                <div className={`flex items-center justify-between gap-2.5 px-3 py-2 rounded-surface border ${validation.optionCount ? "bg-success-muted border-success-border" : "bg-destructive-muted border-destructive-border"}`}>
+                                    <div className="flex items-center gap-2.5">
+                                        {validation.optionCount ? (
+                                            <CheckCircle className="w-4 h-4 text-success shrink-0" />
+                                        ) : (
+                                            <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                                        )}
+                                        <span className={`text-label ${validation.optionCount ? "text-success" : "text-destructive"}`}>
+                                            选项配置：{validation.optionCount ? "配置有效" : `Q${invalidOptionQuestions.slice(0, 5).join("、")} 需检查`}
+                                        </span>
+                                    </div>
+                                    {!validation.optionCount && (
+                                        <Button type="button" size="sm" variant="outline" onClick={() => setStep(2)} className="h-7 shrink-0 bg-card px-2 text-meta">
+                                            去修正
+                                        </Button>
                                     )}
-                                    <span className={`text-label ${validation.optionCount ? "text-success" : "text-destructive"}`}>
-                                        选项配置：{validation.optionCount ? "配置有效" : `Q${invalidOptionQuestions.slice(0, 5).join("、")} 需检查`}
-                                    </span>
                                 </div>
-                                <div className={`flex items-center gap-2.5 px-3 py-2 rounded-surface border ${validation.endingText ? "bg-success-muted border-success-border" : "bg-destructive-muted border-destructive-border"}`}>
-                                    {validation.endingText ? (
-                                        <CheckCircle className="w-4 h-4 text-success shrink-0" />
-                                    ) : (
-                                        <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                                <div className={`flex items-center justify-between gap-2.5 px-3 py-2 rounded-surface border ${validation.endingText ? "bg-success-muted border-success-border" : "bg-destructive-muted border-destructive-border"}`}>
+                                    <div className="flex items-center gap-2.5">
+                                        {validation.endingText ? (
+                                            <CheckCircle className="w-4 h-4 text-success shrink-0" />
+                                        ) : (
+                                            <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                                        )}
+                                        <span className={`text-label ${validation.endingText ? "text-success" : "text-destructive"}`}>
+                                            结束语：{endingTextLength} 字 {validation.endingText ? "" : "(20-1000字)"}
+                                        </span>
+                                    </div>
+                                    {!validation.endingText && (
+                                        <Button type="button" size="sm" variant="outline" onClick={() => setStep(3)} className="h-7 shrink-0 bg-card px-2 text-meta">
+                                            去填写
+                                        </Button>
                                     )}
-                                    <span className={`text-label ${validation.endingText ? "text-success" : "text-destructive"}`}>
-                                        结束语：{endingTextLength} 字 {validation.endingText ? "" : "(20-1000字)"}
-                                    </span>
                                 </div>
                                 {requiresTargetBinding && (
                                     <div className={`flex items-center justify-between gap-2.5 px-3 py-2 rounded-surface border ${targetBindingPassed ? "bg-success-muted border-success-border" : "bg-destructive-muted border-destructive-border"}`}>
@@ -1162,6 +1326,13 @@ export function QuestionnaireDesign() {
                 question={bindingQuestion}
                 dictionary={dictionary}
                 taskId={experiment.taskId}
+                otherBoundFields={new Map(
+                    questions.flatMap((item, idx) =>
+                        item.id === bindingQuestion.id
+                            ? []
+                            : resolveQuestionBoundFields(item).map((f) => [f, idx + 1] as const),
+                    ),
+                )}
                 onConfirm={question => setQuestions(current => current.map(item => item.id === question.id ? question : item))}
             />}
 

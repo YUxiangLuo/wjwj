@@ -1,5 +1,7 @@
 import { expect, test } from "bun:test";
-import { canAdvanceQuestionnaireStep, getPreviewCompletionState } from "./QuestionnaireDesign";
+import { createTeaPricingDictionary, teaPricingQuestionnaire } from "@/db/seeds/happiness-topic";
+import { validateQuestionBindings } from "@/domain/variables/question-binding";
+import { canAdvanceQuestionnaireStep, getPreviewCompletionState, smartBindQuestionnaireVariables } from "./QuestionnaireDesign";
 
 const baseValidation = {
     title: true,
@@ -42,4 +44,31 @@ test("questionnaire preview completion closes overlay and keeps content hash", (
         previewContentHash: "title|welcome|ending|questions",
         previewOpen: false,
     });
+});
+
+test("smartBindQuestionnaireVariables binds recommended scale, numeric-unit, and missing-option questions cleanly", () => {
+    const dictionary = createTeaPricingDictionary("tea-source", 1);
+    const result = smartBindQuestionnaireVariables({
+        questionnaire: structuredClone(teaPricingQuestionnaire),
+        dictionary,
+        taskId: 1,
+        targetField: "最高支付意愿",
+    });
+
+    expect(result.newlyBoundCount).toBe(11);
+    expect(() => validateQuestionBindings(result.questionnaire, dictionary, 1)).not.toThrow();
+
+    const boundFields = result.questionnaire.questions.flatMap((q) =>
+        (q.variableBinding?.mappings ?? []).map((m) => m.field),
+    );
+    expect(boundFields).toContain("最高支付意愿");
+    expect(boundFields).toContain("健康低糖关注度");
+    expect(boundFields).toContain("新品尝鲜意愿");
+    expect(boundFields).toContain("价格敏感度");
+    expect(boundFields).toContain("月均茶饮消费额");
+    expect(boundFields).toContain("近一月领券核销次数");
+    expect(boundFields).toContain("门店小程序体验评分");
+    expect(boundFields).toContain("月均购茶频次档位");
+    expect(boundFields).toContain("城市线级");
+    expect(boundFields).toContain("消费场景偏好");
 });

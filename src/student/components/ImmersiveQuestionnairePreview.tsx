@@ -25,15 +25,41 @@ const FOCUSABLE_SELECTOR =
 
 type AnswerValue = string | string[] | number;
 
-function isValidNumericAnswer(question: Question, answer: unknown) {
-    if (typeof answer !== "string" || answer === "") return false;
+export function getNumericAnswerError(question: Question, answer: unknown): string | null {
+    if (typeof answer !== "string" || answer === "") return null;
+    const trimmed = answer.trim();
+    if (!trimmed) return "请输入有效数值，不能仅填写空格";
+    const unitText = question.unit?.trim() ?? "";
+    if (unitText && trimmed.includes(unitText)) {
+        return `请仅填写纯数字，无需输入单位「${unitText}」`;
+    }
+    if (!/^[+-]?\d+(?:\.\d+)?$/.test(trimmed)) {
+        return `请输入合法纯数字${unitText ? `（单位「${unitText}」已自动附带，无需输入文字或符号）` : "（请勿包含文字或特殊符号）"}`;
+    }
+    if (answer !== trimmed || trimmed.startsWith("+")) {
+        return "请直接输入标准数字格式，勿带正号或首尾空格";
+    }
+    const value = Number(answer);
+    if (!Number.isFinite(value)) return "请输入有效有限数值";
+    if (question.numericMin !== undefined && value < question.numericMin) {
+        return `输入值小于最小允许值 ${question.numericMin}${unitText ? ` ${unitText}` : ""}（范围：${question.numericMin} 至 ${question.numericMax ?? "不限"}）`;
+    }
+    if (question.numericMax !== undefined && value > question.numericMax) {
+        return `输入值超出最大允许值 ${question.numericMax}${unitText ? ` ${unitText}` : ""}（范围：${question.numericMin ?? "不限"} 至 ${question.numericMax}）`;
+    }
     const places = question.decimalPlaces ?? 0;
     const pattern = places === 0 ? /^-?\d+$/ : new RegExp(`^-?\\d+\\.\\d{${places}}$`);
-    if (!pattern.test(answer)) return false;
-    const value = Number(answer);
-    return Number.isFinite(value)
-        && (question.numericMin === undefined || value >= question.numericMin)
-        && (question.numericMax === undefined || value <= question.numericMax);
+    if (!pattern.test(answer)) {
+        return places === 0
+            ? "本题要求填写整数（0 位小数），请去掉小数点及小数位"
+            : `本题要求严格保留 ${places} 位小数（例如：${value.toFixed(places)}）`;
+    }
+    return null;
+}
+
+function isValidNumericAnswer(question: Question, answer: unknown) {
+    if (typeof answer !== "string" || answer === "") return false;
+    return getNumericAnswerError(question, answer) === null;
 }
 
 function isQuestionAnswered(question: Question, answer: unknown): boolean {
@@ -344,6 +370,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
 
         switch (question.type) {
             case "numeric": {
+                const numericError = getNumericAnswerError(question, answer);
                 const valid = isValidNumericAnswer(question, answer);
                 const range = question.numericMin === undefined && question.numericMax === undefined ? ""
                     : `范围：${question.numericMin ?? "不限"} 至 ${question.numericMax ?? "不限"}（含边界）`;
@@ -352,6 +379,11 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                         <Input
                             type="text"
                             inputMode="decimal"
+                            placeholder={
+                                (question.decimalPlaces ?? 0) > 0
+                                    ? `例如：${(question.numericMin ?? 10).toFixed(question.decimalPlaces ?? 1)}（仅填数字）`
+                                    : `例如：${question.numericMin ?? 0}（仅填整数）`
+                            }
                             value={typeof answer === "string" ? answer : ""}
                             onChange={event => setAnswersByIndex(prev => ({ ...prev, [qIndex]: event.target.value }))}
                             aria-invalid={typeof answer === "string" && answer !== "" && !valid}
@@ -359,10 +391,10 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                             data-testid="questionnaire-preview-numeric"
                             className="bg-card border-input"
                         />
-                        {question.unit && <span className="text-label text-foreground">{question.unit}</span>}
+                        {question.unit && <span className="shrink-0 rounded-control border border-border bg-muted px-2.5 py-1.5 text-label font-medium text-foreground">{question.unit}</span>}
                     </div>
-                    <p className="text-meta text-muted-foreground">{range}{range && "；"}需填写 {question.decimalPlaces ?? 0} 位小数</p>
-                    {typeof answer === "string" && answer !== "" && !valid && <p role="alert" className="text-meta text-destructive">请输入范围内且小数位数严格匹配的数值</p>}
+                    <p className="text-meta text-muted-foreground">{range}{range && "；"}需填写 {question.decimalPlaces ?? 0} 位小数{question.unit ? `（单位「${question.unit}」无需手动输入）` : ""}</p>
+                    {numericError && <p role="alert" className="text-meta font-medium text-destructive">{numericError}</p>}
                 </div>;
             }
             case "boolean":
@@ -382,7 +414,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                 }
                 return (
                     <div className="grid grid-cols-2 gap-3">
-                        {multiple && <p className="col-span-2 text-label text-muted-foreground">请选择 {question.minSelect ?? 1} ~ {maxSelect} 项</p>}
+                        {multiple && <p className="col-span-2 text-label text-muted-foreground">请选择 {question.minSelect ?? 1} ~ {maxSelect} 项（已选 {selectedArr.length} 项）</p>}
                         {opts.map((option, i) => {
                             // 试填答案只在本组件内使用；按选项位置区分历史同名选项。
                             const optionKey = String(i);
@@ -401,7 +433,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                         : disabled ? "cursor-not-allowed border-input bg-muted text-muted-foreground"
                                             : "border-border bg-background text-foreground hover:border-input hover:bg-muted"}`}
                                 >
-                                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-control text-label font-bold ${selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-control text-label font-bold ${selected ? "bg-card text-primary" : "bg-muted text-muted-foreground"}`}>
                                         {multiple && selected ? <Check className="h-4 w-4" /> : OPTION_LETTERS[i]}
                                     </span>
                                     <span className="min-w-0 break-words text-body">{option}</span>
@@ -509,7 +541,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                         <button
                             type="button"
                             onClick={requestClose}
-                            className="w-10 h-10 rounded-control flex items-center justify-center text-muted-foreground hover:text-muted-foreground hover:bg-muted transition-none"
+                            className="w-10 h-10 rounded-control flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-none"
                             aria-label="关闭预览"
                             data-testid="immersive-preview-close"
                         >
@@ -584,7 +616,10 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                 </p>
                                 {renderQuestionBody(currentQuestion, page.index)}
                                 <div className="flex items-center justify-between gap-3 border-t border-border pt-4" data-testid="questionnaire-preview-actions">
-                                    <Button type="button" variant="outline" onClick={goPrev} aria-label="上一题"><ChevronLeft className="mr-2 h-4 w-4"/>上一题</Button>
+                                    <Button type="button" variant="outline" onClick={goPrev} aria-label="上一题">
+                                        <ChevronLeft className="mr-2 h-4 w-4"/>
+                                        {page.index === 0 ? "返回欢迎页" : "上一题"}
+                                    </Button>
                                     <Button type="button" onClick={goNext} disabled={!isCurrentAnswered} data-testid={currentQuestion.type === "multiple" ? "immersive-preview-multiple-next" : "immersive-preview-next"}>
                                         {page.index === totalQuestions - 1 ? "查看结束语" : currentQuestion.type === "multiple" ? "选好了，下一题" : "下一题"}<ChevronRight className="ml-2 h-4 w-4"/>
                                     </Button>
@@ -603,7 +638,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
 
                         {/* Ending Page */}
                         {page.type === "ending" && (
-                            <div className="text-center space-y-8">
+                            <div className="text-center space-y-6">
                                 <h2 id={titleId} className="text-page-title font-semibold">问卷结束</h2>
                                 <div className="w-16 h-16 mx-auto rounded-surface bg-primary flex items-center justify-center">
                                     <ClipboardList className="w-8 h-8 text-primary-foreground" />
@@ -620,16 +655,32 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                         ? "暂无题目"
                                         : `已回答 ${answeredCount} / ${totalQuestions} 道题目`}
                                 </div>
-                                <Button
-                                    type="button"
-                                    onClick={goNext}
-                                    disabled={answeredCount !== totalQuestions}
-                                    size="lg"
-                                    data-testid="immersive-preview-submit"
-                                    className="bg-primary hover:bg-primary-hover text-primary-foreground text-body px-10 py-6 rounded-surface "
-                                >
-                                    完成试填
-                                </Button>
+                                <div className="flex flex-wrap items-center justify-center gap-3">
+                                    {answeredCount !== totalQuestions && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="lg"
+                                            onClick={() => {
+                                                const index = questions.findIndex((question, i) => !isQuestionAnswered(question, answersByIndex[i]));
+                                                if (index >= 0) jumpToQuestion(index);
+                                            }}
+                                            className="rounded-surface px-6 py-6 text-body"
+                                        >
+                                            返回未答题
+                                        </Button>
+                                    )}
+                                    <Button
+                                        type="button"
+                                        onClick={goNext}
+                                        disabled={answeredCount !== totalQuestions}
+                                        size="lg"
+                                        data-testid="immersive-preview-submit"
+                                        className="bg-primary hover:bg-primary-hover text-primary-foreground text-body px-10 py-6 rounded-surface"
+                                    >
+                                        完成试填
+                                    </Button>
+                                </div>
                                 {answeredCount !== totalQuestions && (() => {
                                     const jumpTo = jumpToQuestion;
                                     const missing = questions
@@ -637,7 +688,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                         .filter(({ question, index }) => !isQuestionAnswered(question, answersByIndex[index]));
                                     return (
                                         <div className="space-y-3">
-                                            <p role="status" className="text-body text-warning">还有 {missing.length} 道题未完成，请补充作答后提交：</p>
+                                            <p role="status" className="text-body text-warning">还有 {missing.length} 道题未完成，点击下方题目可直接跳转补答：</p>
                                             <ul className="mx-auto flex max-w-xl flex-col gap-2 text-left">
                                                 {missing.map(({ question, index }) => (
                                                     <li key={question.id ?? index}>
@@ -645,17 +696,14 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                                             type="button"
                                                             data-testid={`immersive-preview-missing-${index + 1}`}
                                                             onClick={() => jumpTo(index)}
-                                                            className="w-full rounded-control border border-warning-border bg-warning-muted px-3 py-2 text-label text-warning"
+                                                            className="flex w-full items-center justify-between gap-3 rounded-control border border-warning-border bg-warning-muted px-3 py-2 text-left text-label text-warning hover:bg-card"
                                                         >
-                                                            第 {index + 1} 题：{question.content?.trim() || "（未填写题干）"}
+                                                            <span className="min-w-0 truncate">第 {index + 1} 题：{question.content?.trim() || "（未填写题干）"}</span>
+                                                            <span className="shrink-0 text-meta font-medium">去补答 →</span>
                                                         </button>
                                                     </li>
                                                 ))}
                                             </ul>
-                                            <Button type="button" variant="outline" onClick={() => {
-                                                const index = questions.findIndex((question, i) => !isQuestionAnswered(question, answersByIndex[i]));
-                                                if (index >= 0) jumpTo(index);
-                                            }}>返回未答题</Button>
                                         </div>
                                     );
                                 })()}
@@ -673,12 +721,12 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     <p className="text-muted-foreground">您已成功模拟了受访者的问卷填写体验</p>
                                 </div>
                                 <div className="flex justify-center gap-4">
-                                    <div className="px-6 py-4 bg-card rounded-surface">
-                                        <div className="text-page-title font-bold text-primary">{totalQuestions}</div>
+                                    <div className="px-6 py-4 bg-card border border-border rounded-surface">
+                                        <div className="text-page-title font-bold tabular-nums text-primary">{totalQuestions}</div>
                                         <div className="text-meta text-muted-foreground mt-1">题目总数</div>
                                     </div>
-                                    <div className="px-6 py-4 bg-card rounded-surface">
-                                        <div className="text-page-title font-bold text-success">{answeredCount}</div>
+                                    <div className="px-6 py-4 bg-card border border-border rounded-surface">
+                                        <div className="text-page-title font-bold tabular-nums text-success">{answeredCount}</div>
                                         <div className="text-meta text-muted-foreground mt-1">已回答</div>
                                     </div>
                                 </div>

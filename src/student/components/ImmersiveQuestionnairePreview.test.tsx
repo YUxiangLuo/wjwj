@@ -8,7 +8,7 @@ import { createYouthHappinessPopulation } from "../../db/seeds/dogfood-fixtures"
 
 const bootstrapDom = installDomGlobals();
 const { cleanup, fireEvent, render } = await import("@testing-library/react");
-const { ImmersiveQuestionnairePreview } = await import("./ImmersiveQuestionnairePreview");
+const { ImmersiveQuestionnairePreview, getNumericAnswerError } = await import("./ImmersiveQuestionnairePreview");
 bootstrapDom.restore();
 
 let restoreDom: (() => void) | undefined;
@@ -173,4 +173,41 @@ test("multiple choice enforces both selection bounds and invalidates reordered a
         { ...multiple.questions[0]!, options: ["乙", "甲", "丙"] },
     ] }} onComplete={() => {}} onClose={() => {}} />);
     expect(document.querySelectorAll('[data-preview-answer][aria-pressed="true"]').length).toBe(0);
+});
+
+test("getNumericAnswerError gives specific feedback for attached units, range bounds, and decimal places", () => {
+    const q = { id: "wtp", type: "numeric" as const, content: "最高支付意愿", unit: "元", numericMin: 10, numericMax: 50, decimalPlaces: 1 };
+    expect(getNumericAnswerError(q, "")).toBeNull();
+    expect(getNumericAnswerError(q, "20元")).toContain("无需输入单位「元」");
+    expect(getNumericAnswerError(q, "5.0")).toContain("小于最小允许值 10 元");
+    expect(getNumericAnswerError(q, "60.0")).toContain("超出最大允许值 50 元");
+    expect(getNumericAnswerError(q, "20")).toContain("严格保留 1 位小数（例如：20.0）");
+    expect(getNumericAnswerError({ ...q, decimalPlaces: 0 }, "20.5")).toContain("整数（0 位小数）");
+    expect(getNumericAnswerError(q, "20.5")).toBeNull();
+});
+
+test("back navigation preserves previous answers across question types and labels Q1 back as welcome return", () => {
+    const view = render(<ImmersiveQuestionnairePreview questionnaire={{
+        title: "回退测试",
+        welcomeText: "欢迎",
+        endingText: "结束",
+        questions: [
+            { id: "q1", type: "scale", content: "评分题", scaleMin: 1, scaleMax: 5 },
+            { id: "q2", type: "numeric", content: "数值题", unit: "元", decimalPlaces: 0 },
+        ],
+    }} onComplete={() => {}} onClose={() => {}} />);
+
+    fireEvent.click(view.getByTestId("immersive-preview-start"));
+    expect(view.getByRole("button", { name: "上一题" }).textContent).toContain("返回欢迎页");
+    fireEvent.click(view.getByText("4"));
+    fireEvent.click(view.getByTestId("immersive-preview-next"));
+    expect(view.getByText("数值题")).toBeTruthy();
+    fireEvent.change(view.getByTestId("questionnaire-preview-numeric"), { target: { value: "25" } });
+
+    fireEvent.click(view.getByRole("button", { name: "上一题" }));
+    expect(view.getByText("评分题")).toBeTruthy();
+    expect(view.getByText("4").getAttribute("aria-pressed")).toBe("true");
+
+    fireEvent.click(view.getByTestId("immersive-preview-next"));
+    expect((view.getByTestId("questionnaire-preview-numeric") as HTMLInputElement).value).toBe("25");
 });

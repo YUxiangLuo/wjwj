@@ -241,8 +241,8 @@ function ExperimentWorkspace() {
         ?? null;
 
     const waveBadgeLabel = experiment.activeWaveNumber && experiment.activeWaveNumber >= 2
-        ? `Wave ${experiment.activeWaveNumber} · 正式调优轮`
-        : "Wave 1 · 首轮试投轮";
+        ? `第 ${experiment.activeWaveNumber} 轮 · 正式调优轮`
+        : "第 1 轮 · 首轮试投轮";
 
     return (
         <ExperimentContext.Provider value={{
@@ -257,21 +257,29 @@ function ExperimentWorkspace() {
         }}>
             <div className="pb-6" data-testid="student-experiment-layout">
                 <div className="sticky top-16 z-40 -mt-2 border-b border-border bg-background" data-testid="student-experiment-navigation">
-                    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 py-2">
-                        <div className="flex min-w-[20rem] flex-1 items-center gap-2">
-                            <Button asChild variant="ghost" size="sm" className="gap-1.5 shrink-0">
-                                <Link to={`/task/${numericTaskId}`}>
-                                    <ArrowLeft className="h-4 w-4" />
-                                    课题书
-                                </Link>
-                            </Button>
-                            <h1 tabIndex={-1} title={taskName} className="min-w-0 truncate text-label font-semibold text-foreground outline-none">
-                                {taskName}
-                            </h1>
-                            <StatusBadge intent={experiment.activeWaveNumber && experiment.activeWaveNumber >= 2 ? "primary" : "info"} className="shrink-0">
-                                <Layers className="h-3 w-3" />
-                                {waveBadgeLabel}
-                            </StatusBadge>
+                    <div className="space-y-1.5 py-2">
+                        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                            <div className="flex min-w-0 flex-1 items-center gap-2">
+                                <Button asChild variant="ghost" size="sm" className="h-7 gap-1.5 px-2 shrink-0">
+                                    <Link to={`/task/${numericTaskId}`}>
+                                        <ArrowLeft className="h-4 w-4" />
+                                        课题书
+                                    </Link>
+                                </Button>
+                                <h1 tabIndex={-1} title={taskName} className="min-w-0 truncate text-label font-semibold text-foreground outline-none">
+                                    {taskName}
+                                </h1>
+                                <StatusBadge intent={experiment.activeWaveNumber && experiment.activeWaveNumber >= 2 ? "primary" : "info"} className="shrink-0">
+                                    <Layers className="h-3 w-3" />
+                                    {waveBadgeLabel}
+                                </StatusBadge>
+                            </div>
+                            {deadlineInfo && (
+                                <span className={`flex shrink-0 items-center gap-1 text-meta tabular-nums ${deadlineInfo.urgent ? "text-destructive" : "text-muted-foreground"}`}>
+                                    {deadlineInfo.urgent ? <AlertCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
+                                    {deadlineInfo.text}
+                                </span>
+                            )}
                         </div>
 
                         <div className="flex flex-wrap items-center gap-1.5" data-testid="student-experiment-stages">
@@ -279,38 +287,37 @@ function ExperimentWorkspace() {
                                 const number = index + 1;
                                 const isCurrent = number === currentStage;
                                 const isCompleted = completed[index] !== null && completed[index] !== undefined;
+                                const canInspect = number < currentStage && isCompleted;
                                 const Icon = stage.icon;
+                                const tooltip = isCurrent
+                                    ? `当前所在阶段：${stage.name}`
+                                    : canInspect
+                                        ? `点击查看「${stage.name}」快照或重新编辑`
+                                        : `需先完成「${stages[currentStage - 1]!.name}」后按顺序解锁`;
                                 return (
-                                    <div key={stage.name} className="flex items-center gap-1.5">
+                                    <span key={stage.name} className="flex items-center gap-1.5" title={tooltip}>
                                         {index > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}
                                         <button
                                             type="button"
                                             aria-current={isCurrent ? "step" : undefined}
-                                            aria-label={`${isCurrent ? "当前阶段" : isCompleted ? "查看已完成阶段" : "未完成阶段"} ${number}：${stage.name}`}
-                                            disabled={number >= currentStage || !isCompleted}
+                                            aria-label={`${isCurrent ? "当前阶段" : canInspect ? "查看已完成阶段" : "未完成阶段"} ${number}：${stage.name}`}
+                                            disabled={!canInspect}
                                             onClick={() => setInspectStage(number)}
                                             className={`flex items-center gap-1.5 whitespace-nowrap rounded-control px-2.5 py-1 text-meta font-medium ${
                                                 isCurrent
-                                                    ? "border border-primary-border bg-primary-muted text-primary"
-                                                    : isCompleted
-                                                        ? "text-success hover:bg-success-muted"
+                                                    ? "border border-primary-border bg-primary-muted font-semibold text-primary"
+                                                    : canInspect
+                                                        ? "border border-success-border bg-success-muted text-success hover:bg-card"
                                                         : "text-muted-foreground"
                                             }`}
                                         >
-                                            {isCompleted && !isCurrent ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
+                                            {canInspect ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
                                             <span>{stage.name}</span>
                                         </button>
-                                    </div>
+                                    </span>
                                 );
                             })}
                         </div>
-
-                        {deadlineInfo && (
-                            <span className={`flex shrink-0 items-center gap-1 text-meta ${deadlineInfo.urgent ? "text-destructive" : "text-muted-foreground"}`}>
-                                {deadlineInfo.urgent ? <AlertCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
-                                {deadlineInfo.text}
-                            </span>
-                        )}
                     </div>
 
                     {saveError && (
@@ -360,14 +367,24 @@ function ExperimentWorkspace() {
                 {experiment.status === "rejected" && experiment.rejectReason?.trim() && (
                     <div
                         role="alert"
-                        className="mb-6 flex items-start gap-3 rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3 text-destructive"
+                        className="mb-6 flex flex-wrap items-start justify-between gap-4 rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3 text-destructive"
                         data-testid="student-experiment-rejection-notice"
                     >
-                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                        <div className="min-w-0">
-                            <p className="text-label font-semibold">本次提交已被驳回，请按教师意见重新调整后提交</p>
-                            <p className="mt-1 whitespace-pre-line text-label leading-relaxed">{experiment.rejectReason}</p>
+                        <div className="flex min-w-0 flex-1 items-start gap-3">
+                            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                            <div className="min-w-0 space-y-1.5">
+                                <p className="text-label font-semibold">本次提交已被驳回，请按教师意见重新调整后提交</p>
+                                <p className="whitespace-pre-line text-label leading-relaxed">{experiment.rejectReason}</p>
+                                <p className="text-meta text-muted-foreground">
+                                    操作说明：{currentStage === 5
+                                        ? "若仅需修订报告内容，请切换到下方「商业决策报告」页签修改并点击右下角预览提交；若需调整问卷、样本量或抽样方案，请点击上方绿色已完成阶段标签选择「重新编辑此阶段」。"
+                                        : "完成当前阶段修订后按阶段顺序重新推进至第五阶段即可再次提交。"}
+                                </p>
+                            </div>
                         </div>
+                        <Button asChild variant="outline" size="sm" className="shrink-0 bg-card text-foreground hover:bg-muted hover:text-foreground">
+                            <Link to={`/task/${numericTaskId}/result`}>查看上次提交快照</Link>
+                        </Button>
                     </div>
                 )}
 
@@ -375,12 +392,12 @@ function ExperimentWorkspace() {
             </div>
 
             <Dialog open={inspectStage !== null} onOpenChange={(open) => !open && setInspectStage(null)}>
-                <DialogContent className="max-h-[85vh] max-w-5xl overflow-y-auto" data-testid="student-stage-inspect-dialog">
-                    <DialogHeader>
+                <DialogContent className="flex max-h-[85vh] max-w-5xl flex-col overflow-hidden" data-testid="student-stage-inspect-dialog">
+                    <DialogHeader className="shrink-0">
                         <DialogTitle>查看“{inspectStage ? stages[inspectStage - 1]!.name : ""}”</DialogTitle>
                         <DialogDescription>这是已完成阶段的只读快照。关闭查看后会返回当前阶段，不会清空或修改任何数据。</DialogDescription>
                     </DialogHeader>
-                    <div className="py-2 space-y-4">
+                    <div className="min-h-0 flex-1 overflow-y-auto py-2 pr-1 space-y-4">
                         {inspectStage === 1 && (
                             <QuestionnaireSnapshot questionnaire={wave1Snapshot?.questionnaire ?? experiment.questionnaire} />
                         )}
@@ -425,7 +442,7 @@ function ExperimentWorkspace() {
                             </div>
                         )}
                     </div>
-                    <DialogFooter>
+                    <DialogFooter className="shrink-0 border-t border-border pt-3">
                         <Button type="button" variant="outline" onClick={() => setInspectStage(null)}>返回当前阶段</Button>
                         <Button
                             type="button"

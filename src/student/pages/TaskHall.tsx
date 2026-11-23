@@ -171,7 +171,6 @@ function TaskCard({ task }: TaskCardProps) {
 
     const action = getActionButton();
     const disabled = !isTaskActionable(task) && ACTIVE_TASK_STATUSES.includes(task.status);
-    const showResult = task.status === "submitted" || task.status === "graded";
 
     const handlePrimaryAction = async () => {
         if (disabled) return;
@@ -183,6 +182,10 @@ function TaskCard({ task }: TaskCardProps) {
             navigate(`/task/${task.id}`);
         }
     };
+
+    const waveLabel = task.activeWaveNumber && task.activeWaveNumber >= 2
+        ? `第 ${task.activeWaveNumber} 轮正式投`
+        : "第 1 轮试投";
 
     return (
         <Card
@@ -212,7 +215,7 @@ function TaskCard({ task }: TaskCardProps) {
                                 <div className="flex items-center gap-2">
                                     {task.activeWaveNumber && task.activeWaveNumber >= 1 && task.status === "in_progress" && (
                                         <span className="rounded-control border border-primary-border bg-primary-muted px-2 py-0.5 text-meta font-medium text-primary">
-                                            Wave {task.activeWaveNumber}
+                                            {waveLabel}
                                         </span>
                                     )}
                                     <span className="text-foreground font-semibold tabular-nums">{task.progress}%</span>
@@ -243,7 +246,7 @@ function TaskCard({ task }: TaskCardProps) {
                     {task.status === "rejected" && task.rejectReason && (
                         <div className="p-3 bg-destructive-muted rounded-surface border border-destructive-border text-label text-destructive">
                             <div className="font-semibold mb-1 flex items-center gap-2">
-                                <AlertCircle className="w-3.5 h-3.5" /> 教师退回意见
+                                <AlertCircle className="w-3.5 h-3.5 shrink-0" /> 教师退回意见
                             </div>
                             <div className="leading-relaxed text-meta">{task.rejectReason}</div>
                         </div>
@@ -268,10 +271,10 @@ function TaskCard({ task }: TaskCardProps) {
                             {action.text}
                             <ChevronRight className="w-4 h-4 ml-1" />
                         </Button>
-                        {showResult && (
-                            <Button asChild variant="outline" size="icon" className="border-input text-muted-foreground hover:bg-muted hover:text-foreground">
-                                <Link to={`/task/${task.id}/result`} aria-label={`查看${task.name}结果`} title="查看结果">
-                                    <Clock className="w-4 h-4" />
+                        {task.status === "rejected" && (
+                            <Button asChild variant="outline" className="shrink-0 border-input text-foreground hover:bg-muted hover:text-foreground">
+                                <Link to={`/task/${task.id}/result`} aria-label={`查看${task.name}退回快照`}>
+                                    批改详情
                                 </Link>
                             </Button>
                         )}
@@ -378,9 +381,14 @@ export function TaskHall() {
                     </p>
                 </div>
                 {latestAnnouncement && (
-                    <div className="flex items-center gap-3 rounded-surface border border-info-border bg-info-muted px-3.5 py-2">
+                    <div className="flex items-center gap-2.5 rounded-surface border border-info-border bg-info-muted px-3.5 py-2">
                         <Info className="h-4 w-4 shrink-0 text-info" />
                         <span className="max-w-xs truncate text-meta font-medium text-foreground">{latestAnnouncement.title}</span>
+                        {announcements.length > 1 && (
+                            <span className="rounded-control border border-info-border bg-card px-1.5 py-0.5 text-meta tabular-nums text-info">
+                                共 {announcements.length} 条
+                            </span>
+                        )}
                         <Button variant="ghost" size="sm" className="h-7 px-2 text-meta text-info hover:bg-card" onClick={() => {
                             setSelectedAnnouncement(latestAnnouncement);
                             setShowAnnouncements(true);
@@ -427,38 +435,58 @@ export function TaskHall() {
             {spotlightTask && (
                 <section
                     aria-label="当前优先推进课题"
-                    className="flex flex-wrap items-center justify-between gap-5 rounded-surface border border-primary-border bg-primary-muted p-5"
+                    className={`flex flex-wrap items-center justify-between gap-5 rounded-surface border p-5 ${
+                        spotlightTask.status === "rejected"
+                            ? "border-destructive-border bg-destructive-muted"
+                            : "border-primary-border bg-primary-muted"
+                    }`}
                     data-testid="student-hall-spotlight"
                 >
                     <div className="min-w-0 flex-1 space-y-1.5">
                         <div className="flex flex-wrap items-center gap-2">
-                            <StatusBadge intent="primary">
+                            <StatusBadge intent={spotlightTask.status === "rejected" ? "destructive" : "primary"}>
                                 <Sparkles className="h-3.5 w-3.5" />
-                                推荐优先推进
+                                {spotlightTask.status === "rejected" ? "需按退回意见重调" : "推荐优先推进"}
                             </StatusBadge>
                             {spotlightTask.status === "rejected" && (
                                 <StatusBadge intent="destructive">退回重调</StatusBadge>
                             )}
                             {(spotlightTask.status === "in_progress" || spotlightTask.status === "rejected") && spotlightTask.currentStage >= 1 && spotlightTask.currentStage <= 5 && (
-                                <span className="text-meta font-medium text-primary">
+                                <span className={`text-meta font-medium ${spotlightTask.status === "rejected" ? "text-destructive" : "text-primary"}`}>
                                     当前位于第 {spotlightTask.currentStage} 阶段 · {stageNames[spotlightTask.currentStage - 1]}
                                 </span>
                             )}
                         </div>
                         <h2 className="text-section-title font-bold text-foreground">{spotlightTask.name}</h2>
-                        <p className="line-clamp-2 text-label text-muted-foreground">
-                            {spotlightTask.description
-                                ? getRichTextPlainText(spotlightTask.description)
-                                : "从立项任务书出发设计商业问卷并开展首轮试投，根据回收质检偏差调优二轮正式抽样策略。"}
-                        </p>
+                        {spotlightTask.status === "rejected" && spotlightTask.rejectReason ? (
+                            <p className="text-label leading-relaxed text-destructive" data-testid="student-hall-spotlight-rejection">
+                                <span className="font-semibold">教师退回意见：</span>
+                                {spotlightTask.rejectReason}
+                            </p>
+                        ) : (
+                            <p className="line-clamp-2 text-label text-muted-foreground">
+                                {spotlightTask.description
+                                    ? getRichTextPlainText(spotlightTask.description)
+                                    : "从立项任务书出发设计商业问卷并开展首轮试投，根据回收质检偏差调优二轮正式抽样策略。"}
+                            </p>
+                        )}
                     </div>
-                    <div className="flex shrink-0 items-center gap-3">
+                    <div className="flex shrink-0 flex-wrap items-center gap-2.5">
                         <Button asChild variant="outline" className="bg-card">
                             <Link to={`/task/${spotlightTask.id}`}>课题任务书</Link>
                         </Button>
-                        <Button asChild>
+                        {spotlightTask.status === "rejected" && (
+                            <Button asChild variant="outline" className="bg-card">
+                                <Link to={`/task/${spotlightTask.id}/result`}>查看批改详情</Link>
+                            </Button>
+                        )}
+                        <Button asChild variant={spotlightTask.status === "rejected" ? "destructive" : "default"}>
                             <Link to={spotlightTask.status === "not_started" ? `/task/${spotlightTask.id}` : `/task/${spotlightTask.id}/experiment`}>
-                                {spotlightTask.status === "not_started" ? "查看并启动调研" : "继续实验工作台"}
+                                {spotlightTask.status === "not_started"
+                                    ? "查看并启动调研"
+                                    : spotlightTask.status === "rejected"
+                                        ? "按意见重新调优"
+                                        : "继续实验工作台"}
                                 <ChevronRight className="ml-1 h-4 w-4" />
                             </Link>
                         </Button>
@@ -477,33 +505,33 @@ export function TaskHall() {
                         onClick={() => setFilter("all")}
                         data-testid="student-filter-all"
                         aria-pressed={filter === "all"}
-                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-none ${filter === "all" ? "bg-primary-muted text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                        className={`px-3.5 py-1.5 text-label font-medium rounded-control transition-none ${filter === "all" ? "bg-primary-muted text-primary" : "text-muted-foreground hover:text-foreground"}`}
                     >
-                        全部
+                        全部 <span className="text-meta tabular-nums">({tasks.length})</span>
                     </button>
                     <button
                         onClick={() => setFilter("in_progress")}
                         data-testid="student-filter-in-progress"
                         aria-pressed={filter === "in_progress"}
-                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-none ${filter === "in_progress" ? "bg-primary-muted text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                        className={`px-3.5 py-1.5 text-label font-medium rounded-control transition-none ${filter === "in_progress" ? "bg-primary-muted text-primary" : "text-muted-foreground hover:text-foreground"}`}
                     >
-                        进行中
+                        进行中 <span className="text-meta tabular-nums">({hallMetrics.ongoing})</span>
                     </button>
                     <button
                         onClick={() => setFilter("submitted")}
                         data-testid="student-filter-submitted"
                         aria-pressed={filter === "submitted"}
-                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-none ${filter === "submitted" ? "bg-primary-muted text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                        className={`px-3.5 py-1.5 text-label font-medium rounded-control transition-none ${filter === "submitted" ? "bg-primary-muted text-primary" : "text-muted-foreground hover:text-foreground"}`}
                     >
-                        已提交
+                        已提交 <span className="text-meta tabular-nums">({hallMetrics.submitted})</span>
                     </button>
                     <button
                         onClick={() => setFilter("graded")}
                         data-testid="student-filter-graded"
                         aria-pressed={filter === "graded"}
-                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-none ${filter === "graded" ? "bg-primary-muted text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                        className={`px-3.5 py-1.5 text-label font-medium rounded-control transition-none ${filter === "graded" ? "bg-primary-muted text-primary" : "text-muted-foreground hover:text-foreground"}`}
                     >
-                        已批改
+                        已批改 <span className="text-meta tabular-nums">({hallMetrics.gradedCount})</span>
                     </button>
                 </div>
             </div>
@@ -530,8 +558,24 @@ export function TaskHall() {
                         <div className="w-16 h-16 bg-card rounded-control flex items-center justify-center mb-4 border border-border">
                             <BookOpen className="w-8 h-8 text-muted-foreground" />
                         </div>
-                        <p className="text-subheading text-muted-foreground font-medium">暂无相关任务</p>
-                        <p className="text-label text-muted-foreground mt-1">新任务或状态变更会显示在这里</p>
+                        <p className="text-subheading text-muted-foreground font-medium">
+                            {filter === "all" ? "暂无相关任务" : "当前筛选条件下暂无课题"}
+                        </p>
+                        <p className="text-label text-muted-foreground mt-1">
+                            {filter === "all" ? "新任务或状态变更会显示在这里" : "可切换回全部课题查看其他待立项或已开放任务"}
+                        </p>
+                        {filter !== "all" && tasks.length > 0 && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="mt-4"
+                                onClick={() => setFilter("all")}
+                                data-testid="student-filter-reset"
+                            >
+                                查看全部课题（{tasks.length}）
+                            </Button>
+                        )}
                     </div>
                 )}
             </div>
@@ -543,14 +587,14 @@ export function TaskHall() {
                             <AlertCircle className="w-5 h-5 text-primary" />
                             系统公告
                         </DialogTitle>
-                        <DialogDescription className="text-muted-foreground">实验室通知</DialogDescription>
+                        <DialogDescription className="text-muted-foreground">实验室通知与实验学习指引（共 {announcements.length} 条）</DialogDescription>
                     </DialogHeader>
                     <div className="grid grid-cols-2 gap-6 mt-4 min-h-[400px]">
                         <div
                             role="region"
                             tabIndex={0}
                             aria-label="公告列表"
-                            className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar border-r border-border pr-4"
+                            className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar border-r border-border p-1 pr-4 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                             {announcements.length === 0 && (
                                 <div className="text-label text-muted-foreground text-center py-12 italic">暂无公告</div>
@@ -558,11 +602,11 @@ export function TaskHall() {
                             {announcements.map((announcement) => (
                                 <button
                                     key={announcement.id}
-                                    className={`w-full text-left p-4 rounded-surface border transition-none group ${selectedAnnouncement?.id === announcement.id ? "bg-primary-muted border-primary-border ring-1 ring-ring" : "bg-background border-border hover:bg-muted hover:border-input"}`}
+                                    className={`w-full text-left p-4 rounded-surface border transition-none group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${selectedAnnouncement?.id === announcement.id ? "bg-primary-muted border-primary-border ring-1 ring-ring" : "bg-background border-border hover:bg-muted hover:border-input"}`}
                                     onClick={() => handleOpenAnnouncement(announcement)}
                                 >
                                     <div className="flex justify-between items-start gap-2">
-                                        <div className="text-label font-medium line-clamp-1 text-foreground group-hover:text-primary transition-none">
+                                        <div className="text-label font-medium line-clamp-2 text-foreground group-hover:text-primary transition-none">
                                             {announcement.title}
                                         </div>
                                     </div>
@@ -582,7 +626,7 @@ export function TaskHall() {
                             role="region"
                             tabIndex={0}
                             aria-label="公告详情"
-                            className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar pl-2"
+                            className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar pl-2 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                             {selectedAnnouncement ? (
                                 <div className="space-y-4">
