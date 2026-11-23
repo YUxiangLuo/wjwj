@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { installDomGlobals } from "@/test-utils/dom";
+import { getAccessibilityViolations } from "@/test-utils/accessibility";
 import type { ExperimentWaveView } from "@/domain/experiment/types";
 import {
     DEFAULT_CLEANING_CONFIG,
@@ -111,7 +112,7 @@ function makeWave(waveNumber: number, kind: "pilot" | "main", diag: MethodFieldw
     return {
         waveNumber,
         kind,
-        label: waveNumber === 1 ? "第 1 轮 · 首轮试投" : "第 2 轮 · 调优正式投放",
+        label: waveNumber === 1 ? "第 1 轮 · 首轮试投" : `第 ${waveNumber} 轮 · 调优正式投放`,
         questionnaire: {
             title: "茶饮新品定价调研",
             welcomeText: "欢迎参与本次匿名定价调研，预计耗时3分钟。",
@@ -137,7 +138,7 @@ function makeWave(waveNumber: number, kind: "pilot" | "main", diag: MethodFieldw
     };
 }
 
-test("WaveLoopSnapshot renders multi-wave delta scorecard, adjustment plan, funnel, CI forest plot and stratum bias chart", () => {
+test("WaveLoopSnapshot renders multi-wave delta scorecard, wave progression chart, adjustment plan, funnel, CI forest plot and stratum bias chart", async () => {
     const wave1 = makeWave(1, "pilot", makeDiagnostics({ method: "simple" }));
     const wave2 = makeWave(2, "main", makeDiagnostics({
         method: "stratified",
@@ -189,13 +190,16 @@ test("WaveLoopSnapshot renders multi-wave delta scorecard, adjustment plan, funn
 
     expect(view.queryByTestId("wave-loop-snapshot") !== null).toBe(true);
     expect(view.queryByTestId("wave-delta-scorecard") !== null).toBe(true);
+    expect(view.queryByTestId("wave-progression-chart") !== null).toBe(true);
+    expect(view.getByTestId("wave-progression-echart").querySelector("svg") !== null).toBe(true);
     expect(view.queryByTestId("fieldwork-funnel-chart") !== null).toBe(true);
     expect(view.queryByTestId("confidence-interval-plot") !== null).toBe(true);
     expect(view.queryByTestId("stratum-comparison-chart") !== null).toBe(true);
     expect(view.queryByText(/首轮试投发现普通会员拒访率偏高/) !== null).toBe(true);
+    expect(await getAccessibilityViolations(view.container)).toEqual([]);
 });
 
-test("WaveLoopSnapshot reconciles selectedWave when waves prop shrinks and formats proportion %", () => {
+test("WaveLoopSnapshot reconciles selectedWave when waves prop shrinks, hides progression on single wave, and supports 3+ waves", () => {
     const wave1 = makeWave(1, "pilot", makeDiagnostics({
         method: "simple",
         populationTruth: 0.65,
@@ -226,12 +230,33 @@ test("WaveLoopSnapshot reconciles selectedWave when waves prop shrinks and forma
             },
         ],
     }));
+    const wave3 = makeWave(3, "main", makeDiagnostics({
+        method: "pps",
+        invitedCount: 110,
+        cleanedValidCount: 88,
+        effectiveRatePct: 80,
+        maxStratumBiasPp: 1.2,
+        populationTruth: 0.65,
+        estimates: [
+            {
+                key: "cleaned_design",
+                label: "质检有效样本设计估计",
+                description: "三轮比例估计",
+                sampleSize: 88,
+                estimate: 0.651,
+                standardError: 0.021,
+                halfWidth: 0.041,
+            },
+        ],
+    }));
 
-    const view = render(<WaveLoopSnapshot waves={[wave1, wave2]} unitLabel="%" />);
-    expect(view.queryByText("65.20%") !== null).toBe(true);
+    const view = render(<WaveLoopSnapshot waves={[wave1, wave2, wave3]} unitLabel="%" />);
+    expect(view.queryByText("65.10%") !== null).toBe(true);
+    expect(view.queryByText("共 3 个实证波次") !== null).toBe(true);
 
-    // Shrinking waves to [wave1] must reconcile selectedWave from "2" back to "1" instead of rendering an empty tab
+    // Shrinking waves to [wave1] must reconcile selectedWave back to "1" and hide multi-wave progression
     view.rerender(<WaveLoopSnapshot waves={[wave1]} unitLabel="%" />);
+    expect(view.queryByTestId("wave-progression-chart") === null).toBe(true);
     expect(view.queryByTestId("fieldwork-funnel-chart") !== null).toBe(true);
     expect(view.queryByText("64.00%") !== null).toBe(true);
 });

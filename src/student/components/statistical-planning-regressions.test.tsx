@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, mock, test } from "bun:test";
 import { installDomGlobals } from "@/test-utils/dom";
 import { parseAdvancedPlans, validateAdvancedPlanConsistency } from "../experiment/advanced-plan";
 import type { SurveyVariableSpec } from "@/domain/experiment/planning-types";
+import { echarts } from "@/components/charts/echarts-core";
 // React determines input-event support when react-dom is first imported.
 const bootstrap = installDomGlobals();
 const { cleanup, fireEvent, render } = await import("@testing-library/react");
@@ -70,19 +71,29 @@ test("precision teaching preserves small nonzero SE and ME", () => {
 
 test("the plotted budget intersection agrees with the displayed cost analysis for a large population", () => {
     const view = render(<PrecisionCostTradeoff populationSize={100000} confidenceLevel="95" designEffect={1} nonResponseRate={0} onApplyBudget={() => {}} />);
-    const chart = view.getByRole("img", { name: /横轴为总成本，纵轴为预期误差限/ });
-    const lines = [...chart.querySelectorAll("line")];
-    const targetLine = lines.find(line => line.getAttribute("y1") === line.getAttribute("y2"))!;
-    const budgetLine = lines.find(line => line.getAttribute("x1") === line.getAttribute("x2"))!;
-    const budgetX = Number(budgetLine.getAttribute("x1"));
-    const points = chart.querySelector("polyline")!.getAttribute("points")!.split(" ").map(point => point.split(",").map(Number));
-    const rightIndex = points.findIndex(([x], i) => i > 0 && x! >= budgetX);
-    const [leftX, leftY] = points[rightIndex - 1]!, [rightX, rightY] = points[rightIndex]!;
-    const plottedY = leftY! + (rightY! - leftY!) * (budgetX - leftX!) / (rightX! - leftX!);
-    const zeroY = Number(budgetLine.getAttribute("y2"));
-    const plottedError = (zeroY - plottedY) / (zeroY - Number(targetLine.getAttribute("y1"))) * 5;
+    const chart = view.getByRole("img", { name: /横轴为总成本，纵轴为预期误差限/ }) as HTMLElement;
+    expect(chart.querySelectorAll("svg path").length).toBeGreaterThan(3);
+    expect(chart.textContent).toContain("目标 ±5.0 pp");
+    expect(chart.textContent).toContain("预算 ¥50,000");
+
+    const instance = echarts.getInstanceByDom(chart)!;
+    expect(instance !== undefined).toBe(true);
+    const option = instance.getOption() as { series: Array<{ data: number[][] }> };
+    const frontierData = option.series[0]!.data;
+    const budgetPx = instance.convertToPixel({ seriesIndex: 0 }, [50000, 0]) as number[];
+    const budgetX = budgetPx[0]!;
+    const pixelPoints = frontierData.map(([cost, err]) => instance.convertToPixel({ seriesIndex: 0 }, [cost!, err!]) as number[]);
+    const rightIndex = pixelPoints.findIndex(([x], i) => i > 0 && x! >= budgetX - 1e-9);
+    const [leftX, leftY] = pixelPoints[rightIndex - 1]!, [rightX, rightY] = pixelPoints[rightIndex]!;
+    const plottedY = Math.abs(rightX! - leftX!) < 1e-9
+        ? rightY!
+        : leftY! + (rightY! - leftY!) * (budgetX - leftX!) / (rightX! - leftX!);
+    const [, plottedError] = instance.convertFromPixel({ seriesIndex: 0 }, [budgetX, plottedY]) as number[];
     expect(plottedError).toBeCloseTo(1.7621930616641295, 10);
-    const rows = [...chart.parentElement!.querySelectorAll("tbody tr")].map(row => row.textContent);
+
+    const frontierContainer = view.getByTestId("cost-precision-frontier");
+    expect(frontierContainer.querySelector(".sr-only")?.textContent).toContain("参考预算 ¥50,000");
+    const rows = [...frontierContainer.querySelectorAll("tbody tr")].map(row => row.textContent);
     expect(rows).toContain("38310,745±5.00");
     expect(rows).toContain("300050,000±1.76");
 });

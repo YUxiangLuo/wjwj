@@ -1,8 +1,18 @@
-import { useEffect, useState } from "react";
-import { ClipboardCheck, Layers, ShieldCheck, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ClipboardCheck, Layers, ShieldCheck, Sparkles, TrendingUp } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConfidenceIntervalPlot } from "@/components/charts/ConfidenceIntervalPlot";
+import { EChartBox } from "@/components/charts/EChartBox";
+import type { EChartsCoreOption } from "@/components/charts/echarts-core";
+import {
+    buildExecutiveCategoryAxis,
+    buildExecutiveGrid,
+    buildExecutiveLegend,
+    buildExecutiveTooltip,
+    buildExecutiveValueAxis,
+    getExecutiveChartTokens,
+} from "@/components/charts/echarts-theme";
 import { FieldworkFunnelChart } from "@/components/charts/FieldworkFunnelChart";
 import { StratumComparisonChart } from "@/components/charts/StratumComparisonChart";
 import { WaveDeltaScorecard, type WaveSnapshotMetric } from "@/components/charts/WaveDeltaScorecard";
@@ -17,6 +27,16 @@ import {
 } from "@/domain/fieldwork";
 import type { ResolvedAnalysisTarget } from "@/lib/analysis-target";
 import { SAMPLING_METHODS, type SamplingMethod } from "@/lib/sampling-policy";
+import { formatStatistic } from "@/utils/statistic-format";
+
+function escapeHtml(value: string): string {
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
 
 export function inferTargetUnitFromExperiment(params: {
     analysisTarget?: ResolvedAnalysisTarget | null;
@@ -103,15 +123,241 @@ export function buildWaveSnapshotMetric(
     };
 }
 
+function WaveProgressionChart({ metrics }: { metrics: WaveSnapshotMetric[] }) {
+    const hasStratumBias = metrics.some(
+        (m) => m.maxStratumBiasPp !== null && Number.isFinite(m.maxStratumBiasPp),
+    );
+
+    const progressionOption = useMemo<EChartsCoreOption>(() => {
+        const tokens = getExecutiveChartTokens();
+        const legendItems = [
+            "入样发放量",
+            "质检有效样本量",
+            "有效转化率 (%)",
+            ...(hasStratumBias ? ["客群结构均衡度 (%)"] : []),
+        ];
+
+        return {
+            legend: buildExecutiveLegend(
+                {
+                    top: 0,
+                    left: 0,
+                    right: "auto",
+                    data: legendItems,
+                },
+                tokens,
+            ),
+            grid: buildExecutiveGrid({
+                top: 54,
+                left: 12,
+                right: 16,
+                bottom: 10,
+            }),
+            tooltip: buildExecutiveTooltip(
+                {
+                    trigger: "axis",
+                    formatter: (params: unknown) => {
+                        const list = Array.isArray(params) ? params : [params];
+                        const first = list[0] as { dataIndex?: number } | undefined;
+                        const item = metrics[first?.dataIndex ?? 0];
+                        if (!item) return "";
+                        const safeInvited = Number.isFinite(item.invitedCount) ? Math.max(0, item.invitedCount) : 0;
+                        const safeValid = Number.isFinite(item.validCount) ? Math.max(0, item.validCount) : 0;
+                        const safeCleaned = Number.isFinite(item.invalidCleanedCount) ? Math.max(0, item.invalidCleanedCount) : 0;
+                        const safeRate = Number.isFinite(item.effectiveRatePct) ? Math.max(0, Math.min(100, item.effectiveRatePct)) : 0;
+                        const cleanUnit = item.unitLabel?.trim() ?? "";
+                        const seStr =
+                            item.primaryStandardError !== null && Number.isFinite(item.primaryStandardError)
+                                ? `${formatStatistic(item.primaryStandardError, 2)}${cleanUnit === "%" ? "%" : cleanUnit ? ` ${cleanUnit}` : ""}`
+                                : "—";
+
+                        return [
+                            `<div style="min-width:220px;">`,
+                            `<div style="font-weight:600;color:${tokens.foreground};margin-bottom:4px;">Wave ${item.waveNumber} · ${escapeHtml(item.methodLabel)}</div>`,
+                            `<div style="display:flex;justify-content:space-between;gap:12px;"><span>入样发放量</span><strong>${safeInvited} 份</strong></div>`,
+                            `<div style="display:flex;justify-content:space-between;gap:12px;"><span>质检有效样本量</span><strong style="color:${tokens.primary};">${safeValid} 份</strong></div>`,
+                            `<div style="display:flex;justify-content:space-between;gap:12px;"><span>清洗剔除废卷</span><strong>${safeCleaned} 份</strong></div>`,
+                            `<div style="display:flex;justify-content:space-between;gap:12px;"><span>有效转化率</span><strong style="color:${tokens.success};">${formatStatistic(safeRate, 1)}%</strong></div>`,
+                            item.maxStratumBiasPp !== null && Number.isFinite(item.maxStratumBiasPp)
+                                ? `<div style="display:flex;justify-content:space-between;gap:12px;"><span>最大客群结构偏差</span><strong>${formatStatistic(item.maxStratumBiasPp, 1)} pp</strong></div>`
+                                : "",
+                            `<div style="margin-top:4px;padding-top:4px;border-top:1px dashed ${tokens.border};display:flex;justify-content:space-between;gap:12px;"><span>主指标标准误 SE</span><strong>${escapeHtml(seStr)}</strong></div>`,
+                            `</div>`,
+                        ].join("");
+                    },
+                },
+                tokens,
+            ),
+            xAxis: buildExecutiveCategoryAxis(
+                {
+                    data: metrics.map((m) => `Wave ${m.waveNumber}（${m.methodLabel}）`),
+                    axisLabel: {
+                        color: tokens.foreground,
+                        fontWeight: 500,
+                    },
+                },
+                tokens,
+            ),
+            yAxis: [
+                buildExecutiveValueAxis(
+                    {
+                        name: "样本量 (份)",
+                        min: 0,
+                        splitNumber: 4,
+                    },
+                    tokens,
+                ),
+                buildExecutiveValueAxis(
+                    {
+                        name: "比率 (%)",
+                        nameGap: 12,
+                        min: 0,
+                        max: 100,
+                        interval: 25,
+                        splitLine: { show: false },
+                        axisLabel: { formatter: "{value}%" },
+                    },
+                    tokens,
+                ),
+            ],
+            series: [
+                {
+                    name: "入样发放量",
+                    type: "bar",
+                    yAxisIndex: 0,
+                    barMaxWidth: 26,
+                    barGap: "18%",
+                    itemStyle: {
+                        color: tokens.chart1,
+                        borderRadius: [4, 4, 0, 0],
+                    },
+                    data: metrics.map((m) => (Number.isFinite(m.invitedCount) ? Math.max(0, m.invitedCount) : 0)),
+                },
+                {
+                    name: "质检有效样本量",
+                    type: "bar",
+                    yAxisIndex: 0,
+                    barMaxWidth: 26,
+                    itemStyle: {
+                        color: tokens.chart2,
+                        borderRadius: [4, 4, 0, 0],
+                    },
+                    data: metrics.map((m) => (Number.isFinite(m.validCount) ? Math.max(0, m.validCount) : 0)),
+                },
+                {
+                    name: "有效转化率 (%)",
+                    type: "line",
+                    yAxisIndex: 1,
+                    smooth: 0.25,
+                    symbol: "circle",
+                    symbolSize: 8,
+                    lineStyle: {
+                        color: tokens.chart7,
+                        width: 2.5,
+                    },
+                    itemStyle: {
+                        color: tokens.chart7,
+                        borderColor: tokens.card,
+                        borderWidth: 2,
+                    },
+                    data: metrics.map((m) =>
+                        Number.isFinite(m.effectiveRatePct)
+                            ? Number(Math.max(0, Math.min(100, m.effectiveRatePct)).toFixed(1))
+                            : 0,
+                    ),
+                },
+                ...(hasStratumBias
+                    ? [
+                          {
+                              name: "客群结构均衡度 (%)",
+                              type: "line" as const,
+                              yAxisIndex: 1,
+                              smooth: 0.25,
+                              symbol: "diamond",
+                              symbolSize: 8,
+                              connectNulls: true,
+                              lineStyle: {
+                                  color: tokens.chart4,
+                                  width: 2,
+                                  type: "dashed" as const,
+                              },
+                              itemStyle: {
+                                  color: tokens.chart4,
+                                  borderColor: tokens.card,
+                                  borderWidth: 2,
+                              },
+                              data: metrics.map((m) =>
+                                  m.maxStratumBiasPp !== null && Number.isFinite(m.maxStratumBiasPp)
+                                      ? Number(Math.max(0, Math.min(100, 100 - m.maxStratumBiasPp)).toFixed(1))
+                                      : null,
+                              ),
+                          },
+                      ]
+                    : []),
+            ],
+        };
+    }, [metrics, hasStratumBias]);
+
+    return (
+        <section className="rounded-surface border border-border bg-card p-5" data-testid="wave-progression-chart">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+                <div className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                    <div>
+                        <h3 className="text-subheading font-semibold text-foreground">逐波次样本规模与调查质量演进轨迹</h3>
+                        <p className="text-meta text-muted-foreground">追踪各轮抽样方法升级后的发放量、质检有效回收量与客群结构均衡度演进</p>
+                    </div>
+                </div>
+                <StatusBadge intent="info">共 {metrics.length} 个实证波次</StatusBadge>
+            </div>
+            <EChartBox
+                option={progressionOption}
+                height={244}
+                fallbackWidth={620}
+                ariaLabel="多波次样本规模、有效转化率与客群结构均衡度演进趋势图"
+                testId="wave-progression-echart"
+                srSummary={
+                    <table aria-label="逐波次样本规模与调查质量演进数据表">
+                        <thead>
+                            <tr>
+                                <th scope="col">波次</th>
+                                <th scope="col">抽样方法</th>
+                                <th scope="col">入样发放量</th>
+                                <th scope="col">质检有效量</th>
+                                <th scope="col">有效转化率</th>
+                                <th scope="col">最大客群偏差</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {metrics.map((m) => (
+                                <tr key={m.waveNumber}>
+                                    <th scope="row">第 {m.waveNumber} 波次</th>
+                                    <td>方案：{m.methodLabel}</td>
+                                    <td>{m.invitedCount} 份</td>
+                                    <td>{m.validCount} 份</td>
+                                    <td>{formatStatistic(m.effectiveRatePct, 1)}%</td>
+                                    <td>{m.maxStratumBiasPp !== null ? `${formatStatistic(m.maxStratumBiasPp, 1)} pp` : "—"}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                }
+            />
+        </section>
+    );
+}
+
 function renderWaveMethodDiagnostics(
     diag: MethodFieldworkDiagnostics,
     targetKind?: "mean" | "proportion",
     unitLabel?: string,
+    targetRequiredCount?: number,
 ) {
     const isPct = targetKind === "proportion" || unitLabel === "%";
     return (
         <div className="space-y-4">
             <FieldworkFunnelChart
+                targetRequiredCount={targetRequiredCount}
                 stages={[
                     {
                         key: "invited",
@@ -204,6 +450,24 @@ export function WaveLoopSnapshot({
     const firstMetric = firstWave ? buildWaveSnapshotMetric(firstWave, "simple", effectiveUnit) ?? buildWaveSnapshotMetric(firstWave, undefined, effectiveUnit) : null;
     const finalMetric = finalWave ? buildWaveSnapshotMetric(finalWave, undefined, effectiveUnit) : null;
 
+    const waveProgressionMetrics = useMemo(
+        () =>
+            waves
+                .map((wave, index) =>
+                    index === 0
+                        ? buildWaveSnapshotMetric(wave, "simple", effectiveUnit)
+                            ?? buildWaveSnapshotMetric(wave, undefined, effectiveUnit)
+                        : buildWaveSnapshotMetric(wave, undefined, effectiveUnit),
+                )
+                .filter((metric): metric is WaveSnapshotMetric => metric !== null),
+        [waves, effectiveUnit],
+    );
+
+    const plannedTargetValid =
+        finalWave?.samplePlan?.finalSampleSize != null && Number.isFinite(finalWave.samplePlan.finalSampleSize)
+            ? Math.round(finalWave.samplePlan.finalSampleSize * (1 - (finalWave.samplePlan.nonResponseRate ?? 0)))
+            : undefined;
+
     const defaultWaveKey = String(finalWave?.waveNumber ?? firstWave?.waveNumber ?? 1);
     const [selectedWave, setSelectedWave] = useState<string>(defaultWaveKey);
     const effectiveSelectedWave = waves.some((w) => String(w.waveNumber) === selectedWave)
@@ -219,7 +483,15 @@ export function WaveLoopSnapshot({
     return (
         <div className="space-y-5" data-testid="wave-loop-snapshot">
             {firstMetric && finalMetric && firstMetric.waveNumber !== finalMetric.waveNumber && (
-                <WaveDeltaScorecard firstWave={firstMetric} finalWave={finalMetric} />
+                <WaveDeltaScorecard
+                    firstWave={firstMetric}
+                    finalWave={finalMetric}
+                    targetSampleSize={plannedTargetValid}
+                />
+            )}
+
+            {waves.length >= 2 && waveProgressionMetrics.length >= 2 && (
+                <WaveProgressionChart metrics={waveProgressionMetrics} />
             )}
 
             {adjustmentPlan && (
@@ -285,6 +557,10 @@ export function WaveLoopSnapshot({
                     {waves.map((wave) => {
                         const diagMethods = SAMPLING_METHODS.filter((m) => Boolean(wave.diagnostics?.[m]));
                         const cleaning = resolveCleaningConfig(wave.cleaningConfig);
+                        const waveTargetValid =
+                            wave.samplePlan?.finalSampleSize != null && Number.isFinite(wave.samplePlan.finalSampleSize)
+                                ? Math.round(wave.samplePlan.finalSampleSize * (1 - (wave.samplePlan.nonResponseRate ?? 0)))
+                                : undefined;
                         return (
                             <TabsContent key={wave.waveNumber} value={String(wave.waveNumber)} className="space-y-4">
                                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-surface border border-border bg-muted px-4 py-3 text-meta">
@@ -323,6 +599,7 @@ export function WaveLoopSnapshot({
                                         wave.diagnostics![diagMethods[0]!]!,
                                         analysisTarget?.target.kind,
                                         effectiveUnit,
+                                        waveTargetValid,
                                     )
                                 ) : (
                                     <Tabs defaultValue={diagMethods[0]!} className="space-y-4">
@@ -340,6 +617,7 @@ export function WaveLoopSnapshot({
                                                     wave.diagnostics![m]!,
                                                     analysisTarget?.target.kind,
                                                     effectiveUnit,
+                                                    waveTargetValid,
                                                 )}
                                             </TabsContent>
                                         ))}
