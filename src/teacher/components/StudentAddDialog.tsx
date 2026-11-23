@@ -28,65 +28,75 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                         录入学生学号、姓名和邮箱信息。
                     </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="studentId" className="text-foreground">学号（必填）</Label>
-                        <Input
-                            id="studentId"
-                            data-testid="teacher-student-add-id"
-                            placeholder="请输入学号"
-                            maxLength={50}
-                            required
-                            value={form.id}
-                            onChange={(e) => onFormChange({ ...form, id: e.target.value })}
-                            className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
-                        />
+                <form
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        if (!submitting && isStudentAddFormComplete(form)) onSubmit();
+                    }}
+                >
+                    <div className="space-y-4 py-4">
+                        <p className="rounded-control border border-info-border bg-info-muted px-3 py-2 text-meta text-info">
+                            新建学生的初始登录密码默认与学号一致，学生首次登录后可自行修改密码。
+                        </p>
+                        <div className="space-y-2">
+                            <Label htmlFor="studentId" className="text-foreground">学号（必填）</Label>
+                            <Input
+                                id="studentId"
+                                data-testid="teacher-student-add-id"
+                                placeholder="请输入学号"
+                                maxLength={50}
+                                required
+                                value={form.id}
+                                onChange={(e) => onFormChange({ ...form, id: e.target.value })}
+                                className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="studentName" className="text-foreground">姓名（必填）</Label>
+                            <Input
+                                id="studentName"
+                                data-testid="teacher-student-add-name"
+                                placeholder="请输入姓名"
+                                maxLength={100}
+                                required
+                                value={form.name}
+                                onChange={(e) => onFormChange({ ...form, name: e.target.value })}
+                                className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="studentEmail" className="text-foreground">邮箱（可选）</Label>
+                            <Input
+                                id="studentEmail"
+                                data-testid="teacher-student-add-email"
+                                type="email"
+                                placeholder="请输入邮箱"
+                                maxLength={120}
+                                value={form.email}
+                                onChange={(e) => onFormChange({ ...form, email: e.target.value })}
+                                aria-invalid={emailInvalid}
+                                aria-describedby={emailInvalid ? "studentEmail-error" : undefined}
+                                className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
+                            />
+                            {emailInvalid && (
+                                <p id="studentEmail-error" role="alert" className="text-meta text-destructive">
+                                    请输入有效的邮箱地址
+                                </p>
+                            )}
+                        </div>
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="studentName" className="text-foreground">姓名（必填）</Label>
-                        <Input
-                            id="studentName"
-                            data-testid="teacher-student-add-name"
-                            placeholder="请输入姓名"
-                            maxLength={100}
-                            required
-                            value={form.name}
-                            onChange={(e) => onFormChange({ ...form, name: e.target.value })}
-                            className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="studentEmail" className="text-foreground">邮箱（可选）</Label>
-                        <Input
-                            id="studentEmail"
-                            data-testid="teacher-student-add-email"
-                            type="email"
-                            placeholder="请输入邮箱"
-                            maxLength={120}
-                            value={form.email}
-                            onChange={(e) => onFormChange({ ...form, email: e.target.value })}
-                            aria-invalid={emailInvalid}
-                            aria-describedby={emailInvalid ? "studentEmail-error" : undefined}
-                            className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
-                        />
-                        {emailInvalid && (
-                            <p id="studentEmail-error" role="alert" className="text-meta text-destructive">
-                                请输入有效的邮箱地址
-                            </p>
-                        )}
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground hover:bg-muted">取消</Button>
-                    <Button
-                        data-testid="teacher-student-add-submit"
-                        onClick={onSubmit}
-                        disabled={submitting || !isStudentAddFormComplete(form)}
-                        className="bg-primary hover:bg-primary-hover text-primary-foreground"
-                    >
-                        {submitting ? <><Loader2 aria-hidden="true" className="w-4 h-4 mr-2 animate-spin" />添加中...</> : "确认添加"}
-                    </Button>
-                </DialogFooter>
+                    <DialogFooter>
+                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground hover:bg-muted">取消</Button>
+                        <Button
+                            type="submit"
+                            data-testid="teacher-student-add-submit"
+                            disabled={submitting || !isStudentAddFormComplete(form)}
+                            className="bg-primary hover:bg-primary-hover text-primary-foreground"
+                        >
+                            {submitting ? <><Loader2 aria-hidden="true" className="w-4 h-4 mr-2 animate-spin" />添加中...</> : "确认添加"}
+                        </Button>
+                    </DialogFooter>
+                </form>
             </DialogContent>
         </Dialog>
     );

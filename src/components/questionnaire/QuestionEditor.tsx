@@ -148,63 +148,87 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
     const duplicateOptions = type === "single" || type === "multiple" ? getDuplicateOptionIndexes(options) : [];
     const duplicateMessage = `第 ${duplicateOptions.join("、")} 个选项内容重复，请修改后保存。`;
 
-    const isValid = () => {
-        if (!content.trim() || content.length > 500) return false;
+    const buildCandidateQuestion = (): Question => {
+        const candidate: Question = {
+            id: question?.id ?? "draft",
+            type,
+            content: content.trim(),
+            section,
+        };
+        if (type === "single" || type === "multiple") {
+            candidate.options = options.filter((o) => o.trim());
+        }
+        if (type === "multiple") {
+            const validCount = candidate.options?.length ?? 3;
+            candidate.minSelect = Math.max(1, Math.min(minSelect, validCount));
+            candidate.maxSelect = Math.max(candidate.minSelect, Math.min(maxSelect, validCount));
+        }
+        if (type === "scale") {
+            candidate.scaleMin = scaleMin;
+            candidate.scaleMax = scaleMax;
+            candidate.scaleMinLabel = scaleMinLabel;
+            candidate.scaleMaxLabel = scaleMaxLabel;
+        }
+        if (type === "numeric") {
+            candidate.unit = unit.trim();
+            candidate.decimalPlaces = decimalPlaces;
+            if (numericMin !== "") candidate.numericMin = Number(numericMin);
+            if (numericMax !== "") candidate.numericMax = Number(numericMax);
+        }
+        return candidate;
+    };
 
+    const validationHint = (): string | null => {
+        if (!content.trim()) return "请填写题目内容后再保存。";
+        if (content.length > 500) return "题目内容不能超过 500 字。";
         if (type === "single" || type === "multiple") {
             const validOptions = options.filter((o) => o.trim());
-            if (validOptions.length < 2 || duplicateOptions.length > 0) return false;
+            if (validOptions.length < 2) return "请至少填写 2 个非空选项。";
+            if (duplicateOptions.length > 0) return duplicateMessage;
         }
-
         if (type === "multiple") {
             const validCount = options.filter((o) => o.trim()).length;
-            if (minSelect < 1 || maxSelect < minSelect || maxSelect > validCount) return false;
+            if (minSelect < 1) return "多选题最少选择数不能小于 1。";
+            if (maxSelect < minSelect) return "最多选择数不能小于最少选择数。";
+            if (maxSelect > validCount) return `最多选择数（${maxSelect}）不能超过当前有效选项数（${validCount}）。`;
         }
-
         if (type === "numeric") {
-            if (!Number.isSafeInteger(decimalPlaces) || decimalPlaces < 0 || decimalPlaces > 10) return false;
-            if (numericMin !== "" && !Number.isFinite(Number(numericMin))) return false;
-            if (numericMax !== "" && !Number.isFinite(Number(numericMax))) return false;
-            if (numericMin !== "" && numericMax !== "" && Number(numericMin) > Number(numericMax)) return false;
+            if (!Number.isSafeInteger(decimalPlaces) || decimalPlaces < 0 || decimalPlaces > 10) {
+                return "小数位数需为 0–10 之间的整数。";
+            }
+            if (numericMin !== "" && !Number.isFinite(Number(numericMin))) return "请输入有效的最小值。";
+            if (numericMax !== "" && !Number.isFinite(Number(numericMax))) return "请输入有效的最大值。";
+            if (numericMin !== "" && numericMax !== "" && Number(numericMin) > Number(numericMax)) {
+                return "最小值不能大于最大值，请核对上下限范围。";
+            }
         }
-
-        return true;
+        return null;
     };
+
+    const currentValidationHint = validationHint();
+    const isValid = () => currentValidationHint === null;
+
+    const existingBindingFields = question?.variableBinding?.mappings.map((m) => m.field).filter(Boolean) ?? [];
+    const hasActiveValidBinding = Boolean(
+        question?.variableBinding
+        && existingBindingFields.length > 0
+        && question.variableBinding.signature === questionSignature(question),
+    );
+    const willInvalidateBinding = Boolean(
+        hasActiveValidBinding
+        && question?.variableBinding
+        && questionSignature(buildCandidateQuestion()) !== question.variableBinding.signature,
+    );
 
     const handleSave = () => {
         if (!isValid()) return;
 
         const savedQuestion: Question = {
+            ...buildCandidateQuestion(),
             id: question?.id ?? generateId(),
-            type,
-            content: content.trim(),
-            section,
         };
         if (question?.recommendSourceId) {
             savedQuestion.recommendSourceId = question.recommendSourceId;
-        }
-
-        if (type === "single" || type === "multiple") {
-            savedQuestion.options = options.filter((o) => o.trim());
-        }
-
-        if (type === "multiple") {
-            const validCount = savedQuestion.options?.length ?? 3;
-            savedQuestion.minSelect = Math.max(1, Math.min(minSelect, validCount));
-            savedQuestion.maxSelect = Math.max(savedQuestion.minSelect, Math.min(maxSelect, validCount));
-        }
-
-        if (type === "scale") {
-            savedQuestion.scaleMin = scaleMin;
-            savedQuestion.scaleMax = scaleMax;
-            savedQuestion.scaleMinLabel = scaleMinLabel;
-            savedQuestion.scaleMaxLabel = scaleMaxLabel;
-        }
-        if (type === "numeric") {
-            savedQuestion.unit = unit.trim();
-            savedQuestion.decimalPlaces = decimalPlaces;
-            if (numericMin !== "") savedQuestion.numericMin = Number(numericMin);
-            if (numericMax !== "") savedQuestion.numericMax = Number(numericMax);
         }
         if (question?.variableBinding) {
             const signature = questionSignature(question);
@@ -235,6 +259,22 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                 </DialogHeader>
 
                 <div className="space-y-6 py-4">
+                    {hasActiveValidBinding && (
+                        <div
+                            role="status"
+                            data-testid="question-binding-status"
+                            className={`rounded-surface border px-3.5 py-2.5 text-meta leading-relaxed ${
+                                willInvalidateBinding
+                                    ? "border-warning-border bg-warning-muted text-warning"
+                                    : "border-info-border bg-info-muted text-info"
+                            }`}
+                        >
+                            {willInvalidateBinding
+                                ? `注意：当前修改改变了题意或作答规则，点击保存后将自动解除与「${existingBindingFields.join("、")}」的原变量关联。保存后请点击「关联变量」或「一键智能绑定变量」重新确认。`
+                                : `本题当前已关联数据字典字段「${existingBindingFields.join("、")}」。若修改题干、所属部分、选项或量纲规则，保存后需重新确认关联。`}
+                        </div>
+                    )}
+
                     <div className="space-y-2">
                         <Label className="text-foreground">问卷部分</Label>
                         <Select value={section} onValueChange={(value) => setSection(value as QuestionSection)}>
@@ -246,7 +286,16 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                             </SelectContent>
                         </Select>
                     </div>
-                    {!isEditing && (
+                    {isEditing ? (
+                        <div className="flex flex-wrap items-center justify-between gap-2 rounded-surface border border-border bg-muted px-3.5 py-2.5">
+                            <span className="text-label font-medium text-foreground">
+                                当前题型：{questionTypeLabels[type]}
+                            </span>
+                            <span className="text-meta text-muted-foreground">
+                                {questionTypeDescriptions[type]}（如需更换题型，请新建题目并删除本题）
+                            </span>
+                        </div>
+                    ) : (
                         <div className="space-y-2">
                             <Label className="text-muted-foreground">题目类型</Label>
                             <div
@@ -274,7 +323,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                 ))}
                             </div>
                             <p className="text-meta text-muted-foreground pl-1">
-                                {questionTypeDescriptions[type]}
+                                {questionTypeDescriptions[type]}（定量调查支持以上 5 种结构化题型，便于统计编码与推断）。
                             </p>
                         </div>
                     )}
@@ -491,6 +540,12 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                         </div>
                     )}
                 </div>
+
+                {dirty && currentValidationHint && duplicateOptions.length === 0 && (
+                    <p role="status" data-testid="question-validation-hint" className="text-meta text-warning">
+                        {currentValidationHint}
+                    </p>
+                )}
 
                 <DialogFooter className="gap-2">
                     <Button

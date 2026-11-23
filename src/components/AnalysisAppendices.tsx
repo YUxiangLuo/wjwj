@@ -130,7 +130,7 @@ export function AnalysisAppendices({ records }: { records: SavedAnalysisView[] }
                 {record.waveNumber ? ` · 第 ${record.waveNumber} 轮` : ""}
                 {" · "}{record.result.weighted ? "加权" : "未加权"}
             </p>
-            <p className="mt-1 text-meta text-muted-foreground">数据来源标识 {record.source} · 字典修订号 {record.dictionaryRevision} · 抽样代次 {record.samplingGeneration} · 算法版本 {record.algorithmVersion}</p>
+            <p className="mt-1 break-all text-meta text-muted-foreground">数据来源标识 <span className="font-mono">{record.source}</span> · 字典修订号 {record.dictionaryRevision} · 抽样代次 {record.samplingGeneration} · 算法版本 {record.algorithmVersion}</p>
             {record.stale && <p className="mt-2 text-label text-warning">此结果来源已过期，仅供查看；请移除引用或重新运行后再提交。</p>}
             <div
                 role="region"

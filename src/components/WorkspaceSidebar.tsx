@@ -22,8 +22,8 @@ export function WorkspaceSidebar({
     footer,
 }: WorkspaceSidebarProps) {
     return (
-        <aside className="sticky top-0 flex h-dvh w-64 shrink-0 self-start flex-col overflow-hidden border-r border-navigation-border bg-navigation text-navigation-foreground">
-            <div className="flex h-16 shrink-0 items-center border-b border-navigation-border px-5">
+        <aside className="sticky top-0 flex h-dvh w-60 shrink-0 self-start flex-col overflow-hidden border-r border-navigation-border bg-navigation text-navigation-foreground">
+            <div className="flex h-16 shrink-0 items-center border-b border-navigation-border px-4">
                 <div className="flex items-center gap-3">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-navigation-border bg-navigation-active text-navigation-active-foreground">
                         <TitleIcon className="h-5 w-5" />
@@ -34,7 +34,7 @@ export function WorkspaceSidebar({
                     </div>
                 </div>
             </div>
-            <div className="px-5 pt-4 pb-1.5">
+            <div className="px-4 pt-4 pb-1.5">
                 <span className="text-meta font-semibold tracking-wider text-navigation-muted">工作台导航</span>
             </div>
             <nav aria-label={`${title}主导航`} className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-3">
@@ -53,7 +53,7 @@ export function WorkspaceSidebar({
                     );
                 })}
             </nav>
-            <div className="shrink-0 border-t border-navigation-border bg-navigation-hover px-4 py-3.5 text-navigation-foreground">
+            <div className="shrink-0 border-t border-navigation-border bg-navigation-hover px-4 py-3 text-navigation-foreground">
                 {footer}
             </div>
         </aside>

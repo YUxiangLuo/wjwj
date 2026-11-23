@@ -192,3 +192,20 @@ test("failed reload keeps the draft dirty and releases busy state", async () => 
     expect(state.mock.calls.at(-1)?.[0]).toEqual({ dirty: true, busy: false });
     expect((view.getByLabelText("缺失值编码（高级）", { selector: "input#missing-0" }) as HTMLInputElement).value).toBe("[broken");
 });
+
+test("distinguishes unconfirmed suggestion from confirmed active dictionary", async () => {
+    getVariableDictionary.mockImplementationOnce(async () => ({
+        success: true,
+        data: { dictionary: null, suggestion: dictionary, source: "source-hash", revision: 1, locked: false },
+    }) as never);
+    const unconfirmed = render(<VariableDictionaryEditor topicId={7} />);
+    await unconfirmed.findByLabelText("value 标签");
+    expect(unconfirmed.getByText("未确认保存")).toBeTruthy();
+    expect(unconfirmed.getByText(/尚未对学生启用/)).toBeTruthy();
+    unconfirmed.unmount();
+
+    const confirmed = render(<VariableDictionaryEditor topicId={7} />);
+    await confirmed.findByLabelText("value 标签");
+    expect(confirmed.getByText("已确认生效")).toBeTruthy();
+    expect(confirmed.queryByText(/尚未对学生启用/) === null).toBe(true);
+});

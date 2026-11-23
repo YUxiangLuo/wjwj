@@ -7,6 +7,7 @@ import { FieldworkFunnelChart } from "@/components/charts/FieldworkFunnelChart";
 import { StratumComparisonChart } from "@/components/charts/StratumComparisonChart";
 import { WaveDeltaScorecard, type WaveSnapshotMetric } from "@/components/charts/WaveDeltaScorecard";
 import type { ExperimentWaveView } from "@/domain/experiment/types";
+import type { QuestionnaireData } from "@/lib/questionnaire-types";
 import {
     resolveCleaningConfig,
     type AdjustmentActionKey,
@@ -16,6 +17,33 @@ import {
 } from "@/domain/fieldwork";
 import type { ResolvedAnalysisTarget } from "@/lib/analysis-target";
 import { SAMPLING_METHODS, type SamplingMethod } from "@/lib/sampling-policy";
+
+export function inferTargetUnitFromExperiment(params: {
+    analysisTarget?: ResolvedAnalysisTarget | null;
+    explicitUnit?: string | null;
+    waves?: ExperimentWaveView[] | null;
+    questionnaire?: QuestionnaireData | null;
+}): string {
+    if (params.analysisTarget?.target.kind === "proportion") return "%";
+    const explicit = params.explicitUnit?.trim();
+    if (explicit) return explicit;
+    const targetField = params.analysisTarget?.target.field;
+    const questionnaires: Array<QuestionnaireData | null | undefined> = [
+        ...(params.waves ?? []).map((w) => w.questionnaire),
+        params.questionnaire,
+    ];
+    if (targetField) {
+        for (const qData of questionnaires) {
+            for (const q of qData?.questions ?? []) {
+                const boundToTarget = q.variableBinding?.mappings?.some((m) => m.field === targetField);
+                if (boundToTarget && q.unit?.trim()) {
+                    return q.unit.trim();
+                }
+            }
+        }
+    }
+    return "";
+}
 
 export const ADJUSTMENT_ISSUE_LABELS: Record<AdjustmentIssueKey, string> = {
     unit_nonresponse_gap: "单元拒访/失联导致有效样本不足",
@@ -167,7 +195,11 @@ export function WaveLoopSnapshot({
 }) {
     const firstWave = waves[0];
     const finalWave = waves.length >= 2 ? waves[waves.length - 1] : undefined;
-    const effectiveUnit = analysisTarget?.target.kind === "proportion" ? "%" : unitLabel;
+    const effectiveUnit = inferTargetUnitFromExperiment({
+        analysisTarget,
+        explicitUnit: unitLabel,
+        waves,
+    });
 
     const firstMetric = firstWave ? buildWaveSnapshotMetric(firstWave, "simple", effectiveUnit) ?? buildWaveSnapshotMetric(firstWave, undefined, effectiveUnit) : null;
     const finalMetric = finalWave ? buildWaveSnapshotMetric(finalWave, undefined, effectiveUnit) : null;
@@ -290,7 +322,7 @@ export function WaveLoopSnapshot({
                                     renderWaveMethodDiagnostics(
                                         wave.diagnostics![diagMethods[0]!]!,
                                         analysisTarget?.target.kind,
-                                        unitLabel,
+                                        effectiveUnit,
                                     )
                                 ) : (
                                     <Tabs defaultValue={diagMethods[0]!} className="space-y-4">
@@ -307,7 +339,7 @@ export function WaveLoopSnapshot({
                                                 {renderWaveMethodDiagnostics(
                                                     wave.diagnostics![m]!,
                                                     analysisTarget?.target.kind,
-                                                    unitLabel,
+                                                    effectiveUnit,
                                                 )}
                                             </TabsContent>
                                         ))}

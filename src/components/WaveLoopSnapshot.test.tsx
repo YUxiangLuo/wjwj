@@ -10,7 +10,7 @@ import {
 
 const bootstrapDom = installDomGlobals("http://localhost/student");
 const { cleanup, render } = await import("@testing-library/react");
-const { WaveLoopSnapshot, buildWaveSnapshotMetric } = await import("./WaveLoopSnapshot");
+const { WaveLoopSnapshot, buildWaveSnapshotMetric, inferTargetUnitFromExperiment } = await import("./WaveLoopSnapshot");
 bootstrapDom.restore();
 
 let restoreDom: (() => void) | null = null;
@@ -234,4 +234,31 @@ test("WaveLoopSnapshot reconciles selectedWave when waves prop shrinks and forma
     view.rerender(<WaveLoopSnapshot waves={[wave1]} unitLabel="%" />);
     expect(view.queryByTestId("fieldwork-funnel-chart") !== null).toBe(true);
     expect(view.queryByText("64.00%") !== null).toBe(true);
+});
+
+test("inferTargetUnitFromExperiment resolves bound numeric question unit when explicit unitLabel is omitted", () => {
+    const unit = inferTargetUnitFromExperiment({
+        analysisTarget: { inferred: false, target: { kind: "mean", field: "年度增购预算" } },
+        questionnaire: {
+            title: "问卷",
+            welcomeText: "欢迎",
+            endingText: "结束",
+            questions: [
+                {
+                    id: "q1",
+                    type: "numeric",
+                    content: "预算多少万元",
+                    unit: "万元",
+                    variableBinding: {
+                        taskId: 3,
+                        source: "s",
+                        revision: 1,
+                        signature: "sig",
+                        mappings: [{ field: "年度增购预算", answers: [] }],
+                    },
+                },
+            ],
+        },
+    });
+    expect(unit).toBe("万元");
 });

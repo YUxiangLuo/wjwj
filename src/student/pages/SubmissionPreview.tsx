@@ -40,7 +40,7 @@ import {
 } from "@/lib/sampling-policy";
 import { getSamplingResultCount } from "../experiment/sampling-results";
 import { AnalysisAppendices } from "@/components/AnalysisAppendices";
-import { WaveLoopSnapshot } from "@/components/WaveLoopSnapshot";
+import { inferTargetUnitFromExperiment, WaveLoopSnapshot } from "@/components/WaveLoopSnapshot";
 
 const SAMPLING_METHOD_LABELS: Record<SamplingMethod, string> = {
     simple: "简单随机抽样",
@@ -195,6 +195,11 @@ export function SubmissionPreview() {
     });
     const canSubmit = submitBlocker === null;
     const advancedSourceLabel = getAdvancedPlanSourceLabel(samplePlan?.advancedPlanSource);
+    const previewUnitLabel = inferTargetUnitFromExperiment({
+        analysisTarget: experiment.analysisTarget,
+        waves: experiment.waves,
+        questionnaire,
+    });
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto" data-testid="student-submission-preview">
@@ -324,7 +329,14 @@ export function SubmissionPreview() {
                                                 {formatMarginOfError(samplePlan.marginOfError, samplePlan.estimationType)}
                                             </p>
                                             {samplePlan.estimationType === "mean" && samplePlan.populationVariance != null && (
-                                                <p>规划代入方差：{formatSamplePlanNumber(samplePlan.populationVariance)}</p>
+                                                <p>
+                                                    {samplePlan.varianceSource === "wave1_empirical"
+                                                        ? "首轮实测样本方差 s²"
+                                                        : "抽样框总体方差 σ²"}：{formatSamplePlanNumber(samplePlan.populationVariance)}
+                                                </p>
+                                            )}
+                                            {typeof samplePlan.nonResponseRate === "number" && (
+                                                <p>预期无回答率：{Math.round(samplePlan.nonResponseRate * 100)}%</p>
                                             )}
                                             <p>建议样本量：{samplePlan.recommendedSize}</p>
                                             <p>最终样本量：{samplePlan.finalSampleSize}</p>
@@ -372,6 +384,7 @@ export function SubmissionPreview() {
                                     waves={experiment.waves}
                                     adjustmentPlan={experiment.adjustmentPlan}
                                     analysisTarget={experiment.analysisTarget}
+                                    unitLabel={previewUnitLabel}
                                 />
                             </TabsContent>
                         )}

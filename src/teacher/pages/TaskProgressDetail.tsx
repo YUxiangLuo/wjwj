@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateTimeDisplay } from "@/utils/format";
 import { teacherApi, type TaskProgressData } from "../api-client";
@@ -53,12 +54,13 @@ const RING_COLORS: Record<StatusKey, string> = {
     rejected: "var(--chart-8)",
 };
 
-const CHART_SIZE = 160;
+const CHART_SIZE = 136;
 const CHART_CENTER = CHART_SIZE / 2;
-const RING_RADIUS = 65;
-const RING_STROKE = 14;
+const RING_RADIUS = 54;
+const RING_STROKE = 12;
 
 const STATUSES_WITH_SUBMISSION: StatusKey[] = ["submitted", "graded", "rejected"];
+const IN_PROGRESS_STATUSES: StatusKey[] = ["stage1", "stage2", "stage3", "stage4", "stage5"];
 
 export function TaskProgressDetail() {
     const { taskId } = useParams();
@@ -67,6 +69,7 @@ export function TaskProgressDetail() {
     const [data, setData] = useState<TaskProgressData | null>(null);
     const { loading, error: loadError, run, cancel } = useAsyncLoad("任务进度加载失败");
     const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState<"all" | "not_started" | "in_progress" | "submitted" | "graded" | "rejected">("all");
     const [distributionOpen, setDistributionOpen] = useState(false);
 
     useEffect(() => {
@@ -81,11 +84,13 @@ export function TaskProgressDetail() {
     const filteredStudents = useMemo(() => {
         if (!data) return [];
         const keyword = searchTerm.trim().toLowerCase();
-        if (!keyword) return data.students;
-        return data.students.filter(
-            (s) => s.studentId.toLowerCase().includes(keyword) || s.name.toLowerCase().includes(keyword)
-        );
-    }, [data, searchTerm]);
+        return data.students.filter((s) => {
+            const matchesKeyword = !keyword || s.studentId.toLowerCase().includes(keyword) || s.name.toLowerCase().includes(keyword);
+            const matchesStatus = statusFilter === "all"
+                || (statusFilter === "in_progress" ? IN_PROGRESS_STATUSES.includes(s.status as StatusKey) : s.status === statusFilter);
+            return matchesKeyword && matchesStatus;
+        });
+    }, [data, searchTerm, statusFilter]);
 
     const total = data ? Object.values(data.counts).reduce<number>((a, b) => a + (b ?? 0), 0) : 0;
 
@@ -136,11 +141,11 @@ export function TaskProgressDetail() {
                     <Button variant="ghost" aria-expanded={distributionOpen} aria-controls="teacher-progress-charts" onClick={() => setDistributionOpen(open => !open)}>
                         {distributionOpen ? "收起阶段分布" : "查看阶段分布"} · {total} 名学生
                     </Button>
-                    {distributionOpen && <div id="teacher-progress-charts" className="mt-4 flex flex-wrap items-start gap-6">
+                    {distributionOpen && <div id="teacher-progress-charts" className="mt-3 flex flex-wrap items-center gap-4">
                     {/* Ring chart */}
-                    <Card className="min-w-0 flex-[1_1_16rem] border-0 bg-transparent">
-                        <CardContent className="p-6 flex flex-col items-center">
-                            <svg role="img" aria-label="学生实验状态分布环形图" width={CHART_SIZE} height={CHART_SIZE} viewBox={`0 0 ${CHART_SIZE} ${CHART_SIZE}`} className="mb-4">
+                    <Card className="min-w-0 flex-[0_0_13rem] border-0 bg-transparent">
+                        <CardContent className="p-3 flex flex-col items-center">
+                            <svg role="img" aria-label="学生实验状态分布环形图" width={CHART_SIZE} height={CHART_SIZE} viewBox={`0 0 ${CHART_SIZE} ${CHART_SIZE}`} className="mb-2">
                                 {(() => {
                                     const circumference = 2 * Math.PI * RING_RADIUS;
                                     let offset = 0;
@@ -173,37 +178,23 @@ export function TaskProgressDetail() {
                                         <>
                                             <circle cx={CHART_CENTER} cy={CHART_CENTER} r={RING_RADIUS} fill="none" className="stroke-border" strokeWidth={RING_STROKE} />
                                             {segments}
-                                            <text x={CHART_CENTER} y={CHART_CENTER - 8} textAnchor="middle" className="fill-foreground text-page-title font-bold tabular-nums" fontSize="28">{total}</text>
-                                            <text x={CHART_CENTER} y={CHART_CENTER + 14} textAnchor="middle" className="fill-muted-foreground text-meta" fontSize="12">总人数</text>
+                                            <text x={CHART_CENTER} y={CHART_CENTER - 4} textAnchor="middle" className="fill-foreground text-page-title font-bold tabular-nums" fontSize="24">{total}</text>
+                                            <text x={CHART_CENTER} y={CHART_CENTER + 15} textAnchor="middle" className="fill-muted-foreground text-meta" fontSize="12">总人数</text>
                                         </>
                                     );
                                 })()}
                             </svg>
-                            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-meta">
-                                {STATUS_KEYS.map((key) => {
-                                    const cfg = STATUS_CONFIG[key];
-                                    const count = data.counts[key] ?? 0;
-                                    if (count === 0) return null;
-                                    return (
-                                        <div key={key} className="flex items-center gap-2">
-                                            <span aria-hidden="true" className="w-2 h-2 rounded-circle" style={{ backgroundColor: RING_COLORS[key] }} />
-                                            <span className="text-muted-foreground">{cfg.label}</span>
-                                            <span className={`font-medium tabular-nums ${cfg.color}`}>{count}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
                         </CardContent>
                     </Card>
 
                     {/* Distribution bar */}
-                    <Card className="min-w-0 flex-[2_1_28rem] border-0 bg-transparent">
-                        <CardContent className="p-6 flex flex-col justify-center h-full gap-4">
+                    <Card className="min-w-0 flex-[1_1_20rem] border-0 bg-transparent">
+                        <CardContent className="p-3 flex flex-col justify-center h-full gap-3">
                             <span className="text-label font-medium text-foreground">各阶段分布</span>
                             <div
                                 role="img"
                                 aria-label={`各阶段人数占比：${STATUS_KEYS.filter((k) => (data.counts[k] ?? 0) > 0).map((k) => `${STATUS_CONFIG[k].label} ${data.counts[k] ?? 0} 人`).join("，")}`}
-                                className="flex h-4 rounded-control overflow-hidden bg-muted"
+                                className="flex h-4 rounded-control overflow-hidden bg-card"
                             >
                                 {STATUS_KEYS.map((key) => {
                                     const count = data.counts[key] ?? 0;
@@ -219,14 +210,14 @@ export function TaskProgressDetail() {
                                     );
                                 })}
                             </div>
-                            <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-3">
+                            <div className="grid grid-cols-[repeat(auto-fit,minmax(10.5rem,1fr))] gap-2">
                                 {STATUS_KEYS.map((key) => {
                                     const cfg = STATUS_CONFIG[key];
                                     const count = data.counts[key] ?? 0;
                                     return (
-                                        <div key={key} className="flex items-center gap-2 text-meta">
-                                            <span aria-hidden="true" className={`w-2 h-2 rounded-circle ${PROGRESS_COLORS[key]}`} />
-                                            <span className="text-muted-foreground">{cfg.label}</span>
+                                        <div key={key} className="flex items-center gap-1.5 text-meta">
+                                            <span aria-hidden="true" className={`w-2 h-2 shrink-0 rounded-circle ${PROGRESS_COLORS[key]}`} />
+                                            <span className="truncate text-muted-foreground">{cfg.label}</span>
                                             <span className={`font-medium tabular-nums ${cfg.color}`}>{count}</span>
                                             <span className="text-muted-foreground tabular-nums">({total > 0 ? Math.round((count / total) * 100) : 0}%)</span>
                                         </div>
@@ -241,18 +232,38 @@ export function TaskProgressDetail() {
 
             {/* Student list */}
             <Card data-testid="teacher-progress-students">
-                <div className="p-4 border-b border-border flex items-center justify-between">
-                    <span className="text-label font-medium text-foreground">学生列表</span>
-                    <div className="relative w-56">
-                        <Label htmlFor="teacher-progress-search" className="sr-only">搜索学号或姓名</Label>
-                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            id="teacher-progress-search"
-                            placeholder="搜索学号/姓名"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-9 bg-card border-input text-foreground placeholder:text-muted-foreground h-8 text-label"
-                        />
+                <div className="p-4 border-b border-border flex flex-wrap items-center justify-between gap-3">
+                    <span className="text-label font-medium text-foreground">
+                        学生列表
+                        {(searchTerm || statusFilter !== "all") && (
+                            <span className="ml-2 text-meta font-normal text-muted-foreground">（匹配 {filteredStudents.length} / {data.students.length} 人）</span>
+                        )}
+                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <div className="relative w-52">
+                            <Label htmlFor="teacher-progress-search" className="sr-only">搜索学号或姓名</Label>
+                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                id="teacher-progress-search"
+                                placeholder="搜索学号/姓名"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-9 bg-card border-input text-foreground placeholder:text-muted-foreground h-8 text-label"
+                            />
+                        </div>
+                        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+                            <SelectTrigger aria-label="按实验状态筛选学生" className="h-8 w-36 bg-card text-label">
+                                <SelectValue placeholder="全部状态" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">全部状态</SelectItem>
+                                <SelectItem value="not_started">未开始</SelectItem>
+                                <SelectItem value="in_progress">实训进行中</SelectItem>
+                                <SelectItem value="submitted">已提交待批改</SelectItem>
+                                <SelectItem value="graded">已批改</SelectItem>
+                                <SelectItem value="rejected">已驳回</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
                 <CardContent className="pt-0">
@@ -263,7 +274,7 @@ export function TaskProgressDetail() {
                                 <TableHead className="text-muted-foreground">姓名</TableHead>
                                 <TableHead className="text-muted-foreground">状态</TableHead>
                                 <TableHead className="text-muted-foreground">当前阶段</TableHead>
-                                <TableHead className="text-muted-foreground">最近活动</TableHead>
+                                <TableHead className="text-muted-foreground">最近活动 (UTC+8)</TableHead>
                                 <TableHead className="text-muted-foreground text-right">操作</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -283,7 +294,7 @@ export function TaskProgressDetail() {
                                             {s.stage !== null ? `阶段 ${s.stage}` : "-"}
                                         </TableCell>
                                         <TableCell className="text-muted-foreground text-meta tabular-nums">
-                                            {s.lastActivity ? `${formatDateTimeDisplay(s.lastActivity)}（UTC+8）` : "-"}
+                                            {s.lastActivity ? formatDateTimeDisplay(s.lastActivity) : "-"}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             {STATUSES_WITH_SUBMISSION.includes(s.status as StatusKey) && s.submissionId ? (
@@ -310,8 +321,23 @@ export function TaskProgressDetail() {
                             })}
                             {filteredStudents.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
-                                        暂无数据
+                                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground whitespace-normal">
+                                        <div className="space-y-2">
+                                            <p>暂无数据</p>
+                                            {(searchTerm || statusFilter !== "all") && (
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setSearchTerm("");
+                                                        setStatusFilter("all");
+                                                    }}
+                                                >
+                                                    清空搜索与筛选
+                                                </Button>
+                                            )}
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             )}

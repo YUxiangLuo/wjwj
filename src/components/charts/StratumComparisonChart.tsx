@@ -50,6 +50,10 @@ export function StratumComparisonChart({
                         <span className="inline-block h-2.5 w-2.5 rounded-circle bg-primary" />
                         有效回收占比
                     </span>
+                    <span className="inline-flex items-center gap-1.5">
+                        <span className="inline-block h-2.5 w-2.5 rounded-circle bg-warning" />
+                        欠代表 / 低响应预警
+                    </span>
                 </div>
             </div>
 
@@ -60,7 +64,9 @@ export function StratumComparisonChart({
                     {normalizedRows.map((row, index) => {
                         const diff = row.validSharePct - row.frameSharePct;
                         const hasInvited = row.invitedCount > 0;
-                        const underRepresented = diff <= -4 || (hasInvited && row.responseRatePct < 60);
+                        const lowResponse = hasInvited && row.responseRatePct < 60;
+                        const underRepresented = diff <= -4 || lowResponse;
+                        const overRepresented = diff >= 4;
                         const frameBarW = Math.max(4, (row.frameSharePct / maxShare) * maxBarWidth);
                         const validBarW = Math.max(4, (row.validSharePct / maxShare) * maxBarWidth);
                         return (
@@ -73,12 +79,12 @@ export function StratumComparisonChart({
                                         >
                                             {row.stratum}
                                         </span>
-                                        <StatusBadge intent={underRepresented ? "warning" : "success"}>
+                                        <StatusBadge intent={!hasInvited ? "neutral" : lowResponse ? "warning" : "success"}>
                                             有效回收率 {hasInvited ? `${formatStatistic(row.responseRatePct, 1)}%` : "—"}（{row.validCount}/{row.invitedCount}）
                                         </StatusBadge>
                                     </div>
                                     <span className={`shrink-0 text-meta font-medium tabular-nums ${Math.abs(diff) >= 4 ? "text-warning" : "text-muted-foreground"}`}>
-                                        结构偏差 {diff >= 0 ? "+" : ""}{formatStatistic(diff, 1)} 百分点
+                                        结构偏差 {diff >= 0 ? "+" : ""}{formatStatistic(diff, 1)} pp{diff <= -4 ? "（欠代表）" : overRepresented ? "（超代表）" : ""}
                                     </span>
                                 </div>
                                 <svg

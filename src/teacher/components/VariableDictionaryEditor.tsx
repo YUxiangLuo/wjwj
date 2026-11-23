@@ -5,6 +5,7 @@ import { teacherApi, type VariableDictionaryResponse } from "../api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { StatusBadge } from "@/components/StatusBadge";
 import { ArrowDown, ArrowUp } from "lucide-react";
 
 function scalarText(value: RawValue) { return JSON.stringify(value); }
@@ -99,11 +100,30 @@ export function VariableDictionaryEditor({ topicId, readOnly = false, disabled =
     if (loading) return <div role="status" className="text-label text-muted-foreground">正在读取变量字典…</div>;
     if (!draft) return <div className="space-y-3"><p className="text-label text-destructive">{error}</p><Button variant="outline" disabled={disabled} onClick={reload}>重新载入</Button></div>;
     const locked = readOnly || snapshot?.locked || saving || disabled;
+    const isConfirmed = Boolean(snapshot?.dictionary);
     return <div className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-            <div><h3 className="text-section-title">变量字典</h3><p className="text-label text-muted-foreground">{readOnly || snapshot?.locked ? "查看各字段的标签、单位、测量类型、类别顺序与缺失值处理规则。" : "逐字段确认标签、单位、测量类型、类别顺序与缺失值处理规则。"}</p></div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-section-title">变量字典</h3>
+                    <StatusBadge intent={dirty ? "warning" : isConfirmed ? "success" : "neutral"}>
+                        {dirty ? "有未保存修改" : isConfirmed ? "已确认生效" : "未确认保存"}
+                    </StatusBadge>
+                </div>
+                <p className="mt-1 text-label text-muted-foreground">{readOnly || snapshot?.locked ? "查看各字段的标签、单位、测量类型、类别顺序与缺失值处理规则。" : "逐字段确认标签、单位、测量类型、类别顺序与缺失值处理规则。"}</p>
+            </div>
             {!readOnly && !snapshot?.locked && <Button onClick={save} disabled={locked}>{saving ? "保存中…" : "明确确认并保存"}</Button>}
         </div>
+        {!readOnly && !snapshot?.locked && !isConfirmed && (
+            <p className="rounded-surface border border-info-border bg-info-muted px-3.5 py-2.5 text-meta text-info">
+                当前展示的是系统自动推断草案，尚未对学生启用。若需开放学生端「题目变量绑定」与「单变量/交叉分析工作台」，请核对后点击右上角「明确确认并保存」；若本实验无需变量绑定，可直接继续下一步。
+            </p>
+        )}
+        {readOnly && !isConfirmed && (
+            <p className="rounded-surface border border-border bg-muted px-3.5 py-2.5 text-meta text-muted-foreground">
+                该实验模板未保存变量字典（以下为默认字段推断预览，学生端不启用题目变量绑定与自主分析）。
+            </p>
+        )}
         <p className="text-label text-muted-foreground">标记为缺失的值不作为该变量的有效数据。以下是处理规则，不代表数据中一定存在缺失。</p>
         {error && <div role="alert" className="rounded-surface border border-destructive-border bg-destructive-muted p-3 text-label text-destructive">{error} <Button data-testid="teacher-dictionary-reload" variant="outline" className="ml-2" disabled={saving || disabled} onClick={reload}>重新载入</Button></div>}
         {draft.variables.map((variable, index) => <section key={variable.field} className="rounded-surface border border-border bg-background p-4 space-y-3">

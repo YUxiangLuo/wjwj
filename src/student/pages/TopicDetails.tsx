@@ -243,9 +243,17 @@ export function TopicDetails() {
             </ol>
 
             {task.status === "rejected" && task.rejectReason && (
-                <section className="rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3">
-                    <h2 className="text-label font-semibold text-destructive">退回重调理由</h2>
-                    <p className="mt-1 text-label leading-relaxed text-destructive break-words">{task.rejectReason}</p>
+                <section className="flex flex-wrap items-start justify-between gap-4 rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3" data-testid="student-task-rejection-banner">
+                    <div className="min-w-0 flex-1 space-y-1">
+                        <h2 className="text-label font-semibold text-destructive">退回重调理由</h2>
+                        <p className="text-label leading-relaxed text-destructive break-words">{task.rejectReason}</p>
+                        <p className="text-meta text-muted-foreground">
+                            操作指引：点击右上角「继续修改」可进入实验工作台修订报告或回退重开前序阶段；也可先核对上次冻结的提交快照。
+                        </p>
+                    </div>
+                    <Button asChild variant="outline" size="sm" className="shrink-0 bg-card">
+                        <Link to={`/task/${task.id}/result`}>查看上次提交快照</Link>
+                    </Button>
                 </section>
             )}
 
@@ -266,7 +274,7 @@ export function TopicDetails() {
                     <div className="rounded-surface border border-border bg-card p-4 space-y-1.5">
                         <div className="flex items-center gap-2 text-meta font-semibold text-info">
                             <Target className="h-4 w-4" />
-                            核心估计指标与抽样框
+                            核心估计指标与抽样总体
                         </div>
                         <p className="text-label leading-relaxed text-foreground">
                             {contract.target.kind === "mean"
@@ -275,7 +283,7 @@ export function TopicDetails() {
                         </p>
                         <p className="text-meta text-muted-foreground">
                             <Users className="mr-1 inline h-3.5 w-3.5" />
-                            {contract.targetPopulation}（N = {task.populationSize.toLocaleString()} · 单位：{contract.unitOfAnalysis}）
+                            {contract.targetPopulation}（总体规模 N = {task.populationSize.toLocaleString()} · 每条记录代表：{contract.unitOfAnalysis}）
                         </p>
                     </div>
                     <div className="rounded-surface border border-border bg-card p-4 space-y-1.5">
@@ -287,19 +295,19 @@ export function TopicDetails() {
                             场景特征：{FIELDWORK_PRESET_LABELS[fieldworkConfig.preset]}
                         </p>
                         <p className="text-meta text-muted-foreground tabular-nums">
-                            触达 ¥{fieldworkConfig.contactCostPerUnit}/份 · 完答礼金 ¥{fieldworkConfig.incentiveCostPerComplete}/份（仅作成本效益参考，不设预算硬上限）
+                            触达 ¥{fieldworkConfig.contactCostPerUnit}/份（按发出名单计）· 完答礼金 ¥{fieldworkConfig.incentiveCostPerComplete}/份（按回收答卷计，仅作方案性价比评估，不设预算硬上限）
                         </p>
                     </div>
                 </section>
             )}
 
-            <div className="grid grid-cols-5 gap-5 rounded-surface border border-border bg-card p-5">
+            <div className="grid grid-cols-5 items-start gap-5 rounded-surface border border-border bg-card p-5">
                 <section className="col-span-3 min-w-0">
                     <h2 className="mb-3 text-subheading font-semibold text-foreground">项目背景与实验要求</h2>
                     <RichTextContent html={task.description ?? ""} className="prose max-w-none text-body text-foreground" emptyFallback="暂无描述" />
                 </section>
 
-                <div className="col-span-2 min-w-0 space-y-4 border-l border-border pl-5">
+                <div className="sticky top-20 col-span-2 min-w-0 space-y-4 border-l border-border pl-5">
                     <section className="space-y-2" data-testid="student-task-sampling-policy">
                         <h2 className="text-subheading font-semibold text-foreground">正式轮抽样方法要求</h2>
                         <p className="text-meta text-muted-foreground">首轮试投可快速探索任意方法；正式投放阶段须完成全部必做方法且至少完成两种启用方法进行效率对比。</p>

@@ -36,22 +36,34 @@ export function ClassManagement() {
     const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => {
-        loadInitialData();
+        void loadInitialData();
     }, []);
 
     useEffect(() => {
-        loadClasses();
+        void loadClasses();
     }, [filterSemester, filterTeacher]);
+
+    function getDefaultSelection(semesterList = semesters, teacherList = teachers) {
+        const defaultSemester = semesterList.find((semester) => semester.isCurrent === 1) ?? semesterList[0];
+        return {
+            semesterId: String(defaultSemester?.id ?? ""),
+            teacherId: String(teacherList[0]?.id ?? ""),
+        };
+    }
 
     async function loadInitialData() {
         await optionsLoad.run(async () => {
             const [semestersRes, teachersRes] = await Promise.all([semesterApi.list(), teacherApi.list()]);
             return { semesters: requireApiData(semestersRes, "学期选项加载失败"), teachers: requireApiData(teachersRes, "教师选项加载失败") };
-        }, ({ semesters, teachers }) => {
-            setSemesters(semesters);
-            setTeachers(teachers);
-            const defaultSemester = semesters.find(semester => semester.isCurrent === 1) ?? semesters[0];
-            setNewClass(previous => ({ ...previous, semesterId: previous.semesterId || String(defaultSemester?.id ?? ""), teacherId: previous.teacherId || String(teachers[0]?.id ?? "") }));
+        }, ({ semesters: nextSemesters, teachers: nextTeachers }) => {
+            setSemesters(nextSemesters);
+            setTeachers(nextTeachers);
+            const defaults = getDefaultSelection(nextSemesters, nextTeachers);
+            setNewClass((previous) => ({
+                ...previous,
+                semesterId: previous.semesterId || defaults.semesterId,
+                teacherId: previous.teacherId || defaults.teacherId,
+            }));
         });
     }
 
@@ -59,21 +71,40 @@ export function ClassManagement() {
         return run(async () => requireApiData(await classApi.list({ semesterId: filterSemester, teacherId: filterTeacher }), "班级列表加载失败"), setClasses);
     }
 
+    function openAddModal() {
+        const defaults = getDefaultSelection();
+        setNewClass((previous) => ({
+            name: "",
+            semesterId: previous.semesterId || defaults.semesterId,
+            teacherId: previous.teacherId || defaults.teacherId,
+        }));
+        setShowAddModal(true);
+    }
+
+    function handleAddModalOpenChange(open: boolean) {
+        if (submitting) return;
+        if (!open) {
+            setNewClass((previous) => ({ ...previous, name: "" }));
+        }
+        setShowAddModal(open);
+    }
+
     async function handleAddClass() {
-        if (!newClass.name.trim() || !newClass.semesterId || !newClass.teacherId) return;
+        if (!newClass.name.trim() || !newClass.semesterId || !newClass.teacherId || submitting) return;
 
         setSubmitting(true);
         try {
             const res = await classApi.create({
                 name: newClass.name.trim(),
-                semesterId: parseInt(newClass.semesterId),
-                teacherId: parseInt(newClass.teacherId),
+                semesterId: parseInt(newClass.semesterId, 10),
+                teacherId: parseInt(newClass.teacherId, 10),
             });
 
             if (res.success) {
                 setNewClass({ name: "", semesterId: newClass.semesterId, teacherId: newClass.teacherId });
                 setShowAddModal(false);
-                loadClasses();
+                toast.success("班级已创建");
+                void loadClasses();
             } else {
                 toast.error(res.error?.message ?? "创建失败");
             }
@@ -89,7 +120,7 @@ export function ClassManagement() {
     }
 
     async function handleEditClass() {
-        if (!editingClass || !editForm.name.trim()) return;
+        if (!editingClass || !editForm.name.trim() || submitting) return;
 
         setSubmitting(true);
         try {
@@ -98,7 +129,8 @@ export function ClassManagement() {
             if (res.success) {
                 setShowEditModal(false);
                 setEditingClass(null);
-                loadClasses();
+                toast.success("班级名称已更新");
+                void loadClasses();
             } else {
                 toast.error(res.error?.message ?? "更新失败");
             }
@@ -135,7 +167,8 @@ export function ClassManagement() {
 
         const res = await classApi.delete(cls.id);
         if (res.success) {
-            loadClasses();
+            toast.success("班级已删除");
+            void loadClasses();
         } else {
             toast.error(res.error?.message ?? "删除失败");
             if (res.error?.code === "CLASS_IN_USE") void loadClasses();
@@ -154,6 +187,14 @@ export function ClassManagement() {
         return { total, studentTotal, currentSemesterName, teacherCount };
     }, [classes, semesters]);
 
+    const hasFilters = Boolean(searchTerm.trim()) || filterSemester !== "all" || filterTeacher !== "all";
+
+    const clearFilters = () => {
+        setSearchTerm("");
+        setFilterSemester("all");
+        setFilterTeacher("all");
+    };
+
     const filteredClasses = useMemo(() => {
         const keyword = searchTerm.trim().toLowerCase();
         return classes.filter((cls) => {
@@ -167,43 +208,46 @@ export function ClassManagement() {
     }, [classes, searchTerm]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-5">
             {optionsLoad.error && <RequestError message={optionsLoad.error} onRetry={() => void loadInitialData()} />}
             <PageHeader border={false}>
-                <div />
-                <Button data-testid="class-create-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary-hover text-primary-foreground ">
-                    <Plus className="w-4 h-4 mr-1" />
+                <div>
+                    <h2 className="text-subheading font-semibold text-foreground">班级管理</h2>
+                    <p className="mt-1 text-label text-muted-foreground">按教学学期与授课教师维护班级建制，查看学生规模与实验任务关联。</p>
+                </div>
+                <Button data-testid="class-create-open" onClick={openAddModal}>
+                    <Plus className="mr-1 h-4 w-4" aria-hidden="true" />
                     创建班级
                 </Button>
             </PageHeader>
 
-            <dl aria-label="班级概览" className="grid grid-cols-4 gap-5 border-b border-border pb-5">
+            <dl aria-label="班级概览" className="grid grid-cols-4 gap-4 border-b border-border pb-4">
                 <div><dt className="text-meta text-muted-foreground">班级总数</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.total}</dd></div>
                 <div><dt className="text-meta text-muted-foreground">学生总数</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.studentTotal}</dd></div>
-                <div><dt className="text-meta text-muted-foreground">当前学期</dt><dd className="mt-1 text-label font-semibold break-words">{loading || loadError ? "-" : summary.currentSemesterName}</dd></div>
+                <div><dt className="text-meta text-muted-foreground">当前学期</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.currentSemesterName}</dd></div>
                 <div><dt className="text-meta text-muted-foreground">授课教师</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.teacherCount}</dd></div>
             </dl>
 
             <Card>
                 <PageHeader as={CardHeader} className="flex-wrap">
                     <div>
-                        <CardTitle className="text-section-title text-foreground">班级列表</CardTitle>
-                        <p className="text-meta text-muted-foreground mt-1">{loading || loadError ? "共 - 条数据" : `共 ${filteredClasses.length} 条数据`}</p>
+                        <CardTitle className="text-body text-foreground">班级列表</CardTitle>
+                        <p className="mt-1 text-meta text-muted-foreground">{loading || loadError ? "共 - 条数据" : `共 ${filteredClasses.length} 条数据`}</p>
                     </div>
-                    <div className="flex flex-wrap gap-3 flex-row w-auto">
+                    <div className="flex w-auto flex-row flex-wrap items-center gap-2.5">
                         <Input
                             placeholder="搜索班级 / 学期 / 教师"
                             aria-label="搜索班级、学期或教师"
                             data-testid="class-search-input"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="bg-card border-input text-foreground placeholder:text-muted-foreground w-64 focus:border-ring"
+                            className="w-52 border-input bg-card text-foreground placeholder:text-muted-foreground focus:border-ring"
                         />
                         <Select value={filterSemester} onValueChange={setFilterSemester}>
-                            <SelectTrigger aria-label="按学期筛选班级" data-testid="class-filter-semester" className="bg-card border-input text-foreground w-36">
+                            <SelectTrigger aria-label="按学期筛选班级" data-testid="class-filter-semester" className="w-36 border-input bg-card text-foreground">
                                 <SelectValue placeholder="全部学期" />
                             </SelectTrigger>
-                            <SelectContent className="bg-card border-border text-foreground">
+                            <SelectContent className="border-border bg-card text-foreground">
                                 <SelectItem value="all">全部学期</SelectItem>
                                 {semesters.map((s) => (
                                     <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
@@ -211,16 +255,21 @@ export function ClassManagement() {
                             </SelectContent>
                         </Select>
                         <Select value={filterTeacher} onValueChange={setFilterTeacher}>
-                            <SelectTrigger aria-label="按教师筛选班级" data-testid="class-filter-teacher" className="bg-card border-input text-foreground w-36">
+                            <SelectTrigger aria-label="按教师筛选班级" data-testid="class-filter-teacher" className="w-32 border-input bg-card text-foreground">
                                 <SelectValue placeholder="全部教师" />
                             </SelectTrigger>
-                            <SelectContent className="bg-card border-border text-foreground">
+                            <SelectContent className="border-border bg-card text-foreground">
                                 <SelectItem value="all">全部教师</SelectItem>
                                 {teachers.map((t) => (
                                     <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
+                        {hasFilters && (
+                            <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
+                                清除筛选
+                            </Button>
+                        )}
                     </div>
                 </PageHeader>
                 <CardContent className="pt-0">
@@ -230,69 +279,89 @@ export function ClassManagement() {
                         <Table aria-label="班级列表">
                             <TableHeader>
                                 <TableRow className="border-border">
-                                    <TableHead className="text-muted-foreground">班级名称</TableHead>
-                                    <TableHead className="text-muted-foreground">学期</TableHead>
-                                    <TableHead className="text-muted-foreground">授课教师</TableHead>
-                                    <TableHead className="text-muted-foreground">学生人数</TableHead>
-                                    <TableHead className="text-muted-foreground">创建时间</TableHead>
-                                    <TableHead className="text-muted-foreground text-right">操作</TableHead>
+                                    <TableHead className="px-2 text-muted-foreground">班级名称</TableHead>
+                                    <TableHead className="px-2 text-muted-foreground">学期</TableHead>
+                                    <TableHead className="px-2 text-muted-foreground">授课教师</TableHead>
+                                    <TableHead className="px-2 text-muted-foreground">规模</TableHead>
+                                    <TableHead className="px-2 text-right text-muted-foreground">操作</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filteredClasses.map((cls) => (
-                                    <TableRow key={cls.id} data-testid={`class-row-${cls.id}`} className="border-border hover:bg-muted transition-none">
-                                        <TableCell className="font-medium text-foreground">{cls.name}</TableCell>
-                                        <TableCell>
-                                            <StatusBadge intent="info">
-                                                {cls.semesterName}
-                                            </StatusBadge>
-                                        </TableCell>
-                                        <TableCell className="text-foreground">{cls.teacherName}</TableCell>
-                                        <TableCell>
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded-control text-meta font-medium bg-muted text-foreground">
-                                                {cls.studentCount}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground text-meta">{formatDate(cls.createdAt)}</TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => navigate(`/student?classId=${cls.id}`)}
-                                                    className="h-8 text-muted-foreground hover:text-success hover:bg-success-muted"
-                                                >
-                                                    <Users className="w-3.5 h-3.5 mr-1" />
-                                                    学生
-                                                </Button>
-                                                <Button data-testid={`class-edit-open-${cls.id}`} variant="ghost" size="sm" onClick={() => openEditModal(cls)} className="h-8 text-muted-foreground hover:text-primary hover:bg-primary-muted">
-                                                    <Pencil className="w-3.5 h-3.5 mr-1" />
-                                                    编辑
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    data-testid={`class-delete-${cls.id}`}
-                                                    onClick={() => handleDelete(cls)}
-                                                    disabled={deleteBlockers(cls).length > 0}
-                                                    title={deleteBlockers(cls).length > 0 ? `已有 ${deleteBlockers(cls).join("、")}，无法删除` : "删除班级"}
-                                                    className="h-8 text-muted-foreground hover:text-destructive hover:bg-destructive-muted"
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5 mr-1" />
-                                                    删除
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                                {filteredClasses.map((cls) => {
+                                    const blockers = deleteBlockers(cls);
+                                    return (
+                                        <TableRow key={cls.id} data-testid={`class-row-${cls.id}`} className="border-border transition-none hover:bg-muted">
+                                            <TableCell className="px-2">
+                                                <div className="font-medium text-foreground">{cls.name}</div>
+                                                <div className="text-meta tabular-nums text-muted-foreground">创建于 {formatDate(cls.createdAt)}</div>
+                                            </TableCell>
+                                            <TableCell className="px-2">
+                                                <StatusBadge intent="info">
+                                                    {cls.semesterName}
+                                                </StatusBadge>
+                                            </TableCell>
+                                            <TableCell className="px-2 text-foreground">{cls.teacherName}</TableCell>
+                                            <TableCell className="px-2 tabular-nums">
+                                                <span className="inline-flex items-center gap-1 rounded-control bg-muted px-2 py-0.5 text-meta font-medium text-foreground">
+                                                    <span>{cls.studentCount} 人</span>
+                                                    {(cls.taskCount ?? 0) > 0 && (
+                                                        <span className="text-muted-foreground">· {cls.taskCount} 任务</span>
+                                                    )}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="px-2 text-right">
+                                                <div className="flex items-center justify-end gap-0.5">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => navigate(`/student?classId=${cls.id}`)}
+                                                        className="h-8 px-1.5 text-muted-foreground hover:bg-success-muted hover:text-success"
+                                                    >
+                                                        <Users className="mr-0.5 h-3.5 w-3.5" aria-hidden="true" />
+                                                        学生
+                                                    </Button>
+                                                    <Button
+                                                        data-testid={`class-edit-open-${cls.id}`}
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => openEditModal(cls)}
+                                                        className="h-8 px-1.5 text-muted-foreground hover:bg-primary-muted hover:text-primary"
+                                                    >
+                                                        <Pencil className="mr-0.5 h-3.5 w-3.5" aria-hidden="true" />
+                                                        编辑
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        data-testid={`class-delete-${cls.id}`}
+                                                        onClick={() => void handleDelete(cls)}
+                                                        disabled={blockers.length > 0}
+                                                        title={blockers.length > 0 ? `已有 ${blockers.join("、")}，无法删除` : "删除班级"}
+                                                        className="h-8 px-1.5 text-muted-foreground hover:bg-destructive-muted hover:text-destructive"
+                                                    >
+                                                        <Trash2 className="mr-0.5 h-3.5 w-3.5" aria-hidden="true" />
+                                                        删除
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
                                 {filteredClasses.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-16 text-muted-foreground">
-                                            <div className="flex flex-col items-center gap-2">
-                                                <div className="w-12 h-12 rounded-control bg-card border border-border flex items-center justify-center">
-                                                    <Search className="w-5 h-5 text-muted-foreground" />
+                                        <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
+                                            <div className="flex flex-col items-center gap-2.5">
+                                                <div className="flex h-11 w-11 items-center justify-center rounded-control border border-border bg-muted">
+                                                    <Search className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
                                                 </div>
-                                                <p>暂无符合条件的数据</p>
+                                                <p className="font-medium text-foreground">
+                                                    {hasFilters ? "未找到符合筛选条件的班级" : "暂无符合条件的数据"}
+                                                </p>
+                                                {hasFilters && (
+                                                    <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
+                                                        清除筛选
+                                                    </Button>
+                                                )}
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -304,114 +373,118 @@ export function ClassManagement() {
             </Card>
 
             {/* 创建班级弹窗 */}
-            <Dialog open={showAddModal} onOpenChange={(open) => { if (!submitting) setShowAddModal(open); }}>
-                <DialogContent className="bg-card border-border text-foreground max-w-[425px]" showCloseButton={!submitting}>
-                    <DialogHeader>
-                        <DialogTitle className="text-foreground">创建班级</DialogTitle>
-                        <DialogDescription className="text-muted-foreground">为指定学期和教师创建一个新的教学班级。</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="className" className="text-foreground">班级名称</Label>
-                            <Input
-                                id="className"
-                                data-testid="class-create-name"
-                                placeholder="请输入班级名称"
-                                value={newClass.name}
-                                maxLength={100}
-                                onChange={(e) => setNewClass({ ...newClass, name: e.target.value })}
-                                className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
-                            />
+            <Dialog open={showAddModal} onOpenChange={handleAddModalOpenChange}>
+                <DialogContent className="border-border bg-card text-foreground" showCloseButton={!submitting}>
+                    <form onSubmit={(event) => { event.preventDefault(); void handleAddClass(); }} className="space-y-4">
+                        <DialogHeader>
+                            <DialogTitle className="text-foreground">创建班级</DialogTitle>
+                            <DialogDescription className="text-muted-foreground">为指定学期和教师创建一个新的教学班级。</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="className" className="text-foreground">班级名称</Label>
+                                <Input
+                                    id="className"
+                                    data-testid="class-create-name"
+                                    placeholder="例如：2026级商务统计3班"
+                                    value={newClass.name}
+                                    maxLength={100}
+                                    disabled={submitting}
+                                    onChange={(e) => setNewClass({ ...newClass, name: e.target.value })}
+                                    className="border-input bg-card text-foreground placeholder:text-muted-foreground focus:border-ring"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-foreground">所属学期</Label>
+                                <Select value={newClass.semesterId} onValueChange={(v) => setNewClass({ ...newClass, semesterId: v })} disabled={submitting}>
+                                    <SelectTrigger aria-label="新建班级所属学期" data-testid="class-create-semester" className="border-input bg-card text-foreground">
+                                        <SelectValue placeholder="选择学期" />
+                                    </SelectTrigger>
+                                    <SelectContent className="border-border bg-card text-foreground">
+                                        {semesters.map((s) => (
+                                            <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-foreground">授课教师</Label>
+                                <Select value={newClass.teacherId} onValueChange={(v) => setNewClass({ ...newClass, teacherId: v })} disabled={submitting}>
+                                    <SelectTrigger aria-label="新建班级授课教师" data-testid="class-create-teacher" className="border-input bg-card text-foreground">
+                                        <SelectValue placeholder="选择教师" />
+                                    </SelectTrigger>
+                                    <SelectContent className="border-border bg-card text-foreground">
+                                        {teachers.map((t) => (
+                                            <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-foreground">所属学期</Label>
-                            <Select value={newClass.semesterId} onValueChange={(v) => setNewClass({ ...newClass, semesterId: v })}>
-                                <SelectTrigger aria-label="新建班级所属学期" data-testid="class-create-semester" className="bg-card border-input text-foreground">
-                                    <SelectValue placeholder="选择学期" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-card border-border text-foreground">
-                                    {semesters.map((s) => (
-                                        <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-foreground">授课教师</Label>
-                            <Select value={newClass.teacherId} onValueChange={(v) => setNewClass({ ...newClass, teacherId: v })}>
-                                <SelectTrigger aria-label="新建班级授课教师" data-testid="class-create-teacher" className="bg-card border-input text-foreground">
-                                    <SelectValue placeholder="选择教师" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-card border-border text-foreground">
-                                    {teachers.map((t) => (
-                                        <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setShowAddModal(false)} disabled={submitting} className="text-muted-foreground hover:text-foreground hover:bg-muted">
-                            取消
-                        </Button>
-                        <Button
-                            data-testid="class-create-submit"
-                            onClick={handleAddClass}
-                            disabled={submitting || !newClass.name.trim() || !newClass.semesterId || !newClass.teacherId}
-                            className="bg-primary hover:bg-primary-hover text-primary-foreground"
-                        >
-                            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            确认创建
-                        </Button>
-                    </DialogFooter>
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => handleAddModalOpenChange(false)} disabled={submitting} className="text-muted-foreground hover:bg-muted hover:text-foreground">
+                                取消
+                            </Button>
+                            <Button
+                                type="submit"
+                                data-testid="class-create-submit"
+                                disabled={submitting || !newClass.name.trim() || !newClass.semesterId || !newClass.teacherId}
+                            >
+                                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
+                                确认创建
+                            </Button>
+                        </DialogFooter>
+                    </form>
                 </DialogContent>
             </Dialog>
 
             {/* 编辑班级弹窗 */}
-            <Dialog open={showEditModal} onOpenChange={(open) => { if (!submitting) setShowEditModal(open); }}>
-                <DialogContent className="bg-card border-border text-foreground max-w-[425px]" showCloseButton={!submitting}>
-                    <DialogHeader>
-                        <DialogTitle className="text-foreground">编辑班级</DialogTitle>
-                        <DialogDescription className="text-muted-foreground">更新班级名称。学期与授课教师创建后不可变更。</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="editClassName" className="text-foreground">班级名称</Label>
-                            <Input
-                                id="editClassName"
-                                data-testid="class-edit-name"
-                                placeholder="请输入班级名称"
-                                value={editForm.name}
-                                maxLength={100}
-                                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                                className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
-                            />
+            <Dialog open={showEditModal} onOpenChange={(open) => { if (!submitting) { setShowEditModal(open); if (!open) setEditingClass(null); } }}>
+                <DialogContent className="border-border bg-card text-foreground" showCloseButton={!submitting}>
+                    <form onSubmit={(event) => { event.preventDefault(); void handleEditClass(); }} className="space-y-4">
+                        <DialogHeader>
+                            <DialogTitle className="text-foreground">编辑班级</DialogTitle>
+                            <DialogDescription className="text-muted-foreground">更新班级名称。学期与授课教师创建后不可变更。</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="editClassName" className="text-foreground">班级名称</Label>
+                                <Input
+                                    id="editClassName"
+                                    data-testid="class-edit-name"
+                                    placeholder="请输入班级名称"
+                                    value={editForm.name}
+                                    maxLength={100}
+                                    disabled={submitting}
+                                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                                    className="border-input bg-card text-foreground placeholder:text-muted-foreground focus:border-ring"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="editClassSemester" className="text-foreground">所属学期</Label>
+                                <Input id="editClassSemester" value={editingClass?.semesterName ?? ""} disabled className="border-input bg-card text-muted-foreground" />
+                                <p className="text-meta text-muted-foreground">学期不可更改</p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="editClassTeacher" className="text-foreground">授课教师</Label>
+                                <Input id="editClassTeacher" value={editingClass?.teacherName ?? ""} disabled className="border-input bg-card text-muted-foreground" />
+                                <p className="text-meta text-muted-foreground">授课教师不可更改</p>
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="editClassSemester" className="text-foreground">所属学期</Label>
-                            <Input id="editClassSemester" value={editingClass?.semesterName ?? ""} disabled className="bg-card border-input text-muted-foreground" />
-                            <p className="text-meta text-muted-foreground">学期不可更改</p>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="editClassTeacher" className="text-foreground">授课教师</Label>
-                            <Input id="editClassTeacher" value={editingClass?.teacherName ?? ""} disabled className="bg-card border-input text-muted-foreground" />
-                            <p className="text-meta text-muted-foreground">授课教师不可更改</p>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setShowEditModal(false)} disabled={submitting} className="text-muted-foreground hover:text-foreground hover:bg-muted">
-                            取消
-                        </Button>
-                        <Button
-                            data-testid="class-edit-submit"
-                            onClick={handleEditClass}
-                            disabled={submitting || !editForm.name.trim()}
-                            className="bg-primary hover:bg-primary-hover text-primary-foreground"
-                        >
-                            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            保存
-                        </Button>
-                    </DialogFooter>
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => { setShowEditModal(false); setEditingClass(null); }} disabled={submitting} className="text-muted-foreground hover:bg-muted hover:text-foreground">
+                                取消
+                            </Button>
+                            <Button
+                                type="submit"
+                                data-testid="class-edit-submit"
+                                disabled={submitting || !editForm.name.trim()}
+                            >
+                                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
+                                保存
+                            </Button>
+                        </DialogFooter>
+                    </form>
                 </DialogContent>
             </Dialog>
             {dialog}

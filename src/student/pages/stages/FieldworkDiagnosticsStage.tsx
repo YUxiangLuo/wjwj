@@ -15,11 +15,13 @@ import { KpiStatCard } from "@/components/KpiStatCard";
 import { FieldworkFunnelChart } from "@/components/charts/FieldworkFunnelChart";
 import { StratumComparisonChart } from "@/components/charts/StratumComparisonChart";
 import { ConfidenceIntervalPlot } from "@/components/charts/ConfidenceIntervalPlot";
-import { ADJUSTMENT_ACTION_LABELS, ADJUSTMENT_ISSUE_LABELS } from "@/components/WaveLoopSnapshot";
+import { ADJUSTMENT_ACTION_LABELS, ADJUSTMENT_ISSUE_LABELS, inferTargetUnitFromExperiment } from "@/components/WaveLoopSnapshot";
 import { StageActions } from "../../components/StageActions";
 import { useExperiment } from "../ExperimentLayout";
 import { experimentApi } from "../../api-client";
+import { createApiClient } from "@/lib/api-client";
 import { readExperimentDraft, useExperimentDraft } from "../../experiment/experiment-draft";
+import type { VariableDictionary } from "@/domain/variables/types";
 import {
     validateAdjustmentPlan,
     type AdjustmentActionKey,
@@ -30,6 +32,8 @@ import {
 } from "@/domain/fieldwork";
 import { SAMPLING_METHODS, type SamplingMethod } from "@/lib/sampling-policy";
 import { formatStatistic } from "@/utils/statistic-format";
+
+const studentClient = createApiClient("student");
 
 const METHOD_NAMES: Record<SamplingMethod, string> = {
     simple: "简单随机抽样",
@@ -116,6 +120,32 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
     const [updatingCleaning, setUpdatingCleaning] = useState(false);
     const [cleaningError, setCleaningError] = useState<string | null>(null);
     const [completing, setCompleting] = useState(false);
+    const [dictionary, setDictionary] = useState<VariableDictionary | null>(null);
+
+    const isPct = experiment?.analysisTarget?.target.kind === "proportion";
+    const syncInferredUnit = useMemo(
+        () => inferTargetUnitFromExperiment({
+            analysisTarget: experiment?.analysisTarget,
+            waves: experiment?.waves,
+            questionnaire: experiment?.questionnaire,
+        }),
+        [experiment?.analysisTarget, experiment?.waves, experiment?.questionnaire],
+    );
+
+    useEffect(() => {
+        if (!taskId || isPct || syncInferredUnit) return;
+        const controller = new AbortController();
+        studentClient.request<{ dictionary: VariableDictionary | null }>(`/api/student/tasks/${taskId}/variables`, { signal: controller.signal })
+            .then((res) => { if (res.success) setDictionary(res.data?.dictionary ?? null); })
+            .catch(() => undefined);
+        return () => controller.abort();
+    }, [taskId, isPct, syncInferredUnit]);
+
+    const unitLabel = useMemo(() => {
+        if (syncInferredUnit) return syncInferredUnit;
+        const targetField = experiment?.analysisTarget?.target.field;
+        return (targetField ? dictionary?.variables.find((v) => v.field === targetField)?.unit?.trim() : "") ?? "";
+    }, [syncInferredUnit, dictionary, experiment?.analysisTarget?.target.field]);
 
     const draftPlan = useMemo<AdjustmentPlan>(
         () => ({ identifiedIssues, plannedActions, rationale }),
@@ -211,12 +241,15 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
 
         setIdentifiedIssues([...new Set(autoIssues)]);
         setPlannedActions([...new Set(autoActions)]);
+        const sdSuffix = unitLabel && !isPct ? unitLabel : "";
         if (rationale.trim().length < 15) {
             setRationale(
-                `${notes.join("；")}。因此在第 2 轮正式投放中，拟代入首轮实测无回答率（${diag.empiricalNonResponseRatePct}%）${diag.empiricalTargetStdDev ? `与实测样本标准差（s=${formatStatistic(diag.empiricalTargetStdDev, 2)}）` : ""}重新核算样本量，并升级抽样设计与分层配额以提升估计精度。`,
+                `${notes.join("；")}。因此在第 2 轮正式投放中，拟代入首轮实测无回答率（${diag.empiricalNonResponseRatePct}%）${diag.empiricalTargetStdDev ? `与实测样本标准差（s=${formatStatistic(diag.empiricalTargetStdDev, 2)}${sdSuffix}）` : ""}重新核算样本量，并升级抽样设计与分层配额以提升估计精度。`,
             );
+            toast.success("已根据首轮实测诊断指标提取调优要点，请复核补充");
+        } else {
+            toast.info("已同步勾选诊断问题与调优动作；为保留您已撰写的说明文字，未覆盖下方文本框");
         }
-        toast.success("已根据首轮实测诊断指标提取调优要点，请复核补充");
     };
 
     const planValidationError = validateAdjustmentPlan(draftPlan);
@@ -244,7 +277,8 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
         );
     }
 
-    const isPct = experiment?.analysisTarget?.target.kind === "proportion";
+    const trimmedRationaleLen = rationale.trim().length;
+    const meanUnitSuffix = unitLabel && !isPct ? ` ${unitLabel}` : "";
 
     return (
         <div className="space-y-6" data-testid="student-stage-diagnostics">
@@ -289,7 +323,7 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                     label={diag.empiricalTargetStdDev != null ? "清洗后实测样本标准差 s" : "客群最大结构偏倚"}
                     value={
                         diag.empiricalTargetStdDev != null
-                            ? formatStatistic(diag.empiricalTargetStdDev, 2)
+                            ? `${formatStatistic(diag.empiricalTargetStdDev, 2)}${meanUnitSuffix}`
                             : diag.maxStratumBiasPp != null
                                 ? `${formatStatistic(diag.maxStratumBiasPp, 1)} pp`
                                 : "—"
@@ -350,7 +384,7 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
 
             {/* Interactive QC Cleaning Workbench + Multi-Layer Forest Comparison */}
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,26rem),1fr))] gap-5">
-                <Card className="rounded-surface border-border bg-card" data-testid="student-diagnostics-cleaning-card">
+                <Card className="scroll-mt-36 rounded-surface border-border bg-card" data-testid="student-diagnostics-cleaning-card">
                     <CardHeader className="border-b border-border pb-4">
                         <div className="flex items-center justify-between gap-2">
                             <div>
@@ -467,6 +501,7 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                     subtitle="观察废卷污染、差异化拒访与事后分层权重校准对商业指标推断的影响"
                     populationValue={diag.populationTruth}
                     isPercentage={Boolean(isPct)}
+                    unit={unitLabel}
                     rows={diag.estimates.map((item) => ({
                         key: item.key,
                         label: item.label,
@@ -492,7 +527,7 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
             )}
 
             {/* Question-by-Question Diagnostics Table */}
-            <Card className="rounded-surface border-border bg-card">
+            <Card className="scroll-mt-36 rounded-surface border-border bg-card">
                 <CardHeader className="border-b border-border pb-3">
                     <CardTitle className="text-subheading text-foreground">逐题填答完答率、弃答点与量程截断诊断</CardTitle>
                     <CardDescription>检查是否存在未绑定变量、中途弃答集中题或数值范围拦截真实客户值的问题</CardDescription>
@@ -558,7 +593,7 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
             </Card>
 
             {/* Stage 3 Structured Adjustment Decision Form */}
-            <Card className="rounded-surface border-primary-border bg-card" data-testid="student-adjustment-plan-form">
+            <Card className="scroll-mt-36 rounded-surface border-primary-border bg-card" data-testid="student-adjustment-plan-form">
                 <CardHeader className="border-b border-border bg-primary-muted pb-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
@@ -586,7 +621,12 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                 <CardContent className="space-y-5 pt-5">
                     <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-6">
                         <div className="space-y-2.5">
-                            <Label className="text-foreground font-semibold">1. 首轮试投识别的数据与抽样问题（至少勾选 1 项）</Label>
+                            <div className="flex items-center justify-between gap-2">
+                                <Label className="text-foreground font-semibold">1. 首轮试投识别的数据与抽样问题（至少勾选 1 项）</Label>
+                                <StatusBadge intent={identifiedIssues.length > 0 ? "success" : "neutral"}>
+                                    已选 {identifiedIssues.length} 项
+                                </StatusBadge>
+                            </div>
                             <div className="space-y-2">
                                 {ALL_ISSUES.map((issue) => {
                                     const checked = identifiedIssues.includes(issue);
@@ -614,7 +654,12 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                         </div>
 
                         <div className="space-y-2.5">
-                            <Label className="text-foreground font-semibold">2. 二轮正式投放拟采取的调优动作（至少勾选 1 项）</Label>
+                            <div className="flex items-center justify-between gap-2">
+                                <Label className="text-foreground font-semibold">2. 二轮正式投放拟采取的调优动作（至少勾选 1 项）</Label>
+                                <StatusBadge intent={plannedActions.length > 0 ? "success" : "neutral"}>
+                                    已选 {plannedActions.length} 项
+                                </StatusBadge>
+                            </div>
                             <div className="space-y-2">
                                 {ALL_ACTIONS.map((action) => {
                                     const checked = plannedActions.includes(action);
@@ -643,12 +688,27 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                     </div>
 
                     <div className="space-y-2">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                             <Label htmlFor="adjustment-rationale" className="text-foreground font-semibold">
                                 3. 调优依据与二轮抽样统计思路说明（15–2000 字）
                             </Label>
-                            <span className={`text-meta tabular-nums ${rationale.trim().length > 2000 ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
-                                {rationale.trim().length} / 2000 字
+                            <span className={`text-meta tabular-nums ${
+                                trimmedRationaleLen > 2000
+                                    ? "text-destructive font-semibold"
+                                    : trimmedRationaleLen >= 15
+                                        ? "text-success"
+                                        : trimmedRationaleLen > 0
+                                            ? "text-warning"
+                                            : "text-muted-foreground"
+                            }`}>
+                                {trimmedRationaleLen > 2000
+                                    ? `已超出 ${trimmedRationaleLen - 2000} 字 · `
+                                    : trimmedRationaleLen >= 15
+                                        ? "字数已达标 · "
+                                        : trimmedRationaleLen > 0
+                                            ? `还差 ${15 - trimmedRationaleLen} 字达标 · `
+                                            : "至少 15 字 · "}
+                                {trimmedRationaleLen} / 2000 字
                             </span>
                         </div>
                         <Textarea
@@ -672,17 +732,24 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                     <ChevronLeft className="mr-1 h-4 w-4" />
                     查看首轮试投
                 </Button>
-                <Button
-                    onClick={() => void handleComplete()}
-                    disabled={!canComplete || completing || refreshRequired}
-                    data-testid="student-diagnostics-complete"
-                >
-                    {completing ? (
-                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" />正在立项二轮投放…</>
-                    ) : (
-                        <>确认调优方案，进入二轮正式投放<ArrowRight className="ml-2 h-4 w-4" /></>
+                <div className="flex flex-wrap items-center justify-end gap-3">
+                    {planValidationError && (
+                        <span className="text-meta text-muted-foreground" data-testid="student-diagnostics-blocker-hint">
+                            待完成：{planValidationError}（可点击“智能提取首轮诊断要点”辅助起草）
+                        </span>
                     )}
-                </Button>
+                    <Button
+                        onClick={() => void handleComplete()}
+                        disabled={!canComplete || completing || refreshRequired}
+                        data-testid="student-diagnostics-complete"
+                    >
+                        {completing ? (
+                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" />正在立项二轮投放…</>
+                        ) : (
+                            <>确认调优方案，进入二轮正式投放<ArrowRight className="ml-2 h-4 w-4" /></>
+                        )}
+                    </Button>
+                </div>
             </StageActions>
         </div>
     );

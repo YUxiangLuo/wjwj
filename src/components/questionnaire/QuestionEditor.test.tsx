@@ -165,3 +165,25 @@ test("an unchanged save does not revive an association with an already stale sig
     fireEvent.click(view.getByTestId("student-question-save"));
     expect(save.mock.calls[0]![0].variableBinding).toBeUndefined();
 });
+
+test("editing a bound question discloses live binding invalidation before saving without firing role=alert", () => {
+    const question = boundServiceQuestion();
+    const view = render(<QuestionEditor open question={question} onOpenChange={() => {}} onSave={() => {}} />);
+    expect(view.queryByRole("alert") === null).toBe(true);
+    expect(view.getByText(/当前题型：单选题/)).toBeTruthy();
+    expect(view.getByTestId("question-binding-status").textContent).toContain("已关联数据字典字段「社区服务满意度」");
+
+    fireEvent.change(view.getByTestId("student-question-option-2"), { target: { value: "不太满意（新措辞）" } });
+    expect(view.queryByRole("alert") === null).toBe(true);
+    expect(view.getByTestId("question-binding-status").textContent).toContain("自动解除与「社区服务满意度」的原变量关联");
+});
+
+test("invalid numeric range surfaces clear validation hint while keeping save disabled", () => {
+    const view = render(<QuestionEditor open onOpenChange={() => {}} onSave={() => {}} />);
+    fireEvent.click(view.getByTestId("student-question-type-numeric"));
+    fireEvent.change(view.getByTestId("student-question-content"), { target: { value: "预算" } });
+    fireEvent.change(view.getByTestId("student-question-numeric-min"), { target: { value: "50" } });
+    fireEvent.change(view.getByTestId("student-question-numeric-max"), { target: { value: "10" } });
+    expect((view.getByTestId("student-question-save") as HTMLButtonElement).disabled).toBe(true);
+    expect(view.getByTestId("question-validation-hint").textContent).toContain("最小值不能大于最大值");
+});

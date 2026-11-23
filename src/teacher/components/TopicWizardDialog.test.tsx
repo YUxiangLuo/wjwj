@@ -618,3 +618,113 @@ test("step 7 weight inputs ignore non-finite values so total weight never become
     expect(view.container.textContent).not.toContain("NaN");
     expect(view.getByText("70%")).toBeTruthy();
 });
+
+test("footer hint explains disabled prerequisites on steps 2, 3 and 4 and clears when satisfied", () => {
+    const step2 = render(<TopicWizardDialog {...makeProps({ currentStep: 2, excelInfo: null })} />);
+    expect(step2.getByTestId("teacher-topic-footer-hint").textContent).toContain("请先上传并确认总体数据文件");
+    step2.unmount();
+
+    const step3 = render(<TopicWizardDialog {...makeProps({ currentStep: 3, fieldMapping: { stratified: [], numeric: [], others: [] } })} />);
+    expect(step3.getByTestId("teacher-topic-footer-hint").textContent).toContain("选择 1 个标识符字段");
+    step3.rerender(<TopicWizardDialog {...makeProps({ currentStep: 3, fieldMapping: completeMapping })} />);
+    expect(step3.queryByTestId("teacher-topic-footer-hint") === null).toBe(true);
+    step3.unmount();
+
+    const step4 = render(<TopicWizardDialog {...makeProps({ currentStep: 4, fieldMapping: completeMapping })} />);
+    expect(step4.getByTestId("teacher-topic-footer-hint").textContent).toContain("PPS");
+});
+
+test("step 4 preset switching updates rates, renders stratum sliders when stratified, and disables stratum preset without strata", () => {
+    const policy = buildDefaultSamplingPolicy();
+    policy.methods.pps = "disabled";
+    policy.methods.stratified = "disabled";
+
+    const noStrata = render(<TopicWizardDialog {...makeProps({
+        currentStep: 4,
+        fieldMapping: completeMapping,
+        samplingPolicy: policy,
+        setFieldworkConfig: () => undefined,
+    })} />);
+    expect(noStrata.getByTestId("teacher-topic-fw-no-strata-hint").textContent).toContain("未映射分层变量");
+    fireEvent.click(noStrata.getByTestId("teacher-topic-fw-preset"));
+    expect(noStrata.getByRole("option", { name: "细分客群差异化拒访" }).getAttribute("aria-disabled")).toBe("true");
+    noStrata.unmount();
+
+    let fw: NonNullable<Props["fieldworkConfig"]> = {
+        version: 1,
+        preset: "balanced",
+        baseUnitNonResponseRate: 0.16,
+        baseSpeederRate: 0.06,
+        baseStraightlinerRate: 0.05,
+        baseItemSkipRate: 0.02,
+        contactCostPerUnit: 4,
+        incentiveCostPerComplete: 15,
+    };
+    const stratifiedMapping: FieldMappingState = {
+        ...completeMapping,
+        stratified: ["会员等级"],
+    };
+    const excelInfo = {
+        rowCount: 60,
+        colCount: 3,
+        columns: ["id", "score", "会员等级"],
+        preview: [],
+        columnValues: { 会员等级: ["普通会员", "银卡会员", "黑金会员"] },
+    };
+    const props = makeProps({
+        currentStep: 4,
+        fieldMapping: stratifiedMapping,
+        excelInfo,
+        samplingPolicy: { ...policy, methods: { ...policy.methods, stratified: "optional" } },
+        fieldworkConfig: fw,
+        setFieldworkConfig: (updater) => { fw = typeof updater === "function" ? updater(fw) : updater; },
+    });
+    const view = render(<TopicWizardDialog {...props} />);
+    expect(view.queryByTestId("teacher-topic-fw-no-strata-hint") === null).toBe(true);
+
+    fireEvent.click(view.getByTestId("teacher-topic-fw-preset"));
+    fireEvent.click(view.getByRole("option", { name: "细分客群差异化拒访" }));
+    expect(fw.preset).toBe("stratum_differential");
+    expect(fw.stratumField).toBe("会员等级");
+    expect(fw.baseUnitNonResponseRate).toBe(0.22);
+    expect(Object.keys(fw.stratumNonResponseRates ?? {})).toEqual(["普通会员", "银卡会员", "黑金会员"]);
+
+    view.rerender(<TopicWizardDialog {...props} fieldworkConfig={fw} />);
+    expect(view.getByTestId("teacher-topic-fw-strata-panel")).toBeTruthy();
+    expect(view.getByTestId("teacher-topic-fw-preset-summary").textContent).toContain("无回答偏倚");
+
+    fireEvent.change(view.getByTestId("teacher-topic-fw-stratum-rate-普通会员"), { target: { value: "42" } });
+    expect(fw.stratumNonResponseRates?.["普通会员"]).toBe(0.42);
+});
+
+test("step 6 one-click question generator builds matching recommended questions from mapped fields", () => {
+    let questions: Props["recommendQuestions"] = [];
+    const mapping: FieldMappingState = {
+        identifier: "编号",
+        numeric: ["单杯客单价"],
+        stratified: ["城市线级"],
+        others: ["是否复购"],
+        analysisTarget: { kind: "mean", field: "单杯客单价" },
+    };
+    const excelInfo = {
+        rowCount: 30,
+        colCount: 4,
+        columns: ["编号", "单杯客单价", "城市线级", "是否复购"],
+        preview: [],
+        columnValues: {
+            城市线级: ["一线城市", "二线城市"],
+            是否复购: ["是", "否"],
+        },
+    };
+    const props = makeProps({
+        currentStep: 6,
+        fieldMapping: mapping,
+        excelInfo,
+        recommendQuestions: questions,
+        setRecommendQuestions: (updater) => { questions = typeof updater === "function" ? updater(questions) : updater; },
+    });
+    const view = render(<TopicWizardDialog {...props} />);
+    fireEvent.click(view.getByTestId("teacher-topic-question-generate"));
+    expect(questions.map((q) => q.type)).toEqual(["numeric", "single", "boolean"]);
+    expect(questions[1]?.options).toEqual(["一线城市", "二线城市"]);
+});

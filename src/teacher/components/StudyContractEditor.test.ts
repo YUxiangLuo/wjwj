@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import {
     buildDefaultResearchQuestion,
     buildDefaultStudyContract,
+    getStudyContractMissingItems,
     isStudyContractComplete,
     resolveResearchQuestionForTargetChange,
 } from "./StudyContractEditor";
@@ -81,4 +82,38 @@ test("isStudyContractComplete enforces target, lengths, and presence", () => {
         ...buildDefaultStudyContract("学习情况调查", meanTarget),
         businessDecision: "定".repeat(401),
     })).toBe(false);
+});
+
+test("getStudyContractMissingItems pinpoints exact missing prerequisites for the wizard footer", () => {
+    expect(getStudyContractMissingItems({ stratified: [], numeric: [], others: [] })).toEqual([
+        "选择 1 个标识符字段",
+        "选择研究目标估计类型（均值或比例）",
+    ]);
+    expect(getStudyContractMissingItems({
+        identifier: "编号",
+        stratified: [],
+        numeric: [],
+        others: ["性别"],
+        analysisTarget: { kind: "proportion", field: "性别", value: "" },
+        studyContract: {
+            version: 1,
+            researchQuestion: "短",
+            targetPopulation: "单",
+            unitOfAnalysis: "",
+            target: { kind: "proportion", field: "性别", value: "" },
+        },
+    })).toEqual([
+        "选择比例目标的成功类别",
+        "研究问题需 5–300 字（当前 1 字）",
+        "目标总体需 2–200 字（当前 1 字）",
+        "填写分析单位",
+    ]);
+    expect(getStudyContractMissingItems({
+        identifier: "编号",
+        stratified: [],
+        numeric: ["每周学习时长"],
+        others: [],
+        analysisTarget: meanTarget,
+        studyContract: buildDefaultStudyContract("学习情况调查", meanTarget),
+    })).toEqual([]);
 });

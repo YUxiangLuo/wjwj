@@ -35,7 +35,7 @@ export function WorkspaceShell({
                 footer={sidebarFooter}
             />
             <main className="min-w-0 flex-1">
-                <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-border bg-card px-7">
+                <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-border bg-card px-6">
                     <div className="flex min-w-0 items-baseline gap-3">
                         <h1 className="truncate text-section-title font-bold tracking-tight text-foreground">{pageTitle}</h1>
                         <span aria-hidden="true" className="shrink-0 text-border">|</span>
@@ -43,7 +43,7 @@ export function WorkspaceShell({
                     </div>
                     {headerActions}
                 </header>
-                <div id="main-content" tabIndex={-1} className="mx-auto max-w-7xl px-7 py-6 outline-none">
+                <div id="main-content" tabIndex={-1} className="mx-auto max-w-7xl px-6 py-5 outline-none">
                     {children}
                 </div>
             </main>

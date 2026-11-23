@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { X, FileText, Users, BarChart3, Layers, ChevronDown } from "lucide-react";
+import { useMemo, useState } from "react";
+import { X, FileText, Users, BarChart3, Layers, ArrowLeft, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { RichTextContent } from "@/components/RichTextContent";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import type { ExperimentData, MethodKey } from "@/domain/experiment/types";
@@ -17,7 +18,7 @@ import {
 } from "../experiment/systematic-sampling";
 import { getSamplingMethodState, resolveSamplingPolicy } from "@/lib/sampling-policy";
 import { AnalysisAppendices } from "@/components/AnalysisAppendices";
-import { WaveLoopSnapshot } from "@/components/WaveLoopSnapshot";
+import { inferTargetUnitFromExperiment, WaveLoopSnapshot } from "@/components/WaveLoopSnapshot";
 
 interface Props {
     open: boolean;
@@ -44,7 +45,7 @@ export function ImmersiveReportPreview({ open, experiment, taskName, onClose }: 
                 role="dialog"
                 aria-modal="true"
                 aria-label={`${taskName}实验报告全屏预览`}
-                className="inset-0 left-0 top-0 block h-screen w-screen translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-none border-0 bg-background p-0 max-w-none"
+                className="inset-0 left-0 top-0 flex h-screen max-h-none w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 bg-background p-0"
             >
                 <DialogTitle className="sr-only">{taskName}实验报告全屏预览</DialogTitle>
                 <DialogDescription className="sr-only">查看实验概览、问卷设计、抽样结果和分析报告。</DialogDescription>
@@ -61,11 +62,27 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
     const samplingResults = experiment.samplingResults;
     const reportContent = experiment.reportContent ?? "";
     const samplingPolicy = resolveSamplingPolicy(experiment.samplingPolicy);
+    const hasWaves = (experiment.waves?.length ?? 0) > 0;
+    const visibleSections = useMemo(
+        () => SECTIONS.filter((s) => s.key !== "waves" || hasWaves),
+        [hasWaves],
+    );
+    const activeIndex = Math.max(0, visibleSections.findIndex((s) => s.key === activeSection));
+    const prevSection = activeIndex > 0 ? visibleSections[activeIndex - 1] : null;
+    const nextSection = activeIndex < visibleSections.length - 1 ? visibleSections[activeIndex + 1] : null;
+    const unitLabel = useMemo(
+        () => inferTargetUnitFromExperiment({
+            analysisTarget: experiment.analysisTarget,
+            waves: experiment.waves,
+            questionnaire,
+        }),
+        [experiment.analysisTarget, experiment.waves, questionnaire],
+    );
 
     return (
         <>
             {/* top bar */}
-            <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-background">
+            <div className="flex shrink-0 items-center justify-between border-b border-border bg-background px-6 py-3">
                 <div className="flex items-center gap-3">
                     <FileText className="w-4 h-4 text-primary" />
                     <span className="text-label font-medium text-foreground">{taskName}</span>
@@ -81,15 +98,16 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
                 </button>
             </div>
 
-            <div className="flex h-[calc(100vh-49px)]">
+            <div className="flex min-h-0 flex-1">
                 {/* sidebar nav */}
-                <nav className="w-48 border-r border-border p-3 space-y-1">
-                    {SECTIONS.map((s) => {
+                <nav className="w-48 shrink-0 space-y-1 border-r border-border p-3" aria-label="报告预览章节导航">
+                    {visibleSections.map((s) => {
                         const Icon = s.icon;
                         const isActive = activeSection === s.key;
                         return (
                             <button
                                 key={s.key}
+                                type="button"
                                 onClick={() => setActiveSection(s.key)}
                                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-surface text-label transition-none ${
                                     isActive
@@ -97,7 +115,7 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
                                         : "text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent"
                                 }`}
                             >
-                                <Icon className="w-4 h-4" />
+                                <Icon className="w-4 h-4 shrink-0" />
                                 {s.label}
                             </button>
                         );
@@ -105,8 +123,8 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
                 </nav>
 
                 {/* main content */}
-                <main className="flex-1 overflow-auto p-10 pb-10">
-                    <div className="max-w-3xl mx-auto">
+                <main className="min-w-0 flex-1 overflow-auto p-8 pb-10">
+                    <div className="mx-auto max-w-3xl space-y-8">
                         {activeSection === "overview" && (
                             <OverviewSection
                                 taskName={taskName}
@@ -122,6 +140,7 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
                                 waves={experiment.waves ?? []}
                                 adjustmentPlan={experiment.adjustmentPlan ?? null}
                                 analysisTarget={experiment.analysisTarget ?? null}
+                                unitLabel={unitLabel}
                             />
                         )}
                         {activeSection === "questionnaire" && (
@@ -137,6 +156,36 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
                         {activeSection === "report" && (
                             <><ReportSection content={reportContent} /><AnalysisAppendices records={experiment.analysisAppendices ?? []} /></>
                         )}
+
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">
+                            {prevSection ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setActiveSection(prevSection.key)}
+                                >
+                                    <ArrowLeft className="mr-1.5 h-4 w-4" />
+                                    上一部分：{prevSection.label}
+                                </Button>
+                            ) : <span />}
+                            {nextSection ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setActiveSection(nextSection.key)}
+                                    data-testid="immersive-report-next-section"
+                                >
+                                    下一部分：{nextSection.label}
+                                    <ArrowRight className="ml-1.5 h-4 w-4" />
+                                </Button>
+                            ) : (
+                                <Button type="button" size="sm" onClick={onClose}>
+                                    结束预览并返回
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 </main>
             </div>
@@ -177,10 +226,17 @@ function OverviewSection({
             label: getMarginOfErrorLabel(samplePlan.estimationType),
             value: samplePlan.estimationType === "mean"
                 ? `${formatMarginOfError(samplePlan.marginOfError, samplePlan.estimationType)}（与均值同单位）`
-                : `${formatMarginOfError(samplePlan.marginOfError, samplePlan.estimationType)}（允许误差）`,
+                : formatMarginOfError(samplePlan.marginOfError, samplePlan.estimationType),
         },
         ...(samplePlan.estimationType === "mean" && samplePlan.populationVariance != null
-            ? [{ label: "总体方差 σ²", value: formatSamplePlanNumber(samplePlan.populationVariance) }]
+            ? [{
+                label: samplePlan.varianceSource === "wave1_empirical"
+                    ? "首轮实测样本方差 s²"
+                    : samplePlan.varianceSource === "prior_estimate"
+                        ? "先验预估方差 σ₀²"
+                        : "总体方差 σ²",
+                value: formatSamplePlanNumber(samplePlan.populationVariance),
+            }]
             : []),
         { label: "设计效应 deff", value: samplePlan.designEffect?.toFixed(2) ?? "—" },
         {
@@ -211,11 +267,11 @@ function OverviewSection({
                 <p className="text-muted-foreground">实验报告预览</p>
             </div>
 
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,9.5rem),1fr))] gap-4">
                 {stats.map((s) => (
                     <div key={s.label} className="rounded-surface border border-border bg-card p-4">
                         <div className="text-meta text-muted-foreground mb-1">{s.label}</div>
-                        <div className="text-section-title font-bold text-foreground font-mono">
+                        <div className="text-section-title font-bold text-foreground font-mono tabular-nums">
                             {s.value}
                             {s.sub && <span className="text-meta font-normal text-muted-foreground ml-1">{s.sub}</span>}
                         </div>
@@ -264,16 +320,6 @@ function OverviewSection({
                     最终样本量来源：{advancedSourceLabel}。报告解读当前 n 时，应以该高级工具的推演结论为准；上方“推荐样本量 n”仅表示常规公式的基线建议。
                 </div>
             )}
-
-            <button
-                onClick={() => {
-                    // scroll hint—user can click "分析报告" in sidebar
-                }}
-                className="flex items-center gap-2 text-label text-muted-foreground hover:text-muted-foreground transition-none mx-auto"
-            >
-                <ChevronDown className="w-4 h-4 animate-bounce" />
-                使用左侧导航查看各部分详情
-            </button>
         </div>
     );
 }

@@ -2,6 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DatetimePicker24 } from "@/components/DatetimePicker24";
 import { Label } from "@/components/ui/label";
+import { localWallClockToUtcIso } from "@/lib/datetime";
+import { formatDateTimeDisplay } from "@/utils/format";
 import type { Task } from "../api-client";
 
 interface TaskExtendDialogProps {
@@ -10,6 +12,7 @@ interface TaskExtendDialogProps {
     selectedTask: Task | null;
     extendDeadline: string;
     onExtendDeadlineChange: (value: string) => void;
+    extendError?: string | null;
     onConfirm: () => void;
 }
 
@@ -20,8 +23,15 @@ export function TaskExtendDialog(props: TaskExtendDialogProps) {
         selectedTask,
         extendDeadline,
         onExtendDeadlineChange,
+        extendError,
         onConfirm,
     } = props;
+    const candidateIso = extendDeadline.trim() ? localWallClockToUtcIso(extendDeadline) : null;
+    const minTimestamp = Math.max(
+        Date.now(),
+        selectedTask?.deadline ? new Date(selectedTask.deadline).getTime() : 0,
+    );
+    const notStrictlyLater = Boolean(candidateIso && new Date(candidateIso).getTime() <= minTimestamp);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -33,8 +43,13 @@ export function TaskExtendDialog(props: TaskExtendDialogProps) {
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
-                    <div className="text-label text-muted-foreground">
-                        {selectedTask ? `${selectedTask.topic} · ${selectedTask.className}` : ""}
+                    <div className="space-y-1 rounded-control border border-border bg-background p-3">
+                        <div className="text-label font-medium text-foreground">
+                            {selectedTask ? `${selectedTask.topic} · ${selectedTask.className}` : ""}
+                        </div>
+                        <div className="text-meta tabular-nums text-muted-foreground">
+                            当前截止时间：{selectedTask?.deadline ? `${formatDateTimeDisplay(selectedTask.deadline)}（UTC+8）` : "无截止时间"}
+                        </div>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="extendDeadline" className="text-foreground">新截止时间（中国标准时间）</Label>
@@ -46,8 +61,16 @@ export function TaskExtendDialog(props: TaskExtendDialogProps) {
                             placeholder="选择日期与时间（24 小时制）"
                             allowClear={false}
                         />
-                        <p className="text-meta text-muted-foreground">中国标准时间（UTC+8）</p>
+                        {notStrictlyLater && (
+                            <p className="text-meta text-warning">提示：新截止时间须晚于当前截止时间且晚于当前时刻。</p>
+                        )}
+                        <p className="text-meta text-muted-foreground">仅支持向后顺延截止时间（中国标准时间 UTC+8）。</p>
                     </div>
+                    {extendError && (
+                        <p role="alert" className="rounded-surface border border-destructive-border bg-destructive-muted p-3 text-label text-destructive">
+                            {extendError}
+                        </p>
+                    )}
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground hover:bg-muted">取消</Button>

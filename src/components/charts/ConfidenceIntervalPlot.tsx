@@ -125,13 +125,19 @@ export function ConfidenceIntervalPlot({
                             {ticks.map((tick, index) => {
                                 const x = toX(tick);
                                 const label = `${formatStatistic(tick, tickDigits)}${displayUnit}`;
-                                const anchor = label.length > 8
+                                const isWideLabel = displayUnit.length > 1 || label.length > 6;
+                                const anchor = isWideLabel
                                     ? (index === 0 ? "start" : index === ticks.length - 1 ? "end" : "middle")
                                     : "middle";
+                                const textX = anchor === "start"
+                                    ? Math.max(12, x - 12)
+                                    : anchor === "end"
+                                        ? Math.min(508, x + 12)
+                                        : x;
                                 return (
                                     <g key={index}>
                                         <line x1={x} y1={8} x2={x} y2={validRows.length * 46 + 12} stroke="var(--border)" strokeWidth="1" />
-                                        <text x={x} y={validRows.length * 46 + 28} textAnchor={anchor} fill="var(--muted-foreground)" fontSize="12">
+                                        <text x={textX} y={validRows.length * 46 + 28} textAnchor={anchor} fill="var(--muted-foreground)" fontSize="12">
                                             {label}
                                         </text>
                                     </g>
@@ -198,7 +204,7 @@ export function ConfidenceIntervalPlot({
                                     <th scope="col" className="px-3.5 py-2 text-left font-medium">估计口径</th>
                                     <th scope="col" className="whitespace-nowrap px-3 py-2 text-right font-medium">点估计</th>
                                     <th scope="col" className="whitespace-nowrap px-3 py-2 text-right font-medium">标准误 SE</th>
-                                    <th scope="col" className="whitespace-nowrap px-3.5 py-2 text-right font-medium">区间半宽</th>
+                                    <th scope="col" className="whitespace-nowrap px-3.5 py-2 text-right font-medium">置信区间 / 半宽</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
@@ -212,6 +218,8 @@ export function ConfidenceIntervalPlot({
                                     const hw = row.halfWidth !== null && Number.isFinite(row.halfWidth) && row.halfWidth >= 0
                                         ? row.halfWidth * scaleFactor
                                         : null;
+                                    const lo = est !== null && hw !== null && Number.isFinite(est - hw) ? est - hw : null;
+                                    const hi = est !== null && hw !== null && Number.isFinite(est + hw) ? est + hw : null;
                                     return (
                                         <tr key={row.key}>
                                             <th scope="row" className="min-w-[10rem] px-3.5 py-2.5 text-left font-normal">
@@ -225,7 +233,16 @@ export function ConfidenceIntervalPlot({
                                                 {se !== null ? `${formatStatistic(se, 2)}${displayUnit}` : "不可用"}
                                             </td>
                                             <td className="whitespace-nowrap px-3.5 py-2.5 text-right font-medium text-foreground">
-                                                {hw !== null ? `±${formatStatistic(hw, 2)}${displayUnit}` : "—"}
+                                                {hw !== null ? (
+                                                    <>
+                                                        <span className="block">±{formatStatistic(hw, 2)}{displayUnit}</span>
+                                                        {lo !== null && hi !== null && (
+                                                            <span className="block text-muted-foreground">
+                                                                [{formatStatistic(lo, 2)}, {formatStatistic(hi, 2)}]{displayUnit}
+                                                            </span>
+                                                        )}
+                                                    </>
+                                                ) : "—"}
                                             </td>
                                         </tr>
                                     );

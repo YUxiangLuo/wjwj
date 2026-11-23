@@ -124,6 +124,8 @@ test("rejected experiment keeps the teacher reason visible while the student edi
     const notice = await waitFor(() => view.getByTestId("student-experiment-rejection-notice"));
     expect(notice.getAttribute("role")).toBe("alert");
     expect(notice.textContent).toContain(rejectReason);
+    expect(notice.textContent).toContain("重新编辑此阶段");
+    expect(view.getByRole("link", { name: "查看上次提交快照" }).getAttribute("href")).toBe("/task/2/result");
     expect(view.getByTestId("student-analysis-report-editor")).toBeTruthy();
 });
 
