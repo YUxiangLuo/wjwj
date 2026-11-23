@@ -14,7 +14,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Download, FileText, Send, Loader2, Maximize2, AlertCircle, ArrowRight } from "lucide-react";
+import { Download, FileText, Send, Loader2, Maximize2, AlertCircle, ArrowRight, ChevronLeft } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { StageActions } from "../../components/StageActions";
 import { getRichTextPlainLength } from "@/utils/rich-text";
@@ -507,6 +507,15 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     // ---- Chart config (shared by tabs, zoom dialog, and SVG download) ----
 
+    const target = analysisMetrics?.target;
+    const selectedNumericUnit = useMemo(() => {
+        if (!selectedNumericField || !target) return undefined;
+        if (target.contract.contract.target.kind === "mean" && target.contract.contract.target.field === selectedNumericField && target.unit) {
+            return target.unit;
+        }
+        return undefined;
+    }, [selectedNumericField, target]);
+
     const chartConfig = useMemo<Record<Exclude<ZoomChartType, null>, {
         title: string;
         rows: ChartRow[];
@@ -516,12 +525,12 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         emptyMessage: string;
         downloadFileName: string;
     }>>(() => ({
-        mean: { title: "均值对比", rows: meanRows, series: meanSeries, emptyMessage: "暂无可用于均值分析的数值字段", downloadFileName: `mean_${sanitizeFileName(selectedNumericField)}.svg` },
+        mean: { title: "均值对比", rows: meanRows, series: meanSeries, unit: selectedNumericUnit, emptyMessage: "暂无可用于均值分析的数值字段", downloadFileName: `mean_${sanitizeFileName(selectedNumericField)}.svg` },
         dist: { title: "分布对比", rows: distributionRows, series: distributionSeries, unit: "%", emptyMessage: "暂无可用于分布分析的分类字段", downloadFileName: `distribution_${sanitizeFileName(selectedCategoricalField)}.svg` },
-        error: { title: "设计标准误", rows: errorRows, series: errorSeries, emptyMessage: "暂无可用于标准误分析的数值字段", downloadFileName: `error_${sanitizeFileName(selectedNumericField)}.svg` },
+        error: { title: "设计标准误", rows: errorRows, series: errorSeries, unit: selectedNumericUnit, emptyMessage: "暂无可用于标准误分析的数值字段", downloadFileName: `error_${sanitizeFileName(selectedNumericField)}.svg` },
         representNumeric: { title: "数值均值相对偏差（%）", rows: representativenessRows.numeric, series: representSeries, unit: "%", notes: ["数值：|估计−总体均值|/|总体均值| × 100%；总体均值为零时不展示。", DEVIATION_DISCLAIMER], emptyMessage: "暂无可用于均值相对偏差分析的数据", downloadFileName: "population-deviation-numeric.svg" },
         representCategorical: { title: "分类分布偏差（百分点）", rows: representativenessRows.categorical, series: representSeries, unit: "百分点", notes: ["分类：完整类别空间上各类占比绝对差的平均（单位：百分点）。", DEVIATION_DISCLAIMER], emptyMessage: "暂无可用于分类分布偏差分析的数据", downloadFileName: "population-deviation-categorical.svg" },
-    }), [meanRows, meanSeries, distributionRows, distributionSeries, errorRows, errorSeries, representSeries, representativenessRows, selectedNumericField, selectedCategoricalField]);
+    }), [meanRows, meanSeries, selectedNumericUnit, distributionRows, distributionSeries, errorRows, errorSeries, representSeries, representativenessRows, selectedNumericField, selectedCategoricalField]);
 
     const activeZoom = zoomChart ? chartConfig[zoomChart] : null;
 
@@ -582,23 +591,22 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     };
 
     // ---- Render ----
-    const target = analysisMetrics?.target;
     const switchWorkspace = (value: string) => setWorkspace(value as AnalysisWorkspace);
 
     return <div className="min-w-0 space-y-5" data-testid="student-stage-analysis-report">
         <Tabs value={workspace} onValueChange={switchWorkspace} className="min-w-0 space-y-5">
-            <div ref={workspaceNavigationRef} className="scroll-mt-36 flex flex-wrap items-center justify-between gap-3">
-                <TabsList aria-label="分析与报告工作区" className="flex h-auto flex-wrap gap-1 rounded-surface border border-border bg-card p-1" data-testid="student-analysis-workspace-tabs">
-                    <TabsTrigger value="overview" className="min-h-11 px-4" data-testid="student-analysis-workspace-overview">研究目标推断</TabsTrigger>
+            <div ref={workspaceNavigationRef} className="scroll-mt-36 flex flex-wrap items-center justify-between gap-2">
+                <TabsList aria-label="分析与报告工作区" className="flex h-auto flex-wrap gap-0.5 rounded-surface border border-border bg-card p-1" data-testid="student-analysis-workspace-tabs">
+                    <TabsTrigger value="overview" className="min-h-10 px-2.5 text-label" data-testid="student-analysis-workspace-overview">研究目标推断</TabsTrigger>
                     {(experiment?.waves?.length ?? 0) > 0 && (
-                        <TabsTrigger value="waves" className="min-h-11 px-4" data-testid="student-analysis-workspace-waves">多轮质检与校准演进</TabsTrigger>
+                        <TabsTrigger value="waves" className="min-h-10 px-2.5 text-label" data-testid="student-analysis-workspace-waves">多轮质检与校准演进</TabsTrigger>
                     )}
-                    <TabsTrigger value="charts" className="min-h-11 px-4" data-testid="student-analysis-section-tab-charts">多维图表对比</TabsTrigger>
-                    <TabsTrigger value="univariate" className="min-h-11 px-4" data-testid="student-analysis-workspace-univariate">客群交叉与单变量分析</TabsTrigger>
-                    <TabsTrigger value="records" className="min-h-11 px-4" data-testid="student-analysis-workspace-records">规划与抽样档案</TabsTrigger>
-                    <TabsTrigger value="report" className="min-h-11 gap-2 px-4" data-testid="student-analysis-workspace-report"><FileText className="h-4 w-4"/>商业决策报告</TabsTrigger>
+                    <TabsTrigger value="charts" className="min-h-10 px-2.5 text-label" data-testid="student-analysis-section-tab-charts">多维图表对比</TabsTrigger>
+                    <TabsTrigger value="univariate" className="min-h-10 px-2.5 text-label" data-testid="student-analysis-workspace-univariate">客群交叉与单变量分析</TabsTrigger>
+                    <TabsTrigger value="records" className="min-h-10 px-2.5 text-label" data-testid="student-analysis-workspace-records">规划与抽样档案</TabsTrigger>
+                    <TabsTrigger value="report" className="min-h-10 gap-1.5 px-2.5 text-label" data-testid="student-analysis-workspace-report"><FileText className="h-4 w-4"/>商业决策报告</TabsTrigger>
                 </TabsList>
-                <Button type="button" variant="outline" onClick={() => setExportOpen(true)}><Download className="mr-2 h-4 w-4"/>导出数据</Button>
+                <Button type="button" variant="outline" size="sm" className="h-10 px-3" onClick={() => setExportOpen(true)}><Download className="mr-1.5 h-4 w-4"/>导出数据</Button>
             </div>
 
             {analysisMetricsError && <div role="alert" className="flex flex-wrap items-center gap-3 rounded-surface border border-destructive-border bg-destructive-muted p-4 text-label text-destructive" data-testid="student-analysis-metrics-error">
@@ -660,6 +668,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                             : ""}`}
                                         rows={meanRows}
                                         series={meanSeries}
+                                        unit={selectedNumericUnit}
                                         emptyMessage="暂无可用于均值分析的数值字段"
                                         onZoom={() => setZoomChart("mean")}
                                         onDownload={() => downloadChart("mean")}
@@ -694,6 +703,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                         description={`利用完整虚拟总体比较已完成方法的设计标准误：简单随机和分层采用设计公式，系统抽样枚举随机起点。${hasPpsCompleted ? ppsStandardErrorDescription : ""}这些结果不是现实调查中仅凭当前样本直接得到的标准误。口径说明：均值规划的总体方差 σ² 按 N 计算；简单随机均值设计公式使用按 N−1 计算的总体方差 S² = Nσ²/(N−1)（N>1），分层公式使用各层的总体方差。这里使用已知总体信息，不以本次样本方差估计总体方差。设计标准误衡量估计量在重复抽样中的波动，与描述总体单位离散程度的总体方差不是同一指标。`}
                                         rows={errorRows}
                                         series={errorSeries}
+                                        unit={selectedNumericUnit}
                                         emptyMessage="暂无可用于误差分析的数值字段"
                                         onZoom={() => setZoomChart("error")}
                                         onDownload={() => downloadChart("error")}
@@ -779,7 +789,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         </Tabs>
 
         <StageActions>
-            <Button variant="outline" onClick={onPrev} data-testid="student-analysis-prev">查看抽样记录</Button>
+            <Button variant="outline" onClick={onPrev} data-testid="student-analysis-prev"><ChevronLeft className="mr-1 h-4 w-4"/>查看正式轮投放</Button>
             {workspace === "report" ? <div className="flex flex-col items-end gap-1">
                 {staleAnalysisReferences.length > 0 && (
                     <div role="alert" className="flex flex-wrap items-center gap-2 text-meta text-warning">

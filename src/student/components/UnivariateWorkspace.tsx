@@ -215,17 +215,94 @@ export function UnivariateWorkspace({
         onReferencesChange([...references, record.id]);
     };
 
+    const selectedWaveObj = useMemo(
+        () => (waves && effectiveWaveNumber ? waves.find((w) => w.waveNumber === effectiveWaveNumber) ?? null : null),
+        [waves, effectiveWaveNumber],
+    );
+    const boundFieldsInWave = useMemo(() => {
+        if (!selectedWaveObj?.questionnaire) return null;
+        const fields = new Set<string>();
+        for (const q of selectedWaveObj.questionnaire.questions ?? []) {
+            for (const m of q.variableBinding?.mappings ?? []) {
+                if (m.field) fields.add(m.field);
+            }
+        }
+        return fields;
+    }, [selectedWaveObj]);
+    const unboundRespondentFields = useMemo(() => {
+        if ((config.datasetMode ?? "cleaned_respondents") !== "cleaned_respondents" || !boundFieldsInWave) return [];
+        const list: string[] = [];
+        if (config.field && !boundFieldsInWave.has(config.field)) {
+            const v = variables.find((item) => item.field === config.field);
+            list.push(v?.label ?? config.field);
+        }
+        if (config.groupByField && !boundFieldsInWave.has(config.groupByField)) {
+            const g = variables.find((item) => item.field === config.groupByField);
+            list.push(g?.label ?? config.groupByField);
+        }
+        return list;
+    }, [config.datasetMode, config.field, config.groupByField, boundFieldsInWave, variables]);
+
+    const trimmedQuestionLen = config.question.trim().length;
+    const runDisabledReason = useMemo<string | null>(() => {
+        if (refreshRequired || running || records.length >= capacity) return null;
+        if (trimmedQuestionLen < 5 && !config.field) return "请输入至少 5 字分析问题并选择目标变量";
+        if (trimmedQuestionLen < 5) return `分析问题还差 ${5 - trimmedQuestionLen} 字（至少 5 字）`;
+        if (trimmedQuestionLen > 500) return `分析问题已超出 ${trimmedQuestionLen - 500} 字`;
+        if (!config.field) return "请选择目标分析变量";
+        return null;
+    }, [refreshRequired, running, records.length, capacity, trimmedQuestionLen, config.field]);
+
     if (loading) return <p role="status" className="py-8 text-label text-muted-foreground">正在加载商务客群与单变量分析工作台…</p>;
+
+    const canOfferUnweightedFix = Boolean(error && config.weighted && (error.includes("加权") || error.includes("分层")));
+    const canOfferFullInvitedFix = Boolean(
+        error
+        && (config.datasetMode ?? "cleaned_respondents") === "cleaned_respondents"
+        && (error.includes("发放回收") || error.includes("有效回收答卷")),
+    );
 
     return (
         <div className="space-y-5" data-testid="student-univariate-workspace">
             {error && (
                 <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-surface border border-destructive-border bg-destructive-muted p-4 text-label text-destructive">
-                    <span>{error}</span>
-                    <Button variant="outline" size="sm" onClick={() => void load()}>
-                        <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                        重新加载
-                    </Button>
+                    <span className="min-w-0 flex-1">{error}</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                        {canOfferUnweightedFix && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="bg-card text-foreground"
+                                data-testid="student-univariate-fix-unweighted"
+                                onClick={() => {
+                                    update({ weighted: false });
+                                    setError(null);
+                                }}
+                            >
+                                切换为未加权描述
+                            </Button>
+                        )}
+                        {canOfferFullInvitedFix && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="bg-card text-foreground"
+                                data-testid="student-univariate-fix-full-invited"
+                                onClick={() => {
+                                    update({ datasetMode: "full_invited" });
+                                    setError(null);
+                                }}
+                            >
+                                切换为完整入样名单对照
+                            </Button>
+                        )}
+                        <Button variant="outline" size="sm" className="bg-card" onClick={() => void load()}>
+                            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                            重新加载
+                        </Button>
+                    </div>
                 </div>
             )}
 
@@ -251,9 +328,20 @@ export function UnivariateWorkspace({
                     </CardHeader>
                     <CardContent className="space-y-4 pt-5">
                         <div className="space-y-2">
-                            <Label htmlFor="analysis-question-input" className="text-foreground">
-                                本次验证的商业子假设或分析问题（5–500 字）
-                            </Label>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <Label htmlFor="analysis-question-input" className="text-foreground">
+                                    本次验证的商业子假设或分析问题（5–500 字）
+                                </Label>
+                                <span className={`text-meta tabular-nums ${
+                                    trimmedQuestionLen > 500
+                                        ? "text-destructive font-semibold"
+                                        : trimmedQuestionLen >= 5
+                                            ? "text-success"
+                                            : "text-muted-foreground"
+                                }`}>
+                                    {trimmedQuestionLen} / 500 字
+                                </span>
+                            </div>
                             <Textarea
                                 id="analysis-question-input"
                                 placeholder="例如：对比黑金会员与普通会员在最高支付意愿上的均值差异，判断高价值客群是否支撑新品溢价定价？"
@@ -383,28 +471,56 @@ export function UnivariateWorkspace({
                             </div>
                         </div>
 
+                        {unboundRespondentFields.length > 0 && (
+                            <div
+                                role="status"
+                                data-testid="student-univariate-unbound-notice"
+                                className="flex flex-wrap items-center justify-between gap-2 rounded-control border border-info-border bg-info-muted px-3.5 py-2 text-meta text-foreground"
+                            >
+                                <span>
+                                    提示：所选变量「{unboundRespondentFields.join("、")}」未关联当前波次问卷题目；若非抽样框固有分层字段，在“质检有效回收答卷”口径下将计为未采集缺失，可按需切换完整入样名单做框内对照。
+                                </span>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 bg-card px-2.5 text-meta"
+                                    onClick={() => update({ datasetMode: "full_invited" })}
+                                >
+                                    切换完整入样对照
+                                </Button>
+                            </div>
+                        )}
+
                         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
                             <p className="max-w-2xl text-meta leading-relaxed text-muted-foreground" data-testid="student-univariate-category-contract">
                                 口径说明：本工作台按课题变量字典保留 JSON 原始编码（数字 1 与文本“1”不同），并从有效分母排除字典声明的缺失编码，因此与概览主图两处分类比例可能不同；未绑定题目在有效回收口径下计为未采集缺失。
                             </p>
-                            <Button
-                                onClick={() => void run()}
-                                disabled={
-                                    refreshRequired
-                                    || running
-                                    || config.question.trim().length < 5
-                                    || config.question.trim().length > 500
-                                    || !config.field
-                                    || records.length >= capacity
-                                }
-                                data-testid="student-univariate-run"
-                            >
-                                {running ? (
-                                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />正在计算…</>
-                                ) : (
-                                    <><Sparkles className="mr-2 h-4 w-4" />执行并保存分析卡片</>
+                            <div className="flex flex-wrap items-center gap-3">
+                                {runDisabledReason && (
+                                    <span className="text-meta text-muted-foreground" data-testid="student-univariate-disabled-hint">
+                                        {runDisabledReason}
+                                    </span>
                                 )}
-                            </Button>
+                                <Button
+                                    onClick={() => void run()}
+                                    disabled={
+                                        refreshRequired
+                                        || running
+                                        || config.question.trim().length < 5
+                                        || config.question.trim().length > 500
+                                        || !config.field
+                                        || records.length >= capacity
+                                    }
+                                    data-testid="student-univariate-run"
+                                >
+                                    {running ? (
+                                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" />正在计算…</>
+                                    ) : (
+                                        <><Sparkles className="mr-2 h-4 w-4" />执行并保存分析卡片</>
+                                    )}
+                                </Button>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -467,6 +583,11 @@ export function UnivariateWorkspace({
                                 {record.stale && (
                                     <p className="my-2 rounded-control border border-warning-border bg-warning-muted px-3 py-1.5 text-meta text-warning">
                                         后续重抽样或重新发放已产生新批次数据，此旧分析卡片已过期；若已引用，请移出并重新执行。
+                                    </p>
+                                )}
+                                {!record.stale && record.result.validCount === 0 && (
+                                    <p className="my-2 rounded-control border border-warning-border bg-warning-muted px-3 py-1.5 text-meta text-warning">
+                                        当前分析结果有效观测数为 0（缺失 {record.result.missingCount}）：所选变量在本轮回收答卷中尚无有效值（可能未绑定问卷题目或全部缺失）。
                                     </p>
                                 )}
                                 <div

@@ -71,10 +71,10 @@ export function FieldworkFunnelChart({
                         const stepConversion = prevCount > 0 ? Math.min(100, Math.max(0, (safeCount / prevCount) * 100)) : null;
                         const fill = TONE_FILLS[stage.tone ?? "primary"];
                         return (
-                            <div key={stage.key} className="grid grid-cols-[minmax(8.5rem,12.5rem)_minmax(5rem,1fr)_auto] items-center gap-3">
+                            <div key={stage.key} className="grid grid-cols-[minmax(9.5rem,14rem)_minmax(5rem,1fr)_auto] items-center gap-3">
                                 <div className="min-w-0">
                                     <p className="truncate text-label font-semibold text-foreground" title={stage.label}>{stage.label}</p>
-                                    <p className="truncate text-meta text-muted-foreground" title={stage.description}>{stage.description}</p>
+                                    <p className="break-words text-meta leading-snug text-muted-foreground" title={stage.description}>{stage.description}</p>
                                 </div>
                                 <svg
                                     viewBox="0 0 400 28"

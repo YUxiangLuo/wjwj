@@ -1,7 +1,7 @@
 import { StudentStatusPage } from "../components/StudentStatusPage";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useEffect, useState } from "react";
-import { AlertCircle, ArrowLeft, Calendar, CheckCircle2, FileText, Loader2, User } from "lucide-react";
+import { AlertCircle, ArrowLeft, Calendar, CheckCircle2, Clock, FileText, User } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { StatusBadge, type StatusBadgeIntent } from "@/components/StatusBadge";
 import { RichTextContent } from "@/components/RichTextContent";
@@ -60,7 +60,7 @@ export function SubmissionDetailPage() {
                     <Link to={`/task/${detail.taskId}`}><ArrowLeft className="h-4 w-4" />返回任务</Link>
                 </Button>
                 <StatusBadge intent={status.intent}>
-                    {detail.status === "graded" ? <CheckCircle2 className="h-3.5 w-3.5" /> : detail.status === "rejected" ? <AlertCircle className="h-3.5 w-3.5" /> : <Loader2 className="h-3.5 w-3.5" />}
+                    {detail.status === "graded" ? <CheckCircle2 className="h-3.5 w-3.5" /> : detail.status === "rejected" ? <AlertCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
                     {status.label}
                 </StatusBadge>
             </div>
@@ -80,17 +80,17 @@ export function SubmissionDetailPage() {
                     {detail.status === "graded" && (
                         <section data-testid="student-submission-scores" aria-labelledby="submission-score-heading">
                             <h2 id="submission-score-heading" className="mb-3 text-section-title">批改成绩</h2>
-                            <div className="grid grid-cols-4 gap-3">
+                            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,9.5rem),1fr))] gap-3">
                                 {scores.map(([label, value, weight]) => (
                                     <div key={label} className="rounded-surface bg-muted p-4 text-center">
                                         <p className="text-meta text-muted-foreground">{label}</p>
-                                        <p className="mt-1 text-page-title font-bold">{value ?? "—"}</p>
+                                        <p className="mt-1 text-page-title font-bold tabular-nums">{value ?? "—"}</p>
                                         <p className="mt-1 text-meta text-muted-foreground">权重 {weight}%</p>
                                     </div>
                                 ))}
                                 <div className="rounded-surface bg-primary-muted p-4 text-center">
                                     <p className="text-meta font-medium text-primary">总分</p>
-                                    <p className="mt-1 text-display font-bold text-primary">{detail.totalScore ?? "—"}</p>
+                                    <p className="mt-1 text-display font-bold tabular-nums text-primary">{detail.totalScore ?? "—"}</p>
                                 </div>
                             </div>
                         </section>
@@ -125,14 +125,14 @@ export function SubmissionDetailPage() {
                         </div>
                         <div className="p-5">
                             <Tabs defaultValue="report">
-                                <TabsList className={`grid h-auto w-full ${(detail.snapshot.waves?.length ?? 0) > 0 ? "grid-cols-5" : "grid-cols-4"}`}>
-                                    <TabsTrigger value="report">商业决策报告</TabsTrigger>
+                                <TabsList className="flex h-auto w-full flex-wrap gap-1 p-1">
+                                    <TabsTrigger value="report" className="flex-1 px-3 py-1.5 text-label">商业决策报告</TabsTrigger>
                                     {(detail.snapshot.waves?.length ?? 0) > 0 && (
-                                        <TabsTrigger value="waves">试投质检与调优闭环</TabsTrigger>
+                                        <TabsTrigger value="waves" className="flex-1 px-3 py-1.5 text-label">试投质检与调优闭环</TabsTrigger>
                                     )}
-                                    <TabsTrigger value="questionnaire">问卷</TabsTrigger>
-                                    <TabsTrigger value="plan">正式轮样本规划</TabsTrigger>
-                                    <TabsTrigger value="sampling">正式轮抽样结果</TabsTrigger>
+                                    <TabsTrigger value="questionnaire" className="flex-1 px-3 py-1.5 text-label">问卷</TabsTrigger>
+                                    <TabsTrigger value="plan" className="flex-1 px-3 py-1.5 text-label">正式轮样本规划</TabsTrigger>
+                                    <TabsTrigger value="sampling" className="flex-1 px-3 py-1.5 text-label">正式轮抽样结果</TabsTrigger>
                                 </TabsList>
                                 <TabsContent value="report" className="mt-4 rounded-surface bg-muted p-5">
                                     <RichTextContent html={detail.snapshot.reportContent} className="text-label leading-relaxed" emptyFallback="暂无报告内容" />

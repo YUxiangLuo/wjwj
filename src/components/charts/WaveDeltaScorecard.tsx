@@ -57,6 +57,13 @@ export function WaveDeltaScorecard({
     const firstInvited = Number.isFinite(firstWave.invitedCount) ? Math.max(0, firstWave.invitedCount) : 0;
     const finalInvited = Number.isFinite(finalWave.invitedCount) ? Math.max(0, finalWave.invitedCount) : 0;
 
+    const formatSeWithUnit = (val: number, unit?: string) => {
+        const cleanUnit = unit?.trim() ?? "";
+        if (!cleanUnit) return formatStatistic(val, 2);
+        if (cleanUnit === "%") return `${formatStatistic(val, 2)}%`;
+        return `${formatStatistic(val, 2)} ${cleanUnit}`;
+    };
+
     return (
         <div className="rounded-surface border border-primary-border bg-primary-muted p-5" data-testid="wave-delta-scorecard">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -73,7 +80,7 @@ export function WaveDeltaScorecard({
                 </div>
             </div>
 
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(12.5rem,1fr))] gap-3">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10.5rem),1fr))] gap-3">
                 <div className="min-w-0 rounded-control border border-border bg-card p-3.5">
                     <p className="text-meta text-muted-foreground">质检后有效样本量</p>
                     <p className="mt-1.5 break-words text-section-title font-bold tabular-nums text-foreground">
@@ -90,7 +97,7 @@ export function WaveDeltaScorecard({
                         <span className="text-section-title font-bold text-foreground">{formatStatistic(finalRate, 1)}%</span>
                         <StatusBadge intent={rateDelta >= 0 ? "success" : "warning"}>
                             {rateDelta >= 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
-                            {rateDelta >= 0 ? "+" : ""}{formatStatistic(rateDelta, 1)}%
+                            {rateDelta >= 0 ? "+" : ""}{formatStatistic(rateDelta, 1)} pp
                         </StatusBadge>
                     </div>
                     <p className="mt-1 text-meta tabular-nums text-muted-foreground">首轮 {formatStatistic(firstRate, 1)}%</p>
@@ -117,9 +124,7 @@ export function WaveDeltaScorecard({
                     <p className="text-meta text-muted-foreground">主指标估计标准误 SE</p>
                     <div className="mt-1.5 flex flex-wrap items-baseline gap-2 tabular-nums">
                         <span className="break-words text-section-title font-bold text-foreground">
-                            {finalSe !== null
-                                ? `${formatStatistic(finalSe, 2)}${finalWave.unitLabel ? ` ${finalWave.unitLabel}` : ""}`
-                                : "—"}
+                            {finalSe !== null ? formatSeWithUnit(finalSe, finalWave.unitLabel) : "—"}
                         </span>
                         {seDeltaPct !== null && (
                             <StatusBadge intent={seDeltaPct <= 0 ? "success" : "warning"}>
@@ -128,7 +133,7 @@ export function WaveDeltaScorecard({
                         )}
                     </div>
                     <p className="mt-1 break-words text-meta tabular-nums text-muted-foreground">
-                        首轮 {firstSe !== null ? `${formatStatistic(firstSe, 2)}${(firstWave.unitLabel ?? finalWave.unitLabel) ? ` ${firstWave.unitLabel ?? finalWave.unitLabel}` : ""}` : "—"}
+                        首轮 {firstSe !== null ? formatSeWithUnit(firstSe, firstWave.unitLabel ?? finalWave.unitLabel) : "—"}
                     </p>
                 </div>
             </div>

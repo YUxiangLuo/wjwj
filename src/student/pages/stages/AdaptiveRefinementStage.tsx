@@ -18,7 +18,7 @@ import { VariableBindingDialog } from "@/components/questionnaire/VariableBindin
 import { FieldworkFunnelChart } from "@/components/charts/FieldworkFunnelChart";
 import { StratumComparisonChart } from "@/components/charts/StratumComparisonChart";
 import { WaveDeltaScorecard } from "@/components/charts/WaveDeltaScorecard";
-import { ADJUSTMENT_ACTION_LABELS, ADJUSTMENT_ISSUE_LABELS, buildWaveSnapshotMetric, WaveLoopSnapshot } from "@/components/WaveLoopSnapshot";
+import { ADJUSTMENT_ACTION_LABELS, ADJUSTMENT_ISSUE_LABELS, buildWaveSnapshotMetric, inferTargetUnitFromExperiment, WaveLoopSnapshot } from "@/components/WaveLoopSnapshot";
 import { StageActions } from "../../components/StageActions";
 import { SamplePreviewTable } from "../../components/SamplePreviewTable";
 import { StratifiedSamplingTab } from "../../components/StratifiedSamplingTab";
@@ -134,7 +134,13 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
         return null;
     }, [wave1?.diagnostics]);
 
-    const [activeTab, setActiveTab] = useState<RefinementTab>("plan");
+    const [activeTab, setActiveTab] = useState<RefinementTab>(() => {
+        const plannedRevise = Boolean(experiment?.adjustmentPlan?.plannedActions?.includes("revise_questionnaire"));
+        const hasFormalSampling = Object.keys(activeWave?.samplingResults ?? {}).length > 0;
+        if (plannedRevise && !hasFormalSampling) return "questionnaire";
+        return "plan";
+    });
+    const [hasConfirmedPlanInSession, setHasConfirmedPlanInSession] = useState(false);
     const [dictionary, setDictionary] = useState<VariableDictionary | null>(null);
 
     // Wave 2+ Questionnaire State
@@ -210,6 +216,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
     }, [varianceSource, verifiedEmpiricalVariance]);
 
     useEffect(() => {
+        setHasConfirmedPlanInSession(false);
         const plan = activeWave?.samplePlan;
         if (!plan) return;
         const inheritedPrior = estimationType === "mean" && plan.varianceSource === "prior_estimate";
@@ -374,8 +381,8 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
         if (!Number.isFinite(marginOfError) || marginOfError <= 0) {
             return "请输入大于 0 的正式轮目标误差限";
         }
-        if (estimationType === "proportion" && marginOfError > 50) {
-            return "比例估计目标误差限 E 不能超过 50%";
+        if (estimationType === "proportion" && (marginOfError < 1 || marginOfError > 10)) {
+            return "比例估计目标误差限 E 需在 1%–10% 之间";
         }
         if (!Number.isFinite(nonResponsePct) || nonResponsePct < 0 || nonResponsePct > 50) {
             return "预期无回答/损耗率需在 0%–50% 之间";
@@ -434,6 +441,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
             const res = await experimentApi.saveWavePlan(taskId, experiment.version, payload);
             if (res.success && res.data) {
                 updateExperiment(res.data);
+                setHasConfirmedPlanInSession(true);
                 const nextN = res.data.samplePlan?.finalSampleSize ?? payload.finalSampleSize;
                 setCustomFinalSizeInput(String(nextN));
                 setPpsSampleSizeInput(String(nextN));
@@ -546,10 +554,15 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
         return enabledMethods.filter((m) => {
             const r = waveSampling?.[m];
             if (!isCompletedSamplingResult(r)) return false;
-            if (m === "systematic") return r?.sampleCount === lockedTargetN;
-            return true;
+            const count = getSamplingResultCount(m, r);
+            if (count <= 0 || lockedTargetN <= 0) return true;
+            if (m === "pps") {
+                const range = getSamplingAcceptedRange(lockedTargetN, N);
+                return range ? count >= range.min && count <= range.max : true;
+            }
+            return count === lockedTargetN;
         });
-    }, [enabledMethods, waveSampling, lockedTargetN]);
+    }, [enabledMethods, waveSampling, lockedTargetN, N]);
 
     const policyProgress = useMemo(
         () => evaluateSamplingPolicy(effectivePolicy, completedFormalMethods),
@@ -612,7 +625,8 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
             const res = await experimentApi.createRefinementWave(taskId, experiment.version);
             if (res.success && res.data) {
                 updateExperiment(res.data);
-                toast.success(`已创建第 ${res.data.activeWaveNumber} 轮进阶微调波次`);
+                setActiveTab("plan");
+                toast.success(`已创建第 ${res.data.activeWaveNumber} 轮进阶微调波次，请核对样本量后重新抽样与投放`);
             } else if (res.error?.code === "VERSION_CONFLICT") {
                 requireRefresh();
             } else {
@@ -644,20 +658,67 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
     };
 
     const unitLabel = useMemo(() => {
-        if (analysisTarget?.kind === "proportion") return "%";
-        if (!analysisTarget?.field || !dictionary) return "";
-        return dictionary.variables.find((v) => v.field === analysisTarget.field)?.unit ?? "";
-    }, [analysisTarget, dictionary]);
+        const dictUnit = analysisTarget?.field && dictionary
+            ? dictionary.variables.find((v) => v.field === analysisTarget.field)?.unit
+            : "";
+        return inferTargetUnitFromExperiment({
+            analysisTarget: experiment?.analysisTarget,
+            explicitUnit: dictUnit,
+            waves: experiment?.waves,
+            questionnaire: experiment?.questionnaire,
+        });
+    }, [analysisTarget?.field, dictionary, experiment?.analysisTarget, experiment?.waves, experiment?.questionnaire]);
+    const isPlanUnconfirmedFromPilot = useMemo(() => {
+        if (hasConfirmedPlanInSession) return false;
+        if (!activeWave || activeWave.waveNumber !== 2 || !wave1?.samplePlan || !activeWave.samplePlan) return false;
+        if (Object.keys(activeWave.samplingResults ?? {}).length > 0 || activeWave.fieldwork) return false;
+        return canonicalJson(activeWave.samplePlan) === canonicalJson(wave1.samplePlan);
+    }, [hasConfirmedPlanInSession, activeWave, wave1?.samplePlan, canonicalJson]);
+    const isPlanDirty = useMemo(() => {
+        if (isPlanInheritedPrior || !activeWave?.samplePlan || planValidationError !== null) return false;
+        const p = activeWave.samplePlan;
+        const nrrRounded = Math.min(0.5, Math.max(0, Math.round(nonResponsePct) / 100));
+        return (
+            effectiveFinalSize !== p.finalSampleSize
+            || confidenceLevel !== p.confidenceLevel
+            || Math.abs(marginOfError - p.marginOfError) > 1e-6
+            || Math.abs(designEffect - (p.designEffect ?? 1)) > 1e-6
+            || Math.abs(nrrRounded - (p.nonResponseRate ?? 0)) > 1e-6
+            || (estimationType === "mean" && varianceSource !== p.varianceSource)
+        );
+    }, [isPlanInheritedPrior, activeWave?.samplePlan, planValidationError, nonResponsePct, effectiveFinalSize, confidenceLevel, marginOfError, designEffect, estimationType, varianceSource]);
     const firstWaveMetric = wave1 ? buildWaveSnapshotMetric(wave1, "simple", unitLabel) ?? buildWaveSnapshotMetric(wave1, undefined, unitLabel) : null;
-    const scorecardTargetWave = useMemo(() => {
-        if (inspectedPriorWave) return inspectedPriorWave;
-        if (activeWave && Object.keys(activeWave.diagnostics ?? {}).length > 0) return activeWave;
-        return formalWaves.filter((w) => Object.keys(w.diagnostics ?? {}).length > 0).at(-1) ?? null;
-    }, [inspectedPriorWave, activeWave, formalWaves]);
-    const activeWaveMetric = scorecardTargetWave
-        ? buildWaveSnapshotMetric(scorecardTargetWave, activeMethod, unitLabel) ?? buildWaveSnapshotMetric(scorecardTargetWave, undefined, unitLabel)
+    const activeWaveHasDiagnostics = Boolean(activeWave && Object.keys(activeWave.diagnostics ?? {}).length > 0);
+    const scorecardPreferredMethod = activeMethod !== "simple" && activeWave?.diagnostics?.[activeMethod]
+        ? activeMethod
+        : undefined;
+    const activeWaveMetric = !inspectedPriorWave && activeWave && activeWaveHasDiagnostics
+        ? buildWaveSnapshotMetric(activeWave, scorecardPreferredMethod, unitLabel) ?? buildWaveSnapshotMetric(activeWave, undefined, unitLabel)
         : null;
     const activeDiag = activeWave?.diagnostics?.[activeMethod] ?? (completedFormalMethods[0] ? activeWave?.diagnostics?.[completedFormalMethods[0]] : null) ?? null;
+
+    const stage4Blocker = useMemo<{ text: string; targetTab?: RefinementTab } | null>(() => {
+        if (canCompleteStage4) return null;
+        if (!targetBindingPassed) {
+            return { text: `请先在步骤 1 绑定核心研究指标「${primaryTargetField ?? ""}」并保存问卷`, targetTab: "questionnaire" };
+        }
+        if (isQuestionnaireDirty) {
+            return { text: "步骤 1 存在未保存的问卷修订，请先保存问卷", targetTab: "questionnaire" };
+        }
+        if (lockedTargetN < bounds.min) {
+            return { text: "请先在步骤 2 保存正式轮样本量规划", targetTab: "plan" };
+        }
+        if (!policyProgress.canComplete) {
+            const missingText = policyProgress.missingRequired.length > 0
+                ? `还需完成必做：${policyProgress.missingRequired.map((m) => METHOD_LABELS[m]).join("、")}`
+                : `还需再完成 ${Math.max(1, policyProgress.minimumCompleted - completedFormalMethods.length)} 种抽样方法`;
+            return { text: `步骤 3 ${missingText}`, targetTab: "sampling" };
+        }
+        if (!allCompletedMethodsDispatched) {
+            return { text: "请在步骤 3 点击「执行正式问卷投放与回收」", targetTab: "sampling" };
+        }
+        return null;
+    }, [canCompleteStage4, targetBindingPassed, primaryTargetField, isQuestionnaireDirty, lockedTargetN, bounds.min, policyProgress, completedFormalMethods.length, allCompletedMethodsDispatched]);
 
     const ppsAcceptedRange = lockedTargetN > 0 ? getSamplingAcceptedRange(lockedTargetN, N) : null;
     const ppsMin = ppsAcceptedRange?.min ?? 1;
@@ -746,9 +807,33 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                 </div>
             </section>
 
-            {/* Live Wave 1 -> Wave 2+ Delta Scorecard when dispatched */}
+            {/* Live Wave 1 -> Active Wave Delta Scorecard when dispatched */}
             {firstWaveMetric && activeWaveMetric && (
                 <WaveDeltaScorecard firstWave={firstWaveMetric} finalWave={activeWaveMetric} />
+            )}
+
+            {/* Newly created Wave 3+ onboarding banner before its first dispatch */}
+            {!inspectedPriorWave && activeWave && activeWave.waveNumber >= 3 && !activeWaveHasDiagnostics && (
+                <div
+                    role="status"
+                    data-testid="student-refinement-wave3-onboarding"
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-surface border border-info-border bg-info-muted px-4 py-3 text-label text-foreground"
+                >
+                    <span>
+                        已进入<strong>第 {activeWave.waveNumber} 轮进阶微调工作台</strong>：已继承上一轮问卷与样本量基线。请按需调整问卷（步骤 1）或样本量（步骤 2），随后在步骤 3 重新执行抽样与问卷投放。
+                    </span>
+                    {formalWaves.length >= 2 && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="bg-card text-meta"
+                            onClick={() => setViewingWaveNum(formalWaves[formalWaves.length - 2]!.waveNumber)}
+                        >
+                            对照查看 Wave {formalWaves[formalWaves.length - 2]!.waveNumber} 历史结果
+                        </Button>
+                    )}
+                </div>
             )}
 
             {inspectedPriorWave ? (
@@ -772,7 +857,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                         </Button>
                     </div>
                     <WaveLoopSnapshot
-                        waves={[inspectedPriorWave]}
+                        waves={wave1 ? [wave1, inspectedPriorWave] : [inspectedPriorWave]}
                         analysisTarget={experiment?.analysisTarget}
                         unitLabel={unitLabel}
                     />
@@ -793,7 +878,11 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                     <TabsTrigger value="plan" className="gap-2 py-2.5 text-label" data-testid="student-refinement-tab-plan">
                         <Calculator className="h-4 w-4" />
                         2. 代入实测参数重算样本量
-                        {lockedTargetN >= bounds.min && <CheckCircle2 className="h-4 w-4 text-success" />}
+                        {isPlanDirty || isPlanUnconfirmedFromPilot ? (
+                            <StatusBadge intent="warning">{isPlanDirty ? "未保存" : "待确认"}</StatusBadge>
+                        ) : lockedTargetN >= bounds.min ? (
+                            <CheckCircle2 className="h-4 w-4 text-success" />
+                        ) : null}
                     </TabsTrigger>
                     <TabsTrigger value="sampling" className="gap-2 py-2.5 text-label" data-testid="student-refinement-tab-sampling">
                         <Send className="h-4 w-4" />
@@ -837,6 +926,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                     <Button
                                         type="button"
                                         size="sm"
+                                        variant={isQuestionnaireDirty ? "default" : "outline"}
                                         onClick={() => void handleSaveQuestionnaire()}
                                         disabled={savingQuestionnaire || qList.length < 5 || qList.length > 50 || !targetBindingPassed || refreshRequired}
                                         data-testid="student-refinement-save-questionnaire"
@@ -844,6 +934,17 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                         {savingQuestionnaire ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />}
                                         保存修订问卷
                                     </Button>
+                                    {!isQuestionnaireDirty && targetBindingPassed && (
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            onClick={() => setActiveTab("plan")}
+                                            data-testid="student-refinement-skip-questionnaire"
+                                        >
+                                            无需改卷，进入实测样本量重算
+                                            <ArrowRight className="ml-1.5 h-4 w-4" />
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                             {!targetBindingPassed && primaryTargetField && (
@@ -934,6 +1035,23 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                     </div>
                                 </div>
                             ))}
+                            <div className="flex flex-wrap items-center justify-between gap-3 pt-4">
+                                <span className="text-meta text-muted-foreground">
+                                    {isQuestionnaireDirty
+                                        ? "已修改问卷题目，请先点击「保存修订问卷」再进入下一步样本量重算。"
+                                        : "若当前问卷题量与量程已满足要求，可直接跳过改卷进入步骤 2 重算样本量。"}
+                                </span>
+                                <Button
+                                    type="button"
+                                    variant={isQuestionnaireDirty ? "outline" : "default"}
+                                    disabled={isQuestionnaireDirty || !targetBindingPassed}
+                                    onClick={() => setActiveTab("plan")}
+                                    data-testid="student-refinement-next-to-plan"
+                                >
+                                    下一步：代入实测参数重算样本量
+                                    <ArrowRight className="ml-1.5 h-4 w-4" />
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -969,6 +1087,11 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                     正式投放阶段须采用首轮实测样本方差 s² 或抽样框总体方差 σ²（不能沿用试投轮的先验猜测值），请核对下方参数并保存正式轮样本量。
                                 </p>
                             )}
+                            {!isPlanInheritedPrior && isPlanUnconfirmedFromPilot && (
+                                <p role="status" data-testid="student-refinement-pilot-plan-notice" className="rounded-control border border-info-border bg-info-muted px-3.5 py-2 text-meta text-info">
+                                    当前表单初始沿用了首轮试投参数（n={wave1?.samplePlan?.finalSampleSize}）。建议点击右上角「一键代入首轮实测无回答率」并收紧正式轮目标误差限，随后点击底部「保存正式轮样本量并去抽样」。
+                                </p>
+                            )}
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                     <Label className="text-foreground">正式轮置信水平</Label>
@@ -992,15 +1115,18 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
 
                                 <div className="space-y-2">
                                     <Label htmlFor="formal-margin-error" className="text-foreground">
-                                        {estimationType === "mean" ? "正式轮目标误差限 e" : "正式轮目标误差限 E (%)"}
+                                        {estimationType === "mean"
+                                            ? `正式轮目标误差限 e${unitLabel ? `（${unitLabel}）` : ""}`
+                                            : "正式轮目标误差限 E (1%–10%)"}
                                     </Label>
                                     <Input
                                         id="formal-margin-error"
                                         type="number"
-                                        min={0.1}
+                                        min={estimationType === "proportion" ? 1 : 0.1}
+                                        max={estimationType === "proportion" ? 10 : undefined}
                                         step={estimationType === "mean" ? 0.5 : 1}
                                         value={marginOfErrorInput}
-                                        aria-invalid={!Number.isFinite(marginOfError) || marginOfError <= 0 || (estimationType === "proportion" && marginOfError > 50) || undefined}
+                                        aria-invalid={!Number.isFinite(marginOfError) || marginOfError <= 0 || (estimationType === "proportion" && (marginOfError < 1 || marginOfError > 10)) || undefined}
                                         onChange={(e) => {
                                             setMarginOfErrorInput(e.target.value);
                                             setCustomFinalSizeInput(null);
@@ -1061,7 +1187,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                             <span>{activeVariance ? formatStatistic(activeVariance, 2) : "—"}</span>
                                             {activeVariance && (
                                                 <span className="text-meta text-muted-foreground">
-                                                    标准差 ≈ {formatStatistic(Math.sqrt(activeVariance), 2)}
+                                                    标准差 ≈ {formatStatistic(Math.sqrt(activeVariance), 2)}{unitLabel ? ` ${unitLabel}` : ""}
                                                 </span>
                                             )}
                                         </div>
@@ -1105,6 +1231,11 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                     <p className="text-meta text-muted-foreground">
                                         首轮发放：{wave1?.samplePlan?.finalSampleSize ?? "—"} 份 → 正式轮规划：{isFinalSizeValid ? effectiveFinalSize : "—"} 份（范围 {bounds.min}–{bounds.max}）
                                     </p>
+                                    {wave1?.samplePlan?.finalSampleSize != null && isFinalSizeValid && effectiveFinalSize <= wave1.samplePlan.finalSampleSize && effectiveFinalSize < N && (
+                                        <p className="text-meta text-warning">
+                                            提示：当前正式轮样本量（{effectiveFinalSize} 份）未高于首轮试投（{wave1.samplePlan.finalSampleSize} 份）；正式投放建议适当收紧目标误差限以提升决策精度。
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div className="flex flex-col justify-between rounded-control border border-info-border bg-info-muted p-3">
@@ -1168,6 +1299,26 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                         </Card>
                     ) : (
                         <>
+                            {isPlanDirty && (
+                                <div
+                                    role="status"
+                                    data-testid="student-refinement-unsaved-plan-warning"
+                                    className="flex flex-wrap items-center justify-between gap-3 rounded-surface border border-warning-border bg-warning-muted px-4 py-3 text-meta text-warning"
+                                >
+                                    <span className="flex items-center gap-2">
+                                        <AlertCircle className="h-4 w-4 shrink-0" />
+                                        步骤 2 样本量参数已修改但尚未保存（待保存 {effectiveFinalSize} 份，当前抽样仍按旧值 {lockedTargetN} 份执行）。
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <Button type="button" variant="outline" size="sm" className="h-7 bg-card px-2.5 text-meta" onClick={() => setActiveTab("plan")}>
+                                            返回步骤 2 核对
+                                        </Button>
+                                        <Button type="button" size="sm" className="h-7 px-2.5 text-meta" disabled={savingPlan} onClick={() => void handleSaveWavePlan()}>
+                                            保存新样本量（{effectiveFinalSize} 份）
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
                             <div className="flex flex-wrap items-center justify-between gap-3 rounded-surface border border-border bg-card px-4 py-3 text-label">
                                 <div className="flex flex-wrap items-center gap-5">
                                     <span>正式轮目标样本量：<strong className="font-mono tabular-nums">{lockedTargetN} 份</strong></span>
@@ -1314,6 +1465,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                 {enabledMethods.includes("stratified") && (
                                     <TabsContent value="stratified" forceMount className="data-[state=inactive]:hidden">
                                         <StratifiedSamplingTab
+                                            key={`wave-${activeWave?.waveNumber ?? 2}-n-${lockedTargetN}-${Boolean(waveSampling?.stratified?.completed)}`}
                                             n={lockedTargetN}
                                             N={N}
                                             taskId={taskId}
@@ -1393,7 +1545,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                             type="button"
                                             size="lg"
                                             onClick={() => void handleDispatchFormal()}
-                                            disabled={completedFormalMethods.length === 0 || isQuestionnaireDirty || !targetBindingPassed || dispatching || refreshRequired}
+                                            disabled={!policyProgress.canComplete || isQuestionnaireDirty || !targetBindingPassed || dispatching || refreshRequired}
                                             data-testid="student-refinement-dispatch"
                                         >
                                             {dispatching ? (
@@ -1403,6 +1555,15 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                             )}
                                         </Button>
                                     </div>
+
+                                    {!policyProgress.canComplete && (
+                                        <p className="flex items-center gap-2 text-meta text-muted-foreground" data-testid="student-refinement-dispatch-policy-hint">
+                                            <AlertCircle className="h-4 w-4 shrink-0 text-warning" />
+                                            {policyProgress.missingRequired.length > 0
+                                                ? `请先在上方完成必做抽样方法（${policyProgress.missingRequired.map((m) => METHOD_LABELS[m]).join("、")}），再统一发放正式轮问卷。`
+                                                : `请先完成至少 ${policyProgress.minimumCompleted} 种启用抽样方法（当前已完成 ${completedFormalMethods.length} 种），再统一发放正式轮问卷。`}
+                                        </p>
+                                    )}
 
                                     {!targetBindingPassed && primaryTargetField && (
                                         <div
@@ -1476,17 +1637,38 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                     <ChevronLeft className="mr-1 h-4 w-4" />
                     查看质检诊断单
                 </Button>
-                <Button
-                    onClick={() => void handleCompleteStage4()}
-                    disabled={!canCompleteStage4 || completing || refreshRequired}
-                    data-testid="student-refinement-complete"
-                >
-                    {completing ? (
-                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" />正在汇总正式数据…</>
-                    ) : (
-                        <>完成正式投放，进入商务决策报告<ArrowRight className="ml-2 h-4 w-4" /></>
+                <div className="flex flex-wrap items-center justify-end gap-3">
+                    {stage4Blocker && (
+                        <div className="flex flex-wrap items-center gap-2 text-meta text-muted-foreground" data-testid="student-refinement-blocker-hint">
+                            <span>待完成：{stage4Blocker.text}</span>
+                            {stage4Blocker.targetTab && (inspectedPriorWave !== null || activeTab !== stage4Blocker.targetTab) && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 px-2.5 text-meta"
+                                    onClick={() => {
+                                        if (inspectedPriorWave) setViewingWaveNum(activeWave?.waveNumber ?? activeWaveNum);
+                                        setActiveTab(stage4Blocker.targetTab!);
+                                    }}
+                                >
+                                    前往处理
+                                </Button>
+                            )}
+                        </div>
                     )}
-                </Button>
+                    <Button
+                        onClick={() => void handleCompleteStage4()}
+                        disabled={!canCompleteStage4 || completing || refreshRequired}
+                        data-testid="student-refinement-complete"
+                    >
+                        {completing ? (
+                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" />正在汇总正式数据…</>
+                        ) : (
+                            <>完成正式投放，进入商务决策报告<ArrowRight className="ml-2 h-4 w-4" /></>
+                        )}
+                    </Button>
+                </div>
             </StageActions>
 
             <QuestionEditor
