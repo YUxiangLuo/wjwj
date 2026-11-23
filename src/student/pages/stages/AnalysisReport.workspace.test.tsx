@@ -273,4 +273,144 @@ test("changing the config after failure creates a new request ID", async () => {
     expect(analysisPosts()).toHaveLength(2);
     expect(analysisPosts()[1]!.body!.requestId).not.toBe(analysisPosts()[0]!.body!.requestId);
     expect(analysisPosts()[1]!.body!.config.question).toBe("修改后的研究问题是什么？");
+    expect(view.queryByTestId("univariate-result-chart-2") !== null).toBe(true);
+    expect(view.getByTestId("univariate-result-chart-2").querySelector("svg") !== null).toBe(true);
+});
+
+test("renders overview cross-method CI chart, 4 ECharts multi-dimensional tabs (dist toggle + represent radar), and interactive zoom", async () => {
+    mockContext = {
+        ...mockContext,
+        experiment: {
+            ...mockContext.experiment,
+            samplingResults: {
+                simple: { completed: true, sampleCount: 400, data: [] },
+                stratified: { completed: true, sampleCount: 400, data: [], layers: [] },
+            },
+        },
+    };
+    mockExperimentApi.getAnalysisMetrics.mockResolvedValueOnce({
+        success: true,
+        data: {
+            numericFields: ["客单价", "等待时长"],
+            categoricalFields: ["会员等级"],
+            numeric: {
+                客单价: {
+                    populationMean: 100,
+                    populationVariance: 400,
+                    methods: {
+                        simple: { estimate: 98.2, standardError: 1.5 },
+                        systematic: { estimate: null, standardError: null },
+                        pps: { estimate: null, standardError: null },
+                        stratified: { estimate: 100.4, standardError: 0.9 },
+                    },
+                },
+                等待时长: {
+                    populationMean: 25,
+                    populationVariance: 36,
+                    methods: {
+                        simple: { estimate: 26.1, standardError: 0.6 },
+                        systematic: { estimate: null, standardError: null },
+                        pps: { estimate: null, standardError: null },
+                        stratified: { estimate: 24.9, standardError: 0.4 },
+                    },
+                },
+            },
+            categorical: {
+                会员等级: {
+                    population: { 普通: 70, 黑金: 30 },
+                    methods: {
+                        simple: { 普通: 68, 黑金: 32 },
+                        systematic: {},
+                        pps: {},
+                        stratified: { 普通: 70, 黑金: 30 },
+                    },
+                    representativeness: {
+                        simple: 2,
+                        systematic: null,
+                        pps: null,
+                        stratified: 0,
+                    },
+                },
+            },
+            target: {
+                contract: {
+                    inferred: false,
+                    contract: {
+                        researchQuestion: "门店客单价估计",
+                        target: { kind: "mean", field: "客单价" },
+                    },
+                },
+                confidenceLevel: "95",
+                plannedMarginOfError: 3,
+                unit: "元",
+                populationValue: 100,
+                methods: {
+                    simple: {
+                        estimate: 98.2,
+                        standardError: 1.5,
+                        marginOfError: 2.94,
+                        sampleSize: 400,
+                        effectiveSampleSize: 400,
+                        reliability: { status: "ok", reasons: [] },
+                    },
+                    systematic: {
+                        estimate: null,
+                        standardError: null,
+                        marginOfError: null,
+                        sampleSize: null,
+                        effectiveSampleSize: null,
+                        reliability: { status: "unavailable", reasons: [] },
+                    },
+                    pps: {
+                        estimate: null,
+                        standardError: null,
+                        marginOfError: null,
+                        sampleSize: null,
+                        effectiveSampleSize: null,
+                        reliability: { status: "unavailable", reasons: [] },
+                    },
+                    stratified: {
+                        estimate: 100.4,
+                        standardError: 0.9,
+                        marginOfError: 1.76,
+                        sampleSize: 400,
+                        effectiveSampleSize: 980,
+                        reliability: { status: "ok", reasons: [] },
+                    },
+                },
+            },
+        } as never,
+    });
+
+    const view = render(<AnalysisReport onPrev={() => {}} onSubmit={() => {}} />);
+    const overviewChart = await waitFor(() => view.getByTestId("student-target-comparison-chart"));
+    expect(overviewChart.querySelector("svg") !== null).toBe(true);
+
+    // Switch to multi-dimensional charts workspace
+    activate(view, "student-analysis-section-tab-charts");
+    const meanTab = await waitFor(() => view.getByTestId("student-analysis-mean-chart"));
+    expect(meanTab.querySelector("svg") !== null).toBe(true);
+
+    // Switch to dist tab and toggle 100% stacked view + zoom modal
+    activate(view, "student-analysis-tab-dist");
+    const distTab = await waitFor(() => view.getByTestId("student-analysis-distribution-chart"));
+    expect(distTab.querySelector("svg") !== null).toBe(true);
+    const stackedBtn = view.getByTestId("student-analysis-dist-mode-stacked");
+    fireEvent.click(stackedBtn);
+    expect(stackedBtn.getAttribute("aria-pressed")).toBe("true");
+
+    fireEvent.click(distTab.querySelector('button[aria-label="放大图表"]')!);
+    const zoomDialog = await waitFor(() => view.getByTestId("student-analysis-zoom-dialog"));
+    expect(zoomDialog.querySelector("svg") !== null).toBe(true);
+    fireEvent.keyDown(zoomDialog, { key: "Escape" });
+
+    // Switch to error tab -> ranked precision lollipop SVG
+    activate(view, "student-analysis-tab-error");
+    const errorTab = await waitFor(() => view.getByTestId("student-analysis-error-chart"));
+    expect(errorTab.querySelector("svg") !== null).toBe(true);
+
+    // Switch to represent tab -> 3 total metrics (2 numeric + 1 categorical) renders Radar + 2 bar charts
+    activate(view, "student-analysis-tab-represent");
+    const radar = await waitFor(() => view.getByTestId("student-analysis-represent-radar"));
+    expect(radar.querySelector("svg") !== null).toBe(true);
 });

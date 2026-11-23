@@ -1,4 +1,17 @@
+import { useMemo } from "react";
 import { formatStatistic } from "@/utils/statistic-format";
+import { EChartBox } from "./EChartBox";
+import type { EChartsCoreOption } from "./echarts-core";
+import {
+    CHART_FONT_FAMILY,
+    buildExecutiveCategoryAxis,
+    buildExecutiveGrid,
+    buildExecutiveTooltip,
+    buildExecutiveValueAxis,
+    getExecutiveChartTokens,
+    resolveChartToneColor,
+    type ExecutiveChartTokens,
+} from "./echarts-theme";
 
 export interface ConfidenceIntervalRow {
     key: string;
@@ -11,13 +24,39 @@ export interface ConfidenceIntervalRow {
     tone?: "primary" | "info" | "success" | "warning" | "auxiliary";
 }
 
-const STROKE_COLORS: Record<NonNullable<ConfidenceIntervalRow["tone"]>, string> = {
-    primary: "var(--chart-2)",
-    info: "var(--chart-3)",
-    success: "var(--chart-7)",
-    warning: "var(--chart-5)",
-    auxiliary: "var(--chart-4)",
-};
+function escapeHtml(value: string): string {
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function resolveTonePillSurface(
+    tone: NonNullable<ConfidenceIntervalRow["tone"]>,
+    tokens: ExecutiveChartTokens,
+): { muted: string; border: string } {
+    switch (tone) {
+        case "success":
+            return { muted: tokens.successMuted, border: tokens.successBorder };
+        case "warning":
+            return { muted: tokens.warningMuted, border: tokens.warningBorder };
+        case "info":
+            return { muted: tokens.infoMuted, border: tokens.infoBorder };
+        case "auxiliary":
+            return { muted: tokens.auxiliaryMuted, border: tokens.auxiliaryBorder };
+        case "primary":
+        default:
+            return { muted: tokens.primaryMuted, border: tokens.primaryBorder };
+    }
+}
+
+function shortenEstimatorLabel(label: string, maxChars = 12): string {
+    const trimmed = label.trim();
+    if (trimmed.length <= maxChars) return trimmed;
+    return `${trimmed.slice(0, maxChars - 1)}…`;
+}
 
 export function ConfidenceIntervalPlot({
     title,
@@ -39,61 +78,305 @@ export function ConfidenceIntervalPlot({
         (row) => row.estimate !== null && Number.isFinite(row.estimate) && Number.isFinite(row.estimate * scaleFactor),
     );
     const displayUnit = isPercentage ? "%" : unit;
-    const scaledPop = populationValue != null && Number.isFinite(populationValue)
-        ? populationValue * scaleFactor
-        : Number.NaN;
+    const scaledPop =
+        populationValue != null && Number.isFinite(populationValue) && Number.isFinite(populationValue * scaleFactor)
+            ? populationValue * scaleFactor
+            : Number.NaN;
     const hasValidPop = Number.isFinite(scaledPop);
+
+    const parsedValidRows = validRows.map((row) => {
+        const est = (row.estimate ?? 0) * scaleFactor;
+        const rawHw =
+            row.halfWidth !== null && Number.isFinite(row.halfWidth) && row.halfWidth >= 0
+                ? row.halfWidth * scaleFactor
+                : 0;
+        const hw = Number.isFinite(rawHw) && rawHw >= 0 ? rawHw : 0;
+        const lo = Number.isFinite(est - hw) ? est - hw : est;
+        const hi = Number.isFinite(est + hw) ? est + hw : est;
+        const se =
+            row.standardError !== null && Number.isFinite(row.standardError) && row.standardError >= 0
+                ? row.standardError * scaleFactor
+                : null;
+        return {
+            row,
+            est,
+            hw,
+            lo,
+            hi,
+            se: se !== null && Number.isFinite(se) ? se : null,
+        };
+    });
 
     const allPoints: number[] = [];
     if (hasValidPop) {
         allPoints.push(scaledPop);
     }
-    for (const row of validRows) {
-        const est = (row.estimate ?? 0) * scaleFactor;
-        const rawHw = row.halfWidth !== null && Number.isFinite(row.halfWidth)
-            ? Math.max(0, row.halfWidth * scaleFactor)
-            : 0;
-        const hw = Number.isFinite(rawHw) ? rawHw : 0;
-        const lo = Number.isFinite(est - hw) ? est - hw : est;
-        const hi = Number.isFinite(est + hw) ? est + hw : est;
-        allPoints.push(lo, hi);
+    for (const item of parsedValidRows) {
+        allPoints.push(item.lo, item.hi, item.est);
     }
 
     const rawMin = allPoints.length > 0 ? Math.min(...allPoints) : 0;
     const rawMax = allPoints.length > 0 ? Math.max(...allPoints) : 100;
-    const halfRawRange = rawMax * 0.5 - rawMin * 0.5;
-    const rawRange = rawMax - rawMin;
-    const degenerateThreshold = Math.max(Math.abs(rawMax) * 1e-6, 1e-9);
-    const [domainMin, domainMax] = !Number.isFinite(rawRange)
-        ? [rawMin, rawMax] as const
-        : rawRange <= degenerateThreshold
-            ? (() => {
-                const padCandidate = Math.max(Math.abs(rawMax) * 0.1, isPercentage ? 2 : 1);
-                const halfPad = Number.isFinite(rawMin - padCandidate) && Number.isFinite(rawMax + padCandidate)
-                    ? padCandidate
-                    : 0;
-                return [rawMin - halfPad, rawMax + halfPad] as const;
-            })()
-            : (() => {
-                const pad = rawRange * 0.14;
-                return Number.isFinite(rawMin - pad) && Number.isFinite(rawMax + pad)
-                    ? [rawMin - pad, rawMax + pad] as const
-                    : [rawMin, rawMax] as const;
-            })();
-    const halfDomainMin = domainMin * 0.5;
-    const halfDomainSpan = Math.max(domainMax * 0.5 - halfDomainMin, 5e-7, halfRawRange > 0 ? halfRawRange : 0);
-    const domainRange = Number.isFinite(domainMax - domainMin) ? Math.max(domainMax - domainMin, 1e-6) : halfDomainSpan * 2;
-    const tickDigits = domainRange < 0.04 ? 4 : domainRange < 0.4 ? 2 : 1;
+    const maxAbs = Math.max(Math.abs(rawMin), Math.abs(rawMax));
+    const coordDivisor = maxAbs > 1e100 ? maxAbs : 1;
 
-    const toX = (val: number) => {
-        const ratio = ((val * 0.5 - halfDomainMin) / halfDomainSpan);
-        const clamped = Number.isFinite(ratio) ? Math.max(0, Math.min(1, ratio)) : 0.5;
-        return 40 + clamped * 440;
-    };
-    const ticks = Array.from({ length: 5 }, (_, index) => {
-        const t = index / 4;
-        return domainMin * (1 - t) + domainMax * t;
-    });
+    const normMin = rawMin / coordDivisor;
+    const normMax = rawMax / coordDivisor;
+    const normRange = normMax - normMin;
+    const degenerateThreshold = Math.max(Math.abs(normMax) * 1e-6, 1e-9);
+
+    const [normDomainMin, normDomainMax] = !Number.isFinite(normRange)
+        ? [-1, 1]
+        : normRange <= degenerateThreshold
+            ? (() => {
+                  const basePad = coordDivisor === 1
+                      ? Math.max(Math.abs(normMax) * 0.1, isPercentage ? 2 : 1)
+                      : 0.1;
+                  return [normMin - basePad, normMax + basePad] as const;
+              })()
+            : (() => {
+                  const pad = normRange * 0.14;
+                  return [normMin - pad, normMax + pad] as const;
+              })();
+
+    const realSpanApprox = (normDomainMax - normDomainMin) * coordDivisor;
+    const tickDigits =
+        Number.isFinite(realSpanApprox) && realSpanApprox < 0.04
+            ? 4
+            : Number.isFinite(realSpanApprox) && realSpanApprox < 0.4
+                ? 2
+                : 1;
+
+    const forestHeight = Math.max(196, parsedValidRows.length * 52 + 64);
+
+    const forestOption = useMemo<EChartsCoreOption>(() => {
+        const tokens = getExecutiveChartTokens();
+
+        return {
+            grid: buildExecutiveGrid({
+                top: hasValidPop ? 40 : 20,
+                bottom: 12,
+                left: 10,
+                right: 24,
+            }),
+            tooltip: buildExecutiveTooltip(
+                {
+                    trigger: "axis",
+                    axisPointer: { type: "none" },
+                    formatter: (params: unknown) => {
+                        const list = Array.isArray(params) ? params : [params];
+                        const first = list[0] as { dataIndex?: number } | undefined;
+                        const item = parsedValidRows[first?.dataIndex ?? 0];
+                        if (!item) return "";
+                        const { row, est, hw, lo, hi, se } = item;
+                        const toneColor = resolveChartToneColor(row.tone ?? "primary", tokens);
+                        const bias = hasValidPop && Number.isFinite(est - scaledPop) ? est - scaledPop : null;
+                        const coversTruth =
+                            hasValidPop && hw > 0 ? scaledPop >= lo && scaledPop <= hi : null;
+
+                        return [
+                            `<div style="min-width:228px;">`,
+                            `<div style="display:flex;align-items:center;gap:6px;font-weight:600;color:${tokens.foreground};">`,
+                            `<span style="display:inline-block;width:8px;height:8px;border-radius:4px;background:${toneColor};"></span>`,
+                            `<span>${escapeHtml(row.label)}</span>`,
+                            `</div>`,
+                            row.sublabel
+                                ? `<div style="color:${tokens.mutedForeground};margin-bottom:6px;">${escapeHtml(row.sublabel)}</div>`
+                                : `<div style="margin-bottom:4px;"></div>`,
+                            `<div style="display:flex;justify-content:space-between;gap:14px;"><span>点估计值</span><strong style="color:${tokens.foreground};">${formatStatistic(est, 2)}${escapeHtml(displayUnit)}</strong></div>`,
+                            `<div style="display:flex;justify-content:space-between;gap:14px;"><span>标准误 SE</span><strong>${se !== null ? `${formatStatistic(se, 2)}${escapeHtml(displayUnit)}` : "不可用"}</strong></div>`,
+                            `<div style="display:flex;justify-content:space-between;gap:14px;"><span>95% 置信区间</span><strong>[${formatStatistic(lo, 2)}, ${formatStatistic(hi, 2)}]${escapeHtml(displayUnit)}</strong></div>`,
+                            `<div style="display:flex;justify-content:space-between;gap:14px;"><span>区间半宽</span><strong>±${formatStatistic(hw, 2)}${escapeHtml(displayUnit)}</strong></div>`,
+                            row.sampleSize != null && Number.isFinite(row.sampleSize)
+                                ? `<div style="display:flex;justify-content:space-between;gap:14px;"><span>有效样本量 n</span><strong>${row.sampleSize} 份</strong></div>`
+                                : "",
+                            bias !== null
+                                ? `<div style="margin-top:4px;padding-top:4px;border-top:1px dashed ${tokens.border};display:flex;justify-content:space-between;gap:14px;"><span>较总体真值偏差</span><strong style="color:${Math.abs(bias) <= Math.max(hw, 1e-9) ? tokens.success : tokens.warning};">${bias >= 0 ? "+" : ""}${formatStatistic(bias, 2)}${escapeHtml(displayUnit)}${coversTruth !== null ? (coversTruth ? "（区间覆盖）" : "（区间偏离）") : ""}</strong></div>`
+                                : "",
+                            `</div>`,
+                        ].join("");
+                    },
+                },
+                tokens,
+            ),
+            xAxis: buildExecutiveValueAxis(
+                {
+                    min: normDomainMin,
+                    max: normDomainMax,
+                    splitNumber: 4,
+                    axisLabel: {
+                        hideOverlap: true,
+                        formatter: (val: number) => {
+                            const restored = val * coordDivisor;
+                            return Number.isFinite(restored)
+                                ? `${formatStatistic(restored, tickDigits)}${displayUnit}`
+                                : "";
+                        },
+                    },
+                },
+                tokens,
+            ),
+            yAxis: buildExecutiveCategoryAxis(
+                {
+                    inverse: true,
+                    data: parsedValidRows.map((item) => shortenEstimatorLabel(item.row.label, 12)),
+                    axisLabel: {
+                        color: tokens.foreground,
+                        fontWeight: 600,
+                    },
+                },
+                tokens,
+            ),
+            series: [
+                {
+                    name: "95% 置信区间",
+                    type: "custom",
+                    z: 3,
+                    renderItem: (
+                        _params: unknown,
+                        api: {
+                            value: (idx: number) => number;
+                            coord: (val: [number, number]) => [number, number];
+                        },
+                    ) => {
+                        const rowIndex = Number(api.value(0));
+                        const item = parsedValidRows[rowIndex];
+                        if (!item) return null;
+                        const lowCoord = api.coord([Number(api.value(1)), rowIndex]);
+                        const highCoord = api.coord([Number(api.value(2)), rowIndex]);
+                        const estCoord = api.coord([Number(api.value(3)), rowIndex]);
+                        if (
+                            !Number.isFinite(lowCoord[0])
+                            || !Number.isFinite(highCoord[0])
+                            || !Number.isFinite(estCoord[0])
+                            || !Number.isFinite(estCoord[1])
+                        ) {
+                            return null;
+                        }
+
+                        const tone = item.row.tone ?? "primary";
+                        const strokeColor = resolveChartToneColor(tone, tokens);
+                        const pillSurface = resolveTonePillSurface(tone, tokens);
+                        const cy = estCoord[1];
+                        const xLeft = Math.min(lowCoord[0], highCoord[0]);
+                        const xRight = Math.max(lowCoord[0], highCoord[0]);
+                        const spanWidth = Math.max(0, xRight - xLeft);
+                        const hasPositiveWhisker = Number(api.value(4)) > 0 && spanWidth >= 1;
+
+                        if (!hasPositiveWhisker) {
+                            return {
+                                type: "group",
+                                children: [
+                                    {
+                                        type: "circle",
+                                        shape: { cx: estCoord[0], cy, r: 9 },
+                                        style: {
+                                            fill: pillSurface.muted,
+                                            stroke: pillSurface.border,
+                                            lineWidth: 1.5,
+                                        },
+                                    },
+                                ],
+                            };
+                        }
+
+                        return {
+                            type: "group",
+                            children: [
+                                {
+                                    type: "rect",
+                                    shape: {
+                                        x: xLeft,
+                                        y: cy - 8,
+                                        width: spanWidth,
+                                        height: 16,
+                                        r: 4,
+                                    },
+                                    style: {
+                                        fill: pillSurface.muted,
+                                        stroke: pillSurface.border,
+                                        lineWidth: 1,
+                                    },
+                                },
+                                {
+                                    type: "line",
+                                    shape: { x1: xLeft, y1: cy, x2: xRight, y2: cy },
+                                    style: { stroke: strokeColor, lineWidth: 2.5 },
+                                },
+                                {
+                                    type: "line",
+                                    shape: { x1: xLeft, y1: cy - 6, x2: xLeft, y2: cy + 6 },
+                                    style: { stroke: strokeColor, lineWidth: 2 },
+                                },
+                                {
+                                    type: "line",
+                                    shape: { x1: xRight, y1: cy - 6, x2: xRight, y2: cy + 6 },
+                                    style: { stroke: strokeColor, lineWidth: 2 },
+                                },
+                            ],
+                        };
+                    },
+                    encode: { x: [1, 2, 3], y: 0 },
+                    data: parsedValidRows.map((item, index) => [
+                        index,
+                        item.lo / coordDivisor,
+                        item.hi / coordDivisor,
+                        item.est / coordDivisor,
+                        item.hw > 0 ? 1 : 0,
+                    ]),
+                },
+                {
+                    name: "点估计",
+                    type: "scatter",
+                    z: 5,
+                    data: parsedValidRows.map((item, index) => {
+                        const tone = item.row.tone ?? "primary";
+                        const isPrimaryEstimator = tone === "success" || tone === "primary";
+                        return {
+                            name: item.row.label,
+                            value: [item.est / coordDivisor, index],
+                            symbol: isPrimaryEstimator ? "diamond" : "circle",
+                            symbolSize: isPrimaryEstimator ? 12 : 10,
+                            itemStyle: {
+                                color: resolveChartToneColor(tone, tokens),
+                                borderColor: tokens.card,
+                                borderWidth: 2,
+                            },
+                        };
+                    }),
+                    ...(hasValidPop
+                        ? {
+                              markLine: {
+                                  silent: true,
+                                  symbol: ["none", "none"],
+                                  lineStyle: {
+                                      color: tokens.chart1,
+                                      width: 1.75,
+                                      type: "dashed",
+                                  },
+                                  label: {
+                                      show: true,
+                                      position: "start",
+                                      distance: 6,
+                                      rotate: 0,
+                                      formatter: () => `总体真值 ${formatStatistic(scaledPop, 2)}${displayUnit}`,
+                                      color: tokens.foreground,
+                                      backgroundColor: tokens.muted,
+                                      borderColor: tokens.border,
+                                      borderWidth: 1,
+                                      borderRadius: 4,
+                                      padding: [2, 6],
+                                      fontFamily: CHART_FONT_FAMILY,
+                                      fontSize: 11,
+                                  },
+                                  data: [{ xAxis: scaledPop / coordDivisor }],
+                              },
+                          }
+                        : {}),
+                },
+            ],
+        };
+    }, [parsedValidRows, hasValidPop, scaledPop, coordDivisor, normDomainMin, normDomainMax, tickDigits, displayUnit]);
 
     return (
         <div className="rounded-surface border border-border bg-card p-5" data-testid="confidence-interval-plot">
@@ -115,81 +398,14 @@ export function ConfidenceIntervalPlot({
                 </div>
             ) : (
                 <div className="space-y-3">
-                    <div>
-                        <svg
-                            viewBox={`0 0 520 ${validRows.length * 46 + 38}`}
-                            className="w-full"
-                            role="img"
-                            aria-label={`${title}森林对比图`}
-                        >
-                            {ticks.map((tick, index) => {
-                                const x = toX(tick);
-                                const label = `${formatStatistic(tick, tickDigits)}${displayUnit}`;
-                                const isWideLabel = displayUnit.length > 1 || label.length > 6;
-                                const anchor = isWideLabel
-                                    ? (index === 0 ? "start" : index === ticks.length - 1 ? "end" : "middle")
-                                    : "middle";
-                                const textX = anchor === "start"
-                                    ? Math.max(12, x - 12)
-                                    : anchor === "end"
-                                        ? Math.min(508, x + 12)
-                                        : x;
-                                return (
-                                    <g key={index}>
-                                        <line x1={x} y1={8} x2={x} y2={validRows.length * 46 + 12} stroke="var(--border)" strokeWidth="1" />
-                                        <text x={textX} y={validRows.length * 46 + 28} textAnchor={anchor} fill="var(--muted-foreground)" fontSize="12">
-                                            {label}
-                                        </text>
-                                    </g>
-                                );
-                            })}
-
-                            {hasValidPop && (
-                                <g>
-                                    <line
-                                        x1={toX(scaledPop)}
-                                        y1={4}
-                                        x2={toX(scaledPop)}
-                                        y2={validRows.length * 46 + 12}
-                                        stroke="var(--chart-1)"
-                                        strokeWidth="1.75"
-                                        strokeDasharray="4 3"
-                                    />
-                                </g>
-                            )}
-
-                            {validRows.map((row, index) => {
-                                const est = (row.estimate ?? 0) * scaleFactor;
-                                const rawHw = row.halfWidth !== null && Number.isFinite(row.halfWidth)
-                                    ? Math.max(0, row.halfWidth * scaleFactor)
-                                    : 0;
-                                const hw = Number.isFinite(rawHw) ? rawHw : 0;
-                                const lo = Number.isFinite(est - hw) ? est - hw : est;
-                                const hi = Number.isFinite(est + hw) ? est + hw : est;
-                                const cy = 26 + index * 46;
-                                const cx = toX(est);
-                                const xLeft = toX(lo);
-                                const xRight = toX(hi);
-                                const color = STROKE_COLORS[row.tone ?? "primary"];
-
-                                return (
-                                    <g key={row.key}>
-                                        <title>
-                                            {`${row.label}：点估计 ${formatStatistic(est, 2)}${displayUnit}${hw > 0 ? `，区间 [${formatStatistic(lo, 2)}, ${formatStatistic(hi, 2)}]${displayUnit}` : ""}`}
-                                        </title>
-                                        <rect x="12" y={cy - 18} width="496" height="36" rx="6" fill={index % 2 === 0 ? "var(--muted)" : "transparent"} />
-                                        {hw > 0 && (
-                                            <>
-                                                <line x1={xLeft} y1={cy} x2={xRight} y2={cy} stroke={color} strokeWidth="2.5" />
-                                                <line x1={xLeft} y1={cy - 6} x2={xLeft} y2={cy + 6} stroke={color} strokeWidth="2" />
-                                                <line x1={xRight} y1={cy - 6} x2={xRight} y2={cy + 6} stroke={color} strokeWidth="2" />
-                                            </>
-                                        )}
-                                        <circle cx={cx} cy={cy} r="5.5" fill={color} stroke="var(--card)" strokeWidth="1.5" />
-                                    </g>
-                                );
-                            })}
-                        </svg>
+                    <div className="rounded-control border border-border bg-background px-3 py-2">
+                        <EChartBox
+                            option={forestOption}
+                            height={forestHeight}
+                            fallbackWidth={520}
+                            ariaLabel={`${title}森林对比图`}
+                            testId="confidence-interval-echart"
+                        />
                     </div>
 
                     <div
@@ -209,15 +425,18 @@ export function ConfidenceIntervalPlot({
                             </thead>
                             <tbody className="divide-y divide-border">
                                 {rows.map((row) => {
-                                    const est = row.estimate !== null && Number.isFinite(row.estimate)
-                                        ? row.estimate * scaleFactor
-                                        : null;
-                                    const se = row.standardError !== null && Number.isFinite(row.standardError) && row.standardError >= 0
-                                        ? row.standardError * scaleFactor
-                                        : null;
-                                    const hw = row.halfWidth !== null && Number.isFinite(row.halfWidth) && row.halfWidth >= 0
-                                        ? row.halfWidth * scaleFactor
-                                        : null;
+                                    const est =
+                                        row.estimate !== null && Number.isFinite(row.estimate) && Number.isFinite(row.estimate * scaleFactor)
+                                            ? row.estimate * scaleFactor
+                                            : null;
+                                    const se =
+                                        row.standardError !== null && Number.isFinite(row.standardError) && row.standardError >= 0 && Number.isFinite(row.standardError * scaleFactor)
+                                            ? row.standardError * scaleFactor
+                                            : null;
+                                    const hw =
+                                        row.halfWidth !== null && Number.isFinite(row.halfWidth) && row.halfWidth >= 0 && Number.isFinite(row.halfWidth * scaleFactor)
+                                            ? row.halfWidth * scaleFactor
+                                            : null;
                                     const lo = est !== null && hw !== null && Number.isFinite(est - hw) ? est - hw : null;
                                     const hi = est !== null && hw !== null && Number.isFinite(est + hw) ? est + hw : null;
                                     return (

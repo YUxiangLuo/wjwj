@@ -1,5 +1,11 @@
 import { expect, test } from "bun:test";
-import { buildChartSvg } from "./chart-svg-export";
+import { createElement } from "react";
+import { cleanup, render } from "@testing-library/react";
+import { installDomGlobals } from "@/test-utils/dom";
+import { EChartBox } from "@/components/charts/EChartBox";
+import type { ECharts, ExecutiveChartOption } from "@/components/charts/echarts-core";
+import { buildExecutiveCategoryAxis, buildExecutiveGrid, buildExecutiveValueAxis } from "@/components/charts/echarts-theme";
+import { buildChartSvg, frameEChartSvg, resolveChartExportSvg } from "./chart-svg-export";
 
 test("signed and tiny chart exports retain visible bars and meaningful labels", () => {
     const theme = { background: "white", foreground: "black", mutedForeground: "gray", border: "gray" };
@@ -55,4 +61,74 @@ test("deviation SVG retains explicit percentage-point units and escaped standalo
     expect(svg).toContain("独立尺度，不可横比");
     expect(svg).toContain("&lt;说明&gt;&amp;");
     expect(svg).toContain('height="692"');
+});
+
+test("exports live ECharts vector SVG via exportEChartSvg and falls back cleanly to buildChartSvg when disposed", () => {
+    const dom = installDomGlobals("http://localhost/student");
+    try {
+        const chartRef = { current: null as ECharts | null };
+        const option: ExecutiveChartOption = {
+            grid: buildExecutiveGrid(),
+            xAxis: buildExecutiveCategoryAxis({ data: ["简单随机", "分层抽样"] }),
+            yAxis: buildExecutiveValueAxis(),
+            series: [{ name: "估计均值", type: "bar", data: [42.5, 43.1] }],
+        };
+        const view = render(
+            createElement(EChartBox, {
+                option,
+                height: 300,
+                fallbackWidth: 720,
+                ariaLabel: "均值对比图",
+                chartRef,
+            }),
+        );
+
+        expect(chartRef.current !== null).toBe(true);
+        const theme = {
+            background: "#ffffff",
+            foreground: "#0f172a",
+            mutedForeground: "#3e5066",
+            border: "#d5dfec",
+        };
+        const exported = resolveChartExportSvg(
+            {
+                title: "均值对比",
+                fileName: "mean.svg",
+                rows: [{ label: "简单随机", values: { value: 42.5 } }],
+                series: [{ key: "value", label: "估计均值", color: "#175cd3" }],
+                notes: ["独立尺度说明 <A>&B"],
+                echartInstance: chartRef.current,
+            },
+            theme,
+        );
+        expect(typeof exported).toBe("string");
+        expect(exported?.startsWith("<svg")).toBe(true);
+        expect(exported).toContain("均值对比");
+        expect(exported).toContain("简单随机");
+        expect(exported).toContain("&lt;A&gt;&amp;B");
+
+        view.unmount();
+        cleanup();
+
+        // After unmount, instance is disposed -> falls back cleanly to buildChartSvg
+        const fallback = resolveChartExportSvg(
+            {
+                title: "回退导出",
+                fileName: "fallback.svg",
+                rows: [{ label: "简单随机", values: { value: 42.5 } }],
+                series: [{ key: "value", label: "估计均值", color: "#175cd3" }],
+                echartInstance: chartRef.current,
+            },
+            theme,
+        );
+        expect(fallback).toContain("回退导出");
+        expect(fallback).toContain("42.50");
+
+        const framed = frameEChartSvg('<svg width="640" height="280"><path d="M0 0L10 10"/></svg>', { title: "外框包装" }, theme);
+        expect(framed).toContain('width="712"');
+        expect(framed).toContain("外框包装");
+    } finally {
+        cleanup();
+        dom.restore();
+    }
 });

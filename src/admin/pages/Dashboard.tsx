@@ -5,6 +5,7 @@ import { KpiStatCard } from "@/components/KpiStatCard";
 import { LoadingStatus } from "@/components/LoadingStatus";
 import { RichTextContent } from "@/components/RichTextContent";
 import { StatusBadge, type StatusBadgeIntent } from "@/components/StatusBadge";
+import { AdminPlatformOverviewCharts } from "@/components/charts/PortalAnalyticsCharts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
@@ -124,6 +125,10 @@ export function Dashboard() {
                             : <p className="py-8 text-center text-label text-muted-foreground">暂无已发布公告</p>}
                 </CardContent>
             </Card>
+
+            {!loading && !loadError && stats !== null && (
+                <AdminPlatformOverviewCharts stats={stats} />
+            )}
         </div>
     );
 }

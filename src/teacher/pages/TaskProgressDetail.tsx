@@ -3,6 +3,11 @@ import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Users, Clock, Search, FileEdit, Eye } from "lucide-react";
+import {
+    TaskProgressExecutiveCharts,
+    type TaskProgressFilterValue,
+    type TaskProgressStatusKey,
+} from "@/components/charts/PortalAnalyticsCharts";
 import { StatusBadge, type StatusBadgeIntent } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,37 +32,7 @@ const STATUS_CONFIG = {
 
 type StatusConfig = { label: string; color: string; intent: StatusBadgeIntent };
 
-type StatusKey = keyof typeof STATUS_CONFIG;
-const STATUS_KEYS = Object.keys(STATUS_CONFIG) as StatusKey[];
-
-const PROGRESS_COLORS: Record<StatusKey, string> = {
-    not_started: "bg-chart-1",
-    stage1: "bg-chart-3",
-    stage2: "bg-auxiliary",
-    stage3: "bg-chart-4",
-    stage4: "bg-chart-2",
-    stage5: "bg-chart-5",
-    submitted: "bg-chart-6",
-    graded: "bg-chart-7",
-    rejected: "bg-chart-8",
-};
-
-const RING_COLORS: Record<StatusKey, string> = {
-    not_started: "var(--chart-1)",
-    stage1: "var(--chart-3)",
-    stage2: "var(--auxiliary)",
-    stage3: "var(--chart-4)",
-    stage4: "var(--chart-2)",
-    stage5: "var(--chart-5)",
-    submitted: "var(--chart-6)",
-    graded: "var(--chart-7)",
-    rejected: "var(--chart-8)",
-};
-
-const CHART_SIZE = 136;
-const CHART_CENTER = CHART_SIZE / 2;
-const RING_RADIUS = 54;
-const RING_STROKE = 12;
+type StatusKey = TaskProgressStatusKey;
 
 const STATUSES_WITH_SUBMISSION: StatusKey[] = ["submitted", "graded", "rejected"];
 const IN_PROGRESS_STATUSES: StatusKey[] = ["stage1", "stage2", "stage3", "stage4", "stage5"];
@@ -69,7 +44,7 @@ export function TaskProgressDetail() {
     const [data, setData] = useState<TaskProgressData | null>(null);
     const { loading, error: loadError, run, cancel } = useAsyncLoad("任务进度加载失败");
     const [searchTerm, setSearchTerm] = useState("");
-    const [statusFilter, setStatusFilter] = useState<"all" | "not_started" | "in_progress" | "submitted" | "graded" | "rejected">("all");
+    const [statusFilter, setStatusFilter] = useState<TaskProgressFilterValue>("all");
     const [distributionOpen, setDistributionOpen] = useState(false);
 
     useEffect(() => {
@@ -135,98 +110,19 @@ export function TaskProgressDetail() {
                 </div>
             </div>
 
-            {/* Ring chart + Progress bar */}
+            {/* Executive BI Status Donut + 5-Stage Pipeline Bar */}
             {total > 0 && (
                 <div className="rounded-surface bg-muted p-4" data-testid="teacher-progress-distribution">
                     <Button variant="ghost" aria-expanded={distributionOpen} aria-controls="teacher-progress-charts" onClick={() => setDistributionOpen(open => !open)}>
                         {distributionOpen ? "收起阶段分布" : "查看阶段分布"} · {total} 名学生
                     </Button>
-                    {distributionOpen && <div id="teacher-progress-charts" className="mt-3 flex flex-wrap items-center gap-4">
-                    {/* Ring chart */}
-                    <Card className="min-w-0 flex-[0_0_13rem] border-0 bg-transparent">
-                        <CardContent className="p-3 flex flex-col items-center">
-                            <svg role="img" aria-label="学生实验状态分布环形图" width={CHART_SIZE} height={CHART_SIZE} viewBox={`0 0 ${CHART_SIZE} ${CHART_SIZE}`} className="mb-2">
-                                {(() => {
-                                    const circumference = 2 * Math.PI * RING_RADIUS;
-                                    let offset = 0;
-                                    const segments: React.ReactNode[] = [];
-
-                                    STATUS_KEYS.forEach((key) => {
-                                        const count = data.counts[key] ?? 0;
-                                        if (count === 0) return;
-                                        const pct = count / total;
-                                        const length = pct * circumference;
-                                        segments.push(
-                                            <circle
-                                                key={key}
-                                                cx={CHART_CENTER}
-                                                cy={CHART_CENTER}
-                                                r={RING_RADIUS}
-                                                fill="none"
-                                                stroke={RING_COLORS[key]}
-                                                strokeWidth={RING_STROKE}
-                                                strokeDasharray={`${length} ${circumference - length}`}
-                                                strokeDashoffset={-offset}
-                                                transform={`rotate(-90 ${CHART_CENTER} ${CHART_CENTER})`}
-                                                className="transition-colors duration-500"
-                                            />
-                                        );
-                                        offset += length;
-                                    });
-
-                                    return (
-                                        <>
-                                            <circle cx={CHART_CENTER} cy={CHART_CENTER} r={RING_RADIUS} fill="none" className="stroke-border" strokeWidth={RING_STROKE} />
-                                            {segments}
-                                            <text x={CHART_CENTER} y={CHART_CENTER - 4} textAnchor="middle" className="fill-foreground text-page-title font-bold tabular-nums" fontSize="24">{total}</text>
-                                            <text x={CHART_CENTER} y={CHART_CENTER + 15} textAnchor="middle" className="fill-muted-foreground text-meta" fontSize="12">总人数</text>
-                                        </>
-                                    );
-                                })()}
-                            </svg>
-                        </CardContent>
-                    </Card>
-
-                    {/* Distribution bar */}
-                    <Card className="min-w-0 flex-[1_1_20rem] border-0 bg-transparent">
-                        <CardContent className="p-3 flex flex-col justify-center h-full gap-3">
-                            <span className="text-label font-medium text-foreground">各阶段分布</span>
-                            <div
-                                role="img"
-                                aria-label={`各阶段人数占比：${STATUS_KEYS.filter((k) => (data.counts[k] ?? 0) > 0).map((k) => `${STATUS_CONFIG[k].label} ${data.counts[k] ?? 0} 人`).join("，")}`}
-                                className="flex h-4 rounded-control overflow-hidden bg-card"
-                            >
-                                {STATUS_KEYS.map((key) => {
-                                    const count = data.counts[key] ?? 0;
-                                    if (count === 0) return null;
-                                    const pct = (count / total) * 100;
-                                    return (
-                                        <div
-                                            key={key}
-                                            className={`${PROGRESS_COLORS[key]} transition-[width] duration-500`}
-                                            style={{ width: `${pct}%` }}
-                                            title={`${STATUS_CONFIG[key].label}: ${count}`}
-                                        />
-                                    );
-                                })}
-                            </div>
-                            <div className="grid grid-cols-[repeat(auto-fit,minmax(10.5rem,1fr))] gap-2">
-                                {STATUS_KEYS.map((key) => {
-                                    const cfg = STATUS_CONFIG[key];
-                                    const count = data.counts[key] ?? 0;
-                                    return (
-                                        <div key={key} className="flex items-center gap-1.5 text-meta">
-                                            <span aria-hidden="true" className={`w-2 h-2 shrink-0 rounded-circle ${PROGRESS_COLORS[key]}`} />
-                                            <span className="truncate text-muted-foreground">{cfg.label}</span>
-                                            <span className={`font-medium tabular-nums ${cfg.color}`}>{count}</span>
-                                            <span className="text-muted-foreground tabular-nums">({total > 0 ? Math.round((count / total) * 100) : 0}%)</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </CardContent>
-                    </Card>
-                    </div>}
+                    {distributionOpen && (
+                        <TaskProgressExecutiveCharts
+                            counts={data.counts}
+                            statusFilter={statusFilter}
+                            onSelectStatusFilter={setStatusFilter}
+                        />
+                    )}
                 </div>
             )}
 
@@ -251,14 +147,19 @@ export function TaskProgressDetail() {
                                 className="pl-9 bg-card border-input text-foreground placeholder:text-muted-foreground h-8 text-label"
                             />
                         </div>
-                        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
-                            <SelectTrigger aria-label="按实验状态筛选学生" className="h-8 w-36 bg-card text-label">
+                        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as TaskProgressFilterValue)}>
+                            <SelectTrigger aria-label="按实验状态筛选学生" className="h-8 w-44 bg-card text-label">
                                 <SelectValue placeholder="全部状态" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">全部状态</SelectItem>
                                 <SelectItem value="not_started">未开始</SelectItem>
                                 <SelectItem value="in_progress">实训进行中</SelectItem>
+                                <SelectItem value="stage1">阶段 1 · 商业问卷设计</SelectItem>
+                                <SelectItem value="stage2">阶段 2 · 首轮试投发放</SelectItem>
+                                <SelectItem value="stage3">阶段 3 · 回收质检与诊断</SelectItem>
+                                <SelectItem value="stage4">阶段 4 · 调整思路与二轮投放</SelectItem>
+                                <SelectItem value="stage5">阶段 5 · 商务分析与决策报告</SelectItem>
                                 <SelectItem value="submitted">已提交待批改</SelectItem>
                                 <SelectItem value="graded">已批改</SelectItem>
                                 <SelectItem value="rejected">已驳回</SelectItem>

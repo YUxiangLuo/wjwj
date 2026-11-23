@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Megaphone, ChevronRight, Circle, Clock, AlertCircle, RefreshCw, School, BookOpen, PenLine, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,11 +7,13 @@ import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RichTextContent } from "@/components/RichTextContent";
 import { KpiStatCard } from "@/components/KpiStatCard";
+import { TeacherActiveTasksStructureCard } from "@/components/charts/PortalAnalyticsCharts";
 import { teacherApi, type TeacherStats, type TeacherAnnouncement } from "../api-client";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDateTimeDisplay } from "@/utils/format";
 
 export function Dashboard() {
+    const navigate = useNavigate();
     const [stats, setStats] = useState<TeacherStats["stats"]>([]);
     const [activeTasks, setActiveTasks] = useState<TeacherStats["activeTasks"]>([]);
     const [loading, setLoading] = useState(true);
@@ -188,6 +190,13 @@ export function Dashboard() {
                     })}
                 </CardContent>
             </Card>
+
+            {!loading && !loadError && activeTasks.length > 0 && (
+                <TeacherActiveTasksStructureCard
+                    activeTasks={activeTasks}
+                    onSelectTask={(id) => navigate(`/task/${id}/progress`)}
+                />
+            )}
 
             <Dialog open={showAnnouncements} onOpenChange={setShowAnnouncements}>
                 <DialogContent className="flex max-h-[80vh] max-w-lg flex-col border-border bg-card text-foreground">

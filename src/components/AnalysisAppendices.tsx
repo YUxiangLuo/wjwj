@@ -1,4 +1,5 @@
 import type { SavedAnalysisView } from "@/domain/variables/types";
+import { AnalysisResultChart } from "@/components/charts/AnalysisResultChart";
 
 const value = (input: number | null | undefined, digits = 4) => (input == null || !Number.isFinite(input)) ? "—" : input.toLocaleString("zh-CN", {
     maximumFractionDigits: digits,
@@ -132,6 +133,11 @@ export function AnalysisAppendices({ records }: { records: SavedAnalysisView[] }
             </p>
             <p className="mt-1 break-all text-meta text-muted-foreground">数据来源标识 <span className="font-mono">{record.source}</span> · 字典修订号 {record.dictionaryRevision} · 抽样代次 {record.samplingGeneration} · 算法版本 {record.algorithmVersion}</p>
             {record.stale && <p className="mt-2 text-label text-warning">此结果来源已过期，仅供查看；请移除引用或重新运行后再提交。</p>}
+            <AnalysisResultChart
+                record={record}
+                className="mt-3"
+                testId={`appendix-result-chart-${record.id}`}
+            />
             <div
                 role="region"
                 aria-label={`附录 ${index + 1} 数据表`}

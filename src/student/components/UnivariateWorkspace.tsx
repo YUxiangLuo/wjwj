@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AnalysisResultTable } from "@/components/AnalysisAppendices";
+import { AnalysisResultChart } from "@/components/charts/AnalysisResultChart";
 import type { AnalysisConfig, SavedAnalysisView, VariableDictionary } from "@/domain/variables/types";
 import type { ExperimentWaveView } from "@/domain/experiment/types";
 import { isCompletedSamplingResult, SAMPLING_METHODS } from "@/lib/sampling-policy";
@@ -590,6 +591,11 @@ export function UnivariateWorkspace({
                                         当前分析结果有效观测数为 0（缺失 {record.result.missingCount}）：所选变量在本轮回收答卷中尚无有效值（可能未绑定问卷题目或全部缺失）。
                                     </p>
                                 )}
+                                <AnalysisResultChart
+                                    record={record}
+                                    className="mt-3"
+                                    testId={`univariate-result-chart-${record.id}`}
+                                />
                                 <div
                                     role="region"
                                     aria-label={`分析卡片 ${record.id} 结果表`}
