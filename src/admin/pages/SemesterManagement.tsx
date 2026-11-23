@@ -30,21 +30,37 @@ export function SemesterManagement() {
     const [newSemesterName, setNewSemesterName] = useState("");
     const [setAsCurrent, setSetAsCurrent] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [settingCurrentId, setSettingCurrentId] = useState<number | null>(null);
     const [editingSemester, setEditingSemester] = useState<Semester | null>(null);
     const [editName, setEditName] = useState("");
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<"all" | "current" | "history">("all");
 
     useEffect(() => {
-        loadSemesters();
+        void loadSemesters();
     }, []);
 
     async function loadSemesters() {
         return run(async () => requireApiData(await semesterApi.list(), "学期列表加载失败"), setSemesters);
     }
 
+    function openAddModal() {
+        setNewSemesterName("");
+        setSetAsCurrent(false);
+        setShowAddModal(true);
+    }
+
+    function handleAddModalOpenChange(open: boolean) {
+        if (submitting) return;
+        if (!open) {
+            setNewSemesterName("");
+            setSetAsCurrent(false);
+        }
+        setShowAddModal(open);
+    }
+
     async function handleAddSemester() {
-        if (!newSemesterName.trim()) return;
+        if (!newSemesterName.trim() || submitting) return;
 
         // Keep the recommendation aligned with the academic-year names used by
         // the dashboard and the default teaching data.
@@ -70,7 +86,8 @@ export function SemesterManagement() {
                 setNewSemesterName("");
                 setSetAsCurrent(false);
                 setShowAddModal(false);
-                loadSemesters();
+                toast.success(setAsCurrent ? "学期已创建并设为当前学期" : "学期已创建");
+                void loadSemesters();
             } else {
                 toast.error(res.error?.message ?? "创建失败");
             }
@@ -79,12 +96,19 @@ export function SemesterManagement() {
         }
     }
 
-    async function handleSetCurrent(id: number) {
-        const res = await semesterApi.setCurrent(id);
-        if (res.success) {
-            loadSemesters();
-        } else {
-            toast.error(res.error?.message ?? "设置失败");
+    async function handleSetCurrent(semester: Semester) {
+        if (settingCurrentId !== null) return;
+        setSettingCurrentId(semester.id);
+        try {
+            const res = await semesterApi.setCurrent(semester.id);
+            if (res.success) {
+                toast.success(`已将「${semester.name}」设为当前学期`);
+                void loadSemesters();
+            } else {
+                toast.error(res.error?.message ?? "设置失败");
+            }
+        } finally {
+            setSettingCurrentId(null);
         }
     }
 
@@ -95,7 +119,7 @@ export function SemesterManagement() {
     }
 
     async function handleEditSemester() {
-        if (!editingSemester || !editName.trim()) return;
+        if (!editingSemester || !editName.trim() || submitting) return;
 
         setSubmitting(true);
         try {
@@ -103,7 +127,8 @@ export function SemesterManagement() {
             if (res.success) {
                 setShowEditModal(false);
                 setEditingSemester(null);
-                loadSemesters();
+                toast.success("学期名称已更新");
+                void loadSemesters();
             } else {
                 toast.error(res.error?.message ?? "更新失败");
             }
@@ -138,7 +163,8 @@ export function SemesterManagement() {
 
         const res = await semesterApi.delete(semester.id);
         if (res.success) {
-            loadSemesters();
+            toast.success("学期已删除");
+            void loadSemesters();
         } else {
             toast.error(res.error?.message ?? "删除失败");
         }
@@ -161,6 +187,13 @@ export function SemesterManagement() {
         };
     }, [semesters]);
 
+    const hasFilters = Boolean(searchTerm.trim()) || statusFilter !== "all";
+
+    const clearFilters = () => {
+        setSearchTerm("");
+        setStatusFilter("all");
+    };
+
     const filteredSemesters = useMemo(() => {
         const keyword = searchTerm.trim().toLowerCase();
         return semesters.filter((semester) => {
@@ -173,48 +206,56 @@ export function SemesterManagement() {
     }, [semesters, searchTerm, statusFilter]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-5">
             <PageHeader border={false}>
                 <div>
                     <h2 className="text-subheading font-semibold text-foreground">学期管理</h2>
-                    <p className="text-label text-muted-foreground mt-1">维护学期信息并标记当前学期。</p>
+                    <p className="mt-1 text-label text-muted-foreground">维护教学学年学期档案，指定全平台默认活跃学期。</p>
                 </div>
-                <Button data-testid="semester-create-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary-hover text-primary-foreground ">
-                    <Plus className="w-4 h-4 mr-1" />
+                <Button data-testid="semester-create-open" onClick={openAddModal}>
+                    <Plus className="mr-1 h-4 w-4" />
                     创建学期
                 </Button>
             </PageHeader>
 
-            <dl aria-label="学期概览" className="grid grid-cols-4 gap-5 border-b border-border pb-5">
+            <dl aria-label="学期概览" className="grid grid-cols-4 gap-4 border-b border-border pb-4">
                 {[["学期总数", summary.total], ["当前学期", summary.currentName], ["历史学期", summary.history], ["已建班学期", summary.withClasses]].map(([label, value]) => (
-                    <div key={label}><dt className="text-meta text-muted-foreground">{label}</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : value}</dd></div>
+                    <div key={label}>
+                        <dt className="text-meta text-muted-foreground">{label}</dt>
+                        <dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : value}</dd>
+                    </div>
                 ))}
             </dl>
 
             <Card>
-                <PageHeader as={CardHeader}>
+                <PageHeader as={CardHeader} className="flex-wrap">
                     <div>
                         <CardTitle className="text-body text-foreground">学期列表</CardTitle>
-                        <p className="text-meta text-muted-foreground mt-1">{loading || loadError ? "共 - 条数据" : `共 ${filteredSemesters.length} 条数据`}</p>
+                        <p className="mt-1 text-meta text-muted-foreground">{loading || loadError ? "共 - 条数据" : `共 ${filteredSemesters.length} 条数据`}</p>
                     </div>
-                    <div className="flex flex-wrap gap-3 flex-row w-auto">
+                    <div className="flex w-auto flex-row flex-wrap items-center gap-2.5">
                         <Input
                             placeholder="搜索学期名称..."
                             aria-label="搜索学期名称"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="bg-card border-input text-foreground placeholder:text-muted-foreground w-64 focus:border-ring focus:ring-ring"
+                            className="w-56 border-input bg-card text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring"
                         />
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "current" | "history")}>
-                            <SelectTrigger aria-label="按学期状态筛选" className="bg-card border-input text-foreground w-36 focus:ring-ring">
+                            <SelectTrigger aria-label="按学期状态筛选" className="w-36 border-input bg-card text-foreground focus:ring-ring">
                                 <SelectValue placeholder="状态筛选" />
                             </SelectTrigger>
-                            <SelectContent className="bg-card border-border text-foreground">
+                            <SelectContent className="border-border bg-card text-foreground">
                                 <SelectItem value="all">全部状态</SelectItem>
                                 <SelectItem value="current">当前学期</SelectItem>
                                 <SelectItem value="history">历史学期</SelectItem>
                             </SelectContent>
                         </Select>
+                        {hasFilters && (
+                            <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
+                                清除筛选
+                            </Button>
+                        )}
                     </div>
                 </PageHeader>
                 <CardContent className="pt-0">
@@ -224,67 +265,90 @@ export function SemesterManagement() {
                         <Table aria-label="学期列表">
                             <TableHeader>
                                 <TableRow className="border-border">
-                                    <TableHead className="text-muted-foreground">学期名称</TableHead>
-                                    <TableHead className="text-muted-foreground">状态</TableHead>
-                                    <TableHead className="text-muted-foreground">班级数量</TableHead>
-                                    <TableHead className="text-muted-foreground">创建时间</TableHead>
-                                    <TableHead className="text-muted-foreground text-right">操作</TableHead>
+                                    <TableHead className="px-3 text-muted-foreground">学期名称</TableHead>
+                                    <TableHead className="px-3 text-muted-foreground">状态</TableHead>
+                                    <TableHead className="px-3 text-muted-foreground">班级数量</TableHead>
+                                    <TableHead className="px-3 text-muted-foreground">创建时间</TableHead>
+                                    <TableHead className="px-3 text-right text-muted-foreground">操作</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filteredSemesters.map((semester) => (
-                                    <TableRow key={semester.id} className="border-border hover:bg-muted transition-none">
-                                        <TableCell className="font-medium text-foreground">{semester.name}</TableCell>
-                                        <TableCell>
-                                            {semester.isCurrent ? (
-                                                <StatusBadge intent="success">当前学期</StatusBadge>
-                                            ) : (
-                                                <StatusBadge intent="neutral">历史学期</StatusBadge>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-foreground tabular-nums">
-                                            <div className="flex items-center gap-2">
-                                                <School className="w-3.5 h-3.5 text-muted-foreground" />
-                                                {semester.classCount}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground">{formatDate(semester.createdAt)}</TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                {!semester.isCurrent && (
-                                                    <Button data-testid={`semester-set-current-${semester.id}`} variant="ghost" size="sm" onClick={() => handleSetCurrent(semester.id)} className="text-muted-foreground hover:text-success hover:bg-success-muted h-8">
-                                                        <Star className="w-3.5 h-3.5 mr-1.5" />
-                                                        设为当前
-                                                    </Button>
+                                {filteredSemesters.map((semester) => {
+                                    const blockers = deleteBlockers(semester);
+                                    return (
+                                        <TableRow key={semester.id} className="border-border transition-none hover:bg-muted">
+                                            <TableCell className="px-3 font-medium text-foreground">{semester.name}</TableCell>
+                                            <TableCell className="px-3">
+                                                {semester.isCurrent ? (
+                                                    <StatusBadge intent="success">当前学期</StatusBadge>
+                                                ) : (
+                                                    <StatusBadge intent="neutral">历史学期</StatusBadge>
                                                 )}
-                                                <Button data-testid={`semester-edit-open-${semester.id}`} variant="ghost" size="sm" onClick={() => openEdit(semester)} className="text-muted-foreground hover:text-primary hover:bg-primary-muted h-8">
-                                                    <Pencil className="w-3.5 h-3.5 mr-1.5" />
-                                                    编辑
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    data-testid={`semester-delete-${semester.id}`}
-                                                    onClick={() => handleDelete(semester)}
-                                                    className="text-muted-foreground hover:text-destructive hover:bg-destructive-muted h-8"
-                                                    disabled={deleteBlockers(semester).length > 0}
-                                                    title={deleteBlockers(semester).length > 0 ? `已有 ${deleteBlockers(semester).join("、")}，无法删除` : "删除学期"}
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                                                    删除
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                                            </TableCell>
+                                            <TableCell className="px-3 tabular-nums text-foreground">
+                                                <div className="flex items-center gap-1.5">
+                                                    <School className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                                                    {semester.classCount}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="px-3 tabular-nums text-muted-foreground">{formatDate(semester.createdAt)}</TableCell>
+                                            <TableCell className="px-3 text-right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    {!semester.isCurrent && (
+                                                        <Button
+                                                            data-testid={`semester-set-current-${semester.id}`}
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            disabled={settingCurrentId !== null}
+                                                            onClick={() => void handleSetCurrent(semester)}
+                                                            className="h-8 px-2 text-muted-foreground hover:bg-success-muted hover:text-success"
+                                                        >
+                                                            <Star className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+                                                            设为当前
+                                                        </Button>
+                                                    )}
+                                                    <Button
+                                                        data-testid={`semester-edit-open-${semester.id}`}
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => openEdit(semester)}
+                                                        className="h-8 px-2 text-muted-foreground hover:bg-primary-muted hover:text-primary"
+                                                    >
+                                                        <Pencil className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+                                                        编辑
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        data-testid={`semester-delete-${semester.id}`}
+                                                        onClick={() => void handleDelete(semester)}
+                                                        className="h-8 px-2 text-muted-foreground hover:bg-destructive-muted hover:text-destructive"
+                                                        disabled={blockers.length > 0}
+                                                        title={blockers.length > 0 ? `已有 ${blockers.join("、")}，无法删除` : "删除学期"}
+                                                    >
+                                                        <Trash2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+                                                        删除
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
                                 {filteredSemesters.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center py-16 text-muted-foreground">
-                                            <div className="flex flex-col items-center gap-2">
-                                                <div className="w-12 h-12 rounded-control bg-card border border-border flex items-center justify-center">
-                                                    <Search className="w-5 h-5 text-muted-foreground" />
+                                        <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
+                                            <div className="flex flex-col items-center gap-2.5">
+                                                <div className="flex h-11 w-11 items-center justify-center rounded-control border border-border bg-muted">
+                                                    <Search className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
                                                 </div>
-                                                <p>暂无符合条件的数据</p>
+                                                <p className="font-medium text-foreground">
+                                                    {hasFilters ? "未找到符合筛选条件的学期" : "暂无符合条件的数据"}
+                                                </p>
+                                                {hasFilters && (
+                                                    <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
+                                                        清除筛选
+                                                    </Button>
+                                                )}
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -295,78 +359,98 @@ export function SemesterManagement() {
                 </CardContent>
             </Card>
 
-            <Dialog open={showAddModal} onOpenChange={(open) => { if (!submitting) setShowAddModal(open); }}>
-                <DialogContent className="bg-card border-border text-foreground max-w-[425px]" showCloseButton={!submitting}>
-                    <DialogHeader>
-                        <DialogTitle className="text-foreground">创建学期</DialogTitle>
-                        <DialogDescription className="text-muted-foreground">用于组织班级和教学任务</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-5 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="semesterName" className="text-foreground">学期名称</Label>
-                            <Input
-                                id="semesterName"
-                                data-testid="semester-create-name"
-                                placeholder="例如：2026-2027-1"
-                                value={newSemesterName}
-                                onChange={(e) => setNewSemesterName(e.target.value)}
-                                className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
-                            />
-                            <p className="text-meta text-muted-foreground">建议格式：YYYY-YYYY-1 或 YYYY-YYYY-2（例如 2026-2027-1）</p>
-                        </div>
-                        <div className="flex items-center justify-between p-3 rounded-surface border border-border bg-background">
-                            <div className="space-y-0.5">
-                                <Label htmlFor="setAsCurrent" className="text-body text-foreground cursor-pointer">设为当前学期</Label>
-                                <p className="text-meta text-muted-foreground">创建后设为默认学期</p>
+            <Dialog open={showAddModal} onOpenChange={handleAddModalOpenChange}>
+                <DialogContent className="border-border bg-card text-foreground" showCloseButton={!submitting}>
+                    <form onSubmit={(event) => { event.preventDefault(); void handleAddSemester(); }} className="space-y-4">
+                        <DialogHeader>
+                            <DialogTitle className="text-foreground">创建学期</DialogTitle>
+                            <DialogDescription className="text-muted-foreground">用于组织班级和教学任务，名称限 1–20 个字符。</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-2">
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="semesterName" className="text-foreground">学期名称</Label>
+                                    <span className="text-meta tabular-nums text-muted-foreground">{newSemesterName.trim().length}/20</span>
+                                </div>
+                                <Input
+                                    id="semesterName"
+                                    data-testid="semester-create-name"
+                                    placeholder="例如：2026-2027-1"
+                                    maxLength={20}
+                                    disabled={submitting}
+                                    value={newSemesterName}
+                                    onChange={(e) => setNewSemesterName(e.target.value)}
+                                    className="border-input bg-card text-foreground placeholder:text-muted-foreground focus:border-ring"
+                                />
+                                <p className={newSemesterName.trim() && isRecommendedSemesterName(newSemesterName) ? "text-meta text-success" : "text-meta text-muted-foreground"}>
+                                    {newSemesterName.trim() && isRecommendedSemesterName(newSemesterName)
+                                        ? "✓ 符合推荐学年学期格式"
+                                        : "建议格式：YYYY-YYYY-1 或 YYYY-YYYY-2（例如 2026-2027-1）"}
+                                </p>
                             </div>
-                            <Switch
-                                id="setAsCurrent"
-                                checked={setAsCurrent}
-                                onCheckedChange={setSetAsCurrent}
-                                className="data-[state=checked]:bg-primary"
-                            />
+                            <div className="flex items-center justify-between rounded-surface border border-border bg-background p-3">
+                                <div className="space-y-0.5">
+                                    <Label htmlFor="setAsCurrent" className="cursor-pointer text-body text-foreground">设为当前学期</Label>
+                                    <p className="text-meta text-muted-foreground">创建后立即切换为默认教学学期</p>
+                                </div>
+                                <Switch
+                                    id="setAsCurrent"
+                                    disabled={submitting}
+                                    checked={setAsCurrent}
+                                    onCheckedChange={setSetAsCurrent}
+                                    className="data-[state=checked]:bg-primary"
+                                />
+                            </div>
                         </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setShowAddModal(false)} disabled={submitting} className="text-muted-foreground hover:text-foreground hover:bg-muted">
-                            取消
-                        </Button>
-                        <Button data-testid="semester-create-submit" onClick={handleAddSemester} disabled={submitting || !newSemesterName.trim()} className="bg-primary hover:bg-primary-hover text-primary-foreground">
-                            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            确认创建
-                        </Button>
-                    </DialogFooter>
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => handleAddModalOpenChange(false)} disabled={submitting} className="text-muted-foreground hover:bg-muted hover:text-foreground">
+                                取消
+                            </Button>
+                            <Button type="submit" data-testid="semester-create-submit" disabled={submitting || !newSemesterName.trim()}>
+                                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
+                                确认创建
+                            </Button>
+                        </DialogFooter>
+                    </form>
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={showEditModal} onOpenChange={(open) => { if (!submitting) setShowEditModal(open); }}>
-                <DialogContent className="bg-card border-border text-foreground max-w-[425px]" showCloseButton={!submitting}>
-                    <DialogHeader>
-                        <DialogTitle className="text-foreground">编辑学期</DialogTitle>
-                        <DialogDescription className="text-muted-foreground">修改学期名称</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="editSemesterName" className="text-foreground">学期名称</Label>
-                            <Input
-                                id="editSemesterName"
-                                data-testid="semester-edit-name"
-                                placeholder="例如：2026-2027-1"
-                                value={editName}
-                                onChange={(e) => setEditName(e.target.value)}
-                                className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
-                            />
+            <Dialog open={showEditModal} onOpenChange={(open) => { if (!submitting) { setShowEditModal(open); if (!open) setEditingSemester(null); } }}>
+                <DialogContent className="border-border bg-card text-foreground" showCloseButton={!submitting}>
+                    <form onSubmit={(event) => { event.preventDefault(); void handleEditSemester(); }} className="space-y-4">
+                        <DialogHeader>
+                            <DialogTitle className="text-foreground">编辑学期</DialogTitle>
+                            <DialogDescription className="text-muted-foreground">修改学期名称（1–20 个字符）。</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-2">
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="editSemesterName" className="text-foreground">学期名称</Label>
+                                    <span className="text-meta tabular-nums text-muted-foreground">{editName.trim().length}/20</span>
+                                </div>
+                                <Input
+                                    id="editSemesterName"
+                                    data-testid="semester-edit-name"
+                                    placeholder="例如：2026-2027-1"
+                                    maxLength={20}
+                                    disabled={submitting}
+                                    value={editName}
+                                    onChange={(e) => setEditName(e.target.value)}
+                                    className="border-input bg-card text-foreground placeholder:text-muted-foreground focus:border-ring"
+                                />
+                                <p className="text-meta text-muted-foreground">建议格式：YYYY-YYYY-1 或 YYYY-YYYY-2（例如 2026-2027-1）</p>
+                            </div>
                         </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setShowEditModal(false)} disabled={submitting} className="text-muted-foreground hover:text-foreground hover:bg-muted">
-                            取消
-                        </Button>
-                        <Button data-testid="semester-edit-submit" onClick={handleEditSemester} disabled={submitting || !editName.trim()} className="bg-primary hover:bg-primary-hover text-primary-foreground">
-                            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            保存
-                        </Button>
-                    </DialogFooter>
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => { setShowEditModal(false); setEditingSemester(null); }} disabled={submitting} className="text-muted-foreground hover:bg-muted hover:text-foreground">
+                                取消
+                            </Button>
+                            <Button type="submit" data-testid="semester-edit-submit" disabled={submitting || !editName.trim()}>
+                                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
+                                保存
+                            </Button>
+                        </DialogFooter>
+                    </form>
                 </DialogContent>
             </Dialog>
             {dialog}

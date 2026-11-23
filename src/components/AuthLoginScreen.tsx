@@ -1,5 +1,5 @@
-import type { FormEvent } from "react";
-import { BarChart3, CheckCircle2, Filter, Loader2, RefreshCw, TrendingUp } from "lucide-react";
+import { useState, type FormEvent, type KeyboardEvent } from "react";
+import { AlertTriangle, BarChart3, CheckCircle2, Eye, EyeOff, Filter, Loader2, RefreshCw, TrendingUp } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,15 +56,32 @@ export function AuthLoginScreen({
     onSubmit,
 }: AuthLoginScreenProps) {
     const errorId = `${portal}-login-error`;
+    const capsLockId = `${portal}-login-capslock`;
+    const [showPassword, setShowPassword] = useState(false);
+    const [capsLockOn, setCapsLockOn] = useState(false);
+
+    const handlePasswordKeyEvent = (event: KeyboardEvent<HTMLInputElement>) => {
+        setCapsLockOn(event.getModifierState("CapsLock"));
+    };
+
+    const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
+        setShowPassword(false);
+        onSubmit(event);
+    };
+
+    const passwordDescribedBy = [
+        error ? errorId : null,
+        capsLockOn ? capsLockId : null,
+    ].filter(Boolean).join(" ") || undefined;
 
     return (
-        <main className="grid min-h-screen grid-cols-[48%_52%] bg-background font-sans text-foreground">
-            <div className="relative flex flex-col justify-between overflow-hidden border-r border-navigation-border bg-navigation p-10 text-navigation-foreground">
+        <main className="grid min-h-screen grid-cols-[50%_50%] bg-background font-sans text-foreground">
+            <div className="relative flex flex-col justify-between overflow-hidden border-r border-navigation-border bg-navigation px-7 py-6 text-navigation-foreground">
                 <div aria-hidden="true" className="institutional-grid absolute inset-0" />
 
                 <div className="relative z-20 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 text-subheading font-semibold tracking-tight text-navigation-foreground">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-control border border-navigation-border bg-navigation-active text-navigation-active-foreground">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-navigation-border bg-navigation-active text-navigation-active-foreground">
                             <BarChart3 className="h-5 w-5" />
                         </div>
                         <div>
@@ -74,8 +91,8 @@ export function AuthLoginScreen({
                     </div>
                 </div>
 
-                <div className="relative z-20 my-8 flex flex-col justify-center space-y-6">
-                    <div className="space-y-3">
+                <div className="relative z-20 my-3 flex flex-col justify-center space-y-4">
+                    <div className="space-y-2.5">
                         <span className="inline-flex items-center gap-2 rounded-control border border-navigation-border bg-navigation-hover px-3 py-1 text-meta font-medium text-navigation-muted">
                             <CheckCircle2 className="h-4 w-4 text-navigation-foreground" />
                             全闭环商业市场调研与抽样决策实训
@@ -84,20 +101,20 @@ export function AuthLoginScreen({
                             从首轮试投质检<br />
                             <span className="text-navigation-muted">到稳健商业决策闭环</span>
                         </h1>
-                        <p className="max-w-xl text-body text-navigation-muted">
+                        <p className="max-w-xl text-label text-navigation-muted">
                             真实演练商业问卷设计、首轮试投发放、异常废卷清洗、无回答偏倚诊断与二轮自适应抽样调优，用高质量样本数据支撑定价、留存与容量管理决策。
                         </p>
                     </div>
 
                     {/* Executive Simulation Sandbox Preview Card */}
-                    <div aria-hidden="true" className="rounded-surface border border-navigation-border bg-navigation-hover p-5">
-                        <div className="mb-3 flex items-center justify-between border-b border-navigation-border pb-3">
-                            <span className="text-meta font-semibold text-navigation-foreground">商业调研演进沙盘 · Wave 1 试投 → Wave 2 调优</span>
-                            <span className="rounded-control border border-navigation-border bg-navigation-active px-2.5 py-0.5 text-meta tabular-nums text-navigation-active-foreground">
-                                有效样本达标率 100%
+                    <div aria-hidden="true" className="rounded-surface border border-navigation-border bg-navigation-hover p-3.5">
+                        <div className="mb-2.5 flex items-center justify-between gap-2 border-b border-navigation-border pb-2">
+                            <span className="truncate text-meta font-semibold text-navigation-foreground">商业调研演进沙盘 · Wave 1 → Wave 2</span>
+                            <span className="shrink-0 whitespace-nowrap rounded-control border border-navigation-border bg-navigation-active px-2 py-0.5 text-meta tabular-nums text-navigation-active-foreground">
+                                有效样本达标 100%
                             </span>
                         </div>
-                        <svg viewBox="0 0 460 112" className="h-28 w-full" role="presentation">
+                        <svg viewBox="0 0 460 112" className="h-24 w-full" role="presentation">
                             <rect x="0" y="10" width="138" height="92" rx="8" fill="var(--navigation)" stroke="var(--navigation-border)" />
                             <text x="12" y="30" fill="var(--navigation-muted)" fontSize="12">Wave 1 首轮试投漏斗</text>
                             <rect x="12" y="42" width="110" height="10" rx="4" fill="var(--chart-2)" />
@@ -128,14 +145,14 @@ export function AuthLoginScreen({
                         </svg>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-2.5">
                         {workflowPillars.map(({ icon: Icon, label, detail }) => (
-                            <div key={label} className="flex items-start gap-3 rounded-surface border border-navigation-border bg-navigation-hover px-3.5 py-3">
-                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-navigation-border bg-navigation-active text-navigation-active-foreground">
+                            <div key={label} className="flex items-start gap-2.5 rounded-surface border border-navigation-border bg-navigation-hover px-3 py-2.5">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control border border-navigation-border bg-navigation-active text-navigation-active-foreground">
                                     <Icon className="h-4 w-4" />
                                 </div>
                                 <div className="min-w-0">
-                                    <span className="block text-label font-semibold text-navigation-foreground">{label}</span>
+                                    <span className="block whitespace-nowrap text-label font-semibold text-navigation-foreground">{label}</span>
                                     <span className="block text-meta text-navigation-muted">{detail}</span>
                                 </div>
                             </div>
@@ -143,15 +160,15 @@ export function AuthLoginScreen({
                     </div>
                 </div>
 
-                <div className="relative z-20 flex items-center justify-between text-meta text-navigation-muted">
-                    <span>© 2026 Business Statistics Virtual Simulation Platform</span>
-                    <span>高校经管与商务统计实训系统</span>
+                <div className="relative z-20 flex items-center justify-between gap-3 text-meta text-navigation-muted">
+                    <span className="truncate">© 2026 Business Statistics Studio</span>
+                    <span className="shrink-0">高校经管与商务统计实训系统</span>
                 </div>
             </div>
 
-            <div className="relative flex flex-col items-center justify-center bg-background p-10">
-                <div className="w-full max-w-md rounded-surface border border-border bg-card p-8">
-                    <div className="mb-7 space-y-2 border-b border-border pb-5">
+            <div className="relative flex flex-col items-center justify-center bg-background px-7 py-6">
+                <div className="w-full max-w-md rounded-surface border border-border bg-card p-7">
+                    <div className="mb-5 space-y-1.5 border-b border-border pb-4">
                         <span className="inline-block rounded-control border border-primary-border bg-primary-muted px-2.5 py-0.5 text-meta font-semibold tracking-wider text-primary">
                             {portalBadgeLabels[portal]}
                         </span>
@@ -159,9 +176,9 @@ export function AuthLoginScreen({
                         <p className="text-label text-muted-foreground">{description}</p>
                     </div>
 
-                    <form onSubmit={onSubmit} className="space-y-5">
-                        <div className="space-y-4">
-                            <div className="space-y-2">
+                    <form onSubmit={handleFormSubmit} className="space-y-4">
+                        <div className="space-y-3.5">
+                            <div className="space-y-1.5">
                                 <Label htmlFor="username" className="text-label font-medium text-foreground">
                                     {accountLabel}
                                 </Label>
@@ -178,35 +195,57 @@ export function AuthLoginScreen({
                                     className="h-11 border-input bg-card"
                                 />
                             </div>
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between">
+                            <div className="space-y-1.5">
+                                <div className="flex flex-wrap items-baseline justify-between gap-2">
                                     <Label htmlFor="password" className="text-label font-medium text-foreground">密码</Label>
-                                    <span className="text-meta font-medium text-primary">{resetHint}</span>
+                                    <span className="text-meta text-muted-foreground">{resetHint}</span>
                                 </div>
-                                <Input
-                                    id="password"
-                                    data-testid={`${portal}-login-password`}
-                                    type="password"
-                                    placeholder="请输入密码"
-                                    value={password}
-                                    disabled={loading}
-                                    onChange={(event) => onPasswordChange(event.target.value)}
-                                    aria-invalid={error ? true : undefined}
-                                    aria-describedby={error ? errorId : undefined}
-                                    autoComplete="current-password"
-                                    className="h-11 border-input bg-card"
-                                />
+                                <div className="relative">
+                                    <Input
+                                        id="password"
+                                        data-testid={`${portal}-login-password`}
+                                        type={showPassword ? "text" : "password"}
+                                        placeholder="请输入密码"
+                                        value={password}
+                                        disabled={loading}
+                                        onChange={(event) => onPasswordChange(event.target.value)}
+                                        onKeyDown={handlePasswordKeyEvent}
+                                        onKeyUp={handlePasswordKeyEvent}
+                                        onBlur={() => setCapsLockOn(false)}
+                                        aria-invalid={error ? true : undefined}
+                                        aria-describedby={passwordDescribedBy}
+                                        autoComplete="current-password"
+                                        className="h-11 border-input bg-card pr-10"
+                                    />
+                                    <button
+                                        type="button"
+                                        data-testid={`${portal}-login-password-toggle`}
+                                        aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                                        aria-pressed={showPassword}
+                                        disabled={loading}
+                                        onClick={() => setShowPassword((prev) => !prev)}
+                                        className="absolute inset-y-1 right-1 inline-flex w-9 items-center justify-center rounded-control text-muted-foreground outline-none transition-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                                    >
+                                        {showPassword ? <EyeOff aria-hidden="true" className="h-4 w-4" /> : <Eye aria-hidden="true" className="h-4 w-4" />}
+                                    </button>
+                                </div>
+                                {capsLockOn && (
+                                    <div id={capsLockId} role="status" className="flex items-center gap-2 rounded-control border border-warning-border bg-warning-muted px-2.5 py-1.5 text-meta text-warning">
+                                        <AlertTriangle aria-hidden="true" className="h-4 w-4 shrink-0" />
+                                        <span>检测到已开启大写锁定（Caps Lock），请注意密码大小写</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
                         {error && (
-                            <div id={errorId} role="alert" aria-atomic="true" className="flex items-center gap-3 rounded-surface border border-destructive-border bg-destructive-muted p-3.5 text-label text-destructive">
+                            <div id={errorId} role="alert" aria-atomic="true" className="flex items-center gap-3 rounded-surface border border-destructive-border bg-destructive-muted p-3 text-label text-destructive">
                                 <div aria-hidden="true" className="h-2 w-2 shrink-0 rounded-circle bg-destructive" />
                                 <span>{error}</span>
                             </div>
                         )}
 
-                        <div className="space-y-5 pt-2">
+                        <div className="space-y-4 pt-1">
                             <Button
                                 type="submit"
                                 data-testid={`${portal}-login-submit`}
@@ -221,7 +260,7 @@ export function AuthLoginScreen({
                                 ) : "进入工作台"}
                             </Button>
 
-                            <div className="space-y-2.5 border-t border-border pt-4">
+                            <div className="space-y-2 border-t border-border pt-3.5">
                                 <p className="text-center text-meta font-medium text-muted-foreground">切换其他角色门户</p>
                                 <div className="grid grid-cols-2 gap-3">
                                     {alternateLinks.map((link) => (
