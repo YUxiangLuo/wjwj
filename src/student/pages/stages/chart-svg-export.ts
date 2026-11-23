@@ -1,6 +1,9 @@
 import type { ChartRow, ChartSeries } from "./analysis-utils";
 import { chartScale } from "./chart-scale";
 import { formatStatistic } from "@/utils/statistic-format";
+import { exportEChartSvg } from "@/components/charts/EChartBox";
+import type { ECharts } from "@/components/charts/echarts-core";
+import { getExecutiveChartTokens } from "@/components/charts/echarts-theme";
 
 export function sanitizeFileName(input: string) {
     return input.replace(/[\\/:*?"<>|\s]+/g, "_").replace(/_+/g, "_");
@@ -27,13 +30,14 @@ function triggerSvgDownload(fileName: string, svgContent: string) {
     URL.revokeObjectURL(url);
 }
 
-interface ChartSvgParams {
+export interface ChartSvgParams {
     title: string;
     rows: ChartRow[];
     series: ChartSeries[];
     fileName: string;
     unit?: string;
     notes?: string[];
+    echartInstance?: ECharts | null;
 }
 
 export interface ChartSvgTheme {
@@ -43,15 +47,68 @@ export interface ChartSvgTheme {
     border: string;
 }
 
-function requiredThemeColor(styles: CSSStyleDeclaration, token: string) {
-    const value = styles.getPropertyValue(token).trim();
-    if (!value) throw new Error(`缺少图表导出主题变量 ${token}`);
-    return value;
+function resolveThemeColor(styles: CSSStyleDeclaration | null, token: `--${string}`, fallback: string) {
+    const value = styles?.getPropertyValue(token).trim();
+    return value || fallback;
 }
 
-function resolveSeriesColor(styles: CSSStyleDeclaration, color: string) {
-    const variable = color.match(/^var\((--[^)]+)\)$/)?.[1];
-    return variable ? requiredThemeColor(styles, variable) : color;
+function resolveSeriesColor(styles: CSSStyleDeclaration | null, color: string) {
+    const variable = color.match(/^var\((--[^)]+)\)$/)?.[1] as `--${string}` | undefined;
+    if (!variable) return color;
+    const raw = styles?.getPropertyValue(variable).trim();
+    if (raw) return raw;
+    const tokens = getExecutiveChartTokens();
+    switch (variable) {
+        case "--chart-1":
+            return tokens.chart1;
+        case "--chart-2":
+            return tokens.chart2;
+        case "--chart-3":
+            return tokens.chart3;
+        case "--chart-4":
+            return tokens.chart4;
+        case "--chart-5":
+            return tokens.chart5;
+        case "--chart-6":
+            return tokens.chart6;
+        case "--chart-7":
+            return tokens.chart7;
+        case "--chart-8":
+            return tokens.chart8;
+        default:
+            return tokens.primary;
+    }
+}
+
+export function frameEChartSvg(
+    rawEchartSvg: string,
+    params: { title: string; notes?: string[] },
+    theme: ChartSvgTheme,
+): string {
+    const trimmed = rawEchartSvg.trim();
+    const widthMatch = trimmed.match(/\bwidth="([0-9.]+)"/);
+    const heightMatch = trimmed.match(/\bheight="([0-9.]+)"/);
+    const innerWidth = Math.max(480, Math.round(Number(widthMatch?.[1] ?? 880)));
+    const innerHeight = Math.max(240, Math.round(Number(heightMatch?.[1] ?? 360)));
+
+    const padX = 36;
+    const headerHeight = 56;
+    const noteLines = (params.notes ?? []).flatMap((note) => note.match(/.{1,62}/gu) ?? []);
+    const notesBlockHeight = noteLines.length > 0 ? 18 + noteLines.length * 22 : 0;
+    const outerWidth = innerWidth + padX * 2;
+    const outerHeight = headerHeight + innerHeight + notesBlockHeight + 24;
+
+    return [
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${outerWidth}" height="${outerHeight}" viewBox="0 0 ${outerWidth} ${outerHeight}">`,
+        `  <rect width="100%" height="100%" fill="${escapeXml(theme.background)}" />`,
+        `  <text x="${padX}" y="36" fill="${escapeXml(theme.foreground)}" font-size="20" font-weight="700">${escapeXml(params.title)}</text>`,
+        `  <g transform="translate(${padX}, ${headerHeight})">${trimmed}</g>`,
+        ...noteLines.map(
+            (note, index) =>
+                `  <text x="${padX}" y="${headerHeight + innerHeight + 24 + index * 22}" fill="${escapeXml(theme.mutedForeground)}" font-size="13">${escapeXml(note)}</text>`,
+        ),
+        `</svg>`,
+    ].join("\n");
 }
 
 export function buildChartSvg(params: ChartSvgParams, theme: ChartSvgTheme) {
@@ -136,20 +193,37 @@ export function buildChartSvg(params: ChartSvgParams, theme: ChartSvgTheme) {
     return svg;
 }
 
+export function resolveChartExportSvg(params: ChartSvgParams, theme: ChartSvgTheme): string | null {
+    const liveEchartSvg = exportEChartSvg(params.echartInstance);
+    if (liveEchartSvg) {
+        return frameEChartSvg(liveEchartSvg, { title: params.title, notes: params.notes }, theme);
+    }
+    return buildChartSvg(params, theme);
+}
+
 export function downloadChartAsSvg(params: ChartSvgParams) {
-    const styles = getComputedStyle(document.documentElement);
-    const svg = buildChartSvg({
-        ...params,
-        series: params.series.map((series) => ({
-            ...series,
-            color: resolveSeriesColor(styles, series.color),
-        })),
-    }, {
-        background: requiredThemeColor(styles, "--background"),
-        foreground: requiredThemeColor(styles, "--foreground"),
-        mutedForeground: requiredThemeColor(styles, "--muted-foreground"),
-        border: requiredThemeColor(styles, "--border"),
-    });
+    const styles =
+        typeof document !== "undefined" && typeof getComputedStyle === "function"
+            ? getComputedStyle(document.documentElement)
+            : null;
+    const fallbackTokens = getExecutiveChartTokens();
+    const theme: ChartSvgTheme = {
+        background: resolveThemeColor(styles, "--card", fallbackTokens.card),
+        foreground: resolveThemeColor(styles, "--foreground", fallbackTokens.foreground),
+        mutedForeground: resolveThemeColor(styles, "--muted-foreground", fallbackTokens.mutedForeground),
+        border: resolveThemeColor(styles, "--border", fallbackTokens.border),
+    };
+
+    const svg = resolveChartExportSvg(
+        {
+            ...params,
+            series: params.series.map((series) => ({
+                ...series,
+                color: resolveSeriesColor(styles, series.color),
+            })),
+        },
+        theme,
+    );
 
     if (svg) triggerSvgDownload(params.fileName, svg);
 }
