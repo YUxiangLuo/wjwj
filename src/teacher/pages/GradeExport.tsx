@@ -11,35 +11,12 @@ import { formatLocalDateStamp } from "@/utils/format";
 import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import {
+    GradeRubricRadarBarCard,
+    GradeScoreHistogramCard,
+    GradeSubmissionFunnelCard,
+} from "@/components/charts/PortalAnalyticsCharts";
 import { downloadTeacherFile } from "../api-client";
-
-function MetricBars({
-    title,
-    description,
-    items,
-    valueSuffix = "",
-}: {
-    title: string;
-    description: string;
-    items: Array<{ label: string; value: number | null; color: string }>;
-    valueSuffix?: string;
-}) {
-    const max = Math.max(1, ...items.map((item) => item.value ?? 0));
-    return (
-        <Card>
-            <CardHeader className="border-b border-border pb-4"><CardTitle className="text-body text-foreground">{title}</CardTitle><p className="mt-1 text-meta text-muted-foreground">{description}</p></CardHeader>
-            <CardContent className="space-y-3 pt-5" role="list">
-                {items.map((item) => (
-                    <div key={item.label} role="listitem" className="grid grid-cols-[7rem_1fr_5rem] items-center gap-3">
-                        <span className="text-label text-foreground">{item.label}</span>
-                        <div className="h-3 overflow-hidden rounded-control bg-muted"><div className="h-full rounded-control" style={{ width: `${(item.value ?? 0) / max * 100}%`, backgroundColor: item.color }} /></div>
-                        <span className="text-right text-label font-mono tabular-nums text-muted-foreground">{item.value === null ? "—" : `${item.value.toFixed(valueSuffix ? 1 : 0)}${valueSuffix}`}</span>
-                    </div>
-                ))}
-            </CardContent>
-        </Card>
-    );
-}
 
 export function GradeExport() {
     const [classes, setClasses] = useState<TeacherClass[]>([]);
@@ -227,36 +204,11 @@ export function GradeExport() {
             ) : analytics ? (
                 <>
                     <div className="grid grid-cols-2 gap-4" data-testid="teacher-grade-analytics">
-                        <MetricBars
-                            title="学生任务状态漏斗"
-                            description="同一学生参与多个实验任务时按多个人次计算。"
-                            items={[
-                                { label: "未开始", value: analytics.funnel.notStarted, color: "var(--chart-1)" },
-                                { label: "进行中", value: analytics.funnel.inProgress, color: "var(--chart-2)" },
-                                { label: "待批改", value: analytics.funnel.pendingGrading, color: "var(--chart-3)" },
-                                { label: "已批改", value: analytics.funnel.graded, color: "var(--chart-4)" },
-                                { label: "已驳回", value: analytics.funnel.rejected, color: "var(--chart-5)" },
-                            ]}
-                        />
-                        <MetricBars
-                            title="已批改总分分布"
-                            description={`共 ${analytics.scores.count} 个已批改成绩。`}
-                            items={analytics.scores.bands.map((item, index) => ({ label: item.label, value: item.count, color: `var(--chart-${(index % 8) + 1})` }))}
-                        />
+                        <GradeSubmissionFunnelCard funnel={analytics.funnel} />
+                        <GradeScoreHistogramCard scores={analytics.scores} />
                     </div>
 
-                    <div>
-                        <MetricBars
-                            title="分项平均分"
-                            description="仅统计已批改记录中的问卷设计、实验过程和实验报告分项。"
-                            valueSuffix=" 分"
-                            items={[
-                                { label: "问卷设计", value: analytics.scores.componentAverages.questionnaire, color: "var(--chart-2)" },
-                                { label: "实验过程", value: analytics.scores.componentAverages.process, color: "var(--chart-3)" },
-                                { label: "实验报告", value: analytics.scores.componentAverages.report, color: "var(--chart-4)" },
-                            ]}
-                        />
-                    </div>
+                    <GradeRubricRadarBarCard scores={analytics.scores} />
                 </>
             ) : null}
 
