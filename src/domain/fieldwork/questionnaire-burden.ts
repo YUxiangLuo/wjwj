@@ -460,6 +460,77 @@ export function buildAutoVariableBindingForQuestion(params: {
     return null;
 }
 
+function optionsBijectVariable(
+    restOpts: string[],
+    variable: VariableDefinition,
+    validCats: Array<{ value: VariableDefinition["categories"][number]["value"]; label: string }>,
+): boolean {
+    if (restOpts.length !== validCats.length) return false;
+    if (variable.kind === "ordinal") {
+        return restOpts.every((opt, idx) => (
+            opt === normalizeMatchToken(validCats[idx]?.label)
+            || opt === normalizeMatchToken(validCats[idx]?.value)
+        ));
+    }
+    const usedCatIndices = new Set<number>();
+    return restOpts.every((opt) => {
+        const idx = validCats.findIndex((cat, cIdx) => (
+            !usedCatIndices.has(cIdx)
+            && (normalizeMatchToken(cat.label) === opt || normalizeMatchToken(cat.value) === opt)
+        ));
+        if (idx === -1) return false;
+        usedCatIndices.add(idx);
+        return true;
+    });
+}
+
+function findStructuralMatchCandidates(question: Question, unusedVars: VariableDefinition[]): VariableDefinition[] {
+    if (question.type === "single" && Array.isArray(question.options) && question.options.length >= 2) {
+        if (new Set(question.options).size !== question.options.length) return [];
+        const opts = question.options.map(normalizeMatchToken);
+        if (new Set(opts).size !== opts.length) return [];
+        return unusedVars.filter((v) => {
+            if (v.kind !== "nominal" && v.kind !== "ordinal") return false;
+            const validCats = bindingCategories(v);
+            if (opts.length === validCats.length) {
+                return optionsBijectVariable(opts, v, validCats);
+            }
+            if (opts.length === validCats.length + 1 && v.missing.length > 0) {
+                return opts.some((_, dropIdx) => (
+                    optionsBijectVariable(opts.filter((__, idx) => idx !== dropIdx), v, validCats)
+                ));
+            }
+            return false;
+        });
+    }
+
+    if (question.type === "scale") {
+        const min = question.scaleMin ?? 1;
+        const max = question.scaleMax ?? 10;
+        if (!Number.isInteger(min) || !Number.isInteger(max) || max < min) return [];
+        const points = max - min + 1;
+        const minTok = normalizeMatchToken(question.scaleMinLabel);
+        const maxTok = normalizeMatchToken(question.scaleMaxLabel);
+        if (!minTok || !maxTok) return [];
+        return unusedVars.filter((v) => {
+            if (v.kind !== "ordinal") return false;
+            const validCats = bindingCategories(v);
+            return validCats.length === points
+                && validCats.length >= 2
+                && normalizeMatchToken(validCats[0]?.label) === minTok
+                && normalizeMatchToken(validCats[validCats.length - 1]?.label) === maxTok;
+        });
+    }
+
+    if (question.type === "numeric") {
+        const rawUnit = question.unit ?? "";
+        if (!rawUnit.trim()) return [];
+        return unusedVars.filter((v) => v.kind === "continuous" && v.unit === rawUnit);
+    }
+
+    return [];
+}
+
 export function autoBindQuestionnaireVariables(params: {
     questionnaire: QuestionnaireData;
     dictionary: VariableDictionary;
@@ -472,24 +543,16 @@ export function autoBindQuestionnaireVariables(params: {
     }
 
     let newlyBoundCount = 0;
-    const nextQuestions = params.questionnaire.questions.map((question) => {
+
+    // Pass 1a: verbatim variable label or field match in question stem/options
+    let nextQuestions = params.questionnaire.questions.map((question) => {
         if (question.variableBinding?.mappings?.length) return question;
-        // Try exact label/field match first, then primary target match if compatible
-        let binding = buildAutoVariableBindingForQuestion({
+        const binding = buildAutoVariableBindingForQuestion({
             question,
             dictionary: params.dictionary,
             taskId: params.taskId,
             excludeFields: usedFields,
         });
-        if (!binding && params.targetField && !usedFields.has(params.targetField)) {
-            binding = buildAutoVariableBindingForQuestion({
-                question,
-                dictionary: params.dictionary,
-                taskId: params.taskId,
-                preferredField: params.targetField,
-                excludeFields: usedFields,
-            });
-        }
         if (!binding) return question;
         const fields = binding.mappings.map((m) => m.field);
         if (fields.some((f) => usedFields.has(f))) return question;
@@ -497,6 +560,66 @@ export function autoBindQuestionnaireVariables(params: {
         newlyBoundCount += 1;
         return { ...question, variableBinding: binding };
     });
+
+    // Pass 1b: primary research target fallback if still unbound after verbatim matches
+    if (params.targetField && !usedFields.has(params.targetField)) {
+        const targetField = params.targetField;
+        nextQuestions = nextQuestions.map((question) => {
+            if (question.variableBinding?.mappings?.length || usedFields.has(targetField)) return question;
+            const binding = buildAutoVariableBindingForQuestion({
+                question,
+                dictionary: params.dictionary,
+                taskId: params.taskId,
+                preferredField: targetField,
+                excludeFields: usedFields,
+            });
+            if (!binding) return question;
+            const fields = binding.mappings.map((m) => m.field);
+            if (fields.some((f) => usedFields.has(f))) return question;
+            for (const f of fields) usedFields.add(f);
+            newlyBoundCount += 1;
+            return { ...question, variableBinding: binding };
+        });
+    }
+
+    // Pass 2: unambiguous 1:1 structural fallback (unique option-set, scale-endpoints, or non-empty continuous unit)
+    const unusedVars = params.dictionary.variables.filter(
+        (v) => v.kind !== "identifier" && !usedFields.has(v.field),
+    );
+    if (unusedVars.length > 0) {
+        const candidateFieldByIndex = new Map<number, string>();
+        const questionCountByField = new Map<string, number>();
+        nextQuestions.forEach((question, idx) => {
+            if (question.variableBinding?.mappings?.length) return;
+            const matches = findStructuralMatchCandidates(question, unusedVars);
+            if (matches.length === 1) {
+                const field = matches[0]!.field;
+                candidateFieldByIndex.set(idx, field);
+                questionCountByField.set(field, (questionCountByField.get(field) ?? 0) + 1);
+            }
+        });
+
+        nextQuestions = nextQuestions.map((question, idx) => {
+            if (question.variableBinding?.mappings?.length) return question;
+            const uniqueField = candidateFieldByIndex.get(idx);
+            if (!uniqueField || questionCountByField.get(uniqueField) !== 1 || usedFields.has(uniqueField)) {
+                return question;
+            }
+            const binding = buildAutoVariableBindingForQuestion({
+                question,
+                dictionary: params.dictionary,
+                taskId: params.taskId,
+                preferredField: uniqueField,
+                excludeFields: usedFields,
+            });
+            if (!binding) return question;
+            const fields = binding.mappings.map((m) => m.field);
+            if (fields.some((f) => usedFields.has(f))) return question;
+            for (const f of fields) usedFields.add(f);
+            newlyBoundCount += 1;
+            return { ...question, variableBinding: binding };
+        });
+    }
 
     return {
         questionnaire: { ...params.questionnaire, questions: nextQuestions },

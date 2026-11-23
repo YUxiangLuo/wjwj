@@ -26,10 +26,8 @@ import { QuestionEditor } from "@/components/questionnaire/QuestionEditor";
 import { VariableBindingDialog } from "@/components/questionnaire/VariableBindingDialog";
 import { createApiClient } from "@/lib/api-client";
 import type { VariableDictionary } from "@/domain/variables/types";
-import { bindingCategories } from "@/domain/variables/question-binding";
 import {
     autoBindQuestionnaireVariables,
-    buildAutoVariableBindingForQuestion,
     evaluateQuestionnaireBurden,
     resolveQuestionBoundFields,
 } from "@/domain/fieldwork";
@@ -93,105 +91,10 @@ export function getPreviewCompletionState(contentFingerprint: string) {
     };
 }
 
-function normalizeToken(raw: unknown): string {
-    if (raw === null || raw === undefined) return "";
-    return String(raw).trim().normalize("NFKC").toLowerCase();
-}
-
 /**
- * 在基础题干子串匹配之上，对具备唯一结构化特征（完全一致的单选题选项集、量表首尾锚点标签、
- * 或唯一非空连续变量单位）的未绑定题目执行安全 1:1 自动匹配。
+ * 与第四阶段共用的问卷变量智能绑定入口（含精确标签匹配、主指标回退及唯一 1:1 选项集/量表首尾锚点/连续单位结构化匹配）。
  */
-export function smartBindQuestionnaireVariables(params: {
-    questionnaire: QuestionnaireData;
-    dictionary: VariableDictionary;
-    taskId: number;
-    targetField?: string;
-}): { questionnaire: QuestionnaireData; newlyBoundCount: number } {
-    const base = autoBindQuestionnaireVariables(params);
-    const usedFields = new Set<string>();
-    for (const q of base.questionnaire.questions) {
-        for (const f of resolveQuestionBoundFields(q)) usedFields.add(f);
-    }
-
-    let extraBoundCount = 0;
-    const nextQuestions = base.questionnaire.questions.map((question) => {
-        if (question.variableBinding?.mappings?.length) return question;
-        const unusedVars = params.dictionary.variables.filter(
-            (v) => v.kind !== "identifier" && !usedFields.has(v.field),
-        );
-        if (unusedVars.length === 0) return question;
-
-        let uniqueField: string | null = null;
-
-        if (question.type === "single" && Array.isArray(question.options) && question.options.length >= 2) {
-            const opts = question.options.map(normalizeToken);
-            const matches = unusedVars.filter((v) => {
-                if (v.kind !== "nominal" && v.kind !== "ordinal") return false;
-                const validCats = bindingCategories(v);
-                if (opts.length === validCats.length) {
-                    if (v.kind === "ordinal") {
-                        return opts.every((o, i) => o === normalizeToken(validCats[i]?.label) || o === normalizeToken(validCats[i]?.value));
-                    }
-                    const catSet = new Set(validCats.map((c) => normalizeToken(c.label)));
-                    return catSet.size === opts.length && opts.every((o) => catSet.has(o));
-                }
-                if (opts.length === validCats.length + 1 && v.missing.length > 0) {
-                    return opts.some((_, dropIdx) => {
-                        const rest = opts.filter((__, idx) => idx !== dropIdx);
-                        if (v.kind === "ordinal") {
-                            return rest.every((o, i) => o === normalizeToken(validCats[i]?.label) || o === normalizeToken(validCats[i]?.value));
-                        }
-                        const catSet = new Set(validCats.map((c) => normalizeToken(c.label)));
-                        return catSet.size === rest.length && rest.every((o) => catSet.has(o));
-                    });
-                }
-                return false;
-            });
-            if (matches.length === 1) uniqueField = matches[0]!.field;
-        } else if (question.type === "scale") {
-            const points = (question.scaleMax ?? 10) - (question.scaleMin ?? 1) + 1;
-            const minTok = normalizeToken(question.scaleMinLabel);
-            const maxTok = normalizeToken(question.scaleMaxLabel);
-            if (minTok && maxTok) {
-                const matches = unusedVars.filter((v) => {
-                    if (v.kind !== "ordinal") return false;
-                    const validCats = bindingCategories(v);
-                    if (validCats.length !== points || validCats.length < 2) return false;
-                    return normalizeToken(validCats[0]?.label) === minTok
-                        && normalizeToken(validCats[validCats.length - 1]?.label) === maxTok;
-                });
-                if (matches.length === 1) uniqueField = matches[0]!.field;
-            }
-        } else if (question.type === "numeric") {
-            const unitTok = (question.unit ?? "").trim();
-            if (unitTok) {
-                const matches = unusedVars.filter(
-                    (v) => v.kind === "continuous" && v.unit.trim() === unitTok,
-                );
-                if (matches.length === 1) uniqueField = matches[0]!.field;
-            }
-        }
-
-        if (!uniqueField) return question;
-        const binding = buildAutoVariableBindingForQuestion({
-            question,
-            dictionary: params.dictionary,
-            taskId: params.taskId,
-            preferredField: uniqueField,
-            excludeFields: usedFields,
-        });
-        if (!binding) return question;
-        for (const m of binding.mappings) usedFields.add(m.field);
-        extraBoundCount += 1;
-        return { ...question, variableBinding: binding };
-    });
-
-    return {
-        questionnaire: { ...base.questionnaire, questions: nextQuestions },
-        newlyBoundCount: base.newlyBoundCount + extraBoundCount,
-    };
-}
+export const smartBindQuestionnaireVariables = autoBindQuestionnaireVariables;
 
 function generateId(): string {
     return `q_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { createTeaPricingDictionary, teaPricingQuestionnaire } from "../../db/seeds/happiness-topic";
 import type { Question, QuestionnaireData } from "../../lib/questionnaire-types";
 import { validateQuestionBindings } from "../variables/question-binding";
 import type { VariableDictionary } from "../variables/types";
@@ -325,6 +326,69 @@ describe("Questionnaire burden, range conflicts, core position & binding coverag
             dictionary: dict,
             taskId: 9,
         })).toBeNull();
+    });
+
+    test("autoBindQuestionnaireVariables lifts unambiguous 1:1 structural fallback (11/13 Tea Pricing parity) while rejecting ambiguous collisions", () => {
+        const teaDict = createTeaPricingDictionary("tea-source", 1);
+        const withTarget = autoBindQuestionnaireVariables({
+            questionnaire: structuredClone(teaPricingQuestionnaire),
+            dictionary: teaDict,
+            taskId: 1,
+            targetField: "最高支付意愿",
+        });
+        const withoutTarget = autoBindQuestionnaireVariables({
+            questionnaire: structuredClone(teaPricingQuestionnaire),
+            dictionary: teaDict,
+            taskId: 1,
+        });
+
+        expect(withTarget.newlyBoundCount).toBe(11);
+        expect(withoutTarget.newlyBoundCount).toBe(11);
+        expect(() => validateQuestionBindings(withTarget.questionnaire, teaDict, 1)).not.toThrow();
+        expect(() => validateQuestionBindings(withoutTarget.questionnaire, teaDict, 1)).not.toThrow();
+
+        // Screening boolean questions and unmapped multi-select remain unbound
+        expect(withTarget.questionnaire.questions.find((q) => q.id === "hq1")?.variableBinding).toBeUndefined();
+        expect(withTarget.questionnaire.questions.find((q) => q.id === "hq9")?.variableBinding).toBeUndefined();
+        expect(withTarget.questionnaire.questions.find((q) => q.id === "hq6")?.variableBinding).toBeUndefined();
+
+        // Ambiguous collisions (two unlabeled numeric questions sharing unit "元" vs one "元" variable,
+        // or one question vs two variables sharing unit "万元") are never guessed, while later verbatim match wins
+        const collisionDict: VariableDictionary = {
+            source: "col-src",
+            revision: 1,
+            variables: [
+                { field: "id", label: "ID", unit: "", kind: "identifier", categories: [], missing: [] },
+                { field: "daily_food", label: "餐饮开销", unit: "元", kind: "continuous", categories: [], missing: [] },
+                { field: "capex_a", label: "预算甲", unit: "万元", kind: "continuous", categories: [], missing: [] },
+                { field: "capex_b", label: "预算乙", unit: "万元", kind: "continuous", categories: [], missing: [] },
+                { field: "commute_min", label: "通勤时长", unit: "分钟", kind: "continuous", categories: [], missing: [] },
+            ],
+        };
+        const collisionQ: QuestionnaireData = {
+            title: "歧义回退防护",
+            welcomeText: cleanWelcome,
+            endingText: "感谢参与",
+            questions: [
+                { id: "q1", type: "numeric", content: "早餐花费多少？", unit: "元" },
+                { id: "q2", type: "numeric", content: "晚餐花费多少？", unit: "元" },
+                { id: "q3", type: "numeric", content: "年度投入多少？", unit: "万元" },
+                { id: "q4", type: "numeric", content: "午休休息多久？", unit: "分钟" },
+                { id: "q5", type: "numeric", content: "日常通勤时长是多少？", unit: "分钟" },
+            ],
+        };
+        const collisionRes = autoBindQuestionnaireVariables({
+            questionnaire: collisionQ,
+            dictionary: collisionDict,
+            taskId: 2,
+        });
+        // Only q5 binds (via verbatim "通勤时长"), leaving q1/q2 (2 questions -> 1 var), q3 (1 question -> 2 vars), and q4 (commute_min already taken by q5) unbound!
+        expect(collisionRes.newlyBoundCount).toBe(1);
+        expect(collisionRes.questionnaire.questions[0]!.variableBinding).toBeUndefined();
+        expect(collisionRes.questionnaire.questions[1]!.variableBinding).toBeUndefined();
+        expect(collisionRes.questionnaire.questions[2]!.variableBinding).toBeUndefined();
+        expect(collisionRes.questionnaire.questions[3]!.variableBinding).toBeUndefined();
+        expect(collisionRes.questionnaire.questions[4]!.variableBinding?.mappings[0]?.field).toBe("commute_min");
     });
 });
 

@@ -117,6 +117,10 @@ export function StratifiedSamplingTab({
     const [showAllocationComparison, setShowAllocationComparison] = useState(false);
 
     useEffect(() => {
+        setResult(initialResult);
+    }, [initialResult]);
+
+    useEffect(() => {
         if (Object.keys(populationStats).length === 0) return;
         setStratifyBy((current) => (
             current && populationStats[current]

@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { createTeaPricingDictionary, teaPricingQuestionnaire } from "@/db/seeds/happiness-topic";
+import { autoBindQuestionnaireVariables } from "@/domain/fieldwork";
 import { validateQuestionBindings } from "@/domain/variables/question-binding";
 import { canAdvanceQuestionnaireStep, getPreviewCompletionState, smartBindQuestionnaireVariables } from "./QuestionnaireDesign";
 
@@ -71,4 +72,12 @@ test("smartBindQuestionnaireVariables binds recommended scale, numeric-unit, and
     expect(boundFields).toContain("月均购茶频次档位");
     expect(boundFields).toContain("城市线级");
     expect(boundFields).toContain("消费场景偏好");
+
+    const stage4Parity = autoBindQuestionnaireVariables({
+        questionnaire: structuredClone(teaPricingQuestionnaire),
+        dictionary,
+        taskId: 1,
+        targetField: "最高支付意愿",
+    });
+    expect(stage4Parity).toEqual(result);
 });
