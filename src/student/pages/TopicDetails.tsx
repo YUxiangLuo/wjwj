@@ -1,30 +1,41 @@
 import { StudentStatusPage } from "../components/StudentStatusPage";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useState, useEffect } from "react";
-import { ArrowLeft, FileText, Download, Play, Image, File, CheckCircle, Clock, AlertTriangle, ChevronRight, Eye } from "lucide-react";
+import {
+    ArrowLeft, FileText, Download, Play, Image, File, CheckCircle,
+    Clock, AlertTriangle, ChevronRight, Eye, BriefcaseBusiness, Coins, Users, Target
+} from "lucide-react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, type StatusBadgeIntent } from "@/components/StatusBadge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RichTextContent } from "@/components/RichTextContent";
 import { LoadingStatus } from "@/components/LoadingStatus";
-import { tasksApi } from "../api-client";
+import { tasksApi, downloadStudentFile, studentResourceUrl } from "../api-client";
 import type { TaskDetail, TopicAttachment } from "@/domain/experiment/student-contracts";
 import type { TaskStatus } from "@/domain/experiment/types";
+import { resolveFieldworkConfig } from "@/domain/fieldwork";
+import { EXPERIMENT_STAGE_NAMES } from "@/lib/experiment-progress";
 import { getTaskPrimaryAction, shouldShowTaskAvailabilityHint } from "./topic-detail-action";
 import { parseDeadline, formatDateTimeDisplay, getRemainingDeadlineSummary } from "@/utils/format";
-import { downloadStudentFile, studentResourceUrl } from "../api-client";
 import { resolveSamplingPolicy, SAMPLING_METHODS } from "@/lib/sampling-policy";
 
-const stageNames = ["问卷预试", "样本量规划", "抽样执行", "分析与报告"];
+const stageNames = [...EXPERIMENT_STAGE_NAMES];
 
 const statusConfig: Record<TaskStatus, { label: string; intent: StatusBadgeIntent }> = {
-    not_started: { label: "未开始", intent: "neutral" },
-    in_progress: { label: "进行中", intent: "primary" },
-    submitted: { label: "已提交", intent: "warning" },
-    graded: { label: "已批改", intent: "success" },
-    rejected: { label: "被驳回", intent: "destructive" },
+    not_started: { label: "待立项", intent: "neutral" },
+    in_progress: { label: "调研进行中", intent: "primary" },
+    submitted: { label: "已提交待评", intent: "warning" },
+    graded: { label: "已批改结项", intent: "success" },
+    rejected: { label: "退回重调", intent: "destructive" },
 };
+
+const FIELDWORK_PRESET_LABELS = {
+    balanced: "常规均衡实地回收",
+    stratum_differential: "细分客群差异化拒访",
+    high_burden_sensitive: "问卷时长与负担高敏感",
+    peak_congestion: "营业高峰拥堵漏接场景",
+} as const;
 
 function formatDateTime(value: string | null) {
     return formatDateTimeDisplay(value, "无");
@@ -76,7 +87,7 @@ function getFileIcon(type: string) {
         return <Image className="w-5 h-5 text-info" />;
     }
     if (lowerType.includes("video") || lowerType.includes("mp4")) {
-        return <Play className="w-5 h-5 text-auxiliary" />;
+        return <Play className="w-5 h-5 text-auxiliary-strong" />;
     }
     if (lowerType.includes("pdf")) {
         return <FileText className="w-5 h-5 text-destructive" />;
@@ -130,12 +141,14 @@ export function TopicDetails() {
         deadlinePassed && isActiveStatus
             ? { label: "已截止", intent: "neutral" as const }
             : notOpenYet && isActiveStatus
-              ? { label: "未开放", intent: "info" as const }
-              : status;
+                ? { label: "未开放", intent: "info" as const }
+                : status;
     const action = getTaskPrimaryAction(task.id, task.status, canStartExperiment);
     const samplingPolicy = resolveSamplingPolicy(task.samplingPolicy);
+    const fieldworkConfig = resolveFieldworkConfig(task.fieldworkConfig);
     const samplingMethodLabels = { simple: "简单随机", systematic: "系统抽样", pps: "PPS抽样", stratified: "分层抽样" } as const;
     const hasQuestionnaireTemplateAttachment = task.attachments.some((file) => file.name.includes("调查问卷设计规范与模板"));
+    const contract = task.studyContract?.contract ?? null;
 
     const handleDownload = async (file: TopicAttachment) => {
         try {
@@ -149,22 +162,25 @@ export function TopicDetails() {
     const previewUrl = previewFile ? studentResourceUrl(`/api/student/attachments/${previewFile.id}/download?mode=preview`) : "";
 
     return (
-        <div className="space-y-4 pb-4" data-testid="student-task-detail">
+        <div className="space-y-5 pb-4" data-testid="student-task-detail">
             <div>
-                <Button asChild variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground hover:bg-muted -ml-4 h-8 text-label">
+                <Button asChild variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground hover:bg-muted -ml-3 h-8 text-label">
                     <Link to="/">
                         <ArrowLeft className="w-3.5 h-3.5" />
-                        返回任务列表
+                        返回实验大厅
                     </Link>
                 </Button>
 
-                <div className="flex items-start justify-between gap-5 mt-1">
-                    <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-start justify-between gap-5 mt-2 rounded-surface border border-border bg-card p-5">
+                    <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2.5">
                             <h1 className="text-page-title font-bold text-foreground break-words">{task.name}</h1>
                             <StatusBadge intent={effectiveStatus.intent}>{effectiveStatus.label}</StatusBadge>
+                            {task.activeWaveNumber && task.activeWaveNumber >= 1 && task.status === "in_progress" && (
+                                <StatusBadge intent="info">当前第 {task.activeWaveNumber} 轮投放</StatusBadge>
+                            )}
                         </div>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-meta text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-muted-foreground tabular-nums">
                             <span className="flex items-center gap-1">
                                 <Clock className="w-3.5 h-3.5" /> {notOpenYet ? "开放于" : "发布于"} {formatDateTime(task.publishedAt)}（UTC+8）
                             </span>
@@ -173,7 +189,9 @@ export function TopicDetails() {
                         </div>
                     </div>
                     <div className="shrink-0 space-y-2 text-right" data-testid="student-task-action">
-                        {task.status === "graded" && task.score !== undefined && <p className="text-label font-medium text-success">实验成绩：{task.score}</p>}
+                        {task.status === "graded" && task.score !== undefined && (
+                            <p className="text-label font-semibold text-success tabular-nums">实验成绩：{task.score}</p>
+                        )}
                         {action.link && !action.disabled ? (
                             <Button asChild size="lg">
                                 <Link to={action.link}>
@@ -196,7 +214,8 @@ export function TopicDetails() {
                 )}
             </div>
 
-            <ol aria-label="实验进度概览" className="grid grid-cols-4 gap-3 rounded-surface border border-border bg-muted px-4 py-3">
+            {/* 5-Stage Closed-Loop Milestone Stepper */}
+            <ol aria-label="实验进度概览" className="grid grid-cols-5 gap-2.5 rounded-surface border border-border bg-card p-3">
                 {stageNames.map((stage, index) => {
                     const completed = task.currentStage > index + 1 || task.status === "graded" || task.status === "submitted";
                     const current = !completed && task.currentStage === index + 1;
@@ -204,10 +223,20 @@ export function TopicDetails() {
                         <li
                             key={stage}
                             aria-current={current ? "step" : undefined}
-                            className={`flex items-center gap-2 text-label ${current ? "font-semibold text-primary" : "text-muted-foreground"}`}
+                            className={`flex items-center gap-2 rounded-control border px-3 py-2 text-meta ${
+                                current
+                                    ? "border-primary-border bg-primary-muted font-semibold text-primary"
+                                    : completed
+                                        ? "border-success-border bg-success-muted text-success"
+                                        : "border-transparent bg-muted text-muted-foreground"
+                            }`}
                         >
-                            {completed ? <CheckCircle className="h-4 w-4 shrink-0 text-success" aria-label="已完成" /> : <span>{index + 1}.</span>}
-                            {stage}
+                            {completed ? (
+                                <CheckCircle className="h-4 w-4 shrink-0 text-success" aria-label="已完成" />
+                            ) : (
+                                <span className="font-mono font-semibold">{index + 1}.</span>
+                            )}
+                            <span className="truncate">{stage}</span>
                         </li>
                     );
                 })}
@@ -215,27 +244,71 @@ export function TopicDetails() {
 
             {task.status === "rejected" && task.rejectReason && (
                 <section className="rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3">
-                    <h2 className="text-label font-semibold text-destructive">驳回理由</h2>
+                    <h2 className="text-label font-semibold text-destructive">退回重调理由</h2>
                     <p className="mt-1 text-label leading-relaxed text-destructive break-words">{task.rejectReason}</p>
                 </section>
             )}
 
-            <div className="grid grid-cols-5 gap-5 rounded-surface border border-border bg-card p-4">
+            {/* Business Decision Contract Cards */}
+            {contract && (
+                <section aria-label="商业调研立项任务书" className="grid grid-cols-3 gap-4" data-testid="student-task-study-contract">
+                    <div className="rounded-surface border border-border bg-card p-4 space-y-1.5">
+                        <div className="flex items-center gap-2 text-meta font-semibold text-primary">
+                            <BriefcaseBusiness className="h-4 w-4" />
+                            商业管理决策场景
+                        </div>
+                        <p className="text-label leading-relaxed text-foreground">
+                            {contract.businessDecision?.trim()
+                                ? contract.businessDecision
+                                : contract.researchQuestion}
+                        </p>
+                    </div>
+                    <div className="rounded-surface border border-border bg-card p-4 space-y-1.5">
+                        <div className="flex items-center gap-2 text-meta font-semibold text-info">
+                            <Target className="h-4 w-4" />
+                            核心估计指标与抽样框
+                        </div>
+                        <p className="text-label leading-relaxed text-foreground">
+                            {contract.target.kind === "mean"
+                                ? `估计「${contract.target.field}」的总体均值`
+                                : `估计「${contract.target.field} = ${contract.target.value}」的总体占比`}
+                        </p>
+                        <p className="text-meta text-muted-foreground">
+                            <Users className="mr-1 inline h-3.5 w-3.5" />
+                            {contract.targetPopulation}（N = {task.populationSize.toLocaleString()} · 单位：{contract.unitOfAnalysis}）
+                        </p>
+                    </div>
+                    <div className="rounded-surface border border-border bg-card p-4 space-y-1.5">
+                        <div className="flex items-center gap-2 text-meta font-semibold text-success">
+                            <Coins className="h-4 w-4" />
+                            虚拟发放环境与参考经费参数
+                        </div>
+                        <p className="text-label text-foreground">
+                            场景特征：{FIELDWORK_PRESET_LABELS[fieldworkConfig.preset]}
+                        </p>
+                        <p className="text-meta text-muted-foreground tabular-nums">
+                            触达 ¥{fieldworkConfig.contactCostPerUnit}/份 · 完答礼金 ¥{fieldworkConfig.incentiveCostPerComplete}/份（仅作成本效益参考，不设预算硬上限）
+                        </p>
+                    </div>
+                </section>
+            )}
+
+            <div className="grid grid-cols-5 gap-5 rounded-surface border border-border bg-card p-5">
                 <section className="col-span-3 min-w-0">
-                    <h2 className="mb-3 text-subheading font-semibold text-foreground">实验说明</h2>
+                    <h2 className="mb-3 text-subheading font-semibold text-foreground">项目背景与实验要求</h2>
                     <RichTextContent html={task.description ?? ""} className="prose max-w-none text-body text-foreground" emptyFallback="暂无描述" />
                 </section>
 
                 <div className="col-span-2 min-w-0 space-y-4 border-l border-border pl-5">
                     <section className="space-y-2" data-testid="student-task-sampling-policy">
-                        <h2 className="text-subheading font-semibold text-foreground">抽样方法要求</h2>
-                        <p className="text-meta text-muted-foreground">完成全部必做方法，且至少完成两种启用方法。</p>
-                        <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                        <h2 className="text-subheading font-semibold text-foreground">正式轮抽样方法要求</h2>
+                        <p className="text-meta text-muted-foreground">首轮试投可快速探索任意方法；正式投放阶段须完成全部必做方法且至少完成两种启用方法进行效率对比。</p>
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-2 pt-1">
                             {SAMPLING_METHODS.map((method) => {
                                 const requirement = samplingPolicy.methods[method];
                                 return (
-                                    <div key={method} className="flex flex-wrap items-center gap-2">
-                                        <span className="text-label text-foreground">{samplingMethodLabels[method]}</span>
+                                    <div key={method} className="flex flex-wrap items-center justify-between gap-2 rounded-control border border-border bg-background px-2.5 py-1.5">
+                                        <span className="text-meta font-medium text-foreground">{samplingMethodLabels[method]}</span>
                                         <StatusBadge intent={requirement === "required" ? "primary" : requirement === "optional" ? "info" : "neutral"}>
                                             {requirement === "required" ? "必做" : requirement === "optional" ? "选做" : "不适用"}
                                         </StatusBadge>
@@ -310,7 +383,7 @@ export function TopicDetails() {
             </div>
 
             <p className="text-meta leading-relaxed text-muted-foreground">
-                保存规则：问卷、样本规划和报告草稿保存在当前浏览器；抽样结果执行后立即保存，完成阶段后才推进流程。
+                数据与存档说明：问卷编辑、调优决策单与报告草稿实时暂存于当前浏览器；抽样抽取、虚拟问卷发放与质检清洗每次执行后立即同步保存至服务器，保障首轮试投至正式投放的多波次记录完整可复现。
             </p>
 
             <Dialog

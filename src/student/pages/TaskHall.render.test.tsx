@@ -121,11 +121,11 @@ test("TaskHall opens a simple read-only announcement", async () => {
     const view = renderTaskHall();
     await waitFor(() => expect(view.getByText("系统维护通知")).toBeTruthy());
 
-    fireEvent.click(view.getByText("查看详情"));
-    await waitFor(() => expect(view.getByText("请选择左侧公告查看详情")).toBeTruthy());
-
-    fireEvent.click(view.getAllByText("系统维护通知")[1]!);
+    fireEvent.click(view.getByText("查看公告"));
     await waitFor(() => expect(view.getByText("今晚 22:00 维护。")).toBeTruthy());
+
+    fireEvent.click(view.getByText("课程安排更新"));
+    await waitFor(() => expect(view.getByText("下周实验时间调整。")).toBeTruthy());
 
     const fetchMock = globalThis.fetch as unknown as ReturnType<typeof mock>;
     expect(fetchMock.mock.calls.filter(([input]) => String(input).includes("announcements")).length).toBe(1);
@@ -171,13 +171,13 @@ test("submitted reports do not advertise an active editing stage", async () => {
 
 test("TaskHall continues in-progress experiments and opens not-yet-started topics", async () => {
     installFetch([
-        buildTask({ id: 9, status: "in_progress", name: "进行中任务", progress: 75, currentStage: 4 }),
+        buildTask({ id: 9, status: "in_progress", name: "进行中任务", progress: 80, currentStage: 5 }),
         buildTask({ id: 8, name: "尚未开放任务", publishedAt: new Date(Date.now() + 86_400_000).toISOString() }),
     ]);
 
     const view = renderTaskHall();
     await waitFor(() => expect(view.getByTestId("student-task-card-9")).toBeTruthy());
-    expect(view.getByTestId("student-task-card-9").textContent).toContain("当前阶段：分析与报告");
+    expect(view.getByTestId("student-task-card-9").textContent).toContain("阶段 5/5：商务分析与决策报告");
 
     fireEvent.click(view.getByTestId("student-task-title-8"));
     await waitFor(() => expect(view.getByTestId("location-probe").textContent).toBe("/task/8"));

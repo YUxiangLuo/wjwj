@@ -120,6 +120,7 @@ export const topic = pgTable(
         variableDictionary: nativeJsonb("variable_dictionary").$type<import("../domain/variables/types").VariableDictionary>(),
         variableRevision: integer("variable_revision").notNull().default(0),
         samplingPolicy: nativeJsonb("sampling_policy").notNull().default(sql`'{"version":1,"methods":{"simple":"required","systematic":"optional","pps":"optional","stratified":"optional"}}'::jsonb`),
+        fieldworkConfig: nativeJsonb("fieldwork_config").$type<import("../domain/fieldwork/types").FieldworkSimulationConfig>().notNull().default(sql`'{"version":1,"preset":"balanced","baseUnitNonResponseRate":0.16,"baseSpeederRate":0.06,"baseStraightlinerRate":0.05,"baseItemSkipRate":0.02,"contactCostPerUnit":4,"incentiveCostPerComplete":15}'::jsonb`),
         weightConfig: nativeJsonb("weight_config"),
         recommendQuestions: nativeJsonb("recommend_questions"),
         status: smallint("status").notNull().default(0),
@@ -136,6 +137,10 @@ export const topic = pgTable(
         samplingPolicyObject: check(
             "topic_ck_sampling_policy_object",
             sql`jsonb_typeof(${table.samplingPolicy}) = 'object'`,
+        ),
+        fieldworkConfigObject: check(
+            "topic_ck_fieldwork_config_object",
+            sql`jsonb_typeof(${table.fieldworkConfig}) = 'object'`,
         ),
         weightConfigObject: check(
             "topic_ck_weight_config_object",
@@ -192,17 +197,21 @@ export const experiment = pgTable(
         taskId: bigint("task_id", { mode: "number" }).notNull().references(() => task.id, { onDelete: "cascade" }),
         version: integer("version").notNull().default(1),
         samplingGeneration: integer("sampling_generation").notNull().default(0),
+        activeWaveNumber: smallint("active_wave_number").notNull().default(1),
         analysisReferences: nativeJsonb("analysis_references").$type<number[]>().notNull().default(sql`'[]'::jsonb`),
         currentStage: smallint("current_stage").notNull().default(1),
         status: varchar("status", { length: 20 }).$type<ExperimentStatus>().notNull().default("in_progress"),
         questionnaire: nativeJsonb("questionnaire"),
         samplePlan: nativeJsonb("sample_plan"),
         samplingResults: nativeJsonb("sampling_results"),
+        adjustmentPlan: nativeJsonb("adjustment_plan").$type<import("../domain/fieldwork/types").AdjustmentPlan>(),
+        wavesData: nativeJsonb("waves_data").$type<import("../domain/fieldwork/types").StoredExperimentWave[]>().notNull().default(sql`'[]'::jsonb`),
         reportContent: text("report_content"),
         stage1CompletedAt: timestamp("stage1_completed_at", { mode: "date", withTimezone: true }),
         stage2CompletedAt: timestamp("stage2_completed_at", { mode: "date", withTimezone: true }),
         stage3CompletedAt: timestamp("stage3_completed_at", { mode: "date", withTimezone: true }),
         stage4CompletedAt: timestamp("stage4_completed_at", { mode: "date", withTimezone: true }),
+        stage5CompletedAt: timestamp("stage5_completed_at", { mode: "date", withTimezone: true }),
         submissionSnapshot: nativeJsonb("submission_snapshot"),
         submittedAt: timestamp("submitted_at", { mode: "date", withTimezone: true }),
         scoreQuestionnaire: numeric("score_questionnaire", { precision: 5, scale: 2 }),
@@ -226,7 +235,8 @@ export const experiment = pgTable(
             sql`${table.status} in ('in_progress', 'submitted', 'graded', 'rejected')`,
         ),
         versionCheck: check("experiment_ck_version", sql`${table.version} >= 1`),
-        currentStageCheck: check("experiment_ck_current_stage", sql`${table.currentStage} between 1 and 4`),
+        activeWaveCheck: check("experiment_ck_active_wave", sql`${table.activeWaveNumber} >= 1`),
+        currentStageCheck: check("experiment_ck_current_stage", sql`${table.currentStage} between 1 and 5`),
         scoreRangesCheck: check(
             "experiment_ck_score_ranges",
             sql`(${table.scoreQuestionnaire} is null or ${table.scoreQuestionnaire} between 0 and 100)
@@ -246,6 +256,14 @@ export const experiment = pgTable(
             "experiment_ck_sampling_results_object",
             sql`${table.samplingResults} is null or jsonb_typeof(${table.samplingResults}) = 'object'`,
         ),
+        adjustmentPlanObject: check(
+            "experiment_ck_adjustment_plan_object",
+            sql`${table.adjustmentPlan} is null or jsonb_typeof(${table.adjustmentPlan}) = 'object'`,
+        ),
+        wavesDataArray: check(
+            "experiment_ck_waves_data_array",
+            sql`jsonb_typeof(${table.wavesData}) = 'array'`,
+        ),
         submissionSnapshotObject: check(
             "experiment_ck_submission_snapshot_object",
             sql`${table.submissionSnapshot} is null or jsonb_typeof(${table.submissionSnapshot}) = 'object'`,
@@ -253,9 +271,36 @@ export const experiment = pgTable(
     }),
 );
 
+export const experimentWave = pgTable(
+    "experiment_wave",
+    {
+        id: bigint("id", { mode: "number" }).generatedByDefaultAsIdentity().primaryKey(),
+        experimentId: bigint("experiment_id", { mode: "number" }).notNull().references(() => experiment.id, { onDelete: "cascade" }),
+        waveNumber: smallint("wave_number").notNull(),
+        kind: varchar("kind", { length: 20 }).notNull().default("pilot"),
+        label: varchar("label", { length: 80 }).notNull(),
+        questionnaireSnapshot: nativeJsonb("questionnaire_snapshot").notNull(),
+        samplePlan: nativeJsonb("sample_plan"),
+        samplingResults: nativeJsonb("sampling_results"),
+        fieldworkResults: nativeJsonb("fieldwork_results"),
+        cleaningConfig: nativeJsonb("cleaning_config").notNull().default(sql`'{"removeSpeeders":true,"removeStraightliners":true,"requirePrimaryTargetValid":true}'::jsonb`),
+        diagnosticsSummary: nativeJsonb("diagnostics_summary"),
+        completedAt: timestamp("completed_at", { mode: "date", withTimezone: true }),
+        createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+        updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+    },
+    (table) => ({
+        uniqueExperimentWave: uniqueIndex("experiment_wave_uk_exp_wave").on(table.experimentId, table.waveNumber),
+        experimentIdx: index("experiment_wave_idx_experiment").on(table.experimentId),
+        waveNumberCheck: check("experiment_wave_ck_number", sql`${table.waveNumber} >= 1`),
+        kindCheck: check("experiment_wave_ck_kind", sql`${table.kind} in ('pilot', 'main', 'refinement')`),
+    }),
+);
+
 export const savedAnalysis = pgTable("saved_analysis", {
     id: bigint("id", { mode: "number" }).generatedByDefaultAsIdentity().primaryKey(),
     experimentId: bigint("experiment_id", { mode: "number" }).notNull().references(() => experiment.id, { onDelete: "cascade" }),
+    waveNumber: smallint("wave_number").notNull().default(1),
     requestId: varchar("request_id", { length: 80 }).notNull(),
     requestFingerprint: text("request_fingerprint").notNull(),
     samplingGeneration: integer("sampling_generation").notNull(),
@@ -278,6 +323,7 @@ export const samplingAttempt = pgTable(
     {
         id: bigint("id", { mode: "number" }).generatedByDefaultAsIdentity().primaryKey(),
         experimentId: bigint("experiment_id", { mode: "number" }).notNull().references(() => experiment.id, { onDelete: "cascade" }),
+        waveNumber: smallint("wave_number").notNull().default(1),
         method: varchar("method", { length: 20 }).notNull(),
         seed: bigint("seed", { mode: "number" }).notNull(),
         sampleCount: integer("sample_count").notNull(),
@@ -384,8 +430,13 @@ export const taskRelations = relations(task, ({ one, many }) => ({
     experiments: many(experiment),
 }));
 
-export const experimentRelations = relations(experiment, ({ one }) => ({
+export const experimentRelations = relations(experiment, ({ one, many }) => ({
     student: one(student, { fields: [experiment.studentId], references: [student.id] }),
     task: one(task, { fields: [experiment.taskId], references: [task.id] }),
     gradedBy: one(teacher, { fields: [experiment.gradedByTeacherId], references: [teacher.id] }),
+    waves: many(experimentWave),
+}));
+
+export const experimentWaveRelations = relations(experimentWave, ({ one }) => ({
+    experiment: one(experiment, { fields: [experimentWave.experimentId], references: [experiment.id] }),
 }));

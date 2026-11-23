@@ -19,14 +19,67 @@ export async function teacherTemplateDogfood(h: Harness) {
     const { teacher, browser, evaluate, api, eventually } = h;
     const id = (value: string) => `[data-testid="${value}"]`;
     const click = async (selector: string) => {
-        await browser(teacher, "scrollintoview", selector);
-        await browser(teacher, "click", selector);
+        await eventually(() => evaluate(teacher, `(() => {
+            const el = document.querySelector(${JSON.stringify(selector)});
+            return Boolean(el && !el.disabled);
+        })()`), `Clickable ${selector}`);
+        await evaluate(teacher, `(() => {
+            const el = document.querySelector(${JSON.stringify(selector)});
+            el.scrollIntoView({ block: "nearest", inline: "nearest" });
+            el.focus?.({ preventScroll: true });
+            el.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true, button: 0, pointerType: "mouse" }));
+            el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0 }));
+            el.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, cancelable: true, button: 0, pointerType: "mouse" }));
+            el.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, button: 0 }));
+            el.click();
+        })()`);
+    };
+    const clickNamedButton = async (label: string) => {
+        await eventually(() => evaluate(teacher, `(() => {
+            const btn = [...document.querySelectorAll("button")].find(b => b.textContent.trim() === ${JSON.stringify(label)});
+            if (!btn || btn.disabled) return false;
+            btn.scrollIntoView({ block: "nearest", inline: "nearest" });
+            btn.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0 }));
+            btn.click();
+            return true;
+        })()`), `Named button ${label}`);
+    };
+    const check = async (selector: string) => {
+        await eventually(() => evaluate(teacher, `(() => {
+            const el = document.querySelector(${JSON.stringify(selector)});
+            if (!el || el.disabled) return false;
+            el.scrollIntoView({ block: "nearest", inline: "nearest" });
+            if (!el.checked) el.click();
+            return Boolean(el.checked);
+        })()`), `Check ${selector}`);
     };
     const fill = (selector: string, value: string) => browser(teacher, "fill", selector, value);
     const select = async (selector: string, label: string) => {
-        await click(selector);
-        await browser(teacher, "get", "text", '[role="listbox"]');
-        await browser(teacher, "find", "role", "option", "click", "--name", label, "--exact");
+        await eventually(async () => {
+            if (!(await evaluate(teacher, `Boolean(document.querySelector('[role="listbox"]'))`))) {
+                await evaluate(teacher, `(() => {
+                    const el = document.querySelector(${JSON.stringify(selector)});
+                    if (!el || el.disabled) return false;
+                    el.scrollIntoView({ block: "nearest", inline: "nearest" });
+                    el.focus({ preventScroll: true });
+                    el.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+                    return true;
+                })()`);
+            }
+            return evaluate(teacher, `Boolean(document.querySelector('[role="listbox"]'))`);
+        }, `Listbox ${selector}`);
+        await eventually(() => evaluate(teacher, `(() => {
+            const opt = [...document.querySelectorAll('[role="option"]')].find(o => o.textContent.trim() === ${JSON.stringify(label)});
+            if (!opt) return false;
+            opt.scrollIntoView({ block: "nearest", inline: "nearest" });
+            opt.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true, button: 0, pointerType: "mouse" }));
+            opt.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0 }));
+            opt.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, cancelable: true, button: 0, pointerType: "mouse" }));
+            opt.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, button: 0 }));
+            opt.click();
+            return true;
+        })()`), `Select option ${label}`);
+        await eventually(() => evaluate(teacher, `!document.querySelector('[role="listbox"]')`), `Listbox closed ${label}`);
     };
     const step = (n: number) => eventually(() => evaluate(teacher,
         `document.querySelector('${id(`teacher-topic-step-${n}`)}')?.getAttribute('aria-current')==='step'`), `Wizard step ${n}`);
@@ -64,8 +117,14 @@ export async function teacherTemplateDogfood(h: Harness) {
         const path = join(h.workdir, `${name}.${format}`);
         await Bun.write(path, format === "csv" ? "\uFEFF" + XLSX.utils.sheet_to_csv(sheet) : XLSX.write(book, { type: "buffer", bookType: "xlsx" }));
         await h.page(teacher, "/teacher/topic", id("teacher-topic-create-open"));
+        await eventually(() => evaluate(teacher, `!document.body.textContent.includes("加载中...")`), "Topic list loaded");
         await browser(teacher, "set", "viewport", "1024", "768", "2");
-        await click(id("teacher-topic-create-open"));
+        await eventually(async () => {
+            if (!(await evaluate(teacher, `Boolean(document.querySelector('${id("teacher-topic-name")}'))`))) {
+                await click(id("teacher-topic-create-open"));
+            }
+            return evaluate(teacher, `Boolean(document.querySelector('${id("teacher-topic-name")}'))`);
+        }, "Wizard step 1 ready");
         await fill(id("teacher-topic-name"), name);
         await next(2);
         await browser(teacher, "upload", id("teacher-topic-excel-file"), path);
@@ -77,10 +136,10 @@ export async function teacherTemplateDogfood(h: Harness) {
         await next(3);
         await select(id("teacher-topic-mapping-identifier"), "编号");
         if (!categoricalOnly) {
-            for (const field of ["测量值", "规模"]) await browser(teacher, "check", id(`teacher-topic-mapping-numeric-${field}`));
-            await browser(teacher, "check", id("teacher-topic-mapping-stratified-分层"));
+            for (const field of ["测量值", "规模"]) await check(id(`teacher-topic-mapping-numeric-${field}`));
+            await check(id("teacher-topic-mapping-stratified-分层"));
         }
-        await browser(teacher, "check", id("teacher-topic-mapping-others-类别"));
+        await check(id("teacher-topic-mapping-others-类别"));
         await select(id("teacher-topic-analysis-kind"), profile.kind === "mean" ? "均值" : "比例");
         await select(id("teacher-topic-analysis-field"), profile.kind === "mean" ? "测量值" : "类别");
         if (profile.kind === "proportion") await select(id("teacher-topic-analysis-value"), p === 7 ? "A" : "是");
@@ -89,7 +148,7 @@ export async function teacherTemplateDogfood(h: Harness) {
         await fill(id("teacher-contract-unit"), "一个观测单位");
         await fill("#teacher-field-search", "不存在的字段");
         assert.equal(await evaluate(teacher, `document.querySelector('${id("teacher-topic-next")}').disabled`), false, "Search must not unset mapping/target");
-        await browser(teacher, "find", "role", "button", "click", "--name", "显示全部字段", "--exact");
+        await clickNamedButton("显示全部字段");
         assert.equal(await evaluate(teacher, `document.querySelector('${id("teacher-topic-next")}').textContent.trim()`), "保存字段配置", "New fields must be persisted before dictionary confirmation");
         assert.equal(await evaluate(teacher, '[...document.querySelectorAll("button")].find(button=>button.textContent.trim()==="明确确认并保存")?.disabled'), true, "Unsaved fields must block dictionary confirmation");
         await click(id("teacher-topic-next"));
@@ -145,13 +204,13 @@ export async function teacherTemplateDogfood(h: Harness) {
         await click(id(`teacher-topic-publish-${topic.id}`));
         await eventually(() => evaluate(teacher, `document.querySelector('[role=alertdialog]')?.textContent.includes('检查通过')`), "Preflight ready");
         assert.equal((await api<{ topic: { status: number } }>(teacher, `/api/teacher/topics/${topic.id}/detail`)).topic.status, 0, "Preflight must be read-only");
-        await browser(teacher, "find", "role", "button", "click", "--name", "确认", "--exact");
+        await clickNamedButton("确认");
         await eventually(() => evaluate(teacher, `document.querySelector('[role=alertdialog]')?.textContent.includes('模板已发布')`), "Published");
         await click('[role="alertdialog"] a');
         await eventually(() => evaluate(teacher, `document.querySelector('${id("teacher-task-topic-select")}')?.textContent.includes(${JSON.stringify(name)})`), "Assignment preselection");
         for (const cls of classes.slice(0, 2)) {
             await fill('[aria-label="搜索班级"]', cls.name);
-            await browser(teacher, "check", id(`teacher-task-class-check-${cls.id}`));
+            await check(id(`teacher-task-class-check-${cls.id}`));
         }
         await fill('[aria-label="搜索班级"]', "不存在的班级");
         assert.ok(await evaluate(teacher, `document.querySelector('[role=dialog]').textContent.includes('已选 2 个班级')`), "Hidden selected classes retained");

@@ -4,8 +4,10 @@ import { createApiClient } from "@/lib/api-client";
 export type { ApiResponse } from "@/lib/api-client";
 const { request, download: downloadTeacherFile, resourceUrl: teacherResourceUrl } = createApiClient("teacher");
 export { downloadTeacherFile, teacherResourceUrl };
-import type { SamplePlanData, SamplingResultsData } from "@/domain/experiment/types";
+import type { SamplePlanData, SamplingResultsData, ExperimentWaveView } from "@/domain/experiment/types";
 import type { SavedAnalysisView, VariableDictionary } from "@/domain/variables/types";
+import type { AdjustmentPlan, FieldworkSimulationConfig } from "@/domain/fieldwork";
+import type { ResolvedStudyContract } from "@/lib/analysis-target";
 
 export interface VariableDictionaryResponse {
     dictionary: VariableDictionary | null;
@@ -40,7 +42,7 @@ export interface Task {
 }
 export interface TaskProgressData {
     task: { topicName: string; className: string; deadline: string | null };
-    counts: { not_started: number; stage1: number; stage2: number; stage3: number; stage4: number; submitted: number; graded: number; rejected: number };
+    counts: { not_started: number; stage1: number; stage2: number; stage3: number; stage4: number; stage5?: number; submitted: number; graded: number; rejected: number };
     students: Array<{ studentId: string; name: string; status: string; stage: number | null; lastActivity: string | null; submissionId: number | null }>;
     ppsUnavailable?: { count: number; students: Array<{ studentId: string; name: string }> };
 }
@@ -62,6 +64,10 @@ export interface SubmissionDetail extends GradingItem {
     questionnaire: QuestionnaireData | null;
     samplingResults?: SamplingResultsData | null;
     samplingPolicy?: SamplingPolicyV1;
+    adjustmentPlan?: AdjustmentPlan | null;
+    waves?: ExperimentWaveView[];
+    studyContract?: ResolvedStudyContract | null;
+    fieldworkConfig?: FieldworkSimulationConfig | null;
     samplingAttempts?: Array<{
         id: number;
         method: "simple" | "systematic" | "pps" | "stratified";
@@ -124,6 +130,7 @@ export const teacherApi = {
     uploadTopicExcel: (id: number, file: File) => upload<TopicExcelInfo>(`/api/teacher/topics/${id}/excel`, file),
     updateFieldMapping: (id: number, fieldMapping: any) => request<{ success: boolean }>(`/api/teacher/topics/${id}/mapping`, { method: "PUT", body: JSON.stringify({ fieldMapping }) }),
     updateSamplingPolicy: (id: number, samplingPolicy: SamplingPolicyV1) => request<{ success: boolean }>(`/api/teacher/topics/${id}/sampling-policy`, { method: "PUT", body: JSON.stringify({ samplingPolicy }) }),
+    updateFieldworkConfig: (id: number, fieldworkConfig: FieldworkSimulationConfig) => request<{ success: boolean }>(`/api/teacher/topics/${id}/fieldwork-config`, { method: "PUT", body: JSON.stringify({ fieldworkConfig }) }),
     uploadAttachment: (id: number, file: File) => upload<{ id: number }>(`/api/teacher/topics/${id}/attachments`, file),
     deleteAttachment: (topicId: number, attachmentId: number) => request<{ success: boolean }>(`/api/teacher/topics/${topicId}/attachments/${attachmentId}`, { method: "DELETE" }),
     updateRecommendQuestions: (id: number, items: Question[]) => request<{ success: boolean }>(`/api/teacher/topics/${id}/recommend-questions`, { method: "PUT", body: JSON.stringify({ items }) }),

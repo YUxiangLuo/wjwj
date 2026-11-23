@@ -1,8 +1,10 @@
 import type { Question, QuestionnaireData } from "../../lib/questionnaire-types";
 import type { SamplingPolicyV1 } from "../../lib/sampling-policy";
-import type { ExperimentStatus, TaskStatus, SamplePlanData, SamplingResultsData } from "./types";
+import type { ResolvedStudyContract } from "../../lib/analysis-target";
+import type { ExperimentStatus, TaskStatus, SamplePlanData, SamplingResultsData, ExperimentWaveView } from "./types";
 import type { SavedAnalysisView, VariableDictionary } from "../variables/types";
 import type { TargetAnalysisMetrics } from "./analysis-types";
+import type { AdjustmentPlan, FieldworkSimulationConfig } from "../fieldwork/index";
 
 export interface CurrentStudent {
     id: number;
@@ -22,6 +24,7 @@ export interface StudentTask {
     status: TaskStatus;
     progress: number;
     currentStage: number;
+    activeWaveNumber?: number;
     score?: number;
     rejectReason?: string;
 }
@@ -33,8 +36,9 @@ export interface TaskDetail extends Omit<StudentTask, "progress"> {
     attachments: TopicAttachment[];
     recommendQuestions: Question[];
     samplingPolicy?: SamplingPolicyV1;
+    studyContract?: ResolvedStudyContract | null;
+    fieldworkConfig?: FieldworkSimulationConfig;
 }
-
 
 export interface Announcement {
     id: number;
@@ -69,6 +73,10 @@ export interface SubmissionDetail {
         samplingResults: SamplingResultsData | null;
         samplingPolicy: SamplingPolicyV1;
         reportContent: string;
+        adjustmentPlan?: AdjustmentPlan | null;
+        waves?: ExperimentWaveView[];
+        studyContract?: ResolvedStudyContract | null;
+        fieldworkConfig?: FieldworkSimulationConfig | null;
         analysisReferences?: number[];
         analysisAppendices?: SavedAnalysisView[];
         targetMetrics?: TargetAnalysisMetrics | null;

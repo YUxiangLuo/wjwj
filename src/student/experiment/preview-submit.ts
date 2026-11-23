@@ -1,4 +1,5 @@
 import type { ExperimentData } from "@/domain/experiment/types";
+import { validateAdjustmentPlan } from "@/domain/fieldwork";
 import {
     getTargetSampleSizeFromSamplePlan,
     validateQuestionnaireForSubmit,
@@ -11,9 +12,26 @@ export function isSubmissionCompleteResponse(response: { success: boolean; error
     return response.success || response.error?.code === "ALREADY_SUBMITTED";
 }
 
-export function getPreviewSubmitBlocker(experiment: Pick<ExperimentData, "questionnaire" | "samplePlan" | "samplingResults" | "reportContent" | "populationSize" | "analysisTarget"> & Pick<ExperimentData, "samplingPolicy">) {
+export function getPreviewSubmitBlocker(
+    experiment: Pick<
+        ExperimentData,
+        "questionnaire" | "samplePlan" | "samplingResults" | "reportContent" | "populationSize" | "analysisTarget" | "samplingPolicy"
+    > & {
+        adjustmentPlan?: ExperimentData["adjustmentPlan"];
+        waves?: ExperimentData["waves"];
+    },
+) {
     const questionnaireError = validateQuestionnaireForSubmit(experiment.questionnaire, { allowLegacyDuplicateOptions: true });
     if (questionnaireError) return questionnaireError;
+
+    if (experiment.waves !== undefined && experiment.waves.length < 2) {
+        return "请完成首轮试投诊断与二轮调优正式投放后再提交";
+    }
+
+    if (experiment.adjustmentPlan !== undefined) {
+        const adjustmentError = validateAdjustmentPlan(experiment.adjustmentPlan);
+        if (adjustmentError) return adjustmentError;
+    }
 
     const samplePlanError = validateSamplePlanForSubmit(
         experiment.samplePlan,

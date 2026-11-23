@@ -19,6 +19,7 @@ export interface StudyContract {
     targetPopulation: string;
     unitOfAnalysis: string;
     target: AnalysisTarget;
+    businessDecision?: string;
 }
 
 export interface ResolvedStudyContract {
@@ -121,8 +122,16 @@ export function parseStudyContract(fieldMapping: unknown): StudyContract | null 
     const targetPopulation = toNonEmptyString(raw.targetPopulation);
     const unitOfAnalysis = toNonEmptyString(raw.unitOfAnalysis);
     const target = parseTarget(raw.target);
+    const businessDecision = toNonEmptyString(raw.businessDecision) ?? undefined;
     if (raw.version !== 1 || !researchQuestion || !targetPopulation || !unitOfAnalysis || !target) return null;
-    return { version: 1, researchQuestion, targetPopulation, unitOfAnalysis, target };
+    return {
+        version: 1,
+        researchQuestion,
+        targetPopulation,
+        unitOfAnalysis,
+        target,
+        ...(businessDecision ? { businessDecision } : {}),
+    };
 }
 
 /**
@@ -291,6 +300,9 @@ export function validateStudyContract(
     if (contract.unitOfAnalysis.length < 1 || contract.unitOfAnalysis.length > 100) {
         return "分析单位长度需在 1-100 字之间";
     }
+    if (contract.businessDecision !== undefined && contract.businessDecision.length > 400) {
+        return "商业决策场景说明不能超过 400 字";
+    }
     const legacy = fieldMapping.analysisTarget === undefined ? null : parseTarget(fieldMapping.analysisTarget);
     if (legacy && JSON.stringify(legacy) !== JSON.stringify(contract.target)) {
         return "研究合同与兼容对照变量不一致";
@@ -325,8 +337,9 @@ export function formatStudyContractSummary(
         ? `${contract.target.field} 的均值`
         : `${contract.target.field} 中「${contract.target.value}」的比例`;
     const margin = extras?.marginLabel ? `；目标误差限 ${extras.marginLabel}` : "";
+    const decision = contract.businessDecision ? `；支撑商业决策：${contract.businessDecision}` : "";
     if (resolved.inferred) {
-        return `兼容目标：${contract.researchQuestion}；估计量：${target}${margin}。问卷是预试，不进入估计。`;
+        return `兼容目标：${contract.researchQuestion}；估计量：${target}${margin}${decision}。`;
     }
-    return `研究目标：${contract.researchQuestion}；总体：${contract.targetPopulation}；分析单位：${contract.unitOfAnalysis}；估计量：${target}${margin}。问卷是预试，不进入估计。`;
+    return `研究目标：${contract.researchQuestion}；总体：${contract.targetPopulation}；分析单位：${contract.unitOfAnalysis}；估计量：${target}${margin}${decision}。`;
 }

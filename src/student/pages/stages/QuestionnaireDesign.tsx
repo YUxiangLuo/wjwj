@@ -19,13 +19,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, GripVertical, Trash2, Edit2, CheckCircle, AlertCircle, Copy, ArrowUp, ArrowDown, BookOpen, HelpCircle, MessageSquare, List, Play, RotateCcw, Loader2, ArrowRight, ChevronDown } from "lucide-react";
+import { Plus, GripVertical, Trash2, Edit2, CheckCircle, AlertCircle, Copy, ArrowUp, ArrowDown, BookOpen, HelpCircle, MessageSquare, List, Play, RotateCcw, Loader2, ArrowRight, ChevronDown, Sparkles, Link2, Clock } from "lucide-react";
 import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
 import { QuestionEditor } from "@/components/questionnaire/QuestionEditor";
 import { VariableBindingDialog } from "@/components/questionnaire/VariableBindingDialog";
 import { createApiClient } from "@/lib/api-client";
 import type { VariableDictionary } from "@/domain/variables/types";
+import { autoBindQuestionnaireVariables, evaluateQuestionnaireBurden } from "@/domain/fieldwork";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { ImmersiveQuestionnairePreview } from "../../components/ImmersiveQuestionnairePreview";
 import { tasksApi } from "../../api-client";
@@ -330,10 +331,58 @@ export function QuestionnaireDesign() {
                 duplicate = true;
                 return prev;
             }
-            return [...prev, { ...rq, id: generateId(), recommendSourceId: rq.id }];
+            const baseQuestion: Question = { ...rq, id: generateId(), recommendSourceId: rq.id };
+            if (dictionary && experiment?.taskId && !baseQuestion.variableBinding) {
+                const autoBound = autoBindQuestionnaireVariables({
+                    questionnaire: { title, welcomeText, endingText, questions: [...prev, baseQuestion] },
+                    dictionary,
+                    taskId: experiment.taskId,
+                    targetField: experiment.analysisTarget?.target.field,
+                });
+                return autoBound.questionnaire.questions;
+            }
+            return [...prev, baseQuestion];
         });
         if (duplicate) {
             toast.error("该推荐题目已在问卷中，请勿重复添加");
+        }
+    };
+
+    const handleUseAllRecommend = () => {
+        if (recommendQuestions.length === 0) return;
+        setQuestions((prev) => {
+            const existingSourceIds = new Set(prev.map((q) => q.recommendSourceId).filter(Boolean));
+            const additions = recommendQuestions
+                .filter((rq) => !existingSourceIds.has(rq.id))
+                .slice(0, Math.max(0, 50 - prev.length))
+                .map((rq) => ({ ...rq, id: generateId(), recommendSourceId: rq.id }));
+            const merged = [...prev, ...additions];
+            if (dictionary && experiment?.taskId) {
+                return autoBindQuestionnaireVariables({
+                    questionnaire: { title, welcomeText, endingText, questions: merged },
+                    dictionary,
+                    taskId: experiment.taskId,
+                    targetField: experiment.analysisTarget?.target.field,
+                }).questionnaire.questions;
+            }
+            return merged;
+        });
+        toast.success("已导入推荐题目并自动匹配变量字典");
+    };
+
+    const handleAutoBindVariables = () => {
+        if (!dictionary || !experiment?.taskId) return;
+        const result = autoBindQuestionnaireVariables({
+            questionnaire: questionnaireData,
+            dictionary,
+            taskId: experiment.taskId,
+            targetField: experiment.analysisTarget?.target.field,
+        });
+        if (result.newlyBoundCount > 0) {
+            setQuestions(result.questionnaire.questions);
+            toast.success(`已自动关联 ${result.newlyBoundCount} 道题目的数据字典变量`);
+        } else {
+            toast.info("当前没有可自动匹配的新题目，请点击单题右侧“关联变量”手动指定");
         }
     };
 
@@ -361,6 +410,16 @@ export function QuestionnaireDesign() {
     const welcomeTextLength = useMemo(() => getRichTextPlainLength(welcomeText), [welcomeText]);
     const endingTextLength = useMemo(() => getRichTextPlainLength(endingText), [endingText]);
 
+    const burdenProfile = useMemo(
+        () => evaluateQuestionnaireBurden(questionnaireData, dictionary, experiment?.analysisTarget?.target ?? null),
+        [questionnaireData, dictionary, experiment?.analysisTarget?.target],
+    );
+    const primaryTargetField = experiment?.analysisTarget && !experiment.analysisTarget.inferred
+        ? experiment.analysisTarget.target.field
+        : null;
+    const requiresTargetBinding = Boolean(dictionary && primaryTargetField);
+    const targetBindingPassed = !requiresTargetBinding || burdenProfile.primaryTargetBound;
+
     // Validation
     const validation = {
         title: title.trim().length >= 1 && title.length <= 100,
@@ -376,15 +435,16 @@ export function QuestionnaireDesign() {
         validation.welcomeText &&
         validation.endingText &&
         validation.questionCount &&
-        validation.optionCount;
+        validation.optionCount &&
+        targetBindingPassed;
 
     const canProceed = basicValidationPassed && validation.previewCompleted;
     const canAdvanceToNextStep = canAdvanceQuestionnaireStep(step, validation);
     const stepHint = step === 1
-        ? !validation.title ? "请填写 1–100 字的问卷标题。" : !validation.welcomeText ? "欢迎语需 20–1000 字，说明调查目的与填写方式。" : "开场已就绪，可以继续设计题目。"
-        : step === 2 ? !validation.questionCount ? "本实验需要 5–50 道题，请先补齐题目。" : !validation.optionCount ? "部分题目的选项不完整，请先编辑修正。" : "题目已就绪，可以继续写结束语。"
+        ? !validation.title ? "请填写 1–100 字的问卷标题。" : !validation.welcomeText ? "欢迎语需 20–1000 字，说明调查目的与隐私保护方式。" : "开场已就绪，可以继续设计题目。"
+        : step === 2 ? !validation.questionCount ? "本实验需要 5–50 道题，请先补齐题目。" : !validation.optionCount ? "部分题目的选项不完整，请先编辑修正。" : !targetBindingPassed ? `请将核心指标「${primaryTargetField}」关联到对应题目（可点上方一键智能绑定）。` : "题目与核心测量绑定已就绪，可以继续写结束语。"
             : step === 3 ? !validation.endingText ? "结束语需 20–1000 字，感谢受访者并说明调查结束。" : "结束语已就绪，接下来检查并试填。"
-                : !basicValidationPassed ? "请先修正校验清单中的必填项，再开始试填。" : !isPreviewValid ? "请完整试填当前版本，检查题意和作答方式。" : "检查已完成，可以保存问卷并规划样本量。";
+                : !basicValidationPassed ? "请先修正校验清单中的必填或核心变量绑定项，再开始试填。" : !isPreviewValid ? "请完整试填当前版本，检查题意和作答方式。" : "检查已完成，可以保存问卷并进入首轮试投。";
 
     const { scoreItems, structureScore } = useMemo(() => calculateQuestionnaireScoreSummary({
         title,
@@ -394,15 +454,16 @@ export function QuestionnaireDesign() {
         invalidOptionQuestions,
     }), [endingText, invalidOptionQuestions, questions, title, welcomeText]);
 
-    const requiredFailCount = [
+    const checklistFlags = [
         validation.title,
         validation.welcomeText,
         validation.endingText,
         validation.questionCount,
         validation.optionCount,
+        ...(requiresTargetBinding ? [targetBindingPassed] : []),
         validation.previewCompleted,
-    ].filter(Boolean).length;
-    const requiredMissingCount = 6 - requiredFailCount;
+    ];
+    const requiredMissingCount = checklistFlags.filter((ok) => !ok).length;
     const warningCount = scoreItems.filter((item) => item.status === "warning").length;
 
     const handleConfirmComplete = async () => {
@@ -649,6 +710,22 @@ export function QuestionnaireDesign() {
                                         aria-label="教师推荐题目列表"
                                         className="divide-y divide-border max-h-[400px] overflow-y-auto custom-scrollbar"
                                     >
+                                        {recommendQuestions.length > 0 && (
+                                            <div className="pb-3">
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={handleUseAllRecommend}
+                                                    disabled={questions.length >= 50}
+                                                    data-testid="student-questionnaire-use-all-recommend"
+                                                    className="w-full border-primary-border bg-primary-muted text-primary hover:bg-primary-muted hover:text-primary"
+                                                >
+                                                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                                                    一键导入全部推荐题并绑定
+                                                </Button>
+                                            </div>
+                                        )}
                                         {recommendQuestions.length === 0 && (
                                             <div className="rounded-surface border border-dashed border-input bg-card p-4 text-label text-muted-foreground text-center">
                                                 暂无推荐题目
@@ -859,6 +936,25 @@ export function QuestionnaireDesign() {
                                         结束语：{endingTextLength} 字 {validation.endingText ? "" : "(20-1000字)"}
                                     </span>
                                 </div>
+                                {requiresTargetBinding && (
+                                    <div className={`flex items-center justify-between gap-2.5 px-3 py-2 rounded-surface border ${targetBindingPassed ? "bg-success-muted border-success-border" : "bg-destructive-muted border-destructive-border"}`}>
+                                        <div className="flex items-center gap-2.5">
+                                            {targetBindingPassed ? (
+                                                <CheckCircle className="w-4 h-4 text-success shrink-0" />
+                                            ) : (
+                                                <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                                            )}
+                                            <span className={`text-label ${targetBindingPassed ? "text-success" : "text-destructive"}`}>
+                                                核心指标绑定（{primaryTargetField}）：{targetBindingPassed ? `已关联 Q${(burdenProfile.primaryTargetQuestionIndex ?? 0) + 1}` : "尚未绑定对应测量题"}
+                                            </span>
+                                        </div>
+                                        {!targetBindingPassed && (
+                                            <Button type="button" size="sm" variant="outline" onClick={handleAutoBindVariables} className="h-7 px-2 text-meta">
+                                                智能绑定
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
                                 <div className={`flex items-center gap-2.5 px-3 py-2 rounded-surface border ${validation.previewCompleted ? "bg-success-muted border-success-border" : "bg-destructive-muted border-destructive-border"}`}>
                                     {validation.previewCompleted ? (
                                         <CheckCircle className="w-4 h-4 text-success shrink-0" />
@@ -951,6 +1047,46 @@ export function QuestionnaireDesign() {
                 <Button type="button" variant="outline" onClick={() => setTemplatePickerOpen(true)}><BookOpen className="mr-2 h-4 w-4"/>使用问卷模板</Button>
             </PageHeader>
 
+            {/* 商业测量覆盖度与受访负担实时诊断条 */}
+            <div
+                className="flex flex-wrap items-center justify-between gap-3 rounded-surface border border-border bg-card px-4 py-3"
+                data-testid="student-questionnaire-burden-bar"
+            >
+                <div className="flex flex-wrap items-center gap-4 text-meta">
+                    <span className="inline-flex items-center gap-1.5 text-foreground">
+                        <Clock className="h-4 w-4 text-primary" />
+                        预估填答耗时：<strong className="tabular-nums">{burdenProfile.estimatedDurationSec} 秒</strong>
+                        <span className={burdenProfile.burdenLevel === "high" ? "text-warning font-medium" : "text-success"}>
+                            （{burdenProfile.burdenLevel === "low" ? "轻量化易回收" : burdenProfile.burdenLevel === "moderate" ? "时长适中" : "题量偏重，易触发中途弃答"}）
+                        </span>
+                    </span>
+                    {dictionary && (
+                        <span className="inline-flex items-center gap-1.5 text-foreground">
+                            <Link2 className="h-4 w-4 text-info" />
+                            数据字典测量绑定：<strong className="tabular-nums">{burdenProfile.boundFields.length} / {dictionary.variables.filter((v) => v.kind !== "identifier").length}</strong> 个指标
+                            {primaryTargetField && (
+                                <span className={burdenProfile.primaryTargetBound ? "text-success font-medium" : "text-destructive font-medium"}>
+                                    · 主指标「{primaryTargetField}」{burdenProfile.primaryTargetBound ? "已绑定" : "待绑定"}
+                                </span>
+                            )}
+                        </span>
+                    )}
+                </div>
+                {dictionary && questions.length > 0 && (
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={handleAutoBindVariables}
+                        data-testid="student-questionnaire-auto-bind"
+                        className="border-primary-border bg-primary-muted text-primary hover:bg-primary-muted hover:text-primary"
+                    >
+                        <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                        一键智能绑定变量
+                    </Button>
+                )}
+            </div>
+
             {templateHintOpen && (
                 <div role="status" className="flex flex-wrap items-start justify-between gap-3 rounded-surface border border-info-border bg-info-muted p-3 text-label text-info" data-testid="student-questionnaire-template-hint">
                     <p>{templateResearchQuestion
@@ -970,7 +1106,7 @@ export function QuestionnaireDesign() {
                     {step > 1 && <Button type="button" variant="outline" onClick={() => setStep((step - 1) as 1 | 2 | 3 | 4)} disabled={isCompleting} data-testid="student-questionnaire-prev">上一步</Button>}
                     {step < 4 ? <Button onClick={() => setStep((step + 1) as 1 | 2 | 3 | 4)} disabled={!canAdvanceToNextStep} data-testid="student-questionnaire-next">继续：{steps[step]?.title}<ArrowRight className="ml-2 h-4 w-4"/></Button>
                         : <Button onClick={() => void handleConfirmComplete()} disabled={!canProceed || isCompleting || refreshRequired} data-testid="student-questionnaire-complete">
-                            {isCompleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>}保存并规划样本量
+                            {isCompleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>}保存并开启首轮试投
                         </Button>}
                 </div>
             </StageActions>

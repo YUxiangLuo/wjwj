@@ -12,6 +12,45 @@ afterAll(async () => {
     await Bun.file(absolutePopulationPath).delete().catch(() => undefined);
 });
 
+function validQuestionnaire() {
+    return {
+        title: "商业调研问卷",
+        welcomeText: "欢迎参与本次商业统计调查实验，所有填答信息均严格匿名保密。",
+        endingText: "衷心感谢您的宝贵配合与支持，祝您工作顺利、生活愉快。",
+        questions: Array.from({ length: 5 }, (_, idx) => ({
+            id: `q${idx}`,
+            type: "boolean",
+            content: `第${idx + 1}道商业调查问题？`,
+        })),
+    };
+}
+
+function fieldworkFor(methods: string[]) {
+    return {
+        methods: Object.fromEntries(methods.map((method) => [
+            method,
+            {
+                method,
+                dispatchSeed: 2026,
+                dispatchedAt: "2026-01-03T00:00:00Z",
+                invitedCount: 2,
+                records: [
+                    {
+                        unitIndex: 0,
+                        stratum: "A",
+                        status: "completed_clean",
+                        durationSeconds: 95,
+                        answeredCount: 5,
+                        totalQuestions: 5,
+                        straightliner: false,
+                        observedValues: {},
+                    },
+                ],
+            },
+        ])),
+    };
+}
+
 function record(overrides: Record<string, unknown> = {}) {
     return {
         id: 9,
@@ -21,15 +60,18 @@ function record(overrides: Record<string, unknown> = {}) {
         samplingGeneration: 0,
         analysisReferences: [],
         status: "in_progress",
-        currentStage: 3,
-        questionnaire: { title: "问卷" },
-        samplePlan: { confidenceLevel: "95", marginOfError: 5, finalSampleSize: 2 },
+        currentStage: 4,
+        activeWaveNumber: 2,
+        questionnaire: validQuestionnaire(),
+        samplePlan: { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 4, finalSampleSize: 2 },
         samplingResults: null,
+        wavesData: [],
         reportContent: null,
         stage1CompletedAt: new Date("2026-01-01T00:00:00Z"),
         stage2CompletedAt: new Date("2026-01-02T00:00:00Z"),
-        stage3CompletedAt: null,
+        stage3CompletedAt: new Date("2026-01-03T00:00:00Z"),
         stage4CompletedAt: null,
+        stage5CompletedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
         ...overrides,
@@ -116,15 +158,9 @@ test("sampling action ignores forged output fields and atomically persists its s
 
     expect(response.status).toBe(200);
     const update = operations.find((operation) => operation.kind === "update");
-    const expression = (update?.set as { samplingResults?: SQL } | undefined)?.samplingResults;
-    expect(expression).toBeDefined();
-    const query = new PgDialect().sqlToQuery(expression!);
-    expect(query.sql).toContain("jsonb_set");
-    expect(query.sql).toContain("coalesce");
-    expect(query.params).toContain("simple");
-    const storedResult = query.params.find((value) => (
-        value !== null && typeof value === "object" && (value as { serverGenerated?: boolean }).serverGenerated === true
-    )) as Record<string, unknown>;
+    const samplingSet = (update?.set as { samplingResults?: Record<string, Record<string, unknown>> } | undefined)?.samplingResults;
+    expect(samplingSet).toBeDefined();
+    const storedResult = samplingSet?.simple as Record<string, unknown>;
     expect(storedResult).toMatchObject({ serverGenerated: true, indices: expect.any(Array) });
     expect(storedResult.indices).toEqual([3, 2]);
     expect(storedResult).not.toHaveProperty("data");
@@ -133,17 +169,19 @@ test("sampling action ignores forged output fields and atomically persists its s
     expect(storedResult).not.toHaveProperty("layers");
 
     const optimisticQuery = new PgDialect().sqlToQuery(update?.where as SQL);
-    expect(optimisticQuery.sql).toContain("= coalesce(");
-    expect(optimisticQuery.params).toContain(null);
+    expect(optimisticQuery.params).toEqual([9, 6, "in_progress", 4]);
 
     const payload = await response.json() as any;
     expect(payload.data.result.data).toHaveLength(2);
     expect(payload.data.result).not.toHaveProperty("indices");
     expect(payload.data.result).not.toHaveProperty("inclusionProbabilities");
 
-    const attemptInsert = operations.find((operation) => operation.kind === "insert");
+    const attemptInsert = operations.filter((operation) => operation.kind === "insert").find((operation) => (
+        Boolean((operation.values as { method?: string } | undefined)?.method)
+    ));
     expect(attemptInsert?.values).toMatchObject({
         experimentId: 9,
+        waveNumber: 2,
         method: "simple",
         seed: 2026,
         sampleCount: 2,
@@ -236,9 +274,9 @@ test("forged stage completion cannot supply results or bypass an eligible PPS me
         stratified: { completed: true, layers: [{ name: "A", sampleCount: 2 }] },
     };
     const response = await module.stageCompleteRoutes.POST!(routeRequest(
-        "/api/student/tasks/3/experiment/stages/3/complete",
+        "/api/student/tasks/3/experiment/stages/4/complete",
         { observedVersion: 6, samplingResults: forged },
-        { id: "3", stage: "3" },
+        { id: "3", stage: "4" },
     ));
 
     expect(response.status).toBe(409);
@@ -264,26 +302,36 @@ test("stage completion atomically persists server-determined PPS unavailability"
         unavailableReason: "当前总体不存在对每个单位都为正数的规模变量",
         serverGenerated: true,
     };
-    const current = record({ samplingResults: stored });
-    const marked = { ...current, samplingResults: { ...stored, pps } };
-    const updated = { ...marked, currentStage: 4, version: 7, stage3CompletedAt: new Date() };
+    const q = validQuestionnaire();
+    const plan = { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 4, finalSampleSize: 2 };
+    const fw = fieldworkFor(["simple", "systematic", "stratified"]);
+    const wave2 = (sr: Record<string, unknown>) => ({
+        waveNumber: 2,
+        kind: "main",
+        label: "Wave 2",
+        questionnaire: q,
+        samplePlan: plan,
+        samplingResults: sr,
+        fieldwork: fw,
+        cleaningConfig: { excludeSpeeders: true, excludeStraightliners: true },
+        completedAt: null,
+    });
+    const current = record({ samplingResults: stored, wavesData: [wave2(stored)] });
+    const marked = { ...current, samplingResults: { ...stored, pps }, wavesData: [wave2({ ...stored, pps })] };
+    const updated = { ...marked, wavesData: [], currentStage: 5, version: 7, stage4CompletedAt: new Date() };
     const { module, operations } = await load(current, [[marked], [updated]], { numeric: [], stratified: ["gender"] });
     const response = await module.stageCompleteRoutes.POST!(routeRequest(
-        "/api/student/tasks/3/experiment/stages/3/complete",
+        "/api/student/tasks/3/experiment/stages/4/complete",
         { observedVersion: 6 },
-        { id: "3", stage: "3" },
+        { id: "3", stage: "4" },
     ));
 
     expect(response.status).toBe(200);
     const updates = operations.filter((operation) => operation.kind === "update");
     expect(updates).toHaveLength(2);
-    const markerExpression = (updates[0]?.set as { samplingResults?: SQL }).samplingResults;
-    expect(markerExpression).toBeDefined();
-    const markerQuery = new PgDialect().sqlToQuery(markerExpression!);
-    expect(markerQuery.sql).toContain("jsonb_set");
-    expect(markerQuery.params).toContain("pps");
-    expect(markerQuery.params).toContainEqual(pps);
-    expect((updates[1]?.set as { samplingResults?: unknown }).samplingResults).toBeUndefined();
+    const markerSet = (updates[0]?.set as { samplingResults?: Record<string, unknown> }).samplingResults;
+    expect(markerSet?.pps).toEqual(pps);
+    expect((updates[1]?.set as { samplingResults?: Record<string, unknown> }).samplingResults?.pps).toEqual(pps);
 });
 
 test("frozen experiment and analysis reads reject changed sources, while editable experiments remain usable", async () => {
@@ -352,9 +400,9 @@ test("population-backed routes return READ_FAILED when population storage is unr
 
         const completionLoad = await load(record(), [[{ id: 9 }]], { numeric: [], stratified: ["gender"] }, missingPath);
         const completionResponse = await completionLoad.module.stageCompleteRoutes.POST!(routeRequest(
-            "/api/student/tasks/3/experiment/stages/3/complete",
+            "/api/student/tasks/3/experiment/stages/4/complete",
             { observedVersion: 6 },
-            { id: "3", stage: "3" },
+            { id: "3", stage: "4" },
         ));
         expect(completionResponse.status).toBe(500);
         expect(await completionResponse.json()).toMatchObject({ error: { code: "READ_FAILED" } });
@@ -385,18 +433,34 @@ test("stage completion ignores client results and does not rewrite stored author
             data: [{ id: 1 }, { id: 4 }],
         },
     };
-    const current = record({ samplingResults: stored });
-    const updated = { ...current, samplingResults: stored, currentStage: 4, version: 7, stage3CompletedAt: new Date() };
-    const { module, operations } = await load(current, [[updated]]);
+    const q = validQuestionnaire();
+    const plan = { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 4, finalSampleSize: 2 };
+    const current = record({
+        samplingResults: stored,
+        wavesData: [{
+            waveNumber: 2,
+            kind: "main",
+            label: "Wave 2",
+            questionnaire: q,
+            samplePlan: plan,
+            samplingResults: stored,
+            fieldwork: fieldworkFor(["simple", "systematic", "pps", "stratified"]),
+            cleaningConfig: { excludeSpeeders: true, excludeStraightliners: true },
+            completedAt: null,
+        }],
+    });
+    const updated = { ...current, wavesData: [], samplingResults: stored, currentStage: 5, version: 7, stage4CompletedAt: new Date() };
+    const { module, operations } = await load(current, [[updated]], { numeric: [], stratified: ["gender"] });
     const response = await module.stageCompleteRoutes.POST!(routeRequest(
-        "/api/student/tasks/3/experiment/stages/3/complete",
+        "/api/student/tasks/3/experiment/stages/4/complete",
         { observedVersion: 6, samplingResults: { pps: { unavailable: true } } },
-        { id: "3", stage: "3" },
+        { id: "3", stage: "4" },
     ));
 
     expect(response.status).toBe(200);
     const update = operations.find((operation) => operation.kind === "update");
-    expect((update?.set as { samplingResults?: unknown }).samplingResults).toBeUndefined();
-    expect(update?.set).toMatchObject({ version: 7, currentStage: 4 });
+    expect((update?.set as { samplingResults?: Record<string, Record<string, unknown>> }).samplingResults?.pps?.completed).toBe(true);
+    expect((update?.set as { samplingResults?: Record<string, Record<string, unknown>> }).samplingResults?.pps?.unavailable).toBeUndefined();
+    expect(update?.set).toMatchObject({ version: 7, currentStage: 5 });
     expect(update?.set).not.toHaveProperty("samplingGeneration");
 });

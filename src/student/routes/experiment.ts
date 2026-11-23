@@ -1,6 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
-import { jsonbNullSafeEquals } from "../../db/native-jsonb";
 import { experiment, samplingAttempt } from "../../db/schema";
 import { validateObservedVersion } from "../../lib/observed-version";
 import { error, getPositiveRouteId, getRouteParam, handleServerError, json, parseBody, parsePositiveInteger } from "../../server/http";
@@ -27,7 +26,12 @@ import {
 import { parseStoredJson } from "../experiment/serialization";
 import { ExperimentStatus } from "@/domain/experiment/status";
 import { submitStudentExperiment } from "../experiment/submit-service";
-import { getTargetSampleSizeFromSamplePlan } from "../experiment/submit-validation";
+import {
+    getTargetSampleSizeFromSamplePlan,
+    validateMeanPlanVariance,
+    validateQuestionnaireForSubmit,
+    validateSamplePlanForSubmit,
+} from "../experiment/submit-validation";
 import { resolveAnalysisTarget, resolveStudyContract } from "../../lib/analysis-target";
 import {
     evaluateSamplingPolicy,
@@ -47,12 +51,31 @@ import {
 } from "../experiment/task-info";
 import { ensureTaskIsOpen, ensureTaskSubmissionWindow, hasTaskDeadlinePassed } from "../experiment/task-timing";
 import { buildStageCompletionUpdates, buildStageReopenUpdates } from "../experiment/update-service";
-import { finitePopulationS2ToSigma2 } from "../experiment/sample-plan";
+import { attachCalculatedSampleSize, finitePopulationS2ToSigma2 } from "../experiment/sample-plan";
 import { getOrCreateStudentExperiment } from "../experiment/workflow";
 import { requireAuth } from "./auth";
 import { AnalysisConflict, listSavedAnalyses, loadAnalysisReferences, parseAnalysisReferences } from "../experiment/saved-analysis-service";
 import { readVariableSource } from "../../server/variable-source";
 import { resolveTargetUnit } from "../experiment/target-unit";
+import { canonicalizeRichTextHtmlForStorage } from "../../server/rich-text";
+import { validateQuestionBindings } from "../../domain/variables/question-binding";
+import type { QuestionnaireData } from "../../lib/questionnaire-types";
+import {
+    DEFAULT_CLEANING_CONFIG,
+    evaluateQuestionnaireBurden,
+    parseAdjustmentPlan,
+    resolveCleaningConfig,
+    resolveFieldworkConfig,
+    type StoredExperimentWave,
+} from "../../domain/fieldwork";
+import {
+    ensureActiveWave,
+    getVerifiedWave1EmpiricalVariance,
+    hydrateWaveViews,
+    parseStoredWaves,
+    simulateWaveDispatchForCompletedMethods,
+    syncExperimentWaveRow,
+} from "../experiment/fieldwork-wave-service";
 
 function getTaskId(req: Request) {
     return getPositiveRouteId(req);
@@ -60,19 +83,20 @@ function getTaskId(req: Request) {
 
 function getStage(req: Request) {
     const stage = parsePositiveInteger(getRouteParam(req, "stage"));
-    return stage !== null && stage >= 1 && stage <= 4 ? stage : null;
+    return stage !== null && stage >= 1 && stage <= 5 ? stage : null;
 }
 
-function iso(value: Date | null) {
+function iso(value: Date | null | undefined) {
     return value?.toISOString() ?? null;
 }
 
-async function resolveExperimentSamplingResults(
+async function resolveExperimentSamplingAndPopulation(
     record: typeof experiment.$inferSelect,
     taskId: number,
     classId: number,
 ) {
     const stored = parseStoredJson(record.samplingResults);
+    const storedWaves = parseStoredWaves(record.wavesData);
     const inspection = inspectSamplingResultsStorage(stored);
     if (!inspection.ok) {
         return {
@@ -81,12 +105,21 @@ async function resolveExperimentSamplingResults(
             message: INVALID_SAMPLING_STORAGE_MESSAGE,
         };
     }
-    if (!inspection.needsPopulation) return { ok: true as const, value: stored };
 
     const taskInfo = await findStudentTaskSamplingInfo(taskId, classId);
+    const needsPopulation = inspection.needsPopulation || storedWaves.length > 0;
+    if (!needsPopulation) {
+        return { ok: true as const, value: stored, population: [] as Array<Record<string, unknown>>, taskInfo };
+    }
+
     const conflict = await getSubmissionSourceConflict(record, taskInfo?.excelFilePath ?? null);
     if (conflict) return conflict;
-    if (!taskInfo?.excelFilePath) return { ok: false as const, code: "READ_FAILED", message: "总体数据为空或读取失败" };
+    if (!taskInfo?.excelFilePath) {
+        if (!inspection.needsPopulation) {
+            return { ok: true as const, value: stored, population: [] as Array<Record<string, unknown>>, taskInfo };
+        }
+        return { ok: false as const, code: "READ_FAILED", message: "总体数据为空或读取失败" };
+    }
     const population = await readPopulationData(taskInfo.excelFilePath, taskInfo.fieldMapping);
     if (!population.length) return { ok: false as const, code: "READ_FAILED", message: "总体数据为空或读取失败" };
     const hydrated = hydrateSamplingResults(stored, population);
@@ -97,7 +130,7 @@ async function resolveExperimentSamplingResults(
             message: INVALID_SAMPLING_STORAGE_MESSAGE,
         };
     }
-    return hydrated;
+    return { ok: true as const, value: hydrated.value, population, taskInfo };
 }
 
 async function buildExperimentResponse(
@@ -106,33 +139,52 @@ async function buildExperimentResponse(
     taskId: number,
     classId: number,
 ) {
-    const resolvedSamplingResults = await resolveExperimentSamplingResults(record, taskId, classId);
-    if (!resolvedSamplingResults.ok) return resolvedSamplingResults;
-    const taskInfo = await findStudentTaskSamplingInfo(taskId, classId);
-    const analyses = record.analysisReferences.length ? await listSavedAnalyses(record.studentId, classId, taskId) : null;
-    return { ok: true as const, value: {
-        id: record.id,
-        taskId: record.taskId,
-        version: record.version,
-        currentStage: record.currentStage,
-        status: record.status,
-        rejectReason: record.status === ExperimentStatus.REJECTED ? record.rejectReason : null,
-        questionnaire: parseStoredJson(record.questionnaire),
-        samplePlan: normalizeSamplePlanData(parseStoredJson(record.samplePlan), populationSize),
-        samplingResults: previewSamplingResults(resolvedSamplingResults.value),
-        reportContent: record.reportContent,
-        samplingGeneration: record.samplingGeneration,
-        analysisReferences: record.analysisReferences,
-        analysisAppendices: record.analysisReferences.flatMap(id => analyses?.records.filter(row => row.id === id) ?? []),
-        stage1CompletedAt: iso(record.stage1CompletedAt),
-        stage2CompletedAt: iso(record.stage2CompletedAt),
-        stage3CompletedAt: iso(record.stage3CompletedAt),
-        stage4CompletedAt: iso(record.stage4CompletedAt),
-        populationSize: populationSize ?? 10_000,
-        analysisTarget: resolveAnalysisTarget(taskInfo?.fieldMapping),
-        studyContract: resolveStudyContract(taskInfo?.fieldMapping, { topicName: taskInfo?.topicName }),
-        samplingPolicy: resolveSamplingPolicy(taskInfo?.samplingPolicy),
-    } };
+    const resolved = await resolveExperimentSamplingAndPopulation(record, taskId, classId);
+    if (!resolved.ok) return resolved;
+    const { taskInfo, population } = resolved;
+    const storedWaves = parseStoredWaves(record.wavesData);
+    const waveViews = storedWaves.length > 0
+        ? hydrateWaveViews({
+            waves: storedWaves,
+            population,
+            populationSize,
+            fieldMapping: taskInfo?.fieldMapping,
+            fieldworkConfig: taskInfo?.fieldworkConfig,
+            dictionary: taskInfo?.variableDictionary,
+        })
+        : [];
+    const analyses = record.analysisReferences?.length ? await listSavedAnalyses(record.studentId, classId, taskId) : null;
+    return {
+        ok: true as const,
+        value: {
+            id: record.id,
+            taskId: record.taskId,
+            version: record.version,
+            currentStage: record.currentStage,
+            activeWaveNumber: record.activeWaveNumber ?? 1,
+            status: record.status,
+            rejectReason: record.status === ExperimentStatus.REJECTED ? record.rejectReason : null,
+            questionnaire: parseStoredJson(record.questionnaire),
+            samplePlan: normalizeSamplePlanData(parseStoredJson(record.samplePlan), populationSize),
+            samplingResults: previewSamplingResults(resolved.value),
+            adjustmentPlan: parseAdjustmentPlan(parseStoredJson(record.adjustmentPlan)),
+            waves: waveViews,
+            reportContent: record.reportContent,
+            samplingGeneration: record.samplingGeneration,
+            analysisReferences: record.analysisReferences ?? [],
+            analysisAppendices: (record.analysisReferences ?? []).flatMap(id => analyses?.records.filter(row => row.id === id) ?? []),
+            stage1CompletedAt: iso(record.stage1CompletedAt),
+            stage2CompletedAt: iso(record.stage2CompletedAt),
+            stage3CompletedAt: iso(record.stage3CompletedAt),
+            stage4CompletedAt: iso(record.stage4CompletedAt),
+            stage5CompletedAt: iso(record.stage5CompletedAt),
+            populationSize: populationSize ?? 10_000,
+            analysisTarget: resolveAnalysisTarget(taskInfo?.fieldMapping),
+            studyContract: resolveStudyContract(taskInfo?.fieldMapping, { topicName: taskInfo?.topicName }),
+            samplingPolicy: resolveSamplingPolicy(taskInfo?.samplingPolicy),
+            fieldworkConfig: resolveFieldworkConfig(taskInfo?.fieldworkConfig),
+        },
+    };
 }
 
 async function loadOwnedExperiment(studentId: number, taskId: number) {
@@ -164,40 +216,48 @@ interface SamplingAttemptWrite {
     details: Record<string, unknown>;
 }
 
-async function persistSamplingMethodResult(
+async function persistWaveSamplingMethodResult(
     record: typeof experiment.$inferSelect,
     method: SamplingMethod,
     result: Record<string, unknown>,
     attempt?: SamplingAttemptWrite,
 ) {
-    const observedResults = parseStoredJson<StoredSamplingResults>(record.samplingResults) ?? {};
-    const observedMethodResult = observedResults[method] ?? null;
+    const activeWaveNum = record.currentStage === 2 ? 1 : Math.max(2, record.activeWaveNumber || 2);
+    const { waves, activeWave } = ensureActiveWave({ ...record, activeWaveNumber: activeWaveNum });
+    const nextWaveSampling = {
+        ...(activeWave.samplingResults ?? {}),
+        [method]: result,
+    };
+    // Re-sampling a method invalidates that method's previous fieldwork in this wave
+    const nextMethodsFieldwork = { ...(activeWave.fieldwork?.methods ?? {}) };
+    delete nextMethodsFieldwork[method];
+    const nextWave: StoredExperimentWave = {
+        ...activeWave,
+        samplingResults: nextWaveSampling,
+        fieldwork: Object.keys(nextMethodsFieldwork).length > 0 ? { methods: nextMethodsFieldwork } : null,
+    };
+    const nextWaves = waves.map((w) => (w.waveNumber === activeWaveNum ? nextWave : w));
+
     return db.transaction(async (tx) => {
         const [persisted] = await tx
             .update(experiment)
             .set({
-                samplingResults: sql`jsonb_set(
-                    coalesce(${experiment.samplingResults}, '{}'::jsonb),
-                    array[${method}]::text[],
-                    ${result}::jsonb,
-                    true
-                )`,
+                activeWaveNumber: activeWaveNum,
+                samplingResults: nextWaveSampling,
+                wavesData: nextWaves,
                 samplingGeneration: sql`${experiment.samplingGeneration} + 1`,
                 updatedAt: new Date(),
             })
-            .where(and(
-                matchesObservedExperiment(record, record.version),
-                jsonbNullSafeEquals(
-                    sql`${experiment.samplingResults} -> ${method}`,
-                    observedMethodResult,
-                ),
-            ))
+            .where(matchesObservedExperiment(record, record.version))
             .returning();
         if (!persisted) return null;
+
+        await syncExperimentWaveRow(tx, record.id, nextWave);
 
         if (attempt) {
             await tx.insert(samplingAttempt).values({
                 experimentId: record.id,
+                waveNumber: activeWaveNum,
                 method,
                 seed: attempt.seed,
                 sampleCount: attempt.sampleCount,
@@ -226,13 +286,15 @@ function buildSamplingAttemptWrite(result: Record<string, unknown>): SamplingAtt
     };
 }
 
-async function prepareStoredSamplingResultsForCompletion(params: {
+async function prepareStoredSamplingResultsForFormalCompletion(params: {
     record: typeof experiment.$inferSelect;
     taskInfo: Awaited<ReturnType<typeof findStudentTaskSamplingInfo>>;
     signal?: AbortSignal;
 }) {
     let authoritativeRecord = params.record;
-    let stored = parseStoredJson<StoredSamplingResults>(authoritativeRecord.samplingResults) ?? {};
+    const activeWaveNum = Math.max(2, authoritativeRecord.activeWaveNumber || 2);
+    let { activeWave } = ensureActiveWave({ ...authoritativeRecord, activeWaveNumber: activeWaveNum });
+    let stored = (activeWave.samplingResults ?? parseStoredJson<StoredSamplingResults>(authoritativeRecord.samplingResults) ?? {}) as StoredSamplingResults;
     const policy = resolveSamplingPolicy(params.taskInfo?.samplingPolicy);
 
     if (policy.methods.pps !== "disabled" && !isServerGeneratedResult(stored.pps)) {
@@ -252,15 +314,14 @@ async function prepareStoredSamplingResultsForCompletion(params: {
         }
         const resolvedTarget = resolveAnalysisTarget(params.taskInfo.fieldMapping);
         const targetField = resolvedTarget?.inferred ? undefined : resolvedTarget?.target.field;
-        const eligibleFields = ppsEligibleFields
-            .filter((field) => field !== targetField);
+        const eligibleFields = ppsEligibleFields.filter((field) => field !== targetField);
         if (eligibleFields.length === 0) {
             const unavailableResult = {
                 unavailable: true,
                 unavailableReason: PPS_UNAVAILABLE_REASON,
                 serverGenerated: true,
             };
-            const persisted = await persistSamplingMethodResult(authoritativeRecord, "pps", unavailableResult);
+            const persisted = await persistWaveSamplingMethodResult(authoritativeRecord, "pps", unavailableResult);
             if (!persisted) {
                 return {
                     ok: false as const,
@@ -268,12 +329,11 @@ async function prepareStoredSamplingResultsForCompletion(params: {
                 };
             }
             authoritativeRecord = persisted;
-            stored = parseStoredJson<StoredSamplingResults>(authoritativeRecord.samplingResults) ?? {};
+            ({ activeWave } = ensureActiveWave({ ...authoritativeRecord, activeWaveNumber: activeWaveNum }));
+            stored = (activeWave.samplingResults ?? {}) as StoredSamplingResults;
         }
     }
 
-    // A required PPS whose size field the server proved unusable degrades to
-    // "not applicable"; otherwise the student can never finish this stage.
     const effectivePolicy = applyPpsAvailability(policy, stored);
     const enabledMethods = (Object.keys(effectivePolicy.methods) as PolicySamplingMethod[])
         .filter((method) => effectivePolicy.methods[method] !== "disabled");
@@ -287,7 +347,7 @@ async function prepareStoredSamplingResultsForCompletion(params: {
     if (untrustedCompleted || !progress.canComplete) {
         return {
             ok: false as const,
-            response: error("请先在当前页面完成实验模板要求的抽样方法", "SAMPLING_RESULTS_REQUIRED", 409),
+            response: error("请先在当前正式轮次完成实验模板要求的必做及对比抽样方法", "SAMPLING_RESULTS_REQUIRED", 409),
         };
     }
 
@@ -340,79 +400,101 @@ const stageCompleteRoutes: RouteDefinition = {
         const schedule = await findStudentTaskSchedule(taskId, auth.student.classId);
         const openError = ensureTaskIsOpen(schedule?.openTime);
         if (openError) return error(openError.message, openError.code, openError.status);
-        // Admit once, before worker queueing or the stage-3 PPS marker write.
-        // Work admitted on time may finish after the task deadline.
         const deadlinePassed = hasTaskDeadlinePassed(schedule?.deadline);
         if (deadlinePassed) return error("任务已截止，无法完成阶段", "TASK_DEADLINE");
+
         const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
         const stageTaskInfo = await findStudentTaskSamplingInfo(taskId, auth.student.classId);
-        const fieldMapping = stage === 2 ? stageTaskInfo?.fieldMapping : undefined;
-        // 均值规划的总体方差必须来自当前总体，而不是客户端提交值（见 submit-validation）。
-        const resolvedTarget = stage === 2 ? resolveAnalysisTarget(fieldMapping) : null;
-        const stratifiedRequired = stage === 2 && resolveSamplingPolicy(stageTaskInfo?.samplingPolicy).methods.stratified === "required";
-        const meanVarianceRequired = stage === 2 && resolvedTarget?.target.kind === "mean";
+        const fieldMapping = stageTaskInfo?.fieldMapping;
+        const resolvedTarget = (stage === 2 || stage === 4) ? resolveAnalysisTarget(fieldMapping) : null;
+        const stratifiedRequired = stage === 4 && resolveSamplingPolicy(stageTaskInfo?.samplingPolicy).methods.stratified === "required";
+        const meanVarianceRequired = (stage === 2 || stage === 4) && resolvedTarget?.target.kind === "mean";
+
         let stratifiedStats: Record<string, Record<string, number>> | undefined;
         let expectedPopulationVariance: number | null = null;
+        let verifiedWave1Variance: number | null = null;
+
         if (stratifiedRequired || meanVarianceRequired) {
-            if (!stageTaskInfo?.excelFilePath) {
-                return error(stratifiedRequired ? "必做分层抽样缺少总体数据文件" : "均值规划需要读取总体数据文件", "NO_DATA_FILE");
-            }
-            try {
-                const stats = await populationStatsService.run({
-                    populationPath: stageTaskInfo.excelFilePath, fieldMapping,
-                }, req.signal);
-                if (stratifiedRequired) stratifiedStats = stats.stats;
-                if (meanVarianceRequired && resolvedTarget) {
-                    // 学生规划保存的是分母为 N 的有限总体方差 σ²（与规划公式一致），
-                    // 而总体统计给出的是分母 N−1 的 S²，必须先换算再比对。
-                    const stat = stats.populationNumericStats[resolvedTarget.target.field];
-                    expectedPopulationVariance = stat ? finitePopulationS2ToSigma2(stat.variance, stat.count) : null;
+            const rawPlanCandidate = (clientPayload.samplePlan ?? parseStoredJson(record.samplePlan)) as Record<string, unknown> | null;
+            const usesPriorEstimate = stage === 2 && rawPlanCandidate?.varianceSource === "prior_estimate";
+            if (!usesPriorEstimate) {
+                if (!stageTaskInfo?.excelFilePath) {
+                    return error(stratifiedRequired ? "必做分层抽样缺少总体数据文件" : "均值规划需要读取总体数据文件", "NO_DATA_FILE");
                 }
-            } catch (cause) { return handleServerError(cause); }
+                try {
+                    const stats = await populationStatsService.run({
+                        populationPath: stageTaskInfo.excelFilePath, fieldMapping,
+                    }, req.signal);
+                    if (stratifiedRequired) stratifiedStats = stats.stats;
+                    if (meanVarianceRequired && resolvedTarget) {
+                        const stat = stats.populationNumericStats[resolvedTarget.target.field];
+                        expectedPopulationVariance = stat ? finitePopulationS2ToSigma2(stat.variance, stat.count) : null;
+                    }
+                    if (stage === 4 && rawPlanCandidate?.varianceSource === "wave1_empirical") {
+                        const popRows = await readPopulationData(stageTaskInfo.excelFilePath, fieldMapping);
+                        verifiedWave1Variance = getVerifiedWave1EmpiricalVariance({
+                            waves: parseStoredWaves(record.wavesData),
+                            population: popRows,
+                            fieldMapping,
+                            fieldworkConfig: stageTaskInfo.fieldworkConfig,
+                            dictionary: stageTaskInfo.variableDictionary,
+                        });
+                    }
+                } catch (cause) { return handleServerError(cause); }
+            }
         }
-        let payload = clientPayload;
+
         let completionRecord = record;
-        if (stage === 3) {
-            const prepared = await prepareStoredSamplingResultsForCompletion({
+        if (stage === 4) {
+            const prepared = await prepareStoredSamplingResultsForFormalCompletion({
                 record,
                 taskInfo: stageTaskInfo ?? null,
                 signal: req.signal,
             });
             if (!prepared.ok) return prepared.response;
             completionRecord = prepared.record;
-            payload = {};
         }
+
         const result = buildStageCompletionUpdates({
             experimentRecord: completionRecord,
             stage,
-            payload,
+            payload: clientPayload,
             populationSize,
             deadlinePassed,
             fieldMapping,
             samplingPolicy: stageTaskInfo?.samplingPolicy,
             stratifiedStats,
             populationVariance: expectedPopulationVariance,
+            verifiedWave1Variance,
             variableDictionary: stageTaskInfo?.variableDictionary,
         });
         if (!result.ok) return error(result.message, result.code, result.status);
+
         try {
-            const references = stage === 4 ? parseAnalysisReferences(payload.analysisReferences ?? []) : [];
-            const bound = stage === 1 && (result.updates.questionnaire as { questions: { variableBinding?: unknown }[] }).questions.some(question => question.variableBinding);
-            if (bound || references.length) {
+            const references = stage === 5 ? parseAnalysisReferences(clientPayload.analysisReferences ?? []) : [];
+            const boundInStage = (stage === 1 || stage === 4)
+                && Boolean((result.updates.questionnaire as { questions?: { variableBinding?: unknown }[] } | undefined)?.questions?.some((question) => question.variableBinding));
+            if (boundInStage || references.length) {
                 if (!stageTaskInfo?.excelFilePath || !stageTaskInfo.variableDictionary
                     || stageTaskInfo.variableRevision !== stageTaskInfo.variableDictionary.revision
                     || (await readVariableSource(stageTaskInfo.excelFilePath, stageTaskInfo.fieldMapping)).source !== stageTaskInfo.variableDictionary.source) {
                     return error("变量字典来源已变化，请重新确认", "SOURCE_CONFLICT", 409);
                 }
             }
-            if (stage === 4) {
+            if (stage === 5) {
                 await loadAnalysisReferences(completionRecord, stageTaskInfo?.variableDictionary ?? null, references);
                 result.updates.analysisReferences = references;
             }
         } catch (cause) {
             return cause instanceof AnalysisConflict ? error(cause.message, cause.code, cause.status) : handleServerError(cause);
         }
-        if (stage === 2 && resolveSamplingPolicy(stageTaskInfo?.samplingPolicy).methods.pps === "required") {
+
+        const finalizedSampling = result.updates.samplingResults as Record<string, Record<string, unknown> | undefined> | undefined;
+        if (
+            stage === 4
+            && resolveSamplingPolicy(stageTaskInfo?.samplingPolicy).methods.pps === "required"
+            && finalizedSampling?.pps?.unavailable !== true
+        ) {
             if (!stageTaskInfo?.excelFilePath) return error("必做 PPS 缺少总体数据文件", "NO_DATA_FILE");
             try {
                 const stats = await populationStatsService.run({
@@ -427,11 +509,20 @@ const stageCompleteRoutes: RouteDefinition = {
             } catch (cause) { return handleServerError(cause); }
         }
 
-        const [updated] = await db
-            .update(experiment)
-            .set(result.updates)
-            .where(matchesObservedExperiment(completionRecord, versionResult.value))
-            .returning();
+        const updated = await db.transaction(async (tx) => {
+            const [row] = await tx
+                .update(experiment)
+                .set(result.updates)
+                .where(matchesObservedExperiment(completionRecord, versionResult.value))
+                .returning();
+            if (!row) return null;
+            if (Array.isArray(result.updates.wavesData)) {
+                for (const w of result.updates.wavesData as StoredExperimentWave[]) {
+                    await syncExperimentWaveRow(tx, row.id, w);
+                }
+            }
+            return row;
+        });
         if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         const response = await buildExperimentResponse(updated, populationSize, taskId, auth.student.classId);
         if (!response.ok) return error(response.message, response.code, 500);
@@ -466,6 +557,386 @@ const stageReopenRoutes: RouteDefinition = {
             .set(result.updates)
             .where(matchesObservedExperiment(record, versionResult.value))
             .returning();
+        if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
+        const response = await buildExperimentResponse(updated, populationSize, taskId, auth.student.classId);
+        if (!response.ok) return error(response.message, response.code, 500);
+        return json(response.value);
+    },
+};
+
+const wavePlanRoutes: RouteDefinition = {
+    async POST(req) {
+        const auth = await requireAuth(req);
+        if (auth.error || !auth.student) return auth.error!;
+        const taskId = getTaskId(req);
+        if (!taskId) return error("无效的任务ID", "INVALID_ID");
+        const accessError = await getStudentTaskAccessError(taskId, auth.student.classId);
+        if (accessError) return accessError;
+        const record = await loadOwnedExperiment(auth.student.id, taskId);
+        if (!record || (record.currentStage !== 2 && record.currentStage !== 4) || record.status === ExperimentStatus.SUBMITTED || record.status === ExperimentStatus.GRADED) {
+            return error("当前阶段不能更新样本量规划", "INVALID_STAGE_ORDER", 409);
+        }
+        const schedule = await findStudentTaskSchedule(taskId, auth.student.classId);
+        const openError = ensureTaskIsOpen(schedule?.openTime);
+        if (openError) return error(openError.message, openError.code, openError.status);
+        if (hasTaskDeadlinePassed(schedule?.deadline)) return error("任务已截止，无法保存样本量规划", "TASK_DEADLINE");
+
+        const body = await parseBody<{ observedVersion?: unknown; samplePlan?: unknown }>(req);
+        const versionResult = validateObservedVersion(body.observedVersion, record.version);
+        if (!versionResult.ok) return error(versionResult.message, versionResult.code, versionResult.status);
+        if (!body.samplePlan || typeof body.samplePlan !== "object" || Array.isArray(body.samplePlan)) {
+            return error("样本量规划格式无效", "VALIDATION_ERROR", 400);
+        }
+
+        const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
+        const taskInfo = await findStudentTaskSamplingInfo(taskId, auth.student.classId);
+        const resolvedTarget = resolveAnalysisTarget(taskInfo?.fieldMapping);
+        const samplePlan = attachCalculatedSampleSize(body.samplePlan as Record<string, unknown>, populationSize);
+        const planError = validateSamplePlanForSubmit(samplePlan, populationSize, resolvedTarget?.target.kind);
+        if (planError) return error(planError, "VALIDATION_ERROR", 400);
+
+        if (resolvedTarget?.target.kind === "mean") {
+            const usesPrior = record.currentStage === 2 && samplePlan.varianceSource === "prior_estimate";
+            if (!usesPrior && taskInfo?.excelFilePath) {
+                const stats = await populationStatsService.run({
+                    populationPath: taskInfo.excelFilePath,
+                    fieldMapping: taskInfo.fieldMapping,
+                }, req.signal);
+                const stat = stats.populationNumericStats[resolvedTarget.target.field];
+                const actualVar = stat ? finitePopulationS2ToSigma2(stat.variance, stat.count) : null;
+                let verifiedW1: number | null = null;
+                if (record.currentStage === 4 && samplePlan.varianceSource === "wave1_empirical") {
+                    const popRows = await readPopulationData(taskInfo.excelFilePath, taskInfo.fieldMapping);
+                    verifiedW1 = getVerifiedWave1EmpiricalVariance({
+                        waves: parseStoredWaves(record.wavesData),
+                        population: popRows,
+                        fieldMapping: taskInfo.fieldMapping,
+                        fieldworkConfig: taskInfo.fieldworkConfig,
+                        dictionary: taskInfo.variableDictionary,
+                    });
+                }
+                const varError = validateMeanPlanVariance(samplePlan, "mean", actualVar, {
+                    allowPriorEstimate: record.currentStage === 2,
+                    verifiedEmpiricalVariance: verifiedW1,
+                });
+                if (varError) return error(varError, "VALIDATION_ERROR", 400);
+            }
+        }
+
+        if (record.currentStage === 4 && resolveSamplingPolicy(taskInfo?.samplingPolicy).methods.pps === "required" && taskInfo?.excelFilePath) {
+            const stats = await populationStatsService.run({
+                populationPath: taskInfo.excelFilePath,
+                fieldMapping: taskInfo.fieldMapping,
+                ppsSampleSize: Number(samplePlan.finalSampleSize),
+                ppsSizeFields: resolveSamplingPolicy(taskInfo.samplingPolicy).ppsSizeFields,
+            }, req.signal);
+            if (stats.ppsPlanFeasible === false) {
+                return error("当前样本量下，所有辅助规模变量均无法可靠计算必做 PPS 入样概率，请调整样本量", "PPS_PLAN_INFEASIBLE", 400);
+            }
+        }
+
+        const activeWaveNum = record.currentStage === 2 ? 1 : Math.max(2, record.activeWaveNumber || 2);
+        const { waves, activeWave } = ensureActiveWave({ ...record, activeWaveNumber: activeWaveNum });
+        const prevTargetSize = getTargetSampleSizeFromSamplePlan(activeWave.samplePlan);
+        const nextTargetSize = getTargetSampleSizeFromSamplePlan(samplePlan);
+        const sizeChanged = prevTargetSize !== null && prevTargetSize !== nextTargetSize;
+        const nextWave: StoredExperimentWave = {
+            ...activeWave,
+            samplePlan,
+            ...(sizeChanged ? { samplingResults: null, fieldwork: null } : {}),
+        };
+        const nextWaves = waves.map((w) => (w.waveNumber === activeWaveNum ? nextWave : w));
+
+        const updated = await db.transaction(async (tx) => {
+            const [row] = await tx
+                .update(experiment)
+                .set({
+                    version: record.version + 1,
+                    activeWaveNumber: activeWaveNum,
+                    samplePlan,
+                    ...(sizeChanged ? { samplingResults: null, samplingGeneration: sql`${experiment.samplingGeneration} + 1` } : {}),
+                    wavesData: nextWaves,
+                    updatedAt: new Date(),
+                })
+                .where(matchesObservedExperiment(record, versionResult.value))
+                .returning();
+            if (!row) return null;
+            await syncExperimentWaveRow(tx, record.id, nextWave);
+            return row;
+        });
+        if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
+        const response = await buildExperimentResponse(updated, populationSize, taskId, auth.student.classId);
+        if (!response.ok) return error(response.message, response.code, 500);
+        return json(response.value);
+    },
+};
+
+const waveQuestionnaireRoutes: RouteDefinition = {
+    async POST(req) {
+        const auth = await requireAuth(req);
+        if (auth.error || !auth.student) return auth.error!;
+        const taskId = getTaskId(req);
+        if (!taskId) return error("无效的任务ID", "INVALID_ID");
+        const accessError = await getStudentTaskAccessError(taskId, auth.student.classId);
+        if (accessError) return accessError;
+        const record = await loadOwnedExperiment(auth.student.id, taskId);
+        if (!record || record.currentStage !== 4 || record.status === ExperimentStatus.SUBMITTED || record.status === ExperimentStatus.GRADED) {
+            return error("仅可在第四阶段（调优正式投放）修订二轮问卷", "INVALID_STAGE_ORDER", 409);
+        }
+        const schedule = await findStudentTaskSchedule(taskId, auth.student.classId);
+        const openError = ensureTaskIsOpen(schedule?.openTime);
+        if (openError) return error(openError.message, openError.code, openError.status);
+        if (hasTaskDeadlinePassed(schedule?.deadline)) return error("任务已截止，无法保存问卷修订", "TASK_DEADLINE");
+
+        const body = await parseBody<{ observedVersion?: unknown; questionnaire?: unknown }>(req);
+        const versionResult = validateObservedVersion(body.observedVersion, record.version);
+        if (!versionResult.ok) return error(versionResult.message, versionResult.code, versionResult.status);
+
+        const rawQ = body.questionnaire;
+        const questionnaire = rawQ && typeof rawQ === "object" && !Array.isArray(rawQ)
+            ? {
+                ...rawQ,
+                welcomeText: canonicalizeRichTextHtmlForStorage((rawQ as Record<string, unknown>).welcomeText),
+                endingText: canonicalizeRichTextHtmlForStorage((rawQ as Record<string, unknown>).endingText),
+            }
+            : rawQ;
+        const qErr = validateQuestionnaireForSubmit(questionnaire);
+        if (qErr) return error(qErr, "VALIDATION_ERROR", 400);
+
+        const taskInfo = await findStudentTaskSamplingInfo(taskId, auth.student.classId);
+        try {
+            validateQuestionBindings(questionnaire as QuestionnaireData, taskInfo?.variableDictionary ?? null, taskId);
+        } catch (cause) {
+            return error(cause instanceof Error ? cause.message : "问卷变量绑定无效", "VALIDATION_ERROR", 400);
+        }
+        const resolvedTarget = resolveAnalysisTarget(taskInfo?.fieldMapping);
+        if (taskInfo?.variableDictionary && resolvedTarget && !resolvedTarget.inferred) {
+            const burden = evaluateQuestionnaireBurden(questionnaire as QuestionnaireData, taskInfo.variableDictionary, resolvedTarget.target);
+            if (!burden.primaryTargetBound) {
+                return error(`请保持核心研究指标「${resolvedTarget.target.field}」已绑定到问卷题目`, "VALIDATION_ERROR", 400);
+            }
+        }
+
+        const activeWaveNum = Math.max(2, record.activeWaveNumber || 2);
+        const { waves, activeWave } = ensureActiveWave({ ...record, activeWaveNumber: activeWaveNum });
+        const nextWave: StoredExperimentWave = {
+            ...activeWave,
+            questionnaire: questionnaire as QuestionnaireData,
+            fieldwork: null, // Re-dispatch required with revised questionnaire
+        };
+        const nextWaves = waves.map((w) => (w.waveNumber === activeWaveNum ? nextWave : w));
+        const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
+
+        const updated = await db.transaction(async (tx) => {
+            const [row] = await tx
+                .update(experiment)
+                .set({
+                    version: record.version + 1,
+                    questionnaire,
+                    wavesData: nextWaves,
+                    samplingGeneration: sql`${experiment.samplingGeneration} + 1`,
+                    updatedAt: new Date(),
+                })
+                .where(matchesObservedExperiment(record, versionResult.value))
+                .returning();
+            if (!row) return null;
+            await syncExperimentWaveRow(tx, record.id, nextWave);
+            return row;
+        });
+        if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
+        const response = await buildExperimentResponse(updated, populationSize, taskId, auth.student.classId);
+        if (!response.ok) return error(response.message, response.code, 500);
+        return json(response.value);
+    },
+};
+
+const fieldworkDispatchRoutes: RouteDefinition = {
+    async POST(req) {
+        const auth = await requireAuth(req);
+        if (auth.error || !auth.student) return auth.error!;
+        const taskId = getTaskId(req);
+        if (!taskId) return error("无效的任务ID", "INVALID_ID");
+        const accessError = await getStudentTaskAccessError(taskId, auth.student.classId);
+        if (accessError) return accessError;
+        const record = await loadOwnedExperiment(auth.student.id, taskId);
+        if (!record || (record.currentStage !== 2 && record.currentStage !== 4) || record.status === ExperimentStatus.SUBMITTED || record.status === ExperimentStatus.GRADED) {
+            return error("当前阶段不能执行问卷发放", "INVALID_STAGE_ORDER", 409);
+        }
+        const schedule = await findStudentTaskSchedule(taskId, auth.student.classId);
+        const openError = ensureTaskIsOpen(schedule?.openTime);
+        if (openError) return error(openError.message, openError.code, openError.status);
+        if (hasTaskDeadlinePassed(schedule?.deadline)) return error("任务已截止，无法发放问卷", "TASK_DEADLINE");
+
+        const body = await parseBody<{ observedVersion?: unknown; seed?: unknown }>(req);
+        const versionResult = validateObservedVersion(body.observedVersion, record.version);
+        if (!versionResult.ok) return error(versionResult.message, versionResult.code, versionResult.status);
+        const optionalSeed = typeof body.seed === "number" && Number.isSafeInteger(body.seed) ? body.seed : undefined;
+
+        const taskInfo = await findStudentTaskSamplingInfo(taskId, auth.student.classId);
+        if (!taskInfo?.excelFilePath) return error("未找到总体的Excel数据文件", "NO_DATA_FILE");
+        const population = await readPopulationData(taskInfo.excelFilePath, taskInfo.fieldMapping);
+        if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
+
+        const activeWaveNum = record.currentStage === 2 ? 1 : Math.max(2, record.activeWaveNumber || 2);
+        const { waves, activeWave } = ensureActiveWave({ ...record, activeWaveNumber: activeWaveNum });
+        const simResult = simulateWaveDispatchForCompletedMethods({
+            wave: activeWave,
+            population,
+            fieldMapping: taskInfo.fieldMapping,
+            fieldworkConfig: taskInfo.fieldworkConfig,
+            dictionary: taskInfo.variableDictionary,
+            seed: optionalSeed,
+        });
+        if (!simResult.ok) return error(simResult.message, "VALIDATION_ERROR", 400);
+
+        const nextWave: StoredExperimentWave = {
+            ...activeWave,
+            fieldwork: simResult.fieldwork,
+        };
+        const nextWaves = waves.map((w) => (w.waveNumber === activeWaveNum ? nextWave : w));
+        const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
+
+        const updated = await db.transaction(async (tx) => {
+            const [row] = await tx
+                .update(experiment)
+                .set({
+                    version: record.version + 1,
+                    activeWaveNumber: activeWaveNum,
+                    wavesData: nextWaves,
+                    samplingGeneration: sql`${experiment.samplingGeneration} + 1`,
+                    updatedAt: new Date(),
+                })
+                .where(matchesObservedExperiment(record, versionResult.value))
+                .returning();
+            if (!row) return null;
+            await syncExperimentWaveRow(tx, record.id, nextWave);
+            return row;
+        });
+        if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
+        const response = await buildExperimentResponse(updated, populationSize, taskId, auth.student.classId);
+        if (!response.ok) return error(response.message, response.code, 500);
+        return json(response.value);
+    },
+};
+
+const fieldworkCleaningRoutes: RouteDefinition = {
+    async POST(req) {
+        const auth = await requireAuth(req);
+        if (auth.error || !auth.student) return auth.error!;
+        const taskId = getTaskId(req);
+        if (!taskId) return error("无效的任务ID", "INVALID_ID");
+        const accessError = await getStudentTaskAccessError(taskId, auth.student.classId);
+        if (accessError) return accessError;
+        const record = await loadOwnedExperiment(auth.student.id, taskId);
+        if (!record || ![2, 3, 4].includes(record.currentStage) || record.status === ExperimentStatus.SUBMITTED || record.status === ExperimentStatus.GRADED) {
+            return error("当前阶段不能调整答卷质检清洗规则", "INVALID_STAGE_ORDER", 409);
+        }
+        const schedule = await findStudentTaskSchedule(taskId, auth.student.classId);
+        const openError = ensureTaskIsOpen(schedule?.openTime);
+        if (openError) return error(openError.message, openError.code, openError.status);
+        if (hasTaskDeadlinePassed(schedule?.deadline)) return error("任务已截止，无法调整质检规则", "TASK_DEADLINE");
+
+        const body = await parseBody<{ observedVersion?: unknown; waveNumber?: unknown; cleaningConfig?: unknown }>(req);
+        const versionResult = validateObservedVersion(body.observedVersion, record.version);
+        if (!versionResult.ok) return error(versionResult.message, versionResult.code, versionResult.status);
+
+        const targetWaveNum = typeof body.waveNumber === "number" && Number.isInteger(body.waveNumber) && body.waveNumber >= 1
+            ? body.waveNumber
+            : (record.currentStage === 3 ? 1 : (record.activeWaveNumber || 1));
+        const waves = parseStoredWaves(record.wavesData);
+        const existing = waves.find((w) => w.waveNumber === targetWaveNum);
+        if (!existing) return error("指定的实验波次不存在", "NOT_FOUND", 404);
+
+        const nextWave: StoredExperimentWave = {
+            ...existing,
+            cleaningConfig: resolveCleaningConfig(body.cleaningConfig),
+        };
+        const nextWaves = waves.map((w) => (w.waveNumber === targetWaveNum ? nextWave : w));
+        const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
+
+        const updated = await db.transaction(async (tx) => {
+            const [row] = await tx
+                .update(experiment)
+                .set({
+                    version: record.version + 1,
+                    wavesData: nextWaves,
+                    samplingGeneration: sql`${experiment.samplingGeneration} + 1`,
+                    updatedAt: new Date(),
+                })
+                .where(matchesObservedExperiment(record, versionResult.value))
+                .returning();
+            if (!row) return null;
+            await syncExperimentWaveRow(tx, record.id, nextWave);
+            return row;
+        });
+        if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
+        const response = await buildExperimentResponse(updated, populationSize, taskId, auth.student.classId);
+        if (!response.ok) return error(response.message, response.code, 500);
+        return json(response.value);
+    },
+};
+
+const newWaveRoutes: RouteDefinition = {
+    async POST(req) {
+        const auth = await requireAuth(req);
+        if (auth.error || !auth.student) return auth.error!;
+        const taskId = getTaskId(req);
+        if (!taskId) return error("无效的任务ID", "INVALID_ID");
+        const accessError = await getStudentTaskAccessError(taskId, auth.student.classId);
+        if (accessError) return accessError;
+        const record = await loadOwnedExperiment(auth.student.id, taskId);
+        if (!record || record.currentStage !== 4 || record.status === ExperimentStatus.SUBMITTED || record.status === ExperimentStatus.GRADED) {
+            return error("仅可在第四阶段追加新一轮调优波次", "INVALID_STAGE_ORDER", 409);
+        }
+        const schedule = await findStudentTaskSchedule(taskId, auth.student.classId);
+        const openError = ensureTaskIsOpen(schedule?.openTime);
+        if (openError) return error(openError.message, openError.code, openError.status);
+        if (hasTaskDeadlinePassed(schedule?.deadline)) return error("任务已截止，无法新增波次", "TASK_DEADLINE");
+
+        const body = await parseBody<{ observedVersion?: unknown }>(req);
+        const versionResult = validateObservedVersion(body.observedVersion, record.version);
+        if (!versionResult.ok) return error(versionResult.message, versionResult.code, versionResult.status);
+
+        const waves = parseStoredWaves(record.wavesData);
+        if (waves.length >= 4) {
+            return error("单次实验最多支持 4 轮投放迭代（含首轮试投）", "WAVE_LIMIT", 400);
+        }
+        const prevWave = waves.at(-1);
+        if (!prevWave?.fieldwork) {
+            return error("请先完成当前轮次的问卷发放回收，再追加新一轮微调波次", "VALIDATION_ERROR", 400);
+        }
+        const nextWaveNumber = (prevWave?.waveNumber ?? 2) + 1;
+        const createdWave: StoredExperimentWave = {
+            waveNumber: nextWaveNumber,
+            kind: "refinement",
+            label: `第 ${nextWaveNumber} 轮 · 进阶微调投放`,
+            questionnaire: structuredClone(prevWave.questionnaire),
+            samplePlan: prevWave.samplePlan ? structuredClone(prevWave.samplePlan) : null,
+            samplingResults: null,
+            fieldwork: null,
+            cleaningConfig: prevWave.cleaningConfig ? { ...prevWave.cleaningConfig } : { ...DEFAULT_CLEANING_CONFIG },
+            completedAt: null,
+        };
+        const nextWaves = [...waves.map((w) => (w.waveNumber === prevWave.waveNumber ? { ...w, completedAt: w.completedAt ?? new Date().toISOString() } : w)), createdWave];
+        const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
+
+        const updated = await db.transaction(async (tx) => {
+            const [row] = await tx
+                .update(experiment)
+                .set({
+                    version: record.version + 1,
+                    activeWaveNumber: nextWaveNumber,
+                    samplingResults: null,
+                    wavesData: nextWaves,
+                    samplingGeneration: sql`${experiment.samplingGeneration} + 1`,
+                    updatedAt: new Date(),
+                })
+                .where(matchesObservedExperiment(record, versionResult.value))
+                .returning();
+            if (!row) return null;
+            await syncExperimentWaveRow(tx, record.id, createdWave);
+            return row;
+        });
         if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         const response = await buildExperimentResponse(updated, populationSize, taskId, auth.student.classId);
         if (!response.ok) return error(response.message, response.code, 500);
@@ -508,11 +979,14 @@ const samplingActionRoutes: RouteDefinition = {
             return error("无效的抽样方法", "VALIDATION_ERROR", 400);
         }
         const record = await loadOwnedExperiment(auth.student.id, taskId);
-        if (!record || record.currentStage !== 3 || record.status === ExperimentStatus.SUBMITTED || record.status === ExperimentStatus.GRADED) {
-            return error("当前不能执行抽样", "INVALID_STAGE_ORDER", 409);
+        if (
+            !record
+            || (record.currentStage !== 2 && record.currentStage !== 4)
+            || record.status === ExperimentStatus.SUBMITTED
+            || record.status === ExperimentStatus.GRADED
+        ) {
+            return error("当前阶段不能执行抽样", "INVALID_STAGE_ORDER", 409);
         }
-        // Match stage saving and submission: admit work only while the task is
-        // open. Work admitted before the deadline may finish afterwards.
         const schedule = await findStudentTaskSchedule(taskId, auth.student.classId);
         if (!schedule) return error("任务不存在", "NOT_FOUND", 404);
         const openError = ensureTaskIsOpen(schedule.openTime);
@@ -533,10 +1007,15 @@ const samplingActionRoutes: RouteDefinition = {
         }
         const population = await readPopulationData(taskInfo.excelFilePath, taskInfo.fieldMapping);
         if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
+
+        const activeWaveNum = record.currentStage === 2 ? 1 : Math.max(2, record.activeWaveNumber || 2);
+        const { activeWave } = ensureActiveWave({ ...record, activeWaveNumber: activeWaveNum });
+        const effectivePlan = activeWave.samplePlan ?? parseStoredJson(record.samplePlan);
+
         const result = await executeSamplingAction({
             method: body.method,
             rawParams: body.params,
-            targetSampleSize: getTargetSampleSizeFromSamplePlan(parseStoredJson(record.samplePlan)),
+            targetSampleSize: getTargetSampleSizeFromSamplePlan(effectivePlan),
             population,
             fieldMapping: taskInfo.fieldMapping,
         });
@@ -546,7 +1025,7 @@ const samplingActionRoutes: RouteDefinition = {
             ...result.result,
             serverGenerated: true,
         });
-        const persisted = await persistSamplingMethodResult(
+        const persisted = await persistWaveSamplingMethodResult(
             record,
             body.method,
             authoritativeResult,
@@ -581,8 +1060,6 @@ const analysisMetricsRoutes: RouteDefinition = {
                 topicName: taskInfo.topicName,
                 targetUnit: resolveTargetUnit(taskInfo.fieldMapping, taskInfo.variableDictionary),
             };
-            // Sampling writes intentionally keep the stage version. Include the
-            // actual inputs as well as ownership/version in the deduplication key.
             const key = new Bun.CryptoHasher("sha256").update(JSON.stringify([
                 record.id, record.version, populationRevisionKey(job), job,
             ])).digest("hex");
@@ -619,11 +1096,13 @@ const submitRoutes: RouteDefinition = {
             experimentRecord: record,
             observedVersion: versionResult.value,
             taskInfo: {
+                taskId,
                 topicName: taskInfo?.topicName ?? null,
                 populationSize: taskInfo?.populationSize ?? null,
                 weightConfig: taskInfo?.weightConfig,
                 fieldMapping: taskInfo?.fieldMapping,
                 samplingPolicy: taskInfo?.samplingPolicy,
+                fieldworkConfig: taskInfo?.fieldworkConfig,
                 excelFilePath: taskInfo?.excelFilePath,
                 variableDictionary: taskInfo?.variableDictionary,
                 variableRevision: taskInfo?.variableRevision,
@@ -639,9 +1118,14 @@ const submitRoutes: RouteDefinition = {
 export {
     analysisMetricsRoutes,
     experimentRoutes,
+    fieldworkCleaningRoutes,
+    fieldworkDispatchRoutes,
+    newWaveRoutes,
     samplingActionRoutes,
     stageCompleteRoutes,
     stageReopenRoutes,
     statsRoutes,
     submitRoutes,
+    wavePlanRoutes,
+    waveQuestionnaireRoutes,
 };

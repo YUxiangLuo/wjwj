@@ -28,7 +28,7 @@ test("service binding requires an explicit missing answer, survives reopen, and 
     const saved = mock((_value: Question) => {}), close = mock(() => {});
     const props = { dictionary, taskId: 1, onConfirm: saved, onOpenChange: close };
     const view = render(<VariableBindingDialog open question={question} {...props} />);
-    await select(view, "选择变量字段", "社区服务满意度（社区服务满意度）");
+    await select(view, "选择变量字段", "门店小程序体验评分（门店小程序体验评分）");
     expect(confirm(view).disabled).toBe(true);
     expect(view.getByRole("combobox", { name: "选择缺失选项" }).textContent).toContain("请选择");
     fireEvent.click(confirm(view));
@@ -45,7 +45,7 @@ test("service binding requires an explicit missing answer, survives reopen, and 
     view.rerender(<VariableBindingDialog open question={value} {...props} />);
     expect(view.getByRole("combobox", { name: "选择缺失选项" }).textContent).toContain("近3个月未使用过");
     expect(confirm(view).disabled).toBe(false);
-    await select(view, "选择变量字段", "自评健康（自评健康）");
+    await select(view, "选择变量字段", "新品尝鲜意愿（新品尝鲜意愿）");
     expect(confirm(view).disabled).toBe(true);
     expect(view.getByRole("combobox", { name: "选择缺失选项" }).textContent).toContain("请选择");
 });
@@ -54,7 +54,7 @@ test("a nonuser option at the beginning is mapped explicitly without shifting th
     const reordered = { ...question, options: [question.options![5]!, ...question.options!.slice(0, 5)] };
     const saved = mock((_value: Question) => {});
     const view = render(<VariableBindingDialog open question={reordered} dictionary={dictionary} taskId={1} onConfirm={saved} onOpenChange={() => {}} />);
-    await select(view, "选择变量字段", "社区服务满意度（社区服务满意度）");
+    await select(view, "选择变量字段", "门店小程序体验评分（门店小程序体验评分）");
     expect(confirm(view).disabled).toBe(true);
     await select(view, "选择缺失选项", "近3个月未使用过");
     fireEvent.click(confirm(view));
@@ -65,10 +65,10 @@ test("a nonuser option at the beginning is mapped explicitly without shifting th
 
 test("multiple declared missing codes require an explicit code selection", async () => {
     const source = structuredClone(dictionary);
-    source.variables.find(variable => variable.field === "社区服务满意度")!.missing = [null, -99];
+    source.variables.find(variable => variable.field === "门店小程序体验评分")!.missing = [null, -99];
     const saved = mock((_value: Question) => {});
     const view = render(<VariableBindingDialog open question={question} dictionary={source} taskId={1} onConfirm={saved} onOpenChange={() => {}} />);
-    await select(view, "选择变量字段", "社区服务满意度（社区服务满意度）");
+    await select(view, "选择变量字段", "门店小程序体验评分（门店小程序体验评分）");
     await select(view, "选择缺失选项", "近3个月未使用过");
     expect(confirm(view).disabled).toBe(true);
     await select(view, "选择缺失值", "-99（缺失，不计入有效分母）");
@@ -82,7 +82,7 @@ test("ordinary five-point scales still bind without a missing-option prompt", as
     const scale = happinessQuestionnaire.questions.find(item => item.id === "hq3")!;
     const saved = mock((_value: Question) => {});
     const view = render(<VariableBindingDialog open question={scale} dictionary={dictionary} taskId={1} onConfirm={saved} onOpenChange={() => {}} />);
-    await select(view, "选择变量字段", "社会支持感（社会支持感）");
+    await select(view, "选择变量字段", "健康低糖关注度（健康低糖关注度）");
     expect(confirm(view).disabled).toBe(false);
     expect(view.queryByRole("combobox", { name: "选择缺失选项" })).toBeNull();
     fireEvent.click(confirm(view));

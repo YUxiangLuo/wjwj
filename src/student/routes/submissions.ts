@@ -1,6 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment, task, teacher, topic } from "../../db/schema";
+import { parseAdjustmentPlan, resolveFieldworkConfig } from "../../domain/fieldwork";
+import { resolveStudyContract } from "../../lib/analysis-target";
 import { scoringWeightsFrom } from "../../lib/scoring-weights";
 import { readPopulationData } from "../experiment/population-data";
 import { previewSamplingResults } from "../experiment/sampling-results-preview";
@@ -14,6 +16,7 @@ import { parseStoredJson } from "../experiment/serialization";
 import { error, getPositiveRouteId, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import type { TargetAnalysisMetrics } from "../../domain/experiment/analysis-types";
+import type { ExperimentWaveView } from "../../domain/experiment/types";
 import { getStudentTaskAccessError } from "../experiment/task-access";
 import { requireAuth } from "./auth";
 import { resolveSamplingPolicy } from "../../lib/sampling-policy";
@@ -51,6 +54,7 @@ const submissionByTaskRoutes: RouteDefinition = {
                 graderName: teacher.name,
                 weightConfig: topic.weightConfig,
                 samplingPolicy: topic.samplingPolicy,
+                fieldworkConfig: topic.fieldworkConfig,
                 populationSize: topic.excelRowCount,
                 excelFilePath: topic.excelFilePath,
                 fieldMapping: topic.fieldMapping,
@@ -58,6 +62,7 @@ const submissionByTaskRoutes: RouteDefinition = {
                 questionnaire: experiment.questionnaire,
                 samplePlan: experiment.samplePlan,
                 samplingResults: experiment.samplingResults,
+                adjustmentPlan: experiment.adjustmentPlan,
                 reportContent: experiment.reportContent,
             })
             .from(experiment)
@@ -74,6 +79,10 @@ const submissionByTaskRoutes: RouteDefinition = {
             questionnaire?: unknown;
             samplePlan?: unknown;
             samplingResults?: unknown;
+            adjustmentPlan?: unknown;
+            waves?: ExperimentWaveView[];
+            studyContract?: unknown;
+            fieldworkConfig?: unknown;
             reportContent?: string;
             weightConfig?: unknown;
             samplingPolicy?: unknown;
@@ -104,6 +113,10 @@ const submissionByTaskRoutes: RouteDefinition = {
             samplePlan: snapshot?.samplePlan ?? parseStoredJson(row.samplePlan),
             samplingResults: previewSamplingResults(samplingResults),
             samplingPolicy: resolveSamplingPolicy(snapshot?.samplingPolicy ?? row.samplingPolicy),
+            adjustmentPlan: parseAdjustmentPlan(snapshot?.adjustmentPlan ?? parseStoredJson(row.adjustmentPlan)),
+            waves: Array.isArray(snapshot?.waves) ? snapshot.waves : [],
+            studyContract: (snapshot?.studyContract as any) ?? resolveStudyContract(row.fieldMapping, { topicName: row.topicName }),
+            fieldworkConfig: resolveFieldworkConfig(snapshot?.fieldworkConfig ?? row.fieldworkConfig),
             reportContent: snapshot?.reportContent ?? row.reportContent ?? "",
             analysisAppendices: snapshot?.analysisAppendices ?? [],
             targetMetrics: snapshot?.targetMetrics ?? null,

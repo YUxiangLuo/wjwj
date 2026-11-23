@@ -4,6 +4,8 @@ import { mkdtemp, mkdir, symlink, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import * as XLSX from "xlsx";
+import { questionSignature } from "../src/domain/variables/question-binding";
+import type { Question } from "../src/lib/questionnaire-types";
 
 // End-to-end compatibility matrix. Expected estimates and design SEs below
 // deliberately do not import any production statistical implementation.
@@ -115,7 +117,7 @@ try {
     assert.ok(ready, "server ready");
     const teacher = await login("teacher", "T001");
     const students = await Promise.all(["S2601", "S2602", "S2603"].map(id => login("student", id)));
-    const cls = (await api(teacher, "/api/teacher/classes")).find((c: any) => c.name === "2026级统计学1班");
+    const cls = (await api(teacher, "/api/teacher/classes")).find((c: any) => c.name === "2026级商务统计1班");
     assert.ok(cls);
     for (const profile of profiles()) for (const format of ["csv", "xlsx"]) {
         const label = `${profile.name}-${format}`;
@@ -146,6 +148,7 @@ try {
             assert.match(missingError.message, /研究目标变量.*缺失/);
             same((await api(teacher, `/api/teacher/topics/${id}/variables`)).revision, dictionary.revision);
             await api(teacher, `/api/teacher/topics/${id}/variables`, "PUT", { source: dictionary.source, observedRevision: dictionary.revision, dictionary: dictionary.suggestion });
+            const confirmedDict = (await api(teacher, `/api/teacher/topics/${id}/variables`)).dictionary;
             await api(teacher, `/api/teacher/topics/${id}`, "PUT", { status: 1 });
             await api(teacher, "/api/teacher/tasks", "POST", { topicId: id, classIds: [cls.id], deadline: new Date(Date.now() + 86400000).toISOString() });
             for (let s = 0; s < students.length; s++) {
@@ -153,7 +156,49 @@ try {
                 const task = (await api(student, "/api/student/tasks")).find((t: any) => t.name === `兼容性：${label}`);
                 assert.ok(task, "published task visible"); const prefix = `/api/student/tasks/${task.id}`;
                 let exp = await api(student, `${prefix}/experiment`); same(exp.samplingPolicy, policy);
-                const questionnaire = { title: "兼容性预试", welcomeText: "欢迎参加此次教学预试，所有回答仅用于检查问卷可读性，不参与总体统计估计。", endingText: "感谢参加此次教学预试，所有回答仅用于检查问卷可读性，不参与总体统计估计。", questions: Array.from({ length: 5 }, (_, i) => ({ id: `q${i}`, type: "boolean", content: `第${i + 1}项是否清楚？` })) };
+                const primaryVar = confirmedDict.variables.find((v: any) => v.field === target.field);
+                let primaryQuestion: Question;
+                if (profile.kind === "mean") {
+                    const baseQ: Question = { id: "q0", type: "numeric", content: "请填写核心测量指标数值", unit: profile.unit, decimalPlaces: 6 };
+                    primaryQuestion = {
+                        ...baseQ,
+                        variableBinding: {
+                            taskId: task.id,
+                            source: confirmedDict.source,
+                            revision: confirmedDict.revision,
+                            signature: questionSignature(baseQ),
+                            mappings: [{ field: target.field, answers: [] }],
+                        },
+                    };
+                } else {
+                    const cats = primaryVar.categories as Array<{ value: string | number | boolean; label: string }>;
+                    const options = cats.length >= 2
+                        ? cats.map((_, idx) => `类别选项${idx + 1}`)
+                        : ["类别选项1", "暂不适用"];
+                    const answers = cats.length >= 2
+                        ? cats.map((cat, idx) => ({ answer: `类别选项${idx + 1}`, value: cat.value }))
+                        : [{ answer: "类别选项1", value: cats[0]!.value }, { answer: "暂不适用", value: null }];
+                    const baseQ: Question = { id: "q0", type: "single", content: "请选择核心目标类别", options };
+                    primaryQuestion = {
+                        ...baseQ,
+                        variableBinding: {
+                            taskId: task.id,
+                            source: confirmedDict.source,
+                            revision: confirmedDict.revision,
+                            signature: questionSignature(baseQ),
+                            mappings: [{ field: target.field, answers }],
+                        },
+                    };
+                }
+                const questionnaire = {
+                    title: "兼容性商业调研问卷",
+                    welcomeText: "欢迎参加此次商务统计调研实验，所有填答严格匿名保密，预计耗时3分钟。",
+                    endingText: "衷心感谢参加此次商务统计调研实验，您的反馈将用于定量决策研究。",
+                    questions: [
+                        primaryQuestion,
+                        ...Array.from({ length: 4 }, (_, i) => ({ id: `q${i + 1}`, type: "boolean", content: `第${i + 2}项业务背景核对是否清楚？` })),
+                    ],
+                };
                 exp = await api(student, `${prefix}/experiment/stages/1/complete`, "POST", { observedVersion: exp.version, questionnaire });
                 const rawY = profile.rows.map(r => Number(r[" 测量值 "]));
                 const sigma2 = variance(rawY.map(y => y / profile.scale)) * 23 / 24 * profile.scale ** 2;
@@ -161,12 +206,29 @@ try {
                 const rawN = 1.96 ** 2 * (profile.kind === "mean" ? sigma2 / margin ** 2 : .25 / .05 ** 2);
                 const recommended = Math.min(24, Math.ceil(rawN * 24 / (23 + rawN)));
                 const plan = { estimationType: profile.kind, confidenceLevel: "95", marginOfError: margin, populationVariance: sigma2, p: .5, designEffect: 1, nonResponseRate: 0, recommendedSize: recommended, finalSampleSize: n };
+                // Stage 2: Wave 1 Pilot plan -> simple sampling -> fieldwork dispatch -> complete stage 2
+                exp = await api(student, `${prefix}/experiment/plan`, "POST", { observedVersion: exp.version, samplePlan: plan });
+                await api(student, `${prefix}/sampling`, "POST", { method: "simple", params: { sampleSize: n, seed } });
+                exp = await api(student, `${prefix}/experiment`);
+                exp = await api(student, `${prefix}/fieldwork/dispatch`, "POST", { observedVersion: exp.version });
                 exp = await api(student, `${prefix}/experiment/stages/2/complete`, "POST", { observedVersion: exp.version, samplePlan: plan });
+                // Stage 3: Fieldwork diagnostics & structured AdjustmentPlan -> complete stage 3
+                exp = await api(student, `${prefix}/experiment/stages/3/complete`, "POST", {
+                    observedVersion: exp.version,
+                    adjustmentPlan: {
+                        identifiedIssues: ["unit_nonresponse_gap", "careless_responses"],
+                        plannedActions: ["recalibrate_sample_size", "upgrade_sampling_design"],
+                        rationale: "基于首轮试投回收质检诊断推进正式轮多方法抽样精度与设计标准误对比。",
+                    },
+                });
+                // Stage 4: Wave 2 formal plan -> disabled method rejection -> enabled methods sampling -> fieldwork dispatch -> complete stage 4
+                exp = await api(student, `${prefix}/experiment/plan`, "POST", { observedVersion: exp.version, samplePlan: plan });
                 for (const method of methods.filter(m => !profile.methods.includes(m))) await denied(student, `${prefix}/sampling`, "POST", { method, params: { sampleSize: n, sizeField: "规模" } });
                 const counts = n === 7 ? [1, 2, 4] : n === 16 ? [1, 5, 10] : [1, 7, 16];
                 for (const method of profile.methods) await api(student, `${prefix}/sampling`, "POST", { method, params: { sampleSize: n, seed, sizeField: "规模", stratifyBy: "分层", layers: ["小层", "中层", "大层"].map((name, i) => ({ name, sampleCount: counts[i] })) } });
                 exp = await api(student, `${prefix}/experiment`);
-                exp = await api(student, `${prefix}/experiment/stages/3/complete`, "POST", { observedVersion: exp.version });
+                exp = await api(student, `${prefix}/fieldwork/dispatch`, "POST", { observedVersion: exp.version });
+                exp = await api(student, `${prefix}/experiment/stages/4/complete`, "POST", { observedVersion: exp.version, samplePlan: plan });
                 const metrics = await api(student, `${prefix}/analysis-metrics`);
                 const y = profile.rows.map(r => profile.kind === "mean" ? Number(r[" 测量值 "]) / profile.scale : +(key(r["类别"]) === profile.target));
                 const pps = ppsReference(profile.rows.map(r => Number(r["规模"])), n, y);
@@ -197,10 +259,10 @@ try {
                     near(metrics.target.methods[method].standardError / profile.scale, se, `${label}/${n}/${method} SE`);
                     near(metrics.target.methods[method].marginOfError / profile.scale, se * 1.96, `${label}/${n}/${method} halfwidth`);
                     // Dictionary analyses use raw typed categories, intentionally not the main chart's NFKC groups.
-                    const saved = await api(student, `${prefix}/analyses`, "POST", { requestId: crypto.randomUUID(), observedVersion: exp.version, config: { question: "核对该抽样设计下的加权测量值", field: " 测量值 ", method, weighted: true } });
+                    const saved = await api(student, `${prefix}/analyses`, "POST", { requestId: crypto.randomUUID(), observedVersion: exp.version, config: { question: "核对该抽样设计下的加权测量值", field: " 测量值 ", method, weighted: true, datasetMode: "full_invited" } });
                     const numericExpected = indices.reduce((sum, i, j) => sum + rawY[i]! / profile.scale * w[j]!, 0) / w.reduce((sum, value) => sum + value, 0);
                     near(saved.result.mean / profile.scale, numericExpected, `${label}/${method} saved weighted mean`); references.push(saved.id);
-                    const categorical = await api(student, `${prefix}/analyses`, "POST", { requestId: crypto.randomUUID(), observedVersion: exp.version, config: { question: "核对原始编码类别的加权比例", field: "类别", method, weighted: true } });
+                    const categorical = await api(student, `${prefix}/analyses`, "POST", { requestId: crypto.randomUUID(), observedVersion: exp.version, config: { question: "核对原始编码类别的加权比例", field: "类别", method, weighted: true, datasetMode: "full_invited" } });
                     for (const category of categorical.result.categories) {
                         const positions = indices.flatMap((i, j) => profile.rows[i]!["类别"] === category.value ? [j] : []);
                         same(category.count, positions.length);
@@ -208,10 +270,27 @@ try {
                     }
                     references.push(categorical.id);
                 }
-                exp = await api(student, `${prefix}/experiment/stages/4/complete`, "POST", { observedVersion: exp.version, reportContent: `<p>${"这是统计兼容性测试报告，比较不同抽样设计的点估计与设计标准误，不把教学区间当成覆盖率保证。".repeat(6)}</p>`, analysisReferences: references });
+                if (s === 0 && references.length < 10) {
+                    const crossTab = await api(student, `${prefix}/analyses`, "POST", {
+                        requestId: crypto.randomUUID(),
+                        observedVersion: exp.version,
+                        config: {
+                            question: "对比各分层客群在核心目标变量上的交叉表现",
+                            field: target.field,
+                            groupByField: "分层",
+                            method: "simple",
+                            weighted: false,
+                            datasetMode: "cleaned_respondents",
+                        },
+                    });
+                    same(crossTab.result.kind, "crosstab");
+                    references.push(crossTab.id);
+                }
+                exp = await api(student, `${prefix}/experiment/stages/5/complete`, "POST", { observedVersion: exp.version, reportContent: `<p>${"这是商务统计兼容性测试报告，完整复盘试投质检调优并比较不同抽样设计的点估计与设计标准误，不把教学区间当成覆盖率保证。".repeat(6)}</p>`, analysisReferences: references });
                 await api(student, `${prefix}/submit`, "POST", { observedVersion: exp.version });
                 const submitted = await api(student, `${prefix}/submission`);
                 const grading = await api(teacher, `/api/teacher/grading/${exp.id}`);
+                same(submitted.snapshot.waves.length, 2); same(grading.waves.length, 2);
                 same(submitted.snapshot.targetMetrics, metrics.target); same(grading.targetMetrics, metrics.target);
                 same(grading.analysisAppendices, submitted.snapshot.analysisAppendices);
                 same(grading.analysisAppendices.map((a: any) => a.id), references);
@@ -251,7 +330,7 @@ try {
             await browser(session, "open", base + (role === "student" ? `/student/task/${fixture.task}/result` : `/teacher/grading/${fixture.experiment}`));
             let table = "";
             for (let retry = 0; retry < 50 && !table; retry++) {
-                table = (await browser(session, "eval", `(() => { const tab=[...document.querySelectorAll('[role=tab]')].find(e=>e.textContent.trim()==='报告'); if(tab && tab.getAttribute('aria-selected')!=='true'){tab.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true,button:0}));tab.click();} const panel=document.querySelector('[data-testid=student-target-metrics]'); if(!panel)return ''; panel.scrollIntoView({block:'center'}); return panel.querySelector('table')?.innerText ?? ''; })()`)).result;
+                table = (await browser(session, "eval", `(() => { const tab=[...document.querySelectorAll('[role=tab]')].find(e=>e.textContent.trim().includes('报告')); if(tab && tab.getAttribute('aria-selected')!=='true'){tab.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true,button:0}));tab.click();} const panel=document.querySelector('[data-testid=student-target-metrics]'); if(!panel)return ''; panel.scrollIntoView({block:'center'}); return panel.querySelector('table')?.innerText ?? ''; })()`)).result;
                 if (!table) await Bun.sleep(100);
             }
             await browser(session, "screenshot", join(artifacts, `${role}-${fixture.label}.png`));

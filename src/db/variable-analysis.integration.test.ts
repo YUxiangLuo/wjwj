@@ -3,6 +3,8 @@ import { afterAll, afterEach, beforeAll, expect, test } from "bun:test";
 import { and, eq } from "drizzle-orm";
 import * as schema from "./schema";
 import { assertTestDatabaseIsMigrated } from "./test-database-guard";
+import { DEFAULT_CLEANING_CONFIG, type WaveFieldworkData } from "../domain/fieldwork";
+import type { QuestionnaireData } from "../lib/questionnaire-types";
 
 const required = process.env.REQUIRE_TEST_DATABASE === "1";
 const url = process.env.TEST_DATABASE_URL?.trim();
@@ -89,7 +91,7 @@ async function fixture() {
     }).returning();
     const [task] = await application.db.insert(schema.task).values({ topicId: topic!.id, classId: cls!.id }).returning();
     const [experiment] = await application.db.insert(schema.experiment).values({
-        studentId: students[0]!.id, taskId: task!.id, currentStage: 4, status: "in_progress", samplingGeneration: 1,
+        studentId: students[0]!.id, taskId: task!.id, currentStage: 5, activeWaveNumber: 2, status: "in_progress", samplingGeneration: 1,
         samplingResults: { simple: { ...storedResult, serverGenerated: true } },
     }).returning();
     fixtures.push({ semester: semester!.id, teacher: teacher!.id, cls: cls!.id, topic: topic!.id, task: task!.id, students: students.map(row => row.id) });
@@ -213,7 +215,8 @@ pgTest("same-seed resampling creates a new generation and makes the prior analys
     const f = await fixture();
     await service.createSavedAnalysis(f.students[0]!.id, f.cls.id, f.task.id, f.body(`resample-${crypto.randomUUID()}`));
     await application.db.update(schema.experiment).set({
-        currentStage: 3,
+        currentStage: 4,
+        activeWaveNumber: 2,
         samplePlan: { finalSampleSize: 3 },
     }).where(eq(schema.experiment.id, f.experiment.id));
 
@@ -366,7 +369,7 @@ pgTest("R01 references accept at most 10 unique owned analyses and reject illega
 
     // 同一任务下其他学生的实验记录即使 ID 存在也不能被引用
     const [otherExperiment] = await application.db.insert(schema.experiment).values({
-        studentId: f.students[1]!.id, taskId: f.task.id, currentStage: 4, status: "in_progress", samplingGeneration: 1,
+        studentId: f.students[1]!.id, taskId: f.task.id, currentStage: 5, status: "in_progress", samplingGeneration: 1,
         samplingResults: { simple: { ...f.storedResult, serverGenerated: true } },
     }).returning();
     const [foreign] = await application.db.insert(schema.savedAnalysis).values({
@@ -380,27 +383,33 @@ pgTest("R01 references accept at most 10 unique owned analyses and reject illega
     expect((await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, f.experiment.id)))[0]!.analysisReferences).toEqual([]);
 }, 20_000);
 
-pgTest("R03 reopening stage 3 clears references and permanently stales history, while stage 4 alone does not", async () => {
+pgTest("R03 reopening stage 4 clears references and permanently stales history, while stage 5 alone does not", async () => {
     const f = await fixture();
     const saved = await service.createSavedAnalysis(f.students[0]!.id, f.cls.id, f.task.id, f.body(`r03-${crypto.randomUUID()}`));
-    await application.db.update(schema.experiment).set({ analysisReferences: [saved.id], currentStage: 4, stage3CompletedAt: new Date(), stage4CompletedAt: new Date() }).where(eq(schema.experiment.id, f.experiment.id));
+    await application.db.update(schema.experiment).set({
+        analysisReferences: [saved.id],
+        currentStage: 5,
+        stage3CompletedAt: new Date(),
+        stage4CompletedAt: new Date(),
+        stage5CompletedAt: new Date(),
+    }).where(eq(schema.experiment.id, f.experiment.id));
     let [record] = await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, f.experiment.id));
 
-    // 仅重开阶段 4：引用与代次保持不变
-    const stage4 = await import("../student/experiment/update-service").then(module => module.buildStageReopenUpdates({ experimentRecord: record!, stage: 4, deadlinePassed: false }));
-    expect(stage4.ok).toBe(true);
-    if (!stage4.ok) return;
-    await application.db.update(schema.experiment).set(stage4.updates).where(eq(schema.experiment.id, f.experiment.id));
+    // 仅重开阶段 5（商业报告）：引用与代次保持不变
+    const stage5 = await import("../student/experiment/update-service").then(module => module.buildStageReopenUpdates({ experimentRecord: record!, stage: 5, deadlinePassed: false }));
+    expect(stage5.ok).toBe(true);
+    if (!stage5.ok) return;
+    await application.db.update(schema.experiment).set(stage5.updates).where(eq(schema.experiment.id, f.experiment.id));
     [record] = await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, f.experiment.id));
     expect(record!.analysisReferences).toEqual([saved.id]);
     expect((await service.listSavedAnalyses(f.students[0]!.id, f.cls.id, f.task.id)).records[0]!.stale).toBe(false);
 
-    // 重开阶段 3：清引用、代次 +1、历史永久过期；同种子重抽不复活
-    const stage3 = await import("../student/experiment/update-service").then(module => module.buildStageReopenUpdates({ experimentRecord: record!, stage: 3, deadlinePassed: false }));
-    expect(stage3.ok).toBe(true);
-    if (!stage3.ok) return;
-    expect(stage3.updates.analysisReferences).toEqual([]);
-    await application.db.update(schema.experiment).set(stage3.updates).where(eq(schema.experiment.id, f.experiment.id));
+    // 重开阶段 4（上游抽样轮次）：清引用、代次 +1、历史永久过期；同种子重抽不复活
+    const stage4 = await import("../student/experiment/update-service").then(module => module.buildStageReopenUpdates({ experimentRecord: record!, stage: 4, deadlinePassed: false }));
+    expect(stage4.ok).toBe(true);
+    if (!stage4.ok) return;
+    expect(stage4.updates.analysisReferences).toEqual([]);
+    await application.db.update(schema.experiment).set(stage4.updates).where(eq(schema.experiment.id, f.experiment.id));
     const [after] = await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, f.experiment.id));
     expect(after!.samplingGeneration).toBe(f.experiment.samplingGeneration + 1);
     expect((await service.listSavedAnalyses(f.students[0]!.id, f.cls.id, f.task.id)).records[0]!.stale).toBe(true);
@@ -531,20 +540,54 @@ async function submittableFixture() {
         const { data: _data, ...stored } = result.result;
         return { ...stored, serverGenerated: true };
     };
-    const questionnaire = {
+    const questionnaire: QuestionnaireData = {
         title: "空功能预试",
         welcomeText: "欢迎参加本次调查，请根据真实情况回答所有问题，答案仅用于课堂试填与理解题目。",
         endingText: "感谢您的参与，本次试填到此结束，结果不会进入估计与报告。",
-        questions: Array.from({ length: 5 }, (_, index) => ({ id: `q${index}`, type: "boolean", content: `第${index + 1}题是否完成？` })),
+        questions: Array.from({ length: 5 }, (_, index) => ({ id: `q${index}`, type: "boolean" as const, content: `第${index + 1}题是否完成？` })),
     };
     const samplePlan = { estimationType: "mean", confidenceLevel: "95", marginOfError: 10, populationVariance: 200, designEffect: 1, nonResponseRate: 0, recommendedSize: 4, finalSampleSize: 4 };
+    const simpleStored = await replay("simple");
+    const systematicStored = await replay("systematic");
+    const now = new Date();
+    const nowIso = now.toISOString();
     const [record] = await application.db.update(schema.experiment).set({
-        status: "in_progress", currentStage: 4, version: f.experiment.version + 1,
+        status: "in_progress", currentStage: 5, activeWaveNumber: 2, version: f.experiment.version + 1,
         questionnaire, samplePlan,
-        samplingResults: { simple: await replay("simple"), systematic: await replay("systematic") },
+        samplingResults: { simple: simpleStored, systematic: systematicStored },
+        adjustmentPlan: {
+            identifiedIssues: ["unit_nonresponse_gap"],
+            plannedActions: ["recalibrate_sample_size"],
+            rationale: "首轮试投后按实测回收情况重算正式样本量并对比抽样方法。",
+            updatedAt: nowIso,
+        },
+        wavesData: [
+            {
+                waveNumber: 1,
+                kind: "pilot",
+                label: "第 1 轮 · 首轮试投",
+                questionnaire,
+                samplePlan,
+                samplingResults: { simple: simpleStored },
+                fieldwork: null,
+                cleaningConfig: { ...DEFAULT_CLEANING_CONFIG },
+                completedAt: nowIso,
+            },
+            {
+                waveNumber: 2,
+                kind: "main",
+                label: "第 2 轮 · 调优正式投放",
+                questionnaire,
+                samplePlan,
+                samplingResults: { simple: simpleStored, systematic: systematicStored },
+                fieldwork: null,
+                cleaningConfig: { ...DEFAULT_CLEANING_CONFIG },
+                completedAt: nowIso,
+            },
+        ],
         reportContent: `<p>${"报告正文用于验证冻结与提交路径。".repeat(9)}</p>`,
         analysisReferences: [], submissionSnapshot: null, submittedAt: null,
-        stage1CompletedAt: new Date(), stage2CompletedAt: new Date(), stage3CompletedAt: new Date(), stage4CompletedAt: new Date(),
+        stage1CompletedAt: now, stage2CompletedAt: now, stage3CompletedAt: now, stage4CompletedAt: now, stage5CompletedAt: now,
     }).where(eq(schema.experiment.id, f.experiment.id)).returning();
     // 与已保存分析共用同一字段解释，来源哈希必须一致，否则引用会被判过期
     const fieldMapping = f.mapping;
@@ -733,16 +776,42 @@ pgTest("submission rejects changed sampling execution evidence even when indices
 pgTest.each([1, 0.0002])("F-R1-01 mean planning variance is verified at stage 2 (scale %s)", async (scale) => {
     const f = await fixture();
     await Bun.write(`${process.cwd()}${f.storagePath}`, "id,value,group\n" + [10, 20, 30, 40, 50].map((value, i) => `${i + 1},${value * scale},${i < 2 ? "A" : "B"}`).join("\n") + "\n");
+    const questionnaire: QuestionnaireData = {
+        title: "方差复核", welcomeText: "欢迎参加本次方差复核预试，请按真实情况回答所有问题，答案只用于课堂试填。",
+        endingText: "感谢参与本次试填，结果不会进入估计或报告。",
+        questions: Array.from({ length: 5 }, (_, index) => ({ id: `q${index}`, type: "boolean" as const, content: `第${index + 1}题是否完成？` })),
+    };
+    const pilotSampling = { simple: { ...f.storedResult, serverGenerated: true } };
+    const pilotFieldwork: WaveFieldworkData = {
+        methods: {
+            simple: {
+                method: "simple",
+                dispatchSeed: 2026,
+                dispatchedAt: new Date().toISOString(),
+                invitedCount: 3,
+                records: [
+                    { populationIndex: 0, disposition: "valid_complete", durationSec: 90, answeredQuestionCount: 5 },
+                ],
+            },
+        },
+    };
     // 回到可完成阶段 2 的状态（阶段 1 已完成），随后走真实路由。
     await application.db.update(schema.experiment).set({
-        currentStage: 2, status: "in_progress", version: f.experiment.version + 1,
-        stage1CompletedAt: new Date(), stage2CompletedAt: null, stage3CompletedAt: null, stage4CompletedAt: null,
-        samplePlan: null, samplingResults: null, reportContent: null, analysisReferences: [],
-        questionnaire: {
-            title: "方差复核", welcomeText: "欢迎参加本次方差复核预试，请按真实情况回答所有问题，答案只用于课堂试填。",
-            endingText: "感谢参与本次试填，结果不会进入估计或报告。",
-            questions: Array.from({ length: 5 }, (_, index) => ({ id: `q${index}`, type: "boolean", content: `第${index + 1}题是否完成？` })),
-        },
+        currentStage: 2, activeWaveNumber: 1, status: "in_progress", version: f.experiment.version + 1,
+        stage1CompletedAt: new Date(), stage2CompletedAt: null, stage3CompletedAt: null, stage4CompletedAt: null, stage5CompletedAt: null,
+        samplePlan: null, samplingResults: pilotSampling, reportContent: null, analysisReferences: [],
+        questionnaire,
+        wavesData: [{
+            waveNumber: 1,
+            kind: "pilot",
+            label: "Wave 1",
+            questionnaire,
+            samplePlan: null,
+            samplingResults: pilotSampling,
+            fieldwork: pilotFieldwork,
+            cleaningConfig: { ...DEFAULT_CLEANING_CONFIG },
+            completedAt: null,
+        }],
     }).where(eq(schema.experiment.id, f.experiment.id));
     const token = await session(3, f.students[0]!.id);
     const { stageCompleteRoutes } = await import("../student/routes/experiment");

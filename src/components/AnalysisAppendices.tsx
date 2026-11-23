@@ -1,6 +1,6 @@
 import type { SavedAnalysisView } from "@/domain/variables/types";
 
-const value = (input: number | null, digits = 4) => input == null ? "—" : input.toLocaleString("zh-CN", {
+const value = (input: number | null | undefined, digits = 4) => input == null ? "—" : input.toLocaleString("zh-CN", {
     maximumFractionDigits: digits,
     notation: input !== 0 && Math.abs(input) < 10 ** -digits ? "scientific" : "standard",
 });
@@ -20,14 +20,79 @@ function rawCategoryValue(input: string | number | boolean | null) {
 
 export function AnalysisResultTable({ record }: { record: SavedAnalysisView }) {
     const result = record.result;
-    const description = result.kind === "numeric"
-        ? result.weighted
-            ? "设计加权比率点估计（不提供标准误、置信区间或加权分位数）；不声明估计量无偏。"
-            : "未加权样本描述；分位数采用 R7，SD 是样本标准差，不是标准误；不提供置信区间。"
-        : result.weighted
-            ? "设计加权类别比例；原始频数未加权，加权比例以有效记录的权重和为分母；不提供标准误或置信区间，不声明估计量无偏。"
-            : "未加权类别频数与样本比例；比例以有效样本数为分母；不提供置信区间。";
-    const caption = <caption className="mb-3 text-left text-meta text-muted-foreground">{description} · 样本 {result.sampleCount} · 有效 {result.validCount} · 缺失 {result.missingCount}{record.variable.unit && ` · 单位：${record.variable.unit}`}{result.kind === "categorical" && " · 各类别比例独立四舍五入，显示合计可能不等于 100%；底层计算使用未舍入值"}</caption>;
+    const description = result.kind === "crosstab"
+        ? `按「${result.groupLabel}」细分客群交叉对比（${result.weighted ? "设计加权估计" : "未加权样本统计"}；不直接代表因果效应）`
+        : result.kind === "numeric"
+            ? result.weighted
+                ? "设计加权比率点估计（不提供标准误、置信区间或加权分位数）；不声明估计量无偏。"
+                : "未加权样本描述；分位数采用 R7，SD 是样本标准差，不是标准误；不提供置信区间。"
+            : result.weighted
+                ? "设计加权类别比例；原始频数未加权，加权比例以有效记录的权重和为分母；不提供标准误或置信区间，不声明估计量无偏。"
+                : "未加权类别频数与样本比例；比例以有效样本数为分母；不提供置信区间。";
+    const caption = (
+        <caption className="mb-3 text-left text-meta text-muted-foreground">
+            {description} · 样本 {result.sampleCount} · 有效 {result.validCount} · 缺失 {result.missingCount}
+            {record.variable.unit && ` · 单位：${record.variable.unit}`}
+            {result.kind === "categorical" && " · 各类别比例独立四舍五入，显示合计可能不等于 100%；底层计算使用未舍入值"}
+        </caption>
+    );
+
+    if (result.kind === "crosstab") {
+        if (result.targetKind === "numeric") {
+            return (
+                <table className="w-full text-label">
+                    {caption}
+                    <thead>
+                        <tr className="border-b border-border">
+                            <th className="p-2 text-left">{result.groupLabel}</th>
+                            <th className="p-2 text-right">有效样本数</th>
+                            <th className="p-2 text-right">{result.weighted ? "加权均值" : "组内均值"}</th>
+                            {!result.weighted && <th className="p-2 text-right">样本标准差（SD）</th>}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {result.groups.map((grp, idx) => (
+                            <tr className="border-b border-border" key={`${String(grp.groupValue)}-${idx}`}>
+                                <td className="p-2 font-medium">{grp.groupLabel}</td>
+                                <td className="p-2 text-right tabular-nums">{grp.validCount}</td>
+                                <td className="p-2 text-right tabular-nums">{value(grp.mean, 2)}</td>
+                                {!result.weighted && <td className="p-2 text-right tabular-nums">{value(grp.sampleStandardDeviation, 2)}</td>}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            );
+        }
+        const headers = result.groups[0]?.categories ?? [];
+        return (
+            <table className="w-full text-label">
+                {caption}
+                <thead>
+                    <tr className="border-b border-border">
+                        <th className="p-2 text-left">{result.groupLabel}</th>
+                        <th className="p-2 text-right">有效数</th>
+                        {headers.map((cat, idx) => (
+                            <th key={idx} className="p-2 text-right">{cat.label}</th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {result.groups.map((grp, idx) => (
+                        <tr className="border-b border-border" key={`${String(grp.groupValue)}-${idx}`}>
+                            <td className="p-2 font-medium">{grp.groupLabel}</td>
+                            <td className="p-2 text-right tabular-nums">{grp.validCount}</td>
+                            {(grp.categories ?? []).map((cat, cIdx) => (
+                                <td key={cIdx} className="p-2 text-right tabular-nums">
+                                    {cat.proportion == null ? "—" : `${value(cat.proportion * 100, 1)}%`}
+                                </td>
+                            ))}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        );
+    }
+
     if (result.kind === "numeric") {
         const rows = [
             ["样本数", result.sampleCount], ["有效数", result.validCount], ["缺失数", result.missingCount], ["均值", result.mean],
@@ -46,7 +111,13 @@ export function AnalysisAppendices({ records }: { records: SavedAnalysisView[] }
         <div><h2 className="text-section-title font-semibold">分析附录</h2><p className="text-meta text-muted-foreground">附录位于正文之后，不计入报告正文字数。</p></div>
         {records.map((record, index) => <article className="rounded-surface border border-border bg-card p-4" key={record.id}>
             <h3 className="text-subheading font-semibold">附录 {index + 1}：{record.config.question}</h3>
-            <p className="mt-1 text-meta text-muted-foreground">{record.variable.label}（{record.variable.field}） · {methodLabels[record.config.method]} · {record.result.weighted ? "加权" : "未加权"}</p>
+            <p className="mt-1 text-meta text-muted-foreground">
+                {record.variable.label}（{record.variable.field}）
+                {record.config.groupByField ? ` × 分组：${record.config.groupByField}` : ""}
+                {" · "}{methodLabels[record.config.method]}
+                {record.waveNumber ? ` · 第 ${record.waveNumber} 轮` : ""}
+                {" · "}{record.result.weighted ? "加权" : "未加权"}
+            </p>
             <p className="mt-1 text-meta text-muted-foreground">数据来源标识 {record.source} · 字典修订号 {record.dictionaryRevision} · 抽样代次 {record.samplingGeneration} · 算法版本 {record.algorithmVersion}</p>
             {record.stale && <p className="mt-2 text-label text-warning">此结果来源已过期，仅供查看；请移除引用或重新运行后再提交。</p>}
             <div className="mt-3 overflow-x-auto"><AnalysisResultTable record={record} /></div>

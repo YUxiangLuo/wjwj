@@ -23,8 +23,8 @@ async function repair() {
 
     // The only accepted predecessor differs in this one field's planning role.
     const oldMapping = structuredClone(happinessFieldMapping);
-    oldMapping.numeric.push("社区服务满意度");
-    oldMapping.others = oldMapping.others.filter(field => field !== "社区服务满意度");
+    oldMapping.numeric.push("门店小程序体验评分");
+    oldMapping.others = oldMapping.others.filter(field => field !== "门店小程序体验评分");
 
     const { db, closeDatabase } = await import("../src/db");
     try {

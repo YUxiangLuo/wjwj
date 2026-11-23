@@ -28,10 +28,10 @@ function NavigationProbe() {
 
 function experiment(taskId: number, overrides: Record<string, unknown> = {}) {
     return {
-        id: taskId * 100, taskId, version: 5, currentStage: 4, status: "in_progress",
+        id: taskId * 100, taskId, version: 5, currentStage: 5, activeWaveNumber: 2, status: "in_progress",
         questionnaire: { title: `问卷${taskId}`, welcomeText: "欢迎", endingText: "感谢", questions: [] },
         reportContent: `<p>${`任务${taskId}的报告`.repeat(30)}</p>`, samplingResults: {}, populationSize: 1000,
-        stage1CompletedAt: "2026-03-01T00:00:00Z", stage2CompletedAt: "2026-03-01T00:00:00Z", stage3CompletedAt: "2026-03-01T00:00:00Z", stage4CompletedAt: null,
+        stage1CompletedAt: "2026-03-01T00:00:00Z", stage2CompletedAt: "2026-03-01T00:00:00Z", stage3CompletedAt: "2026-03-01T00:00:00Z", stage4CompletedAt: "2026-03-01T00:00:00Z", stage5CompletedAt: null,
         ...overrides,
     };
 }
@@ -49,11 +49,12 @@ test("successful reopen retry clears the visible network error and opens the req
             if (url.endsWith("/reopen")) {
                 attempts += 1;
                 if (attempts === 1) throw new TypeError("Failed to fetch");
-                return Response.json({ success: true, data: experiment(1, { version: 6, currentStage: 1, stage1CompletedAt: null, stage2CompletedAt: null, stage3CompletedAt: null }) });
+                return Response.json({ success: true, data: experiment(1, { version: 6, currentStage: 1, stage1CompletedAt: null, stage2CompletedAt: null, stage3CompletedAt: null, stage4CompletedAt: null, stage5CompletedAt: null }) });
             }
             if (url.endsWith("/experiment")) return Response.json({ success: true, data: experiment(1) });
+            if (url.endsWith("/variables")) return Response.json({ success: true, data: { dictionary: null } });
             if (url.endsWith("/analysis-metrics")) return Response.json({ success: true, data: { numericFields: [], categoricalFields: [], numeric: {}, categorical: {} } });
-            if (url.endsWith("/tasks/1")) return Response.json({ success: true, data: { id: 1, topicId: 3, name: "重试实验", status: "in_progress", currentStage: 4, publishedAt: "2026-03-01T00:00:00Z", deadline: "2099-03-01T00:00:00Z", populationSize: 1000, attachments: [], recommendQuestions: [] } });
+            if (url.endsWith("/tasks/1")) return Response.json({ success: true, data: { id: 1, topicId: 3, name: "重试实验", status: "in_progress", currentStage: 5, publishedAt: "2026-03-01T00:00:00Z", deadline: "2099-03-01T00:00:00Z", populationSize: 1000, attachments: [], recommendQuestions: [] } });
             throw new Error(`Unexpected request: ${url}`);
         }) as typeof fetch;
         const view = render(<MemoryRouter initialEntries={["/task/1/experiment"]}><Routes><Route path="/task/:taskId/experiment" element={<ExperimentLayout />} /></Routes></MemoryRouter>);
@@ -66,10 +67,10 @@ test("successful reopen retry clears the visible network error and opens the req
         const errorMessage = "网络连接失败，请检查网络后重试";
         await waitFor(() => expect(view.getByText(errorMessage)).toBeTruthy());
         await reopen();
-        await waitFor(() => expect(view.getByRole("button", { name: /当前阶段 1：问卷预试/ })).toBeTruthy());
+        await waitFor(() => expect(view.getByRole("button", { name: /当前阶段 1：商业问卷设计/ })).toBeTruthy());
         await waitFor(() => expect(view.queryByText(errorMessage)).toBeNull());
         expect(attempts).toBe(2);
-        expect(view.getByRole("heading", { name: "问卷预试" })).toBeTruthy();
+        expect(view.getAllByRole("heading", { name: "商业问卷设计" }).length).toBeGreaterThan(0);
     } finally { cleanup(); globalThis.fetch = originalFetch; dom.restore(); }
 });
 
@@ -87,9 +88,10 @@ async function setup(operation: Operation) {
         if (url.endsWith("/experiment")) {
             return Response.json({ success: true, data: experiment(taskId) });
         }
+        if (url.endsWith("/variables")) return Response.json({ success: true, data: { dictionary: null } });
         if (url.endsWith("/analysis-metrics")) return Response.json({ success: true, data: { numericFields: [], categoricalFields: [], numeric: {}, categorical: {} } });
         if (url.endsWith(`/tasks/${taskId}`)) return Response.json({ success: true, data: {
-            id: taskId, topicId: 3, name: `任务${taskId}`, status: "in_progress", currentStage: 4,
+            id: taskId, topicId: 3, name: `任务${taskId}`, status: "in_progress", currentStage: 5,
             publishedAt: "2026-03-01T00:00:00Z", deadline: "2099-03-01T00:00:00Z", populationSize: 1000, attachments: [], recommendQuestions: [],
         } });
         throw new Error(`Unexpected request: ${url}`);
@@ -147,7 +149,7 @@ test("exiting through the actual exit link during report save is not undone by i
     const originalFetch = globalThis.fetch;
     try {
         const { view, finish } = await setup("save");
-        fireEvent.click(view.getByRole("link", { name: "返回任务" }));
+        fireEvent.click(view.getByRole("link", { name: "课题书" }));
         await waitFor(() => expect(view.getByText("已退出实验")).toBeTruthy());
         await finish();
         expect(view.getByTestId("location").textContent).toBe("/task/1");

@@ -15,6 +15,7 @@ import { canonicalizeRichTextHtmlForStorage } from "../../server/rich-text";
 import { deleteAuditEventsForEntities } from "../../server/audit-event";
 import { readVariableSource } from "../../server/variable-source";
 import { validateDictionary } from "../../domain/variables/dictionary";
+import { resolveFieldworkConfig, validateFieldworkConfig } from "../../domain/fieldwork";
 import {
     validateMappedPopulationData,
     validateParsedExcelUpload,
@@ -439,6 +440,38 @@ export async function updateTopicSamplingPolicy(params: {
         const [updated] = await tx
             .update(topic)
             .set({ samplingPolicy, updatedAt: new Date() })
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)))
+            .returning({ id: topic.id });
+        return updated ? { ok: true as const } : fail("实验模板不存在", "NOT_FOUND", 404);
+    });
+}
+
+export async function updateTopicFieldworkConfig(params: {
+    teacherId: number;
+    topicId: number;
+    fieldworkConfig: unknown;
+}) {
+    const basicErr = validateFieldworkConfig(params.fieldworkConfig);
+    if (basicErr) return fail(basicErr);
+
+    return db.transaction(async (tx) => {
+        await acquireStorageMutationLock(tx);
+        const [topicInfo] = await tx
+            .select({ status: topic.status, fieldMapping: topic.fieldMapping })
+            .from(topic)
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)));
+        if (!topicInfo) return fail("实验模板不存在", "NOT_FOUND", 404);
+        const [taskReference] = await tx.select({ id: task.id }).from(task).where(eq(task.topicId, params.topicId)).limit(1);
+        if (topicInfo.status === 1 || taskReference) {
+            return fail("已发布或已分配实验任务的模板不能修改虚拟发放策略", "FORBIDDEN", 403);
+        }
+        const mapping = parseTopicFieldMapping(topicInfo.fieldMapping);
+        const strataErr = validateFieldworkConfig(params.fieldworkConfig, mapping?.stratified ?? []);
+        if (strataErr) return fail(strataErr);
+        const normalized = resolveFieldworkConfig(params.fieldworkConfig);
+        const [updated] = await tx
+            .update(topic)
+            .set({ fieldworkConfig: normalized, updatedAt: new Date() })
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)))
             .returning({ id: topic.id });
         return updated ? { ok: true as const } : fail("实验模板不存在", "NOT_FOUND", 404);

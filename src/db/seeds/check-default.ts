@@ -5,6 +5,7 @@ import {
     announcement,
     class_,
     experiment,
+    experimentWave,
     samplingAttempt,
     semester,
     student,
@@ -18,10 +19,11 @@ import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize,
 import { resolveStoragePath } from "../../server/storage-files";
 import { buildPopulationNumericStats, getPpsEligibleNumericFields, parseTopicFieldMapping } from "@/domain/statistics/population";
 import { validateQuestionnaireForSubmit, validateReportForSubmit, validateSamplePlanForSubmit } from "../../student/experiment/submit-validation";
+import { parseStoredWaves, verifyExperimentWavesReplay } from "../../student/experiment/fieldwork-wave-service";
 import { buildTaskProgressSnapshot } from "../../teacher/topic/task-progress";
 import {
-    DINING_PPS_SIZE_FIELD,
     DINING_POPULATION_PATH,
+    DINING_PPS_SIZE_FIELD,
     DOGFOOD_ANCHORS,
     DOGFOOD_COUNTS,
     DOGFOOD_MAIN_TASK_PROGRESS,
@@ -33,9 +35,10 @@ import {
     QUESTIONNAIRE_TEMPLATE_ATTACHMENT_PATH,
     READING_POPULATION_PATH,
 } from "./dogfood-fixtures";
-import { happinessVariables } from "./happiness-topic";
+import { teaPricingVariables } from "./happiness-topic";
 import { readVariableSource } from "../../server/variable-source";
 import { validateDictionary } from "../../domain/variables/dictionary";
+import { validateAdjustmentPlan, validateFieldworkConfig } from "../../domain/fieldwork";
 import { DEMO_STUDENT_ACCOUNTS } from "./demo-accounts";
 import { filterPpsEligibleFields, parseSamplingPolicy } from "../../lib/sampling-policy";
 import { validateRecommendQuestionsPayload } from "../../lib/validate-question";
@@ -58,7 +61,7 @@ function stableJson(value: unknown): string {
     return JSON.stringify(normalize(value));
 }
 
-async function rowCount(table: typeof admin | typeof teacher | typeof semester | typeof class_ | typeof student | typeof topic | typeof task | typeof experiment | typeof samplingAttempt | typeof announcement | typeof topicAttachment) {
+async function rowCount(table: typeof admin | typeof teacher | typeof semester | typeof class_ | typeof student | typeof topic | typeof task | typeof experiment | typeof samplingAttempt | typeof announcement | typeof topicAttachment | typeof experimentWave) {
     const [row] = await db.select({ value: count() }).from(table as typeof admin);
     return row?.value ?? 0;
 }
@@ -80,6 +83,9 @@ async function verify() {
     for (const [name, expected] of Object.entries(DOGFOOD_COUNTS)) {
         check(actualCounts[name as keyof typeof actualCounts] === expected, `${name} count: expected ${expected}, got ${actualCounts[name as keyof typeof actualCounts]}`);
     }
+
+    const waveTableCount = await rowCount(experimentWave);
+    check(waveTableCount === 14, `Expected 14 experiment_wave rows across 7 two-wave fixtures, got ${waveTableCount}`);
 
     const [aTask] = await db
         .select({ id: task.id, classId: task.classId })
@@ -103,25 +109,22 @@ async function verify() {
         .where(eq(student.classId, aTask.classId))
         .orderBy(asc(student.studentId));
     const progress = buildTaskProgressSnapshot(progressRows);
-    const expectedProgress = DOGFOOD_MAIN_TASK_PROGRESS;
-    check(JSON.stringify(progress.counts) === JSON.stringify(expectedProgress), `A progress buckets differ: ${JSON.stringify(progress.counts)}`);
+    check(JSON.stringify(progress.counts) === JSON.stringify(DOGFOOD_MAIN_TASK_PROGRESS), `A progress buckets differ: ${JSON.stringify(progress.counts)}`);
 
-    const happinessExperiments = await db.select({ id: experiment.id }).from(experiment)
+    const flagshipExperiments = await db.select({ id: experiment.id }).from(experiment)
         .innerJoin(task, eq(experiment.taskId, task.id)).innerJoin(topic, eq(task.topicId, topic.id))
         .where(eq(topic.name, DOGFOOD_NAMES.topicA));
-    check(happinessExperiments.length === 0, "Every happiness task, including historical classes, must start without experiments");
-    const [happinessTopic] = await db.select().from(topic).where(eq(topic.name, DOGFOOD_NAMES.topicA));
-    check(happinessTopic?.excelFilePath, "Happiness population missing");
-    // Runtime analysis interprets the stored mapping, not the seed constants.
-    // Reading the constants here would conceal a dictionary made stale by a
-    // database restore or a partial update of the topic's field roles.
-    const happinessSource = await readVariableSource(happinessTopic.excelFilePath, happinessTopic.fieldMapping);
-    const confirmedDictionary = validateDictionary(happinessTopic.variableDictionary, happinessSource.rows, happinessSource.source);
-    check(confirmedDictionary.revision === happinessTopic.variableRevision, "Happiness dictionary revision differs");
-    check(confirmedDictionary.variables.length === 14, "Happiness dictionary must cover all 14 fields");
-    const targetDictionaryError = validatePrimaryTargetDictionary(happinessTopic.fieldMapping, confirmedDictionary, happinessSource.rows);
-    check(!targetDictionaryError, `Happiness target dictionary is invalid: ${targetDictionaryError}`);
-    check(Array.isArray(happinessTopic.recommendQuestions) && happinessTopic.recommendQuestions.length === 14, "Happiness must offer 14 recommended questions");
+    check(flagshipExperiments.length === 0, "Every flagship tea-pricing task, including historical classes, must start without experiments");
+
+    const [flagshipTopic] = await db.select().from(topic).where(eq(topic.name, DOGFOOD_NAMES.topicA));
+    check(flagshipTopic?.excelFilePath, "Tea pricing population missing");
+    const flagshipSource = await readVariableSource(flagshipTopic.excelFilePath, flagshipTopic.fieldMapping);
+    const confirmedDictionary = validateDictionary(flagshipTopic.variableDictionary, flagshipSource.rows, flagshipSource.source);
+    check(confirmedDictionary.revision === flagshipTopic.variableRevision, "Flagship dictionary revision differs");
+    check(confirmedDictionary.variables.length === 14, "Flagship dictionary must cover all 14 fields");
+    const targetDictionaryError = validatePrimaryTargetDictionary(flagshipTopic.fieldMapping, confirmedDictionary, flagshipSource.rows);
+    check(!targetDictionaryError, `Flagship target dictionary is invalid: ${targetDictionaryError}`);
+    check(Array.isArray(flagshipTopic.recommendQuestions) && flagshipTopic.recommendQuestions.length === 14, "Flagship topic must offer 14 recommended questions");
 
     const teacherCredentialRows = await db.select({
         employeeId: teacher.employeeId,
@@ -161,12 +164,16 @@ async function verify() {
             populationPath: topic.excelFilePath,
             populationSize: topic.excelRowCount,
             fieldMapping: topic.fieldMapping,
+            fieldworkConfig: topic.fieldworkConfig,
+            variableDictionary: topic.variableDictionary,
             weightConfig: topic.weightConfig,
             samplingPolicy: topic.samplingPolicy,
             currentStage: experiment.currentStage,
             status: experiment.status,
             questionnaire: experiment.questionnaire,
             results: experiment.samplingResults,
+            adjustmentPlan: experiment.adjustmentPlan,
+            wavesData: experiment.wavesData,
             reportContent: experiment.reportContent,
             snapshot: experiment.submissionSnapshot,
             samplePlan: experiment.samplePlan,
@@ -175,15 +182,16 @@ async function verify() {
         .innerJoin(student, eq(experiment.studentId, student.id))
         .innerJoin(task, eq(experiment.taskId, task.id))
         .innerJoin(topic, eq(task.topicId, topic.id))
-        .where(eq(experiment.currentStage, 4));
-    // 7 份终态示例：阅读 1、毕业去向 2、服务时段 3、绿色通勤 1。
-    check(authoritative.length === 7, `Expected 7 stage4/terminal authoritative fixtures, got ${authoritative.length}`);
+        .where(eq(experiment.currentStage, 5));
+
+    // 7 份终态闭环示例：SaaS预算 1、电商续费率 2、生鲜履约容量 3、新能源试驾转化 1。
+    check(authoritative.length === 7, `Expected 7 stage5/terminal authoritative fixtures, got ${authoritative.length}`);
 
     function checkAuthoritativeMethods(label: string, value: unknown, ppsDisabled: boolean) {
         const results = value as Record<string, Record<string, unknown> | undefined> | null;
         const expectedMethods = ppsDisabled
-                ? (["simple", "systematic", "stratified"] as const)
-                : (["simple", "systematic", "pps", "stratified"] as const);
+            ? (["simple", "systematic", "stratified"] as const)
+            : (["simple", "systematic", "pps", "stratified"] as const);
         for (const method of expectedMethods) {
             check(results?.[method]?.serverGenerated === true, `${label}/${method} is not server generated`);
         }
@@ -205,13 +213,33 @@ async function verify() {
     }
 
     const populationHashCache = new Map<string, string>();
+    const sourceCache = new Map<string, Awaited<ReturnType<typeof readVariableSource>>>();
+
     for (const row of authoritative) {
         const label = `${row.studentId}/${row.topicName}`;
-        const hasDisabledPps = row.topicName === DOGFOOD_NAMES.topicA
-            || row.topicName === DOGFOOD_NAMES.topicB
-            || row.topicName === DOGFOOD_NAMES.topicC
-            || row.topicName === DOGFOOD_NAMES.topicE;
+        const hasDisabledPps = row.topicName !== DOGFOOD_NAMES.topicD;
         const liveResults = checkAuthoritativeMethods(label, row.results, hasDisabledPps);
+        check(validateAdjustmentPlan(row.adjustmentPlan) === null, `${label} adjustment plan is invalid`);
+        const storedWaves = parseStoredWaves(row.wavesData);
+        check(storedWaves.length === 2, `${label} must carry two fieldwork waves, got ${storedWaves.length}`);
+
+        check(typeof row.populationPath === "string" && row.populationPath.length > 0, `${label} has no population file`);
+        let sourceData = sourceCache.get(row.populationPath);
+        if (!sourceData) {
+            sourceData = await readVariableSource(row.populationPath, row.fieldMapping);
+            sourceCache.set(row.populationPath, sourceData);
+        }
+        check(
+            verifyExperimentWavesReplay({
+                waves: storedWaves,
+                population: sourceData.designRows,
+                fieldMapping: row.fieldMapping,
+                fieldworkConfig: row.fieldworkConfig,
+                dictionary: row.variableDictionary as any,
+            }),
+            `${label} multi-wave fieldwork replay verification failed`,
+        );
+
         if (row.status !== "in_progress") {
             const storedSnapshot = row.snapshot as Record<string, unknown> | null;
             check(storedSnapshot, `${label} has no submission snapshot`);
@@ -221,6 +249,7 @@ async function verify() {
             check(stableJson(storedSnapshot.samplePlan) === stableJson(row.samplePlan), `${label} snapshot sample plan differs from the live record`);
             check(stableJson(storedSnapshot.weightConfig) === stableJson(row.weightConfig), `${label} snapshot scoring weights differ from the topic`);
             check(stableJson(storedSnapshot.samplingPolicy) === stableJson(row.samplingPolicy), `${label} snapshot sampling policy differs from the topic`);
+            check(Array.isArray(storedSnapshot.waves) && storedSnapshot.waves.length === 2, `${label} snapshot lacks frozen 2-wave views`);
             const targetMetrics = storedSnapshot.targetMetrics as {
                 contract?: { contract?: { target?: unknown } };
                 confidenceLevel?: string;
@@ -242,7 +271,7 @@ async function verify() {
             check(storedSnapshot.topicName === row.topicName, `${label} snapshot topic name differs`);
             check(storedSnapshot.studentName === row.studentName, `${label} snapshot student name differs`);
             check(storedSnapshot.reportContent === row.reportContent, `${label} snapshot report differs from the live record`);
-            check(typeof row.populationPath === "string" && row.populationPath.length > 0, `${label} has no population file`);
+
             let populationHash = populationHashCache.get(row.populationPath);
             if (!populationHash) {
                 const file = Bun.file(resolveStoragePath(row.populationPath));
@@ -256,7 +285,7 @@ async function verify() {
             );
             check(storedSnapshot.populationFileSha256 === populationHash, `${label} snapshot population hash differs from the source file`);
             check(storedSnapshot.parserVersion === "raw-values-v1", `${label} snapshot parser version differs`);
-            check(storedSnapshot.samplingAlgorithmVersion === "sampling-v2", `${label} snapshot sampling algorithm version differs`);
+            check(storedSnapshot.samplingAlgorithmVersion === "business-sampling-v3", `${label} snapshot sampling algorithm version differs`);
             check(validateQuestionnaireForSubmit(storedSnapshot.questionnaire) === null, `${label} snapshot questionnaire is invalid`);
             check(validateSamplePlanForSubmit(storedSnapshot.samplePlan, row.populationSize) === null, `${label} snapshot sample plan is invalid`);
             check(validateReportForSubmit(row.reportContent) === null, `${label} live report is invalid`);
@@ -271,6 +300,7 @@ async function verify() {
             check(explainsDisabledPps(snapshotReport), `${label} snapshot report does not explain disabled PPS`);
         }
     }
+
     check(
         authoritative.filter((row) => row.studentId === DOGFOOD_ANCHORS.submitted && row.topicName === DOGFOOD_NAMES.topicB).length === 1,
         "Expected exactly one mean PPS-disabled fixture",
@@ -315,7 +345,7 @@ async function verify() {
         check(attempt.sampleCount === expectedSampleCount, `${attempt.studentId}/${attempt.topicName}/${attempt.method} audit sample count differs`);
         check(stableJson(attempt.details) === stableJson(expectedDetails), `${attempt.studentId}/${attempt.topicName}/${attempt.method} audit details differ`);
         if (attempt.topicName === DOGFOOD_NAMES.topicD && attempt.method === "pps") {
-            check(expectedDetails.sizeField === "历史同期客流量", `${attempt.studentId}/${attempt.topicName}/pps does not use the prior-frame size measure`);
+            check(expectedDetails.sizeField === DINING_PPS_SIZE_FIELD, `${attempt.studentId}/${attempt.topicName}/pps does not use the prior-frame size measure`);
         }
         if (attempt.topicName === DOGFOOD_NAMES.topicE && attempt.method === "systematic") {
             check(expectedDetails.interval === 4, `${attempt.studentId}/${attempt.topicName}/systematic does not preserve the designed K=4 periodicity`);
@@ -346,11 +376,9 @@ async function verify() {
     ].sort();
     check(JSON.stringify(visibleKeys) === JSON.stringify(expectedVisible), `Visible grading fixtures differ: ${JSON.stringify(visibleKeys)}`);
 
-    // The seeded plans must agree with the seeded populations: a hardcoded
-    // variance used to disagree with the generated file and no gate noticed.
     const planRows = authoritative.filter((row) => row.samplePlan && typeof row.samplePlan === "object");
     check(planRows.length > 0, "No authoritative experiment carries a sample plan");
-    const planPopulationCache = new Map<string, ReturnType<typeof parseSpreadsheetFile> extends Promise<infer T> ? T : never>();
+    const planPopulationCache = new Map<string, Awaited<ReturnType<typeof parseSpreadsheetFile>>>();
     for (const row of planRows) {
         const plan = row.samplePlan as Record<string, unknown>;
         const [storedTopic] = await db
@@ -371,7 +399,6 @@ async function verify() {
         const populationSize = parsed.rowCount;
 
         if (plan.estimationType === "mean") {
-            // Reuse the production helper so the check cannot invent a third convention.
             const stats = buildPopulationNumericStats(parsed.rows, [targetField])[targetField];
             check(stats && stats.count > 1, `${row.topicName} sample plan target has no numeric rows`);
             const populationVariance = finitePopulationS2ToSigma2(stats.variance, stats.count);
@@ -422,73 +449,70 @@ async function verify() {
             path: topic.excelFilePath,
             rowCount: topic.excelRowCount,
             fieldMapping: topic.fieldMapping,
+            fieldworkConfig: topic.fieldworkConfig,
+            variableDictionary: topic.variableDictionary,
+            variableRevision: topic.variableRevision,
             samplingPolicy: topic.samplingPolicy,
             weightConfig: topic.weightConfig,
             recommendQuestions: topic.recommendQuestions,
         })
         .from(topic)
         .where(inArray(topic.name, [DOGFOOD_NAMES.topicA, DOGFOOD_NAMES.topicB, DOGFOOD_NAMES.topicC, DOGFOOD_NAMES.topicD, DOGFOOD_NAMES.topicE]));
-    check(storedTopics.length === 5, `Expected stored population metadata for five research scenarios, got ${storedTopics.length}`);
+    check(storedTopics.length === 5, `Expected stored population metadata for five business cases, got ${storedTopics.length}`);
 
     const expectedTopicFiles = {
         [DOGFOOD_NAMES.topicA]: {
             path: HAPPINESS_POPULATION_PATH,
             rowCount: 240,
-            columns: happinessVariables.map(variable => variable.field),
-            ppsFields: ["生活幸福感得分", "社会支持感", "自评健康", "经济压力", "年龄", "每晚睡眠时长"],
+            columns: teaPricingVariables.map((variable) => variable.field),
+            ppsFields: ["最高支付意愿", "健康低糖关注度", "新品尝鲜意愿", "价格敏感度", "年龄", "月均茶饮消费额"],
             targetKind: "mean",
             targetValue: undefined,
-            targetQuestion: { id: "hq2", type: "numeric", unit: "分" },
+            targetQuestion: { id: "hq2", type: "numeric", unit: "元" },
             policy: { pps: "disabled", stratified: "required", systematic: "optional" },
         },
         [DOGFOOD_NAMES.topicB]: {
             path: READING_POPULATION_PATH,
-            rowCount: 24,
-            columns: ["编号", "学院", "年级", "每周阅读时长", "是否住宿"],
+            rowCount: 32,
+            columns: ["客户编号", "所属行业", "企业规模档位", "年度增购预算", "是否部署私有云"],
             ppsFields: [],
             targetKind: "mean",
             targetValue: undefined,
-            targetQuestion: { id: "rq1", type: "numeric", unit: "小时" },
+            targetQuestion: { id: "sq1", type: "numeric", unit: "万元" },
             policy: { pps: "disabled", stratified: "optional", systematic: "optional" },
         },
         [DOGFOOD_NAMES.topicC]: {
             path: EMPLOYMENT_POPULATION_PATH,
-            rowCount: 160,
-            columns: ["样本编号", "学院", "培养层次", "毕业去向意向", "是否有实习经历", "每周职业准备时长", "求职准备度"],
-            ppsFields: ["每周职业准备时长", "求职准备度"],
+            rowCount: 200,
+            columns: ["会员账号编码", "近半年活跃度", "城市线级", "续费意向", "是否开通自动续费", "近半年省下运费金额", "会员权益使用率"],
+            ppsFields: ["近半年省下运费金额", "会员权益使用率"],
             targetKind: "proportion",
-            targetValue: "直接就业",
-            targetQuestion: { id: "gq1", type: "single", option: "直接就业" },
+            targetValue: "明确续费",
+            targetQuestion: { id: "vq1", type: "single", option: "明确续费" },
             policy: { pps: "disabled", stratified: "required", systematic: "optional" },
         },
         [DOGFOOD_NAMES.topicD]: {
             path: DINING_POPULATION_PATH,
             rowCount: 96,
-            columns: ["记录编号", "校区", "食堂", "观测时段", "观测日", "等待分钟", "历史同期客流量", "开放窗口数"],
-            ppsFields: ["等待分钟", "历史同期客流量", "开放窗口数"],
+            columns: ["时段记录编号", "运营大区", "前置仓门店", "晚高峰时段", "观测日期档位", "平均履约等待时长", "历史日均客单量", "当班拣货员人数"],
+            ppsFields: ["平均履约等待时长", "历史日均客单量", "当班拣货员人数"],
             targetKind: "mean",
             targetValue: undefined,
-            targetQuestion: { id: "dq4", type: "numeric", unit: "分钟", content: "入队至窗口开始受理" },
-            identityQuestions: [
-                { id: "dq1", options: ["东校区·学苑食堂", "东校区·风味食堂", "西校区·湖畔食堂", "西校区·清真食堂"] },
-                { id: "dq2", options: ["第一周周一", "第一周周二", "第一周周三", "第二周周一", "第二周周二", "第二周周三"] },
-                { id: "dq3", options: ["11:30-11:45", "11:45-12:00", "12:00-12:15", "12:15-12:30"] },
-            ],
-            frameSizeQuestion: { id: "dq5", unit: "人次", numericMin: 1, content: "历史同期客流量" },
-            observationCountQuestion: { id: "dq7", unit: "名", numericMin: 0, numericMax: 5 },
+            targetQuestion: { id: "dq4", type: "numeric", unit: "分钟", content: "支付锁单至分拣打包出仓" },
             policy: { pps: "required", stratified: "optional", systematic: "optional", ppsSizeFields: [DINING_PPS_SIZE_FIELD] },
         },
         [DOGFOOD_NAMES.topicE]: {
             path: GREEN_COMMUTE_POPULATION_PATH,
             rowCount: 360,
-            columns: ["通勤记录编号", "住宿片区", "登记时段", "年级", "是否绿色通勤", "主要通勤方式", "通勤距离公里"],
-            ppsFields: ["通勤距离公里"],
+            columns: ["试驾编号", "门店能级", "到店时段周期", "购车预算档位", "是否高意向锁单", "重点关注卖点", "试驾里程公里"],
+            ppsFields: ["试驾里程公里"],
             targetKind: "proportion",
             targetValue: "是",
-            targetQuestion: { id: "cq2", type: "single", options: ["步行", "自行车", "公共交通", "网约车或私家车"] },
+            targetQuestion: { id: "cq2", type: "boolean" },
             policy: { pps: "disabled", stratified: "optional", systematic: "required" },
         },
     } as const;
+
     const parsedRowCounts: Record<string, number> = {};
     for (const storedTopic of storedTopics) {
         const expected = expectedTopicFiles[storedTopic.name as keyof typeof expectedTopicFiles];
@@ -508,40 +532,28 @@ async function verify() {
         if ("option" in expected.targetQuestion) {
             check(Array.isArray(targetQuestion.options) && targetQuestion.options.includes(expected.targetQuestion.option), `${storedTopic.name} target question options differ`);
         }
-        if ("options" in expected.targetQuestion) {
-            check(stableJson(targetQuestion.options) === stableJson(expected.targetQuestion.options), `${storedTopic.name} target question options differ`);
-        }
-        if ("identityQuestions" in expected) {
-            for (const identity of expected.identityQuestions) {
-                const question = (storedTopic.recommendQuestions as Array<Record<string, unknown>>).find((candidate) => candidate.id === identity.id);
-                check(question?.type === "single" && stableJson(question.options) === stableJson(identity.options), `${storedTopic.name}/${identity.id} does not identify a valid sampling unit`);
-            }
-        }
-        if ("frameSizeQuestion" in expected) {
-            const frameSize = (storedTopic.recommendQuestions as Array<Record<string, unknown>>).find((question) => question.id === expected.frameSizeQuestion.id);
-            check(frameSize?.type === "numeric", `${storedTopic.name} prior-frame size question is missing`);
-            check(frameSize.unit === expected.frameSizeQuestion.unit && frameSize.numericMin === expected.frameSizeQuestion.numericMin, `${storedTopic.name} prior-frame size question constraints differ`);
-            check(typeof frameSize.content === "string" && frameSize.content.includes(expected.frameSizeQuestion.content), `${storedTopic.name} prior-frame size question is not identified as historical`);
-        }
-        if ("observationCountQuestion" in expected) {
-            const countQuestion = (storedTopic.recommendQuestions as Array<Record<string, unknown>>).find((question) => question.id === expected.observationCountQuestion.id);
-            check(countQuestion?.type === "numeric", `${storedTopic.name} observation-count question is missing`);
-            check(countQuestion.unit === expected.observationCountQuestion.unit
-                && countQuestion.numericMin === expected.observationCountQuestion.numericMin
-                && countQuestion.numericMax === expected.observationCountQuestion.numericMax, `${storedTopic.name} observation-count constraints differ`);
-        }
+
         check(storedTopic.path === expected.path, `${storedTopic.name} stored path differs: ${storedTopic.path}`);
         check(storedTopic.rowCount === expected.rowCount, `${storedTopic.name} stored row count differs: ${storedTopic.rowCount}`);
         const mapping = parseTopicFieldMapping(storedTopic.fieldMapping);
         check(mapping, `${storedTopic.name} field mapping is invalid`);
-        check(mapping?.analysisTarget?.kind === expected.targetKind, `${storedTopic.name} analysis target kind differs`);
-        if (mapping?.analysisTarget?.kind === "proportion") {
+        check(validateFieldworkConfig(storedTopic.fieldworkConfig, mapping.stratified) === null, `${storedTopic.name} fieldwork config is invalid`);
+        check(mapping.analysisTarget?.kind === expected.targetKind, `${storedTopic.name} analysis target kind differs`);
+        if (mapping.analysisTarget?.kind === "proportion") {
             check(mapping.analysisTarget.value === expected.targetValue, `${storedTopic.name} analysis target value differs`);
         }
-        check(Boolean(mapping?.analysisTarget && "field" in mapping.analysisTarget && mapping.analysisTarget.field), `${storedTopic.name} analysis target field missing`);
-        check(mapping?.studyContract?.version === 1, `${storedTopic.name} study contract missing`);
-        check(Boolean(mapping?.studyContract?.researchQuestion?.trim()), `${storedTopic.name} study contract research question missing`);
-        check(mapping?.studyContract?.target?.field === mapping?.analysisTarget?.field, `${storedTopic.name} study contract target differs from analysis target`);
+        check(Boolean(mapping.analysisTarget && "field" in mapping.analysisTarget && mapping.analysisTarget.field), `${storedTopic.name} analysis target field missing`);
+        check(mapping.studyContract?.version === 1, `${storedTopic.name} study contract missing`);
+        check(Boolean(mapping.studyContract?.researchQuestion?.trim()), `${storedTopic.name} study contract research question missing`);
+        check(Boolean(mapping.studyContract?.businessDecision?.trim()), `${storedTopic.name} study contract businessDecision missing`);
+        check(mapping.studyContract?.target?.field === mapping.analysisTarget?.field, `${storedTopic.name} study contract target differs from analysis target`);
+
+        const topicSource = await readVariableSource(storedTopic.path, storedTopic.fieldMapping);
+        const verifiedDict = validateDictionary(storedTopic.variableDictionary, topicSource.rows, topicSource.source);
+        check(verifiedDict.revision === storedTopic.variableRevision, `${storedTopic.name} dictionary revision mismatch`);
+        const dictTargetErr = validatePrimaryTargetDictionary(storedTopic.fieldMapping, verifiedDict, topicSource.rows);
+        check(!dictTargetErr, `${storedTopic.name} target dictionary invalid: ${dictTargetErr}`);
+
         const samplingPolicy = parseSamplingPolicy(storedTopic.samplingPolicy);
         check(samplingPolicy, `${storedTopic.name} sampling policy is invalid`);
         check(samplingPolicy.methods.simple === "required", `${storedTopic.name} must require simple sampling`);
@@ -558,8 +570,6 @@ async function verify() {
         const parsed = await parseSpreadsheetFile(await file.arrayBuffer(), storedTopic.path, { numericFields: mapping.numeric ?? [] });
         check(parsed.rowCount === storedTopic.rowCount, `${storedTopic.name} parsed row count differs: ${parsed.rowCount}`);
         check(JSON.stringify(parsed.columns) === JSON.stringify(expected.columns), `${storedTopic.name} columns differ: ${JSON.stringify(parsed.columns)}`);
-        // Seed insertion bypasses the teacher publish endpoint. Apply the same
-        // contracts here so a published fixture can also be copied and published.
         const populationError = validateMappedPopulationData(parsed, mapping);
         check(!populationError, `${storedTopic.name} population cannot be published: ${populationError}`);
         const publishError = validateTopicPublishReadiness({
@@ -605,11 +615,11 @@ async function verify() {
         check(attachmentFile.size > 0 && attachmentFile.size === storedAttachment.storedSize, `A attachment size differs: db=${storedAttachment.storedSize} file=${attachmentFile.size}`);
     }
 
-    console.log("Dogfood seed check passed.");
-    console.log(`Counts: ${Object.entries(actualCounts).map(([key, value]) => `${key}=${value}`).join(" ")}`);
-    console.log(`A progress: ${Object.entries(progress.counts).map(([key, value]) => `${key}=${value}`).join(" ")}`);
+    console.log("Business Statistics dogfood seed check passed.");
+    console.log(`Counts: ${Object.entries(actualCounts).map(([key, value]) => `${key}=${value}`).join(" ")} experimentWave=${waveTableCount}`);
+    console.log(`Flagship progress: ${Object.entries(progress.counts).map(([key, value]) => `${key}=${value}`).join(" ")}`);
     console.log(`Visible grading fixtures: ${visibleKeys.join(", ")}`);
-    console.log(`Authoritative compact stage4/terminal fixtures: ${authoritative.length}; sampling attempts: ${auditCoverage.length}; population rows: ${storedTopics.map((row) => `${row.name}=${parsedRowCounts[row.name]}`).join(", ")}`);
+    console.log(`Authoritative compact stage5/terminal fixtures: ${authoritative.length}; sampling attempts: ${auditCoverage.length}; population rows: ${storedTopics.map((row) => `${row.name}=${parsedRowCounts[row.name]}`).join(", ")}`);
 }
 
 try {

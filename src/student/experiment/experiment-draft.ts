@@ -22,7 +22,7 @@ function hasValidIdentity(identity: ExperimentDraftIdentity) {
         && Number(identity.experimentVersion) >= 0
         && Number.isInteger(identity.stage)
         && identity.stage >= 1
-        && identity.stage <= 4;
+        && identity.stage <= 5;
 }
 
 function draftKey(identity: ExperimentDraftIdentity) {

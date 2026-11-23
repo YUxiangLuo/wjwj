@@ -2,11 +2,16 @@ import { loginRoutes, logoutRoutes, meRoutes, passwordRoutes } from "./routes/au
 import {
     analysisMetricsRoutes,
     experimentRoutes,
+    fieldworkCleaningRoutes,
+    fieldworkDispatchRoutes,
+    newWaveRoutes,
     samplingActionRoutes,
     stageCompleteRoutes,
     stageReopenRoutes,
     statsRoutes,
     submitRoutes,
+    wavePlanRoutes,
+    waveQuestionnaireRoutes,
 } from "./routes/experiment";
 import { attachmentDownloadRoutes, exportRoutes } from "./routes/files";
 import { announcementsRoutes } from "./routes/announcements";
@@ -23,9 +28,14 @@ export const studentApiRoutes = {
     "/api/student/tasks": tasksRoutes,
     "/api/student/tasks/:id": taskDetailRoutes,
     "/api/student/tasks/:id/experiment": experimentRoutes,
+    "/api/student/tasks/:id/experiment/plan": wavePlanRoutes,
+    "/api/student/tasks/:id/experiment/wave-questionnaire": waveQuestionnaireRoutes,
     "/api/student/tasks/:id/experiment/stages/:stage/complete": stageCompleteRoutes,
     "/api/student/tasks/:id/experiment/stages/:stage/reopen": stageReopenRoutes,
     "/api/student/tasks/:id/sampling": samplingActionRoutes,
+    "/api/student/tasks/:id/fieldwork/dispatch": fieldworkDispatchRoutes,
+    "/api/student/tasks/:id/fieldwork/cleaning": fieldworkCleaningRoutes,
+    "/api/student/tasks/:id/fieldwork/new-wave": newWaveRoutes,
     "/api/student/tasks/:id/stats": statsRoutes,
     "/api/student/tasks/:id/analysis-metrics": analysisMetricsRoutes,
     "/api/student/tasks/:id/variables": studentVariableRoutes,

@@ -17,6 +17,7 @@ import {
 } from "../experiment/systematic-sampling";
 import { getSamplingMethodState, resolveSamplingPolicy } from "@/lib/sampling-policy";
 import { AnalysisAppendices } from "@/components/AnalysisAppendices";
+import { WaveLoopSnapshot } from "@/components/WaveLoopSnapshot";
 
 interface Props {
     open: boolean;
@@ -25,13 +26,14 @@ interface Props {
     onClose: () => void;
 }
 
-type Section = "overview" | "questionnaire" | "sampling" | "report";
+type Section = "overview" | "waves" | "questionnaire" | "sampling" | "report";
 
 const SECTIONS: { key: Section; label: string; icon: typeof FileText }[] = [
     { key: "overview", label: "实验概览", icon: Users },
+    { key: "waves", label: "试投质检与调优", icon: BarChart3 },
     { key: "questionnaire", label: "问卷设计", icon: FileText },
     { key: "sampling", label: "抽样结果", icon: BarChart3 },
-    { key: "report", label: "分析报告", icon: Layers },
+    { key: "report", label: "商业决策报告", icon: Layers },
 ];
 
 export function ImmersiveReportPreview({ open, experiment, taskName, onClose }: Props) {
@@ -113,6 +115,13 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
                                 samplingResults={samplingResults}
                                 samplingPolicy={samplingPolicy}
                                 questionCount={questionnaire?.questions?.length ?? 0}
+                            />
+                        )}
+                        {activeSection === "waves" && (
+                            <WaveLoopSnapshot
+                                waves={experiment.waves ?? []}
+                                adjustmentPlan={experiment.adjustmentPlan ?? null}
+                                analysisTarget={experiment.analysisTarget ?? null}
                             />
                         )}
                         {activeSection === "questionnaire" && (

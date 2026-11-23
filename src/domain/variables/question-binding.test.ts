@@ -154,7 +154,7 @@ describe("single-choice ordinal and explicit missing bindings", () => {
     const serviceQuestion = happinessQuestionnaire.questions.find(question => question.id === "hq14")!;
     function bound(values: RawValue[] = [1, 2, 3, 4, 5, null], question = serviceQuestion): Question {
         return { ...question, variableBinding: { taskId: 1, source: happiness.source, revision: happiness.revision,
-            signature: questionSignature(question), mappings: [{ field: "社区服务满意度",
+            signature: questionSignature(question), mappings: [{ field: "门店小程序体验评分",
                 answers: values.map((value, index) => ({ answer: question.options![index]!, value })) }] } };
     }
     test("the actual service recommendation maps five ordered ratings and a nonuser answer to null", () => {
@@ -183,11 +183,11 @@ describe("single-choice ordinal and explicit missing bindings", () => {
     });
     test("only declared missing codes are accepted, and at most one answer may be excluded", () => {
         const changed = structuredClone(happiness);
-        changed.variables.find(variable => variable.field === "社区服务满意度")!.missing = [-99, null];
+        changed.variables.find(variable => variable.field === "门店小程序体验评分")!.missing = [-99, null];
         expect(() => validateQuestionBindings(data(bound([1, 2, 3, 4, 5, -99])), changed, 1)).not.toThrow();
         const twoMissingOptions = { ...serviceQuestion, options: [...serviceQuestion.options!, "拒绝回答"] };
         expect(() => validateQuestionBindings(data(bound([1, 2, 3, 4, 5, null, -99], twoMissingOptions)), changed, 1)).toThrow(/最多关联一个缺失选项/);
-        changed.variables.find(variable => variable.field === "社区服务满意度")!.missing = [];
+        changed.variables.find(variable => variable.field === "门店小程序体验评分")!.missing = [];
         expect(() => validateQuestionBindings(data(bound()), changed, 1)).toThrow();
     });
     test("nominal choices retain arbitrary bijections and can explicitly exclude one declared missing answer", () => {

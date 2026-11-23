@@ -136,7 +136,7 @@ test("reading different materials keeps scores, comments and student identity in
     const panel = view.getByTestId("teacher-grading-panel");
     expect(within(panel).getByText("学生 · S1")).toBeTruthy();
     fireEvent.change(view.getByLabelText("教师评语"), { target: { value: "阅读时保留" } });
-    fireEvent.keyDown(view.getByRole("tab", { name: "报告" }), { key: "Enter" });
+    fireEvent.keyDown(view.getByRole("tab", { name: "商业报告" }), { key: "Enter" });
     expect((within(panel).getByLabelText("教师评语") as HTMLTextAreaElement).value).toBe("阅读时保留");
     expect(panel.closest('[role="tabpanel"]')).toBeNull();
     expect(view.getByRole("tablist", { name: "提交材料" }).classList.contains("sticky")).toBe(true);
@@ -149,7 +149,7 @@ test("report review renders the frozen target estimate, teaching half-width, and
     globalThis.fetch = (async () => Response.json({ success: true, data: { ...record(), targetMetrics: frozenTargetMetrics } })) as unknown as typeof fetch;
     const view = page();
     await waitFor(() => expect(view.getByLabelText("教师评语")).toBeTruthy());
-    fireEvent.keyDown(view.getByRole("tab", { name: "报告" }), { key: "Enter" });
+    fireEvent.keyDown(view.getByRole("tab", { name: "商业报告" }), { key: "Enter" });
     expect(view.getByText("研究目标结果")).toBeTruthy();
     expect(view.getByText("10.0000 kg")).toBeTruthy();
     expect(view.getByText("9.5000 kg")).toBeTruthy();

@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { buildDefaultSamplingPolicy, resolveSamplingPolicy, type SamplingPolicyV1 } from "@/lib/sampling-policy";
+import { DEFAULT_FIELDWORK_CONFIG, resolveFieldworkConfig, type FieldworkSimulationConfig } from "@/domain/fieldwork";
 import { clearTeacherDraft, readTeacherDraft, useTeacherId, writeTeacherDraft } from "../teacher-draft";
 
 const NEW_TOPIC_DRAFT = "topic:new";
@@ -59,6 +60,8 @@ export function TopicManagement() {
     const [recommendQuestions, setRecommendQuestions] = useState<Question[]>([]);
     const [weightConfig, setWeightConfig] = useState({ questionnaire: 30, process: 30, report: 40 });
     const [samplingPolicy, setSamplingPolicy] = useState<SamplingPolicyV1>(() => buildDefaultSamplingPolicy());
+    const [fieldworkConfig, setFieldworkConfig] = useState<FieldworkSimulationConfig>(() => ({ ...DEFAULT_FIELDWORK_CONFIG }));
+    const [savedFieldworkConfig, setSavedFieldworkConfig] = useState<FieldworkSimulationConfig>(() => ({ ...DEFAULT_FIELDWORK_CONFIG }));
     const detailLoad = useAsyncLoad("实验模板详情加载失败");
     const [uploadingExcel, setUploadingExcel] = useState(false);
     const [uploadingAttachment, setUploadingAttachment] = useState(false);
@@ -154,6 +157,9 @@ export function TopicManagement() {
                 report: weightParsed?.report ?? 40,
             });
             setSamplingPolicy(resolveSamplingPolicy(data.topic?.samplingPolicy));
+            const resolvedFw = resolveFieldworkConfig(data.topic?.fieldworkConfig);
+            setFieldworkConfig(resolvedFw);
+            setSavedFieldworkConfig(resolvedFw);
         });
     }
 
@@ -217,6 +223,8 @@ export function TopicManagement() {
         setRecommendQuestions([]);
         setWeightConfig({ questionnaire: 30, process: 30, report: 40 });
         setSamplingPolicy(buildDefaultSamplingPolicy());
+        setFieldworkConfig({ ...DEFAULT_FIELDWORK_CONFIG });
+        setSavedFieldworkConfig({ ...DEFAULT_FIELDWORK_CONFIG });
         setShowCreateModal(true);
     }
 
@@ -358,12 +366,21 @@ export function TopicManagement() {
             return;
         }
         const res = await teacherApi.updateSamplingPolicy(editingTopicId, samplingPolicy);
-        if (res.success) {
-            setSaveError(null);
-            setCurrentStep(5);
-        } else {
+        if (!res.success) {
             reportSaveError(res.error?.message ?? "抽样策略保存失败，请重试；本页输入已保留。");
+            return;
         }
+        const fwChanged = JSON.stringify(fieldworkConfig) !== JSON.stringify(savedFieldworkConfig);
+        if (fwChanged && typeof teacherApi.updateFieldworkConfig === "function") {
+            const fwRes = await teacherApi.updateFieldworkConfig(editingTopicId, fieldworkConfig);
+            if (!fwRes.success) {
+                reportSaveError(fwRes.error?.message ?? "虚拟发放环境配置保存失败，请重试。");
+                return;
+            }
+            setSavedFieldworkConfig(fieldworkConfig);
+        }
+        setSaveError(null);
+        setCurrentStep(5);
     }
 
     async function handleUploadAttachment(file: File) {
@@ -463,12 +480,12 @@ export function TopicManagement() {
     }, [filteredTopics, copiedTopicId]);
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            <dl aria-label="实验模板概览" className="grid grid-cols-4 gap-5 border-b border-border pb-5">
-                <div><dt className="text-meta text-muted-foreground">模板总数</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.total}</dd></div>
-                <div><dt className="text-meta text-muted-foreground">已发布</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.published}</dd></div>
-                <div><dt className="text-meta text-muted-foreground">草稿</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.draft}</dd></div>
-                <div><dt className="text-meta text-muted-foreground">总体数据行数</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.totalRows.toLocaleString()}</dd></div>
+        <div className="space-y-6">
+            <dl aria-label="实验模板概览" className="grid grid-cols-4 gap-4">
+                <div className="rounded-surface border border-border bg-card p-4"><dt className="text-meta font-medium text-muted-foreground">商业实验模板总数</dt><dd className="mt-1.5 text-page-title font-bold tabular-nums text-foreground">{loading || loadError ? "-" : summary.total}</dd></div>
+                <div className="rounded-surface border border-border bg-card p-4"><dt className="text-meta font-medium text-muted-foreground">已发布模板</dt><dd className="mt-1.5 text-page-title font-bold tabular-nums text-success">{loading || loadError ? "-" : summary.published}</dd></div>
+                <div className="rounded-surface border border-border bg-card p-4"><dt className="text-meta font-medium text-muted-foreground">草稿配置中</dt><dd className="mt-1.5 text-page-title font-bold tabular-nums text-warning">{loading || loadError ? "-" : summary.draft}</dd></div>
+                <div className="rounded-surface border border-border bg-card p-4"><dt className="text-meta font-medium text-muted-foreground">虚拟总体总行数</dt><dd className="mt-1.5 text-page-title font-bold tabular-nums text-primary">{loading || loadError ? "-" : summary.totalRows.toLocaleString()}</dd></div>
             </dl>
 
             <Card>
@@ -612,6 +629,8 @@ export function TopicManagement() {
                         setRecommendQuestions([]);
                         setWeightConfig({ questionnaire: 30, process: 30, report: 40 });
                         setSamplingPolicy(buildDefaultSamplingPolicy());
+                        setFieldworkConfig({ ...DEFAULT_FIELDWORK_CONFIG });
+                        setSavedFieldworkConfig({ ...DEFAULT_FIELDWORK_CONFIG });
                         setSaveError(null);
                     }
                 }}
@@ -644,6 +663,8 @@ export function TopicManagement() {
                 setWeightConfig={setWeightConfig}
                 samplingPolicy={samplingPolicy}
                 setSamplingPolicy={setSamplingPolicy}
+                fieldworkConfig={fieldworkConfig}
+                setFieldworkConfig={setFieldworkConfig}
                 onSubmitTopic={handleSubmitTopic}
                 onSaveFieldMapping={handleSaveFieldMapping}
                 onSaveSamplingPolicy={handleSaveSamplingPolicy}

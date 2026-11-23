@@ -1,5 +1,5 @@
 import { interpretNumeric, valueKey } from "./dictionary";
-import type { AnalysisResult, VariableDefinition } from "./types";
+import type { AnalysisResult, CrossTabAnalysisResult, VariableDefinition } from "./types";
 import { scaledMean, sampleStandardDeviation as computeSampleStandardDeviation } from "../statistics/values";
 
 class Sum {
@@ -31,14 +31,12 @@ function weightedMean(values: number[], weights: number[]): number | null {
     for (let i = 0; i < values.length; i++) {
         const weight = weights[i]! / weightScale;
         const product = weight * values[i]!;
-        // Subnormal products lose precision even when they do not round to zero.
         if (values[i] !== 0 && weight > 0 && Math.abs(product) < 2 ** -1022) productUnderflow = true;
         unscaledNumerator.add(product);
         numerator.add(weight * (values[i]! / valueScale));
         denominator.add(weight);
     }
     if (!(denominator.value > 0)) throw new Error("权重总和无效");
-    // Preserve cancellation residuals unless original-unit products/sums lose range.
     if (!productUnderflow && Number.isFinite(unscaledNumerator.value)) return finite(unscaledNumerator.value / denominator.value);
     return finite((numerator.value / denominator.value) * valueScale);
 }
@@ -48,7 +46,6 @@ function quantileR7(sorted: number[], probability: number): number | null {
     const position = (sorted.length - 1) * probability;
     const lower = Math.floor(position), fraction = position - lower;
     const a = sorted[lower]!, b = sorted[Math.min(lower + 1, sorted.length - 1)]!;
-    // Subtraction preserves nearby values; opposite signs need an overflow-safe blend.
     return finite(a < 0 && b > 0 ? a * (1 - fraction) + b * fraction : a + (b - a) * fraction);
 }
 
@@ -124,4 +121,129 @@ export function calculateUnivariate({
     const categories = variable.categories.map((category, index) => ({ ...category, count: counts[index]!,
         proportion: weighted ? (validCount ? finite(weightedCounts[index]!.value / totalWeight.value) : null) : (validCount ? counts[index]! / validCount : null) }));
     return { kind: "categorical", weighted, sampleCount: rows.length, validCount, missingCount: rows.length - validCount, categories };
+}
+
+export function calculateCrossTab({
+    rows,
+    indices,
+    variable,
+    groupVariable,
+    weighted,
+    weights,
+}: {
+    rows: Record<string, unknown>[];
+    indices: number[];
+    variable: VariableDefinition;
+    groupVariable: VariableDefinition;
+    weighted: boolean;
+    weights?: number[];
+}): CrossTabAnalysisResult {
+    if (groupVariable.kind !== "nominal" && groupVariable.kind !== "ordinal") {
+        throw new Error("分组交叉对比的分组变量须为名义或有序分类变量");
+    }
+    if (weighted && (!weights || weights.length !== indices.length)) {
+        throw new Error("权重必须与样本索引一一对齐");
+    }
+
+    const groupMissing = new Set(groupVariable.missing.map(valueKey));
+    const groupCatIndex = new Map(groupVariable.categories.map((cat, idx) => [valueKey(cat.value), idx]));
+    const targetMissing = new Set(variable.missing.map(valueKey));
+    const targetCatIndex = new Map(variable.categories.map((cat, idx) => [valueKey(cat.value), idx]));
+
+    const buckets = groupVariable.categories.map(() => ({
+        numValues: [] as number[],
+        numWeights: [] as number[],
+        catCounts: Array(variable.categories.length).fill(0) as number[],
+        catWeightedCounts: Array(variable.categories.length).fill(0).map(() => new Sum()),
+        totalWeight: new Sum(),
+        validCount: 0,
+    }));
+
+    let totalValid = 0;
+    const weightScale = weighted && weights && weights.length
+        ? weights.reduce((m, w) => Math.max(m, w), 0)
+        : 1;
+
+    indices.forEach((rowIndex, pos) => {
+        const row = rows[rowIndex];
+        if (!row) return;
+        const gRaw = row[groupVariable.field];
+        const gKey = valueKey(gRaw);
+        if (groupMissing.has(gKey)) return;
+        const gIdx = groupCatIndex.get(gKey);
+        if (gIdx === undefined) return;
+
+        const tRaw = row[variable.field];
+        const tKey = valueKey(tRaw);
+        if (tRaw === null || tRaw === undefined || targetMissing.has(tKey)) return;
+
+        const bucket = buckets[gIdx]!;
+        const w = weighted ? weights![pos]! : 1;
+
+        if (variable.kind === "continuous") {
+            const num = interpretNumeric(tRaw, variable);
+            if (num === null) return;
+            bucket.numValues.push(num);
+            if (weighted) bucket.numWeights.push(w);
+            bucket.validCount += 1;
+            totalValid += 1;
+        } else {
+            const tIdx = targetCatIndex.get(tKey);
+            if (tIdx === undefined) return;
+            bucket.catCounts[tIdx] = bucket.catCounts[tIdx]! + 1;
+            if (weighted) {
+                bucket.catWeightedCounts[tIdx]!.add(w / weightScale);
+                bucket.totalWeight.add(w / weightScale);
+            }
+            bucket.validCount += 1;
+            totalValid += 1;
+        }
+    });
+
+    const groups = groupVariable.categories.map((gCat, gIdx) => {
+        const bucket = buckets[gIdx]!;
+        if (variable.kind === "continuous") {
+            const mean = bucket.validCount > 0
+                ? (weighted ? weightedMean(bucket.numValues, bucket.numWeights) : scaledMean(bucket.numValues))
+                : null;
+            const sd = !weighted && bucket.numValues.length > 1
+                ? finite(computeSampleStandardDeviation(bucket.numValues))
+                : null;
+            return {
+                groupValue: gCat.value,
+                groupLabel: gCat.label,
+                validCount: bucket.validCount,
+                mean,
+                sampleStandardDeviation: sd,
+            };
+        }
+        const categories = variable.categories.map((tCat, tIdx) => ({
+            value: tCat.value,
+            label: tCat.label,
+            count: bucket.catCounts[tIdx]!,
+            proportion: bucket.validCount > 0
+                ? (weighted
+                    ? (bucket.totalWeight.value > 0 ? finite(bucket.catWeightedCounts[tIdx]!.value / bucket.totalWeight.value) : null)
+                    : bucket.catCounts[tIdx]! / bucket.validCount)
+                : null,
+        }));
+        return {
+            groupValue: gCat.value,
+            groupLabel: gCat.label,
+            validCount: bucket.validCount,
+            categories,
+        };
+    });
+
+    return {
+        kind: "crosstab",
+        weighted,
+        sampleCount: indices.length,
+        validCount: totalValid,
+        missingCount: indices.length - totalValid,
+        groupField: groupVariable.field,
+        groupLabel: groupVariable.label,
+        targetKind: variable.kind === "continuous" ? "numeric" : "categorical",
+        groups,
+    };
 }

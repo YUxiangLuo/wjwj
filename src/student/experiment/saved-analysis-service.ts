@@ -6,6 +6,7 @@ import { canonicalJson, readVariableSource } from "../../server/variable-source"
 import { ensureTaskIsOpen, hasTaskDeadlinePassed } from "./task-timing";
 import { univariateService } from "./univariate-service";
 import { WorkerServiceError } from "../../server/worker-service";
+import { parseStoredWaves } from "./fieldwork-wave-service";
 
 export const ANALYSIS_CAPACITY = 20;
 export const MAX_ANALYSIS_REFERENCES = 10;
@@ -19,9 +20,16 @@ export class AnalysisConflict extends Error {
 
 export function analysisView(row: Saved, record: Pick<Experiment, "samplingGeneration">, dictionary: VariableDictionary | null): SavedAnalysisView {
     return {
-        id: row.id, config: row.config, variable: row.variable, result: row.result,
-        source: row.source, dictionaryRevision: row.dictionaryRevision, samplingGeneration: row.samplingGeneration,
-        algorithmVersion: row.algorithmVersion, createdAt: row.createdAt.toISOString(),
+        id: row.id,
+        waveNumber: row.waveNumber ?? row.config.waveNumber ?? 1,
+        config: row.config,
+        variable: row.variable,
+        result: row.result,
+        source: row.source,
+        dictionaryRevision: row.dictionaryRevision,
+        samplingGeneration: row.samplingGeneration,
+        algorithmVersion: row.algorithmVersion,
+        createdAt: row.createdAt.toISOString(),
         stale: row.samplingGeneration !== record.samplingGeneration || row.source !== dictionary?.source || row.dictionaryRevision !== dictionary.revision,
     };
 }
@@ -60,20 +68,59 @@ export async function listSavedAnalyses(studentId: number, classId: number, task
     try {
         if (dictionary && (template.variableRevision !== dictionary.revision || !template.excelFilePath
             || (await readVariableSource(template.excelFilePath, template.fieldMapping)).source !== dictionary.source)) dictionary = null;
-    } catch { dictionary = null; } // Saved results remain readable when their source is unavailable.
+    } catch { dictionary = null; }
     return { records: rows.map(row => analysisView(row, record, dictionary)), capacity: ANALYSIS_CAPACITY };
 }
+
+const ALLOWED_CONFIG_KEYS = new Set(["field", "method", "question", "weighted", "groupByField", "waveNumber", "datasetMode"]);
 
 export function parseAnalysisRequest(body: unknown): { requestId: string; observedVersion: number; config: AnalysisConfig } {
     if (!body || typeof body !== "object" || Array.isArray(body)) throw new AnalysisConflict("分析请求格式无效");
     const input = body as Record<string, unknown>;
-    if (Object.keys(input).sort().join(",") !== "config,observedVersion,requestId" || typeof input.requestId !== "string" || !/^[a-zA-Z0-9-]{8,80}$/.test(input.requestId) || !Number.isSafeInteger(input.observedVersion) || Number(input.observedVersion) < 1) throw new AnalysisConflict("分析请求编号或版本无效");
-    const config = input.config as AnalysisConfig;
-    if (!config || typeof config !== "object" || Object.keys(config).sort().join(",") !== "field,method,question,weighted"
-        || typeof config.question !== "string" || config.question.trim().length < 5 || config.question.trim().length > 500
-        || typeof config.field !== "string" || !config.field || typeof config.weighted !== "boolean"
-        || !["simple", "systematic", "pps", "stratified"].includes(config.method)) throw new AnalysisConflict("请填写5–500字研究问题、已完成样本、变量与分析口径");
-    return { requestId: input.requestId, observedVersion: input.observedVersion as number, config: { ...config, question: config.question.trim() } };
+    if (Object.keys(input).sort().join(",") !== "config,observedVersion,requestId" || typeof input.requestId !== "string" || !/^[a-zA-Z0-9-]{8,80}$/.test(input.requestId) || !Number.isSafeInteger(input.observedVersion) || Number(input.observedVersion) < 1) {
+        throw new AnalysisConflict("分析请求编号或版本无效");
+    }
+    const rawConfig = input.config as Record<string, unknown>;
+    if (!rawConfig || typeof rawConfig !== "object" || Array.isArray(rawConfig)) {
+        throw new AnalysisConflict("请填写5–500字研究问题、已完成样本、变量与分析口径");
+    }
+    for (const k of Object.keys(rawConfig)) {
+        if (!ALLOWED_CONFIG_KEYS.has(k)) throw new AnalysisConflict("分析配置包含未知字段");
+    }
+    if (
+        typeof rawConfig.question !== "string" || rawConfig.question.trim().length < 5 || rawConfig.question.trim().length > 500
+        || typeof rawConfig.field !== "string" || !rawConfig.field
+        || typeof rawConfig.weighted !== "boolean"
+        || !["simple", "systematic", "pps", "stratified"].includes(String(rawConfig.method))
+    ) {
+        throw new AnalysisConflict("请填写5–500字研究问题、已完成样本、变量与分析口径");
+    }
+    if (rawConfig.groupByField !== undefined && rawConfig.groupByField !== "" && typeof rawConfig.groupByField !== "string") {
+        throw new AnalysisConflict("分组变量格式无效");
+    }
+    if (rawConfig.waveNumber !== undefined && (!Number.isSafeInteger(rawConfig.waveNumber) || Number(rawConfig.waveNumber) < 1)) {
+        throw new AnalysisConflict("实验波次编号无效");
+    }
+    if (rawConfig.datasetMode !== undefined && rawConfig.datasetMode !== "cleaned_respondents" && rawConfig.datasetMode !== "full_invited") {
+        throw new AnalysisConflict("数据集口径无效");
+    }
+
+    const normalizedConfig: AnalysisConfig = {
+        question: rawConfig.question.trim(),
+        method: rawConfig.method as AnalysisConfig["method"],
+        field: rawConfig.field,
+        weighted: rawConfig.weighted,
+        ...(typeof rawConfig.groupByField === "string" && rawConfig.groupByField.trim() ? { groupByField: rawConfig.groupByField.trim() } : {}),
+        ...(typeof rawConfig.waveNumber === "number" ? { waveNumber: rawConfig.waveNumber } : {}),
+        ...(rawConfig.datasetMode === "cleaned_respondents" || rawConfig.datasetMode === "full_invited" ? { datasetMode: rawConfig.datasetMode } : {}),
+    };
+
+    return { requestId: input.requestId, observedVersion: input.observedVersion as number, config: normalizedConfig };
+}
+
+function isEditableAnalysisStage(record: Experiment) {
+    if (!["in_progress", "rejected"].includes(record.status)) return false;
+    return record.currentStage === 5 && !record.stage5CompletedAt;
 }
 
 export async function createSavedAnalysis(studentId: number, classId: number, taskId: number, body: unknown, signal?: AbortSignal) {
@@ -90,21 +137,39 @@ export async function createSavedAnalysis(studentId: number, classId: number, ta
     const openError = ensureTaskIsOpen(initial.openTime);
     if (openError || hasTaskDeadlinePassed(initial.deadline)) throw new AnalysisConflict("任务未开放或已截止", "TASK_DEADLINE", 409);
     if (initial.record.version !== request.observedVersion) throw new AnalysisConflict("实验版本已变化，请刷新核对", "VERSION_CONFLICT", 409);
-    if (initial.record.currentStage !== 4 || !["in_progress", "rejected"].includes(initial.record.status) || initial.record.stage4CompletedAt) throw new AnalysisConflict("请在可编辑的第四阶段执行分析", "EXPERIMENT_LOCKED", 409);
+    if (!isEditableAnalysisStage(initial.record)) {
+        throw new AnalysisConflict("请在可编辑的第五阶段（商务分析与报告）执行分析", "EXPERIMENT_LOCKED", 409);
+    }
     const dictionary = initial.template.variableDictionary;
-    if (!dictionary || dictionary.revision !== initial.template.variableRevision || !initial.template.excelFilePath) throw new AnalysisConflict("当前任务没有有效的已确认变量字典", "DICTIONARY_CONFLICT", 409);
+    if (!dictionary || dictionary.revision !== initial.template.variableRevision || !initial.template.excelFilePath) {
+        throw new AnalysisConflict("当前任务没有有效的已确认变量字典", "DICTIONARY_CONFLICT", 409);
+    }
     const variable = dictionary.variables.find(item => item.field === request.config.field);
     if (!variable || variable.kind === "identifier") throw new AnalysisConflict("所选变量不可用于分析");
-    const samplingResult = (initial.record.samplingResults as Record<string, Record<string, unknown>> | null)?.[request.config.method];
-    if (!samplingResult) throw new AnalysisConflict("请先完成所选抽样方法");
+
+    const waves = parseStoredWaves(initial.record.wavesData);
+    const chosenWaveNumber = request.config.waveNumber ?? initial.record.activeWaveNumber ?? 2;
+    const chosenWave = waves.find((w) => w.waveNumber === chosenWaveNumber);
+    const samplingContainer = (chosenWave?.samplingResults ?? initial.record.samplingResults) as Record<string, Record<string, unknown>> | null;
+    const samplingResult = samplingContainer?.[request.config.method];
+    if (!samplingResult) throw new AnalysisConflict("请先完成所选波次与抽样方法");
+
     let data: Awaited<ReturnType<typeof univariateService.run>>;
     try {
-        data = await univariateService.run({ populationPath: initial.template.excelFilePath, fieldMapping: initial.template.fieldMapping, dictionary, config: request.config, samplingResult }, {
-            key: `${initial.record.id}:${request.requestId}:${fingerprint}`, signal,
+        data = await univariateService.run({
+            populationPath: initial.template.excelFilePath,
+            fieldMapping: initial.template.fieldMapping,
+            dictionary,
+            config: request.config,
+            samplingResult,
+            fieldworkResult: chosenWave?.fieldwork?.methods?.[request.config.method] ?? null,
+            cleaningConfig: chosenWave?.cleaningConfig ?? null,
+            questionnaire: chosenWave?.questionnaire ?? null,
+        }, {
+            key: `${initial.record.id}:${request.requestId}:${fingerprint}`,
+            signal,
         });
     } catch (cause) {
-        // 工作线程内的来源校验与下面事务内的校验是同一条件；统一为 409 来源冲突，
-        // 避免同一用户操作因检查时序不同而返回 500。
         if (cause instanceof WorkerServiceError && cause.code === "SOURCE_MISMATCH") {
             throw new AnalysisConflict("总体文件或字段解释已变化，请联系教师重新确认来源", "SOURCE_CONFLICT", 409);
         }
@@ -114,16 +179,31 @@ export async function createSavedAnalysis(studentId: number, classId: number, ta
         const current = await ownedAnalysisContext(studentId, classId, taskId, tx, true);
         const duplicate = await existing(tx);
         if (duplicate) return retry(duplicate, current.record, current.template.variableDictionary);
-        if (current.record.version !== request.observedVersion || current.record.currentStage !== 4 || !["in_progress", "rejected"].includes(current.record.status) || current.record.stage4CompletedAt) throw new AnalysisConflict("计算期间实验版本或状态已变化", "VERSION_CONFLICT", 409);
+        if (current.record.version !== request.observedVersion || !isEditableAnalysisStage(current.record)) {
+            throw new AnalysisConflict("计算期间实验版本或状态已变化", "VERSION_CONFLICT", 409);
+        }
         if (current.record.samplingGeneration !== initial.record.samplingGeneration) throw new AnalysisConflict("计算期间抽样来源已变化", "SAMPLING_CONFLICT", 409);
-        if (current.template.variableRevision !== dictionary.revision || current.template.variableDictionary?.source !== dictionary.source || !current.template.excelFilePath) throw new AnalysisConflict("计算期间变量字典已变化", "DICTIONARY_CONFLICT", 409);
-        if ((await readVariableSource(current.template.excelFilePath, current.template.fieldMapping)).source !== dictionary.source) throw new AnalysisConflict("总体文件已变化", "SOURCE_CONFLICT", 409);
+        if (current.template.variableRevision !== dictionary.revision || current.template.variableDictionary?.source !== dictionary.source || !current.template.excelFilePath) {
+            throw new AnalysisConflict("计算期间变量字典已变化", "DICTIONARY_CONFLICT", 409);
+        }
+        if ((await readVariableSource(current.template.excelFilePath, current.template.fieldMapping)).source !== dictionary.source) {
+            throw new AnalysisConflict("总体文件已变化", "SOURCE_CONFLICT", 409);
+        }
         const records = await tx.select({ id: savedAnalysis.id }).from(savedAnalysis).where(eq(savedAnalysis.experimentId, current.record.id)).limit(ANALYSIS_CAPACITY);
         if (records.length >= ANALYSIS_CAPACITY) throw new AnalysisConflict("当前实验已达到20条分析记录上限，历史分析不会被覆盖", "ANALYSIS_CAPACITY", 409);
         const [saved] = await tx.insert(savedAnalysis).values({
-            experimentId: current.record.id, requestId: request.requestId, requestFingerprint: fingerprint,
-            samplingGeneration: current.record.samplingGeneration, source: dictionary.source, dictionaryRevision: dictionary.revision,
-            config: request.config, variable, result: data.result, evidence: data.evidence, algorithmVersion: data.algorithmVersion,
+            experimentId: current.record.id,
+            waveNumber: chosenWaveNumber,
+            requestId: request.requestId,
+            requestFingerprint: fingerprint,
+            samplingGeneration: current.record.samplingGeneration,
+            source: dictionary.source,
+            dictionaryRevision: dictionary.revision,
+            config: request.config,
+            variable,
+            result: data.result,
+            evidence: data.evidence,
+            algorithmVersion: data.algorithmVersion,
         }).returning();
         return analysisView(saved!, current.record, dictionary);
     });

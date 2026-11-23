@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
     LayoutDashboard, FileText,
-    ChevronRight, Clock, AlertCircle, Info, Trophy, BookOpen
+    ChevronRight, Clock, AlertCircle, Info, Trophy, BookOpen,
+    BriefcaseBusiness, CheckCircle2, Sparkles, Layers
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, type StatusBadgeIntent } from "@/components/StatusBadge";
@@ -11,23 +12,25 @@ import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RichTextContent } from "@/components/RichTextContent";
 import { LoadingStatus } from "@/components/LoadingStatus";
+import { KpiStatCard } from "@/components/KpiStatCard";
 import { getRichTextPlainText } from "@/utils/rich-text";
 import { announcementsApi, tasksApi } from "../api-client";
 import type { StudentTask, Announcement } from "@/domain/experiment/student-contracts";
 import type { TaskStatus } from "@/domain/experiment/types";
+import { EXPERIMENT_STAGE_NAMES } from "@/lib/experiment-progress";
 import { formatDateTimeDisplay, getRemainingDeadlineSummary, DAY_MS } from "@/utils/format";
 
 // Re-export types for compatibility
 export type { TaskStatus, StudentTask };
 
-const stageNames = ["问卷预试", "样本量规划", "抽样执行", "分析与报告"];
+const stageNames = [...EXPERIMENT_STAGE_NAMES];
 const ACTIVE_TASK_STATUSES: TaskStatus[] = ["not_started", "in_progress", "rejected"];
 const statusConfig: Record<TaskStatus, { label: string; intent: StatusBadgeIntent }> = {
-    not_started: { label: "未开始", intent: "neutral" },
-    in_progress: { label: "进行中", intent: "primary" },
-    submitted: { label: "已提交", intent: "warning" },
-    graded: { label: "已批改", intent: "success" },
-    rejected: { label: "被驳回", intent: "destructive" },
+    not_started: { label: "待立项", intent: "neutral" },
+    in_progress: { label: "调研进行中", intent: "primary" },
+    submitted: { label: "已提交待评", intent: "warning" },
+    graded: { label: "已批改结项", intent: "success" },
+    rejected: { label: "退回重调", intent: "destructive" },
 };
 
 function formatDateTime(value: string | null) {
@@ -135,15 +138,11 @@ interface TaskCardProps {
 
 function TaskCard({ task }: TaskCardProps) {
     const navigate = useNavigate();
-    // An expired, unfinished task is no longer "in progress" from the student's
-    // point of view, so the badge shows the deadline instead of the stale state.
     const expired = isDeadlinePassed(task.deadline) && (task.status === "not_started" || task.status === "in_progress");
     const status = expired
         ? { label: "已截止", intent: "neutral" as StatusBadgeIntent }
         : statusConfig[task.status];
     const notOpenYet = isTaskNotOpenYet(task.publishedAt);
-    // A stable multiplicative hash varies nearby IDs without changing a topic's
-    // decorative color across filtering, reloads or classes.
     const colorSeed = Math.imul(task.topicId, 0x9e3779b1) >>> 0;
     const colorTone = Math.floor((colorSeed / 0x100000000) * 6);
 
@@ -156,15 +155,15 @@ function TaskCard({ task }: TaskCardProps) {
                 if (isDeadlinePassed(task.deadline)) {
                     return { text: "已截止", variant: "outline" as const };
                 }
-                return { text: "开始实验", variant: "default" as const };
+                return { text: "开始立项调研", variant: "default" as const };
             case "in_progress":
-                return { text: "继续实验", variant: "default" as const };
+                return { text: "继续闭环实验", variant: "default" as const };
             case "submitted":
-                return { text: "查看提交", variant: "outline" as const };
+                return { text: "查看提交快照", variant: "outline" as const };
             case "graded":
-                return { text: "查看成绩", variant: "outline" as const };
+                return { text: "查看成绩与评语", variant: "outline" as const };
             case "rejected":
-                return { text: "继续修改", variant: "destructive" as const };
+                return { text: "按意见重新调优", variant: "destructive" as const };
         }
     };
 
@@ -184,13 +183,12 @@ function TaskCard({ task }: TaskCardProps) {
     };
 
     return (
-        <>
-            <Card
-                className="task-card rounded-surface border-(--task-card-border) border-t-4 border-t-(--task-card-accent) bg-(--task-card-surface) transition-none hover:border-(--task-card-accent)"
-                data-task-tone={colorTone}
-                data-testid={`student-task-card-${task.id}`}
-            >
-                <CardHeader className="pb-3 text-foreground">
+        <Card
+            className="task-card flex h-full flex-col justify-between rounded-surface border-(--task-card-border) border-t-4 border-t-(--task-card-accent) bg-(--task-card-surface) transition-none hover:border-(--task-card-accent)"
+            data-task-tone={colorTone}
+            data-testid={`student-task-card-${task.id}`}
+        >
+            <CardHeader className="pb-3 text-foreground">
                 <div className="flex justify-between items-start gap-2">
                     <CardTitle className="min-w-0 flex-1 text-subheading text-foreground">
                         <Link to={`/task/${task.id}`} title={task.name} className="block rounded-control outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring" data-testid={`student-task-title-${task.id}`}>
@@ -200,71 +198,73 @@ function TaskCard({ task }: TaskCardProps) {
                     <StatusBadge intent={status.intent} className="whitespace-nowrap">{status.label}</StatusBadge>
                 </div>
                 <CardDescription className="line-clamp-2 text-muted-foreground">
-                    {task.description ? getRichTextPlainText(task.description) : null}
+                    {task.description ? getRichTextPlainText(task.description) : "围绕商业管理问题完成试投质检、抽样调优与统计推断闭环。"}
                 </CardDescription>
-                </CardHeader>
-                <CardContent>
+            </CardHeader>
+            <CardContent>
                 <div className="space-y-4">
-                    {/* Progress */}
                     {task.status !== "graded" && task.status !== "rejected" && (
                         <div className="space-y-2">
-                            <div className="flex justify-between text-label">
-                                <span className="text-muted-foreground">实验进度</span>
-                                <span className="text-foreground font-medium">{task.progress}%</span>
+                            <div className="flex items-center justify-between text-label">
+                                <span className="text-muted-foreground">闭环完成度</span>
+                                <div className="flex items-center gap-2">
+                                    {task.activeWaveNumber && task.activeWaveNumber >= 1 && task.status === "in_progress" && (
+                                        <span className="rounded-control border border-primary-border bg-primary-muted px-2 py-0.5 text-meta font-medium text-primary">
+                                            Wave {task.activeWaveNumber}
+                                        </span>
+                                    )}
+                                    <span className="text-foreground font-semibold tabular-nums">{task.progress}%</span>
+                                </div>
                             </div>
                             <Progress aria-label={`${task.name}实验进度`} value={task.progress} className="h-2 bg-muted [&>div]:bg-primary" />
                             {task.status === "in_progress" && task.currentStage > 0 && task.currentStage <= stageNames.length && (
-                                <p className="text-meta text-muted-foreground flex items-center gap-1">
+                                <p className="text-meta text-muted-foreground flex items-center gap-1.5">
                                     <span className="w-1.5 h-1.5 rounded-circle bg-primary"></span>
-                                    当前阶段：{stageNames[task.currentStage - 1]}
+                                    阶段 {task.currentStage}/5：{stageNames[task.currentStage - 1]}
                                 </p>
                             )}
                         </div>
                     )}
 
-                    {/* Score display */}
                     {task.status === "graded" && task.score !== undefined && (
                         <div className="flex items-center gap-3 py-3 px-4 bg-success-muted rounded-surface border border-success-border">
-                            <div className="p-2 bg-success-muted rounded-control">
+                            <div className="p-2 bg-card rounded-control border border-success-border">
                                 <Trophy className="w-5 h-5 text-success" />
                             </div>
                             <div>
-                                <div className="text-meta text-success uppercase font-bold tracking-wider">最终得分</div>
-                                <span className="font-bold text-page-title text-success">{task.score}</span>
+                                <div className="text-meta text-success font-semibold">综合结项评分</div>
+                                <span className="font-bold text-page-title tabular-nums text-success">{task.score}</span>
                             </div>
                         </div>
                     )}
 
-                    {/* Reject reason */}
                     {task.status === "rejected" && task.rejectReason && (
                         <div className="p-3 bg-destructive-muted rounded-surface border border-destructive-border text-label text-destructive">
                             <div className="font-semibold mb-1 flex items-center gap-2">
-                                <AlertCircle className="w-3 h-3" /> 驳回理由
+                                <AlertCircle className="w-3.5 h-3.5" /> 教师退回意见
                             </div>
-                            <div className="opacity-90 leading-relaxed text-meta">{task.rejectReason}</div>
+                            <div className="leading-relaxed text-meta">{task.rejectReason}</div>
                         </div>
                     )}
 
-                    {/* Footer */}
                     <div className="flex justify-between items-center pt-3 border-t border-border">
-                        <div className="text-meta text-muted-foreground space-y-0.5">
+                        <div className="text-meta text-muted-foreground space-y-0.5 tabular-nums">
                             <div>{notOpenYet ? "开放" : "发布"}：{formatDateTime(task.publishedAt)}</div>
                             <div>截止：{formatDateTime(task.deadline)}</div>
                         </div>
                         <DeadlineDisplay deadline={task.deadline} status={task.status} notOpenYet={notOpenYet} />
                     </div>
 
-                    {/* Action button */}
                     <div className="flex gap-2">
                         <Button
-                            className={`flex-1 w-full ${action.variant === 'default' ? 'bg-primary hover:bg-primary-hover text-primary-foreground hover:text-primary-foreground ' : ''} ${action.variant === 'destructive' ? 'bg-destructive hover:bg-destructive-hover text-destructive-foreground hover:text-destructive-foreground' : ''} ${action.variant === 'outline' ? 'border-input text-foreground hover:bg-muted hover:text-foreground' : ''}`}
+                            className={`flex-1 w-full ${action.variant === "default" ? "bg-primary hover:bg-primary-hover text-primary-foreground hover:text-primary-foreground" : ""} ${action.variant === "destructive" ? "bg-destructive hover:bg-destructive-hover text-destructive-foreground hover:text-destructive-foreground" : ""} ${action.variant === "outline" ? "border-input text-foreground hover:bg-muted hover:text-foreground" : ""}`}
                             variant="ghost"
                             disabled={disabled}
                             onClick={() => { void handlePrimaryAction(); }}
                             data-testid={`student-task-primary-${task.id}`}
                         >
                             {action.text}
-                            <ChevronRight className="w-4 h-4 ml-1 opacity-70" />
+                            <ChevronRight className="w-4 h-4 ml-1" />
                         </Button>
                         {showResult && (
                             <Button asChild variant="outline" size="icon" className="border-input text-muted-foreground hover:bg-muted hover:text-foreground">
@@ -280,10 +280,8 @@ function TaskCard({ task }: TaskCardProps) {
                         </div>
                     )}
                 </div>
-                </CardContent>
-            </Card>
-
-        </>
+            </CardContent>
+        </Card>
     );
 }
 
@@ -298,7 +296,6 @@ export function TaskHall() {
     const [showAnnouncements, setShowAnnouncements] = useState(false);
     const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
 
-    // 加载任务列表
     async function loadTasks() {
         setLoading(true);
         setTaskError(false);
@@ -351,45 +348,131 @@ export function TaskHall() {
         return true;
     }));
 
+    const hallMetrics = useMemo(() => {
+        const actionable = tasks.filter(isTaskActionable).length;
+        const ongoing = tasks.filter(isTaskOngoing).length;
+        const submitted = tasks.filter((t) => t.status === "submitted").length;
+        const gradedTasks = tasks.filter((t) => t.status === "graded");
+        const scored = gradedTasks.filter((t) => typeof t.score === "number");
+        const avgScore = scored.length > 0
+            ? (scored.reduce((acc, item) => acc + (item.score ?? 0), 0) / scored.length).toFixed(1)
+            : "—";
+        return { actionable, ongoing, submitted, gradedCount: gradedTasks.length, avgScore };
+    }, [tasks]);
+
+    const spotlightTask = useMemo(() => getNextActionableTask(tasks), [tasks]);
+
     if (loading) {
-        return <LoadingStatus className="py-24" iconClassName="h-10 w-10" label="正在加载实验任务" />;
+        return <LoadingStatus className="py-24" iconClassName="h-10 w-10" label="正在加载商业统计实验任务" />;
     }
 
     return (
-        <div className="space-y-8">
-            <div>
-                <h1 className="text-page-title font-bold text-foreground">任务大厅</h1>
-                <p className="mt-1 text-label text-muted-foreground">任务、截止时间与进度（中国标准时间 UTC+8）</p>
-            </div>
-            {latestAnnouncement && (
-                <div className="border-b border-border pb-4 flex items-center justify-between gap-4">
-                    <div className="min-w-0 flex items-center gap-3">
-                        <div className="text-muted-foreground shrink-0">
-                            <Info className="w-5 h-5" />
-                        </div>
-                        <div className="min-w-0">
-                            <div className="text-meta text-muted-foreground mb-0.5">最新公告</div>
-                            <div className="text-label text-foreground line-clamp-1">{latestAnnouncement.title}</div>
-                        </div>
-                    </div>
-                    <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setShowAnnouncements(true)}>
-                        查看详情
-                    </Button>
+        <div className="space-y-6">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                    <h1 className="text-page-title font-bold text-foreground">商业调研实验大厅</h1>
+                    <p className="mt-1 text-label text-muted-foreground">
+                        完整体验「商业问卷设计 → 首轮试投 → 回收质检诊断 → 抽样调优二轮投放 → 商务决策报告」五阶段闭环（UTC+8）
+                    </p>
                 </div>
+                {latestAnnouncement && (
+                    <div className="flex items-center gap-3 rounded-surface border border-info-border bg-info-muted px-3.5 py-2">
+                        <Info className="h-4 w-4 shrink-0 text-info" />
+                        <span className="max-w-xs truncate text-meta font-medium text-foreground">{latestAnnouncement.title}</span>
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-meta text-info hover:bg-card" onClick={() => {
+                            setSelectedAnnouncement(latestAnnouncement);
+                            setShowAnnouncements(true);
+                        }}>
+                            查看公告
+                        </Button>
+                    </div>
+                )}
+            </div>
+
+            {tasks.length > 0 && (
+                <div className="grid grid-cols-4 gap-4" data-testid="student-hall-kpis">
+                    <KpiStatCard
+                        label="可执行调研课题"
+                        value={hallMetrics.actionable}
+                        hint={hallMetrics.ongoing > 0 ? `其中 ${hallMetrics.ongoing} 项正在推进` : "点击课题卡片立项启动"}
+                        icon={BriefcaseBusiness}
+                        intent="primary"
+                    />
+                    <KpiStatCard
+                        label="待教师批改"
+                        value={hallMetrics.submitted}
+                        hint="已完成多轮投放并冻结快照"
+                        icon={Layers}
+                        intent="warning"
+                    />
+                    <KpiStatCard
+                        label="已获评结项"
+                        value={hallMetrics.gradedCount}
+                        hint="可随时复盘历史实验快照"
+                        icon={CheckCircle2}
+                        intent="success"
+                    />
+                    <KpiStatCard
+                        label="已结项平均分"
+                        value={hallMetrics.avgScore}
+                        hint="综合问卷、抽样闭环与报告"
+                        icon={Trophy}
+                        intent="info"
+                    />
+                </div>
+            )}
+
+            {spotlightTask && (
+                <section
+                    aria-label="当前优先推进课题"
+                    className="flex flex-wrap items-center justify-between gap-5 rounded-surface border border-primary-border bg-primary-muted p-5"
+                    data-testid="student-hall-spotlight"
+                >
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <StatusBadge intent="primary">
+                                <Sparkles className="h-3.5 w-3.5" />
+                                推荐优先推进
+                            </StatusBadge>
+                            {spotlightTask.status === "in_progress" && spotlightTask.currentStage >= 1 && spotlightTask.currentStage <= 5 && (
+                                <span className="text-meta font-medium text-primary">
+                                    当前位于第 {spotlightTask.currentStage} 阶段 · {stageNames[spotlightTask.currentStage - 1]}
+                                </span>
+                            )}
+                        </div>
+                        <h2 className="text-section-title font-bold text-foreground">{spotlightTask.name}</h2>
+                        <p className="line-clamp-2 text-label text-muted-foreground">
+                            {spotlightTask.description
+                                ? getRichTextPlainText(spotlightTask.description)
+                                : "从立项任务书出发设计商业问卷并开展首轮试投，根据回收质检偏差调优二轮正式抽样策略。"}
+                        </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                        <Button asChild variant="outline" className="bg-card">
+                            <Link to={`/task/${spotlightTask.id}`}>课题任务书</Link>
+                        </Button>
+                        <Button asChild>
+                            <Link to={spotlightTask.status === "not_started" ? `/task/${spotlightTask.id}` : `/task/${spotlightTask.id}/experiment`}>
+                                {spotlightTask.status === "not_started" ? "查看并启动调研" : "继续实验工作台"}
+                                <ChevronRight className="ml-1 h-4 w-4" />
+                            </Link>
+                        </Button>
+                    </div>
+                </section>
             )}
 
             {/* Filter Header */}
             <div className="flex flex-row items-center justify-between gap-4 border-b border-border pb-4">
                 <h2 className="text-section-title font-semibold text-foreground flex items-center gap-2">
                     <LayoutDashboard className="w-5 h-5 text-primary" />
-                    我的任务
+                    全部商业统计课题
                 </h2>
                 <div className="flex p-1 bg-card border border-border rounded-surface self-auto">
                     <button
                         onClick={() => setFilter("all")}
                         data-testid="student-filter-all"
                         aria-pressed={filter === "all"}
-                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-none ${filter === "all" ? "bg-muted text-foreground " : "text-muted-foreground hover:text-foreground"}`}
+                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-none ${filter === "all" ? "bg-primary-muted text-primary" : "text-muted-foreground hover:text-foreground"}`}
                     >
                         全部
                     </button>
@@ -397,7 +480,7 @@ export function TaskHall() {
                         onClick={() => setFilter("in_progress")}
                         data-testid="student-filter-in-progress"
                         aria-pressed={filter === "in_progress"}
-                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-none ${filter === "in_progress" ? "bg-muted text-foreground " : "text-muted-foreground hover:text-foreground"}`}
+                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-none ${filter === "in_progress" ? "bg-primary-muted text-primary" : "text-muted-foreground hover:text-foreground"}`}
                     >
                         进行中
                     </button>
@@ -405,7 +488,7 @@ export function TaskHall() {
                         onClick={() => setFilter("submitted")}
                         data-testid="student-filter-submitted"
                         aria-pressed={filter === "submitted"}
-                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-none ${filter === "submitted" ? "bg-muted text-foreground " : "text-muted-foreground hover:text-foreground"}`}
+                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-none ${filter === "submitted" ? "bg-primary-muted text-primary" : "text-muted-foreground hover:text-foreground"}`}
                     >
                         已提交
                     </button>
@@ -413,7 +496,7 @@ export function TaskHall() {
                         onClick={() => setFilter("graded")}
                         data-testid="student-filter-graded"
                         aria-pressed={filter === "graded"}
-                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-none ${filter === "graded" ? "bg-muted text-foreground " : "text-muted-foreground hover:text-foreground"}`}
+                        className={`px-4 py-1.5 text-label font-medium rounded-control transition-none ${filter === "graded" ? "bg-primary-muted text-primary" : "text-muted-foreground hover:text-foreground"}`}
                     >
                         已批改
                     </button>
@@ -421,7 +504,7 @@ export function TaskHall() {
             </div>
 
             {/* Task Grid */}
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] gap-6 min-h-[300px]" data-testid="student-task-grid">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,21rem),1fr))] gap-6 min-h-[280px]" data-testid="student-task-grid">
                 {taskError ? (
                     <div className="col-span-full flex flex-col items-center justify-center rounded-surface border border-dashed border-destructive-border bg-destructive-muted py-20">
                         <div className="w-16 h-16 bg-destructive rounded-control flex items-center justify-center mb-4 border border-destructive">
@@ -458,7 +541,6 @@ export function TaskHall() {
                         <DialogDescription className="text-muted-foreground">实验室通知</DialogDescription>
                     </DialogHeader>
                     <div className="grid grid-cols-2 gap-6 mt-4 min-h-[400px]">
-                        {/* List */}
                         <div
                             role="region"
                             tabIndex={0}
@@ -479,7 +561,7 @@ export function TaskHall() {
                                             {announcement.title}
                                         </div>
                                     </div>
-                                    <div className="text-meta text-muted-foreground mt-2 font-mono opacity-70">
+                                    <div className="text-meta text-muted-foreground mt-2 font-mono">
                                         {new Date(announcement.createdAt).toLocaleString("zh-CN", {
                                             timeZone: "Asia/Shanghai",
                                             month: "2-digit",
@@ -491,7 +573,6 @@ export function TaskHall() {
                                 </button>
                             ))}
                         </div>
-                        {/* Detail */}
                         <div
                             role="region"
                             tabIndex={0}
@@ -499,7 +580,7 @@ export function TaskHall() {
                             className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar pl-2"
                         >
                             {selectedAnnouncement ? (
-                                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                                <div className="space-y-4">
                                     <div>
                                         <h3 className="text-subheading font-bold text-foreground leading-tight">{selectedAnnouncement.title}</h3>
                                         <div className="flex items-center gap-2 mt-2 text-meta text-muted-foreground font-mono bg-background inline-flex px-2 py-1 rounded-control">
@@ -514,7 +595,7 @@ export function TaskHall() {
                                     />
                                 </div>
                             ) : (
-                                <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-3 opacity-50">
+                                <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-3">
                                     <FileText className="w-12 h-12 stroke-1" />
                                     <p className="text-label">请选择左侧公告查看详情</p>
                                 </div>

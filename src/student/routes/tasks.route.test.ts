@@ -17,20 +17,20 @@ async function load(select: unknown[]) {
 test("task list derives progress from the single experiment record", async () => {
     const module = await load([
         [{ id: 1, topicId: 2, openTime: new Date("2026-03-01T00:00:00Z"), deadline: null, createdAt: new Date(), name: "抽样实验", description: "desc" }],
-        [{ id: 501, taskId: 1, currentStage: 2, status: "in_progress", stage4CompletedAt: null, totalScore: null, rejectReason: null }],
+        [{ id: 501, taskId: 1, currentStage: 2, activeWaveNumber: 1, status: "in_progress", stage5CompletedAt: null, totalScore: null, rejectReason: null }],
     ]);
     const payload = await (await module.tasksRoutes.GET!(new Request("https://example.com"))).json() as any;
-    expect(payload.data[0]).toMatchObject({ id: 1, status: "in_progress", currentStage: 2, progress: 25 });
+    expect(payload.data[0]).toMatchObject({ id: 1, status: "in_progress", currentStage: 2, progress: 20 });
     expect(payload.data[0].rejectReason).toBeUndefined();
 });
 
 test("rejected work is not reported as completed", async () => {
     const module = await load([
         [{ id: 1, topicId: 2, openTime: null, deadline: null, createdAt: new Date(), name: "抽样实验", description: "desc" }],
-        [{ id: 501, taskId: 1, currentStage: 4, status: "rejected", stage4CompletedAt: new Date(), totalScore: null, rejectReason: "请修改" }],
+        [{ id: 501, taskId: 1, currentStage: 5, activeWaveNumber: 2, status: "rejected", stage5CompletedAt: new Date(), totalScore: null, rejectReason: "请修改" }],
     ]);
     const payload = await (await module.tasksRoutes.GET!(new Request("https://example.com"))).json() as any;
-    expect(payload.data[0]).toMatchObject({ status: "rejected", progress: 75 });
+    expect(payload.data[0]).toMatchObject({ status: "rejected", progress: 80 });
 });
 
 test("task detail exposes the current rejected reason without submission history", async () => {

@@ -7,11 +7,46 @@ import { calculateMeanEstimationSampleSize } from "../experiment/sample-plan";
 import { createStudentAuthModuleMock } from "../../test-utils/mock-auth-modules";
 import { createMockDb } from "../../test-utils/mock-db";
 
-function post(stage: number, observedVersion: unknown = 6) {
+function validQuestionnaire() {
+    return {
+        title: "教学问卷",
+        welcomeText: "<p>欢迎参加本次抽样调查，请根据实际情况认真填写。</p>",
+        endingText: "<p>感谢完成本次抽样调查，您的回答仅用于课堂教学。</p>",
+        questions: Array.from({ length: 5 }, (_, index) => ({ id: `q${index}`, type: "boolean", content: `这是第${index + 1}个调查问题吗？` })),
+    };
+}
+
+function fieldworkFor(methods: string[]) {
+    return {
+        methods: Object.fromEntries(methods.map((method) => [
+            method,
+            {
+                method,
+                dispatchSeed: 2026,
+                dispatchedAt: "2026-01-02T00:00:00Z",
+                invitedCount: 50,
+                records: [
+                    {
+                        unitIndex: 0,
+                        stratum: "A",
+                        status: "completed_clean",
+                        durationSeconds: 95,
+                        answeredCount: 5,
+                        totalQuestions: 5,
+                        straightliner: false,
+                        observedValues: {},
+                    },
+                ],
+            },
+        ])),
+    };
+}
+
+function post(stage: number, observedVersion: unknown = 6, extraBody?: Record<string, unknown>) {
     const request = new Request("https://example.com", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(stage === 2 ? {
+        body: JSON.stringify(extraBody ? { observedVersion, ...extraBody } : stage === 2 ? {
             observedVersion,
             samplePlan: {
                 confidenceLevel: "95",
@@ -38,6 +73,7 @@ function postSubmit(observedVersion: unknown) {
 }
 
 function experimentRecord(overrides: Record<string, unknown> = {}) {
+    const q = validQuestionnaire();
     return {
         id: 9,
         studentId: 2,
@@ -47,14 +83,30 @@ function experimentRecord(overrides: Record<string, unknown> = {}) {
         analysisReferences: [],
         status: "in_progress",
         currentStage: 2,
-        questionnaire: { title: "问卷" },
+        activeWaveNumber: 1,
+        questionnaire: q,
         samplePlan: null,
-        samplingResults: null,
+        samplingResults: { simple: { completed: true, sampleCount: 50, serverGenerated: true } },
+        adjustmentPlan: null,
+        wavesData: [
+            {
+                waveNumber: 1,
+                kind: "pilot",
+                label: "Wave 1",
+                questionnaire: q,
+                samplePlan: null,
+                samplingResults: { simple: { completed: true, sampleCount: 50, serverGenerated: true } },
+                fieldwork: fieldworkFor(["simple"]),
+                cleaningConfig: { excludeSpeeders: true, excludeStraightliners: true },
+                completedAt: null,
+            },
+        ],
         reportContent: null,
         stage1CompletedAt: new Date("2026-01-01T00:00:00Z"),
         stage2CompletedAt: null,
         stage3CompletedAt: null,
         stage4CompletedAt: null,
+        stage5CompletedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
         ...overrides,
@@ -95,46 +147,86 @@ async function load(record: Record<string, unknown>, options: {
     return { module: await import(`./experiment.ts?transition=${crypto.randomUUID()}`), operations, readStats };
 }
 
-function statsCompletionFixture(stage: 2 | 3) {
+function statsCompletionFixture(stage: 2 | 4) {
+    const q = validQuestionnaire();
     const stored = {
         simple: { completed: true, serverGenerated: true, sampleCount: 50, data: Array.from({ length: 50 }, (_, id) => ({ id })) },
         systematic: { completed: true, serverGenerated: true, sampleCount: 50, interval: 4, data: Array.from({ length: 50 }, (_, id) => ({ id: id * 4 })) },
     };
+    const plan = { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 132, finalSampleSize: 50 };
+    const ppsUnavailable = { unavailable: true, unavailableReason: PPS_UNAVAILABLE_REASON, serverGenerated: true };
+    const wave2 = (sr: Record<string, unknown>) => ({
+        waveNumber: 2,
+        kind: "main",
+        label: "Wave 2",
+        questionnaire: q,
+        samplePlan: plan,
+        samplingResults: sr,
+        fieldwork: fieldworkFor(["simple", "systematic"]),
+        cleaningConfig: { excludeSpeeders: true, excludeStraightliners: true },
+        completedAt: null,
+    });
     const record = experimentRecord({
         currentStage: stage,
-        ...(stage === 3 ? {
+        ...(stage === 4 ? {
+            activeWaveNumber: 2,
             stage2CompletedAt: new Date("2026-01-02T00:00:00Z"),
-            samplePlan: { confidenceLevel: "95", marginOfError: 5, finalSampleSize: 50 },
+            stage3CompletedAt: new Date("2026-01-03T00:00:00Z"),
+            samplePlan: plan,
             samplingResults: stored,
+            wavesData: [wave2(stored)],
         } : {}),
     });
     const marked = {
         ...record,
-        samplingResults: { ...stored, pps: { unavailable: true, unavailableReason: PPS_UNAVAILABLE_REASON, serverGenerated: true } },
+        samplingResults: { ...stored, pps: ppsUnavailable },
+        wavesData: [wave2({ ...stored, pps: ppsUnavailable })],
     };
-    const updated = { ...(stage === 3 ? marked : record), currentStage: stage + 1, version: 7 };
+    const updated = { ...(stage === 4 ? marked : record), wavesData: [], samplingResults: null, currentStage: stage + 1, version: 7 };
+    const trueVariance = 35 * 199 / 200;
+    const meanPlan = {
+        estimationType: "mean",
+        confidenceLevel: "95",
+        marginOfError: 1,
+        populationVariance: trueVariance,
+        designEffect: 1,
+        nonResponseRate: 0,
+        recommendedSize: calculateMeanEstimationSampleSize({
+            confidenceLevel: "95",
+            marginOfError: 1,
+            populationSize: 200,
+            populationVariance: trueVariance,
+            designEffect: 1,
+            nonResponseRate: 0,
+        }),
+        finalSampleSize: 50,
+    };
     const stats: PopulationStats = {
-        stats: { group: { A: 100, B: 100 } }, numericFields: [], categoricalFields: ["group"],
-        categoricalStats: { group: { A: 100, B: 100 } }, populationNumericStats: {},
+        stats: { group: { A: 100, B: 100 } }, numericFields: ["value"], categoricalFields: ["group"],
+        categoricalStats: { group: { A: 100, B: 100 } },
+        populationNumericStats: { value: { mean: 10, variance: 35, stdDev: Math.sqrt(35), count: 200 } },
         ppsEligibleFields: [], stratumNumericStats: {},
     };
     return {
-        record, stats,
+        record, stats, meanPlan,
         options: {
-            update: stage === 3 ? [[marked], [updated]] : [[updated]],
+            update: stage === 4 ? [[marked], [updated]] : [[updated]],
             samplingInfo: {
-                excelFilePath: "/storage/stage-window.csv", fieldMapping: { stratified: ["group"] },
+                excelFilePath: "/storage/stage-window.csv",
+                fieldMapping: stage === 2
+                    ? { numeric: ["value"], analysisTarget: { kind: "mean", field: "value" } }
+                    : { stratified: ["group"] },
                 samplingPolicy: { version: 1, methods: {
                     simple: "required", systematic: "optional",
-                    pps: stage === 3 ? "optional" : "disabled",
-                    stratified: stage === 2 ? "required" : "disabled",
+                    pps: stage === 4 ? "optional" : "disabled",
+                    stratified: "disabled",
                 } },
             },
         },
     };
 }
 
-for (const stage of [2, 3] as const) {
+for (const stage of [2, 4] as const) {
     test(`stage ${stage} admitted before the deadline completes after statistics queueing crosses it`, async () => {
         const now = Date.now();
         const deadline = new Date(now + 1_000);
@@ -148,7 +240,9 @@ for (const stage of [2, 3] as const) {
                 schedule: { openTime: null, deadline },
                 readStats: async () => { entered.resolve(); await release.promise; return fixture.stats; },
             });
-            const pending = module.stageCompleteRoutes.POST!(post(stage));
+            const pending = module.stageCompleteRoutes.POST!(
+                stage === 2 ? post(2, 6, { samplePlan: fixture.meanPlan }) : post(4),
+            );
             await entered.promise;
             expect(readStats).toHaveBeenCalledTimes(1);
             expect(operations.some(op => op.kind === "update")).toBe(false);
@@ -158,7 +252,7 @@ for (const stage of [2, 3] as const) {
             const response = await pending;
             expect(response.status).toBe(200);
             expect(await response.json()).toMatchObject({ data: { currentStage: stage + 1, version: 7 } });
-            expect(operations.filter(op => op.kind === "update")).toHaveLength(stage === 3 ? 2 : 1);
+            expect(operations.filter(op => op.kind === "update")).toHaveLength(stage === 4 ? 2 : 1);
         } finally { release.resolve(); clock.mockRestore(); }
     });
 
@@ -169,7 +263,9 @@ for (const stage of [2, 3] as const) {
             schedule: { openTime: null, deadline: new Date(Date.now() - 1_000) },
             readStats: async () => fixture.stats,
         });
-        const response = await module.stageCompleteRoutes.POST!(post(stage));
+        const response = await module.stageCompleteRoutes.POST!(
+            stage === 2 ? post(2, 6, { samplePlan: fixture.meanPlan }) : post(4),
+        );
         expect(response.status).toBe(400);
         expect(await response.json()).toMatchObject({ error: { code: "TASK_DEADLINE" } });
         expect(readStats).not.toHaveBeenCalled();
@@ -178,18 +274,37 @@ for (const stage of [2, 3] as const) {
 }
 
 for (const feasible of [false, true]) {
-    test(`required PPS planning feasibility ${feasible} gates stage 2 without marking sampling complete`, async () => {
-        const fixture = statsCompletionFixture(2);
+    test(`required PPS planning feasibility ${feasible} gates stage 4 wave-plan without marking sampling complete`, async () => {
+        const fixture = statsCompletionFixture(4);
         fixture.options.samplingInfo.samplingPolicy.methods.stratified = "disabled";
         fixture.options.samplingInfo.samplingPolicy.methods.pps = "required";
+        const updatedPlanRow = { ...fixture.record, wavesData: [], samplingResults: null, version: 7 };
         const { module, operations, readStats } = await load(fixture.record, {
-            ...fixture.options, readStats: async () => ({ ...fixture.stats, ppsPlanFeasible: feasible }),
+            ...fixture.options,
+            update: [[updatedPlanRow]],
+            readStats: async () => ({ ...fixture.stats, ppsPlanFeasible: feasible }),
         });
-        const response = await module.stageCompleteRoutes.POST!(post(2));
+        const planReq = new Request("https://example.com/api/student/tasks/3/experiment/wave-plan", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                observedVersion: 6,
+                samplePlan: {
+                    confidenceLevel: "95",
+                    marginOfError: 5,
+                    designEffect: 1,
+                    nonResponseRate: 0,
+                    recommendedSize: 132,
+                    finalSampleSize: 50,
+                },
+            }),
+        });
+        (planReq as Request & { params?: Record<string, string> }).params = { id: "3" };
+        const response = await module.wavePlanRoutes.POST!(planReq);
         expect(readStats).toHaveBeenCalledWith(expect.objectContaining({ ppsSampleSize: 50 }), expect.any(AbortSignal));
         expect(response.status).toBe(feasible ? 200 : 400);
         if (!feasible) {
-            expect(await response.json()).toMatchObject({ error: { code: "PPS_PLAN_INFEASIBLE", message: expect.stringContaining("普查") } });
+            expect(await response.json()).toMatchObject({ error: { code: "PPS_PLAN_INFEASIBLE" } });
             expect(operations.some(op => op.kind === "update")).toBe(false);
         } else {
             expect(operations.filter(op => op.kind === "update")).toHaveLength(1);
@@ -200,8 +315,6 @@ for (const feasible of [false, true]) {
 
 test("mean planning variance is rechecked against the current population", async () => {
     const fixture = statsCompletionFixture(2);
-    fixture.options.samplingInfo.samplingPolicy.methods.stratified = "disabled";
-    (fixture.options.samplingInfo as Record<string, unknown>).fieldMapping = { numeric: ["value"], analysisTarget: { kind: "mean", field: "value" } };
     const stats = { ...fixture.stats, populationNumericStats: { value: { mean: 10, variance: 35, stdDev: Math.sqrt(35), count: 200 } } };
     const { module, operations, readStats } = await load(fixture.record, { ...fixture.options, select: [[fixture.record], [fixture.record]], readStats: async () => stats });
     const planFor = (variance: number) => ({
@@ -210,11 +323,7 @@ test("mean planning variance is rechecked against the current population", async
         recommendedSize: calculateMeanEstimationSampleSize({ confidenceLevel: "95", marginOfError: 1, populationSize: 200, populationVariance: variance, designEffect: 1, nonResponseRate: 0 }),
         finalSampleSize: 1,
     });
-    const postPlan = (variance: number) => {
-        const request = new Request(post(2), { body: JSON.stringify({ observedVersion: 6, samplePlan: planFor(variance) }) });
-        (request as Request & { params: Record<string, string> }).params = { id: "3", stage: "2" };
-        return request;
-    };
+    const postPlan = (variance: number) => post(2, 6, { samplePlan: planFor(variance) });
     // 自洽的伪造方差（真实 35）必须在写入前拒绝
     const forged = await module.stageCompleteRoutes.POST!(postPlan(1e-6));
     expect(forged.status).toBe(400);
@@ -228,14 +337,17 @@ test("mean planning variance is rechecked against the current population", async
 });
 
 test("invalid planning inputs reject before required PPS worker work", async () => {
-    const fixture = statsCompletionFixture(2);
+    const fixture = statsCompletionFixture(4);
     fixture.options.samplingInfo.samplingPolicy.methods.stratified = "disabled";
     fixture.options.samplingInfo.samplingPolicy.methods.pps = "required";
     const { module, readStats } = await load(fixture.record, fixture.options);
-    const request = post(2);
-    const invalid = new Request(request, { body: JSON.stringify({ observedVersion: 6, samplePlan: { finalSampleSize: 1e308 } }) });
-    (invalid as Request & { params: Record<string, string> }).params = { id: "3", stage: "2" };
-    expect((await module.stageCompleteRoutes.POST!(invalid)).status).toBe(400);
+    const invalid = new Request("https://example.com/api/student/tasks/3/experiment/wave-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ observedVersion: 6, samplePlan: { finalSampleSize: 1e308 } }),
+    });
+    (invalid as Request & { params: Record<string, string> }).params = { id: "3" };
+    expect((await module.wavePlanRoutes.POST!(invalid)).status).toBe(400);
     expect(readStats).not.toHaveBeenCalled();
 });
 
@@ -302,24 +414,53 @@ test("submission forwards the task sampling policy into the immutable snapshot",
         version: 1,
         methods: { simple: "required", systematic: "optional", pps: "disabled", stratified: "disabled" },
     } as const;
-    const questionnaire = {
-        title: "教学问卷",
-        welcomeText: "<p>欢迎参加本次抽样调查，请根据实际情况认真填写。</p>",
-        endingText: "<p>感谢完成本次抽样调查，您的回答仅用于课堂教学。</p>",
-        questions: Array.from({ length: 5 }, (_, index) => ({ id: `q${index}`, type: "boolean", content: `这是第${index + 1}个调查问题吗？` })),
+    const questionnaire = validQuestionnaire();
+    const samplePlan = { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 132, finalSampleSize: 50 };
+    const samplingResults = {
+        simple: { completed: true, sampleCount: 50 },
+        systematic: { completed: true, sampleCount: 50, interval: 4 },
     };
     const complete = experimentRecord({
-        currentStage: 4,
+        currentStage: 5,
+        activeWaveNumber: 2,
         questionnaire,
-        samplePlan: { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 132, finalSampleSize: 50 },
-        samplingResults: {
-            simple: { completed: true, sampleCount: 50 },
-            systematic: { completed: true, sampleCount: 50, interval: 4 },
+        samplePlan,
+        samplingResults,
+        adjustmentPlan: {
+            identifiedIssues: ["unit_nonresponse_gap"],
+            plannedActions: ["recalibrate_sample_size"],
+            rationale: "根据首轮试投无回答率重算正式轮样本量并完成多方法对比。",
+            updatedAt: now.toISOString(),
         },
+        wavesData: [
+            {
+                waveNumber: 1,
+                kind: "pilot",
+                label: "Wave 1",
+                questionnaire,
+                samplePlan,
+                samplingResults: { simple: { completed: true, sampleCount: 50 } },
+                fieldwork: null,
+                cleaningConfig: { excludeSpeeders: true, excludeStraightliners: true },
+                completedAt: now.toISOString(),
+            },
+            {
+                waveNumber: 2,
+                kind: "main",
+                label: "Wave 2",
+                questionnaire,
+                samplePlan,
+                samplingResults,
+                fieldwork: null,
+                cleaningConfig: { excludeSpeeders: true, excludeStraightliners: true },
+                completedAt: now.toISOString(),
+            },
+        ],
         reportContent: `<p>${"这是用于课堂教学的完整分析报告内容。".repeat(12)}</p>`,
         stage2CompletedAt: now,
         stage3CompletedAt: now,
         stage4CompletedAt: now,
+        stage5CompletedAt: now,
     });
     const { module, operations } = await load(complete, {
         update: [[{ id: 9 }]],
@@ -340,26 +481,41 @@ test("submission forwards the task sampling policy into the immutable snapshot",
     expect((update?.set as any)?.submissionSnapshot?.samplingPolicy).toEqual(policy);
 });
 
-test("a required PPS whose size field is unusable completes stage 3 instead of trapping the student", async () => {
+test("a required PPS whose size field is unusable completes stage 4 instead of trapping the student", async () => {
     // Regression: a template published with pps=required over a population with no
     // eligible size field used to answer SAMPLING_RESULTS_REQUIRED forever.
+    const q = validQuestionnaire();
+    const plan = { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 132, finalSampleSize: 50 };
     const stored = {
         simple: { completed: true, serverGenerated: true, sampleCount: 50, data: Array.from({ length: 50 }, (_, id) => ({ id })) },
         systematic: { completed: true, serverGenerated: true, sampleCount: 50, interval: 4, data: Array.from({ length: 50 }, (_, id) => ({ id: id * 4 })) },
         pps: { unavailable: true, unavailableReason: PPS_UNAVAILABLE_REASON, serverGenerated: true },
     };
     const record = experimentRecord({
-        currentStage: 3,
+        currentStage: 4,
+        activeWaveNumber: 2,
         stage2CompletedAt: new Date("2026-01-02T00:00:00Z"),
-        samplePlan: { confidenceLevel: "95", marginOfError: 5, finalSampleSize: 50 },
+        stage3CompletedAt: new Date("2026-01-03T00:00:00Z"),
+        samplePlan: plan,
         samplingResults: stored,
+        wavesData: [{
+            waveNumber: 2,
+            kind: "main",
+            label: "Wave 2",
+            questionnaire: q,
+            samplePlan: plan,
+            samplingResults: stored,
+            fieldwork: fieldworkFor(["simple", "systematic"]),
+            cleaningConfig: { excludeSpeeders: true, excludeStraightliners: true },
+            completedAt: null,
+        }],
     });
-    const updated = { ...record, currentStage: 4, version: 7 };
-    const fixture = statsCompletionFixture(3);
+    const updated = { ...record, wavesData: [], samplingResults: null, currentStage: 5, version: 7 };
+    const fixture = statsCompletionFixture(4);
     fixture.options.samplingInfo.samplingPolicy.methods.pps = "required";
     const { module } = await load(record, { ...fixture.options, update: [[updated]] });
 
-    const response = await module.stageCompleteRoutes.POST!(post(3));
+    const response = await module.stageCompleteRoutes.POST!(post(4));
 
     expect(response.status).toBe(200);
 });

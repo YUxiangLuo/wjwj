@@ -20,6 +20,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { formatDateTimeDisplay } from "@/utils/format";
 import { teacherApi, teacherResourceUrl, type SubmissionDetail } from "../api-client";
 import { AnalysisAppendices } from "@/components/AnalysisAppendices";
+import { WaveLoopSnapshot } from "@/components/WaveLoopSnapshot";
 import { TargetMetricsPanel } from "@/student/components/TargetMetricsPanel";
 import { clearTeacherDraft, readTeacherDraft, useTeacherId, writeTeacherDraft } from "../teacher-draft";
 import { isValidScore, weightedScore } from "@/lib/scoring-weights";
@@ -219,12 +220,25 @@ export function GradingDetail() {
                 </CardHeader>
                 <CardContent className="px-4">
                     <Tabs ref={navigationRef} value={section} onValueChange={selectSection} className="scroll-mt-20">
-                        <TabsList className="sticky top-16 z-20 grid w-full grid-cols-4" aria-label="提交材料">
+                        <TabsList className={`sticky top-16 z-20 grid w-full ${(data.waves?.length ?? 0) > 0 || data.adjustmentPlan ? "grid-cols-5" : "grid-cols-4"}`} aria-label="提交材料">
+                            {((data.waves?.length ?? 0) > 0 || data.adjustmentPlan) && (
+                                <TabsTrigger value="waves">试投质检与调优</TabsTrigger>
+                            )}
                             <TabsTrigger value="questionnaire">问卷</TabsTrigger>
-                            <TabsTrigger value="plan">方案</TabsTrigger>
+                            <TabsTrigger value="plan">正式轮方案</TabsTrigger>
                             <TabsTrigger value="sampling">抽样结果</TabsTrigger>
-                            <TabsTrigger value="report">报告</TabsTrigger>
+                            <TabsTrigger value="report">商业报告</TabsTrigger>
                         </TabsList>
+                        {((data.waves?.length ?? 0) > 0 || data.adjustmentPlan) && (
+                            <TabsContent value="waves" className="mt-4">
+                                <WaveLoopSnapshot
+                                    waves={data.waves}
+                                    adjustmentPlan={data.adjustmentPlan}
+                                    analysisTarget={data.studyContract ? { target: data.studyContract.contract.target, inferred: data.studyContract.inferred } : null}
+                                    unitLabel={data.targetMetrics?.unit ?? ""}
+                                />
+                            </TabsContent>
+                        )}
                         <TabsContent value="questionnaire" className="mt-4"><QuestionnaireSnapshot questionnaire={data.questionnaire} /></TabsContent>
                         <TabsContent value="plan" className="mt-4"><SamplePlanSnapshot value={data.samplePlan} populationSize={data.populationSize} /></TabsContent>
                         <TabsContent value="sampling" className="mt-4 space-y-4">

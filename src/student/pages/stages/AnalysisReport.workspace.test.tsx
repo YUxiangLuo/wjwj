@@ -42,6 +42,7 @@ const dictionary = {
     revision: 1,
     variables: [
         { field: "value", label: "分数", unit: "", kind: "continuous" as const, categories: [], missing: [null] },
+        { field: "tier", label: "会员等级", unit: "", kind: "ordinal" as const, categories: [{ value: "普通", label: "普通" }, { value: "黑金", label: "黑金" }], missing: [null] },
     ],
 };
 const requests: Array<{ method: string; url: string; body?: { requestId: string; config: AnalysisConfig } }> = [];
@@ -51,6 +52,13 @@ const nativeCrypto = globalThis.crypto;
 let analysisPostErrorCode: string | null = null;
 let lostAnalysisResponses = 0;
 let restoreDom: (() => void) | null = null;
+
+async function selectComboboxOption(view: ReturnType<typeof render>, ariaLabel: string, optionName: string) {
+    fireEvent.keyDown(view.getByRole("combobox", { name: ariaLabel }), { key: "ArrowDown" });
+    const item = await waitFor(() => view.getByRole("option", { name: optionName }));
+    fireEvent.keyDown(item, { key: "Enter" });
+    await waitFor(() => expect(view.queryByRole("listbox")).toBeNull());
+}
 
 beforeEach(() => {
     restoreDom = installDomGlobals("http://localhost/student/task/2/experiment").restore;
@@ -63,7 +71,7 @@ beforeEach(() => {
     mockRequireRefresh.mockClear();
     mockContext = {
         experiment: {
-            id: 88, taskId: 2, version: 6, currentStage: 4, populationSize: 8000,
+            id: 88, taskId: 2, version: 6, currentStage: 5, populationSize: 8000,
             reportContent: "<p>服务器基线报告。</p>",
             samplePlan: { finalSampleSize: 400 },
             samplingResults: { simple: { completed: true, sampleCount: 400, data: [] } },
@@ -121,14 +129,15 @@ test("switching workspace tabs keeps an unexecuted analysis config and never aut
     await waitFor(() => expect(panelOf(view).dataset.state).toBe("active"));
     const workspace = view.getByTestId("student-univariate-workspace");
 
+    await waitFor(() => expect(view.getByRole("combobox", { name: "选择目标分析变量" })).toBeTruthy());
     const textarea = workspace.querySelector("textarea")!;
     fireEvent.change(textarea, { target: { value: "这个变量的平均水平是多少？" } });
-    const selects = workspace.querySelectorAll("select");
-    fireEvent.change(selects[1]!, { target: { value: "value" } });
-    const weighted = workspace.querySelector('input[type="checkbox"]')!;
+    await selectComboboxOption(view, "选择目标分析变量", "分数");
+    await selectComboboxOption(view, "选择交叉分组维度", "按「会员等级」交叉对比");
+    const weighted = view.getByRole("switch");
     fireEvent.click(weighted);
     expect((textarea as HTMLTextAreaElement).value).toBe("这个变量的平均水平是多少？");
-    expect((weighted as HTMLInputElement).checked).toBe(true);
+    expect(weighted.getAttribute("aria-checked")).toBe("true");
 
     // 切到报告再切回：配置必须保留
     activate(view, "student-analysis-workspace-report");
@@ -136,8 +145,9 @@ test("switching workspace tabs keeps an unexecuted analysis config and never aut
     activate(view, "student-analysis-workspace-univariate");
     await waitFor(() => expect(panelOf(view).dataset.state).toBe("active"));
     expect((workspace.querySelector("textarea") as HTMLTextAreaElement).value).toBe("这个变量的平均水平是多少？");
-    expect((workspace.querySelectorAll("select")[1] as HTMLSelectElement).value).toBe("value");
-    expect((workspace.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(true);
+    expect(view.getByRole("combobox", { name: "选择目标分析变量" }).textContent).toContain("分数");
+    expect(view.getByRole("combobox", { name: "选择交叉分组维度" }).textContent).toContain("会员等级");
+    expect(view.getByRole("switch").getAttribute("aria-checked")).toBe("true");
 
     // 切换与修改配置都没有发起分析执行
     expect(requests.filter(request => request.method === "POST")).toHaveLength(0);
@@ -148,7 +158,7 @@ test("switching workspace tabs keeps an unexecuted analysis config and never aut
 test("the inactive analysis panel is CSS-hidden while remaining mounted", async () => {
     const view = render(<AnalysisReport onPrev={() => {}} onSubmit={() => {}} />);
     await waitFor(() => expect(view.getByTestId("student-analysis-workspace-univariate")).toBeTruthy());
-    const categoryContract = view.getByTestId("student-univariate-category-contract");
+    const categoryContract = await waitFor(() => view.getByTestId("student-univariate-category-contract"));
     expect(categoryContract.textContent).toContain("数字 1 与文本“1”不同");
     expect(categoryContract.textContent).toContain("排除字典声明的缺失编码");
     expect(categoryContract.textContent).toContain("两处分类比例可能不同");
@@ -170,17 +180,18 @@ test("an analysis conflict requires a page refresh and prevents repeated writes"
     activate(view, "student-analysis-workspace-univariate");
     await waitFor(() => expect(panelOf(view).dataset.state).toBe("active"));
 
+    await waitFor(() => expect(view.getByRole("combobox", { name: "选择目标分析变量" })).toBeTruthy());
     const workspace = view.getByTestId("student-univariate-workspace");
     fireEvent.change(workspace.querySelector("textarea")!, { target: { value: "这个变量的平均水平是多少？" } });
-    fireEvent.change(workspace.querySelectorAll("select")[1]!, { target: { value: "value" } });
-    fireEvent.click(view.getByText("执行并保存分析"));
+    await selectComboboxOption(view, "选择目标分析变量", "分数");
+    fireEvent.click(view.getByTestId("student-univariate-run"));
 
     await waitFor(() => expect(mockRequireRefresh).toHaveBeenCalledTimes(1));
     expect(requests.filter(request => request.method === "POST" && request.url.endsWith("/analyses"))).toHaveLength(1);
 
     mockContext = { ...mockContext, refreshRequired: true };
     view.rerender(<AnalysisReport onPrev={() => {}} onSubmit={() => {}} />);
-    const runButton = view.getByText("执行并保存分析") as HTMLButtonElement;
+    const runButton = view.getByTestId("student-univariate-run") as HTMLButtonElement;
     expect(runButton.disabled).toBe(true);
     fireEvent.click(runButton);
     expect(requests.filter(request => request.method === "POST" && request.url.endsWith("/analyses"))).toHaveLength(1);
@@ -191,9 +202,10 @@ async function readyAnalysis() {
     await waitFor(() => expect(view.getByTestId("student-univariate-workspace")).toBeTruthy());
     activate(view, "student-analysis-workspace-univariate");
     await waitFor(() => expect(panelOf(view).dataset.state).toBe("active"));
+    await waitFor(() => expect(view.getByRole("combobox", { name: "选择目标分析变量" })).toBeTruthy());
     const workspace = view.getByTestId("student-univariate-workspace");
     fireEvent.change(workspace.querySelector("textarea")!, { target: { value: "这个变量的平均水平是多少？" } });
-    fireEvent.change(workspace.querySelectorAll("select")[1]!, { target: { value: "value" } });
+    await selectComboboxOption(view, "选择目标分析变量", "分数");
     return { view, workspace };
 }
 const analysisPosts = () => requests.filter(request => request.method === "POST" && request.url.endsWith("/analyses"));
@@ -207,10 +219,10 @@ function useHttpCrypto() {
 test("HTTP without randomUUID can execute and display a saved analysis", async () => {
     useHttpCrypto();
     const { view } = await readyAnalysis();
-    fireEvent.click(view.getByText("执行并保存分析"));
-    await waitFor(() => expect(view.getByText("已保存分析（1/20）")).toBeTruthy());
+    fireEvent.click(view.getByTestId("student-univariate-run"));
+    await waitFor(() => expect(view.getByText("已保存实证分析卡片（1/20）")).toBeTruthy());
     expect(analysisPosts()[0]!.body!.requestId).toMatch(uuidV4);
-    expect((view.getByText("执行并保存分析") as HTMLButtonElement).disabled).toBe(false);
+    expect((view.getByTestId("student-univariate-run") as HTMLButtonElement).disabled).toBe(false);
     expect(view.queryByRole("alert")).toBeNull();
 });
 
@@ -219,33 +231,33 @@ test("ID generation failure releases the button and preserves the config for ret
         getRandomValues: () => { throw new Error("randomness unavailable"); },
     } });
     const { view, workspace } = await readyAnalysis();
-    fireEvent.click(view.getByText("执行并保存分析"));
+    fireEvent.click(view.getByTestId("student-univariate-run"));
     await waitFor(() => expect(view.getByRole("alert").textContent).toContain("配置已保留"));
     expect(analysisPosts()).toHaveLength(0);
-    expect((view.getByText("执行并保存分析") as HTMLButtonElement).disabled).toBe(false);
+    expect((view.getByTestId("student-univariate-run") as HTMLButtonElement).disabled).toBe(false);
     expect(workspace.querySelector("textarea")!.value).toBe("这个变量的平均水平是多少？");
-    expect(workspace.querySelectorAll("select")[1]!.value).toBe("value");
+    expect(view.getByRole("combobox", { name: "选择目标分析变量" }).textContent).toContain("分数");
     useHttpCrypto();
-    fireEvent.click(view.getByText("执行并保存分析"));
-    await waitFor(() => expect(view.getByText("已保存分析（1/20）")).toBeTruthy());
+    fireEvent.click(view.getByTestId("student-univariate-run"));
+    await waitFor(() => expect(view.getByText("已保存实证分析卡片（1/20）")).toBeTruthy());
 });
 
 test("retry after a lost response reuses the request ID and saves only one record", async () => {
     useHttpCrypto();
     lostAnalysisResponses = 1;
     const { view } = await readyAnalysis();
-    fireEvent.click(view.getByText("执行并保存分析"));
+    fireEvent.click(view.getByTestId("student-univariate-run"));
     await waitFor(() => expect(view.getByRole("alert").textContent).toContain("网络连接失败"));
-    expect((view.getByText("执行并保存分析") as HTMLButtonElement).disabled).toBe(false);
-    fireEvent.click(view.getByText("执行并保存分析"));
-    await waitFor(() => expect(view.getByText("已保存分析（1/20）")).toBeTruthy());
+    expect((view.getByTestId("student-univariate-run") as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(view.getByTestId("student-univariate-run"));
+    await waitFor(() => expect(view.getByText("已保存实证分析卡片（1/20）")).toBeTruthy());
     expect(analysisPosts()).toHaveLength(2);
     expect(analysisPosts()[1]!.body!.requestId).toBe(analysisPosts()[0]!.body!.requestId);
     expect(savedAnalyses.size).toBe(1);
 
     // A deliberate new execution after success is a new request.
-    fireEvent.click(view.getByText("执行并保存分析"));
-    await waitFor(() => expect(view.getByText("已保存分析（2/20）")).toBeTruthy());
+    fireEvent.click(view.getByTestId("student-univariate-run"));
+    await waitFor(() => expect(view.getByText("已保存实证分析卡片（2/20）")).toBeTruthy());
     expect(analysisPosts()[2]!.body!.requestId).not.toBe(analysisPosts()[0]!.body!.requestId);
 });
 
@@ -253,10 +265,10 @@ test("changing the config after failure creates a new request ID", async () => {
     useHttpCrypto();
     lostAnalysisResponses = 1;
     const { view, workspace } = await readyAnalysis();
-    fireEvent.click(view.getByText("执行并保存分析"));
+    fireEvent.click(view.getByTestId("student-univariate-run"));
     await waitFor(() => expect(view.getByRole("alert")).toBeTruthy());
     fireEvent.change(workspace.querySelector("textarea")!, { target: { value: "修改后的研究问题是什么？" } });
-    fireEvent.click(view.getByText("执行并保存分析"));
+    fireEvent.click(view.getByTestId("student-univariate-run"));
     await waitFor(() => expect(view.queryByRole("alert")).toBeNull());
     expect(analysisPosts()).toHaveLength(2);
     expect(analysisPosts()[1]!.body!.requestId).not.toBe(analysisPosts()[0]!.body!.requestId);

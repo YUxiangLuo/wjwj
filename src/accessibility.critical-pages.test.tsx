@@ -60,7 +60,7 @@ test("student task hall has no automated structural accessibility violations", a
     }) as unknown as typeof fetch;
 
     const view = render(<MemoryRouter><TaskHall /></MemoryRouter>);
-    await waitFor(() => expect(view.getByText("校园抽样")).toBeTruthy());
+    await waitFor(() => expect(view.getByTestId("student-task-card-1")).toBeTruthy());
 
     expect(await getAccessibilityViolations(view.container)).toEqual([]);
 });

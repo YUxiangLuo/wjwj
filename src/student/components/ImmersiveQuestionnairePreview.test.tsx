@@ -27,7 +27,7 @@ const questionnaire: QuestionnaireData = {
 
 test("the happiness leisure hint gives an accepted zero answer in both the questionnaire and downloadable brief", () => {
     const leisure = happinessQuestionnaire.questions.find(question => question.id === "hq13")!;
-    const suggestedZero = /没有则填(\d+(?:\.\d+)?)/.exec(leisure.content)?.[1];
+    const suggestedZero = /(?:没有则填|请填)(\d+(?:\.\d+)?)/.exec(leisure.content)?.[1];
     expect(suggestedZero).toBeDefined();
     const workbook = XLSX.read(buildHappinessWorkbook(createYouthHappinessPopulation()), { type: "buffer" });
     const brief = XLSX.utils.sheet_to_json<{ 项目: string; 说明: string }>(workbook.Sheets["调查说明"]!);

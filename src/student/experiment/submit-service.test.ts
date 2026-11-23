@@ -15,6 +15,14 @@ function validQuestionnaire() {
 
 function validRecord(status: "in_progress" | "rejected" = "in_progress") {
     const now = new Date();
+    const questionnaire = validQuestionnaire();
+    const samplePlan = { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 132, finalSampleSize: 50 };
+    const samplingResults = {
+        simple: { completed: true, sampleCount: 50 },
+        systematic: { completed: true, sampleCount: 50, kValue: 2 },
+        pps: { completed: true, sampleCount: 50, sizeField: "规模" },
+        stratified: { completed: true, stratifyBy: "分组", layers: [{ name: "A", sampleCount: 25 }, { name: "B", sampleCount: 25 }] },
+    };
     return {
         id: 9,
         studentId: 2,
@@ -22,21 +30,48 @@ function validRecord(status: "in_progress" | "rejected" = "in_progress") {
         version: 4,
         samplingGeneration: 2,
         analysisReferences: [],
-        currentStage: 4,
+        currentStage: 5,
+        activeWaveNumber: 2,
         status,
-        questionnaire: validQuestionnaire(),
-        samplePlan: { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 132, finalSampleSize: 50 },
-        samplingResults: {
-            simple: { completed: true, sampleCount: 50 },
-            systematic: { completed: true, sampleCount: 50, kValue: 2 },
-            pps: { completed: true, sampleCount: 50, sizeField: "规模" },
-            stratified: { completed: true, stratifyBy: "分组", layers: [{ name: "A", sampleCount: 25 }, { name: "B", sampleCount: 25 }] },
+        questionnaire,
+        samplePlan,
+        samplingResults,
+        adjustmentPlan: {
+            identifiedIssues: ["unit_nonresponse_gap"],
+            plannedActions: ["recalibrate_sample_size", "upgrade_stratified_design"],
+            rationale: "首轮试投发现单元无回答损耗与层间结构偏差，二轮重算样本量并升级分层抽样设计。",
+            updatedAt: now.toISOString(),
         },
+        wavesData: [
+            {
+                waveNumber: 1,
+                kind: "pilot",
+                label: "第 1 轮 · 首轮试投",
+                questionnaire,
+                samplePlan: { confidenceLevel: "95", marginOfError: 8, designEffect: 1, nonResponseRate: 0.1, recommendedSize: 30, finalSampleSize: 30 },
+                samplingResults: { simple: { completed: true, sampleCount: 30 } },
+                fieldwork: null,
+                cleaningConfig: { excludeSpeeders: true, excludeStraightliners: true },
+                completedAt: now.toISOString(),
+            },
+            {
+                waveNumber: 2,
+                kind: "main",
+                label: "第 2 轮 · 调优正式投放",
+                questionnaire,
+                samplePlan,
+                samplingResults,
+                fieldwork: null,
+                cleaningConfig: { excludeSpeeders: true, excludeStraightliners: true },
+                completedAt: now.toISOString(),
+            },
+        ],
         reportContent: `<p>${"这是用于课堂教学的完整分析报告内容。".repeat(12)}</p>`,
         stage1CompletedAt: now,
         stage2CompletedAt: now,
         stage3CompletedAt: now,
         stage4CompletedAt: now,
+        stage5CompletedAt: now,
         submissionSnapshot: null,
         submittedAt: null,
         scoreQuestionnaire: status === "rejected" ? "80" : null,
@@ -83,7 +118,7 @@ test("submit overwrites the same experiment and stores a grading snapshot", asyn
         },
     });
     const condition = new PgDialect().sqlToQuery(update!.where as SQL);
-    expect(condition.params).toEqual([9, 4, "rejected", 4]);
+    expect(condition.params).toEqual([9, 4, "rejected", 5]);
 });
 
 test("ST-B2 submission freezes the validated 458-unit plan without changing its assumptions", async () => {

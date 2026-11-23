@@ -14,10 +14,11 @@ import { teacherApi, type TaskProgressData } from "../api-client";
 
 const STATUS_CONFIG = {
     not_started: { label: "未开始", color: "text-muted-foreground", intent: "neutral" },
-    stage1: { label: "问卷预试", color: "text-info", intent: "info" },
-    stage2: { label: "样本量规划", color: "text-info", intent: "info" },
-    stage3: { label: "抽样执行", color: "text-auxiliary", intent: "auxiliary" },
-    stage4: { label: "分析与报告", color: "text-warning", intent: "warning" },
+    stage1: { label: "商业问卷设计", color: "text-info", intent: "info" },
+    stage2: { label: "首轮试投发放", color: "text-info", intent: "info" },
+    stage3: { label: "回收质检与诊断", color: "text-auxiliary-strong", intent: "auxiliary" },
+    stage4: { label: "调整思路与二轮投放", color: "text-primary", intent: "primary" },
+    stage5: { label: "商务分析与决策报告", color: "text-warning", intent: "warning" },
     submitted: { label: "已提交", color: "text-warning", intent: "warning" },
     graded: { label: "已批改", color: "text-success", intent: "success" },
     rejected: { label: "已驳回", color: "text-destructive", intent: "destructive" },
@@ -33,7 +34,8 @@ const PROGRESS_COLORS: Record<StatusKey, string> = {
     stage1: "bg-chart-2",
     stage2: "bg-chart-3",
     stage3: "bg-chart-4",
-    stage4: "bg-chart-5",
+    stage4: "bg-chart-2",
+    stage5: "bg-chart-5",
     submitted: "bg-chart-6",
     graded: "bg-chart-7",
     rejected: "bg-chart-8",
@@ -44,7 +46,8 @@ const RING_COLORS: Record<StatusKey, string> = {
     stage1: "var(--chart-2)",
     stage2: "var(--chart-3)",
     stage3: "var(--chart-4)",
-    stage4: "var(--chart-5)",
+    stage4: "var(--chart-2)",
+    stage5: "var(--chart-5)",
     submitted: "var(--chart-6)",
     graded: "var(--chart-7)",
     rejected: "var(--chart-8)",
@@ -84,7 +87,7 @@ export function TaskProgressDetail() {
         );
     }, [data, searchTerm]);
 
-    const total = data ? Object.values(data.counts).reduce((a, b) => a + b, 0) : 0;
+    const total = data ? Object.values(data.counts).reduce<number>((a, b) => a + (b ?? 0), 0) : 0;
 
     if (!Number.isInteger(Number(taskId)) || Number(taskId) <= 0) return <p>无效的任务编号</p>;
     if (loadError) return <RequestError message={loadError} onRetry={() => void loadProgress(Number(taskId))} />;
@@ -94,7 +97,7 @@ export function TaskProgressDetail() {
     const ppsUnavailable = data.ppsUnavailable;
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="space-y-6">
             {ppsUnavailable && ppsUnavailable.count > 0 && (
                 <div
                     role="status"
@@ -144,7 +147,7 @@ export function TaskProgressDetail() {
                                     const segments: React.ReactNode[] = [];
 
                                     STATUS_KEYS.forEach((key) => {
-                                        const count = data.counts[key];
+                                        const count = data.counts[key] ?? 0;
                                         if (count === 0) return;
                                         const pct = count / total;
                                         const length = pct * circumference;
@@ -179,7 +182,7 @@ export function TaskProgressDetail() {
                             <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-meta">
                                 {STATUS_KEYS.map((key) => {
                                     const cfg = STATUS_CONFIG[key];
-                                    const count = data.counts[key];
+                                    const count = data.counts[key] ?? 0;
                                     if (count === 0) return null;
                                     return (
                                         <div key={key} className="flex items-center gap-2">
@@ -199,7 +202,7 @@ export function TaskProgressDetail() {
                             <span className="text-label font-medium text-foreground">各阶段分布</span>
                             <div className="flex h-4 rounded-control overflow-hidden bg-muted">
                                 {STATUS_KEYS.map((key) => {
-                                    const count = data.counts[key];
+                                    const count = data.counts[key] ?? 0;
                                     if (count === 0) return null;
                                     const pct = (count / total) * 100;
                                     return (
@@ -215,7 +218,7 @@ export function TaskProgressDetail() {
                             <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-3">
                                 {STATUS_KEYS.map((key) => {
                                     const cfg = STATUS_CONFIG[key];
-                                    const count = data.counts[key];
+                                    const count = data.counts[key] ?? 0;
                                     return (
                                         <div key={key} className="flex items-center gap-2 text-meta">
                                             <span className={`w-2 h-2 rounded-circle ${PROGRESS_COLORS[key]}`} />

@@ -275,6 +275,7 @@ export async function copyTopicWithResources(params: {
                     excelRowCount: sourceTopic.excelRowCount,
                     fieldMapping: copiedFieldMapping,
                     samplingPolicy: normalizeJsonColumnValue(sourceTopic.samplingPolicy),
+                    fieldworkConfig: normalizeJsonColumnValue(sourceTopic.fieldworkConfig) ?? undefined,
                     weightConfig: normalizeJsonColumnValue(sourceTopic.weightConfig),
                     recommendQuestions: recommendQuestions ?? null,
                     variableDictionary: copiedVariableDictionary,

@@ -91,8 +91,8 @@ function StudentAppContent() {
                                 <BarChart3 className="h-5 w-5" />
                             </span>
                             <span>
-                                <span className="block text-body font-semibold text-navigation-foreground">统计学虚拟仿真实验室</span>
-                                <span className="block text-meta tracking-wide text-navigation-muted">Learning Lab</span>
+                                <span className="block text-body font-semibold text-navigation-foreground">商务统计虚拟仿真实验平台</span>
+                                <span className="block text-meta tracking-wide text-navigation-muted">Business Statistics Simulation Studio</span>
                             </span>
                         </Link>
                     </div>

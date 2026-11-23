@@ -54,7 +54,7 @@ test("task details keep sampling requirements visible when a questionnaire templ
     );
 
     await waitFor(() => expect(view.getByTestId("student-task-sampling-policy")).toBeTruthy());
-    expect(view.getByText("抽样方法要求")).toBeTruthy();
+    expect(view.getByText("正式轮抽样方法要求")).toBeTruthy();
     expect(view.getByText("PPS抽样")).toBeTruthy();
     expect(view.getByText("不适用")).toBeTruthy();
     expect(view.queryByTestId("student-task-built-in-questionnaire-resource")).toBeNull();
@@ -69,7 +69,7 @@ test.each([
     const task: TaskDetail = {
         id: 12, topicId: 7, name: "任务状态测试", description: "",
         publishedAt: "2020-01-01T00:00:00.000Z", deadline, status,
-        currentStage: status === "not_started" ? 0 : 4,
+        currentStage: status === "not_started" ? 0 : 5,
         populationSize: 100, attachments: [], recommendQuestions: [],
     };
     globalThis.fetch = mock(async () => Response.json({ success: true, data: task })) as unknown as typeof fetch;
@@ -93,7 +93,7 @@ test.each(["submitted", "graded"] as const)("compact $status summary preserves r
     const task: TaskDetail = {
         id: 12, topicId: 7, name: "已完成任务", description: "<p>完整说明仍可阅读</p>",
         publishedAt: "2020-01-01T00:00:00.000Z", deadline: "2020-02-01T00:00:00.000Z", status,
-        currentStage: 4, populationSize: 100, attachments: [], recommendQuestions: [], score: 87,
+        currentStage: 5, populationSize: 100, attachments: [], recommendQuestions: [], score: 87,
     };
     globalThis.fetch = mock(async () => Response.json({ success: true, data: task })) as unknown as typeof fetch;
     const view = render(<MemoryRouter initialEntries={["/task/12"]}><Routes>
@@ -101,7 +101,7 @@ test.each(["submitted", "graded"] as const)("compact $status summary preserves r
     </Routes></MemoryRouter>);
     const action = await view.findByTestId("student-task-action");
     expect(action.querySelector("a")?.getAttribute("href")).toBe("/task/12/result");
-    expect(view.getByRole("list", { name: "实验进度概览" }).querySelectorAll("li")).toHaveLength(4);
+    expect(view.getByRole("list", { name: "实验进度概览" }).querySelectorAll("li")).toHaveLength(5);
     expect(view.queryByText("任务已截止，无法继续操作")).toBeNull();
     expect(view.getByText("完整说明仍可阅读")).toBeTruthy();
     if (status === "graded") expect(view.getByText("实验成绩：87")).toBeTruthy();

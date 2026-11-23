@@ -1,6 +1,8 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment, task, topic, topicAttachment } from "../../db/schema";
+import { resolveFieldworkConfig } from "../../domain/fieldwork";
+import { resolveStudyContract } from "../../lib/analysis-target";
 import { experimentProgress } from "../../lib/experiment-progress";
 import { normalizeRecommendQuestionsFromDb } from "../../lib/questionnaire-normalize";
 import { error, getPositiveRouteId, json } from "../../server/http";
@@ -44,7 +46,8 @@ const tasksRoutes: RouteDefinition = {
                     taskId: experiment.taskId,
                     status: experiment.status,
                     currentStage: experiment.currentStage,
-                    stage4CompletedAt: experiment.stage4CompletedAt,
+                    activeWaveNumber: experiment.activeWaveNumber,
+                    stage5CompletedAt: experiment.stage5CompletedAt,
                     totalScore: experiment.totalScore,
                     rejectReason: experiment.rejectReason,
                 })
@@ -68,6 +71,7 @@ const tasksRoutes: RouteDefinition = {
                 status: visibleStatus(record?.status ?? null),
                 progress: experimentProgress(record),
                 currentStage: record?.currentStage ?? 0,
+                activeWaveNumber: record?.activeWaveNumber ?? 1,
                 score: record?.totalScore == null ? undefined : Number(record.totalScore),
                 rejectReason: record?.status === "rejected" ? (record.rejectReason ?? undefined) : undefined,
             };
@@ -92,8 +96,10 @@ const taskDetailRoutes: RouteDefinition = {
                 name: topic.name,
                 description: topic.description,
                 populationSize: topic.excelRowCount,
+                fieldMapping: topic.fieldMapping,
                 recommendQuestions: topic.recommendQuestions,
                 samplingPolicy: topic.samplingPolicy,
+                fieldworkConfig: topic.fieldworkConfig,
             })
             .from(task)
             .innerJoin(topic, eq(task.topicId, topic.id))
@@ -117,6 +123,7 @@ const taskDetailRoutes: RouteDefinition = {
             db.select({
                 status: experiment.status,
                 currentStage: experiment.currentStage,
+                activeWaveNumber: experiment.activeWaveNumber,
                 totalScore: experiment.totalScore,
                 rejectReason: experiment.rejectReason,
             }).from(experiment).where(and(
@@ -142,8 +149,11 @@ const taskDetailRoutes: RouteDefinition = {
             })),
             recommendQuestions: normalizeRecommendQuestionsFromDb(taskInfo.recommendQuestions),
             samplingPolicy: resolveSamplingPolicy(taskInfo.samplingPolicy),
+            studyContract: resolveStudyContract(taskInfo.fieldMapping, { topicName: taskInfo.name }),
+            fieldworkConfig: resolveFieldworkConfig(taskInfo.fieldworkConfig),
             status: visibleStatus(record?.status ?? null),
             currentStage: record?.currentStage ?? 0,
+            activeWaveNumber: record?.activeWaveNumber ?? 1,
             score: record?.totalScore == null ? undefined : Number(record.totalScore),
             rejectReason: record?.status === "rejected" ? (record.rejectReason ?? undefined) : undefined,
         });

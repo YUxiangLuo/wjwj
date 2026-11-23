@@ -35,14 +35,15 @@ export function WorkspaceShell({
                 footer={sidebarFooter}
             />
             <main className="min-w-0 flex-1">
-                <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card px-6">
-                    <div>
-                        <h1 className="text-section-title font-semibold">{pageTitle}</h1>
-                        <p className="text-meta text-muted-foreground">{pageSubtitle}</p>
+                <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card px-7">
+                    <div className="flex items-baseline gap-3">
+                        <h1 className="text-section-title font-bold tracking-tight text-foreground">{pageTitle}</h1>
+                        <span aria-hidden="true" className="text-border">|</span>
+                        <p className="text-meta font-medium text-muted-foreground">{pageSubtitle}</p>
                     </div>
                     {headerActions}
                 </header>
-                <div id="main-content" tabIndex={-1} className="p-6">
+                <div id="main-content" tabIndex={-1} className="mx-auto max-w-7xl px-7 py-6 outline-none">
                     {children}
                 </div>
             </main>

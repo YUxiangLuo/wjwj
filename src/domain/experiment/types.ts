@@ -1,6 +1,13 @@
 import type { ResolvedAnalysisTarget, ResolvedStudyContract } from "../../lib/analysis-target";
 import type { QuestionnaireData } from "../../lib/questionnaire-types";
 import type { SamplingMethod, SamplingPolicyV1 } from "../../lib/sampling-policy";
+import type {
+    AdjustmentPlan,
+    CleaningConfig,
+    FieldworkSimulationConfig,
+    MethodFieldworkDiagnostics,
+    WaveFieldworkData,
+} from "../fieldwork/index";
 
 export type MethodKey = SamplingMethod;
 
@@ -15,6 +22,7 @@ export interface SamplePlanData {
     confidenceLevel: string;
     marginOfError: number;
     populationVariance?: number;
+    varianceSource?: "population" | "prior_estimate" | "wave1_empirical";
     designEffect: number;
     nonResponseRate: number;
     recommendedSize: number;
@@ -73,16 +81,32 @@ export interface SamplingResultsData {
     };
 }
 
+export interface ExperimentWaveView {
+    waveNumber: number;
+    kind: "pilot" | "main" | "refinement";
+    label: string;
+    questionnaire: QuestionnaireData;
+    samplePlan: SamplePlanData | null;
+    samplingResults: SamplingResultsData | null;
+    fieldwork: WaveFieldworkData | null;
+    cleaningConfig: CleaningConfig;
+    diagnostics: Partial<Record<SamplingMethod, MethodFieldworkDiagnostics>>;
+    completedAt: string | null;
+}
+
 export interface ExperimentData {
     id: number;
     taskId: number;
     version: number;
     currentStage: number;
+    activeWaveNumber?: number;
     status: ExperimentStatus;
     rejectReason?: string | null;
     questionnaire: QuestionnaireData | null;
     samplePlan: SamplePlanData | null;
     samplingResults: SamplingResultsData | null;
+    adjustmentPlan?: AdjustmentPlan | null;
+    waves?: ExperimentWaveView[];
     reportContent: string | null;
     analysisReferences?: number[];
     analysisAppendices?: import("../variables/types").SavedAnalysisView[];
@@ -91,8 +115,10 @@ export interface ExperimentData {
     stage2CompletedAt: string | null;
     stage3CompletedAt: string | null;
     stage4CompletedAt: string | null;
+    stage5CompletedAt?: string | null;
     populationSize: number;
     analysisTarget?: ResolvedAnalysisTarget | null;
     studyContract?: ResolvedStudyContract | null;
     samplingPolicy?: SamplingPolicyV1;
+    fieldworkConfig?: FieldworkSimulationConfig;
 }

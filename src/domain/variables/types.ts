@@ -20,6 +20,12 @@ export interface AnalysisConfig {
     method: "simple" | "systematic" | "pps" | "stratified";
     field: string;
     weighted: boolean;
+    /** 可选：分组交叉对比维度字段（用于商务细分客群对比分析） */
+    groupByField?: string;
+    /** 可选：分析所属实验波次（默认当前波次） */
+    waveNumber?: number;
+    /** 可选：使用质检后有效回收样本或完整入样名单 */
+    datasetMode?: "cleaned_respondents" | "full_invited";
 }
 
 interface AnalysisResultBase {
@@ -45,10 +51,31 @@ export interface CategoricalAnalysisResult extends AnalysisResultBase {
     categories: Array<{ value: RawValue; label: string; count: number; proportion: number | null }>;
 }
 
-export type AnalysisResult = NumericAnalysisResult | CategoricalAnalysisResult;
+export interface CrossTabGroupRow {
+    groupValue: RawValue;
+    groupLabel: string;
+    validCount: number;
+    mean?: number | null;
+    sampleStandardDeviation?: number | null;
+    categories?: Array<{ value: RawValue; label: string; count: number; proportion: number | null }>;
+}
+
+export interface CrossTabAnalysisResult extends AnalysisResultBase {
+    kind: "crosstab";
+    groupField: string;
+    groupLabel: string;
+    targetKind: "numeric" | "categorical";
+    groups: CrossTabGroupRow[];
+}
+
+export type AnalysisResult =
+    | NumericAnalysisResult
+    | CategoricalAnalysisResult
+    | CrossTabAnalysisResult;
 
 export interface SavedAnalysisView {
     id: number;
+    waveNumber?: number;
     config: AnalysisConfig;
     variable: VariableDefinition;
     result: AnalysisResult;

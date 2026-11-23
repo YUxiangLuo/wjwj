@@ -1,4 +1,4 @@
-const SYSTEM_NAME = "抽样统计虚拟仿真系统";
+const SYSTEM_NAME = "商务统计虚拟仿真实验平台";
 
 function title(page: string, area: string) {
     return `${page} - ${SYSTEM_NAME} - ${area}`;

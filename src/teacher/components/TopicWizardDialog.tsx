@@ -28,6 +28,11 @@ import {
     type SamplingPolicyV1,
 } from "@/lib/sampling-policy";
 import {
+    DEFAULT_FIELDWORK_CONFIG,
+    type FieldworkPreset,
+    type FieldworkSimulationConfig,
+} from "@/domain/fieldwork";
+import {
     buildRecommendedFieldMapping,
     isLikelyHighCardinalityColumn,
     isLikelyIdentifierColumn,
@@ -69,6 +74,8 @@ interface TopicWizardDialogProps {
     setWeightConfig: (value: { questionnaire: number; process: number; report: number } | ((prev: { questionnaire: number; process: number; report: number }) => { questionnaire: number; process: number; report: number })) => void;
     samplingPolicy: SamplingPolicyV1;
     setSamplingPolicy: (value: SamplingPolicyV1 | ((prev: SamplingPolicyV1) => SamplingPolicyV1)) => void;
+    fieldworkConfig?: FieldworkSimulationConfig;
+    setFieldworkConfig?: (value: FieldworkSimulationConfig | ((prev: FieldworkSimulationConfig) => FieldworkSimulationConfig)) => void;
     onSubmitTopic: () => void;
     onSaveFieldMapping: (advance?: boolean) => Promise<boolean>;
     onSaveSamplingPolicy: () => void;
@@ -110,6 +117,8 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
         setWeightConfig,
         samplingPolicy,
         setSamplingPolicy,
+        fieldworkConfig = DEFAULT_FIELDWORK_CONFIG,
+        setFieldworkConfig,
         onSubmitTopic,
         onSaveFieldMapping,
         onSaveSamplingPolicy,
@@ -373,7 +382,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             </div>
                         )}
                         {currentStep === 1 && (
-                            <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                            <div className="space-y-4">
                                 <details className="rounded-surface border border-info-border bg-info-muted p-3 text-info">
                                     <summary className="cursor-pointer text-label font-semibold">实验模板如何生成学生实验</summary>
                                     <div className="mt-3 grid grid-cols-4 gap-3 text-meta">
@@ -410,7 +419,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         )}
 
                         {!loadingDetail && currentStep === 2 && (
-                            <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                            <div className="space-y-4">
                                 {isPublishedTopic && (
                                     <div className="rounded-surface border border-warning-border bg-warning-muted px-4 py-3 text-label text-warning">
                                         该实验模板已发布，总体数据文件不可更换，仅可查看当前数据。
@@ -518,7 +527,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         )}
 
                         {!loadingDetail && currentStep === 3 && (
-                            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                            <div className="space-y-6">
                                 {isPublishedTopic && (
                                     <div className="rounded-surface border border-warning-border bg-warning-muted px-4 py-3 text-label text-warning">
                                         该实验模板已发布，研究目标与字段不可修改，仅可查看当前配置。
@@ -777,11 +786,125 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     })}
                                 </div>
                                 {samplingPolicyError && <p className="rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3 text-label text-destructive">{samplingPolicyError}</p>}
+
+                                {setFieldworkConfig && (
+                                    <div className="space-y-4 rounded-surface border border-border bg-background p-4" data-testid="teacher-topic-fieldwork-config">
+                                        <div>
+                                            <h3 className="text-subheading font-semibold text-foreground">虚拟问卷投放环境与参考经费参数</h3>
+                                            <p className="mt-1 text-meta text-muted-foreground">
+                                                控制学生执行首轮试投及正式轮发放时的无回答率、敷衍废卷比例及单份参考成本（仅作教学成本效益参考，不阻断操作）。
+                                            </p>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <div className="space-y-1.5">
+                                                <Label className="text-meta text-foreground">市场响应预设场景</Label>
+                                                <Select
+                                                    value={fieldworkConfig.preset}
+                                                    disabled={isPublishedTopic}
+                                                    onValueChange={(val) => setFieldworkConfig((prev) => ({
+                                                        ...prev,
+                                                        preset: val as FieldworkPreset,
+                                                    }))}
+                                                >
+                                                    <SelectTrigger aria-label="选择市场响应预设场景" className="bg-card">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="balanced">常规均衡实地回收</SelectItem>
+                                                        <SelectItem value="stratum_differential">细分客群差异化拒访</SelectItem>
+                                                        <SelectItem value="high_burden_sensitive">问卷题量负担高敏感</SelectItem>
+                                                        <SelectItem value="peak_congestion">高峰拥堵漏接场景</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label htmlFor="fw-base-nrr" className="text-meta text-foreground">基准单元无回答率 (%)</Label>
+                                                <Input
+                                                    id="fw-base-nrr"
+                                                    type="number"
+                                                    min={0}
+                                                    max={75}
+                                                    disabled={isPublishedTopic}
+                                                    value={Math.round(fieldworkConfig.baseUnitNonResponseRate * 100)}
+                                                    onChange={(e) => setFieldworkConfig((prev) => ({
+                                                        ...prev,
+                                                        baseUnitNonResponseRate: Math.min(0.75, Math.max(0, Number(e.target.value) / 100)),
+                                                    }))}
+                                                    className="bg-card tabular-nums"
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label htmlFor="fw-careless-rate" className="text-meta text-foreground">闪电卷基准比例 (%)</Label>
+                                                <Input
+                                                    id="fw-careless-rate"
+                                                    type="number"
+                                                    min={0}
+                                                    max={35}
+                                                    disabled={isPublishedTopic}
+                                                    value={Math.round(fieldworkConfig.baseSpeederRate * 100)}
+                                                    onChange={(e) => setFieldworkConfig((prev) => ({
+                                                        ...prev,
+                                                        baseSpeederRate: Math.min(0.35, Math.max(0, Number(e.target.value) / 100)),
+                                                    }))}
+                                                    className="bg-card tabular-nums"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <div className="space-y-1.5">
+                                                <Label htmlFor="fw-straight-rate" className="text-meta text-foreground">直线作答卷基准比例 (%)</Label>
+                                                <Input
+                                                    id="fw-straight-rate"
+                                                    type="number"
+                                                    min={0}
+                                                    max={35}
+                                                    disabled={isPublishedTopic}
+                                                    value={Math.round(fieldworkConfig.baseStraightlinerRate * 100)}
+                                                    onChange={(e) => setFieldworkConfig((prev) => ({
+                                                        ...prev,
+                                                        baseStraightlinerRate: Math.min(0.35, Math.max(0, Number(e.target.value) / 100)),
+                                                    }))}
+                                                    className="bg-card tabular-nums"
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label htmlFor="fw-contact-cost" className="text-meta text-foreground">单份触达发放成本 (元)</Label>
+                                                <Input
+                                                    id="fw-contact-cost"
+                                                    type="number"
+                                                    min={0}
+                                                    disabled={isPublishedTopic}
+                                                    value={fieldworkConfig.contactCostPerUnit}
+                                                    onChange={(e) => setFieldworkConfig((prev) => ({
+                                                        ...prev,
+                                                        contactCostPerUnit: Math.max(0, Number(e.target.value) || 0),
+                                                    }))}
+                                                    className="bg-card tabular-nums"
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label htmlFor="fw-incentive-cost" className="text-meta text-foreground">单份完答礼金成本 (元)</Label>
+                                                <Input
+                                                    id="fw-incentive-cost"
+                                                    type="number"
+                                                    min={0}
+                                                    disabled={isPublishedTopic}
+                                                    value={fieldworkConfig.incentiveCostPerComplete}
+                                                    onChange={(e) => setFieldworkConfig((prev) => ({
+                                                        ...prev,
+                                                        incentiveCostPerComplete: Math.max(0, Number(e.target.value) || 0),
+                                                    }))}
+                                                    className="bg-card tabular-nums"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
 
                         {!loadingDetail && currentStep === 5 && (
-                            <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                            <div className="space-y-4">
                                 <div className="flex items-center justify-between gap-4">
                                     <Label htmlFor="teacher-topic-attachment-file" className="text-foreground">教学资料上传</Label>
                                     <a className="text-meta text-primary hover:underline" href="/templates/调查问卷设计规范与模板.docx" download>下载标准问卷模板</a>
@@ -826,7 +949,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         )}
 
                         {!loadingDetail && currentStep === 6 && (
-                            <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                            <div className="space-y-4">
                                 <div className="flex justify-between items-center">
                                     <Label className="text-foreground">推荐题目</Label>
                                     <Button data-testid="teacher-topic-question-add" size="sm" onClick={handleAddQuestion} className="bg-primary hover:bg-primary-hover">
@@ -939,7 +1062,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         )}
 
                         {!loadingDetail && currentStep === 7 && (
-                            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                            <div className="space-y-6">
                                 {isPublishedTopic ? (
                                     <div className="rounded-surface border border-info-border bg-info-muted px-4 py-3 text-label text-info">
                                         该实验模板已发布，评分规则不可修改，仅可查看当前权重。

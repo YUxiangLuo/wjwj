@@ -74,7 +74,7 @@ function TeacherWorkspace({
                     </div>
                 }
                 pageTitle={title}
-                pageSubtitle="统计学虚拟仿真实验平台"
+                pageSubtitle="商务统计虚拟仿真实验平台"
                 headerActions={
                     <div className="flex items-center gap-1">
                         <IconButton aria-label="修改密码" variant="ghost" title="修改密码" onClick={() => { passwordChange.reset(); setPasswordOpen(true); }}><KeyRound className="h-5 w-5" /></IconButton>

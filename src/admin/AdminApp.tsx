@@ -61,7 +61,7 @@ function AdminWorkspace({ user, onLogout }: { user: AdminUser; onLogout: () => P
                     <div className="flex items-center gap-3"><Avatar className="h-9 w-9"><AvatarFallback className="bg-navigation-active text-navigation-active-foreground">{user.username.charAt(0).toUpperCase()}</AvatarFallback></Avatar><div><p className="text-label font-medium">{user.username}</p><p className="text-meta text-navigation-muted">管理员</p></div></div>
                 }
                 pageTitle={title}
-                pageSubtitle="内网教学系统"
+                pageSubtitle="商务统计虚拟仿真实验平台 · 系统管理控制台"
                 headerActions={
                     <div className="flex items-center gap-1"><IconButton aria-label="修改密码" variant="ghost" title="修改密码" onClick={() => { passwordChange.reset(); setPasswordOpen(true); }}><KeyRound className="h-5 w-5" /></IconButton><IconButton aria-label="退出登录" variant="ghost" title="退出登录" className="text-destructive hover:bg-destructive-muted hover:text-destructive" onClick={() => void onLogout()}><LogOut className="h-5 w-5" /></IconButton></div>
                 }

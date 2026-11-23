@@ -124,13 +124,14 @@ export function StudyContractEditor({
         writeContract({
             version: 1,
             researchQuestion,
+            ...(previous?.businessDecision ? { businessDecision: previous.businessDecision } : {}),
             targetPopulation: previous?.targetPopulation ?? "上传总体数据中的全部单位",
             unitOfAnalysis: previous?.unitOfAnalysis ?? "总体数据中的一行记录",
             target: next,
         });
     };
 
-    const updateText = (key: "researchQuestion" | "targetPopulation" | "unitOfAnalysis", text: string) => {
+    const updateText = (key: "researchQuestion" | "businessDecision" | "targetPopulation" | "unitOfAnalysis", text: string) => {
         const previous = currentContract();
         if (!previous) return;
         writeContract({ ...previous, [key]: text });
@@ -258,13 +259,27 @@ export function StudyContractEditor({
                         value={contract?.unitOfAnalysis ?? "总体数据中的一行记录"}
                         disabled={disabled || !target}
                         maxLength={100}
-                        placeholder="例如：一名学生"
+                        placeholder="例如：一名消费者 / 一家门店"
                         aria-label="分析单位"
                         data-testid="teacher-contract-unit"
                         onChange={(e) => updateText("unitOfAnalysis", e.target.value)}
                         className="bg-card border-input text-foreground"
                     />
                 </div>
+            </div>
+
+            <div className="space-y-1.5">
+                <Label className="text-meta text-muted-foreground">支撑的商业管理决策（选填，展示在学生立项任务书）</Label>
+                <Input
+                    value={contract?.businessDecision ?? ""}
+                    disabled={disabled || !target}
+                    maxLength={300}
+                    placeholder="例如：确定夏季新品全国终端指导定价与黑金会员优惠券补贴策略"
+                    aria-label="支撑的商业管理决策"
+                    data-testid="teacher-contract-business-decision"
+                    onChange={(e) => updateText("businessDecision", e.target.value)}
+                    className="bg-card border-input text-foreground"
+                />
             </div>
         </div>
     );

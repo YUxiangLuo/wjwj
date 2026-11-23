@@ -10,7 +10,7 @@ test("buildTaskProgressSnapshot classifies the single experiment record", () => 
         { studentId: "S5", name: "Eve", experimentId: 14, currentStage: 4, experimentStatus: "rejected", lastActivity: new Date() },
     ]);
 
-    expect(result.counts).toEqual({ not_started: 1, stage1: 0, stage2: 1, stage3: 0, stage4: 0, submitted: 1, graded: 1, rejected: 1 });
+    expect(result.counts).toEqual({ not_started: 1, stage1: 0, stage2: 1, stage3: 0, stage4: 0, stage5: 0, submitted: 1, graded: 1, rejected: 1 });
     expect(result.students.map((student) => student.status)).toEqual(["not_started", "stage2", "submitted", "graded", "rejected"]);
     expect(result.students[2]?.submissionId).toBe(12);
 });

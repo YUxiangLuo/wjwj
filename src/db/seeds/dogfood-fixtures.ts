@@ -11,14 +11,14 @@ export const DOGFOOD_NAMES = {
     previousSemester: "2025-2026-2",
     oldSemester: "2025-2026-1",
     mainClass: DEMO_CLASS_NAME,
-    secondaryClass: "2026级公共管理班",
+    secondaryClass: "2026级商业分析班",
     dataScienceClass: "2026级数据科学班",
-    historyClass: "2025级统计学2班",
-    topicA: "青年幸福感调查",
-    topicB: "学生每周阅读时长",
-    topicC: "毕业生直接就业意向比例",
-    topicD: "食堂午间等待时间",
-    topicE: "校园绿色通勤方式占比",
+    historyClass: "2025级商务统计2班",
+    topicA: "新锐现制茶饮新品定价与支付意愿调研",
+    topicB: "B2B企业SaaS重点客户年度增购预算调研",
+    topicC: "综合电商平台付费会员年度续费率调研",
+    topicD: "连锁生鲜超市晚高峰门店履约容量调研",
+    topicE: "智能新能源汽车门店试驾潜客转化调研",
 } as const;
 
 export const DOGFOOD_COUNTS = {
@@ -41,17 +41,18 @@ export const DOGFOOD_MAIN_TASK_PROGRESS = {
     stage2: 0,
     stage3: 0,
     stage4: 0,
+    stage5: 0,
     submitted: 0,
     graded: 0,
     rejected: 0,
 } as const;
 
-export const HAPPINESS_POPULATION_PATH = "/storage/topics/seed-population-youth-happiness-v3.xlsx";
-export const READING_POPULATION_PATH = "/storage/topics/seed-population-reading-hours.csv";
-export const EMPLOYMENT_POPULATION_PATH = "/storage/topics/seed-population-employment-intent.csv";
-export const DINING_POPULATION_PATH = "/storage/topics/seed-population-dining-wait.csv";
-export const GREEN_COMMUTE_POPULATION_PATH = "/storage/topics/seed-population-green-commute.csv";
-export const DINING_PPS_SIZE_FIELD = "历史同期客流量";
+export const HAPPINESS_POPULATION_PATH = "/storage/topics/seed-population-tea-pricing-v1.xlsx";
+export const READING_POPULATION_PATH = "/storage/topics/seed-population-saas-budget-v1.csv";
+export const EMPLOYMENT_POPULATION_PATH = "/storage/topics/seed-population-vip-renewal-v1.csv";
+export const DINING_POPULATION_PATH = "/storage/topics/seed-population-fresh-fulfillment-v1.csv";
+export const GREEN_COMMUTE_POPULATION_PATH = "/storage/topics/seed-population-nev-testdrive-v1.csv";
+export const DINING_PPS_SIZE_FIELD = "历史日均客单量";
 
 export const GUIDE_ATTACHMENT_PATH = "/storage/uploads/seed-topic-guide.pdf";
 export const QUESTIONNAIRE_TEMPLATE_ATTACHMENT_PATH = "/storage/uploads/seed-questionnaire-template.docx";
@@ -91,7 +92,7 @@ export function allocateIntegerShares(total: number, ratios: readonly number[]):
     }
     const raw = ratios.map((ratio) => (ratio / weightSum) * total);
     const shares = raw.map((value) => Math.floor(value));
-    let remaining = total - shares.reduce((sum, value) => sum + value, 0);
+    const remaining = total - shares.reduce((sum, value) => sum + value, 0);
     const order = raw
         .map((value, index) => ({ index, frac: value - Math.floor(value) }))
         .sort((a, b) => b.frac - a.frac || a.index - b.index);
@@ -112,54 +113,50 @@ function populationVarianceForPlan(population: Array<Record<string, unknown>>, f
     return variance;
 }
 
-export function computeYouthHappinessPlan(population = createYouthHappinessPopulation()) {
-    const populationVariance = populationVarianceForPlan(population, "生活幸福感得分");
+export function computeTeaPricingPlan(population = createTeaPricingPopulation()) {
+    const populationVariance = populationVarianceForPlan(population, "最高支付意愿");
     const recommendedSize = calculateMeanEstimationSampleSize({
         confidenceLevel: "95",
-        marginOfError: 0.5,
+        marginOfError: 1.0,
         populationSize: population.length,
         populationVariance,
         designEffect: 1,
-        nonResponseRate: 0,
+        nonResponseRate: 0.15,
     });
     if (recommendedSize === null) {
-        throw new Error("Youth happiness sample plan could not be calculated");
+        throw new Error("Tea pricing sample plan could not be calculated");
     }
     return { recommendedSize, populationVariance };
 }
 
-/**
- * Reading scenario plan derived from the generated population, so the stored
- * fixture and the live planning UI cannot disagree about the variance.
- */
-export function computeReadingPlan(population = createMeanPopulation()) {
-    const populationVariance = populationVarianceForPlan(population, "每周阅读时长");
+export function computeSaasBudgetPlan(population = createSaasBudgetPopulation()) {
+    const populationVariance = populationVarianceForPlan(population, "年度增购预算");
+    const recommendedSize = calculateMeanEstimationSampleSize({
+        confidenceLevel: "95",
+        marginOfError: 3,
+        populationSize: population.length,
+        populationVariance,
+        designEffect: 1,
+        nonResponseRate: 0.15,
+    });
+    if (recommendedSize === null) {
+        throw new Error("SaaS budget sample plan could not be calculated");
+    }
+    return { recommendedSize, populationVariance };
+}
+
+export function computeFreshFulfillmentPlan(population = createFreshFulfillmentPopulation()) {
+    const populationVariance = populationVarianceForPlan(population, "平均履约等待时长");
     const recommendedSize = calculateMeanEstimationSampleSize({
         confidenceLevel: "95",
         marginOfError: 2,
         populationSize: population.length,
         populationVariance,
         designEffect: 1,
-        nonResponseRate: 0,
+        nonResponseRate: 0.15,
     });
     if (recommendedSize === null) {
-        throw new Error("Reading scenario sample plan could not be calculated");
-    }
-    return { recommendedSize, populationVariance };
-}
-
-export function computeDiningPlan(population = createDiningServicePopulation()) {
-    const populationVariance = populationVarianceForPlan(population, "等待分钟");
-    const recommendedSize = calculateMeanEstimationSampleSize({
-        confidenceLevel: "95",
-        marginOfError: 2,
-        populationSize: population.length,
-        populationVariance,
-        designEffect: 1,
-        nonResponseRate: 0,
-    });
-    if (recommendedSize === null) {
-        throw new Error("Dining service sample plan could not be calculated");
+        throw new Error("Fresh fulfillment sample plan could not be calculated");
     }
     return { recommendedSize, populationVariance };
 }
@@ -174,163 +171,225 @@ function clamp(value: number, minimum: number, maximum: number) {
     return Math.min(maximum, Math.max(minimum, value));
 }
 
-export function createYouthHappinessPopulation() {
-    const ageGroups = ["18—22岁", "23—27岁", "28—35岁"];
-    const residenceTypes = ["城区", "县镇", "农村"];
-    const employmentStatuses = ["在校学习", "稳定就业", "灵活就业", "求职或待业"];
+/**
+ * Case A (N=240): 新锐现制茶饮新品定价与支付意愿调研
+ * Unequal member-tier strata (96 / 84 / 60) with distinct WTP means, valid 0 coupon count,
+ * and 22 null mini-program ratings for non-users.
+ */
+export function createTeaPricingPopulation() {
+    const memberTiers = ["普通会员", "银卡会员", "黑金会员"];
+    const cityTiers = ["一线城市", "新一线城市", "二线城市"];
+    const freqBands = ["低频尝鲜(1-2杯)", "中频复购(3-5杯)", "高频重度(6杯以上)"];
+    const storeGroups = [
+        ["CBD写字楼店", "核心商场店", "科技园区店"],
+        ["高校街区店", "文旅步行街店", "创意园区店"],
+        ["社区邻里店", "交通枢纽店", "夜间市集店"],
+    ];
+    const scenes = ["工作日下午茶", "周末社交聚会", "通勤随手买", "外卖拼单"];
+
     return Array.from({ length: 240 }, (_, index) => {
-        const ageIndex = index < 96 ? 0 : index < 180 ? 1 : 2;
-        const ageGroup = ageGroups[ageIndex]!;
-        const age = [18, 23, 28][ageIndex]! + Math.floor(fixtureNoise(index, 8) * [5, 5, 8][ageIndex]!);
-        const residenceIndex = (index * 17) % 240 < 132 ? 0 : (index * 17) % 240 < 204 ? 1 : 2;
-        const residenceType = residenceTypes[residenceIndex]!;
-        const community = [["青禾社区", "云溪社区", "新桥社区"], ["文景社区", "朝阳社区", "河畔社区"], ["溪口村", "田园村", "林下村"]][residenceIndex]![Math.floor(fixtureNoise(index, 9) * 3)]!;
-        const statusNoise = fixtureNoise(index, 10);
-        const thresholds = ageIndex === 0 ? [0.68, 0.84, 0.94] : ageIndex === 1 ? [0.12, 0.69, 0.88] : [0.02, 0.74, 0.93];
-        const employmentStatus = employmentStatuses[statusNoise < thresholds[0]! ? 0 : statusNoise < thresholds[1]! ? 1 : statusNoise < thresholds[2]! ? 2 : 3]!;
-        const housingNoise = fixtureNoise(index, 11);
-        const housing = employmentStatus === "在校学习" && housingNoise < 0.7 ? "学校或单位宿舍"
-            : residenceType === "农村" || housingNoise < 0.45 ? "与家人同住" : housingNoise < 0.7 ? "与他人合租" : "独居";
-        const socialSupport = 1 + Math.floor(fixtureNoise(index, 1) * 5);
-        const health = 1 + Math.floor(fixtureNoise(index, 2) * 5);
-        const pressure = 1 + Math.floor(fixtureNoise(index, 3) * 5);
-        // Deliberately create a visible between-stratum signal for the required
-        // age-stratified exercise. These are synthetic teaching effects, not claims
-        // about real age groups.
-        const ageAdjustment = ageGroup === "18—22岁" ? -0.45 : ageGroup === "28—35岁" ? 0.45 : 0;
-        const employmentAdjustment = employmentStatus === "稳定就业" ? 0.35 : employmentStatus === "求职或待业" ? -0.55 : 0;
-        const happiness = clamp(
-            4.2 + socialSupport * 0.55 + health * 0.45 - pressure * 0.38 + ageAdjustment + employmentAdjustment + (fixtureNoise(index, 4) - 0.5) * 2.2,
-            0,
-            10,
+        const tierIndex = index < 96 ? 0 : index < 180 ? 1 : 2;
+        const memberTier = memberTiers[tierIndex]!;
+        const age = [18, 23, 27][tierIndex]! + Math.floor(fixtureNoise(index, 8) * [7, 8, 14][tierIndex]!);
+        const cityIndex = (index * 17) % 240 < 108 ? 0 : (index * 17) % 240 < 192 ? 1 : 2;
+        const cityTier = cityTiers[cityIndex]!;
+        const store = storeGroups[cityIndex]![Math.floor(fixtureNoise(index, 9) * 3)]!;
+
+        const freqNoise = fixtureNoise(index, 10);
+        const freqThresholds = tierIndex === 0 ? [0.65, 0.92] : tierIndex === 1 ? [0.22, 0.78] : [0.05, 0.38];
+        const freqBand = freqBands[freqNoise < freqThresholds[0]! ? 0 : freqNoise < freqThresholds[1]! ? 1 : 2]!;
+
+        const sceneNoise = fixtureNoise(index, 11);
+        const scene = scenes[Math.floor(sceneNoise * scenes.length)]!;
+
+        const healthFocus = 1 + Math.floor(fixtureNoise(index, 1) * 5);
+        const novelty = 1 + Math.floor(fixtureNoise(index, 2) * 5);
+        const priceSensitivity = clamp(
+            5 - tierIndex - Math.floor(fixtureNoise(index, 3) * 3),
+            1,
+            5,
         );
+
+        const tierBase = tierIndex === 0 ? 15.2 : tierIndex === 1 ? 19.4 : 24.6;
+        const cityAdj = cityIndex === 0 ? 1.4 : cityIndex === 1 ? 0.5 : -0.8;
+        const wtp = clamp(
+            tierBase + cityAdj + healthFocus * 0.55 + novelty * 0.45 - priceSensitivity * 0.65 + (fixtureNoise(index, 4) - 0.5) * 3.2,
+            10,
+            32,
+        );
+
+        const monthlySpend = Number(clamp(
+            (tierIndex === 0 ? 42 : tierIndex === 1 ? 98 : 185) + novelty * 9 + (fixtureNoise(index, 12) - 0.5) * 45,
+            18,
+            360,
+        ).toFixed(1));
+
         return {
-            青年代号: `Y${String(index + 1).padStart(3, "0")}`,
+            会员编号: `M${String(index + 1).padStart(3, "0")}`,
             年龄: age,
-            年龄组: ageGroup,
-            居住社区: community,
-            居住地类型: residenceType,
-            居住方式: housing,
-            当前状态: employmentStatus,
-            生活幸福感得分: Number(happiness.toFixed(1)),
-            社会支持感: socialSupport,
-            自评健康: health,
-            经济压力: pressure,
-            每晚睡眠时长: Number(clamp(7.8 - pressure * 0.2 + (fixtureNoise(index, 12) - 0.5) * 2.4, 4, 10).toFixed(1)),
-            每周休闲时长: index % 29 === 0 ? 0 : Number((2 + fixtureNoise(index, 13) * 18).toFixed(1)),
-            社区服务满意度: index % 11 === 0 ? null : 1 + Math.floor(fixtureNoise(index, 14) * 5),
+            会员等级: memberTier,
+            常购门店商圈: store,
+            城市线级: cityTier,
+            消费场景偏好: scene,
+            月均购茶频次档位: freqBand,
+            最高支付意愿: Number(wtp.toFixed(1)),
+            健康低糖关注度: healthFocus,
+            新品尝鲜意愿: novelty,
+            价格敏感度: priceSensitivity,
+            月均茶饮消费额: monthlySpend,
+            近一月领券核销次数: index % 29 === 0 ? 0 : Math.floor(1 + fixtureNoise(index, 13) * 9),
+            门店小程序体验评分: index % 11 === 0 ? null : 1 + Math.floor(fixtureNoise(index, 14) * 5),
         };
     });
 }
 
-export function createMeanPopulation() {
-    const colleges = ["文学院", "理学院", "商学院"];
-    return Array.from({ length: 24 }, (_, index) => ({
-        编号: index + 1,
-        学院: colleges[index % colleges.length]!,
-        年级: `大${Math.floor(index / colleges.length) % 4 + 1}`,
-        每周阅读时长: index === 0 ? 0 : 2 + (index % 13),
-        是否住宿: Math.floor(index / colleges.length) % 2 === 0 ? "否" : "是",
-    }));
+/**
+ * Case B (N=32): B2B企业SaaS重点客户年度增购预算调研
+ * Small finite population (FPC critical) + valid 0 budget boundary + no positive PPS size column.
+ */
+export function createSaasBudgetPopulation() {
+    const industries = ["智能制造", "连锁零售", "现代物流", "金融科技"];
+    return Array.from({ length: 32 }, (_, index) => {
+        const industry = industries[index % industries.length]!;
+        const withinIndustry = Math.floor(index / industries.length); // 0..7
+        const scaleBand = withinIndustry % 2 === 0 ? "中型成长企业" : "大型集团企业";
+        const privateCloud = withinIndustry < 4 ? "否" : "是";
+        const rawBudget = index % 8 === 0
+            ? 0
+            : Math.round((scaleBand === "大型集团企业" ? 26 : 12) + (index % 7) * 3.5 + (industry === "金融科技" ? 6 : 0));
+        return {
+            客户编号: `KA${String(index + 1).padStart(2, "0")}`,
+            所属行业: industry,
+            企业规模档位: scaleBand,
+            年度增购预算: rawBudget,
+            是否部署私有云: privateCloud,
+        };
+    });
 }
 
-export function createGraduateIntentionPopulation() {
-    const colleges = ["文学院", "理学院", "商学院", "工学院"];
-    const intentionProfiles = [
-        [14, 10, 6, 5, 5],
-        [15, 11, 7, 4, 3],
-        [20, 6, 6, 4, 4],
-        [16, 10, 5, 4, 5],
+/**
+ * Case C (N=200): 综合电商平台付费会员年度续费率调研
+ * Proportion target ("明确续费") with strong between-stratum differences across 4 activity tiers.
+ */
+export function createVipRenewalPopulation() {
+    const activityTiers = ["高频活跃", "中频稳定", "低频沉默", "濒临流失"];
+    const profiles = [
+        [38, 8, 4],  // 高频活跃: 76% 明确续费
+        [27, 14, 9], // 中频稳定: 54% 明确续费
+        [15, 17, 18], // 低频沉默: 30% 明确续费
+        [8, 12, 30],  // 濒临流失: 16% 明确续费
     ];
-    const intentionNames = ["直接就业", "考研", "考公", "出国深造", "灵活就业"];
-    return Array.from({ length: 160 }, (_, index) => {
-        const collegeIndex = index % colleges.length;
-        const withinCollege = Math.floor(index / colleges.length);
-        // Multiplication by 17 permutes all 40 positions (17 and 40 are
-        // coprime), preserving each college's profile without long blocks.
-        const profilePosition = (withinCollege * 17 + collegeIndex * 7) % 40;
-        const profile = intentionProfiles[collegeIndex]!;
-        let cumulative = 0;
-        const intentionIndex = profile.findIndex((count) => {
-            cumulative += count;
-            return profilePosition < cumulative;
+    const intentions = ["明确续费", "观望比价", "暂不续费"];
+
+    return Array.from({ length: 200 }, (_, index) => {
+        const tierIdx = index % activityTiers.length;
+        const withinTier = Math.floor(index / activityTiers.length); // 0..49
+        const pos = (withinTier * 17 + tierIdx * 7) % 50;
+        const profile = profiles[tierIdx]!;
+        let cum = 0;
+        const intentIdx = profile.findIndex((cnt) => {
+            cum += cnt;
+            return pos < cum;
         });
         return {
-            样本编号: `G${String(index + 1).padStart(3, "0")}`,
-            学院: colleges[collegeIndex]!,
-            培养层次: (withinCollege + collegeIndex * 2) % 5 === 0 ? "专业学位" : "学术学位",
-            毕业去向意向: intentionNames[intentionIndex]!,
-            是否有实习经历: (withinCollege * 2 + collegeIndex) % 3 === 0 ? "否" : "是",
-            每周职业准备时长: 2 + (index * 3) % 19,
-            求职准备度: 35 + (index * 7) % 66,
+            会员账号编码: `VIP${String(index + 1).padStart(3, "0")}`,
+            近半年活跃度: activityTiers[tierIdx]!,
+            城市线级: (withinTier + tierIdx) % 3 === 0 ? "三四线及以下" : "一二线城市",
+            续费意向: intentions[intentIdx]!,
+            是否开通自动续费: (withinTier * 2 + tierIdx) % 3 === 0 ? "否" : "是",
+            近半年省下运费金额: 24 + ((index * 11) % 260),
+            会员权益使用率: 15 + (3 - tierIdx) * 18 + (index % 19),
         };
     });
 }
 
-export function createDiningServicePopulation() {
-    const campuses = ["东校区", "西校区"];
-    const diningHalls = [["学苑食堂", "风味食堂"], ["湖畔食堂", "清真食堂"]];
-    const periods = ["11:30-11:45", "11:45-12:00", "12:00-12:15", "12:15-12:30"];
-    const observationDays = ["第一周周一", "第一周周二", "第一周周三", "第二周周一", "第二周周二", "第二周周三"];
-    const periodTraffic = [70, 125, 175, 115];
+/**
+ * Case D (N=96): 连锁生鲜超市晚高峰门店履约容量调研
+ * Non-person operational slot unit + strong PPS size measure (`历史日均客单量`, r > 0.78).
+ */
+export function createFreshFulfillmentPopulation() {
+    const regions = ["浦东运营区", "浦西运营区"];
+    const warehouses = [["陆家嘴仓", "张江仓"], ["静安仓", "徐汇仓"]];
+    const slots = ["17:30-17:45", "17:45-18:00", "18:00-18:15", "18:15-18:30"];
+    const dayTypes = ["周二常态日", "周四促销日", "周五晚高峰", "周六家庭采购", "周日晚高峰", "周一补货日"];
+    const slotBaseOrders = [85, 145, 210, 135];
+
     return Array.from({ length: 96 }, (_, index) => {
-        const campusIndex = Math.floor(index / 48);
-        const withinCampus = index % 48;
-        const diningHallIndex = Math.floor(withinCampus / 24);
-        const withinDiningHall = withinCampus % 24;
-        const periodIndex = Math.floor(withinDiningHall / observationDays.length);
-        const dayIndex = withinDiningHall % observationDays.length;
-        const historicalTraffic = Math.round(
-            periodTraffic[periodIndex]!
-            + campusIndex * 8
-            + diningHallIndex * 10
-            + (fixtureNoise(index, 11) - 0.5) * 26,
+        const regionIdx = Math.floor(index / 48);
+        const withinRegion = index % 48;
+        const whIdx = Math.floor(withinRegion / 24);
+        const withinWh = withinRegion % 24;
+        const slotIdx = Math.floor(withinWh / dayTypes.length);
+        const dayIdx = withinWh % dayTypes.length;
+
+        const historicalOrders = Math.round(
+            slotBaseOrders[slotIdx]!
+            + regionIdx * 12
+            + whIdx * 14
+            + (fixtureNoise(index, 11) - 0.5) * 28,
         );
-        const openWindows = 3 + ((dayIndex * 3 + diningHallIndex + campusIndex) % 5);
-        const wait = clamp(
-            1.8 + historicalTraffic * 0.1 - openWindows * 0.8 + periodIndex * 0.5 + (fixtureNoise(index, 12) - 0.5) * 2.4,
-            1,
-            25,
+        const pickers = 4 + ((dayIdx * 3 + whIdx + regionIdx) % 5);
+        const waitMinutes = clamp(
+            2.2 + historicalOrders * 0.095 - pickers * 0.75 + slotIdx * 0.5 + (fixtureNoise(index, 12) - 0.5) * 2.2,
+            2,
+            28,
         );
+
         return {
-            记录编号: `D${String(index + 1).padStart(3, "0")}`,
-            校区: campuses[campusIndex]!,
-            食堂: diningHalls[campusIndex]![diningHallIndex]!,
-            观测时段: periods[periodIndex]!,
-            观测日: observationDays[dayIndex]!,
-            等待分钟: Number(wait.toFixed(1)),
-            历史同期客流量: historicalTraffic,
-            开放窗口数: openWindows,
+            时段记录编号: `WH${String(index + 1).padStart(3, "0")}`,
+            运营大区: regions[regionIdx]!,
+            前置仓门店: warehouses[regionIdx]![whIdx]!,
+            晚高峰时段: slots[slotIdx]!,
+            观测日期档位: dayTypes[dayIdx]!,
+            平均履约等待时长: Number(waitMinutes.toFixed(1)),
+            历史日均客单量: historicalOrders,
+            当班拣货员人数: pickers,
         };
     });
 }
 
-export function createGreenCommutePopulation() {
-    const residenceAreas = ["校内宿舍", "近校社区", "远校社区"];
-    const grades = ["大一", "大二", "大三", "大四"];
-    const registrationPeriods = ["07:00前", "07:00—08:00", "08:00—09:00", "09:00后"];
+/**
+ * Case E (N=360): 智能新能源汽车门店试驾潜客转化调研
+ * Grouped by 3 store levels and cycling through 4 arrival slots (with n=90 -> K=4 periodic resonance!).
+ */
+export function createNevTestDrivePopulation() {
+    const storeLevels = ["旗舰体验中心", "商超展示店", "城郊交付中心"];
+    const budgetBands = ["20万以内", "20-30万", "30-40万", "40万以上"];
+    const arrivalPeriods = ["周末黄金档", "工作日上午", "工作日下午", "晚间散客档"];
+    const sellingPoints = ["智驾辅助", "续航补能", "座舱空间", "金融置换政策"];
+
     return Array.from({ length: 360 }, (_, index) => {
-        // The frame is grouped by residence area and repeats four registration
-        // periods inside every group. With the documented n=90, K=4, each
-        // random start locks onto one period and exposes systematic periodicity.
-        const area = residenceAreas[Math.floor(index / 120)]!;
-        const registrationPeriod = registrationPeriods[index % registrationPeriods.length]!;
-        const areaBaseline = area === "校内宿舍" ? 0.82 : area === "近校社区" ? 0.67 : 0.5;
-        const periodAdjustment = registrationPeriod === "07:00前" ? 0.18
-            : registrationPeriod === "07:00—08:00" ? 0.06
-                : registrationPeriod === "08:00—09:00" ? -0.08
-                    : -0.2;
-        const greenProbability = clamp(areaBaseline + periodAdjustment, 0.05, 0.95);
-        const green = fixtureNoise(index, 21) < greenProbability;
-        const greenModes = ["步行", "自行车", "公共交通"];
+        const storeLevel = storeLevels[Math.floor(index / 120)]!;
+        const arrivalPeriod = arrivalPeriods[index % arrivalPeriods.length]!;
+        const storeBase = storeLevel === "旗舰体验中心" ? 0.68 : storeLevel === "城郊交付中心" ? 0.54 : 0.38;
+        const periodAdj = arrivalPeriod === "周末黄金档"
+            ? 0.22
+            : arrivalPeriod === "工作日下午"
+                ? 0.05
+                : arrivalPeriod === "工作日上午"
+                    ? -0.09
+                    : -0.22;
+        const lockProb = clamp(storeBase + periodAdj, 0.06, 0.94);
+        const highIntent = fixtureNoise(index, 21) < lockProb;
+
         return {
-            通勤记录编号: `C${String(index + 1).padStart(3, "0")}`,
-            住宿片区: area,
-            登记时段: registrationPeriod,
-            年级: grades[Math.floor(index / registrationPeriods.length) % grades.length]!,
-            是否绿色通勤: green ? "是" : "否",
-            主要通勤方式: green ? greenModes[index % greenModes.length]! : "网约车或私家车",
-            通勤距离公里: Number(((area === "校内宿舍" ? 0.3 : area === "近校社区" ? 2 : 7) + fixtureNoise(index, 22) * 4).toFixed(1)),
+            试驾编号: `TD${String(index + 1).padStart(3, "0")}`,
+            门店能级: storeLevel,
+            到店时段周期: arrivalPeriod,
+            购车预算档位: budgetBands[Math.floor(index / arrivalPeriods.length) % budgetBands.length]!,
+            是否高意向锁单: highIntent ? "是" : "否",
+            重点关注卖点: sellingPoints[index % sellingPoints.length]!,
+            试驾里程公里: Number(((storeLevel === "城郊交付中心" ? 9.5 : storeLevel === "旗舰体验中心" ? 6.2 : 3.5) + fixtureNoise(index, 22) * 4.5).toFixed(1)),
         };
     });
 }
+
+// Compatibility aliases
+export const computeYouthHappinessPlan = computeTeaPricingPlan;
+export const computeReadingPlan = computeSaasBudgetPlan;
+export const computeDiningPlan = computeFreshFulfillmentPlan;
+export const createYouthHappinessPopulation = createTeaPricingPopulation;
+export const createMeanPopulation = createSaasBudgetPopulation;
+export const createGraduateIntentionPopulation = createVipRenewalPopulation;
+export const createDiningServicePopulation = createFreshFulfillmentPopulation;
+export const createGreenCommutePopulation = createNevTestDrivePopulation;

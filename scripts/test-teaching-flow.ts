@@ -4,8 +4,10 @@ import { deepStrictEqual } from "node:assert";
 import { mkdtemp, mkdir, symlink, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
-import { computeDiningPlan, DINING_PPS_SIZE_FIELD, DOGFOOD_ANCHORS, DOGFOOD_NAMES } from "../src/db/seeds/dogfood-fixtures";
+import { computeFreshFulfillmentPlan, DINING_PPS_SIZE_FIELD, DOGFOOD_ANCHORS, DOGFOOD_NAMES } from "../src/db/seeds/dogfood-fixtures";
 import { calculateFinitePopulationSampleSize } from "../src/student/experiment/sample-plan";
+import { questionSignature } from "../src/domain/variables/question-binding";
+import type { Question } from "../src/lib/questionnaire-types";
 import type { ExperimentData, StudentTask } from "../src/student/api-client";
 import type { AnalysisMetricsResult } from "../src/domain/experiment/analysis-types";
 import { teacherTemplateDogfood } from "./teacher-template-dogfood";
@@ -20,7 +22,7 @@ databaseUrl.pathname = `/${databaseName}`;
 const workdir = await mkdtemp(join(tmpdir(), "wj-teaching-"));
 const artifacts = resolve(process.env.TEACHING_TEST_ARTIFACTS ?? join(root, "test-results/teaching-flow"));
 await mkdir(artifacts, { recursive: true });
-for (const name of ["student-failure.png", "teacher-failure.png", "result.json", "teacher-dictionary.png", "teacher-dictionary-save-order.png", "numeric-variable-binding.png", "sampling-pps-policy.png", "sampling-animation-exact.png", "sampling-animation-receipt.png", "sampling-animation-zoom-200.png", "sampling-animation-zoom-200-pagination.png", "sampling-animation-zoom-200-draw.png", "stage4-saved-analysis.png", "teacher-submitted-appendix.png", "stale-analysis-warning.png", "empty-path-narrow.png"]) {
+for (const name of ["server.log", "server-errors.log", "student-failure.png", "teacher-failure.png", "result.json", "teacher-dictionary.png", "teacher-dictionary-save-order.png", "numeric-variable-binding.png", "sampling-pps-policy.png", "sampling-animation-exact.png", "sampling-animation-receipt.png", "sampling-animation-zoom-200.png", "sampling-animation-zoom-200-pagination.png", "sampling-animation-zoom-200-draw.png", "stage4-saved-analysis.png", "teacher-submitted-appendix.png", "stale-analysis-warning.png", "empty-path-narrow.png"]) {
     await Bun.file(join(artifacts, name)).delete().catch(() => undefined);
 }
 const adminTestPassword = `Test-${crypto.randomUUID()}`;
@@ -51,11 +53,84 @@ async function command(args: string[], cwd = root, timeout = 30_000) {
     } finally { clearTimeout(timer); }
 }
 
-async function browser(session: string, ...args: string[]) {
-    const raw = await command([process.execPath, browserLauncher, "--session", session, "--json", ...args]);
+async function rawBrowser(session: string, ...args: string[]) {
+    const normalized = (args[0] === "set" && args[1] === "viewport" && args.length >= 4)
+        ? [args[0], args[1], args[2]!, args[3]!, "1"]
+        : args;
+    const raw = await command([process.execPath, browserLauncher, "--session", session, "--json", ...normalized]);
     const reply = JSON.parse(raw) as { success: boolean; data: { result?: unknown }; error?: unknown };
     if (!reply.success) throw new Error(`Browser ${args[0]} failed: ${JSON.stringify(reply.error)}`);
+    if (args[0] === "set" && args[1] === "viewport") await Bun.sleep(150);
     return reply.data;
+}
+const CONFIRM_TRIGGER_SELECTORS = new Set([
+    '[data-testid="teacher-topic-jump-6"]',
+    '[data-testid="student-question-cancel"]',
+    '[data-testid="teacher-topic-prev"]',
+    '[data-testid="teacher-dictionary-reload"]',
+]);
+async function browser(session: string, ...args: string[]) {
+    if (args[0] === "click" && args.length === 2) {
+        const selector = args[1]!;
+        await visible(session, selector);
+        if (CONFIRM_TRIGGER_SELECTORS.has(selector)) {
+            await rawBrowser(session, "eval", `setTimeout(() => document.querySelector(${JSON.stringify(selector)})?.click(), 400); true`);
+            await Bun.sleep(650);
+            return {};
+        }
+        for (let attempt = 0; attempt < 4; attempt += 1) {
+            await rawBrowser(session, "focus", selector).catch(() => undefined);
+            const metaJson = (await rawBrowser(session, "eval", `(() => {
+                const el = document.querySelector(${JSON.stringify(selector)});
+                if (!el) return "";
+                el.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
+                const r = el.getBoundingClientRect();
+                const tag = el.tagName;
+                const type = (el.getAttribute("type") || "").toLowerCase();
+                const isTextField = (tag === "INPUT" && !["button", "submit", "reset", "checkbox", "radio"].includes(type)) || tag === "TEXTAREA";
+                const isCheckboxOrRadio = tag === "INPUT" && ["checkbox", "radio"].includes(type);
+                delete window.__agyTrustedHit;
+                window.addEventListener("click", (ev) => { if (ev.isTrusted) window.__agyTrustedHit = true; }, { capture: true, once: true });
+                return JSON.stringify({
+                    x: Math.round(r.left + r.width / 2),
+                    y: Math.round(r.top + r.height / 2),
+                    isTextField,
+                    isCheckboxOrRadio,
+                    href: location.href,
+                });
+            })()`)).result as string;
+            if (!metaJson) throw new Error(`Element not found for click: ${selector}`);
+            const { x, y, isTextField, isCheckboxOrRadio, href } = JSON.parse(metaJson) as {
+                x: number;
+                y: number;
+                isTextField: boolean;
+                isCheckboxOrRadio: boolean;
+                href: string;
+            };
+            await rawBrowser(session, "mouse", "move", String(x), String(y));
+            await rawBrowser(session, "mouse", "down");
+            const res = await rawBrowser(session, "mouse", "up");
+            if (isTextField) return res;
+            let hit = false;
+            try {
+                hit = Boolean((await rawBrowser(session, "eval", `Boolean(window.__agyTrustedHit) || location.href !== ${JSON.stringify(href)}`)).result);
+            } catch {
+                hit = true;
+            }
+            if (hit) return res;
+            await rawBrowser(session, "focus", selector).catch(() => undefined);
+            const keyRes = await rawBrowser(session, "press", isCheckboxOrRadio ? "Space" : "Enter");
+            try {
+                hit = Boolean((await rawBrowser(session, "eval", `Boolean(window.__agyTrustedHit) || location.href !== ${JSON.stringify(href)}`)).result);
+            } catch {
+                hit = true;
+            }
+            if (hit) return keyRes;
+            await Bun.sleep(150);
+        }
+        throw new Error(`Trusted click did not land on document for: ${selector}`);
+    }
+    return rawBrowser(session, ...args);
 }
 async function evaluate<T>(session: string, code: string): Promise<T> {
     return (await browser(session, "eval", code)).result as T;
@@ -114,12 +189,6 @@ async function questionEscape(session: string, decision: "accept" | "dismiss") {
     await eventually(async () => JSON.stringify(await browser(session, "dialog", "status")).includes("本题未保存"), "Question Escape must protect unsaved input");
     await browser(session, "dialog", decision);
 }
-async function answerLearningCheck(id: string, option: number) {
-    const selector = `[data-testid="learning-check-${id}"]`;
-    await activate(student, `${selector} input[value="${option}"]`);
-    await activate(student, `${selector} button`);
-    assert(await evaluate(student, `document.querySelector(${JSON.stringify(selector)}).textContent.includes("理解正确")`), `Learning check ${id} did not pass`);
-}
 /** Run the questionnaire trial exactly as a student would, using Enter for the numeric question. */
 async function completeQuestionnairePreview(session: string, questionCount: number) {
     // 编辑器的第四步（试填）在重载后可能不在当前步骤
@@ -144,6 +213,35 @@ async function completeQuestionnairePreview(session: string, questionCount: numb
     await eventually(() => evaluate(session, '!document.querySelector("[data-testid=immersive-questionnaire-preview]")'), "Trial did not return to the editor");
 }
 
+async function selectRadixOption(session: string, triggerSelector: string, optionTextIncludes: string) {
+    await eventually(async () => {
+        if (!(await evaluate(session, `Boolean(document.querySelector('[role="listbox"]'))`))) {
+            await evaluate(session, `(() => {
+                const el = document.querySelector(${JSON.stringify(triggerSelector)});
+                if (!el || el.disabled) return false;
+                el.scrollIntoView({ block: "nearest", inline: "nearest" });
+                el.focus({ preventScroll: true });
+                el.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+                return true;
+            })()`);
+        }
+        return evaluate(session, `Boolean(document.querySelector('[role="listbox"]'))`);
+    }, `Open select ${triggerSelector}`);
+    const chosen = await evaluate(session, `(() => {
+        const option = [...document.querySelectorAll('[role="option"]')].find(el => el.textContent.trim().includes(${JSON.stringify(optionTextIncludes)}));
+        if (!option) return false;
+        option.scrollIntoView({ block: "nearest", inline: "nearest" });
+        option.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true, button: 0, pointerType: "mouse" }));
+        option.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0 }));
+        option.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, cancelable: true, button: 0, pointerType: "mouse" }));
+        option.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, button: 0 }));
+        option.click();
+        return true;
+    })()`);
+    assert(chosen, `Select option containing ${optionTextIncludes} unavailable for ${triggerSelector}`);
+    await eventually(() => evaluate(session, `!document.querySelector('[role="listbox"]')`), `Close select ${triggerSelector}`);
+}
+
 async function login(session: string, role: "student" | "teacher" | "admin", account: string, password = account) {
     await page(session, `/${role}/login`, "input[type=password]");
     assert(await evaluate(session, '[...document.querySelectorAll("input")].every(input => input.value === "")'), `${role} login must not prefill credentials with DEV_AUTH_MODE=0`);
@@ -151,6 +249,15 @@ async function login(session: string, role: "student" | "teacher" | "admin", acc
     await browser(session, "fill", "input[type=password]", password);
     await browser(session, "click", "button[type=submit]");
     await eventually(() => evaluate(session, `!location.pathname.endsWith("/login") && !document.querySelector("input[type=password]")`), `${role} login failed`);
+    // Submitting a password form attaches Chromium's native Save-Password bubble to the login WebContents,
+    // which steals document focus in headless mode. Replace that WebContents with a clean tab in the same session.
+    const tabList = await rawBrowser(session, "tab", "list") as { tabs?: Array<{ tabId: string }> };
+    const oldTabs = (tabList.tabs ?? []).map(t => t.tabId);
+    await rawBrowser(session, "tab", "new");
+    for (const oldTabId of oldTabs) {
+        await rawBrowser(session, "tab", "close", oldTabId).catch(() => undefined);
+    }
+    await page(session, `/${role}`, "header, nav, main");
 }
 
 try {
@@ -182,8 +289,8 @@ try {
     try {
         await api(teacher, `/api/teacher/topics/${happinessCopy.id}`, "PUT", { status: 1 });
         const copyVariables = await api<{ dictionary: { variables: Array<{ field: string; kind: string; missing: unknown[] }> } | null }>(teacher, `/api/teacher/topics/${happinessCopy.id}/variables`);
-        const service = copyVariables.dictionary?.variables.find(variable => variable.field === "社区服务满意度");
-        assert(service?.kind === "ordinal" && service.missing.includes(null), "Publication must preserve ordinal service satisfaction and missing nonusers");
+        const service = copyVariables.dictionary?.variables.find(variable => variable.field === "门店小程序体验评分");
+        assert(service?.kind === "ordinal" && service.missing.includes(null), "Publication must preserve ordinal mini-program rating and missing nonusers");
     } finally {
         await api(teacher, `/api/teacher/topics/${happinessCopy.id}`, "DELETE");
     }
@@ -281,10 +388,11 @@ try {
     await api(teacher, `/api/teacher/topics/${copied.id}`, "PUT", { name, status: 0 });
     type DictionarySnapshot = { source: string; revision: number; dictionary: { source: string; revision: number; variables: Array<{ field: string; label: string; unit: string; kind: string; categories: unknown[]; missing: unknown[] }> } | null; suggestion: { source?: string; revision?: number; variables: Array<{ field: string; label: string; unit: string; kind: string; categories: unknown[]; missing: unknown[] }> } };
     const suggestedDictionary = await api<DictionarySnapshot>(teacher, `/api/teacher/topics/${copied.id}/variables`);
-    const configuredVariables = suggestedDictionary.suggestion.variables.map(variable => variable.field === "等待分钟" ? { ...variable, kind: "continuous", unit: "分钟", categories: [] } : variable);
+    const configuredVariables = suggestedDictionary.suggestion.variables.map(variable => variable.field === "平均履约等待时长" ? { ...variable, kind: "continuous", unit: "分钟", categories: [] } : variable);
     await api(teacher, `/api/teacher/topics/${copied.id}/variables`, "PUT", { source: suggestedDictionary.source, observedRevision: suggestedDictionary.revision, dictionary: { source: suggestedDictionary.source, revision: suggestedDictionary.revision, variables: configuredVariables } });
     const dictionaryBefore = await api<DictionarySnapshot>(teacher, `/api/teacher/topics/${copied.id}/variables`);
-    const continuousVariable = (dictionaryBefore.dictionary ?? dictionaryBefore.suggestion).variables.find(variable => variable.kind === "continuous");
+    const continuousVariable = (dictionaryBefore.dictionary ?? dictionaryBefore.suggestion).variables.find(variable => variable.field === "平均履约等待时长")
+        ?? (dictionaryBefore.dictionary ?? dictionaryBefore.suggestion).variables.find(variable => variable.kind === "continuous");
     assert(continuousVariable, `Copied topic has no continuous variable for numeric binding: ${JSON.stringify((dictionaryBefore.dictionary ?? dictionaryBefore.suggestion).variables.map(variable => [variable.field, variable.kind, variable.unit]))}`);
     await page(teacher, "/teacher/topic", `[data-testid="teacher-topic-edit-${copied.id}"]`);
     await activate(teacher, `[data-testid="teacher-topic-edit-${copied.id}"]`);
@@ -321,7 +429,7 @@ try {
     await browser(teacher, "screenshot", join(artifacts, "teacher-fields-empty-search.png"));
     await namedButton(teacher, "显示全部字段");
     assert(JSON.stringify(await evaluate(teacher, 'Array.from(document.querySelectorAll("input[data-testid^=teacher-topic-mapping-]:checked"), input => input.dataset.testid)')) === JSON.stringify(selectedRoles), "Clearing search must retain all selected roles");
-    await browser(teacher, "click", '#teacher-field-search + label input');
+    await activate(teacher, '#teacher-field-search + label input');
     assert(await evaluate(teacher, `document.querySelectorAll("input[data-testid^=teacher-topic-mapping-]").length===${selectedRoles.length} && Array.from(document.querySelectorAll("input[data-testid^=teacher-topic-mapping-]")).every(input => input.checked)`), "Selected-only mode must show all and only each role's selections");
     await browser(teacher, "screenshot", join(artifacts, "teacher-fields-selected.png"));
     await evaluate(teacher, 'document.querySelector("input[data-testid^=teacher-topic-mapping-others-]").scrollIntoView({block:"center"})');
@@ -488,7 +596,7 @@ try {
     await eventually(() => evaluate(teacher, 'document.querySelector("[aria-label=搜索班级]").value==="" && Boolean(document.querySelector("[role=dialog] input[type=checkbox]:checked"))'), "Clearing search must restore the selected class");
     const assignmentSaveRoute = `${baseUrl}/api/teacher/tasks`;
     await browser(teacher, "network", "route", assignmentSaveRoute, "--body", JSON.stringify({ success: false, error: { code: "TEST_UNAVAILABLE", message: "暂时无法发布，请重试" } }));
-    await browser(teacher, "click", '[data-testid="teacher-task-publish-submit"]');
+    await activate(teacher, '[data-testid="teacher-task-publish-submit"]');
     await eventually(() => evaluate(teacher, 'document.querySelector("[role=dialog] [role=alert]")?.textContent.includes("暂时无法发布")'), "Assignment save failure must remain in the dialog");
     assert(await evaluate(teacher, 'Boolean(document.querySelector("[role=dialog] input[type=checkbox]:checked")) && document.activeElement?.getAttribute("role")==="alert"'), "Failed assignment must preserve choices and focus its error");
     await browser(teacher, "screenshot", join(artifacts, "teacher-assignment-save-error.png"));
@@ -498,7 +606,7 @@ try {
     console.log("PASS read-only publish preflight, retry, confirmed publication and preselected assignment");
     console.log("PASS teacher dictionary representative UI save and stale-revision conflict");
     const classes = await api<Array<{ id: number; name: string }>>(teacher, "/api/teacher/classes");
-    const targetClass = classes.find(item => item.name === "2026级统计学1班");
+    const targetClass = classes.find(item => item.name === DOGFOOD_NAMES.mainClass);
     assert(targetClass, "Seed class missing");
     await api(teacher, "/api/teacher/tasks", "POST", { topicId: copied.id, classIds: [targetClass.id], deadline: new Date(Date.now() + 86400_000).toISOString() });
     console.log("PASS template copy and task publication (real API)");
@@ -546,11 +654,21 @@ try {
     await page(student, stageUrl, '[data-testid="student-stage-questionnaire"]');
     // Seed a five-question draft through the real stage API, then complete every
     // stage through its student-facing controls.
+    const q0Base: Question = { id: "q0", type: "numeric", content: `请填写您的${continuousVariable.label}`, unit: continuousVariable.unit, decimalPlaces: 0 };
     const questionnaire = {
         title: "学习投入调查", welcomeText: "欢迎参加本次学习投入调查，请根据真实情况回答，所有题目仅用于课堂教学与统计分析。",
         endingText: "感谢您的参与和支持，本次调查已经结束，调查结果将用于理解学习投入的总体特征。",
         questions: Array.from({ length: 5 }, (_, index) => index === 0
-            ? { id: "q0", type: "numeric", content: `请填写您的${continuousVariable.label}`, unit: continuousVariable.unit, decimalPlaces: 0 }
+            ? {
+                ...q0Base,
+                variableBinding: {
+                    taskId: task.id,
+                    source: confirmedDictionary.source,
+                    revision: confirmedDictionary.revision,
+                    signature: questionSignature(q0Base),
+                    mappings: [{ field: continuousVariable.field, answers: [] }],
+                },
+            }
             : { id: `q${index}`, type: "boolean", content: `本周是否完成学习活动 ${index + 1}？` }),
     };
     experiment = await api(student, `${experimentPath}/stages/1/complete`, "POST", { observedVersion: experiment.version, questionnaire });
@@ -592,7 +710,7 @@ try {
     assert(await evaluate(student, `document.querySelector('[data-testid="student-questionnaire-list"] [draggable="true"]').dataset.testid==='student-questionnaire-item-q1'`), "Question move-down must change order");
     await activate(student, '[data-testid="student-questionnaire-move-up-q0"]');
     assert(await evaluate(student, `document.querySelector('[data-testid="student-questionnaire-list"] [draggable="true"]').dataset.testid==='student-questionnaire-item-q0'`), "Question move-up must restore order");
-    await namedButton(student, "关联变量");
+    await namedButton(student, "修改关联");
     await visible(student, '[aria-label="选择变量字段"]');
     // 关联对话框：焦点进入、Tab 不逃逸、Escape 关闭并把焦点还给触发按钮
     await eventually(() => evaluate(student, 'document.querySelector(\'[role="dialog"]\')?.contains(document.activeElement) ?? false'), "Binding dialog did not receive focus");
@@ -602,11 +720,9 @@ try {
     }
     await browser(student, "press", "Escape");
     await eventually(() => evaluate(student, '!document.querySelector(\'[role="dialog"]\')'), "Escape did not close the binding dialog");
-    await namedButton(student, "关联变量");
+    await namedButton(student, "修改关联");
     await visible(student, '[aria-label="选择变量字段"]');
-    await browser(student, "click", '[aria-label="选择变量字段"]');
-    const selectedVariable = await evaluate(student, `(() => {const option=[...document.querySelectorAll('[role="option"]')].find(element=>element.textContent.trim()===${JSON.stringify(`${dictionaryLabel}（${continuousVariable.field}）`)});if(!option)return false;option.dispatchEvent(new MouseEvent("click",{bubbles:true}));return true})()`);
-    assert(selectedVariable, "Numeric variable option is unavailable");
+    await selectRadixOption(student, '[aria-label="选择变量字段"]', `${dictionaryLabel}（${continuousVariable.field}）`);
     await namedButton(student, "确认关联");
     await eventually(() => evaluate(student, 'document.body.textContent.includes("已关联变量")'), "Numeric variable binding was not shown");
     await browser(student, "screenshot", join(artifacts, "numeric-variable-binding.png"));
@@ -626,199 +742,143 @@ try {
     }
     await browser(student, "set", "viewport", "1280", "800");
     await activate(student, '[data-testid="student-questionnaire-complete"]');
-    await visible(student, '[data-testid="student-stage-sample-plan"]');
+    await visible(student, '[data-testid="student-stage-pilot-wave"]');
     experiment = await api(student, experimentPath);
     assert(experiment.currentStage === 2 && experiment.stage1CompletedAt, "Stage 1 did not persist");
     assert(experiment.questionnaire?.title === "学习投入调查：浏览器试填", "Questionnaire save lost the reviewed title");
-    console.log("PASS questionnaire editing, explicit trial navigation and one-step save (real browser)");
-    await page(student, stageUrl, '[data-testid="student-stage-sample-plan"]');
-    await visible(student, '[data-testid="planning-scroll-content"]');
-    await activate(student, '[data-testid="immersive-sp-close"]');
-    await namedButton(student, "确定退出");
-    await visible(student, '[data-testid="student-sample-plan-start"]');
-    await browser(student, "screenshot", join(artifacts, "planning-entry.png"));
-    await activate(student, '[data-testid="student-sample-plan-start"]');
-    await visible(student, '[data-testid="planning-scroll-content"]');
-    const planningLayout = await evaluate<{ viewportHeight: number; top: number; bottom: number; contentBottom: number; footerTop: number }>(student, `(() => {
-        const dialog = document.querySelector('[data-testid="immersive-sample-planning"]');
-        const bounds = dialog.getBoundingClientRect();
-        const content = dialog.querySelector('[data-testid="planning-scroll-content"]').getBoundingClientRect();
-        const footer = dialog.querySelector('footer').getBoundingClientRect();
-        return { viewportHeight: innerHeight, top: bounds.top, bottom: bounds.bottom, contentBottom: content.bottom, footerTop: footer.top };
-    })()`);
-    assert(planningLayout.top === 0 && planningLayout.bottom === planningLayout.viewportHeight,
-        "Planning dialog must cover the viewport independently of page animations");
-    assert(planningLayout.contentBottom <= planningLayout.footerTop,
-        "Planning footer must not overlap scrollable content");
-    console.log("PASS planning dialog viewport and content/footer geometry (real browser)");
-    const plan = computeDiningPlan();
-    const hasLearningEntry = await evaluate(student, '[...document.querySelectorAll("button")].some(button => button.textContent.trim() === "暂不估计，直接查看建议")');
-    if (hasLearningEntry) {
-    await namedButton(student, "暂不估计，直接查看建议");
-    assert(await evaluate(student, '!document.body.textContent.includes("已了解，直接调整方案")'), "Planning still exposes the learning bypass");
-    await activate(student, '[data-testid="immersive-sp-next"]');
-    assert(await evaluate(student, 'document.querySelector("[data-testid=immersive-sp-next]").disabled'), "Precision lesson should require an understanding check");
-    await activate(student, '[data-testid="learning-check-precision"] input[value="0"]');
-    await activate(student, '[data-testid="learning-check-precision"] button');
-    assert(await evaluate(student, 'document.querySelector("[data-testid=immersive-sp-next]").disabled'), "An incorrect answer unlocked precision");
-    await evaluate(student, 'document.querySelector("[data-testid=learning-check-precision]").scrollIntoView({block:"end"})');
-    await browser(student, "screenshot", join(artifacts, "planning-learning-feedback.png"));
-    await answerLearningCheck("precision", 1);
-    await activate(student, '[data-testid="immersive-sp-next"]');
-    await answerLearningCheck("error_tolerance", 0);
-    await activate(student, '[data-testid="immersive-sp-next"]');
-    // A real reload resumes the first unfinished factor without unlocking later content.
-    await browser(student, "reload");
-    await visible(student, '[data-testid="learning-check-subpopulation"]');
-    assert(await evaluate(student, 'document.querySelector("[data-testid=immersive-sp-next]").disabled && document.body.textContent.includes("已掌握 1 / 6")'), "Learning progress was lost or skipped after reloading");
-    await evaluate(student, 'document.querySelector("[data-testid=learning-check-subpopulation]").scrollIntoView({block:"end"})');
-    assert(await evaluate(student, 'document.documentElement.scrollWidth <= innerWidth && document.querySelector("[data-testid=planning-scroll-content]").scrollWidth <= document.querySelector("[data-testid=planning-scroll-content]").clientWidth'), "Learning content overflows its viewport");
-    await browser(student, "screenshot", join(artifacts, "planning-learning-resumed.png"));
-    for (const [id, answer] of [["subpopulation", 2], ["variability", 1], ["design_effect", 2], ["non_response", 0], ["cost_balance", 1]] as const) {
-        await answerLearningCheck(id, answer);
-        await activate(student, '[data-testid="immersive-sp-next"]');
-    }
-    await activate(student, '[data-testid="immersive-sp-next"]');
-    await answerLearningCheck("calculation", 2);
-    await activate(student, '[data-testid="immersive-sp-next"]');
-    assert(await evaluate(student, `document.querySelector('[data-testid="immersive-sp-final-size"]').value === ${JSON.stringify(String(plan.recommendedSize))}`), "Planning UI recommendation differs from the fixture");
-    } else {
-        await namedButton(student, "采用建议值");
-        assert(await evaluate(student, `document.querySelector('[data-testid="immersive-sp-final-size"]').value === ${JSON.stringify(String(plan.recommendedSize))}`), "Planning UI recommendation differs from the fixture");
-    }
-    await activate(student, '[data-testid="immersive-sp-decision-next"]');
-    if (await evaluate(student, 'Boolean(document.querySelector("[data-testid=immersive-sp-quiz-next]"))')) for (const [id, answer] of [["quiz_se", 0], ["quiz_population", 1], ["quiz_design", 0]] as const) {
-        assert(await evaluate(student, 'document.querySelector("[data-testid=immersive-sp-quiz-next]").disabled && !document.body.textContent.includes("跳过，直接去确认")'), "Quiz can be skipped without understanding");
-        await answerLearningCheck(id, answer);
-        await activate(student, '[data-testid="immersive-sp-quiz-next"]');
-    }
-    console.log("PASS required planning lessons, retry feedback, draft recovery and layout (real browser)");
-    const planSaveRoute = `${baseUrl}/api/student/tasks/${task.id}/experiment/stages/2/complete*`;
-    await browser(student, "network", "route", planSaveRoute, "--body", JSON.stringify({ success: false, error: { code: "TEST_UNAVAILABLE", message: "模拟规划保存失败，请重试" } }));
-    await activate(student, '[data-testid="immersive-sp-confirm"]');
-    await visible(student, '[data-testid="student-sample-plan-summary"]');
-    assert(await evaluate(student, `document.querySelector('[data-testid="student-sample-plan-summary"]').textContent.includes(${JSON.stringify(String(plan.recommendedSize))})`), "Failed save must retain the calculated plan summary");
+    console.log("PASS Stage 1 questionnaire editing, variable binding, respondent trial and save (real browser)");
+
+    // =====================================================================
+    // Stage 2: 首轮试投发放 (Wave 1 Pilot Plan -> Sampling -> Virtual Dispatch)
+    // =====================================================================
+    const plan = computeFreshFulfillmentPlan();
+    await page(student, stageUrl, '[data-testid="student-stage-pilot-wave"]');
+    await eventually(() => evaluate(student, '!document.querySelector("[data-testid=student-pilot-save-plan]").disabled'), "Pilot plan save button stayed disabled");
     for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
         await browser(student, "set", "viewport", String(width), String(height));
-        await evaluate(student, `document.querySelector('[data-testid="student-sample-plan-summary"]').scrollIntoView({block:'center'})`);
-        assert(await evaluate(student, "document.documentElement.scrollWidth<=innerWidth"), "Plan summary must not overflow");
-        await browser(student, "screenshot", join(artifacts, `planning-summary-${width}.png`));
+        await evaluate(student, 'scrollTo({top:0,behavior:"instant"})');
+        assert(await evaluate(student, "document.documentElement.scrollWidth<=innerWidth"), `Pilot stage overflowed at ${width}px`);
+        await browser(student, "screenshot", join(artifacts, `stage2-pilot-entry-${width}.png`));
     }
-    await browser(student, "network", "unroute", planSaveRoute);
-    await activate(student, '[data-testid="student-sample-plan-next"]');
-    await visible(student, '[data-testid="student-stage-sampling"]');
-    experiment = await api(student, experimentPath);
-    assert(experiment.currentStage === 3 && experiment.samplePlan?.finalSampleSize === plan.recommendedSize, "Stage 2 did not persist");
-    await browser(student, "set", "viewport", "1024", "768");
-    await page(student, stageUrl, '[data-testid="student-stage-sampling"]');
-    const diningStats = await api<{ ppsEligibleFields: string[] }>(student, `/api/student/tasks/${task.id}/stats`);
-    assert(JSON.stringify(diningStats.ppsEligibleFields) === JSON.stringify([DINING_PPS_SIZE_FIELD]), `Dining PPS policy exposed unintended fields: ${JSON.stringify(diningStats.ppsEligibleFields)}`);
-    for (const method of ["simple", "systematic", "pps", "stratified"]) {
-        await activate(student, `[data-testid="student-sampling-tab-${method}"]`);
-        assert(await evaluate(student, `(() => {const preview=document.querySelector('[data-testid="student-sampling-${method}-preview"]');const bounds=preview?.getBoundingClientRect();return bounds && bounds.height>0 && bounds.height<140 && !preview.querySelector('table') && document.documentElement.scrollWidth<=innerWidth;})()`), `${method} empty preview must be compact without horizontal overflow`);
-        await evaluate(student, `document.querySelector('[data-testid="student-sampling-${method}-preview"]').scrollIntoView({block:'center'})`);
-        await browser(student, "screenshot", join(artifacts, `sampling-${method}-empty.png`));
-    }
-    await evaluate(student, 'scrollTo({top:0,behavior:"instant"})');
-    await activate(student, '[data-testid="student-sampling-tab-pps"]');
-    await visible(student, '[data-testid="student-sampling-pps-size-field"]');
-    assert(await evaluate(student, `document.querySelector('[data-testid="student-sampling-pps-size-field"]').textContent.includes(${JSON.stringify(DINING_PPS_SIZE_FIELD)})`), "Dining PPS control did not select the policy-approved prior-frame size field");
-    await browser(student, "screenshot", join(artifacts, "sampling-pps-policy.png"));
-    await activate(student, '[data-testid="student-sampling-tab-simple"]');
-    assert(await evaluate(student, `(() => {const button=document.querySelector('[data-testid="student-sampling-simple-run"]').getBoundingClientRect();const footer=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect();return button.top>0 && button.bottom<=footer.top && button.right<=innerWidth && document.documentElement.scrollWidth<=innerWidth;})()`), "The initial sampling action must remain visible without document overflow at 1024×768");
-    await browser(student, "screenshot", join(artifacts, "sampling-start.png"));
-    const savedRecordLayout = await evaluate<{ found: boolean; top?: number; bottom?: number; footerTop?: number; scrollY: number; scrollHeight: number }>(student, `(async () => {const heading=[...document.querySelectorAll('div')].find(element=>element.textContent.trim()==="已保存的入样记录");const card=heading?.closest('[data-slot="card"]');scrollTo({top:document.documentElement.scrollHeight,behavior:"instant"});await new Promise(requestAnimationFrame);const footer=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect();const bounds=card?.getBoundingClientRect();return {found:Boolean(card),top:bounds?.top,bottom:bounds?.bottom,footerTop:footer.top,scrollY,scrollHeight:document.documentElement.scrollHeight};})()`);
-    assert(savedRecordLayout.found && Number(savedRecordLayout.bottom) <= Number(savedRecordLayout.footerTop), `The saved-record card cannot be scrolled clear of the sticky actions at 1024×768: ${JSON.stringify(savedRecordLayout)}`);
-    await activate(student, '[data-testid="student-sampling-simple-run"]');
-    await visible(student, '[data-testid="immersive-sampling-animation"]');
-    assert(await evaluate(student, `(() => {const e=document.querySelector('[data-testid="immersive-sampling-animation"]');const r=e.getBoundingClientRect();return e.parentElement===document.body && r.top===0 && r.bottom===innerHeight && r.right===innerWidth && document.documentElement.scrollWidth<=innerWidth;})()`), "Sampling animation must cover the 1024×768 desktop viewport without document overflow");
-    await visible(student, '[data-testid="sampling-animation-dot-grid"]');
-    assert(await evaluate(student, `(() => {const grid=document.querySelector('[data-testid="sampling-animation-dot-grid"]');const card=grid.closest('.overflow-hidden').getBoundingClientRect();const legend=document.querySelector('[data-testid="sampling-animation-legend"]').getBoundingClientRect();return Number(grid.dataset.visualPopulation)===${experiment.populationSize} && grid.children.length===${experiment.populationSize} && document.querySelector('[data-testid="sampling-animation-scale-note"]').textContent.includes("按实际数量绘制") && card.left>=0 && card.right<=innerWidth && card.bottom<=innerHeight && legend.left>=card.left && legend.right<=card.right;})()`), "Small population animation did not fit or render one dot per actual unit at 1024×768");
-    experiment = await api(student, experimentPath);
-    const simpleSeed = experiment.samplingResults?.simple?.seed;
-    assert(simpleSeed !== undefined, "Simple sampling result did not save its random seed");
-    await eventually(() => evaluate(student, `(() => {const grid=document.querySelector('[data-testid="sampling-animation-dot-grid"]');return grid?.querySelectorAll('[data-selected="true"]').length===${experiment.samplePlan?.finalSampleSize} && document.body.textContent.includes("演示进度 ${experiment.samplePlan?.finalSampleSize} / ${experiment.samplePlan?.finalSampleSize}") && document.body.textContent.includes("随机种子 ${simpleSeed}");})()`), "Sampling animation did not replay the saved draw parameters and planned sample count");
-    await browser(student, "screenshot", join(artifacts, "sampling-animation-exact.png"));
-    await activate(student, '[data-testid="immersive-sampling-skip"]');
-    await visible(student, '[data-testid="sampling-animation-receipt"]');
-    assert(await evaluate(student, `(() => {const receipt=document.querySelector('[data-testid="sampling-animation-receipt"]');return receipt.textContent.includes("${experiment.populationSize} → ${experiment.samplePlan?.finalSampleSize}") && receipt.textContent.includes("抽样比") && receipt.textContent.includes("随机种子");})()`), "Sampling receipt did not preserve the saved draw parameters");
-    assert(await evaluate(student, `(() => {const overlay=document.querySelector('[data-testid="immersive-sampling-animation"]');const receipt=document.querySelector('[data-testid="sampling-animation-receipt"]').getBoundingClientRect();const table=document.querySelector('[aria-label="抽样结果数据表"]').getBoundingClientRect();const actions=[...overlay.querySelectorAll('button')].map(button=>button.getBoundingClientRect());return document.documentElement.scrollWidth<=innerWidth && receipt.left>=0 && receipt.right<=innerWidth && table.height>=120 && table.bottom<=innerHeight && actions.every(rect=>rect.left>=0 && rect.right<=innerWidth && rect.bottom<=innerHeight);})()`), "Sampling receipt, table, or actions are clipped at 1024×768");
-    for (let tab = 0; tab < 6; tab += 1) {
-        await browser(student, "press", "Tab");
-        assert(await evaluate(student, `document.querySelector('[data-testid="immersive-sampling-animation"]').contains(document.activeElement)`), `Sampling animation focus escaped at 1024×768 after Tab ${tab + 1}`);
-    }
-    await browser(student, "screenshot", join(artifacts, "sampling-animation-receipt.png"));
-    // A 512×384 CSS viewport reproduces the layout viewport of a 1024×768
-    // desktop display at 200% browser zoom; this is not a mobile breakpoint.
-    await browser(student, "set", "viewport", "512", "384");
-    assert(await evaluate(student, `(() => {const overlay=document.querySelector('[data-testid="immersive-sampling-animation"]');const canvas=overlay.firstElementChild.getBoundingClientRect();return canvas.width>=1024 && overlay.scrollWidth>=1024;})()`), "Sampling overlay did not preserve the documented 1024px desktop canvas at 200% zoom");
-    for (const selector of ['[data-testid="immersive-sampling-replay"]', '[data-testid="immersive-sampling-skip-rest"]', '[data-testid="immersive-sampling-return"]']) {
-        assert(await evaluate(student, `(async () => {const element=document.querySelector(${JSON.stringify(selector)});element?.scrollIntoView({block:"nearest",inline:"nearest"});await new Promise(requestAnimationFrame);const bounds=element?.getBoundingClientRect();return bounds && bounds.left>=0 && bounds.right<=innerWidth && bounds.top>=0 && bounds.bottom<=innerHeight;})()`), `Sampling action ${selector} is unreachable at 200% desktop zoom`);
-    }
-    assert(await evaluate(student, `(async () => {const receipt=document.querySelector('[data-testid="sampling-animation-receipt"]');receipt?.scrollIntoView({block:"start",inline:"start"});await new Promise(requestAnimationFrame);const receiptBounds=receipt?.getBoundingClientRect();const table=document.querySelector('[aria-label="抽样结果数据表"]');table?.scrollIntoView({block:"start",inline:"start"});await new Promise(requestAnimationFrame);const tableBounds=table?.getBoundingClientRect();const firstRow=table?.querySelector('tbody tr')?.getBoundingClientRect();return receiptBounds && receiptBounds.width>0 && tableBounds && tableBounds.width>0 && tableBounds.height>=80 && firstRow && firstRow.height>0;})()`), "Sampling evidence and data rows are unreachable at 200% desktop zoom");
-    await browser(student, "screenshot", join(artifacts, "sampling-animation-zoom-200.png"));
-    assert(await evaluate(student, `(async () => {const range=document.querySelector('[data-testid="sampling-animation-result-range"]');range?.scrollIntoView({block:"end",inline:"nearest"});await new Promise(requestAnimationFrame);const bounds=range?.getBoundingClientRect();return range?.textContent.includes("显示第 1-10 条，共 ${plan.recommendedSize} 条") && bounds && bounds.left>=0 && bounds.right<=innerWidth && bounds.top>=0 && bounds.bottom<=innerHeight;})()`), "Sampling result range is unreachable at 200% desktop zoom");
-    assert(await evaluate(student, `(async () => {const next=document.querySelector('[aria-label="抽样结果下一页"]');next?.scrollIntoView({block:"end",inline:"nearest"});await new Promise(requestAnimationFrame);const bounds=next?.getBoundingClientRect();return bounds && bounds.left>=0 && bounds.right<=innerWidth && bounds.top>=0 && bounds.bottom<=innerHeight && !next.disabled;})()`), "Sampling pagination is unreachable at 200% desktop zoom");
-    await browser(student, "screenshot", join(artifacts, "sampling-animation-zoom-200-pagination.png"));
-    await activate(student, '[data-testid="immersive-sampling-replay"]');
-    await visible(student, '[data-testid="sampling-animation-dot-grid"]');
-    assert(await evaluate(student, `(async () => {const grid=document.querySelector('[data-testid="sampling-animation-dot-grid"]');grid?.scrollIntoView({block:"center",inline:"center"});await new Promise(requestAnimationFrame);const bounds=grid?.getBoundingClientRect();return grid?.children.length===${experiment.populationSize} && document.querySelector('[data-testid="sampling-animation-legend"]') && document.body.textContent.includes("随机种子 ${simpleSeed}") && bounds && bounds.right>0 && bounds.left<innerWidth && bounds.bottom>0 && bounds.top<innerHeight;})()`), "Sampling draw is unreachable when replayed at 200% desktop zoom");
-    await eventually(() => evaluate(student, `document.querySelector('[data-testid="sampling-animation-dot-grid"]')?.querySelectorAll('[data-selected="true"]').length===${experiment.samplePlan?.finalSampleSize}`), "Sampling replay did not expose the completed draw at 200% desktop zoom");
-    await browser(student, "screenshot", join(artifacts, "sampling-animation-zoom-200-draw.png"));
-    await activate(student, '[data-testid="immersive-sampling-skip"]');
-    await visible(student, '[data-testid="sampling-animation-receipt"]');
-    await browser(student, "set", "viewport", "1024", "768");
-    await activate(student, '[data-testid="immersive-sampling-replay"]');
-    await visible(student, '[data-testid="sampling-animation-dot-grid"]');
-    assert(await evaluate(student, `document.querySelector('[data-testid="sampling-animation-legend"]').textContent.includes("实色描边：已选样本") && document.body.textContent.includes("随机种子 ${simpleSeed}")`), "Sampling replay did not retain the saved draw or explain the dot encoding");
-    await activate(student, '[data-testid="immersive-sampling-skip"]');
-    await visible(student, '[data-testid="sampling-animation-receipt"]');
-    await activate(student, '[data-testid="immersive-sampling-return"]');
     await browser(student, "set", "viewport", "1280", "800");
+    await activate(student, '[data-testid="student-pilot-save-plan"]');
+    await visible(student, '[data-testid="student-pilot-sample-simple"]');
+    await activate(student, '[data-testid="student-pilot-sample-simple"]');
+    await eventually(() => evaluate(student, '!document.querySelector("[data-testid=student-pilot-dispatch]").disabled'), "Pilot dispatch did not enable after simple sampling");
+    assert(await evaluate(student, 'document.querySelector("[data-testid=student-pilot-complete]").disabled'), "Pilot stage must require fieldwork dispatch before completion");
+    await activate(student, '[data-testid="student-pilot-dispatch"]');
+    await visible(student, '[data-testid="student-pilot-dispatch-result"]');
+    await visible(student, '[data-testid="fieldwork-funnel-chart"]');
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(student, "set", "viewport", String(width), String(height));
+        await evaluate(student, 'document.querySelector("[data-testid=student-pilot-dispatch-result]").scrollIntoView({block:"center"})');
+        assert(await evaluate(student, "document.documentElement.scrollWidth<=innerWidth"), `Pilot dispatch funnel overflowed at ${width}px`);
+        await browser(student, "screenshot", join(artifacts, `stage2-pilot-dispatched-${width}.png`));
+    }
+    await browser(student, "set", "viewport", "1280", "800");
+    const stage2CompleteRoute = `${baseUrl}/api/student/tasks/${task.id}/experiment/stages/2/complete*`;
+    await browser(student, "network", "route", stage2CompleteRoute, "--body", JSON.stringify({ success: false, error: { code: "TEST_UNAVAILABLE", message: "模拟试投阶段推进失败，请重试" } }));
+    await activate(student, '[data-testid="student-pilot-complete"]');
+    await Bun.sleep(250);
+    assert((await api<ExperimentData>(student, experimentPath)).currentStage === 2, "Failed stage 2 save must remain on stage 2");
+    await browser(student, "network", "unroute", stage2CompleteRoute);
+    await activate(student, '[data-testid="student-pilot-complete"]');
+    await visible(student, '[data-testid="student-stage-diagnostics"]');
+    experiment = await api(student, experimentPath);
+    assert(experiment.currentStage === 3 && experiment.stage2CompletedAt, "Stage 2 pilot wave did not persist");
+    console.log("PASS Stage 2 pilot plan, respondent sampling, virtual dispatch and funnel feedback (real browser)");
+
+    // =====================================================================
+    // Stage 3: 回收质检与诊断 (Interactive QC Cleaning + AdjustmentPlan)
+    // =====================================================================
+    await page(student, stageUrl, '[data-testid="student-stage-diagnostics"]');
+    await visible(student, '[data-testid="student-diagnostics-cleaning-card"]');
+    await visible(student, '[data-testid="confidence-interval-plot"]');
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(student, "set", "viewport", String(width), String(height));
+        await evaluate(student, 'scrollTo({top:0,behavior:"instant"})');
+        assert(await evaluate(student, "document.documentElement.scrollWidth<=innerWidth"), `Stage 3 diagnostics overflowed at ${width}px`);
+        await browser(student, "screenshot", join(artifacts, `stage3-diagnostics-${width}.png`));
+    }
+    await browser(student, "set", "viewport", "1280", "800");
+    const versionBeforeCleaning = (await api<ExperimentData>(student, experimentPath)).version;
+    await activate(student, "#clean-speeder-switch");
+    await eventually(async () => (await api<ExperimentData>(student, experimentPath)).version > versionBeforeCleaning, "Toggling speeder QC rule did not persist");
+    await activate(student, "#clean-speeder-switch");
+    await eventually(async () => (await api<ExperimentData>(student, experimentPath)).waves?.[0]?.cleaningConfig.removeSpeeders === true, "Re-enabling speeder QC rule did not persist");
+    await evaluate(student, 'document.querySelector("[data-testid=student-adjustment-plan-form]").scrollIntoView({block:"center"})');
+    await activate(student, '[data-testid="student-adjustment-auto-fill"]');
+    await eventually(() => evaluate(student, 'document.querySelector("[data-testid=student-adjustment-rationale]").value.trim().length >= 15 && !document.querySelector("[data-testid=student-diagnostics-complete]").disabled'), "Auto-extracting diagnostic findings did not populate a valid AdjustmentPlan");
+    await browser(student, "screenshot", join(artifacts, "stage3-adjustment-plan.png"));
+    await activate(student, '[data-testid="student-diagnostics-complete"]');
+    await visible(student, '[data-testid="student-stage-refinement"]');
+    experiment = await api(student, experimentPath);
+    assert(experiment.currentStage === 4 && experiment.stage3CompletedAt && (experiment.waves?.length ?? 0) === 2, "Stage 3 completion did not initialize Wave 2");
+    console.log("PASS Stage 3 interactive QC cleaning, forest CI comparison and AdjustmentPlan (real browser)");
+
+    // =====================================================================
+    // Stage 4: 调整思路与二轮投放 (Empirical Recalculation -> Multi-Method Sampling -> Dispatch)
+    // =====================================================================
+    await page(student, stageUrl, '[data-testid="student-stage-refinement"]');
+    const diningStats = await api<{ ppsEligibleFields: string[] }>(student, `/api/student/tasks/${task.id}/stats`);
+    assert(JSON.stringify(diningStats.ppsEligibleFields) === JSON.stringify([DINING_PPS_SIZE_FIELD]), `Fresh fulfillment PPS policy exposed unintended fields: ${JSON.stringify(diningStats.ppsEligibleFields)}`);
+    await activate(student, '[data-testid="student-refinement-tab-plan"]');
+    await visible(student, '[data-testid="student-refinement-import-empirical"]');
+    await activate(student, '[data-testid="student-refinement-import-empirical"]');
+    // Also verify switching back to population variance or setting recommendedSize works cleanly
+    await selectRadixOption(student, '[aria-label="选择正式轮方差参数依据"]', "总体方差");
+    await evaluate(student, `(() => {
+        const input = document.querySelector('[data-testid="student-refinement-final-size"]');
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, ${JSON.stringify(String(plan.recommendedSize))});
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`);
+    await activate(student, '[data-testid="student-refinement-save-plan"]');
+    await visible(student, '[data-testid="student-refinement-method-simple"]');
+    await activate(student, '[data-testid="student-refinement-method-pps"]');
+    await visible(student, '[data-testid="student-sampling-pps-size-field"]');
+    assert(await evaluate(student, `document.querySelector('[data-testid="student-sampling-pps-size-field"]').textContent.includes(${JSON.stringify(DINING_PPS_SIZE_FIELD)})`), "PPS control did not select the policy-approved prior-frame size field");
+    await browser(student, "screenshot", join(artifacts, "sampling-pps-policy.png"));
+    await activate(student, '[data-testid="student-refinement-method-simple"]');
+    await activate(student, '[data-testid="student-sampling-simple-run"]');
+    await eventually(async () => Boolean((await api<ExperimentData>(student, experimentPath)).samplingResults?.simple?.completed), "Wave 2 simple sampling did not save");
     for (const method of ["systematic", "pps"] as const) {
         await api(student, `/api/student/tasks/${task.id}/sampling`, "POST", { method, params: { sampleSize: plan.recommendedSize, ...(method === "pps" ? { sizeField: DINING_PPS_SIZE_FIELD } : {}) } });
     }
-    await page(student, stageUrl, '[data-testid="student-stage-sampling"]');
-    assert(await evaluate(student, `(() => {const table=document.querySelector('[aria-label^="抽样结果数据表"]');const stage=document.querySelector('[data-testid="student-stage-sampling"]');return table && table.getBoundingClientRect().width > stage.getBoundingClientRect().width*0.8 && document.documentElement.scrollWidth<=innerWidth;})()`), "Sampling data table must use the available width without overflowing the page");
-    await activate(student, '[data-testid="student-sampling-tab-stratified"]');
+    await page(student, stageUrl, '[data-testid="student-stage-refinement"]');
+    await activate(student, '[data-testid="student-refinement-tab-sampling"]');
+    await activate(student, '[data-testid="student-refinement-method-stratified"]');
     await activate(student, '[data-testid="student-sampling-stratified-run"]');
-    await visible(student, '[data-testid="immersive-sampling-animation"]');
-    await activate(student, '[data-testid="immersive-sampling-skip"]');
-    await visible(student, '[data-testid="sampling-animation-receipt"]');
-    await activate(student, '[data-testid="immersive-sampling-return"]');
-    const beforeReview = await api<ExperimentData>(student, experimentPath);
-    for (const method of ["simple", "systematic", "pps", "stratified"]) {
-        await activate(student, `[data-testid="student-sampling-tab-${method}"]`);
-        assert(await evaluate(student, `(() => {const preview=document.querySelector('[data-testid="student-sampling-${method}-preview"]');return preview?.getBoundingClientRect().height===360 && preview.querySelector('table tbody tr') && document.documentElement.scrollWidth<=innerWidth;})()`), `${method} completed preview must retain table space and saved records`);
-        await evaluate(student, `document.querySelector('[data-testid="student-sampling-${method}-preview"]').scrollIntoView({block:'center'})`);
-        await browser(student, "screenshot", join(artifacts, `sampling-${method}-completed.png`));
-        assert(await evaluate(student, `(async () => {const preview=document.querySelector('[data-testid="student-sampling-${method}-preview"]');const region=preview.querySelector('[role="region"]');region.scrollTop=region.scrollHeight;await new Promise(requestAnimationFrame);const last=region.querySelector('tbody tr:last-child').getBoundingClientRect();const bounds=region.getBoundingClientRect();return last.top>=bounds.top && last.bottom<=bounds.bottom && preview.getBoundingClientRect().bottom<=document.querySelector('[data-testid="student-stage-actions"]').getBoundingClientRect().top;})()`), `${method} last preview row and pagination must remain reachable above the sticky footer`);
-        if (method === "pps") await browser(student, "fill", '[data-testid="student-sampling-pps-sample-size"]', "999999");
-        await activate(student, `[data-testid="student-sampling-${method}-review"]`);
-        await activate(student, '[data-testid="sampling-animation-step"]');
-        await activate(student, '[data-testid="sampling-animation-step"]');
-        assert(await evaluate(student, `(async () => {const count=()=>document.querySelectorAll('[data-testid="sampling-animation-dot-grid"] [data-selected="true"]').length;const before=count();await new Promise(resolve=>setTimeout(resolve,300));return before===1 && count()===1 && document.body.textContent.includes('已暂停');})()`), `${method} single step must pause at exactly one illustrated unit`);
-        await browser(student, "set", "viewport", "1024", "768", "2");
-        await browser(student, "screenshot", join(artifacts, `sampling-${method}-paused.png`));
-        await activate(student, '[data-testid="immersive-sampling-skip"]');
-        assert(await evaluate(student, `document.querySelector('[data-testid="sampling-animation-receipt"]').textContent.includes("${experiment.populationSize} → ${plan.recommendedSize}")`), `${method} explanation must use saved counts, not edited form values`);
-        await activate(student, '[data-testid="immersive-sampling-return"]');
-        await eventually(() => evaluate(student, `document.activeElement?.getAttribute('data-testid')==='student-sampling-${method}-review'`), `${method} explanation restores focus`);
-        await browser(student, "set", "viewport", "1280", "800", "2");
-        if (method === "pps") await browser(student, "fill", '[data-testid="student-sampling-pps-sample-size"]', String(plan.recommendedSize));
+    await eventually(async () => Boolean((await api<ExperimentData>(student, experimentPath)).samplingResults?.stratified?.completed), "Wave 2 stratified sampling did not save");
+    assert(await evaluate(student, 'document.querySelector("[data-testid=student-refinement-complete]").disabled'), "Stage 4 must require formal fieldwork dispatch after sampling");
+    await evaluate(student, 'document.querySelector("[data-testid=student-refinement-dispatch]").scrollIntoView({block:"center"})');
+    await activate(student, '[data-testid="student-refinement-dispatch"]');
+    await visible(student, '[data-testid="wave-delta-scorecard"]');
+    for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
+        await browser(student, "set", "viewport", String(width), String(height));
+        await evaluate(student, 'scrollTo({top:0,behavior:"instant"})');
+        assert(await evaluate(student, "document.documentElement.scrollWidth<=innerWidth"), `Stage 4 refinement scorecard overflowed at ${width}px`);
+        await browser(student, "screenshot", join(artifacts, `stage4-refinement-${width}.png`));
     }
-    const afterReview = await api<ExperimentData>(student, experimentPath);
-    deepStrictEqual(afterReview.samplingResults, beforeReview.samplingResults, "Viewing explanations must not replace saved samples");
-    assert(afterReview.version === beforeReview.version, "Viewing explanations must not write the experiment");
-    await activate(student, '[data-testid="student-sampling-next"]');
+    await browser(student, "set", "viewport", "1280", "800");
+    await activate(student, '[data-testid="student-refinement-complete"]');
     await visible(student, '[data-testid="student-stage-analysis-report"]');
     experiment = await api(student, experimentPath);
-    assert(experiment.currentStage === 4 && experiment.stage3CompletedAt, "Stage 3 did not persist");
+    assert(experiment.currentStage === 5 && experiment.stage4CompletedAt, "Stage 4 formal wave did not persist");
+    console.log("PASS Stage 4 empirical sample size recalculation, 4-method formal sampling, fieldwork dispatch and WaveDeltaScorecard (real browser)");
+
+    // =====================================================================
+    // Stage 5: 商务分析与决策报告
+    // =====================================================================
     await page(student, stageUrl, '[data-testid="student-stage-analysis-report"]');
     await eventually(() => evaluate(student, 'document.body.textContent.includes("研究目标结果") && document.body.textContent.includes("PPS")'), "Analysis results missing");
     await eventually(() => evaluate(student, `(() => {const panel=document.querySelector('[data-testid="student-target-metrics"]');const table=panel?.querySelector('table');return panel && table && table.getBoundingClientRect().width<=panel.getBoundingClientRect().width && document.documentElement.scrollWidth<=innerWidth;})()`), "Target comparison table must fit the full-width result panel");
     await eventually(() => evaluate(student, `(() => {const rows=document.querySelectorAll('[data-testid="student-target-metrics"] tbody tr');const footer=document.querySelector('[data-testid="student-stage-actions"]');return rows.length>=2 && rows[1].getBoundingClientRect().bottom<=footer.getBoundingClientRect().top;})()`), "The first two comparison results must be fully visible above the footer at 1280×800");
     await browser(student, "screenshot", join(artifacts, "analysis-results.png"));
+    await activate(student, '[data-testid="student-analysis-workspace-waves"]');
+    await visible(student, '[data-testid="wave-loop-snapshot"]');
+    await browser(student, "screenshot", join(artifacts, "stage5-waves-evolution.png"));
+    await activate(student, '[data-testid="student-analysis-workspace-overview"]');
     for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
         await browser(student, "set", "viewport", String(width), String(height));
         await evaluate(student, `scrollTo(0,0);document.querySelector('[data-testid="student-study-context"]').open=true`);
@@ -844,7 +904,7 @@ try {
     await activate(student, '[data-testid="student-analysis-workspace-overview"]');
     await activate(student, '[data-testid="student-analysis-workspace-report"]');
     assert(await evaluate(student, `document.querySelector('[data-testid="student-analysis-report-editor"]').textContent.includes(${JSON.stringify(draftText)})`), "Switching analysis workspaces lost the report draft");
-    const draftKey = `wj:experiment-draft:${experiment.id}:stage:4:version:${experiment.version}`;
+    const draftKey = `wj:experiment-draft:${experiment.id}:stage:5:version:${experiment.version}`;
     await eventually(() => evaluate(student, `localStorage.getItem(${JSON.stringify(draftKey)})?.includes(${JSON.stringify(draftText)})`), "Report draft did not save");
     const experimentRoute = baseUrl + experimentPath;
     await browser(student, "network", "route", experimentRoute, "--body", JSON.stringify({ success: false, error: { code: "TEST_UNAVAILABLE", message: "模拟实验请求失败" } }));
@@ -865,79 +925,99 @@ try {
     await visible(student, '[data-testid="student-analysis-report-editor"]');
     assert(await evaluate(student, `document.querySelector('[data-testid="student-analysis-report-editor"]').textContent.includes(${JSON.stringify(draftText)})`), "Render recovery lost report draft");
     console.log("PASS request retry, page error boundary and draft restoration");
+
     await activate(student, '[data-testid="student-analysis-workspace-univariate"]');
     await visible(student, '[data-testid="student-univariate-workspace"]');
     await browser(student, "fill", '[data-testid="student-univariate-workspace"] textarea', `简单随机样本中的${dictionaryLabel}分布如何？`);
-    await evaluate(student, `(() => {const selects=document.querySelectorAll('[data-testid="student-univariate-workspace"] select');for(const [select,value] of [[selects[0],"simple"],[selects[1],${JSON.stringify(continuousVariable.field)}]]){select.value=value;select.dispatchEvent(new Event("change",{bubbles:true}))}})()`);
-    await browser(student, "check", '[data-testid="student-univariate-workspace"] input[type="checkbox"]');
+    await selectRadixOption(student, '[aria-label="选择抽样方法来源"]', "简单随机");
+    await selectRadixOption(student, '[aria-label="选择目标分析变量"]', dictionaryLabel);
+    await activate(student, "#analysis-weighted-switch");
     await activate(student, '[data-testid="student-analysis-workspace-report"]');
     assert(await evaluate(student, 'document.querySelector("[data-testid=student-univariate-workspace]").getBoundingClientRect().height === 0'), "Inactive analysis workspace remains visible");
     await activate(student, '[data-testid="student-analysis-workspace-univariate"]');
     await visible(student, '[data-testid="student-univariate-workspace"] textarea');
-    assert(await evaluate(student, `document.querySelector('[data-testid="student-univariate-workspace"] textarea').value === ${JSON.stringify(`简单随机样本中的${dictionaryLabel}分布如何？`)} && document.querySelectorAll('[data-testid="student-univariate-workspace"] select')[1].value === ${JSON.stringify(continuousVariable.field)} && document.querySelector('[data-testid="student-univariate-workspace"] input[type="checkbox"]').checked`), "Tab switching lost the analysis question, variable or weighting choice");
+    assert(await evaluate(student, `document.querySelector('[data-testid="student-univariate-workspace"] textarea').value === ${JSON.stringify(`简单随机样本中的${dictionaryLabel}分布如何？`)} && document.querySelector('[aria-label="选择目标分析变量"]').textContent.includes(${JSON.stringify(dictionaryLabel)}) && document.querySelector('#analysis-weighted-switch').getAttribute('aria-checked') === 'true'`), "Tab switching lost the analysis question, variable or weighting choice");
     assert((await api<{ records: unknown[] }>(student, `/api/student/tasks/${task.id}/analyses`)).records.length === 0, "Changing tabs ran analysis implicitly");
-    await browser(student, "uncheck", '[data-testid="student-univariate-workspace"] input[type="checkbox"]');
-    await namedButton(student, "执行并保存分析");
-    await eventually(() => evaluate(student, 'document.body.textContent.includes("已保存分析（1/")'), "Univariate analysis did not save through the UI");
+    await activate(student, "#analysis-weighted-switch");
+    await activate(student, '[data-testid="student-univariate-run"]');
+    await eventually(() => evaluate(student, 'document.body.textContent.includes("已保存实证分析卡片（1/")'), "Univariate analysis did not save through the UI");
     const savedAnalyses = await api<{ records: Array<{ id: number; config: { field: string; method: string }; result: { kind: string } }> }>(student, `/api/student/tasks/${task.id}/analyses`);
     const savedAnalysis = savedAnalyses.records.find(record => record.config.field === continuousVariable.field && record.config.method === "simple");
     assert(savedAnalysis?.result.kind === "numeric", "Saved analysis is missing or is not numeric");
-    await namedButton(student, "引用到报告");
-    await eventually(() => evaluate(student, 'document.body.textContent.includes("移除引用")'), "Saved analysis was not referenced in the report draft");
+    await namedButton(student, "引用到报告附录");
+    await eventually(() => evaluate(student, 'document.body.textContent.includes("移出报告附录")'), "Saved analysis was not referenced in the report draft");
     let referencedAnalysisId = savedAnalysis.id;
-    await evaluate(student, '[...document.querySelectorAll("button")].find(button=>button.textContent.trim()==="移除引用").closest("article").scrollIntoView({block:"center"})');
-    await browser(student, "screenshot", join(artifacts, "stage4-saved-analysis.png"));
-    await browser(student, "fill", '[data-testid="student-univariate-workspace"] textarea', `加权估计${dictionaryLabel}的总体均值是多少？`);
-    await browser(student, "check", '[data-testid="student-univariate-workspace"] input[type="checkbox"]');
-    await namedButton(student, "执行并保存分析");
-    await eventually(() => evaluate(student, 'document.body.textContent.includes("已保存分析（2/")'), "Weighted analysis did not save");
+    await evaluate(student, '[...document.querySelectorAll("button")].find(button=>button.textContent.trim()==="移出报告附录").closest("article").scrollIntoView({block:"center"})');
+    await browser(student, "screenshot", join(artifacts, "stage5-saved-analysis.png"));
+    await browser(student, "fill", '[data-testid="student-univariate-workspace"] textarea', `按运营大区交叉对比${dictionaryLabel}并启用设计加权表现如何？`);
+    await activate(student, "#analysis-weighted-switch");
+    await selectRadixOption(student, '[aria-label="选择交叉分组维度"]', "运营大区");
+    await activate(student, '[data-testid="student-univariate-run"]');
+    await eventually(() => evaluate(student, 'document.body.textContent.includes("已保存实证分析卡片（2/") && document.body.textContent.includes("客群交叉对比")'), "Weighted cross-tab analysis did not save");
     await browser(student, "set", "viewport", "1280", "1100");
     await evaluate(student, 'document.querySelector("[data-testid=student-univariate-workspace] article").scrollIntoView({block:"center"})');
-    assert(await evaluate(student, 'document.querySelector("[data-testid=student-univariate-workspace] article").textContent.includes("设计加权比率点估计")'), "Weighted analysis lacks its interpretation label");
-    await browser(student, "screenshot", join(artifacts, "stage4-weighted-analysis.png"));
+    await browser(student, "screenshot", join(artifacts, "stage5-weighted-crosstab.png"));
     await browser(student, "set", "viewport", "1280", "800");
 
-    // P0 上游失效：保存引用后重开阶段 3，同种子重抽使历史分析永久过期
+    // P0 上游失效：保存引用后重开阶段 4，重抽并重发问卷使历史分析永久过期
     const beforeReopen = await api<ExperimentData>(student, experimentPath);
-    experiment = await api<ExperimentData>(student, `${experimentPath}/stages/3/reopen`, "POST", { observedVersion: beforeReopen.version });
-    assert(experiment.currentStage === 3 && experiment.stage3CompletedAt === null, "Stage 3 reopen did not roll back");
+    const formalWavePlan = beforeReopen.samplePlan!;
+    experiment = await api<ExperimentData>(student, `${experimentPath}/stages/4/reopen`, "POST", { observedVersion: beforeReopen.version });
+    assert(experiment.currentStage === 4 && experiment.stage4CompletedAt === null, "Stage 4 reopen did not roll back");
     assert((experiment.analysisReferences ?? []).length === 0, "Reopening upstream kept report references");
     assert((experiment.samplingGeneration ?? 0) === (beforeReopen.samplingGeneration ?? 0) + 1, "Reopening upstream did not advance the sampling generation");
     const staleRecords = await api<{ records: Array<{ id: number; stale: boolean }> }>(student, `/api/student/tasks/${task.id}/analyses`);
     assert(staleRecords.records.length === 2 && staleRecords.records.every(record => record.stale), "Reopening upstream did not mark saved analyses stale");
-    for (const method of ["simple", "systematic", "pps"] as const) {
-        await api(student, `/api/student/tasks/${task.id}/sampling`, "POST", { method, params: { sampleSize: plan.recommendedSize, seed: 1701, ...(method === "pps" ? { sizeField: DINING_PPS_SIZE_FIELD } : {}) } });
+    for (const method of ["simple", "systematic", "pps", "stratified"] as const) {
+        if (method === "stratified") {
+            const half = Math.floor(plan.recommendedSize / 2);
+            await api(student, `/api/student/tasks/${task.id}/sampling`, "POST", {
+                method: "stratified",
+                params: {
+                    stratifyBy: "运营大区",
+                    seed: 1701,
+                    layers: [
+                        { name: "浦东运营区", ratio: 0.5, sampleCount: half },
+                        { name: "浦西运营区", ratio: 0.5, sampleCount: plan.recommendedSize - half },
+                    ],
+                },
+            });
+        } else {
+            await api(student, `/api/student/tasks/${task.id}/sampling`, "POST", { method, params: { sampleSize: plan.recommendedSize, seed: 1701, ...(method === "pps" ? { sizeField: DINING_PPS_SIZE_FIELD } : {}) } });
+        }
     }
-    experiment = await api<ExperimentData>(student, `${experimentPath}/stages/3/complete`, "POST", { observedVersion: (await api<ExperimentData>(student, experimentPath)).version });
-    assert(experiment.currentStage === 4, "Stage 3 recompletion failed");
-    // 保存报告与提交共用引用校验；此处以阶段四保存触发 STALE_REFERENCE
-    const staleReport = "上游重开后旧引用不得保存，必须重新运行或明确移除。" .repeat(6);
-    const staleSave = await evaluate<{ status: number; code?: string }>(student, `(async()=>{const r=await fetch(${JSON.stringify(`${experimentPath}/stages/4/complete`)},{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({observedVersion:${experiment.version},reportContent:${JSON.stringify(`<p>${staleReport}</p>`)},analysisReferences:[${savedAnalysis.id}]})});const p=await r.json();return {status:r.status,code:p.error?.code}})()`);
+    experiment = await api<ExperimentData>(student, `/api/student/tasks/${task.id}/fieldwork/dispatch`, "POST", { observedVersion: (await api<ExperimentData>(student, experimentPath)).version, seed: 2701 });
+    experiment = await api<ExperimentData>(student, `${experimentPath}/stages/4/complete`, "POST", { observedVersion: experiment.version, samplePlan: formalWavePlan });
+    assert(experiment.currentStage === 5, "Stage 4 recompletion failed");
+    // 保存报告与提交共用引用校验；此处以阶段五保存触发 STALE_REFERENCE
+    const staleReport = "上游重开后旧引用不得保存，必须重新运行或明确移除。".repeat(6);
+    const staleSave = await evaluate<{ status: number; code?: string }>(student, `(async()=>{const r=await fetch(${JSON.stringify(`${experimentPath}/stages/5/complete`)},{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({observedVersion:${experiment.version},reportContent:${JSON.stringify(`<p>${staleReport}</p>`)},analysisReferences:[${savedAnalysis.id}]})});const p=await r.json();return {status:r.status,code:p.error?.code}})()`);
     const debugState = await api<ExperimentData>(student, experimentPath);
-    assert(staleSave.status === 409 && staleSave.code === "STALE_REFERENCE", `Stale reference report save was not rejected: ${JSON.stringify(staleSave)} local=${JSON.stringify({ version: experiment.version, stage: experiment.currentStage, s3: experiment.stage3CompletedAt, s4: experiment.stage4CompletedAt })} server=${JSON.stringify({ version: debugState.version, stage: debugState.currentStage, s3: debugState.stage3CompletedAt, s4: debugState.stage4CompletedAt })}`);
+    assert(staleSave.status === 409 && staleSave.code === "STALE_REFERENCE", `Stale reference report save was not rejected: ${JSON.stringify(staleSave)} local=${JSON.stringify({ version: experiment.version, stage: experiment.currentStage, s4: experiment.stage4CompletedAt, s5: experiment.stage5CompletedAt })} server=${JSON.stringify({ version: debugState.version, stage: debugState.currentStage, s4: debugState.stage4CompletedAt, s5: debugState.stage5CompletedAt })}`);
     await page(student, stageUrl, '[data-testid="student-analysis-report"]');
     await activate(student, '[data-testid="student-analysis-workspace-univariate"]');
-    await eventually(() => evaluate(student, 'document.querySelector("[data-testid=student-univariate-workspace] article")?.textContent.includes("来源已过期")'), "Stale analysis warning missing in the student UI");
-    assert(await evaluate(student, `[...document.querySelectorAll("button")].filter(button=>button.textContent.trim()==="引用到报告").every(button=>button.disabled)`), "Stale analyses must not be newly referenceable");
+    await eventually(() => evaluate(student, 'document.querySelector("[data-testid=student-univariate-workspace] article")?.textContent.includes("此旧分析卡片已过期")'), "Stale analysis warning missing in the student UI");
+    assert(await evaluate(student, `[...document.querySelectorAll("button")].filter(button=>button.textContent.trim()==="引用到报告附录").every(button=>button.disabled)`), "Stale analyses must not be newly referenceable");
     await evaluate(student, 'document.querySelector("[data-testid=student-univariate-workspace] article").scrollIntoView({block:"center"})');
     await browser(student, "screenshot", join(artifacts, "stale-analysis-warning.png"));
     // 页面重载后组件状态清空：重新填写研究问题与变量后再运行（草稿契约不含分析配置）
     await browser(student, "fill", '[data-testid="student-univariate-workspace"] textarea', `重开后简单随机样本中的${dictionaryLabel}分布如何？`);
-    await evaluate(student, `(() => {const selects=document.querySelectorAll('[data-testid="student-univariate-workspace"] select');for(const [select,value] of [[selects[0],"simple"],[selects[1],${JSON.stringify(continuousVariable.field)}]]){select.value=value;select.dispatchEvent(new Event("change",{bubbles:true}))}})()`);
-    await namedButton(student, "执行并保存分析");
-    await eventually(() => evaluate(student, 'document.body.textContent.includes("已保存分析（3/")'), "Analysis after reopen did not save");
+    await selectRadixOption(student, '[aria-label="选择抽样方法来源"]', "简单随机");
+    await selectRadixOption(student, '[aria-label="选择目标分析变量"]', dictionaryLabel);
+    await activate(student, '[data-testid="student-univariate-run"]');
+    await eventually(() => evaluate(student, 'document.body.textContent.includes("已保存实证分析卡片（3/")'), "Analysis after reopen did not save");
     const refreshedRecords = await api<{ records: Array<{ id: number; stale: boolean; config: { field: string; method: string } }> }>(student, `/api/student/tasks/${task.id}/analyses`);
     const freshAnalysis = refreshedRecords.records.find(record => !record.stale && record.config.field === continuousVariable.field);
     assert(freshAnalysis, "Fresh analysis after reopen is missing");
-    const referenceFocused = await evaluate<boolean>(student, `(() => {const button=[...document.querySelectorAll("button")].find(entry=>!entry.disabled && entry.textContent.trim()==="引用到报告");if(!button)return false;button.focus();return document.activeElement===button;})()`);
+    const referenceFocused = await evaluate<boolean>(student, `(() => {const button=[...document.querySelectorAll("button")].find(entry=>!entry.disabled && entry.textContent.trim()==="引用到报告附录");if(!button)return false;button.focus();return document.activeElement===button;})()`);
     assert(referenceFocused, "Enabled reference button was not focusable");
     await browser(student, "press", "Enter");
-    await eventually(() => evaluate(student, 'document.body.textContent.includes("移除引用")'), "Keyboard reference was not applied");
+    await eventually(() => evaluate(student, 'document.body.textContent.includes("移出报告附录")'), "Keyboard reference was not applied");
     referencedAnalysisId = freshAnalysis.id;
-    console.log("PASS upstream reopen, stale reference gate, resample and re-analysis (real browser)");
+    console.log("PASS upstream reopen, stale reference gate, resample/redispatch and re-analysis (real browser)");
 
     await activate(student, '[data-testid="student-analysis-workspace-report"]');
-    const report = "本次实验以食堂午间十五分钟服务时段的平均等待分钟数为研究目标。我们比较了简单随机、系统抽样与以客流量为规模变量的PPS估计及设计标准误，并结合总体真值讨论精度和代表性。样本量规划采用有限总体校正，本次无回答率假设为零。分析单位是服务时段而非就餐学生，单次样本差异不能直接解释为服务质量的因果差异。";
+    const report = "本次商务统计调研以连锁生鲜超市晚高峰门店平均履约等待时长为核心决策指标。我们在首轮试投后完成闪电废卷与直线卷质检清洗，识别出大区应答差异与无回答损耗，并在二轮正式投放中综合比较了简单随机、系统抽样、以历史日均客单量为规模变量的PPS抽样及按运营大区分层抽样的点估计与设计标准误，结合总体参考真值提出履约运力弹性调配方案。";
     await browser(student, "fill", '[data-testid="student-analysis-report-editor"]', report);
     await browser(student, "screenshot", join(artifacts, "report-editor.png"));
     for (const [width, height] of [[1024, 768], [1440, 900], [1920, 1080]]) {
@@ -957,8 +1037,8 @@ try {
     await captureDesktop(student, "submission-questionnaire", '[data-testid="student-preview-submit-panel"]');
     await activate(student, '[data-testid="student-preview-tab-report"]');
     experiment = await api(student, experimentPath);
-    assert(experiment.stage4CompletedAt, "Stage 4 did not persist");
-    console.log("PASS four stage transitions, rendered pages and PPS analysis");
+    assert(experiment.stage5CompletedAt, "Stage 5 did not persist");
+    console.log("PASS five stage multi-wave transitions, rendered pages and PPS/cross-tab analysis");
 
     async function submit() {
         await page(student, `/student/task/${task!.id}/preview`, '[data-testid="student-preview-submit"]');
@@ -981,8 +1061,11 @@ try {
     assert(frozenStudent.snapshot.analysisAppendices[0]?.id === referencedAnalysisId, "Submission did not freeze selected analysis");
     assert(JSON.stringify(frozenTeacher.analysisAppendices) === JSON.stringify(frozenStudent.snapshot.analysisAppendices), "Student and teacher did not receive the same frozen appendices");
     await page(teacher, `/teacher/grading/${experiment.id}`, "#grading-score-report");
-    await namedButton(teacher, "报告");
-    await eventually(() => evaluate(teacher, `document.body.textContent.includes(${JSON.stringify(`简单随机样本中的${dictionaryLabel}分布如何？`)})`), "Teacher grading view is missing the frozen analysis appendix");
+    await namedButton(teacher, "试投质检与调优");
+    await visible(teacher, '[data-testid="wave-loop-snapshot"]');
+    await browser(teacher, "screenshot", join(artifacts, "teacher-grading-waves.png"));
+    await namedButton(teacher, "商业报告");
+    await eventually(() => evaluate(teacher, `document.body.textContent.includes(${JSON.stringify(`重开后简单随机样本中的${dictionaryLabel}分布如何？`)})`), "Teacher grading view is missing the frozen analysis appendix");
     await evaluate(teacher, 'document.querySelector("[data-testid=analysis-appendices]").scrollIntoView({block:"start"})');
     await browser(teacher, "screenshot", join(artifacts, "teacher-submitted-appendix.png"));
     console.log("PASS saved univariate analysis, report reference, submission snapshot and teacher appendix");
@@ -995,8 +1078,8 @@ try {
     await captureDesktop(student, "submission-rejected", '[data-testid="student-submission-rejection"]');
     experiment = await api(student, experimentPath);
     await page(student, stageUrl, '[data-testid="student-experiment-rejection-notice"]');
-    experiment = await api(student, `${experimentPath}/stages/4/reopen`, "POST", { observedVersion: experiment.version });
-    experiment = await api(student, `${experimentPath}/stages/4/complete`, "POST", { observedVersion: experiment.version, reportContent: `<p>${report}补充说明：各设计的误差应结合抽样框排序和规模变量与目标变量的关系解释。</p>`, analysisReferences: [referencedAnalysisId] });
+    experiment = await api(student, `${experimentPath}/stages/5/reopen`, "POST", { observedVersion: experiment.version });
+    experiment = await api(student, `${experimentPath}/stages/5/complete`, "POST", { observedVersion: experiment.version, reportContent: `<p>${report}补充说明：各设计的误差应结合抽样框排序和规模变量与目标变量的关系解释。</p>`, analysisReferences: [referencedAnalysisId] });
     await submit();
     console.log("PASS UI submission, teacher rejection and student resubmission");
 
@@ -1091,18 +1174,34 @@ try {
     await activate(student2, '[data-testid="student-questionnaire-step-1"]');
     await eventually(() => evaluate(student2, 'document.querySelector(\'[data-testid="student-questionnaire-title"]\')?.value === "空功能路径预试"'), "Stale student window lost its questionnaire draft");
     await activate(student2, '[data-testid="student-refresh-experiment"]');
-    await visible(student2, '[data-testid="student-stage-sample-plan"]');
+    await visible(student2, '[data-testid="student-stage-pilot-wave"]');
     console.log("PASS dual student windows: stale version conflict, draft retention and explicit page refresh");
 
+    const emptyPilotPlan = { estimationType: "proportion", confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize, finalSampleSize: 40 };
+    emptyExperiment = await api<ExperimentData>(student, `${emptyPath}/plan`, "POST", { observedVersion: emptyExperiment.version, samplePlan: emptyPilotPlan });
+    await api(student, `/api/student/tasks/${emptyTask.id}/sampling`, "POST", { method: "simple", params: { sampleSize: 40, seed: 4241 } });
+    emptyExperiment = await api<ExperimentData>(student, emptyPath);
+    emptyExperiment = await api<ExperimentData>(student, `/api/student/tasks/${emptyTask.id}/fieldwork/dispatch`, "POST", { observedVersion: emptyExperiment.version, seed: 5241 });
+    emptyExperiment = await api<ExperimentData>(student, `${emptyPath}/stages/2/complete`, "POST", { observedVersion: emptyExperiment.version, samplePlan: emptyPilotPlan });
+    emptyExperiment = await api<ExperimentData>(student, `${emptyPath}/stages/3/complete`, "POST", {
+        observedVersion: emptyExperiment.version,
+        adjustmentPlan: {
+            identifiedIssues: ["unit_nonresponse_gap"],
+            plannedActions: ["recalibrate_sample_size"],
+            rationale: "无字典路径验证首轮试投诊断后推进正式轮样本量规划与双方法抽样。",
+        },
+    });
     const emptyPlan = { estimationType: "proportion", confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize, finalSampleSize: recommendedSize };
-    emptyExperiment = await api<ExperimentData>(student, `${emptyPath}/stages/2/complete`, "POST", { observedVersion: emptyExperiment.version, samplePlan: emptyPlan });
+    emptyExperiment = await api<ExperimentData>(student, `${emptyPath}/plan`, "POST", { observedVersion: emptyExperiment.version, samplePlan: emptyPlan });
     for (const method of ["simple", "systematic"] as const) {
         await api(student, `/api/student/tasks/${emptyTask.id}/sampling`, "POST", { method, params: { sampleSize: recommendedSize, seed: 4242 } });
     }
-    emptyExperiment = await api<ExperimentData>(student, `${emptyPath}/stages/3/complete`, "POST", { observedVersion: emptyExperiment.version });
-    assert(emptyExperiment.currentStage === 4, "Empty-path stage 3 did not complete");
-    const emptyReport = "本实验用于验证在没有变量字典、没有题目关联且不引用任何分析时，学生仍能完成四阶段并提交报告。抽样与规划按任务策略执行，报告只描述样本与设计选择，不声称任何统计推断，也不把预试答案当作数据来源。该路径的目的只是证明这些功能全部可选。";
-    emptyExperiment = await api<ExperimentData>(student, `${emptyPath}/stages/4/complete`, "POST", { observedVersion: emptyExperiment.version, reportContent: `<p>${emptyReport}</p>`, analysisReferences: [] });
+    emptyExperiment = await api<ExperimentData>(student, emptyPath);
+    emptyExperiment = await api<ExperimentData>(student, `/api/student/tasks/${emptyTask.id}/fieldwork/dispatch`, "POST", { observedVersion: emptyExperiment.version, seed: 5242 });
+    emptyExperiment = await api<ExperimentData>(student, `${emptyPath}/stages/4/complete`, "POST", { observedVersion: emptyExperiment.version, samplePlan: emptyPlan });
+    assert(emptyExperiment.currentStage === 5, "Empty-path stage 4 did not complete");
+    const emptyReport = "本实验用于验证在没有变量字典、没有题目关联且不引用任何分析时，学生仍能完成全部五阶段闭环并提交商业报告。抽样与投放按任务策略执行，报告只描述样本与设计选择，不声称任何统计推断，也不把预试答案当作数据来源。该路径证明变量字典与附录功能全部安全可选。";
+    emptyExperiment = await api<ExperimentData>(student, `${emptyPath}/stages/5/complete`, "POST", { observedVersion: emptyExperiment.version, reportContent: `<p>${emptyReport}</p>`, analysisReferences: [] });
 
     await page(student, emptyStageUrl, '[data-testid="student-stage-analysis-report"]');
     await activate(student, '[data-testid="student-analysis-workspace-univariate"]');
@@ -1157,7 +1256,7 @@ try {
     await eventually(() => evaluate(teacher, `document.body.textContent.includes('当前仅显示任务 #${emptyTask.id}') && document.body.textContent.includes('共 1 条记录')`), "Task link must open scoped grading");
     await browser(teacher, "set", "viewport", "1024", "768", "2");
     await browser(teacher, "screenshot", join(artifacts, "grading-task-scope.png"));
-    await browser(teacher, "click", `[data-testid="teacher-grading-item-${emptyExperiment.id}"]`);
+    await activate(teacher, `[data-testid="teacher-grading-item-${emptyExperiment.id}"]`);
     await visible(teacher, "#grading-score-report");
     assert(await evaluate(teacher, `new URLSearchParams(location.search).get('taskId')==='${emptyTask.id}'`), "Opening detail must keep the task scope");
     for (const [key, score] of [["questionnaire", "72"], ["process", "81"], ["report", "93"]]) await browser(teacher, "fill", `#grading-score-${key}`, score!);
@@ -1231,6 +1330,18 @@ try {
     await activate(teacher, 'a[href*="/students"]');
     await visible(teacher, '[data-testid="teacher-student-search"]');
     await captureDesktop(teacher, 'teacher-student-list', '[data-testid="teacher-student-search"]');
+
+    const showcaseSession = `${sessionPrefix}-showcase`;
+    try {
+        for (const role of ["student", "teacher", "admin"] as const) {
+            await page(showcaseSession, `/${role}/login`, "input[type=password]");
+            await browser(showcaseSession, "set", "viewport", "1440", "900");
+            assert(await evaluate(showcaseSession, "document.documentElement.scrollWidth <= innerWidth"), `${role} login showcase overflowed at 1440px`);
+            await browser(showcaseSession, "screenshot", join(artifacts, `login-${role}-1440.png`));
+        }
+    } finally {
+        await browser(showcaseSession, "close").catch(() => undefined);
+    }
 
     await Bun.write(join(artifacts, "result.json"), JSON.stringify({ success: true, taskId: task.id, experimentId: experiment.id, grade: 90, exportBytes: download.bytes, emptyFeature: { taskId: emptyTask.id, experimentId: emptyExperiment.id }, conflictTopicId: conflictTopic.id }, null, 2));
 } catch (cause) {

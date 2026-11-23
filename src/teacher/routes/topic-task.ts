@@ -19,6 +19,7 @@ import {
     deleteTeacherTopic,
     updateTeacherTopicBasics,
     updateTopicFieldMapping,
+    updateTopicFieldworkConfig,
     updateTopicSamplingPolicy,
     updateTopicWeightConfig,
 } from "../topic/manage-service";
@@ -200,6 +201,29 @@ const topicSamplingPolicyRoutes: RouteDefinition = {
             teacherId: currentTeacherId,
             topicId: id,
             samplingPolicy: body.samplingPolicy,
+        });
+        if (!result.ok) return error(result.message, result.code, result.status);
+        return json({ success: true });
+    },
+};
+
+const topicFieldworkConfigRoutes: RouteDefinition = {
+    async PUT(req) {
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
+        const id = parsePositiveRouteId(req);
+        if (!id) return error("Invalid ID", "INVALID_ID");
+
+        const topicRow = await requireTopicOwner(id, currentTeacherId);
+        if (!topicRow) return error("实验模板不存在", "NOT_FOUND", 404);
+        if (topicRow.status === 1 || topicRow.hasTasks) {
+            return error("已发布或已分配实验任务的模板不能修改虚拟发放配置", "FORBIDDEN", 403);
+        }
+
+        const body = await parseBody<{ fieldworkConfig?: unknown }>(req);
+        const result = await updateTopicFieldworkConfig({
+            teacherId: currentTeacherId,
+            topicId: id,
+            fieldworkConfig: body.fieldworkConfig,
         });
         if (!result.ok) return error(result.message, result.code, result.status);
         return json({ success: true });
@@ -431,6 +455,7 @@ export {
     topicDetailRoutes,
     topicExcelUploadRoutes,
     topicFieldMappingRoutes,
+    topicFieldworkConfigRoutes,
     topicItemRoutes,
     topicPublishCheckRoutes,
     topicRecommendQuestionRoutes,

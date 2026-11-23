@@ -1,10 +1,12 @@
 export type { QuestionType, Question, QuestionnaireData } from "@/lib/questionnaire-types";
-import type { MethodKey, ExperimentData } from "@/domain/experiment/types";
-export type { MethodKey, ExperimentStatus, TaskStatus, SamplePlanData, SamplingResultsData, ExperimentData } from "@/domain/experiment/types";
+import type { QuestionnaireData } from "@/lib/questionnaire-types";
+import type { MethodKey, ExperimentData, SamplePlanData } from "@/domain/experiment/types";
+export type { MethodKey, ExperimentStatus, TaskStatus, SamplePlanData, SamplingResultsData, ExperimentWaveView, ExperimentData } from "@/domain/experiment/types";
 import type { CurrentStudent, StudentTask, TaskDetail, Announcement, SubmissionDetail } from "@/domain/experiment/student-contracts";
 export type { CurrentStudent, StudentTask, TopicAttachment, TaskDetail, Announcement, SubmissionDetail } from "@/domain/experiment/student-contracts";
 import type { AnalysisMetricsData } from "@/domain/experiment/analysis-types";
 export type { AnalysisNumericFieldMetrics, AnalysisCategoricalFieldMetrics, TargetMethodMetrics, TargetAnalysisMetrics, AnalysisMetricsData } from "@/domain/experiment/analysis-types";
+import type { CleaningConfig } from "@/domain/fieldwork";
 import { createApiClient } from "@/lib/api-client";
 export type { ApiResponse } from "@/lib/api-client";
 const { request, download: downloadStudentFile, resourceUrl: studentResourceUrl } = createApiClient("student");
@@ -36,6 +38,26 @@ export const tasksApi = {
 
 export const experimentApi = {
     get: (taskId: number) => request<ExperimentData>(`/api/student/tasks/${taskId}/experiment`),
+    saveWavePlan: (taskId: number, observedVersion: number, samplePlan: SamplePlanData | Record<string, unknown>) => request<ExperimentData>(
+        `/api/student/tasks/${taskId}/experiment/plan`,
+        { method: "POST", body: JSON.stringify({ observedVersion, samplePlan }) },
+    ),
+    saveWaveQuestionnaire: (taskId: number, observedVersion: number, questionnaire: QuestionnaireData) => request<ExperimentData>(
+        `/api/student/tasks/${taskId}/experiment/wave-questionnaire`,
+        { method: "POST", body: JSON.stringify({ observedVersion, questionnaire }) },
+    ),
+    dispatchFieldwork: (taskId: number, observedVersion: number, seed?: number) => request<ExperimentData>(
+        `/api/student/tasks/${taskId}/fieldwork/dispatch`,
+        { method: "POST", body: JSON.stringify({ observedVersion, ...(seed !== undefined ? { seed } : {}) }) },
+    ),
+    updateCleaningConfig: (taskId: number, observedVersion: number, cleaningConfig: CleaningConfig, waveNumber?: number) => request<ExperimentData>(
+        `/api/student/tasks/${taskId}/fieldwork/cleaning`,
+        { method: "POST", body: JSON.stringify({ observedVersion, cleaningConfig, ...(waveNumber !== undefined ? { waveNumber } : {}) }) },
+    ),
+    createRefinementWave: (taskId: number, observedVersion: number) => request<ExperimentData>(
+        `/api/student/tasks/${taskId}/fieldwork/new-wave`,
+        { method: "POST", body: JSON.stringify({ observedVersion }) },
+    ),
     completeStage: (taskId: number, stage: number, observedVersion: number, data: Record<string, unknown>) => request<ExperimentData>(
         `/api/student/tasks/${taskId}/experiment/stages/${stage}/complete`,
         { method: "POST", body: JSON.stringify({ ...data, observedVersion }) },

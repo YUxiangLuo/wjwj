@@ -54,7 +54,8 @@ function experiment(version: number, reportContent: string, overrides: Record<st
         id: 88,
         taskId: 2,
         version,
-        currentStage: 4,
+        currentStage: 5,
+        activeWaveNumber: 2,
         status: "in_progress",
         questionnaire: { title: "问卷", welcomeText: "欢迎参与本次抽样调查实验。", endingText: "感谢参与本次抽样调查实验。", questions: [] },
         samplePlan: { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 100, finalSampleSize: 100 },
@@ -64,6 +65,7 @@ function experiment(version: number, reportContent: string, overrides: Record<st
         stage2CompletedAt: "2026-03-01T00:00:00.000Z",
         stage3CompletedAt: "2026-03-01T00:00:00.000Z",
         stage4CompletedAt: "2026-03-01T00:00:00.000Z",
+        stage5CompletedAt: "2026-03-01T00:00:00.000Z",
         populationSize: 1000,
         ...overrides,
     };
@@ -93,7 +95,7 @@ test("rejected experiment keeps the teacher reason visible while the student edi
                     publishedAt: "2026-03-01T00:00:00.000Z",
                     deadline: "2099-03-01T00:00:00.000Z",
                     status: "rejected",
-                    currentStage: 4,
+                    currentStage: 5,
                     rejectReason,
                     populationSize: 1000,
                     attachments: [],
@@ -133,7 +135,7 @@ test("completed stages open read-only without reopening or clearing the current 
             return Response.json({ success: true, data: experiment(5, `<p>${"当前报告草稿".repeat(30)}</p>`) });
         }
         if (url.endsWith("/api/student/tasks/2")) {
-            return Response.json({ success: true, data: { id: 2, topicId: 3, name: "查看实验", publishedAt: "2026-03-01T00:00:00.000Z", deadline: "2099-03-01T00:00:00.000Z", status: "in_progress", currentStage: 4, populationSize: 1000, attachments: [], recommendQuestions: [] } });
+            return Response.json({ success: true, data: { id: 2, topicId: 3, name: "查看实验", publishedAt: "2026-03-01T00:00:00.000Z", deadline: "2099-03-01T00:00:00.000Z", status: "in_progress", currentStage: 5, populationSize: 1000, attachments: [], recommendQuestions: [] } });
         }
         if (url.endsWith("/api/student/tasks/2/analysis-metrics")) {
             return Response.json({ success: true, data: { numericFields: [], categoricalFields: [], numeric: {}, categorical: {} } });
@@ -183,7 +185,7 @@ test("version conflict asks for one full-page refresh without fetching into the 
                     publishedAt: "2026-03-01T00:00:00.000Z",
                     deadline: "2099-03-01T00:00:00.000Z",
                     status: "in_progress",
-                    currentStage: 4,
+                    currentStage: 5,
                     populationSize: 1000,
                     attachments: [],
                     recommendQuestions: [],
@@ -193,7 +195,7 @@ test("version conflict asks for one full-page refresh without fetching into the 
         if (url.endsWith("/api/student/tasks/2/analysis-metrics")) {
             return Response.json({ success: true, data: { numericFields: [], categoricalFields: [], numeric: {}, categorical: {} } });
         }
-        if (url.endsWith("/api/student/tasks/2/experiment/stages/4/complete") && init?.method === "POST") {
+        if (url.endsWith("/api/student/tasks/2/experiment/stages/5/complete") && init?.method === "POST") {
             completeCount += 1;
             return Response.json({ success: false, error: { code: "VERSION_CONFLICT", message: "记录已发生变化" } }, { status: 409 });
         }

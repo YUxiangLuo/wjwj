@@ -1,12 +1,12 @@
 {
   "name": "sampling-vlab",
-  "version": "0.1.0",
-  "description": "Sampling statistics virtual simulation teaching platform built with Bun",
+  "version": "0.2.0",
+  "description": "Business statistics & adaptive survey sampling virtual simulation platform built with Bun",
   "private": true,
   "type": "module",
-  "packageManager": "bun@1.4.2",
+  "packageManager": "bun@1.4.5",
   "engines": {
-    "bun": "1.4.2"
+    "bun": ">=1.4.2"
   },
   "overrides": {
     "prosemirror-model": "1.25.11"

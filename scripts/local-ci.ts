@@ -7,7 +7,7 @@ import { DOGFOOD_NAMES } from "../src/db/seeds/dogfood-fixtures";
 const root = resolve(import.meta.dir, "..");
 const packageJson = await Bun.file(join(root, "package.json")).json() as { engines?: { bun?: string } };
 const expectedBun = packageJson.engines?.bun;
-if (expectedBun && Bun.version !== expectedBun) {
+if (expectedBun && !Bun.semver.satisfies(Bun.version, expectedBun)) {
     throw new Error(`本地 CI 需要 Bun ${expectedBun}，当前为 ${Bun.version}。`);
 }
 
@@ -44,12 +44,12 @@ async function verifyStoredMappingGuard(env: Record<string, string | undefined>)
     const fixtureDatabase = new SQL(String(databaseUrl));
     try {
         const rows = await fixtureDatabase`SELECT id, field_mapping FROM topic WHERE name=${DOGFOOD_NAMES.topicA}`;
-        if (rows.length !== 1) throw new Error("映射校验回归缺少唯一幸福感课题");
+        if (rows.length !== 1) throw new Error("映射校验回归缺少唯一茶饮定价旗舰课题");
         const row = rows[0]!;
         const original = row.field_mapping;
         const drifted = structuredClone(original);
-        drifted.others = drifted.others.filter((field: string) => field !== "居住方式");
-        drifted.stratified.push("居住方式");
+        drifted.others = drifted.others.filter((field: string) => field !== "消费场景偏好");
+        drifted.stratified.push("消费场景偏好");
         try {
             await fixtureDatabase`UPDATE topic SET field_mapping=${JSON.stringify(drifted)}::text::jsonb WHERE id=${row.id}`;
             const child = Bun.spawn([process.execPath, join(root, "src/db/seeds/check-default.ts")], {

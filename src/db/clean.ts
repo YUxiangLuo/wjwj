@@ -24,6 +24,7 @@ const PROJECT_TABLES = [
     "assistant",
     "sampling_attempt",
     "saved_analysis",
+    "experiment_wave",
     "experiment",
     "student",
     "task",

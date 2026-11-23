@@ -4,7 +4,7 @@
  * them can never leave a binding in its temporal dead zone.
  */
 
-export const DEMO_CLASS_NAME = "2026级统计学1班";
+export const DEMO_CLASS_NAME = "2026级商务统计1班";
 
 export interface DemoStudentAccount {
     studentId: string;
@@ -60,9 +60,6 @@ export const DOGFOOD_ANCHORS = {
     rejected: "S2607",
     auditedSecondary: "P2602",
 } as const;
-
-/** Progress buckets the main task must cover exactly, shared by seed check and docs gate. */
-/** Every main-class student is eligible for the random demo-login prefill. */
 
 /** Every main-class student is eligible for the random demo-login prefill. */
 export const DEMO_STUDENT_ACCOUNTS_SOURCE: readonly DemoStudentAccount[] = DOGFOOD_ROSTER.main;

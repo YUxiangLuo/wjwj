@@ -16,6 +16,7 @@ import { formatDateTimeDisplay } from "@/utils/format";
 import { submissionsApi } from "../api-client";
 import type { SubmissionDetail } from "@/domain/experiment/student-contracts";
 import { AnalysisAppendices } from "@/components/AnalysisAppendices";
+import { WaveLoopSnapshot } from "@/components/WaveLoopSnapshot";
 import { TargetMetricsPanel } from "../components/TargetMetricsPanel";
 
 const statusConfig: Record<SubmissionDetail["status"], { label: string; intent: StatusBadgeIntent }> = {
@@ -124,17 +125,29 @@ export function SubmissionDetailPage() {
                         </div>
                         <div className="p-5">
                             <Tabs defaultValue="report">
-                                <TabsList className="grid h-auto w-full grid-cols-4">
-                                    <TabsTrigger value="report">实验报告</TabsTrigger>
+                                <TabsList className={`grid h-auto w-full ${(detail.snapshot.waves?.length ?? 0) > 0 ? "grid-cols-5" : "grid-cols-4"}`}>
+                                    <TabsTrigger value="report">商业决策报告</TabsTrigger>
+                                    {(detail.snapshot.waves?.length ?? 0) > 0 && (
+                                        <TabsTrigger value="waves">试投质检与调优闭环</TabsTrigger>
+                                    )}
                                     <TabsTrigger value="questionnaire">问卷</TabsTrigger>
-                                    <TabsTrigger value="plan">抽样方案</TabsTrigger>
-                                    <TabsTrigger value="sampling">抽样结果</TabsTrigger>
+                                    <TabsTrigger value="plan">正式轮样本规划</TabsTrigger>
+                                    <TabsTrigger value="sampling">正式轮抽样结果</TabsTrigger>
                                 </TabsList>
                                 <TabsContent value="report" className="mt-4 rounded-surface bg-muted p-5">
                                     <RichTextContent html={detail.snapshot.reportContent} className="text-label leading-relaxed" emptyFallback="暂无报告内容" />
                                     {detail.snapshot.targetMetrics && <div className="mt-6"><TargetMetricsPanel target={detail.snapshot.targetMetrics} /></div>}
                                     <AnalysisAppendices records={detail.snapshot.analysisAppendices ?? []} />
                                 </TabsContent>
+                                {(detail.snapshot.waves?.length ?? 0) > 0 && (
+                                    <TabsContent value="waves" className="mt-4">
+                                        <WaveLoopSnapshot
+                                            waves={detail.snapshot.waves}
+                                            adjustmentPlan={detail.snapshot.adjustmentPlan}
+                                            unitLabel={detail.snapshot.targetMetrics?.unit ?? ""}
+                                        />
+                                    </TabsContent>
+                                )}
                                 <TabsContent value="questionnaire" className="mt-4"><QuestionnaireSnapshot questionnaire={detail.snapshot.questionnaire} /></TabsContent>
                                 <TabsContent value="plan" className="mt-4"><SamplePlanSnapshot value={detail.snapshot.samplePlan} populationSize={detail.snapshot.populationSize} /></TabsContent>
                                 <TabsContent value="sampling" className="mt-4"><SamplingResultsSnapshot value={detail.snapshot.samplingResults} samplingPolicy={detail.snapshot.samplingPolicy} /></TabsContent>

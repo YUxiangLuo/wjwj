@@ -1,22 +1,22 @@
-# 抽样调查虚拟仿真实验平台
+# 商务统计虚拟仿真实验平台
 
-面向统计学课堂的抽样教学系统。学生完成问卷预试、样本量规划、概率抽样和分析报告；教师配置与批改实验；管理员维护学期、班级和账号。
+面向商务统计与商业数据分析课程的全闭环仿真教学平台。学生围绕真实商业管理决策问题，完整执行「商业问卷设计 → 首轮试投发放 → 回收质检与诊断 → 调整思路与二轮投放 → 商务分析与决策报告」五阶段多波次调研闭环；教师配置商业案例模板、虚拟发放环境并开展多波次轨迹批改；管理员维护学期、班级、师生账号与系统公告。
 
-**边界：受信任内网、桌面端（支持下限 1024×768）、浅色主题、单实例部署。** 时间按中国标准时间（UTC+8）展示。总体文件只能使用合成或充分脱敏数据。
+**边界：受信任内网、桌面端（支持下限 1024×768）、现代商务智能浅色主题、单实例部署。** 时间按中国标准时间（UTC+8）展示。总体文件只能使用合成或充分脱敏商业数据。
 
 ## 入口与范围
 
 | 入口 | 路径 | 用途 |
 | --- | --- | --- |
-| 学生端 | `/student` | 四阶段实验、提交与成绩 |
-| 教师端 | `/teacher` | 模板、任务、班级、批改与导出 |
-| 管理端 | `/admin` | 学期、教师、班级、学生与公告 |
+| 学生端 | `/student` | 五阶段多波次商业调研闭环、质检清洗、客群交叉分析与决策报告 |
+| 教师端 | `/teacher` | 商业案例模板、虚拟投放参数、任务分配、闭环轨迹批改与导出 |
+| 管理端 | `/admin` | 学期、教师、班级、学生与全局公告治理 |
 
-支持简单随机、系统、PPS 和分层抽样；主要目标限完整有限总体中的一个数值均值或明确类别比例。问卷只用于预试，分析使用教师上传的总体表。详见[教学指南](docs/TEACHING.md)和[课题模型](RESEARCH_MODEL.md)。
+支持简单随机、系统、PPS 和分层抽样；支持基于 `dispatchSeed` 的确定性虚拟受访者问卷发放回收、闪电卷/直线卷交互质检清洗、基于框内分层规模的事后无回答权重校准对照，以及细分客群交叉对比分析（Subgroup Cross-tab）。详见[教学指南](docs/TEACHING.md)、[课题模型](RESEARCH_MODEL.md)与[内置商业案例目录](docs/DEMO_EXPERIMENT_CATALOG.md)。
 
 ## 启动
 
-需要 Bun **1.4.2**、PostgreSQL，以及可创建 `citext` 扩展的迁移角色。Bun 自动读取 `.env`。
+需要 Bun **>= 1.4.2**、PostgreSQL，以及可创建 `citext` 扩展的迁移角色。Bun 自动读取 `.env`。
 
 ```sh
 bun install
@@ -36,8 +36,8 @@ bun run dev
 bun run test:unit          # 日常回归；按文件调试用 bun test --isolate <路径>
 bun run verify             # 类型、样式、文档、单测、构建、迁移与依赖门禁
 bun run test:db            # 需独立、已迁移、可丢弃的 TEST_DATABASE_URL
-bun run test:teaching      # 浏览器教学闭环；需测试角色可创建临时库
-bun run test:compatibility # 8 种主题 × CSV/XLSX × 3 种样本量，含师生结果页面核对
+bun run test:teaching      # 浏览器五阶段闭环教学验收；需测试角色可创建临时库
+bun run test:compatibility # 8 种主题 × CSV/XLSX × 3 种样本量 × 多波次统计对账
 bun run ci:local           # 本地推送门禁；自动创建并删除一次性测试库
 bun run ci:local:full      # 发布前完整门禁；额外执行随机顺序和浏览器闭环
 ```
@@ -46,13 +46,7 @@ bun run ci:local:full      # 发布前完整门禁；额外执行随机顺序和
 
 首次运行浏览器测试先执行 `bun node_modules/agent-browser/bin/agent-browser.js install`（Linux 可加 `--with-deps`）。教学测试自动创建并删除临时库和存储，产物在 `test-results/teaching-flow/`。
 
-兼容性测试同样使用可创建临时库的 `TEST_DATABASE_URL`，独立计算点估计和设计标准误，核对教师发布、学生抽样/分析/提交、教师评分及双方导出。产物默认位于 `.amp/in/artifacts/topic-compatibility/`，可用 `COMPATIBILITY_ARTIFACTS` 指定目录。
-
-本项目不使用 GitHub Actions。执行 `bun run hooks:install` 可启用仓库内的 `pre-push` hook；克隆后需安装一次。hook 根据 Git 提供的待推送 SHA，在临时 worktree 中安装该提交的锁定依赖并运行本地 CI，结束后清理 worktree；不会把未提交修改当成已验证的提交。多分支推送逐个验证不同的提交，标签验证其指向的提交，纯删除或无更新不运行 CI。
-
-测试连接从当前 shell 或本地 `.env` 读取；`TEST_DATABASE_URL` 仅作为创建临时库的基准连接，其角色须有 `CREATE DATABASE` 权限，脚本不会迁移、清空或写入该基准库。检查未提交修改用 `bun run ci:local`，发布前另行运行 `ci:local:full`。
-
-测试保留统计边界、权限与会话、事务并发、文件安全、草稿/提交恢复及关键无障碍行为；普通展示、文案和演示数据快照不单独锁定。端到端测试负责教学闭环，不逐页重复同一规则。
+兼容性测试使用可创建临时库的 `TEST_DATABASE_URL`，独立计算点估计和设计标准误，核对教师发布、学生五阶段多波次抽样/发放/分析/提交、教师评分及双方导出。产物默认位于 `.amp/in/artifacts/topic-compatibility/`。
 
 ## 架构与文档
 
@@ -60,15 +54,16 @@ bun run ci:local:full      # 发布前完整门禁；额外执行随机顺序和
 
 | 专题 | 文档 |
 | --- | --- |
-| 四阶段、模板冻结、账号与删除 | [教学指南](docs/TEACHING.md) |
-| 研究目标、变量和统计边界 | [课题模型](RESEARCH_MODEL.md) |
+| 五阶段闭环、质检调优、模板冻结与账号管理 | [教学指南](docs/TEACHING.md) |
+| 商业研究合同、虚拟发放、校准与统计边界 | [课题模型](RESEARCH_MODEL.md) |
+| 五大内置商务统计标杆商业案例 | [默认商业案例目录](docs/DEMO_EXPERIMENT_CATALOG.md) |
 | 环境、容量与发布 | [运行与部署](docs/OPERATIONS.md) |
 | 迁移、危险操作、备份恢复 | [数据库操作](DATABASE.md) |
 | 鉴权、数据披露与依赖风险 | [安全边界](SECURITY.md) |
-| 主题、样式与共享组件 | [设计系统](DESIGN_SYSTEM.md) |
+| 商务智能浅色主题、图表组件与样式门禁 | [设计系统](DESIGN_SYSTEM.md) |
 | 发布前高风险人工验收 | [高风险测试检查清单](docs/TESTER_RISK_CHECKLIST.md) |
 | 统计公式、抽样设计与解释验收 | [统计学专业验收清单](docs/STATISTICAL_TEST_CHECKLIST.md) |
 | 多轮真实使用、统计红队与恢复演练 | [全面深度 Dogfood 测试计划](docs/DOGFOOD_TEST_PLAN.md) |
 | 教师工作流、冻结、批改与导出验收 | [教师端专项 Dogfood 测试计划](docs/TEACHER_DOGFOOD_TEST_PLAN.md) |
 
-开发约定见 [AGENTS.md](AGENTS.md)。专题文档是对应规则的唯一事实来源，不维护历史测试快照。
+开发约定见 [AGENTS.md](AGENTS.md)。专题文档是对应规则的唯一事实来源。

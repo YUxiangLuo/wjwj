@@ -40,6 +40,7 @@ import {
 } from "@/lib/sampling-policy";
 import { getSamplingResultCount } from "../experiment/sampling-results";
 import { AnalysisAppendices } from "@/components/AnalysisAppendices";
+import { WaveLoopSnapshot } from "@/components/WaveLoopSnapshot";
 
 const SAMPLING_METHOD_LABELS: Record<SamplingMethod, string> = {
     simple: "简单随机抽样",
@@ -180,6 +181,8 @@ export function SubmissionPreview() {
         populationSize: experiment.populationSize,
         analysisTarget: experiment.analysisTarget,
         samplingPolicy: experiment.samplingPolicy,
+        adjustmentPlan: experiment.adjustmentPlan,
+        waves: experiment.waves,
     });
     const canSubmit = submitBlocker === null;
     const advancedSourceLabel = getAdvancedPlanSourceLabel(samplePlan?.advancedPlanSource);
@@ -247,14 +250,23 @@ export function SubmissionPreview() {
                                 data-testid="student-preview-tab-report"
                                 className="px-6 py-2 rounded-control data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-muted-foreground data-[state=inactive]:hover:text-foreground transition-none"
                             >
-                                实验报告
+                                商业报告与过程摘要
                             </TabsTrigger>
+                            {(experiment.waves?.length ?? 0) > 0 && (
+                                <TabsTrigger
+                                    value="waves"
+                                    data-testid="student-preview-tab-waves"
+                                    className="px-6 py-2 rounded-control data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-muted-foreground data-[state=inactive]:hover:text-foreground transition-none"
+                                >
+                                    试投质检与二轮调优轨迹
+                                </TabsTrigger>
+                            )}
                             <TabsTrigger
                                 value="questionnaire"
                                 data-testid="student-preview-tab-questionnaire"
                                 className="px-6 py-2 rounded-control data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-muted-foreground data-[state=inactive]:hover:text-foreground transition-none"
                             >
-                                问卷参考
+                                正式轮问卷核对
                             </TabsTrigger>
                         </TabsList>
 
@@ -329,6 +341,16 @@ export function SubmissionPreview() {
                                 </div>
                             </div>
                         </TabsContent>
+
+                        {(experiment.waves?.length ?? 0) > 0 && (
+                            <TabsContent value="waves" className="mt-6">
+                                <WaveLoopSnapshot
+                                    waves={experiment.waves}
+                                    adjustmentPlan={experiment.adjustmentPlan}
+                                    analysisTarget={experiment.analysisTarget}
+                                />
+                            </TabsContent>
+                        )}
 
                         <TabsContent value="questionnaire" className="mt-6 space-y-4 animate-in fade-in-50 slide-in-from-bottom-2">
                             <div className="rounded-surface bg-muted p-6">

@@ -21,6 +21,8 @@ import {
 import { parseStoredJson } from "../../student/experiment/serialization";
 import { getTeacherUser } from "./auth";
 import { resolveSamplingPolicy } from "../../lib/sampling-policy";
+import { parseAdjustmentPlan, resolveFieldworkConfig } from "../../domain/fieldwork";
+import { resolveStudyContract } from "../../lib/analysis-target";
 import { writeAuditEvent } from "../../server/audit-event";
 import { resolveStoragePath } from "../../server/storage-files";
 import type { TargetAnalysisMetrics } from "../../domain/experiment/analysis-types";
@@ -159,6 +161,7 @@ async function findOwnedExperiment(experimentId: number, teacherId: number) {
         excelFilePath: topic.excelFilePath,
         weightConfig: topic.weightConfig,
         samplingPolicy: topic.samplingPolicy,
+        fieldworkConfig: topic.fieldworkConfig,
         fieldMapping: topic.fieldMapping,
         status: experiment.status,
         submittedAt: experiment.submittedAt,
@@ -167,6 +170,7 @@ async function findOwnedExperiment(experimentId: number, teacherId: number) {
         samplePlan: experiment.samplePlan,
         questionnaire: experiment.questionnaire,
         samplingResults: experiment.samplingResults,
+        adjustmentPlan: experiment.adjustmentPlan,
         scoreQuestionnaire: experiment.scoreQuestionnaire,
         scoreProcess: experiment.scoreProcess,
         scoreReport: experiment.scoreReport,
@@ -213,6 +217,10 @@ const gradingDetailRoutes: RouteDefinition = {
             questionnaire?: unknown;
             samplePlan?: unknown;
             samplingResults?: unknown;
+            adjustmentPlan?: unknown;
+            waves?: unknown[];
+            studyContract?: unknown;
+            fieldworkConfig?: unknown;
             reportContent?: string;
             weightConfig?: unknown;
             samplingPolicy?: unknown;
@@ -255,6 +263,7 @@ const gradingDetailRoutes: RouteDefinition = {
             submissionSnapshot: _submissionSnapshot,
             weightConfig: _weightConfig,
             samplingPolicy: _samplingPolicy,
+            fieldworkConfig: _fieldworkConfig,
             ...publicRow
         } = row;
         return json({
@@ -270,6 +279,10 @@ const gradingDetailRoutes: RouteDefinition = {
             ),
             samplingResults: previewSamplingResults(samplingResults),
             samplingPolicy: resolveSamplingPolicy(snapshot?.samplingPolicy ?? row.samplingPolicy),
+            adjustmentPlan: parseAdjustmentPlan(snapshot?.adjustmentPlan ?? parseStoredJson(row.adjustmentPlan)),
+            waves: Array.isArray(snapshot?.waves) ? snapshot.waves : [],
+            studyContract: snapshot?.studyContract ?? resolveStudyContract(row.fieldMapping, { topicName: row.topicName }),
+            fieldworkConfig: resolveFieldworkConfig(snapshot?.fieldworkConfig ?? row.fieldworkConfig),
             reportContent: snapshot?.reportContent ?? row.reportContent ?? "",
             analysisAppendices: snapshot?.analysisAppendices ?? [],
             targetMetrics: snapshot?.targetMetrics ?? null,

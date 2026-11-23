@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, Calendar, GraduationCap, Megaphone, RefreshCw, School, Users } from "lucide-react";
 import { Link } from "react-router-dom";
+import { KpiStatCard } from "@/components/KpiStatCard";
 import { LoadingStatus } from "@/components/LoadingStatus";
 import { RichTextContent } from "@/components/RichTextContent";
 import { Button } from "@/components/ui/button";
@@ -35,14 +36,14 @@ export function Dashboard() {
     }, []);
 
     const cards = [
-        { key: "semester", label: "当前学期", value: stats ? stats.currentSemester || "未设置" : null },
-        { key: "teachers", label: "教师", value: stats?.teacherCount ?? null },
-        { key: "classes", label: "班级", value: stats?.classCount ?? null },
-        { key: "students", label: "学生", value: stats?.studentCount ?? null },
+        { key: "semester", label: "当前教学学期", value: stats ? stats.currentSemester || "未设置" : null, icon: Calendar, intent: "primary" as const, to: "/semester", hint: "配置与切换活跃学期" },
+        { key: "teachers", label: "在册授课教师", value: stats?.teacherCount ?? null, icon: Users, intent: "info" as const, to: "/teacher", hint: "管理工号与授课权限" },
+        { key: "classes", label: "实验教学班级", value: stats?.classCount ?? null, icon: School, intent: "auxiliary" as const, to: "/class", hint: "维护学期班级组织" },
+        { key: "students", label: "注册实训学生", value: stats?.studentCount ?? null, icon: GraduationCap, intent: "success" as const, to: "/student", hint: "查看与维护学生名册" },
     ];
 
     return (
-        <div className="space-y-6" aria-busy={loading}>
+        <div className="space-y-5" aria-busy={loading}>
             {loading && <span className="sr-only" role="status">正在加载管理员首页数据</span>}
             {loadError && (
                 <div role="alert" className="flex items-center justify-between gap-4 rounded-surface border border-destructive-border bg-destructive-muted p-4 text-destructive">
@@ -57,32 +58,33 @@ export function Dashboard() {
                 </div>
             )}
 
-            <dl aria-label="管理概览" className="grid grid-cols-[1.5fr_repeat(3,minmax(0,1fr))] gap-5 border-b border-border pb-5">
-                {cards.map(({ key, label, value }) => (
-                    <div key={key} className="min-w-0">
-                        <dt className="text-label text-muted-foreground">{label}</dt>
-                        <dd
-                            data-testid={`admin-dashboard-stat-${key}`}
-                            className={`mt-2 font-semibold tabular-nums ${label === "当前学期" ? "break-words text-label" : "text-section-title"}`}
-                        >
-                            {value === null
-                                ? loading
-                                    ? <span aria-hidden="true" className="inline-block h-8 w-16 animate-pulse bg-muted align-middle" />
-                                    : "—"
-                                : value}
-                        </dd>
-                    </div>
+            <section aria-label="管理概览" className="grid grid-cols-4 gap-4">
+                {cards.map(({ key, label, value, icon, intent, to, hint }) => (
+                    <KpiStatCard
+                        key={key}
+                        label={label}
+                        value={value === null ? (loading ? null : "—") : value}
+                        loading={value === null && loading}
+                        icon={icon}
+                        intent={intent}
+                        to={to}
+                        hint={hint}
+                        testId={`admin-dashboard-stat-${key}`}
+                    />
                 ))}
-            </dl>
+            </section>
 
-            <Card>
-                <CardHeader className="flex-row items-center justify-between">
-                    <CardTitle>
-                        <h2 className="text-section-title font-semibold">
-                            最近公告
-                        </h2>
-                    </CardTitle>
-                    <Link className="text-label text-primary hover:underline" to="/announcement">管理公告</Link>
+            <Card className="gap-4 py-4">
+                <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-3">
+                    <div className="flex items-center gap-2.5">
+                        <Megaphone className="h-5 w-5 text-primary" aria-hidden="true" />
+                        <CardTitle>
+                            <h2 className="text-section-title font-semibold">最近平台公告</h2>
+                        </CardTitle>
+                    </div>
+                    <Button asChild variant="outline" size="sm">
+                        <Link to="/announcement">管理公告</Link>
+                    </Button>
                 </CardHeader>
                 <CardContent data-testid="admin-dashboard-announcements" className="divide-y divide-border">
                     {announcements === null
@@ -93,8 +95,10 @@ export function Dashboard() {
                             ? announcements.map((item) => (
                                 <div key={item.id} className="py-4 first:pt-0 last:pb-0">
                                     <div className="flex items-center justify-between gap-4">
-                                        <h3 className="font-medium">{item.title}</h3>
-                                        <span className="text-meta text-muted-foreground">{formatDateDisplay(item.createdAt, "-")}</span>
+                                        <h3 className="text-body font-semibold text-foreground">{item.title}</h3>
+                                        <span className="rounded-control bg-muted px-2.5 py-0.5 text-meta tabular-nums text-muted-foreground">
+                                            {formatDateDisplay(item.createdAt, "-")}
+                                        </span>
                                     </div>
                                     <RichTextContent html={item.content} className="mt-2 line-clamp-2 text-label text-muted-foreground" />
                                 </div>

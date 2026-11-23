@@ -42,6 +42,8 @@ import {
 } from "../../experiment/experiment-draft";
 import { isCompletedSamplingResult, SAMPLING_METHODS, resolveSamplingPolicy } from "@/lib/sampling-policy";
 import { UnivariateWorkspace } from "../../components/UnivariateWorkspace";
+import { WaveLoopSnapshot } from "@/components/WaveLoopSnapshot";
+import { Sparkles } from "lucide-react";
 
 interface AnalysisReportProps {
     onPrev: () => void;
@@ -49,7 +51,7 @@ interface AnalysisReportProps {
 }
 
 type ZoomChartType = "mean" | "dist" | "error" | "representNumeric" | "representCategorical" | null;
-type AnalysisWorkspace = "overview" | "charts" | "univariate" | "records" | "report";
+type AnalysisWorkspace = "overview" | "waves" | "charts" | "univariate" | "records" | "report";
 
 const DEVIATION_DISCLAIMER = "数值相对偏差（%）与分类分布偏差（百分点）使用独立尺度，不可横比；接近总体也不能单独证明样本无偏或具有整体代表性。";
 
@@ -203,17 +205,18 @@ function FieldSelect({
 export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const { experiment, populationSize, completeStage, refreshRequired, requireRefresh } = useExperiment();
 
+    const activeDraftStage = experiment?.currentStage === 4 ? 4 : 5;
     const restoredDraft = useMemo(() => readExperimentDraft<{ reportContent: string; analysisReferences?: number[]; workspace?: AnalysisWorkspace }>({
         experimentId: experiment?.id,
         experimentVersion: experiment?.version,
-        stage: 4,
-    }), [experiment?.id, experiment?.version]);
+        stage: activeDraftStage,
+    }), [activeDraftStage, experiment?.id, experiment?.version]);
     const [reportContent, setReportContent] = useState(
         restoredDraft?.reportContent ?? experiment?.reportContent ?? "",
     );
     const [analysisReferences, setAnalysisReferences] = useState<number[]>(restoredDraft?.analysisReferences ?? experiment?.analysisReferences ?? []);
     const [staleAnalysisReferences, setStaleAnalysisReferences] = useState<number[]>([]);
-    const [workspace, setWorkspace, workspaceNavigationRef] = useSectionNavigation<AnalysisWorkspace>(restoredDraft?.workspace && ["overview", "charts", "univariate", "records", "report"].includes(restoredDraft.workspace) ? restoredDraft.workspace : "overview", '[data-testid="student-experiment-navigation"]');
+    const [workspace, setWorkspace, workspaceNavigationRef] = useSectionNavigation<AnalysisWorkspace>(restoredDraft?.workspace && ["overview", "waves", "charts", "univariate", "records", "report"].includes(restoredDraft.workspace) ? restoredDraft.workspace : "overview", '[data-testid="student-experiment-navigation"]');
     const reportDraft = useMemo(() => ({ reportContent, analysisReferences, workspace }), [reportContent, analysisReferences, workspace]);
     const reportBaseline = useMemo(() => ({
         reportContent: experiment?.reportContent ?? "",
@@ -223,7 +226,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const clearDraft = useExperimentDraft({
         experimentId: experiment?.id,
         experimentVersion: experiment?.version,
-        stage: 4,
+        stage: activeDraftStage,
         data: reportDraft,
         baseline: reportBaseline,
         enabled: Boolean(experiment),
@@ -524,13 +527,27 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         if (!isValidLength || staleAnalysisReferences.length > 0 || isSubmitting || refreshRequired) return;
         setIsSubmitting(true);
         try {
-            const success = await completeStage(4, { reportContent, analysisReferences });
+            const stageNum = experiment?.currentStage === 4 ? 4 : 5;
+            const success = await completeStage(stageNum, { reportContent, analysisReferences });
             if (!success) return;
             clearDraft.clear();
             onSubmit();
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const insertBusinessReportOutline = () => {
+        if (reportTextLength > 20) {
+            toast.info("编辑器中已有正文内容，请直接在现有内容上补充");
+            return;
+        }
+        const decisionText = experiment?.studyContract?.contract.businessDecision
+            ?? experiment?.studyContract?.contract.researchQuestion
+            ?? "本次商业调研课题";
+        const starter = `<h3>一、商业管理问题与核心结论摘要</h3><p>围绕「${decisionText}」，本团队完成了从首轮试投探底、回收质检清洗到二轮抽样调优的闭环实证调研。最终核心结论与经营建议如下：</p><h3>二、首轮试投诊断与二轮抽样调优复盘</h3><p>首轮试投中暴露的主要非抽样误差与结构偏差包括：……；针对上述问题，我们在正式轮采取了修订问卷、代入实测无回答率与样本方差重算样本量、以及升级分层/PPS/系统抽样策略等措施，使有效回收率与标准误显著改善。</p><h3>三、主指标点估计、置信区间与方法效率对比</h3><p>对比正式轮不同抽样方法及质检清洗前后、无回答权重校准后的点估计与 95% 置信区间：……</p><h3>四、细分客群交叉洞察与商业落地建议</h3><p>结合客群交叉分析结果，针对不同细分客群提出以下具体定价/运营/资源配置建议，并说明模型假设边界：……</p>`;
+        setReportContent(starter);
+        toast.success("已插入商务决策报告结构框架，请结合左侧实测数据补充具体数值与结论");
     };
 
     const handleExport = async (type: MethodKey | "all") => {
@@ -568,11 +585,14 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         <Tabs value={workspace} onValueChange={switchWorkspace} className="min-w-0 space-y-5">
             <div ref={workspaceNavigationRef} className="scroll-mt-36 flex flex-wrap items-center justify-between gap-3">
                 <TabsList aria-label="分析与报告工作区" className="flex h-auto flex-wrap gap-1 rounded-surface border border-border bg-card p-1" data-testid="student-analysis-workspace-tabs">
-                    <TabsTrigger value="overview" className="min-h-11 px-4" data-testid="student-analysis-workspace-overview">研究结果</TabsTrigger>
-                    <TabsTrigger value="charts" className="min-h-11 px-4" data-testid="student-analysis-section-tab-charts">图表探索</TabsTrigger>
-                    <TabsTrigger value="univariate" className="min-h-11 px-4" data-testid="student-analysis-workspace-univariate">单变量分析</TabsTrigger>
-                    <TabsTrigger value="records" className="min-h-11 px-4" data-testid="student-analysis-workspace-records">规划与抽样记录</TabsTrigger>
-                    <TabsTrigger value="report" className="min-h-11 gap-2 px-4" data-testid="student-analysis-workspace-report"><FileText className="h-4 w-4"/>撰写报告</TabsTrigger>
+                    <TabsTrigger value="overview" className="min-h-11 px-4" data-testid="student-analysis-workspace-overview">研究目标推断</TabsTrigger>
+                    {(experiment?.waves?.length ?? 0) > 0 && (
+                        <TabsTrigger value="waves" className="min-h-11 px-4" data-testid="student-analysis-workspace-waves">多轮质检与校准演进</TabsTrigger>
+                    )}
+                    <TabsTrigger value="charts" className="min-h-11 px-4" data-testid="student-analysis-section-tab-charts">多维图表对比</TabsTrigger>
+                    <TabsTrigger value="univariate" className="min-h-11 px-4" data-testid="student-analysis-workspace-univariate">客群交叉与单变量分析</TabsTrigger>
+                    <TabsTrigger value="records" className="min-h-11 px-4" data-testid="student-analysis-workspace-records">规划与抽样档案</TabsTrigger>
+                    <TabsTrigger value="report" className="min-h-11 gap-2 px-4" data-testid="student-analysis-workspace-report"><FileText className="h-4 w-4"/>商业决策报告</TabsTrigger>
                 </TabsList>
                 <Button type="button" variant="outline" onClick={() => setExportOpen(true)}><Download className="mr-2 h-4 w-4"/>导出数据</Button>
             </div>
@@ -603,6 +623,15 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         <p>分布和总体对照偏差描述的是当前样本与已知虚拟总体的差异，不能单独证明无偏或整体代表性。</p>
                     </div>
                 </details>
+            </TabsContent>
+
+            <TabsContent value="waves" className="min-w-0 space-y-5">
+                <WaveLoopSnapshot
+                    waves={experiment?.waves ?? []}
+                    adjustmentPlan={experiment?.adjustmentPlan ?? null}
+                    analysisTarget={experiment?.analysisTarget ?? null}
+                    unitLabel={target?.unit ?? ""}
+                />
             </TabsContent>
 
             <TabsContent value="charts" className="min-w-0">
@@ -696,13 +725,22 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             </TabsContent>
 
             <TabsContent value="univariate" forceMount className="min-w-0 data-[state=inactive]:hidden">
-                {experiment?.taskId && <UnivariateWorkspace taskId={experiment.taskId} observedVersion={experiment.version} completedMethods={completedAnalysisMethods} references={analysisReferences} refreshRequired={refreshRequired} onReferencesChange={setAnalysisReferences} onRefreshRequired={requireRefresh} onStaleReferencesChange={setStaleAnalysisReferences} />}
+                {experiment?.taskId && <UnivariateWorkspace taskId={experiment.taskId} observedVersion={experiment.version} completedMethods={completedAnalysisMethods} waves={experiment.waves} activeWaveNumber={experiment.activeWaveNumber} references={analysisReferences} refreshRequired={refreshRequired} onReferencesChange={setAnalysisReferences} onRefreshRequired={requireRefresh} onStaleReferencesChange={setStaleAnalysisReferences} />}
             </TabsContent>
 
             <TabsContent value="report" forceMount className="min-w-0 data-[state=inactive]:hidden">
                 <div className="flex flex-wrap items-start gap-5">
                     <Card className="min-w-0 flex-[3_1_36rem] gap-0 rounded-surface border-border bg-card py-0">
-                        <CardHeader className="p-5"><CardTitle><h2 className="text-section-title font-semibold">用数据回答研究问题</h2></CardTitle><CardDescription>报告需 {minLength}–{maxLength} 字。先写结论，再用估计值、误差和抽样设计说明理由。</CardDescription></CardHeader>
+                        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 p-5">
+                            <div>
+                                <CardTitle><h2 className="text-section-title font-semibold">撰写商业统计分析与管理决策报告</h2></CardTitle>
+                                <CardDescription className="mt-1">报告需 {minLength}–{maxLength} 字。请结合试投质检复盘、抽样误差比较与细分客群洞察给出可执行商业建议。</CardDescription>
+                            </div>
+                            <Button type="button" variant="outline" size="sm" onClick={insertBusinessReportOutline} data-testid="student-report-insert-outline" className="border-primary-border bg-primary-muted text-primary hover:bg-primary-muted hover:text-primary">
+                                <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                                插入商业决策提纲框架
+                            </Button>
+                        </CardHeader>
                         <CardContent className="px-3 pb-3 pt-1">
                             <Label htmlFor="report" className="sr-only">报告正文</Label>
                             <RichTextEditor dataTestId="student-analysis-report" editorTestId="student-analysis-report-editor" id="report" ariaLabel="报告正文" showWordCount={false}

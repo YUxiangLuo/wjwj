@@ -74,17 +74,32 @@ export function validateMeanPlanVariance(
     samplePlan: unknown,
     analysisTargetKind: "mean" | "proportion" | null | undefined,
     actualPopulationVariance: number | null | undefined,
+    options: { allowPriorEstimate?: boolean; verifiedEmpiricalVariance?: number | null } = {},
 ): string | null {
     if (analysisTargetKind !== "mean") return null;
+    if (!samplePlan || typeof samplePlan !== "object") return null;
+    const record = samplePlan as Record<string, unknown>;
+    const planned = Number(record.populationVariance);
+    if (!Number.isFinite(planned) || planned <= 0) return "均值估计时需提供正的总体方差估计";
+
+    if (options.allowPriorEstimate && record.varianceSource === "prior_estimate") {
+        return null;
+    }
+    if (
+        record.varianceSource === "wave1_empirical"
+        && options.verifiedEmpiricalVariance != null
+        && Number.isFinite(options.verifiedEmpiricalVariance)
+        && options.verifiedEmpiricalVariance > 0
+    ) {
+        if (Math.abs(planned - options.verifiedEmpiricalVariance) / options.verifiedEmpiricalVariance <= 1e-6) {
+            return null;
+        }
+    }
+
     const actual = Number(actualPopulationVariance);
     if (!Number.isFinite(actual) || actual <= 0) return null;
-    if (!samplePlan || typeof samplePlan !== "object") return null;
-    const planned = Number((samplePlan as Record<string, unknown>).populationVariance);
-    if (!Number.isFinite(planned) || planned <= 0) return "均值估计时需提供正的总体方差估计";
-    // 当前界面保存完整精度。仅容忍浮点相对误差；绝对容差会放过低方差总体的数量级变化。
-    // 旧的四位小数计划若不再匹配，必须按当前总体重新规划。
     if (Math.abs(planned - actual) / actual > 1e-9) {
-        return "总体方差与当前总体不一致，请按当前总体重新计算样本量";
+        return "总体方差与当前总体不一致，请按当前总体或首轮实测样本方差重新计算样本量";
     }
     return null;
 }

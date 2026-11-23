@@ -101,8 +101,8 @@ test("A04 rejects unanalysable variables and unfinished sampling results before 
     };
     const context = {
         record: {
-            id: 9, studentId: 2, taskId: 3, version: 6, currentStage: 4, status: "in_progress",
-            samplingGeneration: 0, stage4CompletedAt: null,
+            id: 9, studentId: 2, taskId: 3, version: 6, currentStage: 5, activeWaveNumber: 2, status: "in_progress",
+            samplingGeneration: 0, stage5CompletedAt: null, wavesData: [],
             samplingResults: { simple: { completed: true, sampleCount: 1, seed: 1, indices: [0] } },
         },
         template: { variableDictionary: dictionary, variableRevision: 3, excelFilePath: "/storage/test/population.csv" },
@@ -121,7 +121,7 @@ test("A04 rejects unanalysable variables and unfinished sampling results before 
 
     const unfinished = await callRoute({ select: [[{ ...context, record: { ...context.record, samplingResults: {} } }], [], []] }, withField("score"));
     expect(unfinished.response.status).toBe(400);
-    expect(unfinished.body.error?.message).toMatch(/请先完成所选抽样方法/);
+    expect(unfinished.body.error?.message).toMatch(/请先完成所选波次与抽样方法/);
 
     const staleVersion = await callRoute({ select: [[context], [], []] }, { ...validBody(), observedVersion: 5 });
     expect(staleVersion.response.status).toBe(409);

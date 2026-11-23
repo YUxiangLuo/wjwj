@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment } from "../../db/schema";
 import { validateObservedVersion } from "../../lib/observed-version";
-import { resolveAnalysisTarget } from "../../lib/analysis-target";
+import { resolveAnalysisTarget, resolveStudyContract, type ResolvedStudyContract } from "../../lib/analysis-target";
 import { scoringWeightsFrom, type ScoringWeights } from "../../lib/scoring-weights";
 import { resolveSamplingPolicy, type SamplingPolicyV1 } from "../../lib/sampling-policy";
 import { readVariableSource } from "../../server/variable-source";
@@ -11,7 +11,21 @@ import { buildPopulationNumericStats, parseTopicFieldMapping } from "../../domai
 import { buildAnalysisMetrics } from "../../domain/statistics/analysis";
 import { validateQuestionBindings } from "../../domain/variables/question-binding";
 import type { TargetAnalysisMetrics } from "../../domain/experiment/analysis-types";
+import type { ExperimentWaveView } from "../../domain/experiment/types";
 import type { SavedAnalysisView, VariableDictionary } from "../../domain/variables/types";
+import {
+    parseAdjustmentPlan,
+    resolveFieldworkConfig,
+    validateAdjustmentPlan,
+    type AdjustmentPlan,
+    type FieldworkSimulationConfig,
+} from "../../domain/fieldwork";
+import {
+    getVerifiedWave1EmpiricalVariance,
+    hydrateWaveViews,
+    parseStoredWaves,
+    verifyExperimentWavesReplay,
+} from "./fieldwork-wave-service";
 import { normalizeSamplePlanData } from "./sample-plan-display";
 import { analysisView, loadAnalysisReferences, parseAnalysisReferences } from "./saved-analysis-service";
 import { parseStoredJson } from "./serialization";
@@ -37,6 +51,10 @@ export interface SubmissionSnapshot {
     questionnaire: Record<string, unknown> | null;
     samplePlan: Record<string, unknown> | null;
     samplingResults: Record<string, unknown> | null;
+    adjustmentPlan?: AdjustmentPlan | null;
+    waves?: ExperimentWaveView[];
+    studyContract?: ResolvedStudyContract | null;
+    fieldworkConfig?: FieldworkSimulationConfig | null;
     reportContent: string;
     weightConfig: ScoringWeights;
     samplingPolicy: SamplingPolicyV1;
@@ -57,6 +75,7 @@ interface SubmitTaskInfo {
     weightConfig?: unknown;
     fieldMapping?: unknown;
     samplingPolicy?: unknown;
+    fieldworkConfig?: unknown;
     excelFilePath?: string | null;
     className?: string | null;
     teacherName?: string | null;
@@ -86,15 +105,22 @@ export function validateExperimentSubmission(params: {
     const record = params.experimentRecord;
     if (record.status === ExperimentStatus.SUBMITTED) return fail("实验已提交，请勿重复提交", "ALREADY_SUBMITTED");
     if (record.status === ExperimentStatus.GRADED) return fail("实验已批改完成", "ALREADY_GRADED");
-    if (record.currentStage !== 4 || !record.stage4CompletedAt) return fail("请完成所有实验阶段后再提交", "INCOMPLETE");
+    if (record.currentStage !== 5 || !record.stage5CompletedAt) return fail("请完成全部五个实验阶段后再提交", "INCOMPLETE");
 
     const questionnaire = parseStoredJson(record.questionnaire);
     const samplePlan = parseStoredJson(record.samplePlan);
     const samplingResults = parseStoredJson(record.samplingResults);
+    const adjustmentPlan = parseStoredJson(record.adjustmentPlan);
+    const storedWaves = parseStoredWaves(record.wavesData);
     const populationSize = normalizePopulationSize(params.taskInfo.populationSize);
+
+    if (storedWaves.length < 2) {
+        return fail("请完成首轮试投诊断与至少一轮调优正式投放后再提交", "INCOMPLETE");
+    }
 
     const validationError =
         validateQuestionnaireForSubmit(questionnaire) ??
+        validateAdjustmentPlan(adjustmentPlan) ??
         validateSamplePlanForSubmit(
             samplePlan,
             populationSize,
@@ -153,19 +179,28 @@ export async function submitStudentExperiment(params: {
     if (dictionary && sourceData?.source !== dictionary.source) {
         return fail("总体文件或字段解释已变化，请联系教师", "SOURCE_CONFLICT", 409);
     }
-    // 提交时用同一份总体再复核一次：阶段完成后的换源或伪造方差不得通过。
+
+    const storedWaves = parseStoredWaves(params.experimentRecord.wavesData);
     const resolvedTarget = resolveAnalysisTarget(params.taskInfo.fieldMapping);
     if (resolvedTarget?.target.kind === "mean" && sourceData) {
-        // 与阶段完成一致：把总体 S²（分母 N−1）换成规划使用的 σ²（分母 N）。
         const stat = buildPopulationNumericStats(sourceData.rows, [resolvedTarget.target.field])[resolvedTarget.target.field];
         const actualVariance = stat ? finitePopulationS2ToSigma2(stat.variance, stat.count) : null;
+        const verifiedWave1Variance = getVerifiedWave1EmpiricalVariance({
+            waves: storedWaves,
+            population: sourceData.designRows,
+            fieldMapping: params.taskInfo.fieldMapping,
+            fieldworkConfig: params.taskInfo.fieldworkConfig,
+            dictionary,
+        });
         const varianceError = validateMeanPlanVariance(
             parseStoredJson(params.experimentRecord.samplePlan),
             resolvedTarget.target.kind,
             actualVariance,
+            { verifiedEmpiricalVariance: verifiedWave1Variance },
         );
         if (varianceError) return fail(varianceError, "INCOMPLETE");
     }
+
     let referenced;
     try {
         const ids = parseAnalysisReferences(params.experimentRecord.analysisReferences);
@@ -179,12 +214,15 @@ export async function submitStudentExperiment(params: {
         evidence: row.evidence,
         stale: false,
     }));
+
     const samplePlan = normalizeSamplePlanData(
         parseStoredJson<Record<string, unknown>>(params.experimentRecord.samplePlan),
         populationSize,
     );
     const storedSamplingResults = parseStoredJson<Record<string, unknown>>(params.experimentRecord.samplingResults);
     let targetMetrics: TargetAnalysisMetrics | null = null;
+    let frozenWaveViews: ExperimentWaveView[] = [];
+
     if (sourceData) {
         const hydrated = hydrateSamplingResults(
             storedSamplingResults,
@@ -196,6 +234,35 @@ export async function submitStudentExperiment(params: {
             population: sourceData.designRows,
             fieldMapping: params.taskInfo.fieldMapping,
         }))) return fail(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
+
+        for (const w of storedWaves) {
+            if (w.samplingResults && !(await verifySamplingReplay({
+                samplingResults: w.samplingResults,
+                population: sourceData.designRows,
+                fieldMapping: params.taskInfo.fieldMapping,
+            }))) {
+                return fail(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
+            }
+        }
+        if (!verifyExperimentWavesReplay({
+            waves: storedWaves,
+            population: sourceData.designRows,
+            fieldMapping: params.taskInfo.fieldMapping,
+            fieldworkConfig: params.taskInfo.fieldworkConfig,
+            dictionary,
+        })) {
+            return fail("问卷发放回收记录重放校验失败，请联系管理员", INVALID_SAMPLING_STORAGE_CODE, 500);
+        }
+
+        frozenWaveViews = hydrateWaveViews({
+            waves: storedWaves,
+            population: sourceData.designRows,
+            populationSize,
+            fieldMapping: params.taskInfo.fieldMapping,
+            fieldworkConfig: params.taskInfo.fieldworkConfig,
+            dictionary,
+        });
+
         targetMetrics = buildAnalysisMetrics({
             population: sourceData.designRows,
             fieldMapping: parseTopicFieldMapping(params.taskInfo.fieldMapping),
@@ -205,14 +272,19 @@ export async function submitStudentExperiment(params: {
             targetUnit: resolveTargetUnit(params.taskInfo.fieldMapping, dictionary),
         }).target;
     }
+
     const samplingResults = compactSamplingResults(storedSamplingResults);
     const snapshot: SubmissionSnapshot = {
-        topicName: params.taskInfo.topicName ?? "未命名实验模板",
+        topicName: params.taskInfo.topicName ?? "未命名商业课题",
         studentName: params.student.name || params.student.studentId,
         populationSize,
         questionnaire,
         samplePlan: samplePlan as Record<string, unknown> | null,
         samplingResults,
+        adjustmentPlan: parseAdjustmentPlan(parseStoredJson(params.experimentRecord.adjustmentPlan)),
+        waves: frozenWaveViews,
+        studyContract: resolveStudyContract(params.taskInfo.fieldMapping, { topicName: params.taskInfo.topicName }),
+        fieldworkConfig: resolveFieldworkConfig(params.taskInfo.fieldworkConfig),
         reportContent: params.experimentRecord.reportContent ?? "",
         weightConfig: scoringWeightsFrom(params.taskInfo.weightConfig),
         samplingPolicy: resolveSamplingPolicy(params.taskInfo.samplingPolicy),
@@ -223,7 +295,7 @@ export async function submitStudentExperiment(params: {
         teacherName: params.taskInfo.teacherName ?? null,
         populationFileSha256: sourceData?.fileHash ?? null,
         parserVersion: sourceData?.parserVersion ?? "raw-values-v1",
-        samplingAlgorithmVersion: "sampling-v2",
+        samplingAlgorithmVersion: "business-sampling-v3",
     };
     const submittedAt = new Date();
 

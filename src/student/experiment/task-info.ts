@@ -58,6 +58,7 @@ export async function findStudentTaskSamplingInfo(taskId: number, classId: numbe
             excelFilePath: topic.excelFilePath,
             fieldMapping: topic.fieldMapping,
             samplingPolicy: topic.samplingPolicy,
+            fieldworkConfig: topic.fieldworkConfig,
             variableDictionary: topic.variableDictionary,
             variableRevision: topic.variableRevision,
         })
@@ -84,6 +85,7 @@ export async function findStudentTaskSubmitInfo(taskId: number, classId: number)
             weightConfig: topic.weightConfig,
             fieldMapping: topic.fieldMapping,
             samplingPolicy: topic.samplingPolicy,
+            fieldworkConfig: topic.fieldworkConfig,
             excelFilePath: topic.excelFilePath,
             variableDictionary: topic.variableDictionary,
             variableRevision: topic.variableRevision,
