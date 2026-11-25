@@ -1,10 +1,18 @@
-import { expect, mock, test } from "bun:test";
+import { expect, mock, spyOn, test } from "bun:test";
 import { topic } from "../../db/schema";
 import { createMockDb } from "../../test-utils/mock-db";
 
-async function loadContentService(queues: Parameters<typeof createMockDb>[0] = {}) {
+async function loadContentService(
+    queues: Parameters<typeof createMockDb>[0] = {},
+    options: { deleteStorageFile?: (filePath: string) => Promise<boolean> } = {},
+) {
     const { db, operations } = createMockDb(queues);
     mock.module("../../db", () => ({ db }));
+    if (options.deleteStorageFile) {
+        mock.module("./storage-cleanup", () => ({
+            deleteTopicStorageFileIfUnreferenced: options.deleteStorageFile,
+        }));
+    }
     const module = await import(`./content-service.ts?content=${crypto.randomUUID()}`);
     return { module, operations };
 }
@@ -99,4 +107,36 @@ test("copying truncates a 200-character name while keeping the copy suffix", asy
     expect(name.endsWith(" (副本)")).toBe(true);
     expect(Array.from(name).length).toBeLessThanOrEqual(200);
     expect(name.startsWith("长")).toBe(true);
+});
+
+test("deleting an attachment logs a structured warning when disk cleanup fails without blocking DB deletion", async () => {
+    const filePath = "/storage/uploads/readonly-attachment.pdf";
+    const unlinkError = Object.assign(new Error("EACCES: permission denied, unlink"), { code: "EACCES" });
+    const warnSpy = spyOn(console, "warn").mockImplementation(() => undefined);
+
+    try {
+        const { module, operations } = await loadContentService(
+            { select: [[{ id: 12 }], [], [{ filePath }]] },
+            { deleteStorageFile: async () => { throw unlinkError; } },
+        );
+
+        const result = await module.deleteTopicAttachment({ teacherId: 9, topicId: 12, attachmentId: 5 });
+
+        expect(result).toEqual({ ok: true });
+        expect(operations.some((operation) => operation.kind === "delete")).toBe(true);
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(warnSpy).toHaveBeenCalledWith(
+            expect.stringContaining("storage:audit"),
+            expect.objectContaining({
+                teacherId: 9,
+                topicId: 12,
+                attachmentId: 5,
+                filePath,
+                errorCode: "EACCES",
+                error: "EACCES: permission denied, unlink",
+            }),
+        );
+    } finally {
+        warnSpy.mockRestore();
+    }
 });

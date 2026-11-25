@@ -45,7 +45,7 @@ bun run ci:local:full     # 再执行随机顺序测试和浏览器教学闭环
 
 三者都必须提供与目标连接串数据库名完全一致的 `CONFIRM_DATABASE_NAME`。**清表不可恢复且不会删除 `storage/`；执行前核对目标库并确认数据库与文件已有配套备份。**
 
-`bun run storage:audit` 只读列出孤立文件；审阅后用输出的 token 执行 `bun run storage:clean --confirm=<token>`。不要直接清空存储目录。替换总体文件应先提交数据库更新，再删除旧文件。学生或任务硬删除会级联删除实验、成绩、抽样记录和审计明细，规则见[教学指南](docs/TEACHING.md)。
+`bun run storage:audit` 只读列出孤立文件并提示缺失引用文件（恢复验收可加 `--verify-references` 在引用文件缺失时返回非零退出码）；审阅后用输出的 token 执行 `bun run storage:clean --confirm=<token>`。不要直接清空存储目录。替换总体文件应先提交数据库更新，再删除旧文件。学生或任务硬删除会级联删除实验、成绩、抽样记录和审计明细，规则见[教学指南](docs/TEACHING.md)。
 
 ## 配套备份与恢复
 
@@ -70,10 +70,10 @@ pg_restore --no-owner --no-privileges --dbname="$RESTORE_DATABASE_URL" \
 test ! -e "$app_dir/storage" || exit 1
 tar -C "$app_dir" -xzf "$backup_dir/wenjuan-storage-$stamp.tar.gz"
 (cd "$app_dir" && DATABASE_URL="$RESTORE_DATABASE_URL" bun run db:migrate)
-(cd "$app_dir" && DATABASE_URL="$RESTORE_DATABASE_URL" bun run storage:audit)
+(cd "$app_dir" && DATABASE_URL="$RESTORE_DATABASE_URL" bun run storage:audit --verify-references)
 ```
 
-每步成功后再继续。核对恢复前后的关键表行数、典型提交快照与文件校验和；在 `$app_dir` 以恢复库启动应用，检查历史提交、样本导出和附件下载后才接受备份。`storage:audit` 只列出孤立文件，不能代替已引用文件的完整性检查。
+每步成功后再继续。核对恢复前后的关键表行数、典型提交快照与文件校验和；在 `$app_dir` 以恢复库启动应用，检查历史提交、样本导出和附件下载后才接受备份。`storage:audit --verify-references` 会在数据库引用文件缺失时返回非零退出码，但仅校验文件路径存在性，不能代替字节级校验和与应用层业务抽检。
 
 **不要在恢复库运行 `test:db`，也不要为通过测试清空恢复数据。** 集成测试会写入测试夹具（例如另一个当前学期），与已恢复的业务数据产生唯一约束冲突；它不适合作为恢复验收。需要数据库回归时，另建空的已迁移、可丢弃测试库，按上文“初始化、迁移与测试”执行。
 

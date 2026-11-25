@@ -179,6 +179,7 @@ function statsCompletionFixture(stage: 2 | 4) {
     });
     const marked = {
         ...record,
+        samplingGeneration: 1,
         samplingResults: { ...stored, pps: ppsUnavailable },
         wavesData: [wave2({ ...stored, pps: ppsUnavailable })],
     };
@@ -237,6 +238,7 @@ for (const stage of [2, 4] as const) {
             const fixture = statsCompletionFixture(stage);
             const { module, operations, readStats } = await load(fixture.record, {
                 ...fixture.options,
+                ...(stage === 4 ? { select: [[fixture.record], [fixture.record]] } : {}),
                 schedule: { openTime: null, deadline },
                 readStats: async () => { entered.resolve(); await release.promise; return fixture.stats; },
             });
@@ -357,7 +359,7 @@ test("stage completion returns 409 when a concurrent update wins after the route
     expect(response.status).toBe(409);
     expect(await response.json()).toMatchObject({ error: { code: "VERSION_CONFLICT" } });
     const condition = new PgDialect().sqlToQuery(operations.find((item) => item.kind === "update")!.where as SQL);
-    expect(condition.params).toEqual([9, 6, "in_progress", 2]);
+    expect(condition.params).toEqual([9, 6, "in_progress", 2, 0]);
 });
 
 test("stage reopen returns 409 when a concurrent update wins after the route read", async () => {
@@ -371,7 +373,7 @@ test("stage reopen returns 409 when a concurrent update wins after the route rea
     expect(response.status).toBe(409);
     expect(await response.json()).toMatchObject({ error: { code: "VERSION_CONFLICT" } });
     const condition = new PgDialect().sqlToQuery(operations.find((item) => item.kind === "update")!.where as SQL);
-    expect(condition.params).toEqual([9, 6, "in_progress", 4]);
+    expect(condition.params).toEqual([9, 6, "in_progress", 4, 0]);
 });
 
 test("stage completion rejects a stale tab before attempting an update", async () => {

@@ -1,6 +1,8 @@
 import { SQL } from "bun";
 import { afterAll, afterEach, beforeAll, expect, test } from "bun:test";
 import { and, eq, inArray } from "drizzle-orm";
+import type { StoredExperimentWave, WaveFieldworkData } from "../domain/fieldwork";
+import type { QuestionnaireData } from "../lib/questionnaire-types";
 import * as schema from "./schema";
 import { assertTestDatabaseIsMigrated } from "./test-database-guard";
 
@@ -15,6 +17,7 @@ let classroom: typeof import("../teacher/routes/classroom");
 let grading: typeof import("../teacher/routes/grading");
 let teacherAuth: typeof import("../teacher/routes/auth");
 let studentAuth: typeof import("../student/routes/auth");
+let studentExperiment: typeof import("../student/routes/experiment");
 let taskService: typeof import("../teacher/topic/task-service");
 const ids = { semesters: [] as number[], teachers: [] as number[], classes: [] as number[], students: [] as number[], topics: [] as number[] };
 
@@ -24,9 +27,9 @@ beforeAll(async () => {
     application = await import("./index");
     raw = new SQL(url!);
     await assertTestDatabaseIsMigrated(raw);
-    [management, classroom, grading, teacherAuth, studentAuth, taskService] = await Promise.all([
+    [management, classroom, grading, teacherAuth, studentAuth, studentExperiment, taskService] = await Promise.all([
         import("../admin/routes/management"), import("../teacher/routes/classroom"), import("../teacher/routes/grading"),
-        import("../teacher/routes/auth"), import("../student/routes/auth"), import("../teacher/topic/task-service"),
+        import("../teacher/routes/auth"), import("../student/routes/auth"), import("../student/routes/experiment"), import("../teacher/topic/task-service"),
     ]);
 });
 
@@ -471,5 +474,323 @@ pgTest("opposite-order overlapping roster imports retain row accounting without 
         await raw.unsafe("DROP FUNCTION review_import_order_gate()");
         const rows = await application.db.select().from(schema.student).where(inArray(schema.student.studentId, names));
         ids.students.push(...rows.map(row => row.id));
+    }
+}, 15000);
+
+function samplingTestQuestionnaire(): QuestionnaireData {
+    return {
+        title: "并发抽样测试问卷",
+        welcomeText: "<p>欢迎参与本次并发抽样测试调研问卷，请按实际情况认真填答。</p>",
+        endingText: "<p>感谢参与本次并发抽样测试调研问卷，祝您工作学习顺利。</p>",
+        questions: Array.from({ length: 5 }, (_, index) => ({
+            id: `q${index + 1}`,
+            type: "boolean" as const,
+            content: `这是第 ${index + 1} 道并发抽样测试题？`,
+        })),
+    };
+}
+
+function samplingTestFieldwork(methods: Array<"simple" | "systematic">): WaveFieldworkData {
+    return {
+        methods: Object.fromEntries(methods.map((method) => [
+            method,
+            {
+                method,
+                dispatchSeed: 777,
+                dispatchedAt: "2026-01-02T00:00:00Z",
+                invitedCount: 2,
+                records: [
+                    {
+                        unitIndex: 0,
+                        stratum: "A",
+                        status: "completed_clean" as const,
+                        durationSeconds: 90,
+                        answeredCount: 5,
+                        totalQuestions: 5,
+                        straightliner: false,
+                        observedValues: {},
+                    },
+                    {
+                        unitIndex: 1,
+                        stratum: "A",
+                        status: "completed_clean" as const,
+                        durationSeconds: 95,
+                        answeredCount: 5,
+                        totalQuestions: 5,
+                        straightliner: false,
+                        observedValues: {},
+                    },
+                ],
+            },
+        ])),
+    };
+}
+
+async function addSamplingExperimentFixture(stage: 2 | 4) {
+    const { db } = application;
+    const group = await fixture();
+    const csvRelPath = `/storage/test-conc-sampling-${crypto.randomUUID()}.csv`;
+    const csvAbsPath = `${process.cwd()}${csvRelPath}`;
+    await Bun.write(csvAbsPath, "id,group,score\n1,A,10\n2,A,20\n3,B,30\n4,B,40\n");
+
+    const [topic] = await db.insert(schema.topic).values({
+        teacherId: group.teachers[0]!.id,
+        name: `并发抽样模板-${crypto.randomUUID().slice(0, 6)}`,
+        excelFilePath: csvRelPath,
+        excelRowCount: 4,
+        fieldMapping: {
+            identifier: "id",
+            numeric: ["score"],
+            categorical: ["group"],
+            stratified: ["group"],
+            analysisTarget: { kind: "proportion", field: "group", value: "A" },
+        },
+        samplingPolicy: {
+            version: 1,
+            methods: { simple: "required", systematic: "optional", pps: "disabled", stratified: "disabled" },
+        },
+        status: 1,
+    }).returning();
+    ids.topics.push(topic!.id);
+
+    const [task] = await db.insert(schema.task).values({
+        topicId: topic!.id,
+        classId: group.cls.id,
+        deadline: new Date(Date.now() + 3_600_000),
+    }).returning();
+
+    const questionnaire = samplingTestQuestionnaire();
+    const plan = {
+        confidenceLevel: "95",
+        marginOfError: 5,
+        designEffect: 1,
+        nonResponseRate: 0,
+        recommendedSize: 4,
+        finalSampleSize: 2,
+    };
+    const initialSimple = {
+        completed: true,
+        sampleCount: 2,
+        seed: 12345,
+        indices: [0, 1],
+        serverGenerated: true,
+    };
+    const wavesData: StoredExperimentWave[] = stage === 2
+        ? [{
+            waveNumber: 1,
+            kind: "pilot",
+            label: "第 1 轮 · 首轮试投",
+            questionnaire,
+            samplePlan: plan,
+            samplingResults: { simple: initialSimple },
+            fieldwork: samplingTestFieldwork(["simple"]),
+            cleaningConfig: { removeSpeeders: true, removeStraightliners: true, requirePrimaryTargetValid: true },
+            completedAt: null,
+        }]
+        : [
+            {
+                waveNumber: 1,
+                kind: "pilot",
+                label: "第 1 轮 · 首轮试投",
+                questionnaire,
+                samplePlan: plan,
+                samplingResults: { simple: initialSimple },
+                fieldwork: samplingTestFieldwork(["simple"]),
+                cleaningConfig: { removeSpeeders: true, removeStraightliners: true, requirePrimaryTargetValid: true },
+                completedAt: "2026-01-02T00:00:00Z",
+            },
+            {
+                waveNumber: 2,
+                kind: "main",
+                label: "第 2 轮 · 调优正式投放",
+                questionnaire,
+                samplePlan: plan,
+                samplingResults: null,
+                fieldwork: null,
+                cleaningConfig: { removeSpeeders: true, removeStraightliners: true, requirePrimaryTargetValid: true },
+                completedAt: null,
+            },
+        ];
+
+    const [exp] = await db.insert(schema.experiment).values({
+        studentId: group.students[0]!.id,
+        taskId: task!.id,
+        version: stage === 2 ? 3 : 5,
+        samplingGeneration: stage === 2 ? 2 : 1,
+        status: "in_progress",
+        currentStage: stage,
+        activeWaveNumber: stage === 2 ? 1 : 2,
+        questionnaire,
+        samplePlan: plan,
+        samplingResults: stage === 2 ? { simple: initialSimple } : null,
+        wavesData,
+        stage1CompletedAt: new Date("2026-01-01T00:00:00Z"),
+        ...(stage === 4 ? {
+            stage2CompletedAt: new Date("2026-01-02T00:00:00Z"),
+            stage3CompletedAt: new Date("2026-01-03T00:00:00Z"),
+        } : {}),
+    }).returning();
+
+    const token = await session(3, group.students[0]!.id);
+    return {
+        experiment: exp!,
+        taskId: task!.id,
+        plan,
+        cookie: `student_session=${token}`,
+        cleanupFile: async () => {
+            await Bun.file(csvAbsPath).delete().catch(() => undefined);
+        },
+    };
+}
+
+for (const first of ["sampling", "complete"] as const) {
+    pgTest(`${first}-first concurrent sampling and stage 2 completion never desync experiment state or audit attempts`, async () => {
+        const f = await addSamplingExperimentFixture(2);
+        try {
+            const release = await holdRow("experiment", f.experiment.id);
+            const runSampling = async () => studentExperiment.samplingActionRoutes.POST!(request(
+                "POST",
+                { id: String(f.taskId) },
+                { method: "simple", params: { sampleSize: 2, seed: 22222 } },
+                f.cookie,
+            ));
+            const runComplete = async () => studentExperiment.stageCompleteRoutes.POST!(request(
+                "POST",
+                { id: String(f.taskId), stage: "2" },
+                { observedVersion: f.experiment.version, samplePlan: f.plan },
+                f.cookie,
+            ));
+
+            let samplingPromise: Promise<Response> | undefined;
+            let completePromise: Promise<Response> | undefined;
+            try {
+                if (first === "sampling") samplingPromise = runSampling();
+                else completePromise = runComplete();
+                await waitUntil(() => blocked('"experiment"'));
+
+                if (first === "sampling") completePromise = runComplete();
+                else samplingPromise = runSampling();
+                await waitUntil(async () => {
+                    const [row] = await raw`select count(*)::int as n from pg_stat_activity where datname = current_database() and wait_event_type = 'Lock' and query like '%"experiment"%'`;
+                    return row.n >= 2;
+                });
+            } finally {
+                await release();
+                await Promise.allSettled([samplingPromise, completePromise]);
+            }
+
+            const samplingRes = await samplingPromise!;
+            const completeRes = await completePromise!;
+            expect([samplingRes.status, completeRes.status].sort()).toEqual([200, 409]);
+
+            const [savedExp] = await application.db
+                .select()
+                .from(schema.experiment)
+                .where(eq(schema.experiment.id, f.experiment.id));
+            const attempts = await application.db
+                .select()
+                .from(schema.samplingAttempt)
+                .where(eq(schema.samplingAttempt.experimentId, f.experiment.id));
+            const waveRows = await application.db
+                .select()
+                .from(schema.experimentWave)
+                .where(eq(schema.experimentWave.experimentId, f.experiment.id));
+
+            if (samplingRes.status === 200) {
+                expect(completeRes.status).toBe(409);
+                expect(await completeRes.json()).toMatchObject({ error: { code: "VERSION_CONFLICT" } });
+                expect(savedExp!.currentStage).toBe(2);
+                expect(savedExp!.version).toBe(f.experiment.version);
+                expect(savedExp!.samplingGeneration).toBe(f.experiment.samplingGeneration + 1);
+                expect((savedExp!.samplingResults as { simple?: { seed?: number } })?.simple?.seed).toBe(22222);
+                const wave1 = (savedExp!.wavesData as Array<{ waveNumber: number; samplingResults?: { simple?: { seed?: number } }; fieldwork?: unknown }>)[0]!;
+                expect(wave1.samplingResults?.simple?.seed).toBe(22222);
+                expect(wave1.fieldwork).toBeNull();
+                expect(waveRows).toHaveLength(1);
+                expect((waveRows[0]!.samplingResults as { simple?: { seed?: number } })?.simple?.seed).toBe(22222);
+                expect(waveRows[0]!.fieldworkResults).toBeNull();
+                expect(attempts).toHaveLength(1);
+                expect(attempts[0]!.seed).toBe(22222);
+            } else {
+                expect(completeRes.status).toBe(200);
+                expect(samplingRes.status).toBe(409);
+                expect(await samplingRes.json()).toMatchObject({ error: { code: "VERSION_CONFLICT" } });
+                expect(savedExp!.currentStage).toBe(3);
+                expect(savedExp!.version).toBe(f.experiment.version + 1);
+                expect(savedExp!.samplingGeneration).toBe(f.experiment.samplingGeneration);
+                expect((savedExp!.samplingResults as { simple?: { seed?: number } })?.simple?.seed).toBe(12345);
+                expect(attempts).toHaveLength(0);
+            }
+        } finally {
+            await f.cleanupFile();
+        }
+    }, 15000);
+}
+
+pgTest("concurrent sampling of different methods preserves both methods without lost updates", async () => {
+    const f = await addSamplingExperimentFixture(4);
+    try {
+        const release = await holdRow("experiment", f.experiment.id);
+        const runSimple = async () => studentExperiment.samplingActionRoutes.POST!(request(
+            "POST",
+            { id: String(f.taskId) },
+            { method: "simple", params: { sampleSize: 2, seed: 1001 } },
+            f.cookie,
+        ));
+        const runSystematic = async () => studentExperiment.samplingActionRoutes.POST!(request(
+            "POST",
+            { id: String(f.taskId) },
+            { method: "systematic", params: { seed: 1002 } },
+            f.cookie,
+        ));
+
+        let simplePromise: Promise<Response> | undefined;
+        let systematicPromise: Promise<Response> | undefined;
+        try {
+            simplePromise = runSimple();
+            await waitUntil(() => blocked('"experiment"'));
+            systematicPromise = runSystematic();
+            await waitUntil(async () => {
+                const [row] = await raw`select count(*)::int as n from pg_stat_activity where datname = current_database() and wait_event_type = 'Lock' and query like '%"experiment"%'`;
+                return row.n >= 2;
+            });
+        } finally {
+            await release();
+            await Promise.allSettled([simplePromise, systematicPromise]);
+        }
+
+        const [simpleRes, systematicRes] = await Promise.all([simplePromise!, systematicPromise!]);
+        expect(simpleRes.status).toBe(200);
+        expect(systematicRes.status).toBe(200);
+
+        const [savedExp] = await application.db
+            .select()
+            .from(schema.experiment)
+            .where(eq(schema.experiment.id, f.experiment.id));
+        const sampling = savedExp!.samplingResults as Record<string, { completed?: boolean; seed?: number }> | null;
+        expect(sampling?.simple).toMatchObject({ completed: true, seed: 1001 });
+        expect(sampling?.systematic).toMatchObject({ completed: true, seed: 1002 });
+        expect(savedExp!.samplingGeneration).toBe(f.experiment.samplingGeneration + 2);
+
+        const wave2 = (savedExp!.wavesData as Array<{ waveNumber: number; samplingResults?: Record<string, { seed?: number }> }>)
+            .find((wave) => wave.waveNumber === 2);
+        expect(wave2?.samplingResults?.simple?.seed).toBe(1001);
+        expect(wave2?.samplingResults?.systematic?.seed).toBe(1002);
+
+        const waveRows = await application.db
+            .select()
+            .from(schema.experimentWave)
+            .where(and(eq(schema.experimentWave.experimentId, f.experiment.id), eq(schema.experimentWave.waveNumber, 2)));
+        expect(waveRows).toHaveLength(1);
+        expect((waveRows[0]!.samplingResults as Record<string, { seed?: number }>)?.simple?.seed).toBe(1001);
+        expect((waveRows[0]!.samplingResults as Record<string, { seed?: number }>)?.systematic?.seed).toBe(1002);
+
+        const attempts = await application.db
+            .select()
+            .from(schema.samplingAttempt)
+            .where(eq(schema.samplingAttempt.experimentId, f.experiment.id));
+        expect(attempts.map((item) => item.method).sort()).toEqual(["simple", "systematic"]);
+    } finally {
+        await f.cleanupFile();
     }
 }, 15000);

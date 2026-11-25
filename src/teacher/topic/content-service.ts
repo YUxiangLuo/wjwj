@@ -198,7 +198,23 @@ export async function deleteTopicAttachment(params: {
     });
 
     if (!deletion.ok) return deletion;
-    await deleteTopicStorageFileIfUnreferenced(deletion.filePath).catch(() => undefined);
+    await deleteTopicStorageFileIfUnreferenced(deletion.filePath).catch((cause: unknown) => {
+        const errorCode = cause && typeof cause === "object" && "code" in cause
+            ? String((cause as { code?: unknown }).code)
+            : undefined;
+        const errorMessage = cause instanceof Error ? cause.message : String(cause);
+        console.warn(
+            "[storage-cleanup] Failed to delete unreferenced attachment file after DB commit; run storage:audit / storage:clean to reclaim",
+            {
+                teacherId: params.teacherId,
+                topicId: params.topicId,
+                attachmentId: params.attachmentId,
+                filePath: deletion.filePath,
+                ...(errorCode ? { errorCode } : {}),
+                error: errorMessage,
+            },
+        );
+    });
     return { ok: true as const };
 }
 

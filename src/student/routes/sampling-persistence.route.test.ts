@@ -86,7 +86,7 @@ async function load(
     samplingPolicy?: unknown,
     schedule = { openTime: null as Date | null, deadline: new Date(Date.now() + 60_000) },
 ) {
-    const { db, operations } = createMockDb({ select: [[experimentRecord]], update });
+    const { db, operations } = createMockDb({ select: [[experimentRecord], [experimentRecord]], update });
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => createStudentAuthModuleMock({
         requireAuth: async () => ({ student: { id: 2, studentId: "S001", name: "学生一", classId: 7 }, error: null }),
@@ -169,7 +169,8 @@ test("sampling action ignores forged output fields and atomically persists its s
     expect(storedResult).not.toHaveProperty("layers");
 
     const optimisticQuery = new PgDialect().sqlToQuery(update?.where as SQL);
-    expect(optimisticQuery.params).toEqual([9, 6, "in_progress", 4]);
+    expect(optimisticQuery.params).toEqual([9, 6, "in_progress", 4, 0]);
+    expect(operations.some((operation) => operation.kind === "select" && operation.lockStrength === "update")).toBe(true);
 
     const payload = await response.json() as any;
     expect(payload.data.result.data).toHaveLength(2);
@@ -317,7 +318,7 @@ test("stage completion atomically persists server-determined PPS unavailability"
         completedAt: null,
     });
     const current = record({ samplingResults: stored, wavesData: [wave2(stored)] });
-    const marked = { ...current, samplingResults: { ...stored, pps }, wavesData: [wave2({ ...stored, pps })] };
+    const marked = { ...current, samplingGeneration: 1, samplingResults: { ...stored, pps }, wavesData: [wave2({ ...stored, pps })] };
     const updated = { ...marked, wavesData: [], currentStage: 5, version: 7, stage4CompletedAt: new Date() };
     const { module, operations } = await load(current, [[marked], [updated]], { numeric: [], stratified: ["gender"] });
     const response = await module.stageCompleteRoutes.POST!(routeRequest(

@@ -1,14 +1,30 @@
 import { readdir, unlink } from "node:fs/promises";
 import { relative, resolve, sep } from "node:path";
 import { sql } from "drizzle-orm";
-import { closeDatabase, db } from "../src/db";
+import type { db as appDb } from "../src/db";
 import { topic, topicAttachment } from "../src/db/schema";
 import { acquireStorageMutationLock } from "../src/db/storage-mutation-lock";
 import { resolveStoragePath } from "../src/server/storage-files";
 
 const storageRoot = resolve(process.cwd(), "storage");
-const args = new Set(process.argv.slice(2));
-const shouldDelete = args.has("--delete");
+
+export interface AuditStorageOptions {
+    shouldDelete: boolean;
+    verifyReferences: boolean;
+    confirmToken?: string;
+}
+
+export function parseAuditArgs(argv: string[]): AuditStorageOptions {
+    const argSet = new Set(argv);
+    const confirmToken = argv
+        .find((arg) => arg.startsWith("--confirm="))
+        ?.slice("--confirm=".length);
+    return {
+        shouldDelete: argSet.has("--delete"),
+        verifyReferences: argSet.has("--verify-references"),
+        confirmToken,
+    };
+}
 
 export function storageDeletionToken(entries: Array<{ path: string; size: number }>) {
     const canonical = entries
@@ -39,7 +55,7 @@ function addReference(references: Set<string>, path: unknown) {
     }
 }
 
-type StorageReferenceReader = Pick<typeof db, "execute" | "select">;
+type StorageReferenceReader = Pick<typeof appDb, "execute" | "select">;
 
 export interface StorageSchemaState {
     topic_table: string | null;
@@ -98,36 +114,107 @@ export async function loadReferences(
     return references;
 }
 
-export async function runStorageAudit() {
+export interface StorageAuditSummary {
+    referenceCount: number;
+    fileCount: number;
+    orphans: string[];
+    missingReferences: string[];
+    orphanTotalBytes: number;
+    deletionToken: string;
+}
+
+export function auditStorageSnapshot(params: {
+    files: string[];
+    references: Set<string>;
+    cwd?: string;
+    fileSize?: (path: string) => number;
+}): StorageAuditSummary {
+    const cwd = params.cwd ?? process.cwd();
+    const getSize = params.fileSize ?? ((path: string) => Bun.file(path).size);
+    const fileSet = new Set(params.files);
+    const orphans = params.files
+        .filter((path) => !path.endsWith(`${sep}.gitkeep`) && !params.references.has(path))
+        .sort();
+    const missingReferences = [...params.references]
+        .filter((path) => !fileSet.has(path))
+        .sort();
+    const orphanTotalBytes = orphans.reduce((sum, path) => sum + getSize(path), 0);
+    const deletionToken = storageDeletionToken(orphans.map((path) => ({
+        path: relative(cwd, path),
+        size: getSize(path),
+    })));
+    return {
+        referenceCount: params.references.size,
+        fileCount: params.files.length,
+        orphans,
+        missingReferences,
+        orphanTotalBytes,
+        deletionToken,
+    };
+}
+
+export async function executeStorageAudit(params: {
+    files: string[];
+    references: Set<string>;
+    options: AuditStorageOptions;
+    cwd?: string;
+    fileSize?: (path: string) => number;
+    unlinkFile?: (path: string) => Promise<void>;
+    log?: (message: string) => void;
+    warn?: (message: string) => void;
+}) {
+    const cwd = params.cwd ?? process.cwd();
+    const unlinkFile = params.unlinkFile ?? ((path: string) => unlink(path));
+    const log = params.log ?? ((message: string) => console.log(message));
+    const warn = params.warn ?? ((message: string) => console.warn(message));
+    const summary = auditStorageSnapshot({
+        files: params.files,
+        references: params.references,
+        cwd,
+        fileSize: params.fileSize,
+    });
+
+    log(`数据库引用文件：${summary.referenceCount}`);
+    log(`存储文件总数：${summary.fileCount}`);
+    log(`未引用文件：${summary.orphans.length}（${(summary.orphanTotalBytes / 1024 / 1024).toFixed(2)} MiB）`);
+    for (const path of summary.orphans) log(`  ${relative(cwd, path)}`);
+    log(`缺失引用文件：${summary.missingReferences.length}`);
+    for (const path of summary.missingReferences) warn(`  [缺失] ${relative(cwd, path)}`);
+
+    if (summary.missingReferences.length > 0) {
+        if (params.options.verifyReferences) {
+            throw new Error(
+                `发现 ${summary.missingReferences.length} 个数据库引用的存储文件缺失，请先核对配套 storage/ 恢复后再继续`,
+            );
+        }
+        warn(
+            `警告：发现 ${summary.missingReferences.length} 个数据库引用的存储文件缺失；恢复验收请运行 bun run storage:audit --verify-references`,
+        );
+    }
+
+    if (params.options.shouldDelete) {
+        if (!params.options.confirmToken || params.options.confirmToken !== summary.deletionToken) {
+            throw new Error(
+                `删除确认不匹配；请先运行 storage:audit，再执行 bun run storage:clean --confirm=${summary.deletionToken}`,
+            );
+        }
+        for (const path of summary.orphans) await unlinkFile(path);
+        log(`已删除 ${summary.orphans.length} 个未引用文件。`);
+    } else if (summary.orphans.length > 0) {
+        log(`当前仅审计，未删除文件。确认列表后运行 bun run storage:clean --confirm=${summary.deletionToken}`);
+    }
+
+    return summary;
+}
+
+export async function runStorageAudit(argv: string[] = process.argv.slice(2)) {
+    const options = parseAuditArgs(argv);
+    const { closeDatabase, db } = await import("../src/db");
     try {
         await db.transaction(async (tx) => {
             await acquireStorageMutationLock(tx);
             const [files, references] = await Promise.all([listFiles(storageRoot), loadReferences(tx)]);
-            const orphans = files.filter((path) => !path.endsWith(`${sep}.gitkeep`) && !references.has(path));
-            const totalBytes = orphans.reduce((sum, path) => sum + Bun.file(path).size, 0);
-
-            console.log(`数据库引用文件：${references.size}`);
-            console.log(`存储文件总数：${files.length}`);
-            console.log(`未引用文件：${orphans.length}（${(totalBytes / 1024 / 1024).toFixed(2)} MiB）`);
-            for (const path of orphans) console.log(`  ${relative(process.cwd(), path)}`);
-
-            const token = storageDeletionToken(orphans.map((path) => ({
-                path: relative(process.cwd(), path),
-                size: Bun.file(path).size,
-            })));
-
-            if (shouldDelete) {
-                const confirmation = [...args]
-                    .find((arg) => arg.startsWith("--confirm="))
-                    ?.slice("--confirm=".length);
-                if (!confirmation || confirmation !== token) {
-                    throw new Error(`删除确认不匹配；请先运行 storage:audit，再执行 bun run storage:clean -- --confirm=${token}`);
-                }
-                for (const path of orphans) await unlink(path);
-                console.log(`已删除 ${orphans.length} 个未引用文件。`);
-            } else if (orphans.length > 0) {
-                console.log(`当前仅审计，未删除文件。确认列表后运行 bun run storage:clean -- --confirm=${token}`);
-            }
+            await executeStorageAudit({ files, references, options });
         });
     } catch (error) {
         console.error("存储审计失败：", error);

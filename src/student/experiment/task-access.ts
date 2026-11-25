@@ -58,8 +58,8 @@ export async function getStudentTopicAttachmentAccessError(topicId: number, clas
     return checkAccess(
         [eq(task.topicId, topicId), eq(task.classId, classId)],
         [eq(task.topicId, topicId), eq(task.classId, classId)],
-        "无权限访问该附件",
-        "FORBIDDEN",
-        403,
+        "附件不存在",
+        "NOT_FOUND",
+        404,
     );
 }
