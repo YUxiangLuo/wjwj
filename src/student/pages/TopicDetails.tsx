@@ -301,13 +301,14 @@ export function TopicDetails() {
                 </section>
             )}
 
-            <div className="grid grid-cols-5 items-start gap-5 rounded-surface border border-border bg-card p-5">
+            <div className="grid grid-cols-5 gap-5 rounded-surface border border-border bg-card p-5">
                 <section className="col-span-3 min-w-0">
                     <h2 className="mb-3 text-subheading font-semibold text-foreground">项目背景与实验要求</h2>
                     <RichTextContent html={task.description ?? ""} className="prose max-w-none text-body text-foreground" emptyFallback="暂无描述" />
                 </section>
 
-                <div className="sticky top-20 col-span-2 min-w-0 space-y-4 border-l border-border pl-5">
+                <div className="col-span-2 min-w-0 border-l border-border pl-5">
+                    <div className="sticky top-20 space-y-4">
                     <section className="space-y-2" data-testid="student-task-sampling-policy">
                         <h2 className="text-subheading font-semibold text-foreground">正式轮抽样方法要求</h2>
                         <p className="text-meta text-muted-foreground">首轮试投可快速探索任意方法；正式投放阶段须完成全部必做方法且至少完成两种启用方法进行效率对比。</p>
@@ -387,6 +388,7 @@ export function TopicDetails() {
                             </div>
                         </section>
                     )}
+                    </div>
                 </div>
             </div>
 

@@ -508,7 +508,7 @@ export function TopicManagement() {
                             {loading || loadError ? "共 - 条数据" : `共 ${filteredTopics.length} 条数据`}
                         </p>
                     </div>
-                    <div className="flex gap-3 flex-row w-auto">
+                    <div className="flex flex-wrap gap-3 flex-row w-auto">
                         <div className="relative w-56">
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                             <Input
@@ -564,13 +564,13 @@ export function TopicManagement() {
                     ) : filteredTopics.map((topic) => (
                         <div data-testid={`teacher-topic-row-${topic.id}`} key={topic.id} className="border border-border rounded-surface p-5 bg-background">
                             <div className="flex gap-3 flex-row items-start justify-between mb-4">
-                                <div className="flex items-start gap-4">
-                                    <div className="w-12 h-12 rounded-surface bg-primary-muted text-primary flex items-center justify-center border border-primary-border">
+                                <div className="flex min-w-0 flex-1 items-start gap-4">
+                                    <div className="w-12 h-12 shrink-0 rounded-surface bg-primary-muted text-primary flex items-center justify-center border border-primary-border">
                                         <BookOpen className="w-6 h-6" />
                                     </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="font-semibold text-foreground text-subheading">{topic.name}</h3>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <h3 className="break-words font-semibold text-foreground text-subheading">{topic.name}</h3>
                                             {topic.status === 1 ? (
                                                 <StatusBadge intent="success">已发布</StatusBadge>
                                             ) : (

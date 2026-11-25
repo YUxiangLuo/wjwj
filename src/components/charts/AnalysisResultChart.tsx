@@ -10,6 +10,7 @@ import type {
 } from "@/domain/variables/types";
 import { formatStatistic } from "@/utils/statistic-format";
 import { EChartBox } from "./EChartBox";
+import { disambiguateAxisLabels, truncateAxisLabel } from "./axis-label";
 import type { EChartsCoreOption } from "./echarts-core";
 import {
     CHART_FONT_FAMILY,
@@ -35,10 +36,6 @@ function escapeHtml(text: string): string {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#39;");
-}
-
-function truncateAxisLabel(label: string, maxChars = 11): string {
-    return label.length > maxChars ? `${label.slice(0, maxChars - 1)}…` : label;
 }
 
 function describeRawType(input: RawValue): string {
@@ -258,7 +255,7 @@ function normalizeCategories(result: CategoricalAnalysisResult): NormalizedCateg
             .map((item) => item.label),
     );
 
-    const validItems = result.categories
+    const validRaw = result.categories
         .filter((item) => item.proportion != null && Number.isFinite(item.proportion))
         .map((item) => {
             const fullLabel = duplicateLabels.has(item.label)
@@ -266,12 +263,17 @@ function normalizeCategories(result: CategoricalAnalysisResult): NormalizedCateg
                 : item.label;
             return {
                 displayLabel: fullLabel,
-                shortLabel: truncateAxisLabel(fullLabel, 10),
                 count: item.count,
                 pct: Math.max(0, (item.proportion ?? 0) * 100),
             };
         })
         .sort((a, b) => b.pct - a.pct || b.count - a.count);
+
+    const shortLabels = disambiguateAxisLabels(validRaw.map((item) => item.displayLabel), 10);
+    const validItems = validRaw.map((item, idx) => ({
+        ...item,
+        shortLabel: shortLabels[idx] ?? truncateAxisLabel(item.displayLabel, 10),
+    }));
 
     if (validItems.length <= 8) {
         return validItems;
@@ -470,7 +472,7 @@ function buildCrosstabNumericOption(
             },
         }, tokens),
         xAxis: buildExecutiveCategoryAxis({
-            data: groups.map((g) => truncateAxisLabel(g.groupLabel, 10)),
+            data: disambiguateAxisLabels(groups.map((g) => g.groupLabel), 10),
         }, tokens),
         yAxis: buildExecutiveValueAxis({
             min: domain.min,
@@ -608,6 +610,7 @@ function buildCrosstabCategoricalOption(
 ): EChartsCoreOption {
     const groups = result.groups.filter((grp) => grp.validCount > 0 && (grp.categories?.length ?? 0) > 0);
     const categoryHeaders = groups[0]?.categories ?? [];
+    const disambiguatedCategories = disambiguateAxisLabels(categoryHeaders.map((cat) => cat.label), 12);
 
     return {
         grid: buildExecutiveGrid({ left: 12, right: 20, top: 44, bottom: 14 }),
@@ -616,7 +619,7 @@ function buildCrosstabCategoricalOption(
             left: 0,
             right: 0,
             itemGap: 12,
-            data: categoryHeaders.map((cat) => truncateAxisLabel(cat.label, 12)),
+            data: disambiguatedCategories,
         }, tokens),
         tooltip: buildExecutiveTooltip({
             trigger: "axis",
@@ -642,7 +645,7 @@ function buildCrosstabCategoricalOption(
             },
         }, tokens),
         xAxis: buildExecutiveCategoryAxis({
-            data: groups.map((g) => truncateAxisLabel(g.groupLabel, 10)),
+            data: disambiguateAxisLabels(groups.map((g) => g.groupLabel), 10),
         }, tokens),
         yAxis: buildExecutiveValueAxis({
             min: 0,
@@ -652,7 +655,7 @@ function buildCrosstabCategoricalOption(
             },
         }, tokens),
         series: categoryHeaders.map((header, cIdx) => ({
-            name: truncateAxisLabel(header.label, 12),
+            name: disambiguatedCategories[cIdx] ?? truncateAxisLabel(header.label, 12),
             type: "bar",
             ...(mode === "stacked" ? { stack: "segment-total" } : {}),
             barMaxWidth: mode === "stacked" ? 48 : 28,

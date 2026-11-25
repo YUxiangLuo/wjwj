@@ -189,7 +189,7 @@ function TaskCard({ task }: TaskCardProps) {
 
     return (
         <Card
-            className="task-card flex h-full flex-col justify-between rounded-surface border-(--task-card-border) border-t-4 border-t-(--task-card-accent) bg-(--task-card-surface) transition-none hover:border-(--task-card-accent)"
+            className="task-card flex h-full flex-col rounded-surface border-(--task-card-border) border-t-4 border-t-(--task-card-accent) bg-(--task-card-surface) transition-none hover:border-(--task-card-accent)"
             data-task-tone={colorTone}
             data-testid={`student-task-card-${task.id}`}
         >
@@ -206,8 +206,8 @@ function TaskCard({ task }: TaskCardProps) {
                     {task.description ? getRichTextPlainText(task.description) : "围绕商业管理问题完成试投质检、抽样调优与统计推断闭环。"}
                 </CardDescription>
             </CardHeader>
-            <CardContent>
-                <div className="space-y-4">
+            <CardContent className="flex flex-1 flex-col">
+                <div className="flex flex-1 flex-col gap-4">
                     {task.status !== "graded" && task.status !== "rejected" && (
                         <div className="space-y-2">
                             <div className="flex items-center justify-between text-label">
@@ -252,38 +252,40 @@ function TaskCard({ task }: TaskCardProps) {
                         </div>
                     )}
 
-                    <div className="flex justify-between items-center pt-3 border-t border-border">
-                        <div className="text-meta text-muted-foreground space-y-0.5 tabular-nums">
-                            <div>{notOpenYet ? "开放" : "发布"}：{formatDateTime(task.publishedAt)}</div>
-                            <div>截止：{formatDateTime(task.deadline)}</div>
+                    <div className="mt-auto space-y-4">
+                        <div className="flex justify-between items-center pt-3 border-t border-border">
+                            <div className="text-meta text-muted-foreground space-y-0.5 tabular-nums">
+                                <div>{notOpenYet ? "开放" : "发布"}：{formatDateTime(task.publishedAt)}</div>
+                                <div>截止：{formatDateTime(task.deadline)}</div>
+                            </div>
+                            <DeadlineDisplay deadline={task.deadline} status={task.status} notOpenYet={notOpenYet} />
                         </div>
-                        <DeadlineDisplay deadline={task.deadline} status={task.status} notOpenYet={notOpenYet} />
-                    </div>
 
-                    <div className="flex gap-2">
-                        <Button
-                            className={`flex-1 w-full ${action.variant === "default" ? "bg-primary hover:bg-primary-hover text-primary-foreground hover:text-primary-foreground" : ""} ${action.variant === "destructive" ? "bg-destructive hover:bg-destructive-hover text-destructive-foreground hover:text-destructive-foreground" : ""} ${action.variant === "outline" ? "border-input text-foreground hover:bg-muted hover:text-foreground" : ""}`}
-                            variant="ghost"
-                            disabled={disabled}
-                            onClick={() => { void handlePrimaryAction(); }}
-                            data-testid={`student-task-primary-${task.id}`}
-                        >
-                            {action.text}
-                            <ChevronRight className="w-4 h-4 ml-1" />
-                        </Button>
-                        {task.status === "rejected" && (
-                            <Button asChild variant="outline" className="shrink-0 border-input text-foreground hover:bg-muted hover:text-foreground">
-                                <Link to={`/task/${task.id}/result`} aria-label={`查看${task.name}退回快照`}>
-                                    批改详情
-                                </Link>
+                        <div className="flex gap-2">
+                            <Button
+                                className={`flex-1 w-full ${action.variant === "default" ? "bg-primary hover:bg-primary-hover text-primary-foreground hover:text-primary-foreground" : ""} ${action.variant === "destructive" ? "bg-destructive hover:bg-destructive-hover text-destructive-foreground hover:text-destructive-foreground" : ""} ${action.variant === "outline" ? "border-input text-foreground hover:bg-muted hover:text-foreground" : ""}`}
+                                variant="ghost"
+                                disabled={disabled}
+                                onClick={() => { void handlePrimaryAction(); }}
+                                data-testid={`student-task-primary-${task.id}`}
+                            >
+                                {action.text}
+                                <ChevronRight className="w-4 h-4 ml-1" />
                             </Button>
+                            {task.status === "rejected" && (
+                                <Button asChild variant="outline" className="shrink-0 border-input text-foreground hover:bg-muted hover:text-foreground">
+                                    <Link to={`/task/${task.id}/result`} aria-label={`查看${task.name}退回快照`}>
+                                        批改详情
+                                    </Link>
+                                </Button>
+                            )}
+                        </div>
+                        {disabled && (
+                            <div className="px-4 py-2 text-meta text-muted-foreground text-center bg-muted rounded-control">
+                                {notOpenYet ? "任务尚未开放，暂不可操作" : "已截止，无法继续操作"}
+                            </div>
                         )}
                     </div>
-                    {disabled && (
-                        <div className="px-4 py-2 text-meta text-muted-foreground text-center bg-muted rounded-control">
-                            {notOpenYet ? "任务尚未开放，暂不可操作" : "已截止，无法继续操作"}
-                        </div>
-                    )}
                 </div>
             </CardContent>
         </Card>

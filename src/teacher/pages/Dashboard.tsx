@@ -164,27 +164,29 @@ export function Dashboard() {
                     ) : activeTasks.map((item) => {
                         const progress = item.total > 0 ? Math.round(item.completed / item.total * 100) : 0;
                         return (
-                            <Link key={item.id} to={`/task/${item.id}/progress`} className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-control px-3 py-4 transition-none hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
-                                <div className="min-w-0 flex-[2_1_16rem]">
-                                    <p className="text-label font-semibold text-foreground">{item.templateName}</p>
-                                    <p className="mt-1 text-meta text-muted-foreground">{item.className}</p>
+                            <Link key={item.id} to={`/task/${item.id}/progress`} className="grid grid-cols-[minmax(0,1fr)_minmax(11rem,14rem)_10.5rem_1rem] items-center gap-x-4 rounded-control px-3 py-4 transition-none hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
+                                <div className="min-w-0">
+                                    <p className="break-words text-label font-semibold text-foreground">{item.templateName}</p>
+                                    <p className="mt-1 truncate text-meta text-muted-foreground">{item.className}</p>
                                 </div>
-                                <div className="flex-[1_1_13rem]">
+                                <div className="min-w-0">
                                     <div className="flex justify-between text-meta tabular-nums text-muted-foreground">
                                         <span>已提交 {item.completed}/{item.total}</span>
                                         <span aria-hidden="true" className="font-semibold text-foreground">{progress}%</span>
                                     </div>
                                     <Progress aria-label={`${item.templateName}提交进度`} value={progress} className="mt-2 h-2" />
                                 </div>
-                                <div className="flex flex-wrap items-center gap-2.5">
-                                    <StatusBadge intent={item.pending > 0 ? "warning" : "neutral"}>待批改 {item.pending}</StatusBadge>
-                                    {item.rejected > 0 && <StatusBadge intent="destructive">需重做 {item.rejected}</StatusBadge>}
-                                    <span className="flex items-center gap-1 text-meta tabular-nums text-muted-foreground">
-                                        <Clock className="h-3.5 w-3.5" />
+                                <div className="min-w-0 text-right">
+                                    <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                                        <StatusBadge intent={item.pending > 0 ? "warning" : "neutral"}>待批改 {item.pending}</StatusBadge>
+                                        {item.rejected > 0 && <StatusBadge intent="destructive">需重做 {item.rejected}</StatusBadge>}
+                                    </div>
+                                    <span className="mt-1.5 flex items-center justify-end gap-1 whitespace-nowrap text-meta tabular-nums text-muted-foreground">
+                                        <Clock className="h-3.5 w-3.5 shrink-0" />
                                         {item.deadline ? formatDateTimeDisplay(item.deadline, "-") : "无截止时间"}
                                     </span>
-                                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
                                 </div>
+                                <ChevronRight className="h-4 w-4 justify-self-end text-muted-foreground" />
                             </Link>
                         );
                     })}

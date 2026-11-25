@@ -2074,7 +2074,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 />
                             </CardContent>
                         </Card>
-                        <aside className="min-w-0 flex-[1_1_18rem] space-y-6 border-l border-border pl-5" aria-label="报告写作参考">
+                        <aside className="min-w-0 flex-[1_1_18rem] space-y-6 rounded-surface border border-border bg-card p-5" aria-label="报告写作参考">
                             {target && (
                                 <section className="space-y-3">
                                     <h3 className="text-subheading font-semibold">结果速查</h3>

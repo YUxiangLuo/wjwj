@@ -988,7 +988,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                 </div>
 
                 {/* Right Sticky Inspector: Pilot Readiness Checklist */}
-                <aside className="sticky top-36 space-y-4">
+                <aside className="sticky top-40 space-y-4">
                     <Card className="rounded-surface border-border bg-card">
                         <CardHeader className="border-b border-border pb-3">
                             <CardTitle className="text-subheading text-foreground">首轮试投通关清单</CardTitle>

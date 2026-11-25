@@ -250,8 +250,8 @@ export function GradingDetail() {
                         <TabsContent value="plan" className="mt-4"><SamplePlanSnapshot value={data.samplePlan} populationSize={data.populationSize} /></TabsContent>
                         <TabsContent value="sampling" className="mt-4 space-y-4">
                             {data.samplingResults && (
-                                <div className="flex items-center justify-between gap-3 rounded-surface border border-info-border bg-info-muted p-4">
-                                    <p className="text-label text-info">页面最多预览每种抽样方法的前 50 行；CSV 包含本次提交的完整样本。</p>
+                                <div className="flex flex-wrap items-center justify-between gap-3 rounded-surface border border-info-border bg-info-muted p-4">
+                                    <p className="min-w-0 flex-1 text-label text-info">页面最多预览每种抽样方法的前 50 行；CSV 包含本次提交的完整样本。</p>
                                     <Button asChild variant="outline" className="shrink-0 border-info-border text-info hover:bg-info-muted hover:text-info hover:border-info-border">
                                         <a
                                             href={teacherResourceUrl(`/api/teacher/grading/${id}/sampling-export?type=all`)}
@@ -279,7 +279,7 @@ export function GradingDetail() {
                                             }[attempt.method];
                                             const waveNumber = (attempt as { waveNumber?: number | null }).waveNumber;
                                             return (
-                                                <div key={attempt.id} className="flex items-center justify-between rounded-surface bg-muted px-3 py-2 text-label">
+                                                <div key={attempt.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-surface bg-muted px-3 py-2 text-label">
                                                     <span className="font-medium tabular-nums">{waveNumber ? `第 ${waveNumber} 轮 · ` : ""}{methodLabel} · {attempt.sampleCount.toLocaleString()} 个</span>
                                                     <span className="text-meta text-muted-foreground">seed {attempt.seed} · {formatDateTimeDisplay(attempt.createdAt)}</span>
                                                 </div>

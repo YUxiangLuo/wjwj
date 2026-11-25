@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatStatistic } from "@/utils/statistic-format";
 import { EChartBox } from "./EChartBox";
+import { disambiguateAxisLabels } from "./axis-label";
 import type { EChartsCoreOption } from "./echarts-core";
 import {
     buildExecutiveCategoryAxis,
@@ -32,12 +33,6 @@ function escapeHtml(value: string): string {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#39;");
-}
-
-function shortenStratumLabel(label: string, maxChars = 10): string {
-    const trimmed = label.trim();
-    if (trimmed.length <= maxChars) return trimmed;
-    return `${trimmed.slice(0, maxChars - 1)}…`;
 }
 
 export function StratumComparisonChart({
@@ -128,7 +123,7 @@ export function StratumComparisonChart({
             ),
             xAxis: buildExecutiveCategoryAxis(
                 {
-                    data: normalizedRows.map((row) => shortenStratumLabel(row.stratum, 10)),
+                    data: disambiguateAxisLabels(normalizedRows.map((row) => row.stratum), 10),
                     axisLabel: {
                         color: tokens.foreground,
                         fontWeight: 500,

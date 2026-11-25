@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { EChartBox } from "./EChartBox";
+import { disambiguateAxisLabels } from "./axis-label";
 import type { EChartsCoreOption, ExecutiveChartOption } from "./echarts-core";
 import {
     CHART_FONT_FAMILY,
@@ -158,10 +159,11 @@ function resolveStatusBucketColor(
     }
 }
 
-function truncateAxisText(value: string, maxChars: number): string {
-    const trimmed = value.trim();
-    if (trimmed.length <= maxChars) return trimmed;
-    return `${trimmed.slice(0, Math.max(1, maxChars - 1))}…`;
+function sanitizeRichText(value: string): string {
+    return value
+        .replaceAll("{", "（")
+        .replaceAll("}", "）")
+        .replaceAll("|", "｜");
 }
 
 function extractClickedStatusKey(params: unknown): TaskProgressStatusKey | null {
@@ -1546,7 +1548,15 @@ export function TeacherActiveTasksStructureCard({
     const tokens = getExecutiveChartTokens();
 
     const rows = useMemo(() => {
-        return activeTasks.map((task) => {
+        const topicAxisLabels = disambiguateAxisLabels(
+            activeTasks.map((task) => task.templateName),
+            14,
+        );
+        const classAxisLabels = disambiguateAxisLabels(
+            activeTasks.map((task) => task.className),
+            14,
+        );
+        return activeTasks.map((task, idx) => {
             const total = sanitizeCount(task.total);
             const completed = sanitizeCount(task.completed);
             const pending = Math.min(completed, sanitizeCount(task.pending));
@@ -1555,11 +1565,15 @@ export function TeacherActiveTasksStructureCard({
             const inProgressOrNotStarted = Math.max(0, total - completed - rejected);
 
             const safeDenom = total > 0 ? total : 1;
+            const topicAxisLabel = topicAxisLabels[idx] ?? task.templateName;
+            const classAxisLabel = classAxisLabels[idx] ?? task.className;
             return {
                 id: task.id,
                 templateName: task.templateName,
                 className: task.className,
-                axisLabel: `${truncateAxisText(task.templateName, 11)} · ${truncateAxisText(task.className, 7)}`,
+                topicAxisLabel,
+                classAxisLabel,
+                axisLabel: `${topicAxisLabel} · ${classAxisLabel}`,
                 total,
                 graded,
                 pending,
@@ -1573,7 +1587,7 @@ export function TeacherActiveTasksStructureCard({
         });
     }, [activeTasks]);
 
-    const chartHeight = Math.max(208, rows.length * 46 + 68);
+    const chartHeight = Math.max(220, rows.length * 52 + 68);
 
     const option = useMemo<ExecutiveChartOption>(() => {
         const isPercent = mode === "percent";
@@ -1669,11 +1683,34 @@ export function TeacherActiveTasksStructureCard({
             yAxis: buildExecutiveCategoryAxis(
                 {
                     inverse: true,
-                    data: rows.map((row) => row.axisLabel),
+                    data: rows.map((_, idx) => String(idx)),
                     axisLabel: {
                         color: tokens.foreground,
                         fontWeight: 500,
                         hideOverlap: false,
+                        formatter: (val: string) => {
+                            const row = rows[Number(val)];
+                            if (!row) return "";
+                            return `{topic|${sanitizeRichText(row.topicAxisLabel)}}\n{cls|${sanitizeRichText(row.classAxisLabel)}}`;
+                        },
+                        rich: {
+                            topic: {
+                                color: tokens.foreground,
+                                fontFamily: CHART_FONT_FAMILY,
+                                fontSize: 12,
+                                fontWeight: 500,
+                                lineHeight: 17,
+                                align: "right",
+                            },
+                            cls: {
+                                color: tokens.mutedForeground,
+                                fontFamily: CHART_FONT_FAMILY,
+                                fontSize: 11,
+                                fontWeight: 400,
+                                lineHeight: 15,
+                                align: "right",
+                            },
+                        },
                     },
                 },
                 tokens,
@@ -2083,7 +2120,7 @@ export function AdminPlatformOverviewCharts({
         <section
             aria-label="平台教学资源与实验运行概览"
             data-testid="admin-dashboard-analytics"
-            className="grid grid-cols-2 gap-4"
+            className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,27rem),1fr))] gap-4"
         >
             <Card className="min-w-0 gap-3 py-4">
                 <CardHeader className="border-b border-border pb-3">
@@ -2206,17 +2243,17 @@ export function AdminPlatformOverviewCharts({
                         }
                     />
                     <div className="grid grid-cols-2 gap-2 border-t border-border pt-3 text-meta">
-                        <div className="flex items-center justify-between rounded-control bg-muted px-3 py-2">
-                            <span className="text-muted-foreground">实训学生占比</span>
-                            <span className="font-mono font-semibold tabular-nums text-foreground">
+                        <div className="min-w-0 rounded-control bg-muted px-3 py-2">
+                            <span className="block text-muted-foreground">实训学生占比</span>
+                            <span className="mt-0.5 block font-mono font-semibold tabular-nums text-foreground">
                                 {normalized.totalAccounts > 0
                                     ? `${((normalized.studentCount / normalized.totalAccounts) * 100).toFixed(1)}%`
                                     : "—"}
                             </span>
                         </div>
-                        <div className="flex items-center justify-between rounded-control bg-muted px-3 py-2">
-                            <span className="text-muted-foreground">待批改队列</span>
-                            <span className="font-mono font-semibold tabular-nums text-foreground">
+                        <div className="min-w-0 rounded-control bg-muted px-3 py-2">
+                            <span className="block text-muted-foreground">待批改队列</span>
+                            <span className="mt-0.5 block font-mono font-semibold tabular-nums text-foreground">
                                 {normalized.pendingItems} 份
                             </span>
                         </div>

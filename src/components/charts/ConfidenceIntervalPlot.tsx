@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { normalizeConfidenceLevel, zForConfidenceLevel } from "@/domain/statistics/confidence-level";
 import { formatStatistic } from "@/utils/statistic-format";
 import { EChartBox } from "./EChartBox";
+import { disambiguateAxisLabels } from "./axis-label";
 import type { EChartsCoreOption } from "./echarts-core";
 import {
     CHART_FONT_FAMILY,
@@ -51,12 +52,6 @@ function resolveTonePillSurface(
         default:
             return { muted: tokens.primaryMuted, border: tokens.primaryBorder };
     }
-}
-
-function shortenEstimatorLabel(label: string, maxChars = 12): string {
-    const trimmed = label.trim();
-    if (trimmed.length <= maxChars) return trimmed;
-    return `${trimmed.slice(0, maxChars - 1)}…`;
 }
 
 export function ConfidenceIntervalPlot({
@@ -241,7 +236,7 @@ export function ConfidenceIntervalPlot({
             yAxis: buildExecutiveCategoryAxis(
                 {
                     inverse: true,
-                    data: parsedValidRows.map((item) => shortenEstimatorLabel(item.row.label, 12)),
+                    data: disambiguateAxisLabels(parsedValidRows.map((item) => item.row.label), 12),
                     axisLabel: {
                         color: tokens.foreground,
                         fontWeight: 600,

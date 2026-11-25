@@ -269,6 +269,39 @@ describe("PortalAnalyticsCharts ECharts SVG rendering, interactions, edge cases 
         expect(await getAccessibilityViolations(zeroAdminView.container)).toEqual([]);
     });
 
+    test("TeacherActiveTasksStructureCard distinguishes same-template tasks across similar-prefix class names on Y-axis", () => {
+        const view = render(
+            <TeacherActiveTasksStructureCard
+                activeTasks={[
+                    {
+                        id: 101,
+                        templateName: "连锁生鲜超市晚高峰门店履约容量调研",
+                        className: "2026级商业分析班",
+                        deadline: "2026-12-16T10:00:00.000Z",
+                        total: 6,
+                        completed: 2,
+                        pending: 1,
+                        rejected: 1,
+                    },
+                    {
+                        id: 102,
+                        templateName: "连锁生鲜超市晚高峰门店履约容量调研",
+                        className: "2026级商务统计1班",
+                        deadline: null,
+                        total: 10,
+                        completed: 0,
+                        pending: 0,
+                        rejected: 0,
+                    },
+                ]}
+                onSelectTask={() => undefined}
+            />,
+        );
+        const svgText = view.getByTestId("teacher-dashboard-tasks-echart").querySelector("svg")?.textContent ?? "";
+        expect(svgText).toContain("2026级商业分析班");
+        expect(svgText).toContain("2026级商务统计1班");
+    });
+
     test("GradeScoreHistogramCard staggers close mean/median MarkLines on separate horizontal tiers without overlap at 1024x768 width", () => {
         const view = render(
             <GradeScoreHistogramCard
