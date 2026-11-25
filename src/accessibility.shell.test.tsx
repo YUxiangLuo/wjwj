@@ -37,11 +37,11 @@ afterAll(() => {
 });
 
 test("route title mappings identify nested student, teacher, and admin pages", () => {
-    expect(getStudentDocumentTitle("/task/3/experiment")).toStartWith("实验过程 -");
-    expect(getStudentDocumentTitle("/task/3")).toStartWith("课题详情 -");
-    expect(getTeacherDocumentTitle("/task/7/progress")).toStartWith("任务进度 -");
-    expect(getTeacherDocumentTitle("/grading/5")).toStartWith("批改详情 -");
-    expect(getAdminDocumentTitle("/announcement")).toStartWith("公告管理 -");
+    expect(getStudentDocumentTitle("/task/3/experiment")).toBe("实验过程 - 商务统计虚拟仿真系统 - 学生端");
+    expect(getStudentDocumentTitle("/task/3")).toBe("课题详情 - 商务统计虚拟仿真系统 - 学生端");
+    expect(getTeacherDocumentTitle("/task/7/progress")).toBe("任务进度 - 商务统计虚拟仿真系统 - 教师端");
+    expect(getTeacherDocumentTitle("/grading/5")).toBe("批改详情 - 商务统计虚拟仿真系统 - 教师端");
+    expect(getAdminDocumentTitle("/announcement")).toBe("公告管理 - 商务统计虚拟仿真系统 - 管理后台");
 });
 
 test("document title hook updates the current browser tab", async () => {

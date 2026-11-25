@@ -1408,7 +1408,7 @@ async function seed() {
     await db.insert(samplingAttempt).values(auditedMethods);
 
     await db.insert(announcement).values([
-        { title: "2026-2027-1 学期商务统计虚拟仿真平台开放", content: "本学期上线茶饮新品定价、B2B SaaS预算、电商会员续费率、生鲜前置仓履约容量与新能源试驾转化五大商业统计实验。请完整体验从首轮试投探底、废卷质检清洗到二轮抽样调优的五阶段闭环。", targetScope: "all", status: 1, createdAt: day(-8), updatedAt: day(-8) },
+        { title: "2026-2027-1 学期商务统计虚拟仿真系统开放", content: "本学期上线茶饮新品定价、B2B SaaS预算、电商会员续费率、生鲜前置仓履约容量与新能源试驾转化五大商业统计实验。请完整体验从首轮试投探底、废卷质检清洗到二轮抽样调优的五阶段闭环。", targetScope: "all", status: 1, createdAt: day(-8), updatedAt: day(-8) },
         { title: "学生端：旗舰课题闭环实验指南", content: `「新锐现制茶饮新品定价与支付意愿调研」正式轮基准样本量为 ${teaRecommendedSize} 份（95%置信水平、误差限1.0元、15%无回答余量）。B2B SaaS预算课题总体为32家重点客户，请重点关注有限总体校正（FPC）与零增购有效值边界。`, targetScope: "student", status: 1, createdAt: day(-6), updatedAt: day(-6) },
         { title: "教师端：多波次质检调优批改台已就绪", content: "批改工作台已支持查看学生 Wave 1 试投漏斗、闪电卷/直线卷清洗设置、《抽样与投放调优决策单》及 Wave 2 正式轮改进记分卡。", targetScope: "teacher", status: 1, createdAt: day(-5), updatedAt: day(-5) },
         { title: "商业仿真数据合规声明", content: "平台全部商业门店、会员与企业客户总体均为确定性合成教学数据，不包含真实商业机密或个人隐私信息。", targetScope: "all", status: 1, createdAt: day(-4), updatedAt: day(-4) },

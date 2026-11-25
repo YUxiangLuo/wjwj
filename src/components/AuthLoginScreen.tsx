@@ -85,7 +85,7 @@ export function AuthLoginScreen({
                             <BarChart3 className="h-5 w-5" />
                         </div>
                         <div>
-                            <span className="block text-subheading font-semibold leading-tight text-navigation-foreground">商务统计虚拟仿真实验平台</span>
+                            <span className="block text-subheading font-semibold leading-tight text-navigation-foreground">商务统计虚拟仿真系统</span>
                             <span className="block text-meta text-navigation-muted">Business Statistics &amp; Survey Simulation Studio</span>
                         </div>
                     </div>

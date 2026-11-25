@@ -116,7 +116,7 @@ function AdminWorkspace({ user, onLogout }: { user: AdminUser; onLogout: () => P
                     </div>
                 }
                 pageTitle={title}
-                pageSubtitle="商务统计虚拟仿真实验平台 · 系统管理控制台"
+                pageSubtitle="商务统计虚拟仿真系统 · 系统管理控制台"
                 headerActions={
                     <div className="flex shrink-0 items-center gap-2">
                         <Button

@@ -30,7 +30,7 @@ export function WorkspaceSidebar({
                     </span>
                     <div className="min-w-0">
                         <span className="block truncate text-subheading font-semibold leading-tight text-navigation-foreground">{title}</span>
-                        <span className="block truncate text-meta text-navigation-muted">商务统计仿真平台</span>
+                        <span className="block truncate text-meta text-navigation-muted">商务统计虚拟仿真系统</span>
                     </div>
                 </div>
             </div>
