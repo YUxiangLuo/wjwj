@@ -204,6 +204,9 @@ export async function createSavedAnalysis(studentId: number, classId: number, ta
             if (cause.code === "SOURCE_MISMATCH") {
                 throw new AnalysisConflict("总体文件或字段解释已变化，请联系教师重新确认来源", "SOURCE_CONFLICT", 409);
             }
+            if (cause.code === "INVALID_ANALYSIS_INPUT") {
+                throw new AnalysisConflict(cause.message, cause.code, 400);
+            }
             if (["MISSING_FIELDWORK", "EMPTY_RESPONDENTS", "EMPTY_STRATUM_RESPONDENTS", "INVALID_GROUP_VARIABLE"].includes(cause.code)) {
                 throw new AnalysisConflict(cause.message, cause.code, 409);
             }

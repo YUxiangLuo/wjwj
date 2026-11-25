@@ -267,6 +267,11 @@
     --scroll-offset-bottom: 5.5rem;
 }
 
+/* Unlayered so it overrides unlayered :root --scroll-offset-top in CSS Cascade Layers. */
+html:has([data-testid="student-experiment-navigation"]) {
+    --scroll-offset-top: 9rem;
+}
+
 @layer base {
     * {
         @apply border-border;
@@ -281,10 +286,6 @@
     html {
         scroll-padding-top: var(--scroll-offset-top);
         scroll-padding-bottom: var(--scroll-offset-bottom);
-    }
-
-    html:has([data-testid="student-experiment-navigation"]) {
-        --scroll-offset-top: 9rem;
     }
 
     body {

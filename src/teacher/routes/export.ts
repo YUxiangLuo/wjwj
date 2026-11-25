@@ -1,4 +1,4 @@
-import { and, count, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, count, eq, inArray, sql } from "drizzle-orm";
 import * as XLSX from "xlsx";
 import { db } from "../../db";
 import { class_, experiment, semester, student, task, teacher, topic } from "../../db/schema";
@@ -71,7 +71,8 @@ async function getGradeExportRows(teacherId: number, params: URLSearchParams) {
         .innerJoin(class_, eq(task.classId, class_.id))
         .innerJoin(semester, eq(class_.semesterId, semester.id))
         .leftJoin(teacher, eq(experiment.gradedByTeacherId, teacher.id))
-        .where(and(...conditions));
+        .where(and(...conditions))
+        .orderBy(asc(class_.id), asc(topic.id), asc(student.studentId), asc(experiment.id));
     return rows.map((row) => {
         return {
         studentId: row.studentId,

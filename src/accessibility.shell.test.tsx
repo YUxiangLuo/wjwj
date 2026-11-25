@@ -68,5 +68,10 @@ test("styles/theme.css defines semantic scroll-padding offsets so sticky headers
     expect(themeCss).toContain("--scroll-offset-bottom:");
     expect(themeCss).toContain("scroll-padding-top: var(--scroll-offset-top);");
     expect(themeCss).toContain("scroll-padding-bottom: var(--scroll-offset-bottom);");
-    expect(themeCss).toContain('data-testid="student-experiment-navigation"');
+    // Must stay outside @layer base so unlayered :root { --scroll-offset-top: 5rem } cannot shadow it.
+    const layerBaseStart = themeCss.indexOf("@layer base");
+    const experimentNavOverride = themeCss.indexOf('html:has([data-testid="student-experiment-navigation"])');
+    expect(layerBaseStart).toBeGreaterThan(-1);
+    expect(experimentNavOverride).toBeGreaterThan(-1);
+    expect(experimentNavOverride).toBeLessThan(layerBaseStart);
 });

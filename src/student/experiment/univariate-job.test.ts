@@ -294,3 +294,47 @@ test("cleaned_respondents replays fieldworkResult when fieldworkConfig is provid
         await Bun.file(fixture.absolute).delete().catch(() => undefined);
     }
 });
+
+test("worker returns INVALID_ANALYSIS_INPUT when weighted univariate or cross-tab encounters declared missing codes", async () => {
+    const path = `/storage/test/univariate-weighted-missing-${crypto.randomUUID()}.csv`;
+    const absolute = `${process.cwd()}${path}`;
+    await Bun.write(absolute, "id,y,g\n01,10,A\n02,-1,A\n03,20,B\n04,30,B\n");
+    try {
+        const fieldMapping = { identifier: "id", numeric: ["y"], stratified: ["g"] };
+        const source = await readVariableSource(path, fieldMapping);
+        const dictionary = suggestDictionary(source.rows, source.source, 1);
+        dictionary.variables = dictionary.variables.map((v) => (
+            v.field === "y" ? { ...v, kind: "continuous", categories: [], missing: ["-1"] } : v
+        ));
+        const replay = await executeSamplingAction({
+            method: "simple",
+            population: source.designRows,
+            fieldMapping,
+            targetSampleSize: 2,
+            rawParams: { seed: 99, sampleSize: 2 },
+        });
+        expect(replay.ok).toBe(true);
+        if (!replay.ok) return;
+        const section = { ...replay.result, serverGenerated: true };
+
+        const uni = await runUnivariateJob({
+            populationPath: path,
+            fieldMapping,
+            dictionary,
+            samplingResult: section,
+            config: { method: "simple", field: "y", question: "加权单变量缺失校验", weighted: true },
+        });
+        expect(uni).toMatchObject({ ok: false, code: "INVALID_ANALYSIS_INPUT" });
+
+        const cross = await runUnivariateJob({
+            populationPath: path,
+            fieldMapping,
+            dictionary,
+            samplingResult: section,
+            config: { method: "simple", field: "y", groupByField: "g", question: "加权交叉表缺失校验", weighted: true },
+        });
+        expect(cross).toMatchObject({ ok: false, code: "INVALID_ANALYSIS_INPUT" });
+    } finally {
+        await Bun.file(absolute).delete().catch(() => undefined);
+    }
+});

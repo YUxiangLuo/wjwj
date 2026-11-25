@@ -1048,7 +1048,7 @@ pgTest("QA-S0-02 weighted cross-tab rejects incomplete population missing codes 
     const token = await session(3, students[0]!.id);
     const { savedAnalysisRoutes } = await import("../student/routes/variables");
 
-    // 1. Weighted univariate rejects incomplete target column with ANALYSIS_FAILED.
+    // 1. Weighted univariate rejects incomplete target column with HTTP 400 INVALID_ANALYSIS_INPUT.
     const weightedUniRes = await savedAnalysisRoutes.POST!(routeRequest(
         "POST",
         { id: String(task!.id) },
@@ -1061,13 +1061,13 @@ pgTest("QA-S0-02 weighted cross-tab rejects incomplete population missing codes 
             },
         },
     ));
-    expect(weightedUniRes.status).toBeGreaterThanOrEqual(400);
+    expect(weightedUniRes.status).toBe(400);
     expect(await weightedUniRes.json()).toMatchObject({
         success: false,
-        error: { code: "ANALYSIS_FAILED", message: expect.stringContaining("完整总体目标字段无缺失") },
+        error: { code: "INVALID_ANALYSIS_INPUT", message: expect.stringContaining("完整总体目标字段无缺失") },
     });
 
-    // 2. Weighted cross-tab with declared missing code "-1" on target MUST fail identically (never 200!).
+    // 2. Weighted cross-tab with declared missing code "-1" on target MUST fail identically with HTTP 400 (never 200 or 500!).
     const weightedCrossTargetRes = await savedAnalysisRoutes.POST!(routeRequest(
         "POST",
         { id: String(task!.id) },
@@ -1080,13 +1080,13 @@ pgTest("QA-S0-02 weighted cross-tab rejects incomplete population missing codes 
             },
         },
     ));
-    expect(weightedCrossTargetRes.status).toBe(weightedUniRes.status);
+    expect(weightedCrossTargetRes.status).toBe(400);
     expect(await weightedCrossTargetRes.json()).toMatchObject({
         success: false,
-        error: { code: "ANALYSIS_FAILED", message: expect.stringContaining("完整总体目标字段无缺失") },
+        error: { code: "INVALID_ANALYSIS_INPUT", message: expect.stringContaining("完整总体目标字段无缺失") },
     });
 
-    // 3. Weighted cross-tab with declared missing code "NA" on groupByField MUST also reject.
+    // 3. Weighted cross-tab with declared missing code "NA" on groupByField MUST also reject with HTTP 400.
     const weightedCrossGroupRes = await savedAnalysisRoutes.POST!(routeRequest(
         "POST",
         { id: String(task!.id) },
@@ -1099,10 +1099,10 @@ pgTest("QA-S0-02 weighted cross-tab rejects incomplete population missing codes 
             },
         },
     ));
-    expect(weightedCrossGroupRes.status).toBe(weightedUniRes.status);
+    expect(weightedCrossGroupRes.status).toBe(400);
     expect(await weightedCrossGroupRes.json()).toMatchObject({
         success: false,
-        error: { code: "ANALYSIS_FAILED", message: expect.stringContaining("完整总体分组字段无缺失") },
+        error: { code: "INVALID_ANALYSIS_INPUT", message: expect.stringContaining("完整总体分组字段无缺失") },
     });
     expect(await application.db.select().from(schema.savedAnalysis).where(eq(schema.savedAnalysis.experimentId, experiment!.id))).toHaveLength(0);
 

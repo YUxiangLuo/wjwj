@@ -166,23 +166,28 @@ export async function runUnivariateJob(job: UnivariateJob): Promise<UnivariateJo
             design = { method: job.config.method, populationSize: current.length, sampleCount: activeIndices.length };
         }
 
-        const weights = job.config.weighted ? calculateDesignWeights(design, current, activeIndices) : undefined;
-        const result = groupVariable
-            ? calculateCrossTab({
-                rows: activeRows,
-                indices: activeIndices,
-                variable: matching[0]!,
-                groupVariable,
-                weighted: job.config.weighted,
-                weights,
-            })
-            : calculateUnivariate({
-                population: activeRows,
-                indices: activeIndices,
-                variable: matching[0]!,
-                weighted: job.config.weighted,
-                weights,
-            });
+        let result: AnalysisResult;
+        try {
+            const weights = job.config.weighted ? calculateDesignWeights(design, current, activeIndices) : undefined;
+            result = groupVariable
+                ? calculateCrossTab({
+                    rows: activeRows,
+                    indices: activeIndices,
+                    variable: matching[0]!,
+                    groupVariable,
+                    weighted: job.config.weighted,
+                    weights,
+                })
+                : calculateUnivariate({
+                    population: activeRows,
+                    indices: activeIndices,
+                    variable: matching[0]!,
+                    weighted: job.config.weighted,
+                    weights,
+                });
+        } catch (cause) {
+            return fail("INVALID_ANALYSIS_INPUT", cause instanceof Error ? cause.message : "分析配置与当前总体数据不兼容");
+        }
 
         const evidence = {
             source: source.source,

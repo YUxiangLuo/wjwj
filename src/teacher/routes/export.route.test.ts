@@ -104,6 +104,13 @@ test("grade export data uses immutable student and topic names", async () => {
     expect(new PgDialect().sqlToQuery(selection.topicName!).sql).toContain("->> 'topicName'");
     const sql = new PgDialect().sqlToQuery(query?.where as SQL).sql;
     expect(sql).toContain('"student"."class_id" = "task"."class_id"');
+    const orderBySql = (query?.orderBy as SQL[] | undefined)?.map((clause) => new PgDialect().sqlToQuery(clause).sql) ?? [];
+    expect(orderBySql).toEqual([
+        '"class"."id" asc',
+        '"topic"."id" asc',
+        '"student"."student_id" asc',
+        '"experiment"."id" asc',
+    ]);
 });
 
 test("grade analytics includes students without experiments and summarizes graded scores", async () => {
