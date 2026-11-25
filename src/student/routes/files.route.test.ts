@@ -15,7 +15,6 @@ function withRouteParam(request: Request, id: string) {
 async function loadFilesRoutes(options: {
     select?: unknown[];
     authStudent?: Record<string, unknown>;
-    useRealTaskAccess?: boolean;
 } = {}) {
     const { db } = createMockDb(options);
 
@@ -34,15 +33,6 @@ async function loadFilesRoutes(options: {
             sessionExpiresAt: null,
         }),
     }));
-    if (options.useRealTaskAccess) {
-        const realTaskAccess = await import(`../experiment/task-access.ts?real-access=${crypto.randomUUID()}`);
-        mock.module("../experiment/task-access", () => realTaskAccess);
-    } else {
-        mock.module("../experiment/task-access", () => ({
-            getStudentTaskAccessError: async () => null,
-            getStudentTopicAttachmentAccessError: async () => null,
-        }));
-    }
 
     const module = await import(`./files?student-files-route-test=${Math.random()}`);
     return module;
@@ -55,13 +45,16 @@ test("attachment preview ignores a spoofed stored MIME and derives it from the f
 
     try {
         const module = await loadFilesRoutes({
-            select: [[{
-                id: 8,
-                topicId: 4,
-                fileName: "preview.png",
-                filePath,
-                fileType: "image/svg+xml",
-            }]],
+            select: [
+                [{
+                    id: 8,
+                    topicId: 4,
+                    fileName: "preview.png",
+                    filePath,
+                    fileType: "image/svg+xml",
+                }],
+                [{ id: 1 }],
+            ],
         });
         const response = await module.attachmentDownloadRoutes.GET!(withRouteParam(
             createRequest("https://example.com/api/student/attachments/8/download?mode=preview"),
@@ -83,10 +76,13 @@ test("export route hydrates compact sampling indices from the immutable populati
 
     try {
         const module = await loadFilesRoutes({
-            select: [[{
-                excelFilePath: populationPath,
-                samplingResults: { simple: { completed: true, sampleCount: 1, indices: [1] } },
-            }]],
+            select: [
+                [{ id: 40 }],
+                [{
+                    excelFilePath: populationPath,
+                    samplingResults: { simple: { completed: true, sampleCount: 1, indices: [1] } },
+                }],
+            ],
         });
         const response = await module.exportRoutes.GET!(withRouteParam(
             createRequest("https://example.com/api/student/tasks/40/export?type=simple"),
@@ -109,7 +105,7 @@ test("frozen exports reject changed or missing source bytes and recover after re
             for (const state of ["original", "changed", "missing", "restored"] as const) {
                 if (state === "missing") await Bun.file(absolute).delete();
                 else await Bun.write(absolute, state === "changed" ? original.replace("上海", "广州") : original);
-                const module = await loadFilesRoutes({ select: [[{
+                const module = await loadFilesRoutes({ select: [[{ id: 40 }], [{
                     status, excelFilePath: path,
                     submissionSnapshot: { populationFileSha256: hash },
                     samplingResults: { simple: { completed: true, sampleCount: 1, indices: [1] } },
@@ -131,10 +127,13 @@ test("frozen exports reject changed or missing source bytes and recover after re
 
 test("compact export returns READ_FAILED when population storage is missing", async () => {
     const module = await loadFilesRoutes({
-        select: [[{
-            excelFilePath: `/storage/missing-${crypto.randomUUID()}.csv`,
-            samplingResults: { simple: { completed: true, sampleCount: 1, indices: [0] } },
-        }]],
+        select: [
+            [{ id: 40 }],
+            [{
+                excelFilePath: `/storage/missing-${crypto.randomUUID()}.csv`,
+                samplingResults: { simple: { completed: true, sampleCount: 1, indices: [0] } },
+            }],
+        ],
     });
     const originalConsoleError = console.error;
     console.error = () => undefined;
@@ -153,6 +152,7 @@ test("compact export returns READ_FAILED when population storage is missing", as
 test("export route reads serialized sampling results and returns csv", async () => {
     const module = await loadFilesRoutes({
         select: [
+            [{ id: 40 }],
             [{
                 samplingResults: JSON.stringify({
                     simple: { data: [{ id: 1, city: "北京" }] },
@@ -186,13 +186,16 @@ test("export route reads serialized sampling results and returns csv", async () 
 
 test("export route prefers frozen submissionSnapshot samplingResults when experiment is submitted", async () => {
     const module = await loadFilesRoutes({
-        select: [[{
-            status: "submitted",
-            samplingResults: { simple: { data: [{ id: 1, city: "可变草稿值" }] } },
-            submissionSnapshot: {
-                samplingResults: { simple: { data: [{ id: 2, city: "冻结快照值" }] } },
-            },
-        }]],
+        select: [
+            [{ id: 40 }],
+            [{
+                status: "submitted",
+                samplingResults: { simple: { data: [{ id: 1, city: "可变草稿值" }] } },
+                submissionSnapshot: {
+                    samplingResults: { simple: { data: [{ id: 2, city: "冻结快照值" }] } },
+                },
+            }],
+        ],
     });
     const response = await module.exportRoutes.GET!(withRouteParam(
         createRequest("https://example.com/api/student/tasks/40/export?type=simple"),
@@ -207,7 +210,6 @@ test("export route prefers frozen submissionSnapshot samplingResults when experi
 test("attachment download returns identical 404 NOT_FOUND for missing and other-class attachments", async () => {
     const missingModule = await loadFilesRoutes({
         select: [[]],
-        useRealTaskAccess: true,
     });
     const missingRes = await missingModule.attachmentDownloadRoutes.GET!(withRouteParam(
         createRequest("https://example.com/api/student/attachments/999/download"),
@@ -226,7 +228,6 @@ test("attachment download returns identical 404 NOT_FOUND for missing and other-
             [],
             [],
         ],
-        useRealTaskAccess: true,
     });
     const otherClassRes = await otherClassModule.attachmentDownloadRoutes.GET!(withRouteParam(
         createRequest("https://example.com/api/student/attachments/8/download"),
