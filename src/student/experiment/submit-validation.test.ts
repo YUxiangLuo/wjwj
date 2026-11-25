@@ -70,6 +70,72 @@ describe("validateMeanPlanVariance", () => {
         expect(validateMeanPlanVariance({ populationVariance: 1e-6 * (1 + 5e-10) }, "mean", 1e-6)).toBeNull();
         expect(validateMeanPlanVariance({ populationVariance: 1e-6 * (1 + 2e-9) }, "mean", 1e-6)).not.toBeNull();
     });
+
+    test("QA-S2-03: wave1_empirical rejects population sigma2 mismatch and only accepts verified Wave 1 empirical variances", () => {
+        // Claiming wave1_empirical while submitting population σ² (35) when Wave 1 has no empirical variance must be rejected
+        expect(validateMeanPlanVariance(
+            { populationVariance: 35, varianceSource: "wave1_empirical" },
+            "mean",
+            35,
+            { verifiedEmpiricalVariance: null },
+        )).toMatch(/首轮试投缺少可用的实测样本方差|首轮实测样本方差/);
+
+        // Claiming wave1_empirical while submitting population σ² (35) when Wave 1 empirical variance is 18.5 must be rejected
+        expect(validateMeanPlanVariance(
+            { populationVariance: 35, varianceSource: "wave1_empirical" },
+            "mean",
+            35,
+            { verifiedEmpiricalVariance: 18.5 },
+        )).toMatch(/首轮实测样本方差/);
+
+        // Matching single verified empirical variance within 1e-6 passes; outside 1e-6 fails
+        expect(validateMeanPlanVariance(
+            { populationVariance: 18.5 * (1 + 5e-7), varianceSource: "wave1_empirical" },
+            "mean",
+            35,
+            { verifiedEmpiricalVariance: 18.5 },
+        )).toBeNull();
+        expect(validateMeanPlanVariance(
+            { populationVariance: 18.5 * (1 + 2e-6), varianceSource: "wave1_empirical" },
+            "mean",
+            35,
+            { verifiedEmpiricalVariance: 18.5 },
+        )).toMatch(/首轮实测样本方差/);
+
+        // Multi-method Wave 1 empirical variance list accepts any dispatched valid method's variance
+        expect(validateMeanPlanVariance(
+            { populationVariance: 24.25, varianceSource: "wave1_empirical" },
+            "mean",
+            35,
+            { verifiedEmpiricalVariances: [18.5, 24.25] },
+        )).toBeNull();
+        expect(validateMeanPlanVariance(
+            { populationVariance: 24.25, varianceSource: "wave1_empirical" },
+            "mean",
+            35,
+            { verifiedEmpiricalVariance: [18.5, 24.25] },
+        )).toBeNull();
+        expect(validateMeanPlanVariance(
+            { populationVariance: 35, varianceSource: "wave1_empirical" },
+            "mean",
+            35,
+            { verifiedEmpiricalVariances: [18.5, 24.25] },
+        )).toMatch(/首轮实测样本方差/);
+
+        // Population varianceSource or omitted varianceSource still accepts actual population σ² and rejects empirical mismatch
+        expect(validateMeanPlanVariance(
+            { populationVariance: 35, varianceSource: "population" },
+            "mean",
+            35,
+            { verifiedEmpiricalVariance: 18.5 },
+        )).toBeNull();
+        expect(validateMeanPlanVariance(
+            { populationVariance: 18.5, varianceSource: "population" },
+            "mean",
+            35,
+            { verifiedEmpiricalVariance: 18.5 },
+        )).toMatch(/总体方差与当前总体不一致/);
+    });
 });
 
 test("report validation does not count content swallowed by an unclosed script element", () => {

@@ -267,15 +267,15 @@ export function verifyExperimentWavesReplay(params: {
     return true;
 }
 
-export function getVerifiedWave1EmpiricalVariance(params: {
+export function getVerifiedWave1EmpiricalVariances(params: {
     waves: StoredExperimentWave[];
     population: Array<Record<string, unknown>>;
     fieldMapping: unknown;
     fieldworkConfig: unknown;
     dictionary?: VariableDictionary | null;
-}): number | null {
+}): number[] {
     const wave1 = params.waves.find((w) => w.waveNumber === 1);
-    if (!wave1) return null;
+    if (!wave1) return [];
     const diagMap = buildWaveDiagnosticsMap({
         wave: wave1,
         population: params.population,
@@ -283,11 +283,31 @@ export function getVerifiedWave1EmpiricalVariance(params: {
         fieldworkConfig: params.fieldworkConfig,
         dictionary: params.dictionary,
     });
+    const variances: number[] = [];
     for (const method of ["simple", "stratified", "systematic", "pps"] as const) {
         const variance = diagMap[method]?.empiricalTargetVariance;
-        if (variance != null && Number.isFinite(variance) && variance > 0) return variance;
+        if (variance != null && Number.isFinite(variance) && variance > 0 && !variances.includes(variance)) {
+            variances.push(variance);
+        }
     }
-    return null;
+    return variances;
+}
+
+export function getVerifiedWave1EmpiricalVariance(params: {
+    waves: StoredExperimentWave[];
+    population: Array<Record<string, unknown>>;
+    fieldMapping: unknown;
+    fieldworkConfig: unknown;
+    dictionary?: VariableDictionary | null;
+    plannedVariance?: number | null;
+}): number | null {
+    const variances = getVerifiedWave1EmpiricalVariances(params);
+    if (variances.length === 0) return null;
+    const planned = params.plannedVariance;
+    if (planned != null && Number.isFinite(planned) && planned > 0) {
+        return variances.find((v) => Math.abs(planned - v) / v <= 1e-6) ?? null;
+    }
+    return variances[0] ?? null;
 }
 
 export async function syncExperimentWaveRow(

@@ -395,7 +395,13 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
     };
 
     const systematicInterval = hasSavedPlan ? getSystematicInterval(N, planSavedSize) : null;
-    const practicalPilotTarget = Math.min(bounds.max, 30);
+    const practicalPilotTarget = N > 50
+        ? Math.min(bounds.max, 30, Math.floor(N * 0.4))
+        : null;
+    const showPracticalPilotShortcut = isFinalSizeValid
+        && practicalPilotTarget !== null
+        && practicalPilotTarget >= 20
+        && effectiveFinalSize < 20;
     const pilotStageHint = planValidationError
         ? `步骤 1 参数有误：${planValidationError}`
         : !hasSavedPlan
@@ -603,7 +609,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                         >
                                             设为推荐值 {recommendedSize}
                                         </Button>
-                                        {isFinalSizeValid && effectiveFinalSize < 20 && practicalPilotTarget >= 20 && (
+                                        {showPracticalPilotShortcut && (
                                             <Button
                                                 type="button"
                                                 variant="outline"
@@ -618,7 +624,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                     <p className="text-meta text-muted-foreground">
                                         允许范围：{bounds.min} – {bounds.max.toLocaleString()} 份（总体 N = {N.toLocaleString()}）
                                     </p>
-                                    {isFinalSizeValid && effectiveFinalSize < 20 && practicalPilotTarget >= 20 && (
+                                    {showPracticalPilotShortcut && (
                                         <p className="text-meta leading-relaxed text-info">
                                             实务提示：当前试投仅 {effectiveFinalSize} 份，扣除拒访与废卷后有效样本可能偏少；实务中常投放 {practicalPilotTarget} 份左右以稳健探底各层应答率。
                                         </p>

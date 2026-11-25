@@ -107,7 +107,7 @@ export function EnhancedMetricsCard({
                                     <span className="text-meta text-primary">预期完成样本量</span>
                                 </div>
                                 <div className="text-subheading font-bold text-primary">
-                                    {Math.ceil(metrics.expectedCompleted).toLocaleString()}
+                                    {formatSamplePlanNumber(metrics.expectedCompleted)}
                                 </div>
                                 <div className="text-meta text-primary mt-1">
                                     m = n × (1−无回答率)
@@ -201,7 +201,7 @@ export function EnhancedMetricsCard({
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">预期完成</span>
-                            <span className="text-foreground">{Math.ceil(metrics.expectedCompleted).toLocaleString()}</span>
+                            <span className="text-foreground">{formatSamplePlanNumber(metrics.expectedCompleted)}</span>
                         </div>
                         <div className="flex justify-between font-medium">
                             <span className="text-primary">计划邀请数 n</span>

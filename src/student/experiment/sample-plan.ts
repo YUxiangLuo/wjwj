@@ -127,6 +127,8 @@ export function capSampleSizeAtPopulation(n: number, populationSize: number): nu
 /**
  * 有限总体方差因子。这里把 p(1-p) 或 σ² 定义为分母为 N 的有限总体方差，
  * 因此精确因子为 (N-n)/(N-1)，并与 n₁=n₀/(1+(n₀-1)/N) 保持同一口径。
+ * 前置条件：N === 1 时仅对完整回收（sampleSize >= 1）定义普查零方差因子；
+ * 若存在无回答导致 sampleSize < 1，调用方须先拦截并返回 null，不得误判为零误差普查。
  */
 export function finitePopulationVarianceFactor(populationSize: number, sampleSize: number): number {
     const N = Math.floor(populationSize);
@@ -356,7 +358,7 @@ function parseMeanEstimationParams(params: {
     nonResponseRate?: unknown;
 }) {
     if (params.populationSize == null || !(params.populationSize > 0)) return null;
-    if (!(params.populationVariance > 0)) return null;
+    if (!Number.isFinite(params.populationVariance) || !(params.populationVariance > 0)) return null;
     const clStr = String(params.confidenceLevel);
     if (!isConfidenceLevel(clStr)) return null;
     const z = Z_VALUES[clStr];
@@ -428,6 +430,9 @@ export function calculateMeanSampleSizeMetrics(params: {
     const adjusted = meanEstimationCore(z, sigma2, parsed.e, N, deff, nrr);
     const deffValue = normalizeDeff(deff);
     const expectedCompleted = adjusted.expectedCompleted;
+    // A fractional expected response count is not a singleton census. The
+    // planning FPC (N-m)/(N-1) is undefined here, not a zero-error estimate.
+    if (Math.floor(N) === 1 && expectedCompleted < 1) return null;
     const fpc = finitePopulationVarianceFactor(N, expectedCompleted);
     const standardError = expectedCompleted > 0
         ? Math.sqrt(deffValue * sigma2 / expectedCompleted * fpc)
@@ -605,6 +610,9 @@ export function calculateSampleSizeByCV(params: CVBasedSampleSizeParams): CVBase
     const adjusted = applyDesignAdjustments(n0, N, deff, nrr);
     const requiredSampleSize = Math.max(1, adjusted.nInvite);
     const expectedRespondentSampleSize = adjusted.expectedCompleted;
+    // A fractional expected response count is not a singleton census. The
+    // planning FPC (N-m)/(N-1) is undefined here, not a zero-error estimate.
+    if (N === 1 && expectedRespondentSampleSize < 1) return null;
     const fpc = finitePopulationVarianceFactor(N, expectedRespondentSampleSize);
     const achievedCV = expectedRespondentSampleSize > 0
         ? estimatedCV * Math.sqrt(deff * fpc / expectedRespondentSampleSize)
@@ -1021,8 +1029,8 @@ export function calculateSurveyVariableRequiredSampleSize(variable: SurveyVariab
     if (!(sigma > 0) || !Number.isFinite(sigma) || !(meanMagnitude > 0)) return 0;
 
     const z = zForConfidenceLevel(variable.confidenceLevel);
-    const absoluteMargin = (variable.marginOfError / 100) * meanMagnitude;
-    const n0 = Math.pow((z * sigma) / absoluteMargin, 2);
-    const finitePopulationN = n0 / (1 + (n0 - 1) / populationSize);
-    return capSampleSizeAtPopulation(finitePopulationN, populationSize);
+    const relativeMargin = variable.marginOfError / 100;
+    const ratio = (z * (sigma / meanMagnitude)) / relativeMargin;
+    const n0 = ratio * ratio;
+    return applyDesignAdjustments(n0, populationSize, 1, 0).nInvite;
 }

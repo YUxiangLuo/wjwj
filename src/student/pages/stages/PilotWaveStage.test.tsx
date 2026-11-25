@@ -198,4 +198,65 @@ describe("PilotWaveStage dogfood UX & server-contract alignment", () => {
         expect(view.getByText(/首轮受访者名单已就绪/)).toBeTruthy();
         expect((view.getByTestId("student-pilot-dispatch") as HTMLButtonElement).disabled).toBe(false);
     });
+
+    test("QA-P2-05: suppresses the 30-unit robust pilot shortcut for small populations (N<=50) and caps at 40% of N", async () => {
+        // Small population N=32 (Topic 2 B2B SaaS): entering 15 must NOT suggest piloting 30 (93.8% of N)
+        const smallExp = makePilotExperiment({ populationSize: 32 });
+        mockContextValue = {
+            experiment: smallExp,
+            populationSize: 32,
+            isSaving: false,
+            refreshRequired: false,
+            requireRefresh: () => undefined,
+            updateExperiment: (next) => { mockContextValue.experiment = next; },
+            reloadExperiment: async () => undefined,
+            completeStage: async () => true,
+        };
+
+        const smallView = render(<PilotWaveStage onPrev={() => undefined} />);
+        await waitFor(() => expect(mockExperimentApi.getStats).toHaveBeenCalled());
+        fireEvent.change(smallView.getByTestId("student-pilot-final-size"), { target: { value: "15" } });
+        expect(smallView.queryByText(/设为稳健试投量/) === null).toBe(true);
+        expect(smallView.queryByText(/实务中常投放/) === null).toBe(true);
+        smallView.unmount();
+
+        // Medium population N=60: entering 15 caps robust pilot shortcut at floor(60 * 0.4) = 24 (not 30)
+        const mediumExp = makePilotExperiment({ populationSize: 60 });
+        mockContextValue = {
+            experiment: mediumExp,
+            populationSize: 60,
+            isSaving: false,
+            refreshRequired: false,
+            requireRefresh: () => undefined,
+            updateExperiment: (next) => { mockContextValue.experiment = next; },
+            reloadExperiment: async () => undefined,
+            completeStage: async () => true,
+        };
+        const mediumView = render(<PilotWaveStage onPrev={() => undefined} />);
+        await waitFor(() => expect(mockExperimentApi.getStats).toHaveBeenCalledTimes(2));
+        fireEvent.change(mediumView.getByTestId("student-pilot-final-size"), { target: { value: "15" } });
+        expect(mediumView.queryByText("设为稳健试投量 24") !== null).toBe(true);
+        expect(mediumView.queryByText("设为稳健试投量 30") === null).toBe(true);
+        mediumView.unmount();
+
+        // Larger population N=200: entering 15 still offers robust pilot shortcut 30 and clicking applies it
+        const largeExp = makePilotExperiment({ populationSize: 200 });
+        mockContextValue = {
+            experiment: largeExp,
+            populationSize: 200,
+            isSaving: false,
+            refreshRequired: false,
+            requireRefresh: () => undefined,
+            updateExperiment: (next) => { mockContextValue.experiment = next; },
+            reloadExperiment: async () => undefined,
+            completeStage: async () => true,
+        };
+        const largeView = render(<PilotWaveStage onPrev={() => undefined} />);
+        await waitFor(() => expect(mockExperimentApi.getStats).toHaveBeenCalledTimes(3));
+        const finalSizeInput = largeView.getByTestId("student-pilot-final-size") as HTMLInputElement;
+        fireEvent.change(finalSizeInput, { target: { value: "15" } });
+        const shortcutBtn = largeView.getByText("设为稳健试投量 30");
+        fireEvent.click(shortcutBtn);
+        expect(finalSizeInput.value).toBe("30");
+    });
 });

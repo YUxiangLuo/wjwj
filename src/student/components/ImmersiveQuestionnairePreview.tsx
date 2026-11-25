@@ -14,6 +14,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { RichTextContent } from "@/components/RichTextContent";
+import { evaluateQuestionnaireBurden } from "@/domain/fieldwork";
 import type { Question, QuestionnaireData } from "@/lib/questionnaire-types";
 import { QUESTION_SECTION_LABELS } from "@/lib/questionnaire-templates";
 
@@ -47,12 +48,12 @@ export function getNumericAnswerError(question: Question, answer: unknown): stri
     if (question.numericMax !== undefined && value > question.numericMax) {
         return `输入值超出最大允许值 ${question.numericMax}${unitText ? ` ${unitText}` : ""}（范围：${question.numericMin ?? "不限"} 至 ${question.numericMax}）`;
     }
-    const places = question.decimalPlaces ?? 0;
-    const pattern = places === 0 ? /^-?\d+$/ : new RegExp(`^-?\\d+\\.\\d{${places}}$`);
+    const places = Math.max(0, Math.floor(question.decimalPlaces ?? 0));
+    const pattern = places === 0 ? /^-?\d+$/ : new RegExp(`^-?\\d+(?:\\.\\d{1,${places}})?$`);
     if (!pattern.test(answer)) {
         return places === 0
             ? "本题要求填写整数（0 位小数），请去掉小数点及小数位"
-            : `本题要求严格保留 ${places} 位小数（例如：${value.toFixed(places)}）`;
+            : `本题最多保留 ${places} 位小数（可填整数或如 ${value.toFixed(places)}）`;
     }
     return null;
 }
@@ -116,7 +117,12 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
     const titleId = useId();
 
     const totalQuestions = questions.length;
-    const estimatedMinutes = Math.max(1, Math.ceil(totalQuestions * 0.4));
+    const burdenProfile = useMemo(
+        () => evaluateQuestionnaireBurden(questionnaire, null, null),
+        [questionnaire],
+    );
+    const estimatedDurationSec = burdenProfile.estimatedDurationSec;
+    const estimatedMinutes = burdenProfile.estimatedMinutes;
     const duplicateIds = useMemo(() => hasDuplicateQuestionIds(questions), [questions]);
 
     const currentQuestion = page.type === "question" ? questions[page.index] ?? null : null;
@@ -381,7 +387,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                             inputMode="decimal"
                             placeholder={
                                 (question.decimalPlaces ?? 0) > 0
-                                    ? `例如：${(question.numericMin ?? 10).toFixed(question.decimalPlaces ?? 1)}（仅填数字）`
+                                    ? `例如：${question.numericMin ?? 10} 或 ${(question.numericMin ?? 10).toFixed(question.decimalPlaces ?? 1)}（仅填数字）`
                                     : `例如：${question.numericMin ?? 0}（仅填整数）`
                             }
                             value={typeof answer === "string" ? answer : ""}
@@ -393,7 +399,13 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                         />
                         {question.unit && <span className="shrink-0 rounded-control border border-border bg-muted px-2.5 py-1.5 text-label font-medium text-foreground">{question.unit}</span>}
                     </div>
-                    <p className="text-meta text-muted-foreground">{range}{range && "；"}需填写 {question.decimalPlaces ?? 0} 位小数{question.unit ? `（单位「${question.unit}」无需手动输入）` : ""}</p>
+                    <p className="text-meta text-muted-foreground">
+                        {range}{range && "；"}
+                        {(question.decimalPlaces ?? 0) > 0
+                            ? `最多保留 ${question.decimalPlaces} 位小数（可填整数）`
+                            : "需填写整数（0 位小数）"}
+                        {question.unit ? `（单位「${question.unit}」无需手动输入）` : ""}
+                    </p>
                     {numericError && <p role="alert" className="text-meta font-medium text-destructive">{numericError}</p>}
                 </div>;
             }
@@ -572,8 +584,12 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                 </div>
                                 <div className="flex items-center justify-center gap-4 text-label text-muted-foreground">
                                     <span>共 {totalQuestions} 题</span>
-                                    <span className="w-1 h-1 rounded-circle bg-input" />
-                                    <span>约 {estimatedMinutes} 分钟</span>
+                                    {totalQuestions > 0 && (
+                                        <>
+                                            <span className="w-1 h-1 rounded-circle bg-input" />
+                                            <span className="tabular-nums">约 {estimatedMinutes} 分钟（预估 {estimatedDurationSec} 秒）</span>
+                                        </>
+                                    )}
                                 </div>
                                 <p className="text-label text-muted-foreground">
                                     本次交互自检需逐题作答后才能标记完成，可随时关闭返回修改。若没有符合实际情况的选项，请先修订问卷，不必勉强选择；正式调查的自愿参与与跳题规则需另行设置。
