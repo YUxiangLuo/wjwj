@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { calculateMeanEstimationSampleSize } from "./sample-plan";
 import { buildStageCompletionUpdates, buildStageReopenUpdates } from "./update-service";
 
 function validQuestionnaire() {
@@ -600,4 +601,107 @@ test("reopening stage 2 or 3 after multi-wave formal stage restores Wave 1 top-l
         expect(reopened.updates.samplingResults).toEqual(sr1);
         expect((reopened.updates.wavesData as Array<{ waveNumber: number }>).map((w) => w.waveNumber)).toEqual([1]);
     }
+});
+
+test("QA-S2-03: stage 4 completion accepts any verified Wave 1 multi-method empirical variance and rejects population σ² labeled wave1_empirical", () => {
+    const q = validQuestionnaire();
+    const popVariance = 42.5;
+    const wave1SimpleVar = 18.2;
+    const wave1StratifiedVar = 29.6;
+    const makeStage4Record = (samplePlan: Record<string, unknown>) => {
+        const sr2 = {
+            simple: { completed: true, sampleCount: 60, serverGenerated: true },
+            systematic: { completed: true, sampleCount: 60, interval: 3, serverGenerated: true },
+        };
+        return record({
+            currentStage: 4,
+            activeWaveNumber: 2,
+            samplePlan,
+            samplingResults: sr2,
+            stage2CompletedAt: new Date("2026-01-02T00:00:00Z"),
+            stage3CompletedAt: new Date("2026-01-03T00:00:00Z"),
+            wavesData: [
+                {
+                    waveNumber: 1,
+                    kind: "pilot",
+                    label: "Wave 1",
+                    questionnaire: q,
+                    samplePlan: { estimationType: "mean", confidenceLevel: "95", marginOfError: 2, populationVariance: 16, varianceSource: "prior_estimate", designEffect: 1, nonResponseRate: 0, recommendedSize: 24, finalSampleSize: 24 },
+                    samplingResults: { simple: { completed: true, sampleCount: 24, serverGenerated: true }, stratified: { completed: true, sampleCount: 24, serverGenerated: true } },
+                    fieldwork: fieldworkFor(["simple", "stratified"]),
+                    cleaningConfig: { removeSpeeders: true, removeStraightliners: true, requirePrimaryTargetValid: true },
+                    completedAt: "2026-01-02T00:00:00Z",
+                },
+                {
+                    waveNumber: 2,
+                    kind: "main",
+                    label: "Wave 2",
+                    questionnaire: q,
+                    samplePlan,
+                    samplingResults: sr2,
+                    fieldwork: fieldworkFor(["simple", "systematic"]),
+                    cleaningConfig: { removeSpeeders: true, removeStraightliners: true, requirePrimaryTargetValid: true },
+                    completedAt: null,
+                },
+            ],
+        });
+    };
+
+    const nonFirstMethodPlan = {
+        estimationType: "mean",
+        confidenceLevel: "95",
+        marginOfError: 1.5,
+        populationVariance: wave1StratifiedVar,
+        varianceSource: "wave1_empirical",
+        designEffect: 1,
+        nonResponseRate: 0,
+        recommendedSize: calculateMeanEstimationSampleSize({
+            confidenceLevel: "95",
+            marginOfError: 1.5,
+            populationSize: 200,
+            populationVariance: wave1StratifiedVar,
+            designEffect: 1,
+            nonResponseRate: 0,
+        })!,
+        finalSampleSize: 60,
+    };
+    const accepted = buildStageCompletionUpdates({
+        experimentRecord: makeStage4Record(nonFirstMethodPlan),
+        stage: 4,
+        payload: { samplePlan: nonFirstMethodPlan },
+        populationSize: 200,
+        deadlinePassed: false,
+        fieldMapping: { numeric: ["支出"], analysisTarget: { kind: "mean", field: "支出" } },
+        samplingPolicy: { version: 1, methods: { simple: "required", systematic: "optional", pps: "disabled", stratified: "disabled" } },
+        populationVariance: popVariance,
+        verifiedWave1Variances: [wave1SimpleVar, wave1StratifiedVar],
+    });
+    expect(accepted.ok).toBe(true);
+
+    const mismatchedPlan = {
+        ...nonFirstMethodPlan,
+        populationVariance: popVariance,
+        varianceSource: "wave1_empirical",
+        recommendedSize: calculateMeanEstimationSampleSize({
+            confidenceLevel: "95",
+            marginOfError: 1.5,
+            populationSize: 200,
+            populationVariance: popVariance,
+            designEffect: 1,
+            nonResponseRate: 0,
+        })!,
+    };
+    const rejected = buildStageCompletionUpdates({
+        experimentRecord: makeStage4Record(mismatchedPlan),
+        stage: 4,
+        payload: { samplePlan: mismatchedPlan },
+        populationSize: 200,
+        deadlinePassed: false,
+        fieldMapping: { numeric: ["支出"], analysisTarget: { kind: "mean", field: "支出" } },
+        samplingPolicy: { version: 1, methods: { simple: "required", systematic: "optional", pps: "disabled", stratified: "disabled" } },
+        populationVariance: popVariance,
+        verifiedWave1Variances: [wave1SimpleVar, wave1StratifiedVar],
+    });
+    expect(rejected).toMatchObject({ ok: false, status: 400 });
+    if (!rejected.ok) expect(rejected.message).toMatch(/首轮实测样本方差/);
 });

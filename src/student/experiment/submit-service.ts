@@ -21,7 +21,7 @@ import {
     type FieldworkSimulationConfig,
 } from "../../domain/fieldwork";
 import {
-    getVerifiedWave1EmpiricalVariance,
+    getVerifiedWave1EmpiricalVariances,
     hydrateWaveViews,
     parseStoredWaves,
     verifyExperimentWavesReplay,
@@ -196,7 +196,7 @@ export async function submitStudentExperiment(params: {
     if (resolvedTarget?.target.kind === "mean" && sourceData) {
         const stat = buildPopulationNumericStats(sourceData.rows, [resolvedTarget.target.field])[resolvedTarget.target.field];
         const actualVariance = stat ? finitePopulationS2ToSigma2(stat.variance, stat.count) : null;
-        const verifiedWave1Variance = getVerifiedWave1EmpiricalVariance({
+        const verifiedWave1Variances = getVerifiedWave1EmpiricalVariances({
             waves: storedWaves,
             population: sourceData.designRows,
             fieldMapping: params.taskInfo.fieldMapping,
@@ -207,7 +207,7 @@ export async function submitStudentExperiment(params: {
             parseStoredJson(params.experimentRecord.samplePlan),
             resolvedTarget.target.kind,
             actualVariance,
-            { verifiedEmpiricalVariance: verifiedWave1Variance },
+            { verifiedEmpiricalVariances: verifiedWave1Variances },
         );
         if (varianceError) return fail(varianceError, "INCOMPLETE");
     }

@@ -75,7 +75,8 @@ export function buildStageCompletionUpdates(params: {
     samplingPolicy?: unknown;
     stratifiedStats?: Record<string, Record<string, number>>;
     populationVariance?: number | null;
-    verifiedWave1Variance?: number | null;
+    verifiedWave1Variance?: number | readonly number[] | null;
+    verifiedWave1Variances?: readonly number[] | null;
     variableDictionary?: VariableDictionary | null;
 }) {
     const { experimentRecord: record, stage, payload } = params;
@@ -285,6 +286,7 @@ export function buildStageCompletionUpdates(params: {
         if (planValidationError) return fail(planValidationError);
         const varianceError = validateMeanPlanVariance(samplePlan, analysisTargetKind, params.populationVariance, {
             verifiedEmpiricalVariance: params.verifiedWave1Variance,
+            verifiedEmpiricalVariances: params.verifiedWave1Variances,
         });
         if (varianceError) return fail(varianceError);
 

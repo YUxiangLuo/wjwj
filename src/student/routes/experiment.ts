@@ -72,7 +72,7 @@ import {
 } from "../../domain/fieldwork";
 import {
     ensureActiveWave,
-    getVerifiedWave1EmpiricalVariance,
+    getVerifiedWave1EmpiricalVariances,
     hydrateWaveViews,
     parseStoredWaves,
     simulateWaveDispatchForCompletedMethods,
@@ -444,10 +444,13 @@ const stageCompleteRoutes: RouteDefinition = {
 
         let stratifiedStats: Record<string, Record<string, number>> | undefined;
         let expectedPopulationVariance: number | null = null;
-        let verifiedWave1Variance: number | null = null;
+        let verifiedWave1Variances: number[] | null = null;
 
         if (stratifiedRequired || meanVarianceRequired) {
-            const rawPlanCandidate = (clientPayload.samplePlan ?? parseStoredJson(record.samplePlan)) as Record<string, unknown> | null;
+            const stage4WaveSamplePlan = stage === 4
+                ? ensureActiveWave({ ...record, activeWaveNumber: Math.max(2, record.activeWaveNumber || 2) }).activeWave.samplePlan
+                : null;
+            const rawPlanCandidate = (clientPayload.samplePlan ?? stage4WaveSamplePlan ?? parseStoredJson(record.samplePlan)) as Record<string, unknown> | null;
             const usesPriorEstimate = stage === 2 && rawPlanCandidate?.varianceSource === "prior_estimate";
             if (!usesPriorEstimate) {
                 if (!stageTaskInfo?.excelFilePath) {
@@ -464,7 +467,7 @@ const stageCompleteRoutes: RouteDefinition = {
                     }
                     if (stage === 4 && rawPlanCandidate?.varianceSource === "wave1_empirical") {
                         const popRows = await readPopulationData(stageTaskInfo.excelFilePath, fieldMapping);
-                        verifiedWave1Variance = getVerifiedWave1EmpiricalVariance({
+                        verifiedWave1Variances = getVerifiedWave1EmpiricalVariances({
                             waves: parseStoredWaves(record.wavesData),
                             population: popRows,
                             fieldMapping,
@@ -497,7 +500,7 @@ const stageCompleteRoutes: RouteDefinition = {
             samplingPolicy: stageTaskInfo?.samplingPolicy,
             stratifiedStats,
             populationVariance: expectedPopulationVariance,
-            verifiedWave1Variance,
+            verifiedWave1Variances,
             variableDictionary: stageTaskInfo?.variableDictionary,
         });
         if (!result.ok) return error(result.message, result.code, result.status);
@@ -643,10 +646,10 @@ const wavePlanRoutes: RouteDefinition = {
                 }, req.signal);
                 const stat = stats.populationNumericStats[resolvedTarget.target.field];
                 const actualVar = stat ? finitePopulationS2ToSigma2(stat.variance, stat.count) : null;
-                let verifiedW1: number | null = null;
+                let verifiedW1Variances: number[] | null = null;
                 if (record.currentStage === 4 && samplePlan.varianceSource === "wave1_empirical") {
                     const popRows = await readPopulationData(taskInfo.excelFilePath, taskInfo.fieldMapping);
-                    verifiedW1 = getVerifiedWave1EmpiricalVariance({
+                    verifiedW1Variances = getVerifiedWave1EmpiricalVariances({
                         waves: parseStoredWaves(record.wavesData),
                         population: popRows,
                         fieldMapping: taskInfo.fieldMapping,
@@ -656,7 +659,7 @@ const wavePlanRoutes: RouteDefinition = {
                 }
                 const varError = validateMeanPlanVariance(samplePlan, "mean", actualVar, {
                     allowPriorEstimate: record.currentStage === 2,
-                    verifiedEmpiricalVariance: verifiedW1,
+                    verifiedEmpiricalVariances: verifiedW1Variances,
                 });
                 if (varError) return error(varError, "VALIDATION_ERROR", 400);
             }
