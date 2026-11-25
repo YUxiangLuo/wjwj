@@ -56,8 +56,8 @@ test("numeric questions request explicit continuation before and after valid inp
     expect(view.getByText("最后一题？")).toBeTruthy();
 });
 
-// 数值预试边界：范围 −1.5～2.5、恰好 1 位小数。
-test("numeric preview enforces inclusive bounds and exactly one decimal digit without rounding", () => {
+// 数值预试边界：范围 −1.5～2.5、最多保留 1 位小数（允许整数，拒绝超过 1 位小数且不静默舍入）。
+test("numeric preview enforces inclusive bounds and at most N decimal digits without rounding (QA-P2-06)", () => {
     const numeric: QuestionnaireData = { ...questionnaire, questions: [
         { id: "numeric", type: "numeric", content: "温度？", unit: "℃", numericMin: -1.5, numericMax: 2.5, decimalPlaces: 1 },
         questionnaire.questions[1]!,
@@ -67,14 +67,14 @@ test("numeric preview enforces inclusive bounds and exactly one decimal digit wi
     const input = view.getByTestId("questionnaire-preview-numeric") as HTMLInputElement;
     const next = view.getByTestId("immersive-preview-next") as HTMLButtonElement;
 
-    const invalid = ["", " ", "-1.6", "0", "2.6", "1.00", "1.25", "-0.55"];
+    const invalid = ["", " ", "-1.6", "2.6", "1.00", "1.25", "-0.55"];
     for (const value of invalid) {
         fireEvent.change(input, { target: { value } });
-        // 空值不得当成 0；位数不符不得静默舍入；越界不得放行
+        // 空值不得当成 0；超位小数不得静默舍入；越界不得放行
         expect(next.disabled).toBe(true);
         expect(view.getByText("温度？")).toBeTruthy();
     }
-    for (const value of ["-1.5", "0.0", "2.5", "-0.5"]) {
+    for (const value of ["-1.5", "-1", "0", "0.0", "2", "2.5", "-0.5"]) {
         fireEvent.change(input, { target: { value } });
         expect(next.disabled).toBe(false);
     }
@@ -175,15 +175,36 @@ test("multiple choice enforces both selection bounds and invalidates reordered a
     expect(document.querySelectorAll('[data-preview-answer][aria-pressed="true"]').length).toBe(0);
 });
 
-test("getNumericAnswerError gives specific feedback for attached units, range bounds, and decimal places", () => {
+test("getNumericAnswerError gives specific feedback for attached units, range bounds, and decimal places (QA-P2-06)", () => {
     const q = { id: "wtp", type: "numeric" as const, content: "最高支付意愿", unit: "元", numericMin: 10, numericMax: 50, decimalPlaces: 1 };
     expect(getNumericAnswerError(q, "")).toBeNull();
     expect(getNumericAnswerError(q, "20元")).toContain("无需输入单位「元」");
     expect(getNumericAnswerError(q, "5.0")).toContain("小于最小允许值 10 元");
     expect(getNumericAnswerError(q, "60.0")).toContain("超出最大允许值 50 元");
-    expect(getNumericAnswerError(q, "20")).toContain("严格保留 1 位小数（例如：20.0）");
-    expect(getNumericAnswerError({ ...q, decimalPlaces: 0 }, "20.5")).toContain("整数（0 位小数）");
+    // Supports integers and <= N decimal places when decimalPlaces >= 1
+    expect(getNumericAnswerError(q, "20")).toBeNull();
     expect(getNumericAnswerError(q, "20.5")).toBeNull();
+    expect(getNumericAnswerError(q, "20.55")).toContain("最多保留 1 位小数");
+    // decimalPlaces: 2 accepts 0, 1, or 2 decimal places and rejects 3
+    const q2 = { ...q, decimalPlaces: 2 };
+    expect(getNumericAnswerError(q2, "20")).toBeNull();
+    expect(getNumericAnswerError(q2, "20.5")).toBeNull();
+    expect(getNumericAnswerError(q2, "20.55")).toBeNull();
+    expect(getNumericAnswerError(q2, "20.555")).toContain("最多保留 2 位小数");
+    // decimalPlaces: 0 strictly enforces integers
+    expect(getNumericAnswerError({ ...q, decimalPlaces: 0 }, "20.5")).toContain("整数（0 位小数）");
+    expect(getNumericAnswerError({ ...q, decimalPlaces: 0 }, "20.0")).toContain("整数（0 位小数）");
+    expect(getNumericAnswerError({ ...q, decimalPlaces: 0 }, "20")).toBeNull();
+});
+
+test("QA-P2-04: cover screen uses evaluateQuestionnaireBurden duration consistent with Stage 1 header", () => {
+    // Topic 1 (14 recommended questions) evaluates to 254s -> ceil(254/60) = 5 minutes (not 6 minutes from Math.ceil(14 * 0.4))
+    const view = render(<ImmersiveQuestionnairePreview questionnaire={happinessQuestionnaire} onComplete={() => {}} onClose={() => {}} />);
+    const text = view.getByTestId("immersive-questionnaire-preview").textContent ?? "";
+    expect(text).toContain("共 14 题");
+    expect(text).toContain("约 5 分钟");
+    expect(text).toContain("254 秒");
+    expect(text).not.toContain("约 6 分钟");
 });
 
 test("back navigation preserves previous answers across question types and labels Q1 back as welcome return", () => {

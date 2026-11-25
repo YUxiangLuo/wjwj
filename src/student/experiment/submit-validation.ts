@@ -74,7 +74,11 @@ export function validateMeanPlanVariance(
     samplePlan: unknown,
     analysisTargetKind: "mean" | "proportion" | null | undefined,
     actualPopulationVariance: number | null | undefined,
-    options: { allowPriorEstimate?: boolean; verifiedEmpiricalVariance?: number | null } = {},
+    options: {
+        allowPriorEstimate?: boolean;
+        verifiedEmpiricalVariance?: number | readonly number[] | null;
+        verifiedEmpiricalVariances?: readonly number[] | null;
+    } = {},
 ): string | null {
     if (analysisTargetKind !== "mean") return null;
     if (!samplePlan || typeof samplePlan !== "object") return null;
@@ -82,18 +86,26 @@ export function validateMeanPlanVariance(
     const planned = Number(record.populationVariance);
     if (!Number.isFinite(planned) || planned <= 0) return "均值估计时需提供正的总体方差估计";
 
-    if (options.allowPriorEstimate && record.varianceSource === "prior_estimate") {
-        return null;
+    if (record.varianceSource === "prior_estimate") {
+        if (options.allowPriorEstimate) return null;
+        return "正式投放阶段不能沿用经验先验方差，请改用首轮实测样本方差或当前总体方差重新计算样本量";
     }
-    if (
-        record.varianceSource === "wave1_empirical"
-        && options.verifiedEmpiricalVariance != null
-        && Number.isFinite(options.verifiedEmpiricalVariance)
-        && options.verifiedEmpiricalVariance > 0
-    ) {
-        if (Math.abs(planned - options.verifiedEmpiricalVariance) / options.verifiedEmpiricalVariance <= 1e-6) {
+    if (record.varianceSource === "wave1_empirical") {
+        const singleOrList = options.verifiedEmpiricalVariance;
+        const rawCandidates: unknown[] = [
+            ...(Array.isArray(options.verifiedEmpiricalVariances) ? options.verifiedEmpiricalVariances : []),
+            ...(Array.isArray(singleOrList) ? singleOrList : singleOrList != null ? [singleOrList] : []),
+        ];
+        const verifiedCandidates = rawCandidates.filter(
+            (v): v is number => typeof v === "number" && Number.isFinite(v) && v > 0,
+        );
+        if (verifiedCandidates.length === 0) {
+            return "首轮试投缺少可用的实测样本方差，请改用当前总体方差重新计算样本量";
+        }
+        if (verifiedCandidates.some((verified) => Math.abs(planned - verified) / verified <= 1e-6)) {
             return null;
         }
+        return "首轮实测样本方差与首轮质检回收结果不一致，请重新代入首轮实测样本方差或改用当前总体方差";
     }
 
     const actual = Number(actualPopulationVariance);

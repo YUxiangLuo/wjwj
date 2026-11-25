@@ -15,6 +15,7 @@ import {
     calculateSampleSizeSteps,
     calculateSizeMeasureAllocation,
     calculateSqrtSizeMeasureAllocation,
+    calculateSurveyVariableRequiredSampleSize,
     finitePopulationS2ToSigma2,
     finitePopulationVarianceFactor,
 } from "./sample-plan";
@@ -965,4 +966,120 @@ test("step details expose raw values consistent with canonical formulas", () => 
     expect(details.n2Raw).toBeCloseTo(366.60, 2);
     expect(details.n0).toBe(385);
     expect(details.n2).toBe(367);
+});
+
+// ========== Regression tests: QA-S0-03, QA-S1-06, QA-S2-02 ==========
+
+test("QA-S0-03: N=1 with nonResponseRate>0 returns null instead of fake zero-error census in mean and CV planners", () => {
+    // Proportion planner baseline already returns null
+    expect(calculateSampleSizeMetrics({
+        confidenceLevel: "95",
+        marginOfError: 5,
+        populationSize: 1,
+        designEffect: 1,
+        nonResponseRate: 0.2,
+    })).toBeNull();
+
+    // Mean planner must not misreport expectedCompleted=0.8 as SE=0, MOE=0 census
+    expect(calculateMeanSampleSizeMetrics({
+        confidenceLevel: "95",
+        marginOfError: 2,
+        populationSize: 1,
+        populationVariance: 100,
+        designEffect: 1,
+        nonResponseRate: 0.2,
+    })).toBeNull();
+
+    // CV planner must not misreport expectedRespondentSampleSize=0.8 as achievedCV=0 census
+    expect(calculateSampleSizeByCV({
+        confidenceLevel: "95",
+        targetCV: 0.05,
+        populationSize: 1,
+        estimatedCV: 0.5,
+        designEffect: 1,
+        nonResponseRate: 0.2,
+    })).toBeNull();
+
+    // Complete response (nrr=0) on N=1 remains a valid singleton census
+    const meanCensus = calculateMeanSampleSizeMetrics({
+        confidenceLevel: "95",
+        marginOfError: 2,
+        populationSize: 1,
+        populationVariance: 100,
+        designEffect: 1,
+        nonResponseRate: 0,
+    });
+    expect(meanCensus).not.toBeNull();
+    expect(meanCensus!.n).toBe(1);
+    expect(meanCensus!.expectedCompleted).toBe(1);
+    expect(meanCensus!.standardError).toBe(0);
+    expect(meanCensus!.marginOfError).toBe(0);
+
+    const cvCensus = calculateSampleSizeByCV({
+        confidenceLevel: "95",
+        targetCV: 0.05,
+        populationSize: 1,
+        estimatedCV: 0.5,
+        designEffect: 1,
+        nonResponseRate: 0,
+    });
+    expect(cvCensus).not.toBeNull();
+    expect(cvCensus!.requiredSampleSize).toBe(1);
+    expect(cvCensus!.expectedRespondentSampleSize).toBe(1);
+    expect(cvCensus!.achievedCV).toBe(0);
+});
+
+test("QA-S1-06: calculateSurveyVariableRequiredSampleSize caps at N instead of returning 0 on mean n0 overflow", () => {
+    const hugeStdDev = calculateSurveyVariableRequiredSampleSize({
+        id: "v-overflow",
+        name: "extreme-mean",
+        type: "mean",
+        estimatedValue: 1,
+        estimatedStdDev: 1e200,
+        importance: "primary",
+        confidenceLevel: "95",
+        marginOfError: 1,
+        requiredSampleSize: 100,
+    }, 1000);
+    expect(hugeStdDev).toBe(1000);
+
+    // Simultaneous huge mean & stdDev with reasonable CV=1 should not falsely overflow
+    const balancedHuge = calculateSurveyVariableRequiredSampleSize({
+        id: "v-balanced-huge",
+        name: "balanced-extreme-mean",
+        type: "mean",
+        estimatedValue: 1e308,
+        estimatedStdDev: 1e308,
+        importance: "primary",
+        confidenceLevel: "95",
+        marginOfError: 10,
+        requiredSampleSize: 100,
+    }, 1000);
+    // n0 = (1.96 * 1 / 0.1)^2 = 384.16 -> FPC(N=1000) -> ceil(277.7408...) = 278
+    expect(balancedHuge).toBe(278);
+});
+
+test("QA-S2-02: parseMeanEstimationParams rejects non-finite populationVariance while preserving legacy deff/nrr fallback", () => {
+    for (const badVariance of [Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NaN]) {
+        expect(calculateMeanEstimationSampleSize({
+            confidenceLevel: "95",
+            marginOfError: 2,
+            populationSize: 1000,
+            populationVariance: badVariance,
+        })).toBeNull();
+        expect(calculateMeanSampleSizeMetrics({
+            confidenceLevel: "95",
+            marginOfError: 2,
+            populationSize: 1000,
+            populationVariance: badVariance,
+        })).toBeNull();
+    }
+
+    // Legacy internal fallback for omitted / invalid deff and nrr remains intact (RK-C07)
+    expect(calculateMeanEstimationSampleSize({
+        confidenceLevel: "95",
+        marginOfError: 2,
+        populationSize: 1000,
+        populationVariance: 100,
+    })).toBe(88);
 });
