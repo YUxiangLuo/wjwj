@@ -256,23 +256,35 @@ function numericCell(value: unknown): number | null {
     return Number.isFinite(parsed) ? parsed : null;
 }
 
+const EXCEL_FORMULA_PREFIX = /^[\s\u0000-\u001f\u007f]*[=+\-@]/u;
+
+/**
+ * Neutralize spreadsheet formula/DDE prefixes on text cells so editing or
+ * re-saving the exported workbook as CSV cannot activate injected formulas.
+ */
+function sanitizeExcelTextCell(value: unknown): string {
+    if (value === null || value === undefined) return "";
+    const text = String(value);
+    return EXCEL_FORMULA_PREFIX.test(text) ? `'${text}` : text;
+}
+
 const gradeExportExcelRoutes: RouteDefinition = {
     async GET(req) {
         const rows = await getGradeExportRows(getPrimaryTeacherIdOrThrow(req), getSearchParams(req));
         if (!rows) return error("查询参数无效", "INVALID_PARAM", 400);
         const worksheet = XLSX.utils.json_to_sheet(rows.map((row) => ({
-            学号: row.studentId,
-            姓名: row.name,
-            班级: row.className,
-            实验模板名称: row.topicName,
-            提交时间: row.submittedAt,
+            学号: sanitizeExcelTextCell(row.studentId),
+            姓名: sanitizeExcelTextCell(row.name),
+            班级: sanitizeExcelTextCell(row.className),
+            实验模板名称: sanitizeExcelTextCell(row.topicName),
+            提交时间: sanitizeExcelTextCell(row.submittedAt),
             问卷设计得分: numericCell(row.scoreQuestionnaire),
             实验过程得分: numericCell(row.scoreProcess),
             实验报告得分: numericCell(row.scoreReport),
             总分: numericCell(row.totalScore),
-            状态: row.status,
-            处理人: row.gradedBy,
-            处理时间: row.gradedAt,
+            状态: sanitizeExcelTextCell(row.status),
+            处理人: sanitizeExcelTextCell(row.gradedBy),
+            处理时间: sanitizeExcelTextCell(row.gradedAt),
         })), { header: [...GRADE_EXPORT_HEADERS] });
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "成绩导出");

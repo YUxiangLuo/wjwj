@@ -204,6 +204,7 @@ function matchesObservedExperiment(record: typeof experiment.$inferSelect, obser
         eq(experiment.version, observedVersion),
         eq(experiment.status, record.status),
         eq(experiment.currentStage, record.currentStage),
+        eq(experiment.samplingGeneration, record.samplingGeneration),
     );
 }
 
@@ -224,24 +225,41 @@ async function persistWaveSamplingMethodResult(
     method: SamplingMethod,
     result: Record<string, unknown>,
     attempt?: SamplingAttemptWrite,
+    options?: { requireMatchingGeneration?: boolean },
 ) {
-    const activeWaveNum = record.currentStage === 2 ? 1 : Math.max(2, record.activeWaveNumber || 2);
-    const { waves, activeWave } = ensureActiveWave({ ...record, activeWaveNumber: activeWaveNum });
-    const nextWaveSampling = {
-        ...(activeWave.samplingResults ?? {}),
-        [method]: result,
-    };
-    // Re-sampling a method invalidates that method's previous fieldwork in this wave
-    const nextMethodsFieldwork = { ...(activeWave.fieldwork?.methods ?? {}) };
-    delete nextMethodsFieldwork[method];
-    const nextWave: StoredExperimentWave = {
-        ...activeWave,
-        samplingResults: nextWaveSampling,
-        fieldwork: Object.keys(nextMethodsFieldwork).length > 0 ? { methods: nextMethodsFieldwork } : null,
-    };
-    const nextWaves = waves.map((w) => (w.waveNumber === activeWaveNum ? nextWave : w));
-
     return db.transaction(async (tx) => {
+        const [locked] = await tx
+            .select()
+            .from(experiment)
+            .where(eq(experiment.id, record.id))
+            .for("update");
+        if (
+            !locked
+            || locked.version !== record.version
+            || locked.status !== record.status
+            || locked.currentStage !== record.currentStage
+            || locked.activeWaveNumber !== record.activeWaveNumber
+            || (options?.requireMatchingGeneration && locked.samplingGeneration !== record.samplingGeneration)
+        ) {
+            return null;
+        }
+
+        const activeWaveNum = locked.currentStage === 2 ? 1 : Math.max(2, locked.activeWaveNumber || 2);
+        const { waves, activeWave } = ensureActiveWave({ ...locked, activeWaveNumber: activeWaveNum });
+        const nextWaveSampling = {
+            ...(activeWave.samplingResults ?? {}),
+            [method]: result,
+        };
+        // Re-sampling a method invalidates that method's previous fieldwork in this wave
+        const nextMethodsFieldwork = { ...(activeWave.fieldwork?.methods ?? {}) };
+        delete nextMethodsFieldwork[method];
+        const nextWave: StoredExperimentWave = {
+            ...activeWave,
+            samplingResults: nextWaveSampling,
+            fieldwork: Object.keys(nextMethodsFieldwork).length > 0 ? { methods: nextMethodsFieldwork } : null,
+        };
+        const nextWaves = waves.map((w) => (w.waveNumber === activeWaveNum ? nextWave : w));
+
         const [persisted] = await tx
             .update(experiment)
             .set({
@@ -251,22 +269,22 @@ async function persistWaveSamplingMethodResult(
                 samplingGeneration: sql`${experiment.samplingGeneration} + 1`,
                 updatedAt: new Date(),
             })
-            .where(matchesObservedExperiment(record, record.version))
+            .where(matchesObservedExperiment(locked, locked.version))
             .returning();
         if (!persisted) return null;
 
-        await syncExperimentWaveRow(tx, record.id, nextWave);
+        await syncExperimentWaveRow(tx, locked.id, nextWave);
 
         if (attempt) {
             await tx.insert(samplingAttempt).values({
-                experimentId: record.id,
+                experimentId: locked.id,
                 waveNumber: activeWaveNum,
                 method,
                 seed: attempt.seed,
                 sampleCount: attempt.sampleCount,
                 details: attempt.details,
             });
-            await trimSamplingAttempts(tx, record.id);
+            await trimSamplingAttempts(tx, locked.id);
         }
         return persisted;
     });
@@ -329,7 +347,13 @@ async function prepareStoredSamplingResultsForFormalCompletion(params: {
                 unavailableReason: PPS_UNAVAILABLE_REASON,
                 serverGenerated: true,
             };
-            const persisted = await persistWaveSamplingMethodResult(authoritativeRecord, "pps", unavailableResult);
+            const persisted = await persistWaveSamplingMethodResult(
+                authoritativeRecord,
+                "pps",
+                unavailableResult,
+                undefined,
+                { requireMatchingGeneration: true },
+            );
             if (!persisted) {
                 return {
                     ok: false as const,

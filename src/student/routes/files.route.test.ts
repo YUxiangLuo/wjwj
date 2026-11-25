@@ -15,6 +15,7 @@ function withRouteParam(request: Request, id: string) {
 async function loadFilesRoutes(options: {
     select?: unknown[];
     authStudent?: Record<string, unknown>;
+    useRealTaskAccess?: boolean;
 } = {}) {
     const { db } = createMockDb(options);
 
@@ -33,10 +34,15 @@ async function loadFilesRoutes(options: {
             sessionExpiresAt: null,
         }),
     }));
-    mock.module("../experiment/task-access", () => ({
-        getStudentTaskAccessError: async () => null,
-        getStudentTopicAttachmentAccessError: async () => null,
-    }));
+    if (options.useRealTaskAccess) {
+        const realTaskAccess = await import(`../experiment/task-access.ts?real-access=${crypto.randomUUID()}`);
+        mock.module("../experiment/task-access", () => realTaskAccess);
+    } else {
+        mock.module("../experiment/task-access", () => ({
+            getStudentTaskAccessError: async () => null,
+            getStudentTopicAttachmentAccessError: async () => null,
+        }));
+    }
 
     const module = await import(`./files?student-files-route-test=${Math.random()}`);
     return module;
@@ -196,4 +202,38 @@ test("export route prefers frozen submissionSnapshot samplingResults when experi
     const csv = await response.text();
     expect(csv).toContain("冻结快照值");
     expect(csv).not.toContain("可变草稿值");
+});
+
+test("attachment download returns identical 404 NOT_FOUND for missing and other-class attachments", async () => {
+    const missingModule = await loadFilesRoutes({
+        select: [[]],
+        useRealTaskAccess: true,
+    });
+    const missingRes = await missingModule.attachmentDownloadRoutes.GET!(withRouteParam(
+        createRequest("https://example.com/api/student/attachments/999/download"),
+        "999",
+    ));
+
+    const otherClassModule = await loadFilesRoutes({
+        select: [
+            [{
+                id: 8,
+                topicId: 4,
+                fileName: "secret.pdf",
+                filePath: "/storage/uploads/secret.pdf",
+                fileType: "application/pdf",
+            }],
+            [],
+            [],
+        ],
+        useRealTaskAccess: true,
+    });
+    const otherClassRes = await otherClassModule.attachmentDownloadRoutes.GET!(withRouteParam(
+        createRequest("https://example.com/api/student/attachments/8/download"),
+        "8",
+    ));
+
+    expect(missingRes.status).toBe(404);
+    expect(otherClassRes.status).toBe(404);
+    expect(await otherClassRes.json()).toEqual(await missingRes.json());
 });

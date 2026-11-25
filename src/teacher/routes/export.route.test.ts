@@ -266,3 +266,65 @@ test("grade export writes score columns as numbers so Excel can aggregate them",
     expect((sheet[XLSX.utils.encode_cell({ r: cells.indexOf(graded), c: totalColumn })] as { t?: string }).t).toBe("n");
     expect(pending[totalColumn]).toBe("");
 });
+
+test("grade export excel neutralizes formula prefixes on text cells while keeping score columns numeric", async () => {
+    const { module } = await loadExportRoutes({
+        select: [[{
+            studentId: "=1+1",
+            studentName: "+CMD|' /C calc'!A0",
+            className: "-1+1 班",
+            topicName: "@SUM(A1:A2)",
+            submittedAt: new Date("2026-09-10T04:25:06+08:00"),
+            scoreQuestionnaire: "92.00",
+            scoreProcess: "88.50",
+            scoreReport: "90.00",
+            totalScore: "90.10",
+            status: "graded",
+            gradedByName: " \t=HYPERLINK(\"http://evil.example\",\"click\")",
+            gradedAt: new Date("2026-09-10T05:00:00+08:00"),
+        }, {
+            studentId: "S2606",
+            studentName: "陈晨",
+            className: "2026级统计学1班",
+            topicName: "本科生每周学习时长",
+            submittedAt: new Date("2026-09-10T04:25:06+08:00"),
+            scoreQuestionnaire: null,
+            scoreProcess: null,
+            scoreReport: null,
+            totalScore: null,
+            status: "submitted",
+            gradedByName: null,
+            gradedAt: null,
+        }]],
+    });
+
+    const response = await module.gradeExportExcelRoutes.GET!(
+        new Request("https://example.com/api/teacher/grade-export/excel?taskId=12"),
+    );
+
+    expect(response.status).toBe(200);
+    const workbook = XLSX.read(Buffer.from(await response.arrayBuffer()), { type: "buffer" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]!]!;
+    const cellAt = (r: number, c: number) => sheet[XLSX.utils.encode_cell({ r, c })] as { t?: string; v?: unknown; f?: string } | undefined;
+
+    // Row 1: formula-prefixed text cells are neutralized with a leading apostrophe and have no formula AST.
+    expect(cellAt(1, 0)).toMatchObject({ t: "s", v: "'=1+1" });
+    expect(cellAt(1, 0)?.f).toBeUndefined();
+    expect(cellAt(1, 1)).toMatchObject({ t: "s", v: "'+CMD|' /C calc'!A0" });
+    expect(cellAt(1, 1)?.f).toBeUndefined();
+    expect(cellAt(1, 2)).toMatchObject({ t: "s", v: "'-1+1 班" });
+    expect(cellAt(1, 3)).toMatchObject({ t: "s", v: "'@SUM(A1:A2)" });
+    expect(cellAt(1, 10)).toMatchObject({ t: "s", v: "' \t=HYPERLINK(\"http://evil.example\",\"click\")" });
+    expect(cellAt(1, 10)?.f).toBeUndefined();
+
+    // Score columns remain strictly numeric.
+    expect(cellAt(1, 5)).toMatchObject({ t: "n", v: 92 });
+    expect(cellAt(1, 6)).toMatchObject({ t: "n", v: 88.5 });
+    expect(cellAt(1, 7)).toMatchObject({ t: "n", v: 90 });
+    expect(cellAt(1, 8)).toMatchObject({ t: "n", v: 90.1 });
+
+    // Row 2: normal text is untouched and null scores stay empty.
+    expect(cellAt(2, 0)).toMatchObject({ t: "s", v: "S2606" });
+    expect(cellAt(2, 1)).toMatchObject({ t: "s", v: "陈晨" });
+    expect(cellAt(2, 8)).toBeUndefined();
+});
