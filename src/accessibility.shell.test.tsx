@@ -61,3 +61,12 @@ test("shared loading and skip controls expose their purpose", () => {
     expect(view.getByRole("status").textContent).toContain("正在加载任务");
     expect(view.getByRole("link", { name: "跳到主要内容" }).getAttribute("href")).toBe("#main-content");
 });
+
+test("styles/theme.css defines semantic scroll-padding offsets so sticky headers and stage action bars never obscure focused controls", async () => {
+    const themeCss = await Bun.file("styles/theme.css").text();
+    expect(themeCss).toContain("--scroll-offset-top:");
+    expect(themeCss).toContain("--scroll-offset-bottom:");
+    expect(themeCss).toContain("scroll-padding-top: var(--scroll-offset-top);");
+    expect(themeCss).toContain("scroll-padding-bottom: var(--scroll-offset-bottom);");
+    expect(themeCss).toContain('data-testid="student-experiment-navigation"');
+});

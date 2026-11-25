@@ -1,6 +1,6 @@
 import { RequestError } from "@/components/RequestError";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Plus, Trash2, Star, Loader2, Pencil, School, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,10 +35,24 @@ export function SemesterManagement() {
     const [editName, setEditName] = useState("");
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<"all" | "current" | "history">("all");
+    const addNameInputRef = useRef<HTMLInputElement>(null);
+    const wasSubmittingRef = useRef(false);
 
     useEffect(() => {
         void loadSemesters();
     }, []);
+
+    useEffect(() => {
+        const wasSubmitting = wasSubmittingRef.current;
+        wasSubmittingRef.current = submitting;
+        if (wasSubmitting && !submitting && showAddModal) {
+            requestAnimationFrame(() => {
+                if (addNameInputRef.current?.isConnected && !addNameInputRef.current.disabled) {
+                    addNameInputRef.current.focus();
+                }
+            });
+        }
+    }, [submitting, showAddModal]);
 
     async function loadSemesters() {
         return run(async () => requireApiData(await semesterApi.list(), "学期列表加载失败"), setSemesters);
@@ -69,6 +83,7 @@ export function SemesterManagement() {
                 title: "学期名称不符合推荐格式",
                 description: "建议使用 YYYY-YYYY-1 或 YYYY-YYYY-2（例如 2026-2027-1）。\n继续创建不影响系统功能，但学期名称可能不易辨识。",
                 confirmLabel: "继续创建",
+                fallbackFocusRef: addNameInputRef,
             });
             if (!shouldContinue) {
                 return;
@@ -373,6 +388,7 @@ export function SemesterManagement() {
                                     <span className="text-meta tabular-nums text-muted-foreground">{newSemesterName.trim().length}/20</span>
                                 </div>
                                 <Input
+                                    ref={addNameInputRef}
                                     id="semesterName"
                                     data-testid="semester-create-name"
                                     placeholder="例如：2026-2027-1"

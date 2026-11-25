@@ -4,8 +4,8 @@ export function AppToaster() {
     return (
         <Toaster
             richColors
-            position="top-right"
-            offset={{ top: 80 }}
+            position="bottom-right"
+            offset={{ bottom: 84, right: 24 }}
             toastOptions={{
                 classNames: {
                     toast: "!rounded-overlay !border-border !bg-card !text-foreground",

@@ -261,6 +261,10 @@
 
     /* Shared decorative details */
     --decorative-grid: rgb(255 255 255 / 0.055);
+
+    /* WCAG 2.2 Focus Not Obscured sticky chrome scroll offsets */
+    --scroll-offset-top: 5rem;
+    --scroll-offset-bottom: 5.5rem;
 }
 
 @layer base {
@@ -272,6 +276,15 @@
     body,
     #root {
         min-width: 64rem;
+    }
+
+    html {
+        scroll-padding-top: var(--scroll-offset-top);
+        scroll-padding-bottom: var(--scroll-offset-bottom);
+    }
+
+    html:has([data-testid="student-experiment-navigation"]) {
+        --scroll-offset-top: 9rem;
     }
 
     body {
@@ -380,6 +393,22 @@
     .workspace-nav-link:focus-visible {
         outline: 2px solid var(--navigation-foreground);
         outline-offset: -2px;
+    }
+
+    .student-portal-shell main :where(
+        a,
+        button,
+        input,
+        select,
+        textarea,
+        summary,
+        [tabindex]:not([tabindex="-1"]),
+        [role="tab"],
+        [role="button"],
+        [role="checkbox"],
+        [role="switch"]
+    ) {
+        scroll-margin-block: 0.5rem;
     }
 }
 

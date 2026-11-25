@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, mock, test } from "bun:test";
 import { act, cleanup, render, waitFor, within } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
 import { installDomGlobals } from "@/test-utils/dom";
+import { echarts } from "@/components/charts/echarts-core";
 import type { AnalysisMetricsData } from "../../api-client";
 import { createApiClient } from "@/lib/api-client";
 import { writeExperimentDraft } from "../../experiment/experiment-draft";
@@ -43,6 +44,8 @@ mock.module("../../api-client", () => ({
 mock.module("sonner", () => ({
     toast: {
         error: mockToastError,
+        success: mock(() => undefined),
+        info: mock(() => undefined),
     },
 }));
 
@@ -413,4 +416,108 @@ test("the mean chart plots the population truth beside every estimate", async ()
     // 每个方法行都配一条“总体真值”，其数值为 populationMean。
     expect(chart.getAllByText("总体真值")).toHaveLength(2);
     expect(chart.getAllByText("10.00")).toHaveLength(2);
+});
+
+test("AnalysisReport mean chart and outline honor 90% and 99% confidence levels without hardcoding 1.96 or 95%", async () => {
+    for (const [level, z] of [["90", 1.645], ["99", 2.576]] as const) {
+        localStorage.clear();
+        mockExperimentContext.experiment = {
+            ...mockExperimentContext.experiment,
+            reportContent: "",
+            samplePlan: {
+                confidenceLevel: level,
+                finalSampleSize: 400,
+            },
+            samplingPolicy: {
+                version: 1,
+                methods: { simple: "required", systematic: "optional", pps: "optional", stratified: "optional" },
+            },
+            samplingResults: {
+                simple: { completed: true, sampleCount: 400, data: [] },
+            },
+        };
+        mockExperimentApi.getAnalysisMetrics.mockResolvedValueOnce({
+            success: true,
+            data: {
+                numericFields: ["数值"],
+                categoricalFields: ["类别"],
+                numeric: {
+                    数值: {
+                        populationMean: 10,
+                        populationVariance: 4,
+                        methods: {
+                            simple: { estimate: 10, standardError: 2 },
+                            systematic: { estimate: null, standardError: null },
+                            pps: { estimate: null, standardError: null },
+                            stratified: { estimate: null, standardError: null },
+                        },
+                    },
+                },
+                categorical: {
+                    类别: {
+                        population: { A: 50, B: 50 },
+                        methods: {
+                            simple: { A: 56.35, B: 43.65 },
+                            systematic: {},
+                            pps: {},
+                            stratified: {},
+                        },
+                        representativeness: {
+                            simple: 6.35,
+                            systematic: null,
+                            pps: null,
+                            stratified: null,
+                        },
+                    },
+                },
+                target: null,
+            } as never,
+        });
+
+        const view = render(<AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />);
+        const meanChart = view.getByTestId("student-analysis-mean-chart");
+        await waitFor(() => expect(within(meanChart).getByText("简单随机")).toBeTruthy());
+
+        const expectedLabel = `${level}% 教学误差带（±${z} SE，不保证覆盖率）`;
+        const imgNode = meanChart.querySelector<HTMLElement>('[role="img"]');
+        const instance = imgNode ? echarts.getInstanceByDom(imgNode) : null;
+        const opt = instance?.getOption() as {
+            series?: Array<{ name?: string; type?: string; data?: Array<number[]> }>;
+            tooltip?: Array<{ formatter?: (params: unknown) => string }>;
+        } | undefined;
+        const customSeries = opt?.series?.find((s) => s.type === "custom");
+        expect(customSeries?.name).toBe(expectedLabel);
+        expect(customSeries?.data?.[0]?.[1]).toBeCloseTo(10 - z * 2, 6);
+        expect(customSeries?.data?.[0]?.[2]).toBeCloseTo(10 + z * 2, 6);
+
+        const tooltipHtml = opt?.tooltip?.[0]?.formatter?.([{ dataIndex: 0 }]) ?? "";
+        expect(tooltipHtml).toContain(expectedLabel);
+        expect(tooltipHtml).not.toContain("95% 设计区间");
+
+        // Outline starter must also use the planned confidence level and teaching error band wording
+        await act(async () => view.getByTestId("student-report-insert-outline").click());
+        const reportText = view.getByTestId("student-analysis-report-editor").textContent ?? "";
+        expect(reportText).toContain(expectedLabel);
+        expect(reportText).not.toContain("95% 置信区间");
+
+        // QA-S2-05: category-count K sensitivity & same-frame cross-method comparison disclaimer
+        const deviationSection = view.getByTestId("student-analysis-representativeness-chart");
+        expect(deviationSection.textContent).toContain("类别总数 K");
+        expect(deviationSection.textContent).toContain("同一抽样框");
+
+        // QA-P2-02: categorical deviation Y-axis title is left-aligned so it never clips left at 1024x768
+        const catRegion = view.getByRole("region", { name: "分类分布偏差（百分点）" });
+        const catImg = catRegion.querySelector<HTMLElement>('[role="img"]');
+        const catInstance = catImg ? echarts.getInstanceByDom(catImg) : null;
+        const catOpt = catInstance?.getOption() as {
+            yAxis?: Array<{ name?: string; nameTextStyle?: { align?: string } }>;
+        } | undefined;
+        expect(catOpt?.yAxis?.[0]?.name).toBe("偏差（百分点）");
+        expect(catOpt?.yAxis?.[0]?.nameTextStyle?.align).toBe("left");
+        const yNameTextNode = [...(catRegion.querySelectorAll("svg text") ?? [])]
+            .find((el) => el.textContent?.trim() === "偏差（百分点）");
+        expect(yNameTextNode?.getAttribute("text-anchor")).toBe("start");
+
+        cleanup();
+    }
 });

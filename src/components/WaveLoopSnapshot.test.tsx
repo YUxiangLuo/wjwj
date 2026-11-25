@@ -287,3 +287,34 @@ test("inferTargetUnitFromExperiment resolves bound numeric question unit when ex
     });
     expect(unit).toBe("万元");
 });
+
+test("WaveLoopSnapshot threads wave confidenceLevel to ConfidenceIntervalPlot without duplicated aria-label", () => {
+    const wave90 = makeWave(1, "pilot", makeDiagnostics({
+        estimates: [
+            {
+                key: "cleaned_design",
+                label: "质检有效样本设计估计",
+                description: "90% 置信水平试投估计",
+                sampleSize: 25,
+                estimate: 20.4,
+                standardError: 1.0,
+                halfWidth: 1.645,
+            },
+        ],
+    }));
+    wave90.samplePlan = { ...wave90.samplePlan!, confidenceLevel: "90" };
+
+    const view = render(<WaveLoopSnapshot waves={[wave90]} unitLabel="元" />);
+    const ciPlot = view.getByTestId("confidence-interval-plot");
+    expect(ciPlot.textContent).toContain("90% 教学误差带（±1.645 SE，不保证覆盖率）");
+    expect(ciPlot.textContent).not.toContain("95% 置信区间");
+
+    const img = view.getByTestId("confidence-interval-echart").querySelector<HTMLElement>('[role="img"]');
+    expect(img?.getAttribute("aria-label")).not.toContain("森林对比图森林对比图");
+    cleanup();
+
+    const waveNoPlan = makeWave(1, "pilot", makeDiagnostics());
+    waveNoPlan.samplePlan = null;
+    const fallbackView = render(<WaveLoopSnapshot waves={[waveNoPlan]} unitLabel="元" confidenceLevel="99" />);
+    expect(fallbackView.getByTestId("confidence-interval-plot").textContent).toContain("99% 教学误差带（±2.576 SE，不保证覆盖率）");
+});

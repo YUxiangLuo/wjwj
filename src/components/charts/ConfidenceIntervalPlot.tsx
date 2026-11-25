@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { normalizeConfidenceLevel, zForConfidenceLevel } from "@/domain/statistics/confidence-level";
 import { formatStatistic } from "@/utils/statistic-format";
 import { EChartBox } from "./EChartBox";
 import type { EChartsCoreOption } from "./echarts-core";
@@ -19,7 +20,7 @@ export interface ConfidenceIntervalRow {
     sublabel?: string;
     estimate: number | null;
     standardError: number | null;
-    halfWidth: number | null;
+    halfWidth?: number | null;
     sampleSize?: number;
     tone?: "primary" | "info" | "success" | "warning" | "auxiliary";
 }
@@ -65,6 +66,7 @@ export function ConfidenceIntervalPlot({
     populationValue,
     unit = "",
     isPercentage = false,
+    confidenceLevel = "95",
 }: {
     title: string;
     subtitle?: string;
@@ -72,7 +74,29 @@ export function ConfidenceIntervalPlot({
     populationValue?: number | null;
     unit?: string;
     isPercentage?: boolean;
+    confidenceLevel?: string | number;
 }) {
+    const normalizedConfidenceLevel = normalizeConfidenceLevel(String(confidenceLevel ?? "95"));
+    const zMultiplier = zForConfidenceLevel(normalizedConfidenceLevel);
+    const intervalBandLabel = `${normalizedConfidenceLevel}% 教学误差带（±${zMultiplier} SE，不保证覆盖率）`;
+    const trimmedTitle = title.trim();
+    const chartAriaLabel = trimmedTitle.endsWith("森林对比图") || trimmedTitle.endsWith("森林图")
+        ? trimmedTitle
+        : `${trimmedTitle}森林对比图`;
+
+    const resolveRowHalfWidth = (row: ConfidenceIntervalRow): number | null => {
+        if (row.halfWidth !== undefined) {
+            return row.halfWidth !== null && Number.isFinite(row.halfWidth) && row.halfWidth >= 0
+                ? row.halfWidth
+                : null;
+        }
+        if (row.standardError !== null && Number.isFinite(row.standardError) && row.standardError >= 0) {
+            const derived = zMultiplier * row.standardError;
+            return Number.isFinite(derived) && derived >= 0 ? derived : null;
+        }
+        return null;
+    };
+
     const scaleFactor = isPercentage ? 100 : 1;
     const validRows = rows.filter(
         (row) => row.estimate !== null && Number.isFinite(row.estimate) && Number.isFinite(row.estimate * scaleFactor),
@@ -86,10 +110,8 @@ export function ConfidenceIntervalPlot({
 
     const parsedValidRows = validRows.map((row) => {
         const est = (row.estimate ?? 0) * scaleFactor;
-        const rawHw =
-            row.halfWidth !== null && Number.isFinite(row.halfWidth) && row.halfWidth >= 0
-                ? row.halfWidth * scaleFactor
-                : 0;
+        const resolvedHw = resolveRowHalfWidth(row);
+        const rawHw = resolvedHw !== null ? resolvedHw * scaleFactor : 0;
         const hw = Number.isFinite(rawHw) && rawHw >= 0 ? rawHw : 0;
         const lo = Number.isFinite(est - hw) ? est - hw : est;
         const hi = Number.isFinite(est + hw) ? est + hw : est;
@@ -185,7 +207,7 @@ export function ConfidenceIntervalPlot({
                                 : `<div style="margin-bottom:4px;"></div>`,
                             `<div style="display:flex;justify-content:space-between;gap:14px;"><span>点估计值</span><strong style="color:${tokens.foreground};">${formatStatistic(est, 2)}${escapeHtml(displayUnit)}</strong></div>`,
                             `<div style="display:flex;justify-content:space-between;gap:14px;"><span>标准误 SE</span><strong>${se !== null ? `${formatStatistic(se, 2)}${escapeHtml(displayUnit)}` : "不可用"}</strong></div>`,
-                            `<div style="display:flex;justify-content:space-between;gap:14px;"><span>95% 置信区间</span><strong>[${formatStatistic(lo, 2)}, ${formatStatistic(hi, 2)}]${escapeHtml(displayUnit)}</strong></div>`,
+                            `<div style="display:flex;justify-content:space-between;gap:14px;"><span>${escapeHtml(intervalBandLabel)}</span><strong>[${formatStatistic(lo, 2)}, ${formatStatistic(hi, 2)}]${escapeHtml(displayUnit)}</strong></div>`,
                             `<div style="display:flex;justify-content:space-between;gap:14px;"><span>区间半宽</span><strong>±${formatStatistic(hw, 2)}${escapeHtml(displayUnit)}</strong></div>`,
                             row.sampleSize != null && Number.isFinite(row.sampleSize)
                                 ? `<div style="display:flex;justify-content:space-between;gap:14px;"><span>有效样本量 n</span><strong>${row.sampleSize} 份</strong></div>`
@@ -229,7 +251,7 @@ export function ConfidenceIntervalPlot({
             ),
             series: [
                 {
-                    name: "95% 置信区间",
+                    name: intervalBandLabel,
                     type: "custom",
                     z: 3,
                     renderItem: (
@@ -376,7 +398,7 @@ export function ConfidenceIntervalPlot({
                 },
             ],
         };
-    }, [parsedValidRows, hasValidPop, scaledPop, coordDivisor, normDomainMin, normDomainMax, tickDigits, displayUnit]);
+    }, [parsedValidRows, hasValidPop, scaledPop, coordDivisor, normDomainMin, normDomainMax, tickDigits, displayUnit, intervalBandLabel]);
 
     return (
         <div className="rounded-surface border border-border bg-card p-5" data-testid="confidence-interval-plot">
@@ -394,7 +416,7 @@ export function ConfidenceIntervalPlot({
 
             {validRows.length === 0 ? (
                 <div className="flex h-36 items-center justify-center rounded-control border border-border bg-background text-label text-muted-foreground">
-                    完成抽样与问卷回收后将在此展示点估计与置信区间森林图
+                    完成抽样与问卷回收后将在此展示点估计与教学误差带森林图
                 </div>
             ) : (
                 <div className="space-y-3">
@@ -403,10 +425,13 @@ export function ConfidenceIntervalPlot({
                             option={forestOption}
                             height={forestHeight}
                             fallbackWidth={520}
-                            ariaLabel={`${title}森林对比图`}
+                            ariaLabel={chartAriaLabel}
                             testId="confidence-interval-echart"
                         />
                     </div>
+                    <p className="text-meta text-muted-foreground">
+                        误差须线口径：{intervalBandLabel}，仅用于同框教学比较。
+                    </p>
 
                     <div
                         role="region"
@@ -420,7 +445,9 @@ export function ConfidenceIntervalPlot({
                                     <th scope="col" className="px-3.5 py-2 text-left font-medium">估计口径</th>
                                     <th scope="col" className="whitespace-nowrap px-3 py-2 text-right font-medium">点估计</th>
                                     <th scope="col" className="whitespace-nowrap px-3 py-2 text-right font-medium">标准误 SE</th>
-                                    <th scope="col" className="whitespace-nowrap px-3.5 py-2 text-right font-medium">置信区间 / 半宽</th>
+                                    <th scope="col" className="whitespace-nowrap px-3.5 py-2 text-right font-medium">
+                                        {normalizedConfidenceLevel}% 教学误差带 / 半宽
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
@@ -433,9 +460,10 @@ export function ConfidenceIntervalPlot({
                                         row.standardError !== null && Number.isFinite(row.standardError) && row.standardError >= 0 && Number.isFinite(row.standardError * scaleFactor)
                                             ? row.standardError * scaleFactor
                                             : null;
+                                    const resolvedHw = resolveRowHalfWidth(row);
                                     const hw =
-                                        row.halfWidth !== null && Number.isFinite(row.halfWidth) && row.halfWidth >= 0 && Number.isFinite(row.halfWidth * scaleFactor)
-                                            ? row.halfWidth * scaleFactor
+                                        resolvedHw !== null && Number.isFinite(resolvedHw * scaleFactor)
+                                            ? resolvedHw * scaleFactor
                                             : null;
                                     const lo = est !== null && hw !== null && Number.isFinite(est - hw) ? est - hw : null;
                                     const hi = est !== null && hw !== null && Number.isFinite(est + hw) ? est + hw : null;

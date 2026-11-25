@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test
 import { cleanup, render } from "@testing-library/react";
 import { installDomGlobals } from "@/test-utils/dom";
 import { getAccessibilityViolations } from "@/test-utils/accessibility";
+import { echarts } from "./echarts-core";
 import { ConfidenceIntervalPlot } from "./ConfidenceIntervalPlot";
 import { FieldworkFunnelChart } from "./FieldworkFunnelChart";
 import { StratumComparisonChart } from "./StratumComparisonChart";
@@ -156,6 +157,68 @@ describe("ConfidenceIntervalPlot ECharts forest plot & adversarial edge cases", 
             />,
         );
         expectNoNumericGarbage(extremeView.container);
+    });
+
+    test("renders dynamic 90% and 99% teaching error-band labels and deduplicates 森林对比图 aria-label", async () => {
+        for (const [level, expectedZ] of [["90", "1.645"], ["99", "2.576"]] as const) {
+            const view = render(
+                <ConfidenceIntervalPlot
+                    title="多口径点估计与教学误差带森林对比图"
+                    confidenceLevel={level}
+                    populationValue={20}
+                    unit="元"
+                    rows={[
+                        {
+                            key: "cleaned_design",
+                            label: "质检有效样本设计估计",
+                            estimate: 20.5,
+                            standardError: 2,
+                            halfWidth: Number(expectedZ) * 2,
+                            sampleSize: 60,
+                            tone: "success",
+                        },
+                    ]}
+                />,
+            );
+
+            const expectedBandLabel = `${level}% 教学误差带（±${expectedZ} SE，不保证覆盖率）`;
+            const echartBox = view.getByTestId("confidence-interval-echart");
+            const imgNode = echartBox.querySelector<HTMLElement>('[role="img"]');
+            expect(imgNode?.getAttribute("aria-label")).toBe("多口径点估计与教学误差带森林对比图");
+            expect(imgNode?.getAttribute("aria-label")).not.toContain("森林对比图森林对比图");
+
+            expect(view.container.textContent).toContain(expectedBandLabel);
+            expect(view.container.textContent).not.toContain("95% 置信区间");
+
+            const instance = imgNode ? echarts.getInstanceByDom(imgNode) : null;
+            const opt = instance?.getOption() as {
+                series?: Array<{ name?: string }>;
+                tooltip?: Array<{ formatter?: (params: unknown) => string }>;
+            } | undefined;
+            expect(opt?.series?.[0]?.name).toBe(expectedBandLabel);
+            const tooltipHtml = opt?.tooltip?.[0]?.formatter?.([{ dataIndex: 0 }]) ?? "";
+            expect(tooltipHtml).toContain(expectedBandLabel);
+            expect(tooltipHtml).not.toContain("95% 置信区间");
+            expect(await getAccessibilityViolations(view.container)).toEqual([]);
+            cleanup();
+        }
+
+        const suffixedView = render(
+            <ConfidenceIntervalPlot
+                title="首轮试投多口径点估计与误差对比"
+                rows={[
+                    {
+                        key: "cleaned_design",
+                        label: "质检有效样本设计估计",
+                        estimate: 10,
+                        standardError: 1,
+                        halfWidth: 1.96,
+                    },
+                ]}
+            />,
+        );
+        const suffixedImg = suffixedView.getByTestId("confidence-interval-echart").querySelector<HTMLElement>('[role="img"]');
+        expect(suffixedImg?.getAttribute("aria-label")).toBe("首轮试投多口径点估计与误差对比森林对比图");
     });
 });
 
