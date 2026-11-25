@@ -2,6 +2,37 @@ import { type NumericAccessor, fieldAccessor, sampleStandardDeviation, scaledMea
 import type { SamplingResultsData } from "../experiment/types";
 import { StableSum } from "./stable-sum";
 
+function normalizePopulationValues(
+    population: Array<Record<string, unknown>>,
+    accessor: NumericAccessor,
+): { kind: "empty" } | { kind: "constant" } | { kind: "scaled"; scale: number; values: Array<number | null> } {
+    const rawValues = population.map(accessor);
+    let min = Infinity;
+    let max = -Infinity;
+    for (const value of rawValues) {
+        if (value === null) continue;
+        if (!Number.isFinite(value)) return { kind: "empty" };
+        if (value < min) min = value;
+        if (value > max) max = value;
+    }
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return { kind: "empty" };
+
+    // Overflow-safe midrange centering preserves small differences on large
+    // translations and avoids +/-Infinity when opposite-sign extremes reach 1e308.
+    const origin = min / 2 + max / 2;
+    let scale = 0;
+    for (const value of rawValues) {
+        if (value === null) continue;
+        const absDeviation = Math.abs(value - origin);
+        if (absDeviation > scale) scale = absDeviation;
+    }
+    if (!Number.isFinite(scale)) return { kind: "empty" };
+    if (scale === 0) return { kind: "constant" };
+
+    const values = rawValues.map((value) => (value === null ? null : (value - origin) / scale));
+    return { kind: "scaled", scale, values };
+}
+
 function computeLegacySystematicValueSe(
     population: Array<Record<string, unknown>>,
     accessor: NumericAccessor,
@@ -9,14 +40,17 @@ function computeLegacySystematicValueSe(
 ) {
     if (!Number.isInteger(kValue) || kValue < 1 || population.length === 0) return null;
 
-    const origin = population.map(accessor).find(value => value !== null) ?? 0;
+    const normalized = normalizePopulationValues(population, accessor);
+    if (normalized.kind === "empty") return null;
+    if (normalized.kind === "constant") return 0;
+
     const startMeans: number[] = [];
     for (let startIndex = 0; startIndex < kValue; startIndex += 1) {
         const values: number[] = [];
         for (let index = startIndex; index < population.length; index += kValue) {
-            const value = accessor(population[index]!);
+            const value = normalized.values[index]!;
             if (value !== null) {
-                values.push(value - origin);
+                values.push(value);
             }
         }
         if (values.length === 0) continue;
@@ -24,8 +58,11 @@ function computeLegacySystematicValueSe(
     }
 
     if (startMeans.length === 0) return null;
+    if (startMeans.length === 1) return 0;
 
-    return sampleStandardDeviation(startMeans) / Math.sqrt(startMeans.length / (startMeans.length - 1));
+    const scaledSe = sampleStandardDeviation(startMeans) / Math.sqrt(startMeans.length / (startMeans.length - 1));
+    const se = scaledSe * normalized.scale;
+    return Number.isFinite(se) && (scaledSe === 0 || se > 0) ? se : null;
 }
 
 function computeFractionalSystematicValueSe(
@@ -50,6 +87,10 @@ function computeFractionalSystematicValueSe(
     if (Math.abs(interval - expectedInterval) > tolerance) {
         return null;
     }
+
+    const normalized = normalizePopulationValues(population, accessor);
+    if (normalized.kind === "empty") return null;
+    if (normalized.kind === "constant") return 0;
 
     // For r uniform on [0, K), a selected index changes only when
     // r + jK crosses an integer. Sweep those boundaries so the exact design
@@ -78,13 +119,12 @@ function computeFractionalSystematicValueSe(
         (_, sampleIndex) => Math.floor(initialStart + sampleIndex * interval),
     );
 
-    const origin = population.map(accessor).find(value => value !== null) ?? 0;
     const valueSum = new StableSum();
     let valueCount = 0;
     for (const selectedIndex of selectedIndices) {
-        const value = accessor(population[selectedIndex]!);
+        const value = normalized.values[selectedIndex]!;
         if (value !== null) {
-            valueSum.add(value - origin);
+            valueSum.add(value);
             valueCount += 1;
         }
     }
@@ -120,14 +160,14 @@ function computeFractionalSystematicValueSe(
             const nextIndex = previousIndex + 1;
             if (nextIndex >= populationSize) return null;
 
-            const previousValue = accessor(population[previousIndex]!);
+            const previousValue = normalized.values[previousIndex]!;
             if (previousValue !== null) {
-                valueSum.add(-(previousValue - origin));
+                valueSum.add(-previousValue);
                 valueCount -= 1;
             }
-            const nextValue = accessor(population[nextIndex]!);
+            const nextValue = normalized.values[nextIndex]!;
             if (nextValue !== null) {
-                valueSum.add(nextValue - origin);
+                valueSum.add(nextValue);
                 valueCount += 1;
             }
             selectedIndices[sampleIndex] = nextIndex;
@@ -140,7 +180,9 @@ function computeFractionalSystematicValueSe(
     includeSegment(interval - segmentStart);
 
     if (totalWeight === 0) return null;
-    return weightedDeviationNorm / Math.sqrt(totalWeight);
+    const scaledSe = weightedDeviationNorm / Math.sqrt(totalWeight);
+    const se = scaledSe * normalized.scale;
+    return Number.isFinite(se) && (scaledSe === 0 || se > 0) ? se : null;
 }
 
 export function computeSystematicExactMeanSe(

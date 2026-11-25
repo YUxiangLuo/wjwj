@@ -2,6 +2,23 @@ import type { PreparedPPSSampling } from "./sampling";
 import type { NumericAccessor } from "./values";
 import { StableSum } from "./stable-sum";
 
+function chooseSafeOrigin(raw: Array<number | null>): number {
+    let min = Infinity;
+    let max = -Infinity;
+    for (const value of raw) {
+        if (value === null || !Number.isFinite(value)) return raw[0] ?? 0;
+        if (value < min) min = value;
+        if (value > max) max = value;
+    }
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return 0;
+    const first = raw[0] ?? 0;
+    // Keep raw[0] when subtracting it stays finite so skewed zero-anchored inputs
+    // retain exact representability checks; fall back to the overflow-safe midrange
+    // only when opposite-sign extremes (e.g. +/-1e308) would overflow value - first.
+    if (Number.isFinite(min - first) && Number.isFinite(max - first)) return first;
+    return min / 2 + max / 2;
+}
+
 // With n=1 the Hájek estimate is exactly the selected unit's value. Integrate
 // directly against pi, not differences of CDF boundaries near 1: subtracting
 // those boundaries loses relative accuracy precisely for the rare units.
@@ -15,7 +32,7 @@ function singleUnitStandardErrors(
     for (const p of probabilities) minProbability = Math.min(minProbability, p);
     return Object.fromEntries(fields.map(field => {
         const raw = frame.systematicIndices.map(index => field.accessor(prepared.data[index]!));
-        const origin = raw[0] ?? 0;
+        const origin = chooseSafeOrigin(raw);
         const values = raw.map(value => value === null ? NaN : value - origin);
         if (!values.every(Number.isFinite)) return [field.key, null];
         let scale = 0;
@@ -90,7 +107,7 @@ export function exactPpsStandardErrors(
     selected.forEach(index => denominator.add(weights[index]!));
     const accumulators = fields.map(field => {
         const raw = data.map(field.accessor);
-        const origin = raw[0] ?? 0;
+        const origin = chooseSafeOrigin(raw);
         const values = raw.map(value => value === null ? NaN : value - origin);
         let valid = values.every(Number.isFinite);
         let scale = 0;

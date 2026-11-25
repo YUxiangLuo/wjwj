@@ -998,3 +998,136 @@ pgTest("multi-wave stage reopen cleans relational experiment_wave rows and submi
     expect(reopen1Res.status).toBe(200);
     expect(await application.db.select().from(schema.experimentWave).where(eq(schema.experimentWave.experimentId, f.experiment.id))).toHaveLength(0);
 }, 30_000);
+
+pgTest("QA-S0-02 weighted cross-tab rejects incomplete population missing codes over POST /analyses while unweighted succeeds", async () => {
+    const suffix = crypto.randomUUID().slice(0, 8);
+    const storagePath = `/storage/test/crosstab-missing-${suffix}.csv`;
+    const absolutePath = `${process.cwd()}${storagePath}`;
+    await Bun.write(
+        absolutePath,
+        "id,d4_x,stratum,group_miss\n1,0,A,G1\n2,2,A,G1\n3,9,A,G1\n4,21,A,G1\n5,-1,B,G2\n6,-1,B,G2\n7,-1,B,NA\n",
+    );
+    files.push(absolutePath);
+    const mapping = { identifier: "id", numeric: ["d4_x"], stratified: ["stratum"], others: ["group_miss"] };
+    const source = await variableSource.readVariableSource(storagePath, mapping);
+    const dictionary = {
+        source: source.source,
+        revision: 1,
+        variables: [
+            { field: "id", label: "ID", unit: "", kind: "identifier" as const, categories: [], missing: [null] },
+            { field: "d4_x", label: "D4数值", unit: "", kind: "continuous" as const, categories: [], missing: ["-1", null] },
+            { field: "stratum", label: "分层", unit: "", kind: "nominal" as const, categories: [{ value: "A", label: "A" }, { value: "B", label: "B" }], missing: [null] },
+            { field: "group_miss", label: "含缺失分组", unit: "", kind: "nominal" as const, categories: [{ value: "G1", label: "G1" }, { value: "G2", label: "G2" }], missing: ["NA", null] },
+        ],
+    };
+    const replay = await sampling.executeSamplingAction({
+        method: "simple",
+        rawParams: { sampleSize: 7, seed: 20261125 },
+        targetSampleSize: 7,
+        population: source.designRows,
+        fieldMapping: mapping,
+    });
+    if (!replay.ok) throw new Error(replay.errorMessage);
+    const { data: _data, ...storedResult } = replay.result;
+
+    const [semester] = await application.db.insert(schema.semester).values({ name: `va-ct-${suffix}` }).returning();
+    const [teacher] = await application.db.insert(schema.teacher).values({ employeeId: `t-ct-${suffix}`, name: "交叉分析教师", password: "unused" }).returning();
+    const [cls] = await application.db.insert(schema.class_).values({ name: "交叉分析班级", semesterId: semester!.id, teacherId: teacher!.id }).returning();
+    const students = await application.db.insert(schema.student).values([{ studentId: `s-ct-${suffix}`, name: "学生CT", password: "unused", classId: cls!.id }]).returning();
+    const [topic] = await application.db.insert(schema.topic).values({
+        teacherId: teacher!.id, name: "交叉缺失回归", status: 1, excelFilePath: storagePath, excelRowCount: 7,
+        fieldMapping: mapping, variableDictionary: dictionary, variableRevision: 1,
+    }).returning();
+    const [task] = await application.db.insert(schema.task).values({ topicId: topic!.id, classId: cls!.id }).returning();
+    const [experiment] = await application.db.insert(schema.experiment).values({
+        studentId: students[0]!.id, taskId: task!.id, currentStage: 5, activeWaveNumber: 2, status: "in_progress", samplingGeneration: 1,
+        samplingResults: { simple: { ...storedResult, serverGenerated: true } },
+    }).returning();
+    fixtures.push({ semester: semester!.id, teacher: teacher!.id, cls: cls!.id, topic: topic!.id, task: task!.id, students: students.map((row) => row.id) });
+
+    const token = await session(3, students[0]!.id);
+    const { savedAnalysisRoutes } = await import("../student/routes/variables");
+
+    // 1. Weighted univariate rejects incomplete target column with ANALYSIS_FAILED.
+    const weightedUniRes = await savedAnalysisRoutes.POST!(routeRequest(
+        "POST",
+        { id: String(task!.id) },
+        {
+            cookie: `student_session=${token}`,
+            body: {
+                requestId: `qa-s0-02-uni-${crypto.randomUUID()}`,
+                observedVersion: experiment!.version,
+                config: { question: "加权单变量应拒绝缺失码", field: "d4_x", method: "simple", weighted: true },
+            },
+        },
+    ));
+    expect(weightedUniRes.status).toBeGreaterThanOrEqual(400);
+    expect(await weightedUniRes.json()).toMatchObject({
+        success: false,
+        error: { code: "ANALYSIS_FAILED", message: expect.stringContaining("完整总体目标字段无缺失") },
+    });
+
+    // 2. Weighted cross-tab with declared missing code "-1" on target MUST fail identically (never 200!).
+    const weightedCrossTargetRes = await savedAnalysisRoutes.POST!(routeRequest(
+        "POST",
+        { id: String(task!.id) },
+        {
+            cookie: `student_session=${token}`,
+            body: {
+                requestId: `qa-s0-02-ct-target-${crypto.randomUUID()}`,
+                observedVersion: experiment!.version,
+                config: { question: "加权交叉表应拒绝目标缺失码", field: "d4_x", groupByField: "stratum", method: "simple", weighted: true },
+            },
+        },
+    ));
+    expect(weightedCrossTargetRes.status).toBe(weightedUniRes.status);
+    expect(await weightedCrossTargetRes.json()).toMatchObject({
+        success: false,
+        error: { code: "ANALYSIS_FAILED", message: expect.stringContaining("完整总体目标字段无缺失") },
+    });
+
+    // 3. Weighted cross-tab with declared missing code "NA" on groupByField MUST also reject.
+    const weightedCrossGroupRes = await savedAnalysisRoutes.POST!(routeRequest(
+        "POST",
+        { id: String(task!.id) },
+        {
+            cookie: `student_session=${token}`,
+            body: {
+                requestId: `qa-s0-02-ct-group-${crypto.randomUUID()}`,
+                observedVersion: experiment!.version,
+                config: { question: "加权交叉表应拒绝分组缺失码", field: "stratum", groupByField: "group_miss", method: "simple", weighted: true },
+            },
+        },
+    ));
+    expect(weightedCrossGroupRes.status).toBe(weightedUniRes.status);
+    expect(await weightedCrossGroupRes.json()).toMatchObject({
+        success: false,
+        error: { code: "ANALYSIS_FAILED", message: expect.stringContaining("完整总体分组字段无缺失") },
+    });
+    expect(await application.db.select().from(schema.savedAnalysis).where(eq(schema.savedAnalysis.experimentId, experiment!.id))).toHaveLength(0);
+
+    // 4. Unweighted cross-tab succeeds with exact ST-B4 subgroup stats (Group A mean=8, Group B validCount=0).
+    const unweightedCrossRes = await savedAnalysisRoutes.POST!(routeRequest(
+        "POST",
+        { id: String(task!.id) },
+        {
+            cookie: `student_session=${token}`,
+            body: {
+                requestId: `qa-s0-02-ct-unw-${crypto.randomUUID()}`,
+                observedVersion: experiment!.version,
+                config: { question: "未加权交叉表排除缺失码后给出有效组内均值", field: "d4_x", groupByField: "stratum", method: "simple", weighted: false },
+            },
+        },
+    ));
+    expect(unweightedCrossRes.status).toBe(200);
+    const body = await unweightedCrossRes.json() as {
+        data: { result: { kind: string; validCount: number; missingCount: number; groups: Array<{ groupValue: string; validCount: number; mean: number | null }> } };
+    };
+    expect(body.data.result).toMatchObject({
+        kind: "crosstab",
+        validCount: 4,
+        missingCount: 3,
+    });
+    expect(body.data.result.groups[0]).toMatchObject({ groupValue: "A", validCount: 4, mean: 8 });
+    expect(body.data.result.groups[1]).toMatchObject({ groupValue: "B", validCount: 0, mean: null });
+}, 30_000);

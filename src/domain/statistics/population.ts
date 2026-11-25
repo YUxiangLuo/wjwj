@@ -107,7 +107,7 @@ export function buildStratifiedNumericStats(
                 const mean = scaledMean(values)!;
                 const stdDev = sampleStandardDeviation(values);
                 const variance = stdDev * stdDev;
-                if (![mean, variance, stdDev].every(Number.isFinite)) continue;
+                if (![mean, variance, stdDev].every(Number.isFinite) || (stdDev > 0 && variance === 0)) continue;
 
                 stratStats[numField] = { mean, stdDev };
             }
@@ -139,7 +139,7 @@ export function buildPopulationNumericStats(
         const mean = scaledMean(values)!;
         const stdDev = sampleStandardDeviation(values);
         const variance = stdDev * stdDev;
-        if (![mean, variance, stdDev].every(Number.isFinite)) continue;
+        if (![mean, variance, stdDev].every(Number.isFinite) || (stdDev > 0 && variance === 0)) continue;
 
         stats[field] = {
             mean,

@@ -1,9 +1,11 @@
 import { expect, test } from "bun:test";
 import { buildAnalysisMetrics } from "./analysis";
-import { sampleVariance } from "./values";
-import { estimateWeightedMean } from "./pps";
+import { buildPopulationNumericStats, buildStratifiedNumericStats } from "./population";
+import { sampleVariance, scaledMean } from "./values";
+import { buildPpsStandardErrorContext, estimateWeightedMean } from "./pps";
 import { performPPSSampling, performSystematicSampling } from "./sampling";
-import { computeSystematicExactMeanSe } from "./systematic";
+import { StableSum } from "./stable-sum";
+import { computeSystematicExactMeanSe, computeSystematicExactValueSe } from "./systematic";
 import { calculateUnivariate } from "../variables/analysis";
 
 test("PPS and saved weighted means preserve subnormal observations with unequal design weights", () => {
@@ -101,4 +103,116 @@ test("ST-N02 unrepresentable finite-input dispersion is excluded before serializ
     expect(metrics.excludedNumericFields).toEqual(["y"]);
     expect(metrics.target).toBeNull();
     expect(JSON.stringify(metrics)).not.toMatch(/NaN|Infinity/);
+});
+
+test("QA-S0-01 subnormal dispersion never emits underflowed fake variance 0 alongside nonzero stdDev", () => {
+    const subnormal = [{ g: "A", y: 1e-320 }, { g: "A", y: 2e-320 }, { g: "A", y: 3e-320 }];
+    expect(buildPopulationNumericStats(subnormal, ["y"])).toEqual({});
+    expect(buildStratifiedNumericStats(subnormal, { stratified: ["g"], numeric: ["y"] }).g?.A?.y).toBeUndefined();
+
+    const metrics = buildAnalysisMetrics({
+        population: subnormal,
+        fieldMapping: { numeric: ["y"] },
+        samplingResults: { simple: { completed: true, sampleCount: 2, data: subnormal.slice(0, 2) } },
+    });
+    expect(metrics.numericFields).toEqual([]);
+    expect(metrics.excludedNumericFields).toEqual(["y"]);
+    expect(metrics.numeric.y).toBeUndefined();
+
+    // True zero dispersion (constant subnormal column) remains valid with variance === 0 and stdDev === 0.
+    const constantSubnormal = [{ g: "A", y: 1e-320 }, { g: "A", y: 1e-320 }, { g: "A", y: 1e-320 }];
+    expect(buildPopulationNumericStats(constantSubnormal, ["y"]).y).toEqual({
+        mean: 1e-320,
+        variance: 0,
+        stdDev: 0,
+        count: 3,
+    });
+    expect(buildStratifiedNumericStats(constantSubnormal, { stratified: ["g"], numeric: ["y"] }).g?.A?.y).toEqual({
+        mean: 1e-320,
+        stdDev: 0,
+    });
+});
+
+test("QA-S1-02 systematic and PPS exact SE remain finite and accurate on opposite-sign 1e308 extremes", () => {
+    // Independent exact oracle: two start clusters [1e308, 1e308] (mean +1e308) and [-1e308, -1e308] (mean -1e308)
+    // with equal probability 1/2 each => E = 0, SE = 1e308 exactly.
+    const population = [1e308, -1e308, 1e308, -1e308].map((y) => ({ y, size: 1 }));
+    const accessor = (row: Record<string, unknown>) => Number(row.y);
+
+    const fractionalSe = computeSystematicExactValueSe(population, accessor, {
+        completed: true,
+        interval: 2,
+        sampleCount: 2,
+    });
+    expect(fractionalSe).not.toBeNull();
+    expect(Number.isFinite(fractionalSe)).toBe(true);
+    expect(Math.abs(fractionalSe! / 1e308 - 1)).toBeLessThan(1e-12);
+
+    const legacySe = computeSystematicExactValueSe(population, accessor, {
+        completed: true,
+        kValue: 2,
+        sampleCount: 2,
+    });
+    expect(legacySe).not.toBeNull();
+    expect(Number.isFinite(legacySe)).toBe(true);
+    expect(Math.abs(legacySe! / 1e308 - 1)).toBeLessThan(1e-12);
+
+    // Equal-size PPS n=2 selects {0,2} or {1,3} each with probability 1/2 => exact SE = 1e308.
+    // Equal-size PPS n=1 selects each unit with probability 1/4 => exact SE = 1e308.
+    for (const sampleSize of [1, 2]) {
+        const ppsSe = buildPpsStandardErrorContext(population, "size", sampleSize, [{ key: "y", accessor }], 0)?.standardErrors.y;
+        expect(ppsSe).not.toBeNull();
+        expect(Number.isFinite(ppsSe)).toBe(true);
+        expect(Math.abs(ppsSe! / 1e308 - 1)).toBeLessThan(1e-12);
+    }
+});
+
+test("QA-S2-04 StableSum adaptive expansion retains multi-tier nested cancellation and handles overflow/non-finite", () => {
+    // Two-tier nested cancellation: exact sum = 1, mean = 0.2.
+    const nested = [1e300, 1e200, 1, -1e300, -1e200];
+    const nestedSum = new StableSum();
+    for (const value of nested) nestedSum.add(value);
+    expect(nestedSum.value).toBe(1);
+    expect(scaledMean(nested)).toBe(0.2);
+
+    // Three-tier nested cancellation: exact sum = 1.
+    const threeTier = [1e300, 1e200, 1e100, 1, -1e300, -1e200, -1e100];
+    const threeTierSum = new StableSum();
+    for (const value of threeTier) threeTierSum.add(value);
+    expect(threeTierSum.value).toBe(1);
+
+    // Intermediate overflow followed by cancellation returns exact residual 1.
+    const overflowCancel = new StableSum();
+    for (const value of [1e308, 1e308, -1e308, -1e308, 1]) overflowCancel.add(value);
+    expect(overflowCancel.value).toBe(1);
+
+    // Uncancelled overflow and non-finite propagation.
+    const posOverflow = new StableSum();
+    posOverflow.add(1e308);
+    posOverflow.add(1e308);
+    expect(posOverflow.value).toBe(Number.POSITIVE_INFINITY);
+
+    const negOverflow = new StableSum();
+    negOverflow.add(-1e308);
+    negOverflow.add(-1e308);
+    expect(negOverflow.value).toBe(Number.NEGATIVE_INFINITY);
+
+    const infCancel = new StableSum();
+    infCancel.add(Number.POSITIVE_INFINITY);
+    infCancel.add(Number.NEGATIVE_INFINITY);
+    expect(Number.isNaN(infCancel.value)).toBe(true);
+
+    const nanSum = new StableSum();
+    nanSum.add(1);
+    nanSum.add(Number.NaN);
+    expect(Number.isNaN(nanSum.value)).toBe(true);
+
+    // Exact round-to-nearest-even tie breaking at 1 + 2^-53 +/- tiny.
+    const tieUp = new StableSum();
+    for (const value of [1, 2 ** -53, 2 ** -100]) tieUp.add(value);
+    expect(tieUp.value).toBe(1 + 2 ** -52);
+
+    const tieDown = new StableSum();
+    for (const value of [1, 2 ** -53, -(2 ** -100)]) tieDown.add(value);
+    expect(tieDown.value).toBe(1);
 });

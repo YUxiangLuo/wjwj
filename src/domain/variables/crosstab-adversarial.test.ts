@@ -98,13 +98,35 @@ describe("Subgroup cross-tab (calculateCrossTab) adversarial & mathematical regr
             sampleStandardDeviation: null,
         });
 
-        const weightedNum = calculateCrossTab({
+        // Weighted cross-tab must reject incomplete population (missing target or missing group)
+        expect(() => calculateCrossTab({
             rows,
             indices,
             variable: numTarget,
             groupVariable: groupVar,
             weighted: true,
             weights,
+        })).toThrow(/完整总体/);
+        expect(() => calculateCrossTab({
+            rows,
+            indices,
+            variable: catTarget,
+            groupVariable: groupVar,
+            weighted: true,
+            weights,
+        })).toThrow(/完整总体/);
+
+        const completeRows = rows.slice(0, 3);
+        const completeIndices = [0, 1, 2];
+        const completeWeights = [6, 2, 5];
+
+        const weightedNum = calculateCrossTab({
+            rows: completeRows,
+            indices: completeIndices,
+            variable: numTarget,
+            groupVariable: groupVar,
+            weighted: true,
+            weights: completeWeights,
         });
         // Group A weighted mean: (6*10 + 2*40) / (6 + 2) = 140 / 8 = 17.5
         expect(weightedNum.groups[0]!.mean!).toBeCloseTo(17.5, 12);
@@ -113,12 +135,12 @@ describe("Subgroup cross-tab (calculateCrossTab) adversarial & mathematical regr
         expect(weightedNum.groups[2]!.mean).toBeNull();
 
         const weightedCat = calculateCrossTab({
-            rows,
-            indices,
+            rows: completeRows,
+            indices: completeIndices,
             variable: catTarget,
             groupVariable: groupVar,
             weighted: true,
-            weights,
+            weights: completeWeights,
         });
         // Group A raw counts [1, 1], weighted proportions [6/8, 2/8] = [0.75, 0.25]
         expect(weightedCat.groups[0]!.categories!.map((c) => c.count)).toEqual([1, 1]);
@@ -187,7 +209,7 @@ describe("Subgroup cross-tab (calculateCrossTab) adversarial & mathematical regr
         expect(res.groups[3]!.categories!.map((c) => c.count)).toEqual([0, 0, 0, 1, 1, 1]);
     });
 
-    test("excludes missing categories from group/target output and handles zero-weight strata without NaN", () => {
+    test("excludes missing categories from unweighted output and rejects missingness or zero weights when weighted (QA-S0-02)", () => {
         const groupWithMissingInCats: VariableDefinition = {
             field: "g",
             label: "组",
@@ -218,7 +240,7 @@ describe("Subgroup cross-tab (calculateCrossTab) adversarial & mathematical regr
             unit: "",
             kind: "continuous",
             categories: [],
-            missing: [null],
+            missing: [-1, null],
         };
 
         const rows = [
@@ -229,48 +251,72 @@ describe("Subgroup cross-tab (calculateCrossTab) adversarial & mathematical regr
             { g: "SKIP", c: "X", y: 999 },
         ];
 
-        // Stratum A has zero weights [0, 0]; Stratum B has weights [1, 3]
-        const numRes = calculateCrossTab({
+        // Unweighted cross-tab excludes missing group "SKIP" and declared missing category null from output.
+        const unwNum = calculateCrossTab({
             rows,
             indices: [0, 1, 2, 3, 4],
             variable: numTarget,
             groupVariable: groupWithMissingInCats,
-            weighted: true,
-            weights: [0, 0, 1, 3, 5],
+            weighted: false,
         });
-        expect(numRes.groups.map((g) => g.groupValue)).toEqual(["A", "B"]);
-        expect(numRes.groups[0]!.validCount).toBe(2);
-        expect(numRes.groups[0]!.mean).toBeNull();
-        expect(numRes.groups[1]!.mean!).toBeCloseTo(175, 12);
-        expect(JSON.stringify(numRes)).not.toMatch(/NaN|Infinity/);
+        expect(unwNum.groups.map((g) => g.groupValue)).toEqual(["A", "B"]);
+        expect(unwNum.validCount).toBe(4);
+        expect(unwNum.missingCount).toBe(1);
+        expect(unwNum.groups[0]!.mean).toBe(15);
+        expect(unwNum.groups[1]!.mean).toBe(150);
 
-        const catRes = calculateCrossTab({
+        const unwCat = calculateCrossTab({
             rows,
             indices: [0, 1, 2, 3, 4],
             variable: catTargetWithMissingInCats,
             groupVariable: groupWithMissingInCats,
-            weighted: true,
-            weights: [0, 0, 1, 3, 5],
+            weighted: false,
         });
-        expect(catRes.groups).toHaveLength(2);
-        expect(catRes.groups[0]!.categories!.map((c) => [c.value, c.count, c.proportion])).toEqual([
-            ["X", 1, null],
-            ["Y", 1, null],
-        ]);
-        expect(catRes.groups[1]!.categories![0]!.proportion!).toBeCloseTo(0.25, 12);
-        expect(catRes.groups[1]!.categories![1]!.proportion!).toBeCloseTo(0.75, 12);
+        expect(unwCat.groups).toHaveLength(2);
+        expect(unwCat.groups[0]!.categories!.map((c) => c.value)).toEqual(["X", "Y"]);
 
-        // All zero weights across entire sample -> all proportions/means null, never NaN
-        const allZeroCat = calculateCrossTab({
+        // Weighted cross-tab must reject missing group (even if unsampled!) and declared missing code -1 on target.
+        expect(() => calculateCrossTab({
             rows,
+            indices: [0, 1, 2, 3],
+            variable: numTarget,
+            groupVariable: groupWithMissingInCats,
+            weighted: true,
+            weights: [1, 1, 1, 3],
+        })).toThrow(/完整总体/);
+
+        const rowsWithMissingTarget = [
+            { g: "A", c: "X", y: 0 },
+            { g: "A", c: "Y", y: 2 },
+            { g: "B", c: "X", y: -1 },
+        ];
+        expect(() => calculateCrossTab({
+            rows: rowsWithMissingTarget,
+            indices: [0, 1],
+            variable: numTarget,
+            groupVariable: groupWithMissingInCats,
+            weighted: true,
+            weights: [1, 2],
+        })).toThrow(/完整总体目标字段无缺失/);
+
+        // Weighted cross-tab must reject zero weights strictly (matching calculateUnivariate).
+        const completeRows = rows.slice(0, 4);
+        expect(() => calculateCrossTab({
+            rows: completeRows,
+            indices: [0, 1, 2, 3],
+            variable: numTarget,
+            groupVariable: groupWithMissingInCats,
+            weighted: true,
+            weights: [0, 1, 1, 3],
+        })).toThrow(/有限正数/);
+        expect(() => calculateCrossTab({
+            rows: completeRows,
             indices: [0, 1],
             variable: catTargetWithMissingInCats,
             groupVariable: groupWithMissingInCats,
             weighted: true,
             weights: [0, 0],
-        });
-        expect(allZeroCat.groups[0]!.categories!.every((c) => c.proportion === null)).toBe(true);
-        expect(JSON.stringify(allZeroCat)).not.toMatch(/NaN|Infinity/);
+        })).toThrow(/有限正数/);
     });
 
     test("enforces strict input validation on indices, weights, identifier variables and undeclared categories", () => {
@@ -304,8 +350,10 @@ describe("Subgroup cross-tab (calculateCrossTab) adversarial & mathematical regr
         expect(() => calculateCrossTab({ rows, indices: [0], variable: yVar, groupVariable: yVar, weighted: false })).toThrow(/名义或有序/);
         expect(() => calculateCrossTab({ rows, indices: [0], variable: gVar, groupVariable: gVar, weighted: false })).toThrow(/相同/);
         expect(() => calculateCrossTab({ rows, indices: [0], variable: yVar, groupVariable: gVar, weighted: false, weights: [1] })).toThrow(/未加权/);
-        expect(() => calculateCrossTab({ rows, indices: [0], variable: yVar, groupVariable: gVar, weighted: true, weights: [-1] })).toThrow(/非负有限数/);
-        expect(() => calculateCrossTab({ rows, indices: [0], variable: yVar, groupVariable: gVar, weighted: true, weights: [Number.NaN] })).toThrow(/非负有限数/);
+        expect(() => calculateCrossTab({ rows, indices: [0], variable: yVar, groupVariable: gVar, weighted: true, weights: [0] })).toThrow(/有限正数/);
+        expect(() => calculateCrossTab({ rows, indices: [0], variable: yVar, groupVariable: gVar, weighted: true, weights: [-1] })).toThrow(/有限正数/);
+        expect(() => calculateCrossTab({ rows, indices: [0], variable: yVar, groupVariable: gVar, weighted: true, weights: [Number.NaN] })).toThrow(/有限正数/);
+        expect(() => calculateCrossTab({ rows, indices: [0], variable: yVar, groupVariable: gVar, weighted: true, weights: [Number.POSITIVE_INFINITY] })).toThrow(/有限正数/);
         expect(() => calculateCrossTab({ rows, indices: [0, 0], variable: yVar, groupVariable: gVar, weighted: false })).toThrow(/重复/);
         expect(() => calculateCrossTab({ rows, indices: [5], variable: yVar, groupVariable: gVar, weighted: false })).toThrow(/样本索引无效/);
         expect(() => calculateCrossTab({ rows: [{ g: "Z", y: 10 }], indices: [0], variable: yVar, groupVariable: gVar, weighted: false })).toThrow(/字典外类别/);
@@ -379,9 +427,10 @@ describe("Subgroup cross-tab (calculateCrossTab) adversarial & mathematical regr
         for (let iter = 0; iter < 120; iter += 1) {
             const n = 4 + Math.floor(rng() * 16);
             const scale = 10 ** (Math.floor(rng() * 10) - 4);
+            // Weighted analysis requires a complete population without missingness (ST §2.3).
             const rows = Array.from({ length: n }, () => ({
-                g: rng() < 0.15 ? null : `G${1 + Math.floor(rng() * 3)}`,
-                y: rng() < 0.15 ? null : Number(((rng() * 2 - 1) * scale).toFixed(5)),
+                g: `G${1 + Math.floor(rng() * 3)}`,
+                y: Number(((rng() * 2 - 1) * scale).toFixed(5)),
             }));
             const indices = rows.map((_, i) => i);
             const weights = indices.map(() => 0.05 + rng() * 500);
@@ -499,14 +548,23 @@ describe("Subgroup cross-tab (calculateCrossTab) adversarial & mathematical regr
             weights: [1, 1],
         })).toThrow(/完整总体/);
 
-        // Cross-tab treats masked null on group or target as missing without throwing
-        const crossCont = calculateCrossTab({
+        // Weighted cross-tab also fails closed because population/respondent frame has missingness
+        expect(() => calculateCrossTab({
             rows: maskedRows,
             indices: idx,
             variable: contNoNullMissing,
             groupVariable: grpNoNullMissing,
             weighted: true,
             weights: [2, 5, 5, 5, 1],
+        })).toThrow(/完整总体/);
+
+        // Unweighted cross-tab treats masked null on group or target as missing without throwing
+        const crossCont = calculateCrossTab({
+            rows: maskedRows,
+            indices: idx,
+            variable: contNoNullMissing,
+            groupVariable: grpNoNullMissing,
+            weighted: false,
         });
         expect(crossCont.sampleCount).toBe(5);
         expect(crossCont.validCount).toBe(2);
@@ -524,5 +582,58 @@ describe("Subgroup cross-tab (calculateCrossTab) adversarial & mathematical regr
         expect(crossCat.validCount).toBe(3);
         expect(crossCat.missingCount).toBe(2);
         expect(crossCat.groups[0]!.categories!.map((c) => c.count)).toEqual([1, 1]);
+    });
+
+    test("QA-S1-03 categorical weighted cross-tab scales weights per subgroup so extreme other-group weights never underflow proportions", () => {
+        const gVar: VariableDefinition = {
+            field: "g",
+            label: "组",
+            unit: "",
+            kind: "nominal",
+            categories: [
+                { value: "A", label: "A" },
+                { value: "B", label: "B" },
+            ],
+            missing: [],
+        };
+        const catVar: VariableDefinition = {
+            field: "cat",
+            label: "类别",
+            unit: "",
+            kind: "nominal",
+            categories: [
+                { value: "X", label: "X" },
+                { value: "Y", label: "Y" },
+            ],
+            missing: [],
+        };
+        const rows = [
+            { g: "A", cat: "X" },
+            { g: "B", cat: "X" },
+            { g: "B", cat: "Y" },
+        ];
+        const res = calculateCrossTab({
+            rows,
+            indices: [0, 1, 2],
+            variable: catVar,
+            groupVariable: gVar,
+            weighted: true,
+            weights: [1e300, 1e-300, 1e-300],
+        });
+        expect(res.groups[0]!.categories!.map((c) => c.proportion)).toEqual([1, 0]);
+        expect(res.groups[1]!.categories![0]!.proportion!).toBeCloseTo(0.5, 12);
+        expect(res.groups[1]!.categories![1]!.proportion!).toBeCloseTo(0.5, 12);
+
+        // Asymmetric subgroup weights [1e-300, 3e-300] against 1e300 in Group A -> exact [0.25, 0.75]
+        const asym = calculateCrossTab({
+            rows,
+            indices: [0, 1, 2],
+            variable: catVar,
+            groupVariable: gVar,
+            weighted: true,
+            weights: [1e300, 1e-300, 3e-300],
+        });
+        expect(asym.groups[1]!.categories![0]!.proportion!).toBeCloseTo(0.25, 12);
+        expect(asym.groups[1]!.categories![1]!.proportion!).toBeCloseTo(0.75, 12);
     });
 });
