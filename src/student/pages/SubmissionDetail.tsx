@@ -151,6 +151,7 @@ export function SubmissionDetailPage() {
                                                 }
                                                 : null}
                                             unitLabel={detail.snapshot.targetMetrics?.unit ?? ""}
+                                            confidenceLevel={detail.snapshot.targetMetrics?.confidenceLevel ?? detail.snapshot.samplePlan?.confidenceLevel}
                                         />
                                     </TabsContent>
                                 )}

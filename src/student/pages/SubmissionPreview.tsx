@@ -385,6 +385,7 @@ export function SubmissionPreview() {
                                     adjustmentPlan={experiment.adjustmentPlan}
                                     analysisTarget={experiment.analysisTarget}
                                     unitLabel={previewUnitLabel}
+                                    confidenceLevel={samplePlan?.confidenceLevel}
                                 />
                             </TabsContent>
                         )}

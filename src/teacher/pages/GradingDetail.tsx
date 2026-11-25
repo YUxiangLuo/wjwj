@@ -242,6 +242,7 @@ export function GradingDetail() {
                                     adjustmentPlan={data.adjustmentPlan}
                                     analysisTarget={data.studyContract ? { target: data.studyContract.contract.target, inferred: data.studyContract.inferred } : null}
                                     unitLabel={data.targetMetrics?.unit ?? ""}
+                                    confidenceLevel={data.targetMetrics?.confidenceLevel ?? data.samplePlan?.confidenceLevel}
                                 />
                             </TabsContent>
                         )}

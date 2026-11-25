@@ -76,7 +76,7 @@ function StudentAppContent() {
     };
 
     return (
-        <div className="min-h-screen bg-background font-sans text-foreground selection:bg-primary-muted">
+        <div className="student-portal-shell min-h-screen bg-background font-sans text-foreground selection:bg-primary-muted">
             <SkipLink />
             <header className="sticky top-0 z-50 border-b border-navigation-border bg-navigation text-navigation-foreground">
                 <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-8">

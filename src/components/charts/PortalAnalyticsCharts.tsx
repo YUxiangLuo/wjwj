@@ -919,7 +919,10 @@ export function GradeScoreHistogramCard({
         const markLines: Array<Record<string, unknown>> = [];
         const bothPresent = average !== null && median !== null;
         const nearlyIdentical = bothPresent && Math.abs(average - median) < 0.1;
-        const closeTogether = bothPresent && !nearlyIdentical && Math.abs(average - median) < 9;
+        const closeTogether =
+            bothPresent
+            && !nearlyIdentical
+            && Math.abs(mapScoreToHistogramAxis(average) - mapScoreToHistogramAxis(median)) < 15;
 
         if (nearlyIdentical && average !== null) {
             markLines.push({
@@ -934,6 +937,7 @@ export function GradeScoreHistogramCard({
                     show: true,
                     position: "end",
                     distance: 4,
+                    rotate: 0,
                     align: resolveHistogramMarkLineAlign(average),
                     color: tokens.primary,
                     fontFamily: CHART_FONT_FAMILY,
@@ -955,7 +959,8 @@ export function GradeScoreHistogramCard({
                     label: {
                         show: true,
                         position: "end",
-                        distance: 4,
+                        distance: closeTogether ? 20 : 4,
+                        rotate: 0,
                         align: resolveHistogramMarkLineAlign(average),
                         color: tokens.primary,
                         fontFamily: CHART_FONT_FAMILY,
@@ -976,8 +981,9 @@ export function GradeScoreHistogramCard({
                     },
                     label: {
                         show: true,
-                        position: closeTogether ? "insideEndTop" : "end",
-                        distance: closeTogether ? 6 : 4,
+                        position: "end",
+                        distance: 4,
+                        rotate: 0,
                         align: resolveHistogramMarkLineAlign(median),
                         color: tokens.auxiliaryStrong,
                         fontFamily: CHART_FONT_FAMILY,
@@ -994,7 +1000,7 @@ export function GradeScoreHistogramCard({
             grid: buildExecutiveGrid({
                 left: 10,
                 right: 16,
-                top: 30,
+                top: closeTogether ? 46 : 30,
                 bottom: 8,
                 containLabel: true,
             }),
@@ -1816,6 +1822,22 @@ export interface AdminPlatformStatsInput {
     pendingItems: number;
 }
 
+function computeNiceIntegerAxisScale(rawMax: number, targetSplits = 5): { max: number; interval: number } {
+    const safeMax = Math.max(4, Math.ceil(rawMax));
+    const roughStep = safeMax / targetSplits;
+    const pow10 = 10 ** Math.floor(Math.log10(Math.max(1, roughStep)));
+    const fraction = roughStep / pow10;
+    let niceFraction: number;
+    if (fraction <= 1) niceFraction = 1;
+    else if (fraction <= 2) niceFraction = 2;
+    else if (fraction <= 2.5 && pow10 >= 10) niceFraction = 2.5;
+    else if (fraction <= 5) niceFraction = 5;
+    else niceFraction = 10;
+    const interval = Math.max(1, Math.round(niceFraction * pow10));
+    const max = Math.ceil(safeMax / interval) * interval;
+    return { max, interval };
+}
+
 export function AdminPlatformOverviewCharts({
     stats,
 }: {
@@ -1858,6 +1880,7 @@ export function AdminPlatformOverviewCharts({
             { displayLabel: "待批改提交队列", value: normalized.pendingItems, unit: "份", color: tokens.chart5 },
         ];
         const maxVal = Math.max(4, ...items.map((item) => item.value));
+        const xAxisScale = computeNiceIntegerAxisScale(maxVal * 1.24);
 
         return {
             animation: false,
@@ -1887,7 +1910,8 @@ export function AdminPlatformOverviewCharts({
             xAxis: buildExecutiveValueAxis(
                 {
                     min: 0,
-                    max: Math.ceil(maxVal * 1.24),
+                    max: xAxisScale.max,
+                    interval: xAxisScale.interval,
                     minInterval: 1,
                 },
                 tokens,
@@ -1980,6 +2004,7 @@ export function AdminPlatformOverviewCharts({
             ];
 
         return {
+            animation: false,
             legend: buildExecutiveLegend(
                 {
                     bottom: 0,

@@ -132,6 +132,62 @@ test("SemesterManagement resets dirty create input on cancel and recovers from e
     await waitFor(() => expect(view.getAllByText("2026-2027-1").length).toBe(2));
 });
 
+test("SemesterManagement restores focus inside create Dialog and allows Escape to close after nested AlertDialog confirm + duplicate error", async () => {
+    dom = installDomGlobals();
+    let postFinished = false;
+    globalThis.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith("/api/admin/semesters") && init?.method === "POST") {
+            await new Promise((resolve) => setTimeout(resolve, 25));
+            postFinished = true;
+            return Response.json(
+                { success: false, error: { code: "CONFLICT", message: "学期名称已存在" } },
+                { status: 409 },
+            );
+        }
+        return Response.json({
+            success: true,
+            data: [{ id: 1, name: "DF_ADM_2099-1", isCurrent: 1, classCount: 0, createdAt: "2026-09-01T00:00:00.000Z" }],
+        });
+    }) as unknown as typeof fetch;
+
+    const { SemesterManagement } = await import("./pages/SemesterManagement");
+    const view = render(<SemesterManagement />);
+    await waitFor(() => expect(view.getAllByText("DF_ADM_2099-1").length).toBe(2));
+
+    // Open outer Create Dialog
+    fireEvent.click(view.getByTestId("semester-create-open"));
+    const createInput = await view.findByTestId("semester-create-name") as HTMLInputElement;
+    fireEvent.change(createInput, { target: { value: "DF_ADM_2099-1" } });
+
+    // Submit non-standard name -> opens nested format warning AlertDialog; cancel keeps outer Dialog focused & Esc-dismissible
+    const submitButton = view.getByTestId("semester-create-submit");
+    submitButton.focus();
+    fireEvent.click(submitButton);
+
+    const cancelAlertBtn = await view.findByTestId("confirm-dialog-cancel");
+    fireEvent.click(cancelAlertBtn);
+    await waitFor(() => expect(view.queryByTestId("confirm-dialog-cancel") === null).toBe(true));
+    expect(view.getByRole("dialog").contains(document.activeElement)).toBe(true);
+
+    // Re-submit -> confirm nested AlertDialog -> API returns duplicate conflict
+    submitButton.focus();
+    fireEvent.click(submitButton);
+
+    const continueBtn = await view.findByRole("button", { name: "继续创建" });
+    fireEvent.click(continueBtn);
+
+    // Wait for duplicate API rejection to finish and re-enable the input
+    await waitFor(() => expect(postFinished && !createInput.disabled).toBe(true));
+    const outerDialog = view.getByRole("dialog");
+    expect(outerDialog.hasAttribute("inert")).toBe(false);
+    await waitFor(() => expect(outerDialog.contains(document.activeElement)).toBe(true));
+
+    // Pressing Escape must close the outer Create Dialog cleanly
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(view.queryByRole("dialog") === null).toBe(true));
+});
+
 test("ClassManagement resets canceled create name and exposes filter recovery", async () => {
     dom = installDomGlobals();
     globalThis.fetch = mock(async (input: RequestInfo | URL) => {

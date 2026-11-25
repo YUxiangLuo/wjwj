@@ -499,6 +499,7 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                 <ConfidenceIntervalPlot
                     title="首轮试投多口径点估计与误差对比"
                     subtitle="观察废卷污染、差异化拒访与事后分层权重校准对商业指标推断的影响"
+                    confidenceLevel={wave1.samplePlan?.confidenceLevel ?? experiment?.samplePlan?.confidenceLevel}
                     populationValue={diag.populationTruth}
                     isPercentage={Boolean(isPct)}
                     unit={unitLabel}

@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, mock, test } from "bu
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { installDomGlobals } from "@/test-utils/dom";
 import { getAccessibilityViolations } from "@/test-utils/accessibility";
+import { echarts } from "./echarts-core";
 import {
     AdminPlatformOverviewCharts,
     GradeRubricRadarBarCard,
@@ -266,5 +267,102 @@ describe("PortalAnalyticsCharts ECharts SVG rendering, interactions, edge cases 
         expect(zeroAdminView.container.innerHTML).not.toContain("NaN");
         expect(zeroAdminView.getByText("队列已清空") !== null).toBe(true);
         expect(await getAccessibilityViolations(zeroAdminView.container)).toEqual([]);
+    });
+
+    test("GradeScoreHistogramCard staggers close mean/median MarkLines on separate horizontal tiers without overlap at 1024x768 width", () => {
+        const view = render(
+            <GradeScoreHistogramCard
+                scores={{
+                    count: 4,
+                    average: 76.8,
+                    median: 80.3,
+                    componentAverages: { questionnaire: 78, process: 75, report: 77 },
+                    bands: [
+                        { label: "<60", count: 1 },
+                        { label: "60–69", count: 0 },
+                        { label: "70–79", count: 1 },
+                        { label: "80–89", count: 1 },
+                        { label: "90–100", count: 1 },
+                    ],
+                }}
+            />,
+        );
+
+        const imgNode = view.getByTestId("teacher-grade-score-histogram").querySelector<HTMLElement>('[role="img"]');
+        const instance = imgNode ? echarts.getInstanceByDom(imgNode) : null;
+        const opt = instance?.getOption() as {
+            grid?: Array<{ top?: number }>;
+            series?: Array<{
+                markLine?: {
+                    data?: Array<{
+                        name?: string;
+                        label?: { position?: string; distance?: number; rotate?: number };
+                    }>;
+                };
+            }>;
+        } | undefined;
+
+        const markLines = opt?.series?.[1]?.markLine?.data ?? [];
+        expect(markLines).toHaveLength(2);
+        const avgLine = markLines.find((item) => item.name === "总分均值");
+        const medLine = markLines.find((item) => item.name === "总分中位数");
+        expect(avgLine?.label?.position).toBe("end");
+        expect(medLine?.label?.position).toBe("end");
+        expect(avgLine?.label?.rotate ?? 0).toBe(0);
+        expect(medLine?.label?.rotate ?? 0).toBe(0);
+        expect(Math.abs((avgLine?.label?.distance ?? 0) - (medLine?.label?.distance ?? 0))).toBeGreaterThanOrEqual(14);
+        expect(opt?.grid?.[0]?.top).toBeGreaterThanOrEqual(42);
+
+        // Verify actual rendered SVG text transforms stay inside viewport (y >= 0) and are vertically separated
+        const parseTextY = (node: Element | undefined): number => {
+            const transform = node?.getAttribute("transform") ?? "";
+            const match = transform.match(/translate\(\s*([-\d.]+)[,\s]+([-\d.]+)\s*\)/);
+            const ty = match ? Number(match[2]) : 0;
+            const yAttr = Number(node?.getAttribute("y") ?? "0");
+            return ty + yAttr;
+        };
+        const svgTexts = [...view.getByTestId("teacher-grade-score-histogram").querySelectorAll("svg text")];
+        const avgText = svgTexts.find((node) => node.textContent?.includes("均值 76.8"));
+        const medText = svgTexts.find((node) => node.textContent?.includes("中位 80.3"));
+        expect(avgText !== undefined).toBe(true);
+        expect(medText !== undefined).toBe(true);
+        const avgY = parseTextY(avgText);
+        const medY = parseTextY(medText);
+        expect(avgY).toBeGreaterThan(0);
+        expect(medY).toBeGreaterThan(0);
+        expect(Math.abs(medY - avgY)).toBeGreaterThanOrEqual(14);
+    });
+
+    test("AdminPlatformOverviewCharts uses nice integer xAxis ticks for studentCount=34 and disables animation on roleBreakdown donut", async () => {
+        const view = render(
+            <AdminPlatformOverviewCharts
+                stats={{
+                    currentSemester: "2026-2027-1",
+                    teacherCount: 3,
+                    classCount: 4,
+                    studentCount: 34,
+                    pendingItems: 5,
+                }}
+            />,
+        );
+
+        const resourceImg = view.getByTestId("admin-dashboard-resource-chart").querySelector<HTMLElement>('[role="img"]');
+        const resourceInstance = resourceImg ? echarts.getInstanceByDom(resourceImg) : null;
+        const resourceOpt = resourceInstance?.getOption() as {
+            xAxis?: Array<{ max?: number; interval?: number }>;
+        } | undefined;
+        const xMax = resourceOpt?.xAxis?.[0]?.max;
+        const xInterval = resourceOpt?.xAxis?.[0]?.interval;
+        expect(typeof xMax).toBe("number");
+        expect(typeof xInterval).toBe("number");
+        expect(xMax!).toBeGreaterThanOrEqual(Math.ceil(34 * 1.24));
+        expect(xMax! % xInterval!).toBe(0);
+        expect(xMax).toBe(50);
+        expect(xInterval).toBe(10);
+
+        // Verify roleBreakdownOption explicitly declares animation: false (not relying solely on HappyDOM defaults)
+        const source = await Bun.file("src/components/charts/PortalAnalyticsCharts.tsx").text();
+        const roleBlock = source.slice(source.indexOf("const roleBreakdownOption = useMemo"), source.indexOf("return (\n        <div className=\"grid", source.indexOf("const roleBreakdownOption = useMemo")));
+        expect(roleBlock).toContain("animation: false");
     });
 });

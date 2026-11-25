@@ -352,6 +352,7 @@ function renderWaveMethodDiagnostics(
     targetKind?: "mean" | "proportion",
     unitLabel?: string,
     targetRequiredCount?: number,
+    confidenceLevel?: string | number,
 ) {
     const isPct = targetKind === "proportion" || unitLabel === "%";
     return (
@@ -401,8 +402,9 @@ function renderWaveMethodDiagnostics(
 
             {(diag.estimates ?? []).length > 0 && (
                 <ConfidenceIntervalPlot
-                    title="多口径点估计与置信区间森林对比图"
+                    title="多口径点估计与教学误差带森林对比图"
                     subtitle="同屏检验废卷清洗前后、客群无回答权重校准后与完整入样基准的估计差异"
+                    confidenceLevel={confidenceLevel}
                     populationValue={diag.populationTruth}
                     isPercentage={isPct}
                     unit={unitLabel ?? ""}
@@ -433,11 +435,13 @@ export function WaveLoopSnapshot({
     adjustmentPlan,
     analysisTarget,
     unitLabel = "",
+    confidenceLevel,
 }: {
     waves?: ExperimentWaveView[];
     adjustmentPlan?: AdjustmentPlan | null;
     analysisTarget?: ResolvedAnalysisTarget | null;
     unitLabel?: string;
+    confidenceLevel?: string | number;
 }) {
     const firstWave = waves[0];
     const finalWave = waves.length >= 2 ? waves[waves.length - 1] : undefined;
@@ -561,6 +565,7 @@ export function WaveLoopSnapshot({
                             wave.samplePlan?.finalSampleSize != null && Number.isFinite(wave.samplePlan.finalSampleSize)
                                 ? Math.round(wave.samplePlan.finalSampleSize * (1 - (wave.samplePlan.nonResponseRate ?? 0)))
                                 : undefined;
+                        const waveConfidenceLevel = wave.samplePlan?.confidenceLevel ?? confidenceLevel;
                         return (
                             <TabsContent key={wave.waveNumber} value={String(wave.waveNumber)} className="space-y-4">
                                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-surface border border-border bg-muted px-4 py-3 text-meta">
@@ -600,6 +605,7 @@ export function WaveLoopSnapshot({
                                         analysisTarget?.target.kind,
                                         effectiveUnit,
                                         waveTargetValid,
+                                        waveConfidenceLevel,
                                     )
                                 ) : (
                                     <Tabs defaultValue={diagMethods[0]!} className="space-y-4">
@@ -618,6 +624,7 @@ export function WaveLoopSnapshot({
                                                     analysisTarget?.target.kind,
                                                     effectiveUnit,
                                                     waveTargetValid,
+                                                    waveConfidenceLevel,
                                                 )}
                                             </TabsContent>
                                         ))}

@@ -43,6 +43,7 @@ export function DatetimePicker24({
     className,
     allowClear = true,
 }: DatetimePicker24Props) {
+    const [open, setOpen] = React.useState(false);
     const generatedId = React.useId();
     const fieldPrefix = id ?? generatedId;
     const hourId = `${fieldPrefix}-hour`;
@@ -85,7 +86,7 @@ export function DatetimePicker24({
         : placeholder;
 
     return (
-        <Popover>
+        <Popover open={disabled ? false : open} onOpenChange={(nextOpen) => { if (!disabled) setOpen(nextOpen); }}>
             <PopoverTrigger asChild>
                 <Button
                     id={id}
@@ -107,9 +108,10 @@ export function DatetimePicker24({
                 aria-label="日期与时间选择器"
                 className="w-auto p-0"
                 align="start"
+                collisionPadding={16}
                 onOpenAutoFocus={(e) => e.preventDefault()}
             >
-                <div className="flex gap-3 p-3 flex-row items-start">
+                <div className="flex flex-row items-start gap-3 p-3">
                     <div className="rounded-control p-1">
                         <DayPicker
                             mode="single"
@@ -124,7 +126,7 @@ export function DatetimePicker24({
                             today={calendarToday}
                         />
                     </div>
-                    <div className="flex min-w-[200px] flex-col gap-3 border-border border-l border-t-0 pl-3 pt-0">
+                    <div className="flex min-w-[200px] flex-col gap-3 border-l border-t-0 border-border pl-3 pt-0">
                         <div className="space-y-1.5">
                             <Label htmlFor={hourId} className="text-meta text-muted-foreground">时（24 小时）</Label>
                             <select
@@ -155,18 +157,28 @@ export function DatetimePicker24({
                                 ))}
                             </select>
                         </div>
-                        {allowClear ? (
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="text-muted-foreground"
-                                onClick={() => onChange("")}
-                            >
-                                清除
-                            </Button>
-                        ) : null}
                     </div>
+                </div>
+                <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2">
+                    {allowClear ? (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground"
+                            onClick={() => onChange("")}
+                        >
+                            清除
+                        </Button>
+                    ) : <span />}
+                    <Button
+                        type="button"
+                        size="sm"
+                        data-testid={dataTestId ? `${dataTestId}-confirm` : undefined}
+                        onClick={() => setOpen(false)}
+                    >
+                        确定
+                    </Button>
                 </div>
             </PopoverContent>
         </Popover>

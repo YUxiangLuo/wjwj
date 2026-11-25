@@ -40,6 +40,7 @@ import {
     useExperimentDraft,
 } from "../../experiment/experiment-draft";
 import { isCompletedSamplingResult, SAMPLING_METHODS, resolveSamplingPolicy } from "@/lib/sampling-policy";
+import { normalizeConfidenceLevel, zForConfidenceLevel } from "@/domain/statistics/confidence-level";
 import { UnivariateWorkspace } from "../../components/UnivariateWorkspace";
 import { WaveLoopSnapshot } from "@/components/WaveLoopSnapshot";
 import { EChartBox } from "@/components/charts/EChartBox";
@@ -64,7 +65,7 @@ type ZoomChartType = "mean" | "dist" | "error" | "representNumeric" | "represent
 type AnalysisWorkspace = "overview" | "waves" | "charts" | "univariate" | "records" | "report";
 type DistributionViewMode = "grouped" | "stacked";
 
-const DEVIATION_DISCLAIMER = "数值相对偏差（%）与分类分布偏差（百分点）使用独立尺度，不可横比；接近总体也不能单独证明样本无偏或具有整体代表性。";
+const DEVIATION_DISCLAIMER = "数值相对偏差（%）与分类分布偏差（百分点）使用独立尺度，不可横比；分类分布偏差受类别总数 K 影响（增加零频类别会摊薄均值），仅作同一抽样框下不同抽样方法的横向对比参考；接近总体也不能单独证明样本无偏或具有整体代表性。";
 
 function escapeHtml(text: string): string {
     return text
@@ -448,7 +449,7 @@ function TargetEstimateComparisonCard({
                     option={option}
                     height={chartHeight}
                     fallbackWidth={720}
-                    ariaLabel="跨抽样方法目标估计与教学置信区间对比森林图"
+                    ariaLabel="跨抽样方法目标估计与教学误差带对比森林图"
                 />
             </CardContent>
         </Card>
@@ -927,6 +928,12 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     }, [completedAnalysisMethods, representativenessRows]);
 
     const target = analysisMetrics?.target;
+    const plannedConfidenceLevel = normalizeConfidenceLevel(
+        String(target?.confidenceLevel ?? experiment?.samplePlan?.confidenceLevel ?? "95"),
+    );
+    const plannedZ = zForConfidenceLevel(plannedConfidenceLevel);
+    const meanIntervalLabel = `${plannedConfidenceLevel}% 教学误差带（±${plannedZ} SE，不保证覆盖率）`;
+
     const selectedNumericUnit = useMemo(() => {
         if (!selectedNumericField || !target) return undefined;
         if (
@@ -953,7 +960,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 const m = fieldMetrics.methods[method];
                 if (m.estimate === null) return null;
                 const se = m.standardError;
-                const ciHalf = se !== null && Number.isFinite(se) ? 1.96 * se : null;
+                const ciHalf = se !== null && Number.isFinite(se) ? plannedZ * se : null;
                 return {
                     method,
                     label: METHOD_META[method].label,
@@ -981,11 +988,11 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             popMean !== null ? `真值参考线 (${formatStatistic(popMean, 2)}${unitStr})` : null;
 
         return {
-            grid: buildExecutiveGrid({ left: 14, right: 24, top: 42, bottom: 14 }),
+            grid: buildExecutiveGrid({ left: 16, right: 24, top: 44, bottom: 14 }),
             legend: buildExecutiveLegend({
                 data: [
                     "样本均值估计",
-                    ...(ciWhiskers.length > 0 ? ["95% 设计区间 (±1.96 SE)"] : []),
+                    ...(ciWhiskers.length > 0 ? [meanIntervalLabel] : []),
                     ...(popLegendLabel ? [popLegendLabel] : []),
                 ],
             }, tokens),
@@ -998,7 +1005,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                     if (!item) return "";
                     const ciLine =
                         item.low !== null && item.high !== null
-                            ? `<div>95% 设计区间：<b>[${formatStatistic(item.low, 2)}, ${formatStatistic(item.high, 2)}]${escapeHtml(unitStr)}</b>（SE = ${formatStatistic(item.se ?? 0, 3)}）</div>`
+                            ? `<div>${escapeHtml(meanIntervalLabel)}：<b>[${formatStatistic(item.low, 2)}, ${formatStatistic(item.high, 2)}]${escapeHtml(unitStr)}</b>（SE = ${formatStatistic(item.se ?? 0, 3)}）</div>`
                             : "";
                     const popLine =
                         popMean !== null
@@ -1020,6 +1027,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 max: domain.max,
                 interval: domain.interval,
                 name: selectedNumericUnit ? `均值（${selectedNumericUnit}）` : undefined,
+                nameGap: 12,
+                nameTextStyle: { align: "left" },
             }, tokens),
             series: [
                 {
@@ -1063,7 +1072,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 ...(ciWhiskers.length > 0
                     ? [
                           {
-                              name: "95% 设计区间 (±1.96 SE)",
+                              name: meanIntervalLabel,
                               type: "custom",
                               z: 8,
                               encode: { x: 0, y: [1, 2, 3] },
@@ -1125,7 +1134,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                     : []),
             ],
         };
-    }, [analysisMetrics, completedAnalysisMethods, selectedNumericField, selectedNumericUnit]);
+    }, [analysisMetrics, completedAnalysisMethods, selectedNumericField, selectedNumericUnit, plannedZ, meanIntervalLabel]);
 
     const distOption = useMemo<EChartsCoreOption>(() => {
         const tokens = getExecutiveChartTokens();
@@ -1351,7 +1360,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         if (rows.length === 0 || series.length === 0) return {};
 
         return {
-            grid: buildExecutiveGrid({ left: 14, right: 24, top: 40, bottom: 16 }),
+            grid: buildExecutiveGrid({ left: 16, right: 24, top: 44, bottom: 16 }),
             legend: buildExecutiveLegend({
                 data: series.map((s) => s.label),
             }, tokens),
@@ -1384,6 +1393,10 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             yAxis: buildExecutiveValueAxis({
                 min: 0,
                 name: `偏差（${unitLabel}）`,
+                nameGap: 12,
+                nameTextStyle: {
+                    align: "left",
+                },
             }, tokens),
             series: series.map((s) => ({
                 name: s.label,
@@ -1639,7 +1652,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             experiment?.studyContract?.contract.businessDecision
             ?? experiment?.studyContract?.contract.researchQuestion
             ?? "本次商业调研课题";
-        const starter = `<h3>一、商业管理问题与核心结论摘要</h3><p>围绕「${decisionText}」，本团队完成了从首轮试投探底、回收质检清洗到二轮抽样调优的闭环实证调研。最终核心结论与经营建议如下：</p><h3>二、首轮试投诊断与二轮抽样调优复盘</h3><p>首轮试投中暴露的主要非抽样误差与结构偏差包括：……；针对上述问题，我们在正式轮采取了修订问卷、代入实测无回答率与样本方差重算样本量、以及升级分层/PPS/系统抽样策略等措施，使有效回收率与标准误显著改善。</p><h3>三、主指标点估计、置信区间与方法效率对比</h3><p>对比正式轮不同抽样方法及质检清洗前后、无回答权重校准后的点估计与 95% 置信区间：……</p><h3>四、细分客群交叉洞察与商业落地建议</h3><p>结合客群交叉分析结果，针对不同细分客群提出以下具体定价/运营/资源配置建议，并说明模型假设边界：……</p>`;
+        const starter = `<h3>一、商业管理问题与核心结论摘要</h3><p>围绕「${decisionText}」，本团队完成了从首轮试投探底、回收质检清洗到二轮抽样调优的闭环实证调研。最终核心结论与经营建议如下：</p><h3>二、首轮试投诊断与二轮抽样调优复盘</h3><p>首轮试投中暴露的主要非抽样误差与结构偏差包括：……；针对上述问题，我们在正式轮采取了修订问卷、代入实测无回答率与样本方差重算样本量、以及升级分层/PPS/系统抽样策略等措施，使有效回收率与标准误显著改善。</p><h3>三、主指标点估计、教学误差带与方法效率对比</h3><p>对比正式轮不同抽样方法及质检清洗前后、无回答权重校准后的点估计与 ${meanIntervalLabel}：……</p><h3>四、细分客群交叉洞察与商业落地建议</h3><p>结合客群交叉分析结果，针对不同细分客群提出以下具体定价/运营/资源配置建议，并说明模型假设边界：……</p>`;
         setReportContent(starter);
         toast.success("已插入商务决策报告结构框架，请结合左侧实测数据补充具体数值与结论");
     };
@@ -1798,6 +1811,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         adjustmentPlan={experiment?.adjustmentPlan ?? null}
                         analysisTarget={experiment?.analysisTarget ?? null}
                         unitLabel={target?.unit ?? ""}
+                        confidenceLevel={plannedConfidenceLevel}
                     />
                 </TabsContent>
 
