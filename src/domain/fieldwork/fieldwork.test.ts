@@ -211,4 +211,80 @@ describe("Business statistics fieldwork simulation & quality control engine", ()
             analysisTarget: { kind: "mean", field: "支付意愿" },
         })).toBe(true);
     });
+
+    test("QA-S1-04 full_invited_benchmark keeps standardError and halfWidth null when exact finite-population PPS SE is unavailable", () => {
+        // Case 1: Unresolvable PPS probability frame (size=[1, 1, 1e-20], n=2 -> preparePPSSampling returns null)
+        const unresolvedPop = [
+            { id: "U1", grp: "A", y: 10, size: 1 },
+            { id: "U2", grp: "A", y: 20, size: 1 },
+            { id: "U3", grp: "B", y: 30, size: 1e-20 },
+        ];
+        const q: QuestionnaireData = {
+            title: "PPS精确SE不可用基准",
+            welcomeText: baseQuestionnaire.welcomeText,
+            endingText: baseQuestionnaire.endingText,
+            questions: [{ id: "q1", type: "numeric", content: "y", unit: "" }],
+        };
+        const diag1 = buildMethodFieldworkDiagnostics({
+            method: "pps",
+            population: unresolvedPop,
+            samplingIndices: [0, 1],
+            inclusionProbabilities: [0.9999999, 0.9999999],
+            sizeField: "size",
+            fieldworkResult: {
+                method: "pps",
+                dispatchSeed: 1,
+                dispatchedAt: "2026-11-24T00:00:00.000Z",
+                invitedCount: 2,
+                records: [
+                    { populationIndex: 0, disposition: "valid_complete", durationSec: 40, answeredQuestionCount: 1 },
+                    { populationIndex: 1, disposition: "valid_complete", durationSec: 40, answeredQuestionCount: 1 },
+                ],
+            },
+            questionnaire: q,
+            frameFields: ["id", "grp"],
+            identifierField: "id",
+            analysisTarget: { kind: "mean", field: "y" },
+            confidenceLevel: "95",
+        });
+        const bench1 = diag1.estimates.find((e) => e.key === "full_invited_benchmark")!;
+        expect(bench1.estimate).toBe(15);
+        expect(bench1.standardError).toBeNull();
+        expect(bench1.halfWidth).toBeNull();
+        // Respondent Taylor SE remains available on cleaned_design, proving full_invited_benchmark did NOT fall back to it.
+        expect(diag1.estimates.find((e) => e.key === "cleaned_design")?.standardError).not.toBeNull();
+
+        // Case 2: PPS frame prepares, but exact SE for target field is unrepresentable (standardErrors.__target__ === null)
+        const unrepresentableFieldPop = [
+            { id: "U1", grp: "A", y: 0, size: 1e-200 },
+            { id: "U2", grp: "A", y: 1e-200, size: 1 },
+            { id: "U3", grp: "B", y: 1e100, size: 1 },
+        ];
+        const diag2 = buildMethodFieldworkDiagnostics({
+            method: "pps",
+            population: unrepresentableFieldPop,
+            samplingIndices: [1, 2],
+            inclusionProbabilities: [0.5, 0.5],
+            sizeField: "size",
+            fieldworkResult: {
+                method: "pps",
+                dispatchSeed: 2,
+                dispatchedAt: "2026-11-24T00:00:00.000Z",
+                invitedCount: 2,
+                records: [
+                    { populationIndex: 1, disposition: "valid_complete", durationSec: 40, answeredQuestionCount: 1 },
+                    { populationIndex: 2, disposition: "valid_complete", durationSec: 40, answeredQuestionCount: 1 },
+                ],
+            },
+            questionnaire: q,
+            frameFields: ["id", "grp"],
+            identifierField: "id",
+            analysisTarget: { kind: "mean", field: "y" },
+            confidenceLevel: "95",
+        });
+        const bench2 = diag2.estimates.find((e) => e.key === "full_invited_benchmark")!;
+        expect(bench2.estimate).not.toBeNull();
+        expect(bench2.standardError).toBeNull();
+        expect(bench2.halfWidth).toBeNull();
+    });
 });

@@ -1,19 +1,7 @@
 import { interpretNumeric, valueKey } from "./dictionary";
 import type { AnalysisResult, CrossTabAnalysisResult, VariableDefinition } from "./types";
+import { StableSum } from "../statistics/stable-sum";
 import { scaledMean, sampleStandardDeviation as computeSampleStandardDeviation } from "../statistics/values";
-
-class Sum {
-    private total = 0;
-    private correction = 0;
-    add(value: number) {
-        const next = this.total + value;
-        this.correction += Math.abs(this.total) >= Math.abs(value)
-            ? (this.total - next) + value
-            : (value - next) + this.total;
-        this.total = next;
-    }
-    get value() { return this.total + this.correction; }
-}
 
 function normalizeZero(value: number): number {
     return Object.is(value, -0) ? 0 : value;
@@ -53,8 +41,8 @@ function weightedMean(values: number[], weights: number[]): number | null {
     }
     if (shiftedScale === 0) return normalizeZero(sterbenzCenter);
 
-    const numerator = new Sum(), denominator = new Sum();
-    const unscaledNumerator = new Sum();
+    const numerator = new StableSum(), denominator = new StableSum();
+    const unscaledNumerator = new StableSum();
     let productUnderflow = false;
     for (let i = 0; i < values.length; i++) {
         const shifted = values[i]! - sterbenzCenter;
@@ -145,12 +133,12 @@ export function calculateUnivariate({
     }
 
     const counts = Array(activeCategories.length).fill(0) as number[];
-    const weightedCounts = Array(activeCategories.length).fill(0).map(() => new Sum());
+    const weightedCounts = Array(activeCategories.length).fill(0).map(() => new StableSum());
     let validCount = 0;
     const weightScale = weighted && weights!.length
         ? weights!.reduce((maximum, weight) => Math.max(maximum, weight), 0)
         : 1;
-    const totalWeight = new Sum();
+    const totalWeight = new StableSum();
     for (let i = 0; i < rows.length; i++) {
         const category = read(rows[i]!);
         if (category === null) continue;
@@ -193,8 +181,8 @@ export function calculateCrossTab({
     if (!weighted && weights !== undefined) {
         throw new Error("未加权分析不能传入权重");
     }
-    if (weights?.some((w) => !Number.isFinite(w) || w < 0)) {
-        throw new Error("权重必须为非负有限数");
+    if (weights?.some((w) => !Number.isFinite(w) || w <= 0)) {
+        throw new Error("权重必须是有限正数");
     }
     if (new Set(indices).size !== indices.length) {
         throw new Error("样本索引不能重复");
@@ -213,61 +201,78 @@ export function calculateCrossTab({
     const activeTargetCategories = variable.categories.filter((cat) => !targetMissing.has(valueKey(cat.value)));
     const targetCatIndex = new Map(activeTargetCategories.map((cat, idx) => [valueKey(cat.value), idx]));
 
-    const buckets = activeGroupCategories.map(() => ({
-        numValues: [] as number[],
-        numWeights: [] as number[],
-        catCounts: Array(activeTargetCategories.length).fill(0) as number[],
-        catWeightedCounts: Array(activeTargetCategories.length).fill(0).map(() => new Sum()),
-        totalWeight: new Sum(),
-        validCount: 0,
-    }));
-
-    let totalValid = 0;
-    const weightScale = weighted && weights && weights.length
-        ? weights.reduce((m, w) => Math.max(m, w), 0)
-        : 1;
-
-    indices.forEach((rowIndex, pos) => {
-        const row = rows[rowIndex]!;
+    const readGroup = (row: Record<string, unknown>): number | null => {
         if (!Object.prototype.hasOwnProperty.call(row, groupVariable.field)) {
             throw new Error(`总体缺少字段“${groupVariable.field}”`);
         }
-        if (!Object.prototype.hasOwnProperty.call(row, variable.field)) {
-            throw new Error(`总体缺少字段“${variable.field}”`);
-        }
-
         const gRaw = row[groupVariable.field];
         const gKey = valueKey(gRaw);
-        if (groupMissing.has(gKey) || (gRaw === null && !groupCatIndex.has(gKey))) return;
+        if (groupMissing.has(gKey) || (gRaw === null && !groupCatIndex.has(gKey))) return null;
         const gIdx = groupCatIndex.get(gKey);
         if (gIdx === undefined) {
             throw new Error(`字段“${groupVariable.field}”含字典外类别`);
         }
+        return gIdx;
+    };
 
+    const readTarget = (row: Record<string, unknown>): number | null => {
+        if (!Object.prototype.hasOwnProperty.call(row, variable.field)) {
+            throw new Error(`总体缺少字段“${variable.field}”`);
+        }
         const tRaw = row[variable.field];
         const tKey = valueKey(tRaw);
-        if (targetMissing.has(tKey) || (tRaw === null && (variable.kind === "continuous" || !targetCatIndex.has(tKey)))) return;
+        if (targetMissing.has(tKey) || (tRaw === null && (variable.kind === "continuous" || !targetCatIndex.has(tKey)))) return null;
+        if (variable.kind === "continuous") return interpretNumeric(tRaw, variable);
+        const tIdx = targetCatIndex.get(tKey);
+        if (tIdx === undefined) {
+            throw new Error(`字段“${variable.field}”含字典外类别`);
+        }
+        return tIdx;
+    };
+
+    // Match calculateUnivariate (ST §2.3): weighted cross-tab requires complete
+    // non-missing values across the full population for both target and group.
+    if (weighted) {
+        for (const row of rows) {
+            if (readTarget(row) === null) throw new Error("加权分析要求完整总体目标字段无缺失");
+            if (readGroup(row) === null) throw new Error("加权分析要求完整总体分组字段无缺失");
+        }
+    }
+
+    const buckets = activeGroupCategories.map(() => ({
+        numValues: [] as number[],
+        numWeights: [] as number[],
+        catCounts: Array(activeTargetCategories.length).fill(0) as number[],
+        catTargetIndices: [] as number[],
+        catWeights: [] as number[],
+        catMaxWeight: 0,
+        validCount: 0,
+    }));
+
+    let totalValid = 0;
+
+    indices.forEach((rowIndex, pos) => {
+        const row = rows[rowIndex]!;
+        const gIdx = readGroup(row);
+        if (gIdx === null) return;
+
+        const targetValue = readTarget(row);
+        if (targetValue === null) return;
 
         const bucket = buckets[gIdx]!;
         const w = weighted ? weights![pos]! : 1;
 
         if (variable.kind === "continuous") {
-            const num = interpretNumeric(tRaw, variable);
-            if (num === null) return;
-            bucket.numValues.push(num);
+            bucket.numValues.push(targetValue);
             if (weighted) bucket.numWeights.push(w);
             bucket.validCount += 1;
             totalValid += 1;
         } else {
-            const tIdx = targetCatIndex.get(tKey);
-            if (tIdx === undefined) {
-                throw new Error(`字段“${variable.field}”含字典外类别`);
-            }
-            bucket.catCounts[tIdx] = bucket.catCounts[tIdx]! + 1;
-            if (weighted && weightScale > 0 && w > 0) {
-                const scaledW = w / weightScale;
-                bucket.catWeightedCounts[tIdx]!.add(scaledW);
-                bucket.totalWeight.add(scaledW);
+            bucket.catCounts[targetValue] = bucket.catCounts[targetValue]! + 1;
+            if (weighted) {
+                bucket.catTargetIndices.push(targetValue);
+                bucket.catWeights.push(w);
+                if (w > bucket.catMaxWeight) bucket.catMaxWeight = w;
             }
             bucket.validCount += 1;
             totalValid += 1;
@@ -291,13 +296,31 @@ export function calculateCrossTab({
                 sampleStandardDeviation: sd,
             };
         }
+
+        // Normalize categorical weights per group so extreme weights in another
+        // subgroup can never underflow this subgroup's proportions to zero/null.
+        let catWeightedCounts: StableSum[] | null = null;
+        let groupTotalWeight: StableSum | null = null;
+        if (weighted && bucket.validCount > 0 && bucket.catMaxWeight > 0) {
+            catWeightedCounts = Array.from({ length: activeTargetCategories.length }, () => new StableSum());
+            groupTotalWeight = new StableSum();
+            const groupWeightScale = bucket.catMaxWeight;
+            for (let i = 0; i < bucket.catTargetIndices.length; i += 1) {
+                const scaledW = bucket.catWeights[i]! / groupWeightScale;
+                catWeightedCounts[bucket.catTargetIndices[i]!]!.add(scaledW);
+                groupTotalWeight.add(scaledW);
+            }
+        }
+
         const categories = activeTargetCategories.map((tCat, tIdx) => ({
             value: tCat.value,
             label: tCat.label,
             count: bucket.catCounts[tIdx]!,
             proportion: bucket.validCount > 0
                 ? (weighted
-                    ? (bucket.totalWeight.value > 0 ? finite(bucket.catWeightedCounts[tIdx]!.value / bucket.totalWeight.value) : null)
+                    ? (groupTotalWeight && groupTotalWeight.value > 0
+                        ? finite(catWeightedCounts![tIdx]!.value / groupTotalWeight.value)
+                        : null)
                     : bucket.catCounts[tIdx]! / bucket.validCount)
                 : null,
         }));

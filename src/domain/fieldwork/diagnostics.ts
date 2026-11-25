@@ -870,6 +870,7 @@ export function buildMethodFieldworkDiagnostics(params: {
         const isUniqueValidSample = validInvitedIndices.length > 0 && uniqueFullCount === validInvitedIndices.length;
         const popComplete = popVals.length === populationSize;
 
+        let exactSeAttempted = false;
         if (popComplete && isUniqueValidSample) {
             const popSd = sampleStandardDeviation(popVals);
             const popVar = popSd * popSd;
@@ -879,6 +880,7 @@ export function buildMethodFieldworkDiagnostics(params: {
                 const estVals = fullInvitedRows.map(accessor).filter((v): v is number => v !== null);
                 fullEstimate = clampProportionIfNeeded(scaledMean(estVals), target);
                 fullSe = computeSimpleRandomValueSe(popVar, populationSize, fullN, popSd);
+                exactSeAttempted = true;
             } else if (params.method === "systematic") {
                 const estVals = fullInvitedRows.map(accessor).filter((v): v is number => v !== null);
                 fullEstimate = clampProportionIfNeeded(scaledMean(estVals), target);
@@ -887,17 +889,20 @@ export function buildMethodFieldworkDiagnostics(params: {
                     interval: populationSize / fullN,
                     sampleCount: fullN,
                 });
+                exactSeAttempted = true;
             } else if (params.method === "stratified" && normalizedStratifyBy && params.layers?.length) {
                 fullEstimate = clampProportionIfNeeded(
                     computeStratifiedValueEstimate(fullInvitedRows, normalizedStratifyBy, params.layers, populationSize, accessor),
                     target,
                 );
                 fullSe = computeStratifiedValueSe(params.population, normalizedStratifyBy, params.layers, populationSize, accessor);
+                exactSeAttempted = true;
             } else if (params.method === "pps" && hasProbs) {
                 fullEstimate = clampProportionIfNeeded(
                     estimateWeightedValue(fullInvitedRows, accessor, fullInvitedProbs),
                     target,
                 );
+                exactSeAttempted = true;
                 if (normalizedSizeField) {
                     const ctx = buildPpsStandardErrorContext(
                         params.population,
@@ -911,15 +916,19 @@ export function buildMethodFieldworkDiagnostics(params: {
             }
         }
 
-        if (fullEstimate === null || fullSe === null || !Number.isFinite(fullSe)) {
+        // Never silently fall back from an unavailable exact finite-population SE to
+        // a respondent Taylor SE (ST §2.4 / ST-S09); only recover point estimates when needed.
+        if (fullEstimate === null) {
             const fallbackFull = computeDesignSubsetEstimate(
                 fullInvitedRows,
                 validInvitedIndices,
                 hasProbs ? fullInvitedProbs : undefined,
             );
             fullN = fallbackFull.n;
-            if (fullEstimate === null) fullEstimate = fallbackFull.estimate;
-            if (fullSe === null || !Number.isFinite(fullSe)) fullSe = fallbackFull.standardError;
+            fullEstimate = fallbackFull.estimate;
+            if (!exactSeAttempted && (fullSe === null || !Number.isFinite(fullSe))) {
+                fullSe = fallbackFull.standardError;
+            }
         }
 
         if (fullSe !== null && Number.isFinite(fullSe) && fullSe >= 0) {

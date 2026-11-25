@@ -71,8 +71,28 @@ export function performSystematicSampling<T>(
         return { data: [], indices: [], interval: 0, randomStart: 0 };
     }
 
-    const interval = data.length / sampleSize;
-    const randomUnit = Math.min(Math.max(Number(random()) || 0, 0), 1 - Number.EPSILON);
+    const populationSize = data.length;
+    const interval = populationSize / sampleSize;
+    const rawRandomUnit = Math.max(Number(random()) || 0, 0);
+
+    if (sampleSize === populationSize) {
+        const randomUnit = Math.min(rawRandomUnit, 1 - Number.EPSILON);
+        const indices = Array.from({ length: sampleSize }, (_, index) => index);
+        return {
+            data: [...data],
+            indices,
+            interval,
+            randomStart: randomUnit,
+        };
+    }
+
+    // Clamp only the extreme upper tail near 1 so float64 rounding in
+    // randomStart + index * interval can neither emit out-of-bounds index N
+    // nor jump integer multiples when K is exact, while staying above the
+    // 32-bit seeded PRNG ceiling (1 - 2^-32) for n <= 262,143 and inside
+    // the exact final rational interval [1 - 1/N, 1) for n * N < 2^50.
+    const maxRandomUnit = Math.max(0, 1 - 4 * sampleSize * Number.EPSILON);
+    const randomUnit = Math.min(rawRandomUnit, maxRandomUnit);
     const randomStart = randomUnit * interval;
     const indices = Array.from(
         { length: sampleSize },

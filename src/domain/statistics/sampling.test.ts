@@ -73,6 +73,68 @@ test("systematic sampling on empty population returns an empty selection", () =>
     expect(result).toEqual({ data: [], indices: [], interval: 0, randomStart: 0 });
 });
 
+test("QA-S1-01 systematic sampling never emits OOB indices or skips units at boundary random starts", () => {
+    const boundaryGenerators = [
+        () => 1 - Number.EPSILON,
+        () => 1 - 2 ** -53,
+        () => 1,
+    ];
+
+    const pop10 = Array.from({ length: 10 }, (_, i) => ({ id: i }));
+    const pop100 = Array.from({ length: 100 }, (_, i) => ({ id: i }));
+
+    for (const rng of boundaryGenerators) {
+        // Hand-derived exact final rational interval [1 - 1/N, 1):
+        // (10, 3) -> floor((u + j) * 10 / 3) for u in [0.9, 1) => [3, 6, 9]
+        const s10_3 = performSystematicSampling(pop10, 3, rng);
+        expect(s10_3.indices).toEqual([3, 6, 9]);
+        expect(s10_3.data).toEqual([pop10[3]!, pop10[6]!, pop10[9]!]);
+        expect(s10_3.randomStart).toBeLessThan(s10_3.interval);
+
+        // (100, 7) -> floor((u + j) * 100 / 7) for u in [0.99, 1) => [14, 28, 42, 57, 71, 85, 99]
+        const s100_7 = performSystematicSampling(pop100, 7, rng);
+        expect(s100_7.indices).toEqual([14, 28, 42, 57, 71, 85, 99]);
+        expect(s100_7.data.every((row) => row !== undefined)).toBe(true);
+
+        // (10, 5), exact integer K=2 -> final interval [0.9, 1) must stay on odd phase [1, 3, 5, 7, 9]
+        const s10_5 = performSystematicSampling(pop10, 5, rng);
+        expect(s10_5.indices).toEqual([1, 3, 5, 7, 9]);
+
+        // Census (10, 10) -> must select every unit 0..9 with interval=1, randomStart < 1
+        const census = performSystematicSampling(pop10, 10, rng);
+        expect(census.indices).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        expect(census.data).toEqual(pop10);
+        expect(census.interval).toBe(1);
+        expect(census.randomStart).toBeGreaterThanOrEqual(0);
+        expect(census.randomStart).toBeLessThan(1);
+    }
+
+    // Exhaustive sweep across all 20,099 (N, n) pairs for 2 <= N <= 200 against exact integer-oracle final interval.
+    const maxPop = Array.from({ length: 200 }, (_, i) => i);
+    for (let N = 2; N <= 200; N += 1) {
+        const frame = maxPop.slice(0, N);
+        for (let n = 1; n <= N; n += 1) {
+            for (const rng of [() => 1 - Number.EPSILON, () => 1 - 2 ** -53]) {
+                const res = performSystematicSampling(frame, n, rng);
+                expect(res.indices.length).toBe(n);
+                expect(res.data.length).toBe(n);
+                expect(res.randomStart).toBeGreaterThanOrEqual(0);
+                expect(res.randomStart).toBeLessThan(res.interval);
+                for (let j = 0; j < n; j += 1) {
+                    const idx = res.indices[j]!;
+                    // Independent exact oracle for u in [1 - 1/N, 1): floor(((N - 1)/N + j) * N / n) = floor((N - 1 + j*N) / n)
+                    const expectedIdx = Math.floor((N - 1 + j * N) / n);
+                    expect(idx).toBe(expectedIdx);
+                    expect(idx).toBeGreaterThanOrEqual(0);
+                    expect(idx).toBeLessThan(N);
+                    if (j > 0) expect(idx).toBeGreaterThan(res.indices[j - 1]!);
+                    expect(res.data[j]).toBe(idx);
+                }
+            }
+        }
+    }
+});
+
 // Stratified sampling tests
 
 const stratifiedPop = [
