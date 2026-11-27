@@ -314,6 +314,10 @@ describe("Stage 4 AdaptiveRefinementStage step-flow, proportion validation & dis
         };
         view.rerender(<AdaptiveRefinementStage onPrev={() => undefined} />);
         await waitFor(() => expect(view.queryByTestId("student-refinement-new-wave") !== null).toBe(true));
+        expect(view.getByTestId("student-refinement-new-wave").getAttribute("data-variant")).toBe("outline");
+        expect(view.getByTestId("student-refinement-dispatch").getAttribute("data-variant")).toBe("outline");
+        expect(view.getByTestId("student-refinement-complete").getAttribute("data-variant")).toBe("default");
+        expect(view.container.querySelectorAll('[data-slot="button"][data-variant="default"]').length).toBe(1);
 
         mockExperimentApi.createRefinementWave.mockResolvedValueOnce({ success: true, data: wave3Exp });
         await act(async () => {

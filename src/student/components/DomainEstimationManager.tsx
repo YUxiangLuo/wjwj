@@ -185,7 +185,7 @@ export function DomainEstimationManager({
     return (
         <Card className="rounded-surface border-border bg-card">
             <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex items-center gap-2">
                         <Layers className="w-5 h-5 text-primary" />
                         <CardTitle className="text-body text-foreground">
@@ -423,14 +423,17 @@ export function DomainEstimationManager({
                 </div>
 
                 {/* 添加按钮 */}
-                <Button
-                    variant="outline"
-                    onClick={addDomain}
-                    className="w-full"
-                >
-                    <Plus className="w-4 h-4 mr-2" />
-                    添加子总体
-                </Button>
+                <div className="flex items-center justify-start pt-1">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={addDomain}
+                        className="px-5"
+                    >
+                        <Plus className="w-4 h-4" />
+                        添加子总体
+                    </Button>
+                </div>
 
                 {/* 总样本量计算 */}
                 {domains.length > 0 && isDomainDraftValid(domains, totalPopulationSize, estimationType) && (

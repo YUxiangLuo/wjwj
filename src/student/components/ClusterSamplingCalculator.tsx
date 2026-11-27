@@ -79,7 +79,7 @@ export function ClusterSamplingCalculator({
     return (
         <Card className="rounded-surface border-border bg-card">
             <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex items-center gap-2">
                         <Layers className="w-5 h-5 text-primary" />
                         <CardTitle className="text-body text-foreground">
@@ -256,34 +256,38 @@ export function ClusterSamplingCalculator({
                         </p>
 
                         {onApplyResult && (
-                            <div className="space-y-2 pt-1">
+                            <div className="space-y-3 pt-1">
                                 <p className="text-meta text-muted-foreground leading-relaxed">
                                     「应用」仅将总样本量写入最终样本量。若本工具内参数与左侧不一致，理解此 n 时以本工具为准；左侧不会随本工具更新，勿用左侧参数代回标准公式验算。
                                 </p>
-                                <Button
-                                    disabled={result.precisionUnreachable}
-                                    onClick={() => {
-                                        onSnapshot?.({
-                                            inputs: {
-                                                confidenceLevel: confidenceLevelLocal,
-                                                marginOfError: marginOfErrorLocal,
-                                                clusterSize,
-                                                designEffect: deff,
-                                                nonResponseRate,
-                                            },
-                                            result: {
-                                                requiredClusters: result.requiredClusters,
-                                                requiredSampleSize: result.requiredSampleSize,
-                                                intraClassCorrelation: result.intraClassCorrelation,
-                                            },
-                                        });
-                                        onApplyResult(result.requiredClusters, result.requiredSampleSize);
-                                    }}
-                                    className="w-full"
-                                >
-                                    应用整群抽样方案
-                                    <ArrowRight className="w-4 h-4 ml-2" />
-                                </Button>
+                                <div className="flex justify-end">
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        disabled={result.precisionUnreachable}
+                                        onClick={() => {
+                                            onSnapshot?.({
+                                                inputs: {
+                                                    confidenceLevel: confidenceLevelLocal,
+                                                    marginOfError: marginOfErrorLocal,
+                                                    clusterSize,
+                                                    designEffect: deff,
+                                                    nonResponseRate,
+                                                },
+                                                result: {
+                                                    requiredClusters: result.requiredClusters,
+                                                    requiredSampleSize: result.requiredSampleSize,
+                                                    intraClassCorrelation: result.intraClassCorrelation,
+                                                },
+                                            });
+                                            onApplyResult(result.requiredClusters, result.requiredSampleSize);
+                                        }}
+                                        className="px-5"
+                                    >
+                                        应用整群抽样方案
+                                        <ArrowRight className="w-4 h-4" />
+                                    </Button>
+                                </div>
                             </div>
                         )}
                     </div>

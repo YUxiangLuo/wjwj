@@ -498,20 +498,22 @@ function ChartTabPanel({
                 </div>
                 <div className="flex items-center gap-2">
                     <Button
+                        type="button"
                         aria-label="放大图表"
                         title="放大图表"
                         variant="outline"
-                        size="icon"
+                        size="icon-sm"
                         disabled={rows.length === 0}
                         onClick={onZoom}
                     >
                         <Maximize2 className="w-4 h-4" />
                     </Button>
                     <Button
+                        type="button"
                         aria-label="下载图表 SVG"
                         title="下载图表 SVG"
                         variant="outline"
-                        size="icon"
+                        size="icon-sm"
                         disabled={rows.length === 0}
                         onClick={onDownload}
                     >
@@ -1720,8 +1722,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             商业决策报告
                         </TabsTrigger>
                     </TabsList>
-                    <Button type="button" variant="outline" size="sm" className="h-10 px-3" onClick={() => setExportOpen(true)}>
-                        <Download className="mr-1.5 h-4 w-4" />
+                    <Button type="button" variant="outline" size="sm" onClick={() => setExportOpen(true)}>
+                        <Download className="h-4 w-4" />
                         导出数据
                     </Button>
                 </div>
@@ -1737,6 +1739,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         <Button
                             type="button"
                             variant="outline"
+                            size="sm"
                             disabled={statsLoading}
                             data-testid="student-analysis-metrics-retry"
                             onClick={() => setMetricsRetry((value) => value + 1)}
@@ -1773,7 +1776,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                             ? "正在准备目标估计与精度比较…"
                                             : "暂时没有研究目标的完整指标。可以查看已有图表和抽样记录。"}
                                     </p>
-                                    <Button variant="outline" onClick={() => setWorkspace("charts")}>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => setWorkspace("charts")}>
                                         查看图表探索
                                     </Button>
                                 </div>
@@ -2036,7 +2039,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 <TabsContent value="report" forceMount className="min-w-0 data-[state=inactive]:hidden">
                     <div className="flex flex-wrap items-start gap-5">
                         <Card className="min-w-0 flex-[3_1_36rem] gap-0 rounded-surface border-border bg-card py-0">
-                            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 p-5">
+                            <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 p-5">
                                 <div>
                                     <CardTitle>
                                         <h2 className="text-section-title font-semibold">撰写商业统计分析与管理决策报告</h2>
@@ -2047,12 +2050,13 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 </div>
                                 <Button
                                     type="button"
-                                    variant="secondary"
+                                    variant="outline"
                                     size="sm"
                                     onClick={insertBusinessReportOutline}
                                     data-testid="student-report-insert-outline"
+                                    className="shrink-0"
                                 >
-                                    <FileText className="mr-1.5 h-3.5 w-3.5" />
+                                    <FileText className="h-3.5 w-3.5" />
                                     插入商业决策提纲框架
                                 </Button>
                             </CardHeader>
@@ -2089,7 +2093,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                             </p>
                                         </div>
                                     ))}
-                                    <Button type="button" variant="outline" onClick={() => setWorkspace("overview")}>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => setWorkspace("overview")}>
                                         查看完整结果与条件
                                     </Button>
                                 </section>
@@ -2121,11 +2125,11 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
             <StageActions>
                 <Button variant="outline" onClick={onPrev} data-testid="student-analysis-prev">
-                    <ChevronLeft className="mr-1 h-4 w-4" />
+                    <ChevronLeft className="h-4 w-4" />
                     查看正式轮投放
                 </Button>
                 {workspace === "report" ? (
-                    <div className="flex flex-col items-end gap-1">
+                    <div className="flex flex-wrap items-center justify-end gap-3">
                         {staleAnalysisReferences.length > 0 && (
                             <div role="alert" className="flex flex-wrap items-center gap-2 text-meta text-warning">
                                 <span>
@@ -2135,7 +2139,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    className="h-7 px-2 text-meta"
+                                    className="h-8 px-2.5 text-meta"
                                     onClick={() => setWorkspace("univariate")}
                                 >
                                     前往处理
@@ -2159,27 +2163,28 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             · {reportLengthHint}
                         </p>
                         <Button
+                            type="button"
                             onClick={handleSubmit}
                             disabled={!isValidLength || staleAnalysisReferences.length > 0 || isSubmitting || refreshRequired}
                             data-testid="student-analysis-preview"
                         >
                             {isSubmitting ? (
                                 <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    <Loader2 className="h-4 w-4 animate-spin" />
                                     正在保存报告…
                                 </>
                             ) : (
                                 <>
-                                    <Send className="mr-2 h-4 w-4" />
+                                    <Send className="h-4 w-4" />
                                     保存并预览报告
                                 </>
                             )}
                         </Button>
                     </div>
                 ) : (
-                    <Button onClick={() => setWorkspace("report")} data-testid="student-analysis-write">
+                    <Button type="button" onClick={() => setWorkspace("report")} data-testid="student-analysis-write">
                         继续：撰写报告
-                        <ArrowRight className="ml-2 h-4 w-4" />
+                        <ArrowRight className="h-4 w-4" />
                     </Button>
                 )}
             </StageActions>
@@ -2215,22 +2220,31 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             {exportError}
                         </p>
                     )}
-                    <Button
-                        onClick={() => handleExport(exportType)}
-                        disabled={isExporting || completedAnalysisMethods.length === 0}
-                    >
-                        {isExporting ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                正在导出…
-                            </>
-                        ) : (
-                            <>
-                                <Download className="mr-2 h-4 w-4" />
-                                导出 CSV
-                            </>
-                        )}
-                    </Button>
+                    <div className="flex justify-end gap-2 pt-2">
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setExportOpen(false)} disabled={isExporting}>
+                            取消
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleExport(exportType)}
+                            disabled={isExporting || completedAnalysisMethods.length === 0}
+                            className="px-4"
+                        >
+                            {isExporting ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    正在导出…
+                                </>
+                            ) : (
+                                <>
+                                    <Download className="h-4 w-4" />
+                                    导出 CSV
+                                </>
+                            )}
+                        </Button>
+                    </div>
                 </DialogContent>
             </Dialog>
 

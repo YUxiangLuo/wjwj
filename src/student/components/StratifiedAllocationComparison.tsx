@@ -288,14 +288,17 @@ export function StratifiedAllocationComparison({
                 )}
 
                 {extraComparisons.length > 0 && (
-                    <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => setShowExtraMethods((value) => !value)}
-                    >
-                        {showExtraMethods ? "收起更多方法" : `更多方法（${extraComparisons.length}）`}
-                    </Button>
+                    <div className="flex justify-start">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="px-4"
+                            onClick={() => setShowExtraMethods((value) => !value)}
+                        >
+                            {showExtraMethods ? "收起更多方法" : `更多方法（${extraComparisons.length}）`}
+                        </Button>
+                    </div>
                 )}
 
                 {canCompareVariance && !hasIncompleteAllocation && (

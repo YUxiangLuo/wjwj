@@ -38,7 +38,7 @@ export function EnhancedMetricsCard({
     return (
         <Card className="rounded-surface border-border bg-card">
             <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex items-center gap-2">
                         <TrendingUp className="w-5 h-5 text-primary" />
                         <CardTitle className="text-body text-foreground">

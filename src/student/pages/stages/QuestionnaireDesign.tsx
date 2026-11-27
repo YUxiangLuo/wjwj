@@ -579,7 +579,7 @@ export function QuestionnaireDesign() {
                     <div className="flex flex-wrap items-start gap-5">
                         <div className="min-w-0 flex-[3_1_36rem] space-y-4">
                             <Card className="rounded-surface border-border bg-card ">
-                                <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
+                                <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
                                     <div>
                                         <CardTitle className="text-foreground flex items-center gap-2">
                                             <List className="w-5 h-5 text-primary" />
@@ -590,11 +590,14 @@ export function QuestionnaireDesign() {
                                         </CardDescription>
                                     </div>
                                     <Button
+                                        type="button"
+                                        variant={questions.length > 0 ? "secondary" : "default"}
                                         onClick={handleAddQuestion}
                                         disabled={questions.length >= 50}
                                         data-testid="student-questionnaire-add-question"
+                                        className="px-5"
                                     >
-                                        <Plus className="w-4 h-4 mr-1" />
+                                        <Plus className="w-4 h-4" />
                                         添加题目
                                     </Button>
                                 </CardHeader>
@@ -754,17 +757,17 @@ export function QuestionnaireDesign() {
                                         className="divide-y divide-border max-h-[400px] overflow-y-auto custom-scrollbar"
                                     >
                                         {recommendQuestions.length > 0 && (
-                                            <div className="pb-3">
+                                            <div className="flex justify-start pb-3">
                                                 <Button
                                                     type="button"
                                                     size="sm"
-                                                    variant="secondary"
+                                                    variant="outline"
                                                     onClick={handleUseAllRecommend}
                                                     disabled={questions.length >= 50 || allRecommendedImported}
                                                     data-testid="student-questionnaire-use-all-recommend"
-                                                    className="w-full"
+                                                    className="bg-card px-3.5"
                                                 >
-                                                    <Plus className="mr-1.5 h-3.5 w-3.5" />
+                                                    <Plus className="h-3.5 w-3.5" />
                                                     {allRecommendedImported ? "全部推荐题已在问卷中" : "一键导入全部推荐题并绑定"}
                                                 </Button>
                                             </div>
@@ -777,18 +780,19 @@ export function QuestionnaireDesign() {
                                         {recommendQuestions.map((rq) => {
                                             const recommendAlreadyInQuestionnaire = questions.some((q) => q.recommendSourceId === rq.id);
                                             return (
-                                            <div key={rq.id} className="flex flex-col gap-2 py-4 first:pt-0 last:pb-0">
-                                                <div className="space-y-1">
+                                            <div key={rq.id} className="flex items-start justify-between gap-3 py-3.5 first:pt-0 last:pb-0">
+                                                <div className="min-w-0 flex-1 space-y-1">
                                                     <div className="text-label font-medium text-foreground line-clamp-2">{rq.content}</div>
                                                     <div className="text-meta text-muted-foreground">
                                                         类型：{questionTypeLabels[rq.type]}
                                                     </div>
                                                 </div>
                                                 <Button
+                                                    type="button"
                                                     size="sm"
                                                     variant="outline"
                                                     disabled={recommendAlreadyInQuestionnaire || questions.length >= 50}
-                                                    className="w-full mt-1 border-input text-foreground hover:bg-muted hover:text-foreground disabled:bg-muted disabled:text-muted-foreground disabled:border-border"
+                                                    className="shrink-0 bg-card px-3"
                                                     onClick={() => handleUseRecommend(rq)}
                                                 >
                                                     {recommendAlreadyInQuestionnaire ? "已在问卷中" : "使用此题"}
@@ -875,12 +879,14 @@ export function QuestionnaireDesign() {
                                         </div>
                                         <Button
                                             ref={previewTriggerRef}
+                                            type="button"
                                             variant="outline"
+                                            size="sm"
                                             onClick={() => setPreviewOpen(true)}
                                             data-testid="student-questionnaire-redo-preview"
-                                            className="shrink-0"
+                                            className="shrink-0 px-4"
                                         >
-                                            <RotateCcw className="w-4 h-4 mr-2" />
+                                            <RotateCcw className="w-4 h-4" />
                                             重新预试
                                         </Button>
                                     </div>
@@ -905,13 +911,13 @@ export function QuestionnaireDesign() {
                                             </p>
                                             <Button
                                                 ref={previewTriggerRef}
+                                                type="button"
                                                 onClick={() => setPreviewOpen(true)}
                                                 disabled={!basicValidationPassed}
-                                                size="lg"
                                                 data-testid="student-questionnaire-start-preview"
-                                                className="px-8"
+                                                className="px-6"
                                             >
-                                                <Play className="w-5 h-5 mr-2" />
+                                                <Play className="w-4 h-4" />
                                                 开始受访者视角试填
                                             </Button>
                                             {!basicValidationPassed && (
@@ -1134,7 +1140,7 @@ export function QuestionnaireDesign() {
                         </button>;
                     })}
                 </nav>
-                <Button type="button" variant="outline" onClick={() => setTemplatePickerOpen(true)}><BookOpen className="mr-2 h-4 w-4"/>使用问卷模板</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => setTemplatePickerOpen(true)}><BookOpen className="h-4 w-4"/>使用问卷模板</Button>
             </PageHeader>
 
             {/* 商业测量覆盖度与受访负担实时诊断条 */}
@@ -1166,11 +1172,11 @@ export function QuestionnaireDesign() {
                     <Button
                         type="button"
                         size="sm"
-                        variant="secondary"
+                        variant="outline"
                         onClick={handleAutoBindVariables}
                         data-testid="student-questionnaire-auto-bind"
                     >
-                        <Link2 className="mr-1.5 h-3.5 w-3.5" />
+                        <Link2 className="h-3.5 w-3.5" />
                         一键智能绑定变量
                     </Button>
                 )}
@@ -1193,9 +1199,9 @@ export function QuestionnaireDesign() {
                 </div>
                 <div className="flex items-center gap-3">
                     {step > 1 && <Button type="button" variant="outline" onClick={() => setStep((step - 1) as 1 | 2 | 3 | 4)} disabled={isCompleting} data-testid="student-questionnaire-prev">上一步</Button>}
-                    {step < 4 ? <Button onClick={() => setStep((step + 1) as 1 | 2 | 3 | 4)} disabled={!canAdvanceToNextStep} data-testid="student-questionnaire-next">继续：{steps[step]?.title}<ArrowRight className="ml-2 h-4 w-4"/></Button>
-                        : <Button onClick={() => void handleConfirmComplete()} disabled={!canProceed || isCompleting || refreshRequired} data-testid="student-questionnaire-complete">
-                            {isCompleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>}保存并开启首轮试投
+                    {step < 4 ? <Button type="button" variant={step === 2 && questions.length === 0 ? "outline" : "default"} onClick={() => setStep((step + 1) as 1 | 2 | 3 | 4)} disabled={!canAdvanceToNextStep} data-testid="student-questionnaire-next">继续：{steps[step]?.title}<ArrowRight className="h-4 w-4"/></Button>
+                        : <Button type="button" variant={canProceed ? "default" : "outline"} onClick={() => void handleConfirmComplete()} disabled={!canProceed || isCompleting || refreshRequired} data-testid="student-questionnaire-complete">
+                            {isCompleting ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="h-4 w-4"/>}保存并开启首轮试投
                         </Button>}
                 </div>
             </StageActions>
@@ -1206,7 +1212,9 @@ export function QuestionnaireDesign() {
                     <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-3">
                         {QUESTIONNAIRE_TEMPLATES.map(template => <section key={template.id} className="flex flex-col rounded-surface border border-border bg-card p-4">
                             <h3 className="text-subheading font-semibold">{template.name}</h3><p className="my-3 flex-1 text-label leading-relaxed text-muted-foreground">{template.description}</p>
-                            <Button type="button" variant="outline" onClick={() => requestTemplate(template)}>使用此模板</Button>
+                            <div className="flex justify-start pt-1">
+                                <Button type="button" variant="outline" size="sm" className="px-4" onClick={() => requestTemplate(template)}>使用此模板</Button>
+                            </div>
                         </section>)}
                     </div>
                     <div className="flex flex-wrap gap-3 border-t border-border pt-4">

@@ -687,6 +687,8 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
             || (estimationType === "mean" && varianceSource !== p.varianceSource)
         );
     }, [isPlanInheritedPrior, activeWave?.samplePlan, planValidationError, nonResponsePct, effectiveFinalSize, confidenceLevel, marginOfError, designEffect, estimationType, varianceSource]);
+    const needsFormalPlanSave = lockedTargetN < bounds.min || isPlanDirty || isPlanUnconfirmedFromPilot;
+    const needsFormalDispatch = policyProgress.canComplete && !isQuestionnaireDirty && targetBindingPassed && !allCompletedMethodsDispatched;
     const firstWaveMetric = wave1 ? buildWaveSnapshotMetric(wave1, "simple", unitLabel) ?? buildWaveSnapshotMetric(wave1, undefined, unitLabel) : null;
     const activeWaveHasDiagnostics = Boolean(activeWave && Object.keys(activeWave.diagnostics ?? {}).length > 0);
     const scorecardPreferredMethod = activeMethod !== "simple" && activeWave?.diagnostics?.[activeMethod]
@@ -777,10 +779,10 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                             aria-pressed={isSelected}
                                             onClick={() => setViewingWaveNum(fw.waveNumber)}
                                             data-testid={`student-refinement-switch-wave-${fw.waveNumber}`}
-                                            className={`rounded-control px-2.5 py-1 text-meta font-medium ${
+                                            className={`rounded-pill px-3 py-1 text-meta font-medium ${
                                                 isSelected
-                                                    ? "bg-primary text-primary-foreground"
-                                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                                    ? "bg-accent text-accent-foreground"
+                                                    : "text-muted-foreground hover:bg-card hover:text-foreground"
                                             }`}
                                         >
                                             Wave {fw.waveNumber}{isCurrentActive ? "（当前）" : "（历史）"}
@@ -849,6 +851,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                         </div>
                         <Button
                             type="button"
+                            variant={canCompleteStage4 ? "outline" : "secondary"}
                             size="sm"
                             onClick={() => setViewingWaveNum(activeWave?.waveNumber ?? activeWaveNum)}
                             data-testid="student-refinement-back-to-active-wave"
@@ -895,7 +898,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                 <TabsContent value="questionnaire" className="space-y-4">
                     <Card className="rounded-surface border-border bg-card">
                         <CardHeader className="border-b border-border pb-4">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
                                 <div>
                                     <CardTitle className="text-section-title text-foreground">修订正式轮问卷（降低弃答率与修复量程边界）</CardTitle>
                                     <CardDescription className="mt-1">
@@ -905,8 +908,8 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2">
                                     {dictionary && (
-                                        <Button type="button" variant="secondary" size="sm" onClick={handleAutoBindWaveQuestions}>
-                                            <Link2 className="mr-1.5 h-3.5 w-3.5" />
+                                        <Button type="button" variant={canCompleteStage4 ? "outline" : "secondary"} size="sm" onClick={handleAutoBindWaveQuestions}>
+                                            <Link2 className="h-3.5 w-3.5" />
                                             一键智能绑定变量
                                         </Button>
                                     )}
@@ -920,7 +923,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                         }}
                                         variant="outline"
                                     >
-                                        <Plus className="mr-1 h-4 w-4" />
+                                        <Plus className="h-4 w-4" />
                                         新增题目
                                     </Button>
                                     <Button
@@ -931,18 +934,19 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                         disabled={savingQuestionnaire || qList.length < 5 || qList.length > 50 || !targetBindingPassed || refreshRequired}
                                         data-testid="student-refinement-save-questionnaire"
                                     >
-                                        {savingQuestionnaire ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />}
+                                        {savingQuestionnaire ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
                                         保存修订问卷
                                     </Button>
                                     {!isQuestionnaireDirty && targetBindingPassed && (
                                         <Button
                                             type="button"
+                                            variant={canCompleteStage4 ? "outline" : "secondary"}
                                             size="sm"
                                             onClick={() => setActiveTab("plan")}
                                             data-testid="student-refinement-skip-questionnaire"
                                         >
                                             无需改卷，进入实测样本量重算
-                                            <ArrowRight className="ml-1.5 h-4 w-4" />
+                                            <ArrowRight className="h-4 w-4" />
                                         </Button>
                                     )}
                                 </div>
@@ -1043,13 +1047,14 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                 </span>
                                 <Button
                                     type="button"
-                                    variant={isQuestionnaireDirty ? "outline" : "default"}
+                                    variant={!canCompleteStage4 && !isQuestionnaireDirty && targetBindingPassed ? "default" : "outline"}
                                     disabled={isQuestionnaireDirty || !targetBindingPassed}
                                     onClick={() => setActiveTab("plan")}
                                     data-testid="student-refinement-next-to-plan"
+                                    className="px-5"
                                 >
                                     下一步：代入实测参数重算样本量
-                                    <ArrowRight className="ml-1.5 h-4 w-4" />
+                                    <ArrowRight className="h-4 w-4" />
                                 </Button>
                             </div>
                         </CardContent>
@@ -1060,7 +1065,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                 <TabsContent value="plan" className="space-y-4">
                     <Card className="rounded-surface border-border bg-card">
                         <CardHeader className="border-b border-border pb-4">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
                                 <div>
                                     <CardTitle className="text-section-title text-foreground">基于首轮实测参数重算正式投放样本量</CardTitle>
                                     <CardDescription className="mt-1">
@@ -1071,10 +1076,12 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                     <Button
                                         type="button"
                                         variant="secondary"
+                                        size="sm"
                                         onClick={handleImportWave1Empirical}
                                         data-testid="student-refinement-import-empirical"
+                                        className="shrink-0"
                                     >
-                                        <RefreshCw className="mr-1.5 h-4 w-4" />
+                                        <RefreshCw className="h-4 w-4" />
                                         {estimationType === "proportion" ? "一键代入首轮实测无回答率" : "一键代入首轮实测无回答率与样本方差"}
                                     </Button>
                                 )}
@@ -1277,11 +1284,13 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                 </div>
                                 <Button
                                     type="button"
+                                    variant={needsFormalPlanSave && !canCompleteStage4 ? "default" : "outline"}
                                     onClick={() => void handleSaveWavePlan()}
                                     disabled={savingPlan || planValidationError !== null || statsLoading || refreshRequired}
                                     data-testid="student-refinement-save-plan"
+                                    className="px-5"
                                 >
-                                    {savingPlan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                                    {savingPlan ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                                     保存正式轮样本量并去抽样
                                 </Button>
                             </div>
@@ -1309,10 +1318,10 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                         步骤 2 样本量参数已修改但尚未保存（待保存 {effectiveFinalSize} 份，当前抽样仍按旧值 {lockedTargetN} 份执行）。
                                     </span>
                                     <div className="flex items-center gap-2">
-                                        <Button type="button" variant="outline" size="sm" className="h-7 bg-card px-2.5 text-meta" onClick={() => setActiveTab("plan")}>
+                                        <Button type="button" variant="outline" size="sm" className="h-8 bg-card px-3 text-meta" onClick={() => setActiveTab("plan")}>
                                             返回步骤 2 核对
                                         </Button>
-                                        <Button type="button" size="sm" className="h-7 px-2.5 text-meta" disabled={savingPlan} onClick={() => void handleSaveWavePlan()}>
+                                        <Button type="button" variant="secondary" size="sm" className="h-8 px-3 text-meta" disabled={savingPlan} onClick={() => void handleSaveWavePlan()}>
                                             保存新样本量（{effectiveFinalSize} 份）
                                         </Button>
                                     </div>
@@ -1427,6 +1436,15 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                                             </div>
                                                             <Button
                                                                 type="button"
+                                                                variant={
+                                                                    done
+                                                                        ? "outline"
+                                                                        : !policyProgress.canComplete
+                                                                            ? "default"
+                                                                            : canCompleteStage4
+                                                                                ? "outline"
+                                                                                : "secondary"
+                                                                }
                                                                 onClick={() => void handleRunMethod(method)}
                                                                 disabled={
                                                                     executingMethod !== null
@@ -1434,11 +1452,12 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                                                     || (method === "pps" && (!ppsSizeField || !isPpsSampleSizeValid))
                                                                 }
                                                                 data-testid={`student-sampling-${method}-run`}
+                                                                className="px-5"
                                                             >
                                                                 {executingMethod === method ? (
-                                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                                    <Loader2 className="h-4 w-4 animate-spin" />
                                                                 ) : (
-                                                                    <Play className="mr-2 h-4 w-4" />
+                                                                    <Play className="h-4 w-4" />
                                                                 )}
                                                                 {done ? `重新执行${METHOD_LABELS[method]}` : `执行${METHOD_LABELS[method]}`}
                                                             </Button>
@@ -1482,6 +1501,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                             setExecutionTime={setExecutionTime}
                                             refreshRequired={refreshRequired}
                                             onRefreshRequired={requireRefresh}
+                                            runButtonVariant={activeMethod === "stratified" && !policyProgress.canComplete ? "default" : canCompleteStage4 ? "outline" : "secondary"}
                                         />
                                     </TabsContent>
                                 )}
@@ -1490,7 +1510,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                             {/* Formal Fieldwork Dispatch & QC Card */}
                             <Card className="rounded-surface border-border bg-card" data-testid="student-refinement-dispatch-card">
                                 <CardHeader className="border-b border-border pb-4">
-                                    <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div className="flex flex-wrap items-start justify-between gap-3">
                                         <div>
                                             <CardTitle className="flex items-center gap-2 text-section-title text-foreground">
                                                 <Send className="h-5 w-5 text-primary" />
@@ -1503,7 +1523,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                         {allCompletedMethodsDispatched && !isQuestionnaireDirty ? (
                                             <StatusBadge intent="success">正式轮全部名单已发放回收</StatusBadge>
                                         ) : (
-                                            <StatusBadge intent="warning">待执行正式轮问卷发放</StatusBadge>
+                                            <StatusBadge intent="neutral">待执行正式轮问卷发放</StatusBadge>
                                         )}
                                     </div>
                                 </CardHeader>
@@ -1542,15 +1562,16 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                         </div>
                                         <Button
                                             type="button"
-                                            size="lg"
+                                            variant={needsFormalDispatch ? "default" : "outline"}
                                             onClick={() => void handleDispatchFormal()}
                                             disabled={!policyProgress.canComplete || isQuestionnaireDirty || !targetBindingPassed || dispatching || refreshRequired}
                                             data-testid="student-refinement-dispatch"
+                                            className="px-5"
                                         >
                                             {dispatching ? (
-                                                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />正在投放并质检…</>
+                                                <><Loader2 className="h-4 w-4 animate-spin" />正在投放并质检…</>
                                             ) : (
-                                                <><Send className="mr-2 h-4 w-4" />{allCompletedMethodsDispatched ? "重新发放当前正式轮问卷" : "执行正式问卷投放与回收"}</>
+                                                <><Send className="h-4 w-4" />{allCompletedMethodsDispatched ? "重新发放当前正式轮问卷" : "执行正式问卷投放与回收"}</>
                                             )}
                                         </Button>
                                     </div>
@@ -1657,14 +1678,16 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                         </div>
                     )}
                     <Button
+                        type="button"
+                        variant={canCompleteStage4 ? "default" : "outline"}
                         onClick={() => void handleCompleteStage4()}
                         disabled={!canCompleteStage4 || completing || refreshRequired}
                         data-testid="student-refinement-complete"
                     >
                         {completing ? (
-                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" />正在汇总正式数据…</>
+                            <><Loader2 className="h-4 w-4 animate-spin" />正在汇总正式数据…</>
                         ) : (
-                            <>完成正式投放，进入商务决策报告<ArrowRight className="ml-2 h-4 w-4" /></>
+                            <>完成正式投放，进入商务决策报告<ArrowRight className="h-4 w-4" /></>
                         )}
                     </Button>
                 </div>

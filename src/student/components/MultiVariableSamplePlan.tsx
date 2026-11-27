@@ -181,7 +181,7 @@ export function MultiVariableSamplePlan({
     return (
         <Card className="rounded-surface border-border bg-card">
             <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex items-center gap-2">
                         <BarChart3 className="w-5 h-5 text-primary" />
                         <CardTitle className="text-body text-foreground">
@@ -465,14 +465,17 @@ export function MultiVariableSamplePlan({
                 </div>
 
                 {/* 添加按钮 */}
-                <Button
-                    variant="outline"
-                    onClick={addVariable}
-                    className="w-full"
-                >
-                    <Plus className="w-4 h-4 mr-2" />
-                    添加调查变量
-                </Button>
+                <div className="flex items-center justify-start pt-1">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={addVariable}
+                        className="px-5"
+                    >
+                        <Plus className="w-4 h-4" />
+                        添加调查变量
+                    </Button>
+                </div>
 
                 {/* 总样本量计算 */}
                 {variables.length > 0 && (
@@ -519,15 +522,18 @@ export function MultiVariableSamplePlan({
                         </p>
 
                         {onApplyToPlan && (
-                            <Button
-                                type="button"
-                                onClick={() => onApplyToPlan({ variables, recommendedSampleSize })}
-                                disabled={hasInvalidVariables || recommendedSampleSize <= 0}
-                                className="w-full"
-                            >
-                                应用到样本量规划
-                                <ArrowRight className="w-4 h-4 ml-2" />
-                            </Button>
+                            <div className="flex justify-end pt-1">
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={() => onApplyToPlan({ variables, recommendedSampleSize })}
+                                    disabled={hasInvalidVariables || recommendedSampleSize <= 0}
+                                    className="px-5"
+                                >
+                                    应用到样本量规划
+                                    <ArrowRight className="w-4 h-4" />
+                                </Button>
+                            </div>
                         )}
                     </div>
                 )}

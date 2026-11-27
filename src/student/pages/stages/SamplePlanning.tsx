@@ -324,11 +324,12 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                         <Button
                             ref={planningTriggerRef}
                             type="button"
-                            variant="secondary"
+                            variant={wizardDraft || !isValidFinalSize ? "secondary" : "outline"}
                             onClick={() => setImmersiveOpen(true)}
                             disabled={!targetVarianceReady || confirmNextSaving}
+                            className="px-5"
                         >
-                            <Calculator className="w-4 h-4 mr-1.5" />
+                            <Calculator className="w-4 h-4" />
                             {wizardDraft ? "继续规划样本量" : "重新规划样本量"}
                         </Button>
                     </div>
@@ -383,14 +384,15 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                 {displayData && (
                     <Button
                         type="button"
+                        variant={isValidFinalSize ? "default" : "outline"}
                         onClick={handleConfirmNext}
                         disabled={!targetVarianceReady || !isValidFinalSize || confirmNextSaving || refreshRequired}
                         data-testid="student-sample-plan-next"
                     >
                         {confirmNextSaving ? (
-                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" />保存中…</>
+                            <><Loader2 className="w-4 h-4 animate-spin" />保存中…</>
                         ) : (
-                            <>确认并进入下一阶段<ChevronRight className="w-4 h-4 ml-1" /></>
+                            <>确认并进入下一阶段<ChevronRight className="w-4 h-4" /></>
                         )}
                     </Button>
                 )}

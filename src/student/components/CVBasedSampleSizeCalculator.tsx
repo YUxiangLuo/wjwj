@@ -86,7 +86,7 @@ export function CVBasedSampleSizeCalculator({
     return (
         <Card className="rounded-surface border-border bg-card">
             <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex items-center gap-2">
                         <Target className="w-5 h-5 text-primary" />
                         <CardTitle className="text-body text-foreground">
@@ -281,33 +281,37 @@ export function CVBasedSampleSizeCalculator({
                             </div>
 
                             {onApplySampleSize && (
-                                <div className="space-y-2 pt-1">
+                                <div className="space-y-3 pt-1">
                                     <p className="text-meta text-muted-foreground leading-relaxed">
                                         「应用」仅将上述发放量写入最终样本量。无回答膨胀只补足预期完成数量，不能修正回答概率与研究变量相关造成的选择偏差。若本工具内参数与左侧不一致，以本工具假设为准。
                                     </p>
-                                    <Button
-                                        onClick={() => {
-                                            onSnapshot?.({
-                                                inputs: {
-                                                    confidenceLevel: confidenceLevelLocal,
-                                                    targetCV,
-                                                    estimatedCV,
-                                                    designEffect,
-                                                    nonResponseRate,
-                                                },
-                                                result: {
-                                                    requiredSampleSize: result.requiredSampleSize,
-                                                    expectedRespondentSampleSize: result.expectedRespondentSampleSize,
-                                                    achievedCV: result.achievedCV,
-                                                },
-                                            });
-                                            onApplySampleSize(result.requiredSampleSize);
-                                        }}
-                                        className="w-full"
-                                    >
-                                        {result.achievedCV <= targetCV / 100 + 1e-12 ? "应用此样本量" : "采用此未达标样本量"}
-                                        <ArrowRight className="w-4 h-4 ml-2" />
-                                    </Button>
+                                    <div className="flex justify-end">
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            onClick={() => {
+                                                onSnapshot?.({
+                                                    inputs: {
+                                                        confidenceLevel: confidenceLevelLocal,
+                                                        targetCV,
+                                                        estimatedCV,
+                                                        designEffect,
+                                                        nonResponseRate,
+                                                    },
+                                                    result: {
+                                                        requiredSampleSize: result.requiredSampleSize,
+                                                        expectedRespondentSampleSize: result.expectedRespondentSampleSize,
+                                                        achievedCV: result.achievedCV,
+                                                    },
+                                                });
+                                                onApplySampleSize(result.requiredSampleSize);
+                                            }}
+                                            className="px-5"
+                                        >
+                                            {result.achievedCV <= targetCV / 100 + 1e-12 ? "应用此样本量" : "采用此未达标样本量"}
+                                            <ArrowRight className="w-4 h-4" />
+                                        </Button>
+                                    </div>
                                 </div>
                             )}
                         </div>

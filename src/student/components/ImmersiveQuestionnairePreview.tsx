@@ -420,7 +420,9 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                     return (
                         <div className="space-y-4 rounded-surface border border-warning-border bg-warning-muted p-4">
                             <p className="text-label text-warning">本题暂无选项，无法作答。</p>
-                            <Button type="button" variant="outline" onClick={goNext} className="w-full">跳过本题</Button>
+                            <div className="flex justify-end">
+                                <Button type="button" variant="outline" size="sm" onClick={goNext} className="px-4">跳过本题</Button>
+                            </div>
                         </div>
                     );
                 }
@@ -464,9 +466,11 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                     return (
                         <div className="space-y-4 rounded-surface border border-destructive-border bg-destructive-muted p-4">
                             <p className="text-label text-destructive">本题量表范围无效，无法作答。</p>
-                            <Button type="button" variant="outline" onClick={goNext} className="w-full">
-                                跳过本题
-                            </Button>
+                            <div className="flex justify-end">
+                                <Button type="button" variant="outline" size="sm" onClick={goNext} className="px-4">
+                                    跳过本题
+                                </Button>
+                            </div>
                         </div>
                     );
                 }
@@ -508,9 +512,11 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                         <p className="text-label text-destructive">
                             不支持题型「{String((question as Question).type)}」，请返回修改问卷。
                         </p>
-                        <Button type="button" variant="outline" onClick={goNext} className="w-full">
-                            跳过本题
-                        </Button>
+                        <div className="flex justify-end">
+                            <Button type="button" variant="outline" size="sm" onClick={goNext} className="px-4">
+                                跳过本题
+                            </Button>
+                        </div>
                     </div>
                 );
         }

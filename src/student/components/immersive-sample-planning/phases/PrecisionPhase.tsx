@@ -32,7 +32,7 @@ export function PrecisionPhase({ params, onNext, initialSampleSize, hideNext = f
             </div>
             <Slider aria-label="试算样本量" min={1} max={N} step={1} value={[demoN]} onValueChange={([n]) => n != null && setDemoN(n)} className={primarySliderClassName}/>
             <div className="flex flex-wrap gap-2" role="group" aria-label="选择样本量">
-                {choices.map(n => <Button key={n} type="button" variant={demoN === n ? "default" : "outline"} aria-pressed={demoN === n} onClick={() => setDemoN(n)}>
+                {choices.map(n => <Button key={n} type="button" variant={demoN === n ? "secondary" : "outline"} aria-pressed={demoN === n} onClick={() => setDemoN(n)}>
                     {n}{n === params.recommendedSize ? " · 建议" : n === N ? " · 全体" : n === initialSampleSize ? " · 你的估计" : " 个"}
                 </Button>)}
             </div>

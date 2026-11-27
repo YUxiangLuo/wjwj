@@ -497,8 +497,8 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                         从 {N.toLocaleString()} 个总体单位中不放回抽取 {n} 个。每个单位的入样概率相等，且不会重复入样。
                                     </CardDescription>
                                     </div>
-                                    {!simpleResult?.completed && <Button onClick={() => void executeSimple()} disabled={executing !== null || refreshRequired} data-testid="student-sampling-simple-run">
-                                        {executing === "simple" ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Play className="mr-2 h-4 w-4"/>}
+                                    {!simpleResult?.completed && <Button variant={!allCompleted ? "default" : "secondary"} onClick={() => void executeSimple()} disabled={executing !== null || refreshRequired} data-testid="student-sampling-simple-run" className="px-5">
+                                        {executing === "simple" ? <Loader2 className="h-4 w-4 animate-spin"/> : <Play className="h-4 w-4"/>}
                                         开始随机抽样
                                     </Button>}
                                 </CardHeader>
@@ -614,11 +614,11 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 </p>
                                             )}
                                             <div className="flex justify-end">
-                                            <Button onClick={() => void executeSystematic()} disabled={executing !== null || systematicInterval === null || refreshRequired} data-testid="student-sampling-systematic-run">
+                                            <Button variant={!allCompleted ? "default" : "secondary"} onClick={() => void executeSystematic()} disabled={executing !== null || systematicInterval === null || refreshRequired} data-testid="student-sampling-systematic-run" className="px-5">
                                                 {executing === "systematic" ? (
-                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
                                                 ) : (
-                                                    <Play className="w-4 h-4 mr-2" />
+                                                    <Play className="w-4 h-4" />
                                                 )}
                                                 执行系统抽样
                                             </Button>
@@ -750,11 +750,11 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
                                     {!ppsResult?.completed ? (
                                         <div className="flex justify-end">
-                                            <Button onClick={() => void executePPS()} disabled={executing !== null || !hasPpsNumericField || !ppsSizeField || !isPpsSizeValid || refreshRequired} data-testid="student-sampling-pps-run">
+                                            <Button variant={!allCompleted ? "default" : "secondary"} onClick={() => void executePPS()} disabled={executing !== null || !hasPpsNumericField || !ppsSizeField || !isPpsSizeValid || refreshRequired} data-testid="student-sampling-pps-run" className="px-5">
                                                 {executing === "pps" ? (
-                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
                                                 ) : (
-                                                    <Play className="w-4 h-4 mr-2" />
+                                                    <Play className="w-4 h-4" />
                                                 )}
                                                 执行PPS抽样
                                             </Button>
@@ -824,6 +824,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                         setExecutionTime={(ms) => setExecutionTimes(prev => ({ ...prev, stratified: ms }))}
                         refreshRequired={refreshRequired}
                         onRefreshRequired={requireRefresh}
+                        runButtonVariant={activeMethod === "stratified" && !allCompleted ? "default" : "secondary"}
                     />
                 </TabsContent>
                 )}
@@ -832,7 +833,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
             <div className="flex flex-wrap gap-2" aria-label="查看已保存的抽样说明">
                 {enabledMethods.map(method => {
                     const result = { simple: simpleResult, systematic: systematicResult, pps: ppsResult, stratified: stratifiedResult }[method];
-                    return result?.completed ? <Button key={method} variant="outline" disabled={executing !== null} data-testid={`student-sampling-${method}-review`} onClick={event => openSavedExplanation(method, result, event.currentTarget)}>
+                    return result?.completed ? <Button key={method} variant="outline" size="sm" disabled={executing !== null} data-testid={`student-sampling-${method}-review`} onClick={event => openSavedExplanation(method, result, event.currentTarget)}>
                         查看{METHOD_LABELS[method]}说明
                     </Button> : null;
                 })}
@@ -842,14 +843,14 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 <div className="mt-3"><SamplingObservationNotice nonResponseRate={samplePlan?.nonResponseRate}/></div>
             </details>
             <StageActions>
-                <div className="min-w-0 space-y-2">
-                    <p className="text-meta text-muted-foreground" role="status">{completionHint}</p>
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
                     <Button variant="outline" onClick={onPrev} data-testid="student-sampling-prev" disabled={isCompleting}>查看样本量规划</Button>
+                    <p className="text-meta text-muted-foreground" role="status">{completionHint}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                     {nextMethod && nextMethod !== activeMethod && <Button variant="outline" onClick={() => setActiveMethod(nextMethod)}>继续：{METHOD_LABELS[nextMethod]}</Button>}
-                    <Button onClick={() => void handleConfirmNext()} disabled={!allCompleted || isCompleting || executing !== null || refreshRequired} data-testid="student-sampling-next" className="w-auto">
-                        {isCompleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ArrowRight className="mr-2 h-4 w-4"/>}进入分析与报告
+                    <Button variant={allCompleted ? "default" : "outline"} onClick={() => void handleConfirmNext()} disabled={!allCompleted || isCompleting || executing !== null || refreshRequired} data-testid="student-sampling-next" className="w-auto">
+                        {isCompleting ? <Loader2 className="h-4 w-4 animate-spin"/> : <ArrowRight className="h-4 w-4"/>}进入分析与报告
                     </Button>
                 </div>
             </StageActions>

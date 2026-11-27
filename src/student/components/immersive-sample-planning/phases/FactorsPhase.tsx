@@ -79,7 +79,7 @@ export function FactorsPhase({ step, params, onNext, onStepChange, hideNext = fa
         <div className="space-y-6">
             <PlanningHeading title="哪些条件会改变样本量？" description="自由查看六类因素，无需依次完成。这里的示例用于理解原理；实际参数在「调整方案」中统一设置。"/>
             {onStepChange && <div className="flex flex-wrap gap-2" role="group" aria-label="选择影响因素">
-                {(Object.keys(STEP_META) as FactorsStep[]).map(key => <Button key={key} type="button" variant={step === key ? "default" : "outline"}
+                {(Object.keys(STEP_META) as FactorsStep[]).map(key => <Button key={key} type="button" variant={step === key ? "secondary" : "outline"}
                     aria-pressed={step === key} onClick={() => onStepChange(key)} className="min-h-11 whitespace-normal text-left">
                     {STEP_META[key].label}
                 </Button>)}

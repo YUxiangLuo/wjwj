@@ -102,6 +102,9 @@ describe("UnivariateWorkspace unbound variable notice & actionable weighted reco
 
         await waitFor(() => expect(view.queryByTestId("student-univariate-disabled-hint") !== null).toBe(true));
         expect(view.getByTestId("student-univariate-disabled-hint").textContent).toContain("至少 5 字");
+        expect(view.getByTestId("student-univariate-run").getAttribute("data-variant")).toBe("secondary");
+        expect(view.container.querySelectorAll('[data-slot="button"][data-variant="default"]').length).toBe(0);
+        expect(view.container.querySelectorAll('[data-slot="button"].w-full').length).toBe(0);
 
         fireEvent.change(view.container.querySelector("#analysis-question-input")!, {
             target: { value: "检验分层加权空层报错恢复交互" },

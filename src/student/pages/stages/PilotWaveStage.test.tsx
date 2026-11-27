@@ -137,6 +137,11 @@ describe("PilotWaveStage dogfood UX & server-contract alignment", () => {
         // Step 3 shows explicit locked hint when no plan/sample exists yet
         expect(view.queryByTestId("student-pilot-dispatch-locked-hint") !== null).toBe(true);
         expect(view.getByTestId("student-pilot-stage-hint").textContent).toContain("保存首轮试投样本量方案");
+        expect(view.getByTestId("student-pilot-save-plan").getAttribute("data-variant")).toBe("default");
+        expect(view.getByTestId("student-pilot-dispatch").getAttribute("data-variant")).toBe("outline");
+        expect(view.getByTestId("student-pilot-complete").getAttribute("data-variant")).toBe("outline");
+        expect(view.container.querySelectorAll('[data-slot="button"][data-variant="default"]').length).toBe(1);
+        expect(view.container.querySelectorAll('[data-slot="button"].w-full').length).toBe(0);
 
         const moeInput = view.container.querySelector("#pilot-margin-error") as HTMLInputElement;
         fireEvent.change(moeInput, { target: { value: "0.5" } });
@@ -197,6 +202,11 @@ describe("PilotWaveStage dogfood UX & server-contract alignment", () => {
         expect(view.queryByTestId("student-pilot-stale-dispatch-warning") === null).toBe(true);
         expect(view.getByText(/首轮受访者名单已就绪/)).toBeTruthy();
         expect((view.getByTestId("student-pilot-dispatch") as HTMLButtonElement).disabled).toBe(false);
+        expect(view.getByTestId("student-pilot-save-plan").getAttribute("data-variant")).toBe("outline");
+        expect(view.getByTestId("student-pilot-sample-simple").getAttribute("data-variant")).toBe("outline");
+        expect(view.getByTestId("student-pilot-dispatch").getAttribute("data-variant")).toBe("default");
+        expect(view.getByTestId("student-pilot-complete").getAttribute("data-variant")).toBe("outline");
+        expect(view.container.querySelectorAll('[data-slot="button"][data-variant="default"]').length).toBe(1);
     });
 
     test("QA-P2-05: suppresses the 30-unit robust pilot shortcut for small populations (N<=50) and caps at 40% of N", async () => {

@@ -18,7 +18,7 @@ export function PlanningReference({ params }: { params: SampleParams }) {
     const [factor, setFactor] = useState<FactorsStep>("summary");
     return <div className="mx-auto max-w-5xl space-y-5">
         <div className="flex flex-wrap items-center gap-2" role="group" aria-label="规划参考内容">
-            {panels.map(item => <Button key={item.id} type="button" variant={panel === item.id ? "default" : "outline"}
+            {panels.map(item => <Button key={item.id} type="button" variant={panel === item.id ? "secondary" : "outline"}
                 aria-pressed={panel === item.id} onClick={() => setPanel(item.id)}>{item.label}</Button>)}
             <p className="ml-auto text-meta text-muted-foreground">按需查看，无需答题；示例试算不改动实际方案。</p>
         </div>

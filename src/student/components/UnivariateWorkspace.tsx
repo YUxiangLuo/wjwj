@@ -314,7 +314,7 @@ export function UnivariateWorkspace({
             ) : (
                 <Card className="rounded-surface border-border bg-card">
                     <CardHeader className="border-b border-border pb-4">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
                             <div>
                                 <CardTitle className="flex items-center gap-2 text-section-title text-foreground">
                                     <BarChart3 className="h-5 w-5 text-primary" />
@@ -504,6 +504,8 @@ export function UnivariateWorkspace({
                                     </span>
                                 )}
                                 <Button
+                                    type="button"
+                                    variant="secondary"
                                     onClick={() => void run()}
                                     disabled={
                                         refreshRequired
@@ -514,11 +516,12 @@ export function UnivariateWorkspace({
                                         || records.length >= capacity
                                     }
                                     data-testid="student-univariate-run"
+                                    className="px-5"
                                 >
                                     {running ? (
-                                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" />正在计算…</>
+                                        <><Loader2 className="h-4 w-4 animate-spin" />正在计算…</>
                                     ) : (
-                                        <><BarChart3 className="mr-2 h-4 w-4" />执行并保存分析卡片</>
+                                        <><BarChart3 className="h-4 w-4" />执行并保存分析卡片</>
                                     )}
                                 </Button>
                             </div>
@@ -546,8 +549,8 @@ export function UnivariateWorkspace({
                         const isReferenced = references.includes(record.id);
                         return (
                             <article key={record.id} className="rounded-surface border border-border bg-card p-5">
-                                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-3">
-                                    <div className="min-w-0 flex-1 space-y-1">
+                                <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-3">
+                                    <div className="min-w-0 flex-1 space-y-1.5">
                                         <div className="flex flex-wrap items-center gap-2">
                                             <h3 className="text-subheading font-medium text-foreground">{record.config.question}</h3>
                                             {record.result.kind === "crosstab" && (
@@ -573,10 +576,12 @@ export function UnivariateWorkspace({
                                         </p>
                                     </div>
                                     <Button
-                                        variant={isReferenced ? "default" : "outline"}
+                                        type="button"
+                                        variant={isReferenced ? "outline" : "secondary"}
                                         size="sm"
                                         onClick={() => toggleReference(record)}
                                         disabled={!isReferenced && (record.stale || references.length >= 10)}
+                                        className="shrink-0"
                                     >
                                         {isReferenced ? "移出报告附录" : "引用到报告附录"}
                                     </Button>

@@ -88,6 +88,7 @@ export interface StratifiedSamplingTabProps {
     setExecutionTime: (ms: number) => void;
     refreshRequired: boolean;
     onRefreshRequired: () => void;
+    runButtonVariant?: "default" | "secondary" | "outline";
 }
 
 export function StratifiedSamplingTab({
@@ -109,6 +110,7 @@ export function StratifiedSamplingTab({
     setExecutionTime,
     refreshRequired,
     onRefreshRequired,
+    runButtonVariant = "default",
 }: StratifiedSamplingTabProps) {
     const [stratifyBy, setStratifyBy] = useState(() => resolveStratifyBy(populationStats, initialResult?.stratifyBy));
     const [stratifiedSeed, setStratifiedSeed] = useState(String(initialResult?.seed ?? ""));
@@ -460,7 +462,7 @@ export function StratifiedSamplingTab({
                             </Button>
                             <div className="flex-1" />
                             <Button
-                                variant="secondary"
+                                variant="outline"
                                 size="sm"
                                 onClick={() => setShowAllocationComparison(true)}
                             >
@@ -487,9 +489,11 @@ export function StratifiedSamplingTab({
                                 <div className="flex flex-wrap items-center justify-between gap-3">
                                     <p className="text-label text-muted-foreground">确认各层样本数后执行分层抽样</p>
                                     <Button
+                                        variant={runButtonVariant}
                                         onClick={() => void executeStratified()}
                                         disabled={executing !== null || !isStratifiedValid || layers.length === 0 || refreshRequired}
                                         data-testid="student-sampling-stratified-run"
+                                        className="px-5"
                                     >
                                         {executing === "stratified" ? (
                                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />

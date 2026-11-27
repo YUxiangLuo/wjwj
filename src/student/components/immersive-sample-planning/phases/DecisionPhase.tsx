@@ -471,7 +471,7 @@ export function DecisionPhase({
                                     isDisabled
                                         ? "cursor-not-allowed border-border bg-muted text-muted-foreground"
                                         : isActiveSource
-                                            ? "border-primary bg-primary text-primary-foreground"
+                                            ? "border-primary-border bg-accent text-accent-foreground"
                                             : "border-border bg-card text-foreground hover:bg-muted",
                                 )}
                             >
@@ -546,6 +546,7 @@ export function DecisionPhase({
                                 </Button>
                                 <Button
                                     type="button"
+                                    variant="secondary"
                                     disabled={!isDomainDraftValid(domainDraft, N, params.estimationType)}
                                     onClick={() => {
                                         if (!isDomainDraftValid(domainDraft, N, params.estimationType)) return;
@@ -553,7 +554,7 @@ export function DecisionPhase({
                                         toast.success("已应用子总体设置");
                                         closeAdvancedDialog();
                                     }}
-                                    className="bg-primary hover:bg-primary-hover text-primary-foreground disabled:bg-muted disabled:text-muted-foreground disabled:border-border"
+                                    className="px-5"
                                 >
                                     应用到样本量规划
                                 </Button>
@@ -598,12 +599,13 @@ export function DecisionPhase({
                                 </Button>
                                 <Button
                                     type="button"
+                                    variant="secondary"
                                     onClick={() => {
                                         onDesignEffectChange(deffDraft);
                                         toast.success(`已应用设计效应 deff = ${deffDraft.toFixed(1)}`);
                                         closeAdvancedDialog();
                                     }}
-                                    className="bg-primary hover:bg-primary-hover text-primary-foreground"
+                                    className="px-5"
                                 >
                                     应用到样本量规划
                                 </Button>
@@ -710,8 +712,9 @@ export function DecisionPhase({
                             <div className="flex justify-end pt-4 border-t border-border">
                                 <Button
                                     type="button"
+                                    variant="secondary"
                                     onClick={closeAdvancedDialog}
-                                    className="bg-primary hover:bg-primary-hover text-primary-foreground"
+                                    className="px-5"
                                 >
                                     完成
                                 </Button>

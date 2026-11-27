@@ -291,10 +291,10 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                                 key={m}
                                 type="button"
                                 size="sm"
-                                variant={selectedMethod === m ? "default" : "ghost"}
+                                variant={selectedMethod === m ? "secondary" : "ghost"}
                                 aria-pressed={selectedMethod === m}
                                 onClick={() => setSelectedMethod(m)}
-                                className="h-7 px-3 text-meta"
+                                className="h-8 px-3 text-meta"
                             >
                                 {METHOD_NAMES[m]}
                             </Button>
@@ -310,14 +310,12 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                     value={`${formatStatistic(diag.effectiveRatePct, 1)}%`}
                     hint={`有效 ${diag.cleanedValidCount} / 发放 ${diag.invitedCount} 份`}
                     icon={CheckCircle2}
-                    intent={diag.effectiveRatePct >= 75 ? "success" : "warning"}
                 />
                 <KpiStatCard
                     label="实测总无回答与废卷率"
                     value={`${diag.empiricalNonResponseRatePct}%`}
                     hint="可直接代入二轮样本量公式"
                     icon={ShieldAlert}
-                    intent="warning"
                 />
                 <KpiStatCard
                     label={diag.empiricalTargetStdDev != null ? "清洗后实测样本标准差 s" : "客群最大结构偏倚"}
@@ -334,14 +332,12 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                             : "抽样框占比 vs 有效回收占比最大差"
                     }
                     icon={Users}
-                    intent="primary"
                 />
                 <KpiStatCard
                     label="首轮单份有效样本成本"
                     value={diag.unitEffectiveCost != null ? `¥${formatStatistic(diag.unitEffectiveCost, 1)}` : "—"}
                     hint={`参考总成本 ¥${formatStatistic(diag.totalEstimatedCost, 0)}`}
                     icon={Coins}
-                    intent="info"
                 />
             </div>
 
@@ -386,7 +382,7 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,26rem),1fr))] gap-5">
                 <Card className="scroll-mt-36 rounded-surface border-border bg-card" data-testid="student-diagnostics-cleaning-card">
                     <CardHeader className="border-b border-border pb-4">
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-start justify-between gap-3">
                             <div>
                                 <CardTitle className="flex items-center gap-2 text-subheading text-foreground">
                                     <Filter className="h-5 w-5 text-primary" />
@@ -396,22 +392,22 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                                     切换清洗规则，实时观察右侧森林图中「清洗后有效估计」相对「未质检含噪估计」的误差变化
                                 </CardDescription>
                             </div>
-                            {updatingCleaning && <Loader2 className="h-4 w-4 animate-spin text-primary" aria-label="正在更新质检规则" />}
+                            {updatingCleaning && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" aria-label="正在更新质检规则" />}
                         </div>
                     </CardHeader>
-                    <CardContent className="space-y-4 pt-4">
+                    <CardContent className="space-y-5 pt-5">
                         {cleaningError && (
-                            <div role="alert" className="rounded-control border border-destructive-border bg-destructive-muted px-3 py-2 text-meta text-destructive">
+                            <div role="alert" className="rounded-control border border-destructive-border bg-destructive-muted px-3.5 py-2.5 text-meta text-destructive">
                                 {cleaningError}
                             </div>
                         )}
-                        <div className="divide-y divide-border rounded-surface bg-muted px-4">
-                            <div className="flex items-center justify-between gap-3 py-3">
-                                <div>
+                        <div className="divide-y divide-border rounded-surface bg-muted px-4 py-1">
+                            <div className="flex items-center justify-between gap-4 py-3.5">
+                                <div className="space-y-1">
                                     <Label htmlFor="clean-speeder-switch" className="cursor-pointer text-label font-medium text-foreground">
                                         剔除「闪电敷衍卷」（Speeder）
                                     </Label>
-                                    <p className="text-meta text-muted-foreground">
+                                    <p className="text-meta leading-relaxed text-muted-foreground">
                                         作答时长远低于正常阅读底线（本轮检出 {diag.speederCount} 份）
                                     </p>
                                 </div>
@@ -423,12 +419,12 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                                 />
                             </div>
 
-                            <div className="flex items-center justify-between gap-3 py-3">
-                                <div>
+                            <div className="flex items-center justify-between gap-4 py-3.5">
+                                <div className="space-y-1">
                                     <Label htmlFor="clean-straight-switch" className="cursor-pointer text-label font-medium text-foreground">
                                         剔除「直线机械作答卷」（Straight-liner）
                                     </Label>
-                                    <p className="text-meta text-muted-foreground">
+                                    <p className="text-meta leading-relaxed text-muted-foreground">
                                         量表/多题连续机械勾选同一位置选项（本轮检出 {diag.straightlinerCount} 份）
                                     </p>
                                 </div>
@@ -440,12 +436,12 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                                 />
                             </div>
 
-                            <div className="flex items-center justify-between gap-3 py-3">
-                                <div>
+                            <div className="flex items-center justify-between gap-4 py-3.5">
+                                <div className="space-y-1">
                                     <Label htmlFor="clean-target-switch" className="cursor-pointer text-label font-medium text-foreground">
                                         强制要求核心商业指标有效完答
                                     </Label>
-                                    <p className="text-meta text-muted-foreground">
+                                    <p className="text-meta leading-relaxed text-muted-foreground">
                                         剔除主指标漏答或被数值上下限拦截的残缺记录
                                     </p>
                                 </div>
@@ -459,13 +455,16 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                         </div>
 
                         {diag.sampleAnomalies.length > 0 && (
-                            <div className="space-y-2 pt-1">
-                                <p className="text-meta font-semibold text-muted-foreground">异常与未完答样本抽检日志（前 {diag.sampleAnomalies.length} 条）</p>
+                            <div className="space-y-3 border-t border-border pt-4">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <p className="text-label font-medium text-foreground">异常与未完答样本抽检日志</p>
+                                    <StatusBadge intent="neutral">前 {diag.sampleAnomalies.length} 条</StatusBadge>
+                                </div>
                                 <div
                                     role="region"
                                     aria-label="异常样本抽检日志"
                                     tabIndex={0}
-                                    className="max-h-52 overflow-auto rounded-control border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    className="max-h-56 overflow-auto rounded-surface border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 >
                                     <table className="w-full caption-bottom text-meta" aria-label="异常样本抽检日志表">
                                         <TableHeader className="bg-muted">
@@ -480,11 +479,11 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                                                 const badge = DISPOSITION_BADGES[item.disposition] ?? { label: item.disposition, intent: "neutral" as const };
                                                 return (
                                                     <TableRow key={`${item.populationIndex}-${item.disposition}`}>
-                                                        <TableCell className="font-mono text-meta">{item.unitId}</TableCell>
-                                                        <TableCell>
+                                                        <TableCell className="py-2.5 font-mono text-meta">{item.unitId}</TableCell>
+                                                        <TableCell className="py-2.5">
                                                             <StatusBadge intent={badge.intent}>{badge.label}</StatusBadge>
                                                         </TableCell>
-                                                        <TableCell className="whitespace-normal break-words text-meta text-muted-foreground">{item.reason}</TableCell>
+                                                        <TableCell className="py-2.5 whitespace-normal break-words text-meta leading-relaxed text-muted-foreground">{item.reason}</TableCell>
                                                     </TableRow>
                                                 );
                                             })}
@@ -596,7 +595,7 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
             {/* Stage 3 Structured Adjustment Decision Form */}
             <Card className="scroll-mt-36 rounded-surface border-border bg-card" data-testid="student-adjustment-plan-form">
                 <CardHeader className="border-b border-border pb-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <CardTitle className="flex items-center gap-2 text-section-title text-foreground">
                                 <ClipboardCheck className="h-5 w-5 text-primary" />
@@ -608,12 +607,13 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                         </div>
                         <Button
                             type="button"
-                            variant="secondary"
+                            variant={canComplete ? "outline" : "secondary"}
                             size="sm"
                             onClick={handleSmartExtractFindings}
                             data-testid="student-adjustment-auto-fill"
+                            className="shrink-0"
                         >
-                            <ClipboardCheck className="mr-1.5 h-3.5 w-3.5" />
+                            <ClipboardCheck className="h-3.5 w-3.5" />
                             智能提取首轮诊断要点
                         </Button>
                     </div>
@@ -739,14 +739,16 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                         </span>
                     )}
                     <Button
+                        type="button"
+                        variant={canComplete ? "default" : "outline"}
                         onClick={() => void handleComplete()}
                         disabled={!canComplete || completing || refreshRequired}
                         data-testid="student-diagnostics-complete"
                     >
                         {completing ? (
-                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" />正在立项二轮投放…</>
+                            <><Loader2 className="h-4 w-4 animate-spin" />正在立项二轮投放…</>
                         ) : (
-                            <>确认调优方案，进入二轮正式投放<ArrowRight className="ml-2 h-4 w-4" /></>
+                            <>确认调优方案，进入二轮正式投放<ArrowRight className="h-4 w-4" /></>
                         )}
                     </Button>
                 </div>

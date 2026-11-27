@@ -188,30 +188,37 @@ export function PrecisionCostTradeoff({
             <CardContent className="space-y-4">
                 <div className="space-y-2">
                     <Label className="text-meta font-medium text-foreground">调查场景</Label>
-                    <div className="grid grid-cols-3 gap-2">
-                        {PRESET_SCENARIOS.map(scenario => (
-                            <Button
-                                key={scenario.id}
-                                variant={!useCustom && selectedScenario.id === scenario.id ? "default" : "outline"}
-                                size="sm"
-                                onClick={() => {
-                                    setSelectedScenario(scenario);
-                                    setUseCustom(false);
-                                }}
-                                className="text-meta h-auto py-2"
-                            >
-                                {scenario.name}
-                            </Button>
-                        ))}
+                    <div className="flex flex-wrap items-center gap-2" role="group" aria-label="选择调查场景">
+                        {PRESET_SCENARIOS.map(scenario => {
+                            const active = !useCustom && selectedScenario.id === scenario.id;
+                            return (
+                                <Button
+                                    key={scenario.id}
+                                    type="button"
+                                    variant={active ? "secondary" : "outline"}
+                                    size="sm"
+                                    aria-pressed={active}
+                                    onClick={() => {
+                                        setSelectedScenario(scenario);
+                                        setUseCustom(false);
+                                    }}
+                                    className="px-4"
+                                >
+                                    {scenario.name}
+                                </Button>
+                            );
+                        })}
+                        <Button
+                            type="button"
+                            variant={useCustom ? "secondary" : "outline"}
+                            size="sm"
+                            aria-pressed={useCustom}
+                            onClick={() => setUseCustom(true)}
+                            className="px-4"
+                        >
+                            自定义成本参数
+                        </Button>
                     </div>
-                    <Button
-                        variant={useCustom ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setUseCustom(true)}
-                        className="w-full text-meta"
-                    >
-                        自定义成本参数
-                    </Button>
                 </div>
 
                 {useCustom && (
@@ -433,36 +440,39 @@ export function PrecisionCostTradeoff({
                         </div>
 
                         {targetAnalysis.budgetFeasible && (
-                            <div className="space-y-2 pt-2">
+                            <div className="space-y-3 pt-2">
                                 <p className="text-meta text-muted-foreground leading-relaxed">
                                      「应用」仅将样本量写入最终样本量。若抽样假设与左侧不一致，理解此 n 时以本工具为准；左侧不会随本工具更新，勿用左侧参数代回验算。
                                 </p>
-                                <Button
-                                    onClick={() => {
-                                        onSnapshot?.({
-                                            inputs: {
-                                                confidenceLevel: confidenceLevelLocal,
-                                                targetMarginOfError,
-                                                designEffect: designEffectLocal,
-                                                nonResponseRate: nonResponseRateLocal,
-                                                fixedCost: currentScenario.fixedCost,
-                                                variableCostPerUnit: currentScenario.variableCostPerUnit,
-                                                totalBudget: currentScenario.totalBudget,
-                                            },
-                                            result: {
-                                                requiredSampleSize: targetAnalysis.requiredSampleSize,
-                                                totalCost: targetAnalysis.totalCost,
-                                                feasible: targetAnalysis.isFeasible,
-                                            },
-                                        });
-                                        onApplyBudget(currentScenario.totalBudget, targetAnalysis.requiredSampleSize);
-                                    }}
-                                    className="w-full"
-                                    size="sm"
-                                >
-                                    {targetAnalysis.precisionReached ? "应用此样本量" : "采用此未达标样本量"}
-                                    <ChevronRight className="w-4 h-4 ml-1" />
-                                </Button>
+                                <div className="flex justify-end">
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        onClick={() => {
+                                            onSnapshot?.({
+                                                inputs: {
+                                                    confidenceLevel: confidenceLevelLocal,
+                                                    targetMarginOfError,
+                                                    designEffect: designEffectLocal,
+                                                    nonResponseRate: nonResponseRateLocal,
+                                                    fixedCost: currentScenario.fixedCost,
+                                                    variableCostPerUnit: currentScenario.variableCostPerUnit,
+                                                    totalBudget: currentScenario.totalBudget,
+                                                },
+                                                result: {
+                                                    requiredSampleSize: targetAnalysis.requiredSampleSize,
+                                                    totalCost: targetAnalysis.totalCost,
+                                                    feasible: targetAnalysis.isFeasible,
+                                                },
+                                            });
+                                            onApplyBudget(currentScenario.totalBudget, targetAnalysis.requiredSampleSize);
+                                        }}
+                                        className="px-5"
+                                    >
+                                        {targetAnalysis.precisionReached ? "应用此样本量" : "采用此未达标样本量"}
+                                        <ChevronRight className="w-4 h-4" />
+                                    </Button>
+                                </div>
                             </div>
                         )}
                     </div> : <p role="alert" className="text-label text-destructive">参数无效，无法计算成本与精度。</p>}

@@ -383,6 +383,9 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
             ));
     }, [savedPlan, planValidationError, effectiveFinalSize, confidenceLevel, marginOfError, designEffect, safeNrrFraction, estimationType, varianceSource, activeVariance]);
     const canCompletePilot = hasSavedPlan && planValidationError === null && !isPlanDirty && allPilotMethodsDispatched;
+    const needsStep1Save = !hasSavedPlan || isPlanDirty;
+    const needsStep2Sample = !needsStep1Save && completedPilotMethods.length === 0;
+    const needsStep3Dispatch = !needsStep1Save && completedPilotMethods.length > 0 && !allPilotMethodsDispatched;
 
     const handleCompleteStage = async () => {
         if (!canCompletePilot || !savedPlan || completing || refreshRequired) return;
@@ -434,7 +437,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                     {/* Step 1: Pilot Sample Size & Reference Cost */}
                     <Card className="rounded-surface border-border bg-card" data-testid="student-pilot-plan-card">
                         <CardHeader className="border-b border-border pb-4">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
                                 <div>
                                     <CardTitle className="flex items-center gap-2 text-section-title text-foreground">
                                         <Calculator className="h-5 w-5 text-primary" />
@@ -449,7 +452,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                 ) : hasSavedPlan && isPlanDirty ? (
                                     <StatusBadge intent="warning">参数已改待重新保存</StatusBadge>
                                 ) : (
-                                    <StatusBadge intent="warning">待保存试投方案</StatusBadge>
+                                    <StatusBadge intent="neutral">待保存试投方案</StatusBadge>
                                 )}
                             </div>
                         </CardHeader>
@@ -677,11 +680,13 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                 </div>
                                 <Button
                                     type="button"
+                                    variant={needsStep1Save ? "default" : "outline"}
                                     onClick={() => void handleSavePilotPlan()}
                                     disabled={savingPlan || planValidationError !== null || statsLoading || refreshRequired}
                                     data-testid="student-pilot-save-plan"
+                                    className="px-5"
                                 >
-                                    {savingPlan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                                    {savingPlan ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                                     {hasSavedPlan ? "更新首轮样本量方案" : "保存首轮样本量方案"}
                                 </Button>
                             </div>
@@ -691,7 +696,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                     {/* Step 2: Pilot Respondent Sampling */}
                     <Card className="rounded-surface border-border bg-card" data-testid="student-pilot-sampling-card">
                         <CardHeader className="border-b border-border pb-4">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
                                 <div>
                                     <CardTitle className="flex items-center gap-2 text-section-title text-foreground">
                                         <Users className="h-5 w-5 text-primary" />
@@ -774,6 +779,15 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                                         </div>
                                                         <Button
                                                             type="button"
+                                                            variant={
+                                                                completed
+                                                                    ? "outline"
+                                                                    : needsStep2Sample
+                                                                        ? "default"
+                                                                        : canCompletePilot
+                                                                            ? "outline"
+                                                                            : "secondary"
+                                                            }
                                                             onClick={() => void handleRunSampling(method)}
                                                             disabled={
                                                                 executingMethod !== null
@@ -781,11 +795,12 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                                                 || (method === "pps" && !ppsSizeField)
                                                             }
                                                             data-testid={`student-pilot-sample-${method}`}
+                                                            className="px-5"
                                                         >
                                                             {executingMethod === method ? (
-                                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                                <Loader2 className="h-4 w-4 animate-spin" />
                                                             ) : (
-                                                                <Play className="mr-2 h-4 w-4" />
+                                                                <Play className="h-4 w-4" />
                                                             )}
                                                             {completed ? `重新抽取${METHOD_LABELS[method]}` : `执行${METHOD_LABELS[method]}`}
                                                         </Button>
@@ -830,6 +845,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                                 setExecutionTime={setExecutionTime}
                                                 refreshRequired={refreshRequired}
                                                 onRefreshRequired={requireRefresh}
+                                                runButtonVariant={needsStep2Sample ? "default" : canCompletePilot ? "outline" : "secondary"}
                                             />
                                         </TabsContent>
                                     )}
@@ -844,7 +860,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                         data-testid="student-pilot-dispatch-card"
                     >
                         <CardHeader className="border-b border-border pb-4">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
                                 <div>
                                     <CardTitle className="flex items-center gap-2 text-section-title text-foreground">
                                         <Send className="h-5 w-5 text-primary" />
@@ -859,7 +875,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                 ) : hasStalePilotSampling ? (
                                     <StatusBadge intent="warning">名单已更新待重发</StatusBadge>
                                 ) : completedPilotMethods.length > 0 ? (
-                                    <StatusBadge intent="primary">名单就绪待发放</StatusBadge>
+                                    <StatusBadge intent="info">名单就绪待发放</StatusBadge>
                                 ) : (
                                     <StatusBadge intent="neutral">待抽取名单后解锁</StatusBadge>
                                 )}
@@ -882,15 +898,16 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                 </div>
                                 <Button
                                     type="button"
-                                    size="lg"
+                                    variant={needsStep3Dispatch ? "default" : "outline"}
                                     onClick={() => void handleDispatchPilot()}
                                     disabled={completedPilotMethods.length === 0 || isPlanDirty || planValidationError !== null || dispatching || refreshRequired}
                                     data-testid="student-pilot-dispatch"
+                                    className="px-5"
                                 >
                                     {dispatching ? (
-                                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" />正在发放并回收答卷…</>
+                                        <><Loader2 className="h-4 w-4 animate-spin" />正在发放并回收答卷…</>
                                     ) : (
-                                        <><Send className="mr-2 h-4 w-4" />{allPilotMethodsDispatched ? "重新模拟发放试投问卷" : "发放首轮试投问卷"}</>
+                                        <><Send className="h-4 w-4" />{allPilotMethodsDispatched ? "重新模拟发放试投问卷" : "发放首轮试投问卷"}</>
                                     )}
                                 </Button>
                             </div>
@@ -1061,14 +1078,16 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                     </p>
                 </div>
                 <Button
+                    type="button"
+                    variant={canCompletePilot ? "default" : "outline"}
                     onClick={() => void handleCompleteStage()}
                     disabled={!canCompletePilot || completing || refreshRequired}
                     data-testid="student-pilot-complete"
                 >
                     {completing ? (
-                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" />正在推进阶段…</>
+                        <><Loader2 className="h-4 w-4 animate-spin" />正在推进阶段…</>
                     ) : (
-                        <>进入回收质检与诊断<ArrowRight className="ml-2 h-4 w-4" /></>
+                        <>进入回收质检与诊断<ArrowRight className="h-4 w-4" /></>
                     )}
                 </Button>
             </StageActions>
