@@ -212,7 +212,7 @@ export function StudentManagement() {
                                 placeholder="搜索学号或姓名"
                             />
                         </div>
-                        <Button variant="outline" onClick={applySearch}>
+                        <Button type="button" variant="secondary" onClick={applySearch}>
                             <Search className="h-4 w-4" aria-hidden="true" />
                             搜索
                         </Button>
@@ -228,7 +228,7 @@ export function StudentManagement() {
                             </SelectContent>
                         </Select>
                         {hasFilters && (
-                            <Button variant="ghost" size="sm" onClick={clearFilters}>清除筛选</Button>
+                            <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>清除筛选</Button>
                         )}
                     </div>
                 </div>
@@ -273,7 +273,7 @@ export function StudentManagement() {
                                                 </p>
                                             </div>
                                             {hasFilters && (
-                                                <Button variant="outline" size="sm" onClick={clearFilters}>
+                                                <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
                                                     查看全部学生
                                                 </Button>
                                             )}
@@ -296,19 +296,21 @@ export function StudentManagement() {
                                         </div>
                                     </TableCell>
                                     <TableCell className="px-4 text-right">
-                                        <div className="flex justify-end gap-1">
+                                        <div className="flex justify-end gap-1.5">
                                             <Button
-                                                variant="ghost"
+                                                type="button"
+                                                variant="outline"
                                                 size="sm"
-                                                className="h-8 px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                                className="h-8 px-2.5"
                                                 onClick={() => void openExperiments(item)}
                                             >
                                                 <Eye className="h-3.5 w-3.5" aria-hidden="true" />实验
                                             </Button>
                                             <Button
+                                                type="button"
                                                 variant="ghost"
                                                 size="sm"
-                                                className="h-8 px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                                className="h-8 px-2.5"
                                                 disabled={resetting}
                                                 onClick={() => void resetPassword(item)}
                                             >
@@ -329,6 +331,7 @@ export function StudentManagement() {
                         </p>
                         <div className="flex gap-2">
                             <Button
+                                type="button"
                                 variant="outline"
                                 size="sm"
                                 disabled={page <= 1}
@@ -339,6 +342,7 @@ export function StudentManagement() {
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
                             <Button
+                                type="button"
                                 variant="outline"
                                 size="sm"
                                 disabled={page >= Math.ceil(total / PAGE_SIZE)}
@@ -416,7 +420,7 @@ export function StudentManagement() {
                                             {experimentsLoading ? "正在加载实验记录…" : experimentsError ?? "暂无实验记录"}
                                             {!experimentsLoading && experimentsError && selected && (
                                                 <div className="mt-3">
-                                                    <Button variant="outline" onClick={() => void openExperiments(selected)}>重试加载实验记录</Button>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => void openExperiments(selected)}>重试加载实验记录</Button>
                                                 </div>
                                             )}
                                         </TableCell>

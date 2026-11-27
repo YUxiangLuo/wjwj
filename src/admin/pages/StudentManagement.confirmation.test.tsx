@@ -28,6 +28,10 @@ test("password reset requires named confirmation, prevents duplicate writes and 
     const { StudentManagement } = await import("./StudentManagement");
     const view = render(<MemoryRouter><StudentManagement /></MemoryRouter>);
     const reset = await view.findByRole("button", { name: "重置密码" });
+    expect(view.container.querySelectorAll('[data-slot="button"][data-variant="default"]')).toHaveLength(0);
+    expect(view.getByRole("button", { name: "搜索" }).getAttribute("data-variant")).toBe("secondary");
+    expect(view.getByRole("button", { name: "实验" }).getAttribute("data-variant")).toBe("outline");
+    expect(reset.getAttribute("data-variant")).toBe("ghost");
     fireEvent.click(reset);
     expect(writes).toHaveLength(0);
     expect(view.getByRole("alertdialog").textContent).toContain("学生甲");

@@ -99,16 +99,18 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                         <div className="space-y-1.5">
                             <div className="flex items-center justify-between gap-2">
                                 <Label htmlFor={currentPasswordId} className="text-foreground">当前密码</Label>
-                                <button
+                                <Button
                                     type="button"
+                                    variant="ghost"
+                                    size="sm"
                                     aria-pressed={showPasswords}
                                     disabled={saving}
                                     onClick={() => setShowPasswords((prev) => !prev)}
-                                    className="inline-flex items-center gap-1 rounded-control px-2 py-0.5 text-meta font-medium text-muted-foreground outline-none transition-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                                    className="h-7 px-2.5"
                                 >
                                     {showPasswords ? <EyeOff aria-hidden="true" className="h-3.5 w-3.5" /> : <Eye aria-hidden="true" className="h-3.5 w-3.5" />}
                                     <span>{showPasswords ? "隐藏密码" : "显示密码"}</span>
-                                </button>
+                                </Button>
                             </div>
                             <Input
                                 id={currentPasswordId}
@@ -169,7 +171,7 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                             </div>
                         ) : null}
                         {showPolicyHints ? (
-                            <div className="space-y-1.5 rounded-surface border border-border bg-background p-3 text-meta">
+                            <div className="space-y-1.5 rounded-surface border border-border bg-muted p-3 text-meta">
                                 <div className="flex items-center justify-between text-muted-foreground">
                                     <span>密码强度</span>
                                     <span className={getStrengthToneClassName(effectiveRules.score)}>{effectiveRules.strengthLabel}</span>
@@ -193,11 +195,11 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                         ) : null}
                     </div>
                     <DialogFooter>
-                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving} className="text-muted-foreground hover:bg-muted hover:text-foreground">
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
                             取消
                         </Button>
-                        <Button type="submit" disabled={saving} aria-busy={saving} className="bg-primary text-primary-foreground hover:bg-primary-hover" data-testid={submitTestId}>
-                            {saving ? <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        <Button type="submit" disabled={saving} aria-busy={saving} data-testid={submitTestId}>
+                            {saving ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : null}
                             {submitLabel}
                         </Button>
                     </DialogFooter>

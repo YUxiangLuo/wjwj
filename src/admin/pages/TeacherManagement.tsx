@@ -158,7 +158,7 @@ export function TeacherManagement() {
                     <h2 className="text-subheading font-medium text-foreground">教师管理</h2>
                     <p className="mt-0.5 text-label text-muted-foreground">新建及重置后的登录密码默认与教师工号相同，教师登录后可自行修改密码。</p>
                 </div>
-                <Button onClick={() => { setEditing(null); setCreating(true); setForm({ employeeId: "", name: "" }); }}>
+                <Button type="button" onClick={() => { setEditing(null); setCreating(true); setForm({ employeeId: "", name: "" }); }}>
                     <Plus className="h-4 w-4" aria-hidden="true" />
                     新增教师
                 </Button>
@@ -199,7 +199,7 @@ export function TeacherManagement() {
                             aria-label="搜索教师工号或姓名"
                             className="w-52"
                         />
-                        <IconButton aria-label="搜索教师" title="搜索教师" variant="outline" onClick={applySearch}>
+                        <IconButton type="button" aria-label="搜索教师" title="搜索教师" variant="outline" onClick={applySearch}>
                             <Search className="h-4 w-4" />
                         </IconButton>
                         {appliedSearch && (
@@ -259,9 +259,10 @@ export function TeacherManagement() {
                                         <TableCell className="px-4 text-right">
                                             <div className="flex justify-end gap-1">
                                                 <Button
+                                                    type="button"
                                                     variant="ghost"
                                                     size="sm"
-                                                    className="h-8 px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                                    className="h-8 px-2.5"
                                                     onClick={() => {
                                                         setCreating(false);
                                                         setEditing(row);
@@ -271,18 +272,20 @@ export function TeacherManagement() {
                                                     <Pencil className="h-3.5 w-3.5" aria-hidden="true" />编辑
                                                 </Button>
                                                 <Button
+                                                    type="button"
                                                     variant="ghost"
                                                     size="sm"
-                                                    className="h-8 px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                                    className="h-8 px-2.5"
                                                     disabled={resetting}
                                                     onClick={() => void resetPassword(row)}
                                                 >
                                                     <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />重置密码
                                                 </Button>
                                                 <Button
+                                                    type="button"
                                                     variant="ghost"
                                                     size="sm"
-                                                    className="h-8 px-2.5 text-muted-foreground hover:bg-destructive-muted hover:text-destructive"
+                                                    className="h-8 px-2.5 text-destructive hover:bg-destructive-muted hover:text-destructive"
                                                     data-testid={`admin-teacher-delete-${row.id}`}
                                                     disabled={blockers.length > 0}
                                                     title={blockers.length > 0 ? `仍有 ${blockers.join("、")}，无法删除` : "删除教师"}

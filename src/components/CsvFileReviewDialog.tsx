@@ -102,8 +102,8 @@ export function CsvFileReviewDialog({ file, onConfirm, onCancel }: {
                     </div>
                 </>}
                 <DialogFooter className="shrink-0">
-                    <Button variant="outline" onClick={onCancel}>取消</Button>
-                    <Button disabled={!ready} data-testid="csv-review-confirm" onClick={() => {
+                    <Button type="button" variant="outline" onClick={onCancel}>取消</Button>
+                    <Button type="button" disabled={!ready} data-testid="csv-review-confirm" onClick={() => {
                         if (!ready || !active?.normalized || confirmed.current) return;
                         confirmed.current = true;
                         onConfirm(active.normalized);

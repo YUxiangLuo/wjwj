@@ -140,7 +140,6 @@ function AdminWorkspace({ user, onLogout }: { user: AdminUser; onLogout: () => P
                             size="sm"
                             aria-label="退出登录"
                             disabled={loggingOut}
-                            className="text-muted-foreground hover:bg-muted hover:text-foreground"
                             onClick={() => void handleLogout()}
                         >
                             <LogOut className="h-4 w-4" aria-hidden="true" />

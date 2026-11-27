@@ -252,3 +252,58 @@ test("TeacherManagement preserves appliedSearch empty recovery even when input t
     fireEvent.click(view.getAllByRole("button", { name: "清除搜索" })[0]!);
     await view.findByText("张岚");
 });
+
+test("SemesterManagement and ClassManagement enforce single primary Filled CTA and Tonal/Outlined row actions without w-full buttons", async () => {
+    dom = installDomGlobals();
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/semesters")) {
+            return Response.json({
+                success: true,
+                data: [
+                    { id: 1, name: "2026-2027-1", isCurrent: 1, classCount: 2, createdAt: "2026-09-01T00:00:00.000Z" },
+                    { id: 2, name: "2025-2026-2", isCurrent: 0, classCount: 0, createdAt: "2026-03-01T00:00:00.000Z" },
+                ],
+            });
+        }
+        if (url.includes("/teachers")) {
+            return Response.json({
+                success: true,
+                data: [{ id: 1, employeeId: "T001", name: "张岚", classCount: 1, createdAt: "2026-09-01T00:00:00.000Z" }],
+            });
+        }
+        return Response.json({
+            success: true,
+            data: [
+                { id: 3, name: "2026级商务统计1班", semesterId: 1, semesterName: "2026-2027-1", teacherId: 1, teacherName: "张岚", studentCount: 10, taskCount: 2, createdAt: "2026-09-01T00:00:00.000Z" },
+                { id: 4, name: "2026级商务统计2班", semesterId: 1, semesterName: "2026-2027-1", teacherId: 1, teacherName: "张岚", studentCount: 0, taskCount: 0, createdAt: "2026-09-02T00:00:00.000Z" },
+            ],
+        });
+    }) as unknown as typeof fetch;
+
+    const { SemesterManagement } = await import("./pages/SemesterManagement");
+    const semesterView = render(<SemesterManagement />);
+    await semesterView.findByText("2025-2026-2");
+
+    const semesterDefaultBtns = semesterView.container.querySelectorAll('[data-slot="button"][data-variant="default"]');
+    expect(semesterDefaultBtns).toHaveLength(1);
+    expect(semesterDefaultBtns[0]).toBe(semesterView.getByTestId("semester-create-open"));
+    expect(semesterView.getByTestId("semester-set-current-2").getAttribute("data-variant")).toBe("secondary");
+    expect(semesterView.getByTestId("semester-edit-open-2").getAttribute("data-variant")).toBe("ghost");
+    expect(semesterView.getByTestId("semester-delete-2").getAttribute("data-variant")).toBe("ghost");
+    for (const btn of semesterView.container.querySelectorAll('[data-slot="button"]')) {
+        expect(btn.className).not.toContain("w-full");
+    }
+    semesterView.unmount();
+
+    const { ClassManagement } = await import("./pages/ClassManagement");
+    const classView = render(<MemoryRouter><ClassManagement /></MemoryRouter>);
+    await classView.findByText("2026级商务统计2班");
+
+    const classDefaultBtns = classView.container.querySelectorAll('[data-slot="button"][data-variant="default"]');
+    expect(classDefaultBtns).toHaveLength(1);
+    expect(classDefaultBtns[0]).toBe(classView.getByTestId("class-create-open"));
+    for (const btn of classView.container.querySelectorAll('[data-slot="button"]')) {
+        expect(btn.className).not.toContain("w-full");
+    }
+});

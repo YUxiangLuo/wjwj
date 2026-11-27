@@ -36,6 +36,7 @@ test("DatetimePicker24 provides an explicit 确定 button to close the popover c
 
     const view = render(<Harness allowClear={false} />);
     const trigger = view.getByTestId("picker-trigger");
+    expect(trigger.getAttribute("data-slot")).toBe("popover-trigger");
     trigger.focus();
     fireEvent.click(trigger);
 
@@ -44,6 +45,8 @@ test("DatetimePicker24 provides an explicit 确定 button to close the popover c
 
     const confirmBtn = view.queryByRole("button", { name: "确定" });
     expect(confirmBtn !== null).toBe(true);
+    expect(confirmBtn?.getAttribute("data-variant")).toBe("secondary");
+    expect(popover.querySelectorAll('[data-slot="button"][data-variant="default"]')).toHaveLength(0);
     expect(view.queryByRole("button", { name: "清除" }) === null).toBe(true);
 
     fireEvent.click(confirmBtn!);

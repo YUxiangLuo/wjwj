@@ -214,7 +214,7 @@ export function ClassManagement() {
                     <h2 className="text-subheading font-medium text-foreground">班级管理</h2>
                     <p className="mt-0.5 text-label text-muted-foreground">按教学学期与授课教师维护班级建制，查看学生规模与实验任务关联。</p>
                 </div>
-                <Button data-testid="class-create-open" onClick={openAddModal}>
+                <Button type="button" data-testid="class-create-open" onClick={openAddModal}>
                     <Plus className="h-4 w-4" aria-hidden="true" />
                     创建班级
                 </Button>
@@ -330,34 +330,37 @@ export function ClassManagement() {
                                             </span>
                                         </TableCell>
                                         <TableCell className="px-4 py-2 text-right">
-                                            <div className="flex items-center justify-end gap-1">
+                                            <div className="flex items-center justify-end gap-1.5">
                                                 <Button
-                                                    variant="ghost"
+                                                    type="button"
+                                                    variant="outline"
                                                     size="sm"
                                                     onClick={() => navigate(`/student?classId=${cls.id}`)}
-                                                    className="h-8 px-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                                    className="h-8 px-2.5"
                                                 >
                                                     <Users className="h-3.5 w-3.5" aria-hidden="true" />
                                                     学生
                                                 </Button>
                                                 <Button
+                                                    type="button"
                                                     data-testid={`class-edit-open-${cls.id}`}
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => openEditModal(cls)}
-                                                    className="h-8 px-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                                    className="h-8 px-2"
                                                 >
                                                     <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                                                     编辑
                                                 </Button>
                                                 <Button
+                                                    type="button"
                                                     variant="ghost"
                                                     size="sm"
                                                     data-testid={`class-delete-${cls.id}`}
                                                     onClick={() => void handleDelete(cls)}
                                                     disabled={blockers.length > 0}
                                                     title={blockers.length > 0 ? `已有 ${blockers.join("、")}，无法删除` : "删除班级"}
-                                                    className="h-8 px-2 text-muted-foreground hover:bg-destructive-muted hover:text-destructive"
+                                                    className="h-8 px-2 text-destructive hover:bg-destructive-muted hover:text-destructive"
                                                 >
                                                     <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                                                     删除

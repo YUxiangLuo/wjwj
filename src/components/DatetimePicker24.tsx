@@ -87,22 +87,18 @@ export function DatetimePicker24({
 
     return (
         <Popover open={disabled ? false : open} onOpenChange={(nextOpen) => { if (!disabled) setOpen(nextOpen); }}>
-            <PopoverTrigger asChild>
-                <Button
-                    id={id}
-                    type="button"
-                    variant="outline"
-                    disabled={disabled}
-                    data-testid={dataTestId}
-                    className={cn(
-                        "w-full justify-start bg-background text-left font-normal text-foreground",
-                        !parsed && "text-muted-foreground",
-                        className
-                    )}
-                >
-                    <CalendarIcon className="mr-2 h-4 w-4 shrink-0 opacity-70" />
-                    <span className="truncate">{label}</span>
-                </Button>
+            <PopoverTrigger
+                id={id}
+                disabled={disabled}
+                data-testid={dataTestId}
+                className={cn(
+                    "flex h-10 w-full items-center justify-start gap-2 rounded-control border border-input bg-card px-3 py-2 text-left text-label font-normal text-foreground outline-none hover:border-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:border-border disabled:bg-muted disabled:text-muted-foreground",
+                    !parsed && "text-muted-foreground",
+                    className,
+                )}
+            >
+                <CalendarIcon aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="truncate">{label}</span>
             </PopoverTrigger>
             <PopoverContent
                 aria-label="日期与时间选择器"
@@ -165,7 +161,6 @@ export function DatetimePicker24({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="text-muted-foreground"
                             onClick={() => onChange("")}
                         >
                             清除
@@ -173,6 +168,7 @@ export function DatetimePicker24({
                     ) : <span />}
                     <Button
                         type="button"
+                        variant="secondary"
                         size="sm"
                         data-testid={dataTestId ? `${dataTestId}-confirm` : undefined}
                         onClick={() => setOpen(false)}

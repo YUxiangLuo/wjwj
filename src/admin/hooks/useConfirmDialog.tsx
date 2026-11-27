@@ -87,6 +87,7 @@ export function useConfirmDialog() {
                 </AlertDialogHeader>
                 <AlertDialogFooter className="gap-2 pt-1">
                     <AlertDialogCancel
+                        variant="outline"
                         data-testid="confirm-dialog-cancel"
                         onClick={() => close(false)}
                     >

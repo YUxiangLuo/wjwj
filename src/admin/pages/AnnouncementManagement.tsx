@@ -196,7 +196,7 @@ export function AnnouncementManagement() {
                     <h2 className="text-subheading font-medium text-foreground">公告管理</h2>
                     <p className="mt-0.5 text-label text-muted-foreground">面向全平台、教师端或学生端发布通知公告，公告向所选对象展示且不记录已读状态。</p>
                 </div>
-                <Button onClick={() => {
+                <Button type="button" onClick={() => {
                     setEditing(null);
                     setForm(emptyForm);
                     setShowPreview(false);
@@ -295,11 +295,12 @@ export function AnnouncementManagement() {
                                     </div>
                                     <RichTextContent html={item.content} className="line-clamp-2 text-label text-muted-foreground" />
                                 </div>
-                                <div className="flex shrink-0 items-center gap-1">
+                                <div className="flex shrink-0 items-center gap-1.5">
                                     <Button
+                                        type="button"
                                         variant="ghost"
                                         size="sm"
-                                        className="h-8 px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                        className="h-8 px-2.5"
                                         onClick={() => {
                                             setEditing(item);
                                             setForm({
@@ -314,9 +315,10 @@ export function AnnouncementManagement() {
                                         <Pencil className="h-3.5 w-3.5" aria-hidden="true" />编辑
                                     </Button>
                                     <Button
-                                        variant="ghost"
+                                        type="button"
+                                        variant={item.status === 1 ? "ghost" : "secondary"}
                                         size="sm"
-                                        className="h-8 px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                        className={item.status === 1 ? "h-8 px-2.5" : "h-8 px-3"}
                                         disabled={statusPendingIds.has(item.id)}
                                         onClick={() => void changeStatus(item)}
                                     >
@@ -324,11 +326,12 @@ export function AnnouncementManagement() {
                                         {item.status === 1 ? "撤下" : "发布"}
                                     </Button>
                                     <IconButton
+                                        type="button"
                                         aria-label={`删除公告：${item.title}`}
                                         title={`删除公告：${item.title}`}
                                         variant="ghost"
                                         size="icon-sm"
-                                        className="text-muted-foreground hover:bg-destructive-muted hover:text-destructive"
+                                        className="text-destructive hover:bg-destructive-muted hover:text-destructive"
                                         onClick={() => setAnnouncementToDelete(item)}
                                     >
                                         <Trash2 className="h-4 w-4" />
@@ -405,7 +408,7 @@ export function AnnouncementManagement() {
                                     size="sm"
                                     aria-pressed={showPreview}
                                     onClick={() => setShowPreview((prev) => !prev)}
-                                    className="h-7 px-2.5 text-meta text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    className="h-8 px-2.5"
                                 >
                                     {showPreview ? <EyeOff className="h-3.5 w-3.5" aria-hidden="true" /> : <Eye className="h-3.5 w-3.5" aria-hidden="true" />}
                                     {showPreview ? "收起预览" : "展示效果预览"}
@@ -487,8 +490,8 @@ export function AnnouncementManagement() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel disabled={deletePending}>取消</AlertDialogCancel>
-                        <Button variant="destructive" disabled={deletePending} onClick={() => void deleteAnnouncement()}>
+                        <AlertDialogCancel variant="outline" disabled={deletePending}>取消</AlertDialogCancel>
+                        <Button type="button" variant="destructive" disabled={deletePending} onClick={() => void deleteAnnouncement()}>
                             {deletePending ? "删除中…" : "永久删除"}
                         </Button>
                     </AlertDialogFooter>

@@ -197,3 +197,32 @@ test("unchanged announcement closes silently, but editing an existing body requi
     expect(confirm).toHaveBeenCalledTimes(1);
     expect((view.getByLabelText("内容") as HTMLTextAreaElement).value).toBe("改后的正文");
 });
+
+test("announcement list and editor dialog enforce MD3 single primary Filled CTA hierarchy", async () => {
+    dom = installDomGlobals();
+    globalThis.fetch = (async () => Response.json({
+        success: true,
+        data: [
+            { id: 1, title: "草稿公告", content: "<p>草稿正文</p>", targetScope: "all", status: 0, createdAt: "2026-09-20T00:00:00.000Z" },
+            { id: 2, title: "已发布公告", content: "<p>正式正文</p>", targetScope: "student", status: 1, createdAt: "2026-09-21T00:00:00.000Z" },
+        ],
+    })) as unknown as typeof fetch;
+
+    const { AnnouncementManagement } = await import("./AnnouncementManagement");
+    const view = render(<AnnouncementManagement />);
+    await view.findByText("草稿公告");
+
+    const pageDefaultBtns = view.container.querySelectorAll('[data-slot="button"][data-variant="default"]');
+    expect(pageDefaultBtns).toHaveLength(1);
+    expect(pageDefaultBtns[0]).toBe(view.getByRole("button", { name: "新建公告" }));
+    expect(view.getByRole("button", { name: "发布" }).getAttribute("data-variant")).toBe("secondary");
+    expect(view.getByRole("button", { name: "撤下" }).getAttribute("data-variant")).toBe("ghost");
+
+    fireEvent.click(view.getByRole("button", { name: "新建公告" }));
+    const dialog = await view.findByRole("dialog");
+    const dialogDefaultBtns = dialog.querySelectorAll('[data-slot="button"][data-variant="default"]');
+    expect(dialogDefaultBtns).toHaveLength(1);
+    expect(dialogDefaultBtns[0]?.textContent).toBe("发布");
+    expect(view.getByRole("button", { name: "保存草稿" }).getAttribute("data-variant")).toBe("secondary");
+    expect(view.getByRole("button", { name: "取消" }).getAttribute("data-variant")).toBe("outline");
+});

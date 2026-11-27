@@ -226,7 +226,7 @@ export function SemesterManagement() {
                     <h2 className="text-subheading font-medium text-foreground">学期管理</h2>
                     <p className="mt-0.5 text-label text-muted-foreground">维护教学学年学期档案，指定全平台默认活跃学期。</p>
                 </div>
-                <Button data-testid="semester-create-open" onClick={openAddModal}>
+                <Button type="button" data-testid="semester-create-open" onClick={openAddModal}>
                     <Plus className="h-4 w-4" aria-hidden="true" />
                     创建学期
                 </Button>
@@ -323,36 +323,39 @@ export function SemesterManagement() {
                                         </TableCell>
                                         <TableCell className="px-4 tabular-nums text-muted-foreground">{formatDate(semester.createdAt)}</TableCell>
                                         <TableCell className="px-4 text-right">
-                                            <div className="flex items-center justify-end gap-1">
+                                            <div className="flex items-center justify-end gap-1.5">
                                                 {!semester.isCurrent && (
                                                     <Button
+                                                        type="button"
                                                         data-testid={`semester-set-current-${semester.id}`}
-                                                        variant="ghost"
+                                                        variant="secondary"
                                                         size="sm"
                                                         disabled={settingCurrentId !== null}
                                                         onClick={() => void handleSetCurrent(semester)}
-                                                        className="h-8 px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                                        className="h-8 px-3"
                                                     >
                                                         <Star className="h-3.5 w-3.5" aria-hidden="true" />
                                                         设为当前
                                                     </Button>
                                                 )}
                                                 <Button
+                                                    type="button"
                                                     data-testid={`semester-edit-open-${semester.id}`}
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => openEdit(semester)}
-                                                    className="h-8 px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                                    className="h-8 px-2.5"
                                                 >
                                                     <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                                                     编辑
                                                 </Button>
                                                 <Button
+                                                    type="button"
                                                     variant="ghost"
                                                     size="sm"
                                                     data-testid={`semester-delete-${semester.id}`}
                                                     onClick={() => void handleDelete(semester)}
-                                                    className="h-8 px-2.5 text-muted-foreground hover:bg-destructive-muted hover:text-destructive"
+                                                    className="h-8 px-2.5 text-destructive hover:bg-destructive-muted hover:text-destructive"
                                                     disabled={blockers.length > 0}
                                                     title={blockers.length > 0 ? `已有 ${blockers.join("、")}，无法删除` : "删除学期"}
                                                 >

@@ -107,6 +107,11 @@ test("Dashboard renders clean MD3 KPIs, divided announcement rows before analyti
         Boolean(announcementsPanel.compareDocumentPosition(analyticsPanel) & Node.DOCUMENT_POSITION_FOLLOWING),
     ).toBe(true);
 
+    expect(view.container.querySelectorAll('[data-slot="button"][data-variant="default"]')).toHaveLength(0);
+    for (const btn of view.container.querySelectorAll('[data-slot="button"]')) {
+        expect(btn.className).not.toContain("w-full");
+    }
+
     expect(await getAccessibilityViolations(view.container)).toEqual([]);
 });
 
