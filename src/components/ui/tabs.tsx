@@ -121,20 +121,24 @@ function TabsList({
       }}
       aria-label={ariaLabel}
       aria-labelledby={ariaLabelledBy}
-      data-slot="tabs-list"
-      className={cn(
-        "min-h-10 w-fit overflow-visible border-b border-border bg-transparent text-muted-foreground [&_.MuiTabs-scroller]:overflow-visible [&_.MuiTabs-indicator]:hidden",
-        className,
-      )}
+      className="contents"
       slotProps={{
+        scroller: {
+          className: "contents",
+          style: { overflow: "visible", marginBottom: 0 },
+        },
+        indicator: {
+          className: "hidden",
+        },
         list: {
+          "data-slot": "tabs-list",
           className: cn(
-            "inline-flex min-h-10 w-full items-center justify-start gap-1",
+            "inline-flex min-h-10 w-fit items-center justify-start gap-1 border-b border-border bg-transparent text-muted-foreground",
             className,
           ),
-        },
+        } as Record<string, unknown>,
       }}
-      {...(props as Omit<React.ComponentProps<typeof MuiTabs>, "value" | "onChange" | "children">)}
+      {...(props as Omit<React.ComponentProps<typeof MuiTabs>, "value" | "onChange" | "children" | "className">)}
     >
       {children}
     </MuiTabs>
@@ -228,11 +232,11 @@ function TabsTrigger({
         }
       }}
       className={cn(
-        "relative inline-flex min-h-10 min-w-0 flex-initial items-center justify-center gap-1.5 whitespace-nowrap rounded-control px-3.5 py-2 text-label font-medium text-muted-foreground transition-colors outline-none",
+        "relative inline-flex min-h-10 min-w-0 max-w-none flex-initial flex-row items-center justify-center gap-1.5 overflow-visible whitespace-nowrap rounded-control px-3.5 py-2 text-label font-medium text-muted-foreground opacity-100 transition-colors outline-none",
         "hover:bg-muted hover:text-foreground",
         "data-[state=active]:text-primary",
         "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        "disabled:cursor-not-allowed disabled:bg-transparent disabled:text-muted-foreground",
+        "disabled:cursor-not-allowed disabled:bg-transparent disabled:text-muted-foreground [&.Mui-disabled]:opacity-100",
         "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}

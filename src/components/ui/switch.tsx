@@ -43,12 +43,11 @@ function Switch({
         setInternalChecked(nextChecked);
         onCheckedChange?.(nextChecked);
       }}
-      data-slot="switch"
-      data-state={actualChecked ? "checked" : "unchecked"}
       className={cn(
-        "peer inline-flex h-6 w-11 shrink-0 items-center overflow-visible p-0 align-middle",
+        "peer inline-flex h-6 w-11 shrink-0 items-center overflow-hidden rounded-toggle p-0 align-middle",
         "[&_.MuiSwitch-switchBase]:top-0.5 [&_.MuiSwitch-switchBase]:left-0.5 [&_.MuiSwitch-switchBase]:p-0",
         "[&_.MuiSwitch-switchBase.Mui-checked]:translate-x-5",
+        "[&_.MuiSwitch-switchBase_.MuiSwitch-input]:top-0 [&_.MuiSwitch-switchBase_.MuiSwitch-input]:left-0 [&_.MuiSwitch-switchBase_.MuiSwitch-input]:h-5 [&_.MuiSwitch-switchBase_.MuiSwitch-input]:w-full",
         "[&_.MuiSwitch-thumb]:size-5 [&_.MuiSwitch-thumb]:rounded-circle [&_.MuiSwitch-thumb]:border [&_.MuiSwitch-thumb]:border-border [&_.MuiSwitch-thumb]:bg-card [&_.MuiSwitch-thumb]:shadow-none",
         "[&_.MuiSwitch-track]:h-6 [&_.MuiSwitch-track]:w-11 [&_.MuiSwitch-track]:rounded-toggle [&_.MuiSwitch-track]:border [&_.MuiSwitch-track]:border-input [&_.MuiSwitch-track]:bg-muted [&_.MuiSwitch-track]:opacity-100",
         "[&_.MuiSwitch-switchBase.Mui-checked+.MuiSwitch-track]:border-primary [&_.MuiSwitch-switchBase.Mui-checked+.MuiSwitch-track]:bg-primary [&_.MuiSwitch-switchBase.Mui-checked+.MuiSwitch-track]:opacity-100",
@@ -57,6 +56,10 @@ function Switch({
         className,
       )}
       slotProps={{
+        root: {
+          "data-slot": "switch",
+          "data-state": actualChecked ? "checked" : "unchecked",
+        } as React.HTMLAttributes<HTMLSpanElement>,
         input: {
           ...restProps,
           role: "switch",

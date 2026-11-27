@@ -270,11 +270,10 @@ test("changing the config after failure creates a new request ID", async () => {
     fireEvent.change(workspace.querySelector("textarea")!, { target: { value: "修改后的研究问题是什么？" } });
     fireEvent.click(view.getByTestId("student-univariate-run"));
     await waitFor(() => expect(view.queryByRole("alert")).toBeNull());
+    await waitFor(() => expect(view.getByTestId("univariate-result-chart-2").querySelector("svg") !== null).toBe(true));
     expect(analysisPosts()).toHaveLength(2);
     expect(analysisPosts()[1]!.body!.requestId).not.toBe(analysisPosts()[0]!.body!.requestId);
     expect(analysisPosts()[1]!.body!.config.question).toBe("修改后的研究问题是什么？");
-    expect(view.queryByTestId("univariate-result-chart-2") !== null).toBe(true);
-    expect(view.getByTestId("univariate-result-chart-2").querySelector("svg") !== null).toBe(true);
 });
 
 test("renders overview cross-method CI chart, 4 ECharts multi-dimensional tabs (dist toggle + represent radar), and interactive zoom", async () => {

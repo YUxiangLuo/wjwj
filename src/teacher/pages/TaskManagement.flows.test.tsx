@@ -109,13 +109,13 @@ for (const failedResource of ["templates", "classes", "tasks"] as const) test(`a
     const dialog = within(view.getByRole("dialog"));
     await waitFor(() => expect(dialog.getByRole("alert").textContent).toContain(failedResource === "tasks" ? "已有任务加载失败" : "暂不可用"));
     expect(dialog.queryByText("无班级")).toBeNull();
-    expect(document.activeElement === dialog.getByRole("button", { name: "重试加载" })).toBe(true);
+    await waitFor(() => expect(document.activeElement === dialog.getByRole("button", { name: "重试加载" })).toBe(true));
     expect((dialog.getByTestId("teacher-task-publish-submit") as HTMLButtonElement).disabled).toBe(true);
     expect(createTask).not.toHaveBeenCalled();
     getTopics.mockResolvedValueOnce({ success: true, data: [published] });
     fireEvent.click(dialog.getByRole("button", { name: "重试加载" }));
     await waitFor(() => expect(dialog.getByTestId("teacher-task-topic-select").textContent).toBe("刚发布的模板"));
-    expect(document.activeElement === dialog.getByTestId("teacher-task-topic-select")).toBe(true);
+    await waitFor(() => expect(document.activeElement === dialog.getByTestId("teacher-task-topic-select")).toBe(true));
     expect(dialog.queryByRole("alert")).toBeNull();
 });
 

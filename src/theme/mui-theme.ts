@@ -145,6 +145,9 @@ export const muiTheme = createTheme({
                     textTransform: "none",
                     fontWeight: 500,
                     boxShadow: "none",
+                    "&.Mui-disabled": {
+                        opacity: 1,
+                    },
                 },
             },
         },
@@ -153,6 +156,9 @@ export const muiTheme = createTheme({
                 root: {
                     borderRadius: 8,
                     fontWeight: 500,
+                    "&.Mui-disabled": {
+                        opacity: 1,
+                    },
                 },
             },
         },
@@ -204,6 +210,23 @@ export const muiTheme = createTheme({
                 },
             },
         },
+        MuiMenuItem: {
+            styleOverrides: {
+                root: {
+                    "&.Mui-disabled": {
+                        opacity: 1,
+                    },
+                },
+            },
+        },
+        MuiSwitch: {
+            styleOverrides: {
+                input: {
+                    left: 0,
+                    width: "100%",
+                },
+            },
+        },
         MuiTabs: {
             styleOverrides: {
                 indicator: {
@@ -223,12 +246,20 @@ export const muiTheme = createTheme({
                     textTransform: "none",
                     fontWeight: 500,
                     minHeight: 40,
+                    opacity: 1,
+                    flexDirection: "row",
+                    maxWidth: "none",
+                    overflow: "visible",
+                    "&.Mui-disabled": {
+                        opacity: 1,
+                    },
                 },
             },
         },
         MuiDrawer: {
             styleOverrides: {
                 paper: {
+                    zIndex: 20,
                     backgroundColor: MD3_LIGHT_TOKENS.navigation,
                     color: MD3_LIGHT_TOKENS.navigationForeground,
                     borderColor: MD3_LIGHT_TOKENS.navigationBorder,

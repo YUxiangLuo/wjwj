@@ -163,16 +163,36 @@ function DialogContent({
   const context = React.useContext(DialogContext);
   const open = Boolean(context?.open);
   const paperRef = React.useRef<HTMLDivElement | null>(null);
+  const didAutoFocusRef = React.useRef(false);
   const openAutoFocusRef = React.useRef(onOpenAutoFocus);
   openAutoFocusRef.current = onOpenAutoFocus;
   const closeAutoFocusRef = React.useRef(onCloseAutoFocus);
   closeAutoFocusRef.current = onCloseAutoFocus;
+
+  if (!open) {
+    didAutoFocusRef.current = false;
+  }
 
   const setPaperRef = React.useCallback(
     (node: HTMLDivElement | null) => {
       paperRef.current = node;
       if (typeof ref === "function") ref(node);
       else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+
+      if (node && !didAutoFocusRef.current) {
+        didAutoFocusRef.current = true;
+        const autoFocusEvent = new CustomEvent("openautofocus", { cancelable: true });
+        openAutoFocusRef.current?.(autoFocusEvent);
+        if (!autoFocusEvent.defaultPrevented && !node.contains(document.activeElement)) {
+          const firstFocusable =
+            node.querySelector<HTMLElement>(
+              'input:not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not(:disabled):not([data-slot="dialog-close"]), [href], [tabindex]:not([tabindex="-1"])',
+            )
+            ?? node.querySelector<HTMLElement>("button:not(:disabled)")
+            ?? node;
+          firstFocusable.focus({ preventScroll: true });
+        }
+      }
     },
     [ref],
   );
@@ -186,17 +206,6 @@ function DialogContent({
 
   React.useLayoutEffect(() => {
     if (!open) return;
-    const autoFocusEvent = new CustomEvent("openautofocus", { cancelable: true });
-    openAutoFocusRef.current?.(autoFocusEvent);
-    if (!autoFocusEvent.defaultPrevented) {
-      const panel = paperRef.current;
-      if (panel && !panel.contains(document.activeElement)) {
-        const firstFocusable = panel.querySelector<HTMLElement>(
-          'input:not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not(:disabled):not([data-slot="dialog-close"]), [href], [tabindex]:not([tabindex="-1"])',
-        ) ?? panel.querySelector<HTMLElement>('button:not(:disabled)') ?? panel;
-        firstFocusable.focus({ preventScroll: true });
-      }
-    }
     return () => {
       const closeEvent = new CustomEvent("closeautofocus", { cancelable: true });
       closeAutoFocusRef.current?.(closeEvent);
@@ -209,7 +218,7 @@ function DialogContent({
     <MuiDialog
       open={open}
       transitionDuration={0}
-      disableAutoFocus={Boolean(onOpenAutoFocus)}
+      disableAutoFocus
       disableRestoreFocus
       aria-labelledby={context.hasTitle ? context.titleId : undefined}
       aria-describedby={context.hasDescription ? context.descriptionId : undefined}

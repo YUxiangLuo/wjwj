@@ -32,7 +32,7 @@ export function WorkspaceSidebar({
             slotProps={{
                 paper: {
                     className:
-                        "sticky top-0 flex h-dvh w-60 flex-col overflow-hidden border-r border-navigation-border bg-navigation text-navigation-foreground shadow-none",
+                        "sticky top-0 z-20 flex h-dvh w-60 flex-col overflow-hidden border-r border-navigation-border bg-navigation text-navigation-foreground shadow-none",
                 },
             }}
         >

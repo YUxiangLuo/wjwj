@@ -76,7 +76,7 @@ function Select<T extends string = string>({
 
   const setTriggerEl = React.useCallback((el: HTMLButtonElement | null) => {
     triggerRef.current = el;
-    setTriggerElState(el);
+    setTriggerElState((prev) => (prev === el ? prev : el));
   }, []);
 
   const actualValue = value ?? internalValue;
@@ -116,19 +116,22 @@ function Select<T extends string = string>({
     [onValueChange, setOpen],
   );
 
-  const itemLabels = collectSelectItemLabels(children);
+  const itemLabels = React.useMemo(() => collectSelectItemLabels(children), [children]);
 
-  const contextValue: SelectContextValue = {
-    value: actualValue,
-    onValueChange: handleValueChange,
-    open: actualOpen,
-    setOpen,
-    disabled,
-    triggerEl,
-    setTriggerEl,
-    listboxId,
-    itemLabels,
-  };
+  const contextValue = React.useMemo<SelectContextValue>(
+    () => ({
+      value: actualValue,
+      onValueChange: handleValueChange,
+      open: actualOpen,
+      setOpen,
+      disabled,
+      triggerEl,
+      setTriggerEl,
+      listboxId,
+      itemLabels,
+    }),
+    [actualOpen, actualValue, disabled, handleValueChange, itemLabels, listboxId, setOpen, setTriggerEl, triggerEl],
+  );
 
   return (
     <MaterialThemeProvider>
@@ -183,17 +186,18 @@ function SelectTrigger({
   ...props
 }: SelectTriggerProps) {
   const context = React.useContext(SelectContext);
+  const setTriggerEl = context?.setTriggerEl;
   const isDisabled = Boolean(triggerDisabled || context?.disabled);
   const isOpen = Boolean(context?.open);
   const hasSelection = Boolean(context && context.value !== "" && context.itemLabels.has(context.value));
 
   const setTriggerRef = React.useCallback(
     (node: HTMLButtonElement | null) => {
-      context?.setTriggerEl(node);
+      setTriggerEl?.(node);
       if (typeof ref === "function") ref(node);
       else if (ref) (ref as React.MutableRefObject<HTMLButtonElement | null>).current = node;
     },
-    [context, ref],
+    [setTriggerEl, ref],
   );
 
   return (

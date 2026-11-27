@@ -26,6 +26,7 @@ const primitiveSet = new Set<string>(MUI_UI_PRIMITIVES);
 const FORBIDDEN_RADIX_PRIMITIVES = [
   "@radix-ui/react-alert-dialog",
   "@radix-ui/react-avatar",
+  "@radix-ui/react-compose-refs",
   "@radix-ui/react-dialog",
   "@radix-ui/react-label",
   "@radix-ui/react-popover",
@@ -69,6 +70,17 @@ export async function auditUiPrimitives(components: readonly string[]) {
       if (source.includes(legacyPkg)) {
         issues.push(`${path}: contains legacy Radix import ${legacyPkg}; keep it migrated to @mui/material.`);
       }
+    }
+  }
+
+  const pkg = (await Bun.file("package.json").json()) as {
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+  };
+  const declaredDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+  for (const legacyPkg of FORBIDDEN_RADIX_PRIMITIVES) {
+    if (legacyPkg in declaredDeps) {
+      issues.push(`package.json: unused legacy Radix dependency ${legacyPkg} must be removed.`);
     }
   }
 

@@ -37,7 +37,7 @@ function Popover({
 
   const setAnchorEl = React.useCallback((el: HTMLElement | null) => {
     anchorRef.current = el;
-    setAnchorElState(el);
+    setAnchorElState((prev) => (prev === el ? prev : el));
   }, []);
 
   useControlledOverlayFocusRestore(actualOpen, anchorRef);
@@ -70,15 +70,16 @@ const PopoverTrigger = React.forwardRef<
   React.ComponentPropsWithoutRef<"button"> & { asChild?: boolean }
 >(({ asChild = false, onClick, ...props }, forwardedRef) => {
   const context = React.useContext(PopoverContext);
+  const setAnchorEl = context?.setAnchorEl;
   const Comp = asChild ? Slot : "button";
 
   const setRef = React.useCallback(
     (node: HTMLButtonElement | null) => {
-      context?.setAnchorEl(node);
+      setAnchorEl?.(node);
       if (typeof forwardedRef === "function") forwardedRef(node);
       else if (forwardedRef) (forwardedRef as React.MutableRefObject<HTMLButtonElement | null>).current = node;
     },
-    [context, forwardedRef],
+    [setAnchorEl, forwardedRef],
   );
 
   return (
@@ -105,15 +106,16 @@ const PopoverAnchor = React.forwardRef<
   React.ComponentPropsWithoutRef<"div"> & { asChild?: boolean }
 >(({ asChild = false, ...props }, forwardedRef) => {
   const context = React.useContext(PopoverContext);
+  const setAnchorEl = context?.setAnchorEl;
   const Comp = asChild ? Slot : "div";
 
   const setRef = React.useCallback(
     (node: HTMLDivElement | null) => {
-      context?.setAnchorEl(node);
+      setAnchorEl?.(node);
       if (typeof forwardedRef === "function") forwardedRef(node);
       else if (forwardedRef) (forwardedRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
     },
-    [context, forwardedRef],
+    [setAnchorEl, forwardedRef],
   );
 
   return <Comp ref={setRef} data-slot="popover-anchor" {...props} />;

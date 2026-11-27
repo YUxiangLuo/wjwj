@@ -139,16 +139,34 @@ function AlertDialogContent({
   const context = React.useContext(AlertDialogContext);
   const open = Boolean(context?.open);
   const paperRef = React.useRef<HTMLDivElement | null>(null);
+  const didAutoFocusRef = React.useRef(false);
   const openAutoFocusRef = React.useRef(onOpenAutoFocus);
   openAutoFocusRef.current = onOpenAutoFocus;
   const closeAutoFocusRef = React.useRef(onCloseAutoFocus);
   closeAutoFocusRef.current = onCloseAutoFocus;
+
+  if (!open) {
+    didAutoFocusRef.current = false;
+  }
 
   const setPaperRef = React.useCallback(
     (node: HTMLDivElement | null) => {
       paperRef.current = node;
       if (typeof ref === "function") ref(node);
       else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+
+      if (node && !didAutoFocusRef.current) {
+        didAutoFocusRef.current = true;
+        const autoFocusEvent = new CustomEvent("openautofocus", { cancelable: true });
+        openAutoFocusRef.current?.(autoFocusEvent);
+        if (!autoFocusEvent.defaultPrevented && !node.contains(document.activeElement)) {
+          const cancelOrFirst =
+            node.querySelector<HTMLElement>('[data-slot="alert-dialog-cancel"]:not(:disabled)')
+            ?? node.querySelector<HTMLElement>('button:not(:disabled), [tabindex]:not([tabindex="-1"])')
+            ?? node;
+          cancelOrFirst.focus({ preventScroll: true });
+        }
+      }
     },
     [ref],
   );
@@ -162,18 +180,6 @@ function AlertDialogContent({
 
   React.useLayoutEffect(() => {
     if (!open) return;
-    const autoFocusEvent = new CustomEvent("openautofocus", { cancelable: true });
-    openAutoFocusRef.current?.(autoFocusEvent);
-    if (!autoFocusEvent.defaultPrevented) {
-      const panel = paperRef.current;
-      if (panel && !panel.contains(document.activeElement)) {
-        const cancelOrFirst =
-          panel.querySelector<HTMLElement>('[data-slot="alert-dialog-cancel"]:not(:disabled)')
-          ?? panel.querySelector<HTMLElement>('button:not(:disabled), [tabindex]:not([tabindex="-1"])')
-          ?? panel;
-        cancelOrFirst.focus({ preventScroll: true });
-      }
-    }
     return () => {
       const closeEvent = new CustomEvent("closeautofocus", { cancelable: true });
       closeAutoFocusRef.current?.(closeEvent);
@@ -186,7 +192,7 @@ function AlertDialogContent({
     <MuiDialog
       open={open}
       transitionDuration={0}
-      disableAutoFocus={Boolean(onOpenAutoFocus)}
+      disableAutoFocus
       disableRestoreFocus
       aria-labelledby={context.hasTitle ? context.titleId : undefined}
       aria-describedby={context.hasDescription ? context.descriptionId : undefined}
