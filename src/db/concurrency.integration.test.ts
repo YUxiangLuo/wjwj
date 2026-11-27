@@ -323,22 +323,46 @@ pgTest("a class keeps its teacher: reassignment is not a supported write path", 
     expect(currentGrade.status).toBe(200);
 });
 
-pgTest("hard deleting a student requires confirming the cascaded submissions", async () => {
+pgTest("hard deleting a student requires confirming the cascaded submissions and binds confirmation to the current preview", async () => {
     const group = await fixture();
     const { experiment } = await addSubmission(group);
     const token = await session(2, group.teachers[0]!.id);
-
-    const refused = await teacherAuth.withTeacherAuth(classroom.studentRoutes).DELETE!(
-        request("DELETE", { id: String(group.students[0]!.id) }, undefined, `teacher_session=${token}`),
+    const cookie = `teacher_session=${token}`;
+    const params = { id: String(group.students[0]!.id) };
+    const remove = (body?: unknown, query = "") => teacherAuth.withTeacherAuth(classroom.studentRoutes).DELETE!(
+        request("DELETE", params, body, cookie, query),
     );
+
+    const refused = await remove();
     expect(refused.status).toBe(409);
     expect(await refused.json()).toMatchObject({ error: { code: "SUBMISSIONS_EXIST" } });
     expect(await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, experiment.id))).toHaveLength(1);
 
-    const confirmed = await teacherAuth.withTeacherAuth(classroom.studentRoutes).DELETE!(
-        request("DELETE", { id: String(group.students[0]!.id) }, undefined, `teacher_session=${token}`, "?confirm=1"),
+    const missingImpact = await remove(undefined, "?confirm=1");
+    expect(missingImpact.status).toBe(409);
+    expect(await missingImpact.json()).toMatchObject({ error: { code: "DELETION_IMPACT_CHANGED" } });
+    expect((await remove({ confirm: "true", expectedImpact: { experiments: 1, submitted: 1, graded: 0 } })).status).toBe(400);
+    expect((await remove({ confirm: true, expectedImpact: { experiments: -1, submitted: 1, graded: 0 } })).status).toBe(400);
+
+    const preview = await teacherAuth.withTeacherAuth(classroom.studentDeletionPreviewRoutes).GET!(
+        request("GET", params, undefined, cookie),
     );
+    const { impact } = (await preview.json()).data;
+    expect(impact).toEqual({ experiments: 1, submitted: 1, graded: 0 });
+
+    await application.db.update(schema.experiment).set({ status: "graded" }).where(eq(schema.experiment.id, experiment.id));
+    const stale = await remove({ confirm: true, expectedImpact: impact });
+    expect(stale.status).toBe(409);
+    expect(await stale.json()).toMatchObject({ error: { code: "DELETION_IMPACT_CHANGED" } });
+    expect(await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, experiment.id))).toHaveLength(1);
+
+    const refreshed = await classroom.getStudentDeletionImpact({
+        teacherId: group.teachers[0]!.id,
+        studentId: group.students[0]!.id,
+    });
+    const confirmed = await remove({ confirm: true, expectedImpact: refreshed });
     expect(confirmed.status).toBe(200);
+    expect(await application.db.select().from(schema.student).where(eq(schema.student.id, group.students[0]!.id))).toHaveLength(0);
     expect(await application.db.select().from(schema.experiment).where(eq(schema.experiment.id, experiment.id))).toHaveLength(0);
 });
 

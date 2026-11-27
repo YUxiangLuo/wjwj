@@ -248,7 +248,6 @@ function StudentAppContent() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-            <AppToaster />
         </div>
     );
 }
@@ -257,6 +256,7 @@ export function StudentApp() {
     return (
         <MaterialThemeProvider>
             <StudentProvider><StudentAppContent /></StudentProvider>
+            <AppToaster />
         </MaterialThemeProvider>
     );
 }

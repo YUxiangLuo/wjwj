@@ -1,11 +1,19 @@
 import { afterEach, expect, mock, spyOn, test } from "bun:test";
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
+import { toast } from "sonner";
 import { installDomGlobals } from "../test-utils/dom";
 
 const originalFetch = globalThis.fetch;
 let dom: ReturnType<typeof installDomGlobals>;
-afterEach(async () => { await act(async () => cleanup()); mock.restore(); globalThis.fetch = originalFetch; dom?.restore(); });
+afterEach(async () => {
+    toast.dismiss();
+    await act(async () => cleanup());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    mock.restore();
+    globalThis.fetch = originalFetch;
+    dom?.restore();
+});
 function Location() { return <output data-testid="location">{useLocation().pathname}</output>; }
 
 for (const role of ["student", "teacher", "admin"] as const) {

@@ -182,7 +182,6 @@ function AdminWorkspace({ user, onLogout }: { user: AdminUser; onLogout: () => P
                 rules={passwordChange.rules}
                 forbiddenHintLabel={ADMIN_PASSWORD_POLICY.forbiddenLabel}
             />
-            <AppToaster />
         </>
     );
 }
@@ -192,22 +191,31 @@ export function AdminApp() {
     const { user, checking, error, retry } = useWorkspaceAuth(authApi.me);
     useDocumentTitle(getAdminDocumentTitle(location.pathname));
 
-    if (checking) return <MaterialThemeProvider><LoadingStatus className="min-h-screen bg-background" label="正在验证管理员登录状态" /></MaterialThemeProvider>;
-    if (error) return <MaterialThemeProvider><main className="min-h-screen bg-background p-8"><RequestError message={error} onRetry={() => void retry()} /></main></MaterialThemeProvider>;
-    if (location.pathname === "/login") return <MaterialThemeProvider>{user ? <Navigate to="/" replace /> : <Login />}</MaterialThemeProvider>;
-    if (!user) return <MaterialThemeProvider><Navigate to="/login" replace /></MaterialThemeProvider>;
+    const content = checking
+        ? <LoadingStatus className="min-h-screen bg-background" label="正在验证管理员登录状态" />
+        : error
+            ? <main className="min-h-screen bg-background p-8"><RequestError message={error} onRetry={() => void retry()} /></main>
+            : location.pathname === "/login"
+                ? (user ? <Navigate to="/" replace /> : <Login />)
+                : !user
+                    ? <Navigate to="/login" replace />
+                    : (
+                        <AdminWorkspace
+                            user={user}
+                            onLogout={async () => {
+                                const response = await authApi.logout();
+                                if (!response.success) {
+                                    toast.error("尚未安全退出，请检查网络后重试。不要将设备交给他人。");
+                                    return;
+                                }
+                            }}
+                        />
+                    );
+
     return (
         <MaterialThemeProvider>
-            <AdminWorkspace
-                user={user}
-                onLogout={async () => {
-                    const response = await authApi.logout();
-                    if (!response.success) {
-                        toast.error("尚未安全退出，请检查网络后重试。不要将设备交给他人。");
-                        return;
-                    }
-                }}
-            />
+            {content}
+            <AppToaster />
         </MaterialThemeProvider>
     );
 }
