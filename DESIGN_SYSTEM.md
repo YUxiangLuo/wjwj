@@ -61,6 +61,15 @@
 - **基础 UI 原语（`src/components/ui/**`）**：底层全部基于 `@mui/material`（`MuiButton`、`MuiChip`、`MuiPaper`、`styled("input")` / `styled("textarea")`、`MuiFormLabel`、`MuiDivider`、`MuiLinearProgress`、`MuiSwitch`、`MuiSlider`、`MuiAvatar`、`MuiTable*`、`MuiTabs`/`MuiTab`、`MuiDialog`、`MuiPopover`、`MuiMenu`/`MuiMenuItem`），同时严格保留复合组件导出 API、`asChild` 组合、[accessible-name.ts](src/components/ui/accessible-name.ts) 编译期无障碍命名强约束、`TableHead scope="col"`、[controlled-overlay-focus.ts](src/components/ui/controlled-overlay-focus.ts) 受控弹窗焦点恢复（含 `AlertDialog` `fallbackFocusRef`）以及 [overlay-inert.ts](src/components/ui/overlay-inert.ts) 背景 `inert` 隔离。严禁用外部模板覆盖这些文件，运行 `bun run audit:shadcn` 校验 `@mui/material` 归属。
 - **共享业务组件**：状态标签统一使用 [StatusBadge.tsx](src/components/StatusBadge.tsx)（基于 MUI `Chip` 的 `8px` 标签），低调图标容器使用 [IconTile.tsx](src/components/IconTile.tsx)，指标卡使用 [KpiStatCard.tsx](src/components/KpiStatCard.tsx)，页面头部使用 [PageHeader.tsx](src/components/PageHeader.tsx)。
 
+### MD3 按钮四级强调规范（[button.tsx](src/components/ui/button.tsx)）
+
+全平台严格执行正统 Google Material Design 3 胶囊按钮（`rounded-pill`）四级主次层级，彻底消除满屏抢眼的 `w-full` 100% 满宽实心蓝横条：
+
+1. **`default`（MD3 Filled，最高强调）**：`bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active`（`#0b57d0` 实心蓝底白字）。**每屏最多保留 1 个**最高强调主按钮（例如顶部唯一新建入口、[TaskHall.tsx](src/student/pages/TaskHall.tsx)「当前优先推进课题」焦点主入口、实验工作台单阶段主推进按钮或提交确认主按钮）；**列表与网格卡片内部严禁使用 `w-full` 实心蓝大按钮**。
+2. **`secondary`（MD3 Filled Tonal，中高强调）**：`border-transparent bg-accent text-accent-foreground hover:bg-primary-border active:bg-primary-border`（`#c2e7ff` 浅蓝胶囊底 + `#001d35` 深蓝字，对比度 > 10:1 WCAG AAA）。对标 Gmail / Google Drive 的柔和强调按钮，用于进行中课题卡片入口、全屏沉浸式预览、保存密码或局部计算触发等次主操作，不与 `#0b57d0` 实心主按钮抢夺视觉重心。
+3. **`outline`（MD3 Outlined，中等强调）**：`border-border bg-card text-primary hover:border-primary-border hover:bg-primary-muted`（细腻 `#dde3ea` 描边 + `#0b57d0` 蓝色文字，取代粗黑 `#747775` 控件框）。用于常规次级操作（查看任务书、查看快照/成绩、下载模板、导出数据、弹窗取消等）；退回重调等警示次级动作可组合 `border-destructive-border text-destructive hover:border-destructive-border hover:bg-destructive-muted`。
+4. **`ghost`（MD3 Text，低强调）**：`bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground`。用于返回导航、卡片内辅助链接、图标操作等低干扰动作（需主色文字引导时可叠加 `text-primary hover:text-primary`）。
+
 ---
 
 ## 5. Google Material / Looker Studio 图表架构（Apache ECharts SVG）

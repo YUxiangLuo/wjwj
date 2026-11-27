@@ -103,19 +103,19 @@ function DeadlineDisplay({ deadline, status, notOpenYet }: { deadline: string | 
     if (!deadline) return null;
     if (status === "graded") return null;
     if (notOpenYet) {
-        return <span className="text-label text-muted-foreground">尚未开放</span>;
+        return <span className="text-meta font-medium text-muted-foreground">尚未开放</span>;
     }
 
     const remaining = getRemainingDeadlineSummary(deadline);
     if (!remaining) return null;
     if (remaining.passed) {
-        return <span className="text-label text-muted-foreground">已截止</span>;
+        return <span className="text-meta font-medium text-muted-foreground">已截止</span>;
     }
 
     if (remaining.remainingMs <= DAY_MS) {
         return (
-            <span className="flex items-center gap-1 text-label font-medium text-destructive">
-                <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="inline-flex items-center gap-1 text-meta font-medium text-destructive">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                 还剩 {remaining.wholeHours} 小时 {remaining.leftoverMinutes} 分钟
             </span>
         );
@@ -123,14 +123,14 @@ function DeadlineDisplay({ deadline, status, notOpenYet }: { deadline: string | 
 
     if (remaining.remainingMs <= 7 * DAY_MS) {
         return (
-            <span className="flex items-center gap-1 text-label font-medium text-warning">
-                <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="inline-flex items-center gap-1 text-meta font-medium text-warning">
+                <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                 还剩 {remaining.wholeDays} 天 {remaining.leftoverHours} 小时
             </span>
         );
     }
 
-    return <span className="text-label text-muted-foreground">还剩 {remaining.calendarDays} 天</span>;
+    return <span className="text-meta font-medium text-muted-foreground">还剩 {remaining.calendarDays} 天</span>;
 }
 
 interface TaskCardProps {
@@ -147,24 +147,32 @@ function TaskCard({ task }: TaskCardProps) {
             ? { label: "未开放", intent: "neutral" as StatusBadgeIntent }
             : statusConfig[task.status];
 
-    const getActionButton = () => {
+    const getActionButton = (): {
+        text: string;
+        variant: "secondary" | "outline";
+        className?: string;
+    } => {
         if (notOpenYet && ACTIVE_TASK_STATUSES.includes(task.status)) {
-            return { text: "未开放", variant: "outline" as const };
+            return { text: "未开放", variant: "outline" };
         }
         if (expired) {
-            return { text: "已截止", variant: "outline" as const };
+            return { text: "已截止", variant: "outline" };
         }
         switch (task.status) {
             case "not_started":
-                return { text: "开始立项调研", variant: "default" as const };
+                return { text: "开始立项调研", variant: "outline" };
             case "in_progress":
-                return { text: "继续闭环实验", variant: "default" as const };
+                return { text: "继续闭环实验", variant: "secondary" };
             case "submitted":
-                return { text: "查看提交快照", variant: "outline" as const };
+                return { text: "查看提交快照", variant: "outline" };
             case "graded":
-                return { text: "查看成绩与评语", variant: "outline" as const };
+                return { text: "查看成绩与评语", variant: "outline" };
             case "rejected":
-                return { text: "按意见重新调优", variant: "destructive" as const };
+                return {
+                    text: "按意见重新调优",
+                    variant: "outline",
+                    className: "border-destructive-border text-destructive hover:border-destructive-border hover:bg-destructive-muted",
+                };
         }
     };
 
@@ -188,10 +196,10 @@ function TaskCard({ task }: TaskCardProps) {
 
     return (
         <Card
-            className="flex h-full flex-col gap-4 rounded-surface border border-border bg-card py-5 transition-none hover:border-primary-border"
+            className="flex h-full flex-col gap-3.5 rounded-surface border border-border bg-card py-4 transition-none hover:border-primary-border"
             data-testid={`student-task-card-${task.id}`}
         >
-            <CardHeader className="pb-1 text-foreground">
+            <CardHeader className="pb-0 text-foreground">
                 <div className="flex items-start justify-between gap-2.5">
                     <CardTitle className="min-w-0 flex-1 text-subheading font-medium text-foreground">
                         <Link
@@ -210,10 +218,10 @@ function TaskCard({ task }: TaskCardProps) {
                 </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col">
-                <div className="flex flex-1 flex-col gap-4">
+                <div className="flex flex-1 flex-col gap-3.5">
                     {task.status !== "graded" && task.status !== "rejected" && (
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between text-label">
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-meta">
                                 <span className="text-muted-foreground">闭环完成度</span>
                                 <div className="flex items-center gap-2">
                                     {task.activeWaveNumber && task.activeWaveNumber >= 1 && task.status === "in_progress" && (
@@ -224,7 +232,7 @@ function TaskCard({ task }: TaskCardProps) {
                                     <span className="font-medium tabular-nums text-foreground">{task.progress}%</span>
                                 </div>
                             </div>
-                            <Progress aria-label={`${task.name}实验进度`} value={task.progress} className="h-2 bg-muted [&>div]:bg-primary" />
+                            <Progress aria-label={`${task.name}实验进度`} value={task.progress} className="h-1.5 bg-muted [&>div]:bg-primary" />
                             {task.status === "in_progress" && task.currentStage > 0 && task.currentStage <= stageNames.length && (
                                 <p className="flex items-center gap-1.5 text-meta text-muted-foreground">
                                     <span className="h-1.5 w-1.5 rounded-circle bg-primary" aria-hidden="true" />
@@ -235,54 +243,65 @@ function TaskCard({ task }: TaskCardProps) {
                     )}
 
                     {task.status === "graded" && task.score !== undefined && (
-                        <div className="flex items-center justify-between rounded-surface bg-muted px-4 py-3">
-                            <span className="text-label text-muted-foreground">综合结项评分</span>
-                            <span className="text-page-title font-medium tabular-nums text-success">{task.score}</span>
+                        <div className="flex items-center justify-between rounded-surface bg-muted px-3.5 py-2.5">
+                            <span className="text-meta text-muted-foreground">综合结项评分</span>
+                            <span className="text-section-title font-medium tabular-nums text-success">{task.score}</span>
                         </div>
                     )}
 
                     {task.status === "rejected" && task.rejectReason && (
                         <div className="rounded-surface border border-destructive-border bg-destructive-muted p-3 text-label text-destructive">
-                            <div className="mb-1 flex items-center gap-1.5 font-medium">
+                            <div className="mb-1 flex items-center gap-1.5 text-meta font-medium">
                                 <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> 教师退回意见
                             </div>
-                            <div className="text-meta leading-relaxed">{task.rejectReason}</div>
+                            <div className="line-clamp-3 text-meta leading-relaxed">{task.rejectReason}</div>
                         </div>
                     )}
 
-                    <div className="mt-auto space-y-4">
-                        <div className="flex items-center justify-between border-t border-border pt-3">
-                            <div className="space-y-0.5 text-meta tabular-nums text-muted-foreground">
-                                <div>{notOpenYet ? "开放" : "发布"}：{formatDateTime(task.publishedAt)}</div>
-                                <div>截止：{formatDateTime(task.deadline)}</div>
+                    <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3.5">
+                        <div className="min-w-0 flex-1 space-y-0.5 tabular-nums">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                {disabled ? (
+                                    <span className="text-meta font-medium text-muted-foreground">
+                                        {notOpenYet ? "尚未开放，暂不可操作" : "已截止，无法继续操作"}
+                                    </span>
+                                ) : task.status === "graded" ? (
+                                    <span className="text-meta text-muted-foreground">已结项归档</span>
+                                ) : task.deadline ? (
+                                    <DeadlineDisplay deadline={task.deadline} status={task.status} notOpenYet={notOpenYet} />
+                                ) : (
+                                    <span className="text-meta text-muted-foreground">长期开放</span>
+                                )}
                             </div>
-                            <DeadlineDisplay deadline={task.deadline} status={task.status} notOpenYet={notOpenYet} />
+                            <div className="truncate text-meta text-muted-foreground">
+                                {notOpenYet
+                                    ? `开放：${formatDateTime(task.publishedAt)}`
+                                    : task.deadline
+                                        ? `截止：${formatDateTime(task.deadline)}`
+                                        : `发布：${formatDateTime(task.publishedAt)}`}
+                            </div>
                         </div>
 
-                        <div className="flex gap-2">
-                            <Button
-                                className="w-full flex-1"
-                                variant={action.variant}
-                                disabled={disabled}
-                                onClick={() => { void handlePrimaryAction(); }}
-                                data-testid={`student-task-primary-${task.id}`}
-                            >
-                                {action.text}
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
+                        <div className="flex shrink-0 items-center gap-1.5">
                             {task.status === "rejected" && (
-                                <Button asChild variant="outline" className="shrink-0">
+                                <Button asChild variant="ghost" size="sm" className="px-2.5">
                                     <Link to={`/task/${task.id}/result`} aria-label={`查看${task.name}退回快照`}>
                                         批改详情
                                     </Link>
                                 </Button>
                             )}
+                            <Button
+                                size="sm"
+                                variant={action.variant}
+                                className={action.className}
+                                disabled={disabled}
+                                onClick={() => { void handlePrimaryAction(); }}
+                                data-testid={`student-task-primary-${task.id}`}
+                            >
+                                {action.text}
+                                {!disabled && <ChevronRight className="h-4 w-4" />}
+                            </Button>
                         </div>
-                        {disabled && (
-                            <div className="rounded-control bg-muted px-4 py-2 text-center text-meta text-muted-foreground">
-                                {notOpenYet ? "任务尚未开放，暂不可操作" : "已截止，无法继续操作"}
-                            </div>
-                        )}
                     </div>
                 </div>
             </CardContent>
@@ -372,7 +391,7 @@ export function TaskHall() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-5">
             <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
                     <h1 className="text-page-title font-medium text-foreground">商业调研实验大厅</h1>
@@ -392,7 +411,7 @@ export function TaskHall() {
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 px-2.5 text-meta font-medium text-primary"
+                            className="h-7 px-2.5 text-meta font-medium text-primary hover:bg-primary-muted hover:text-primary"
                             onClick={() => {
                                 setSelectedAnnouncement(latestAnnouncement);
                                 setShowAnnouncements(true);
@@ -405,7 +424,7 @@ export function TaskHall() {
             </div>
 
             {tasks.length > 0 && (
-                <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,13rem),1fr))] gap-4" data-testid="student-hall-kpis">
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,13rem),1fr))] gap-3.5" data-testid="student-hall-kpis">
                     <KpiStatCard
                         label="可执行调研课题"
                         value={hallMetrics.actionable}
@@ -440,7 +459,7 @@ export function TaskHall() {
             {spotlightTask && (
                 <section
                     aria-label="当前优先推进课题"
-                    className={`flex flex-wrap items-center justify-between gap-5 rounded-surface border p-5 ${
+                    className={`flex flex-wrap items-center justify-between gap-5 rounded-surface border px-5 py-4 ${
                         spotlightTask.status === "rejected"
                             ? "border-destructive-border bg-card"
                             : "border-border bg-muted"
@@ -485,7 +504,7 @@ export function TaskHall() {
                                 <Link to={`/task/${spotlightTask.id}/result`}>查看批改详情</Link>
                             </Button>
                         )}
-                        <Button asChild variant={spotlightTask.status === "rejected" ? "destructive" : "default"}>
+                        <Button asChild variant="default">
                             <Link to={spotlightTask.status === "not_started" ? `/task/${spotlightTask.id}` : `/task/${spotlightTask.id}/experiment`}>
                                 {spotlightTask.status === "not_started"
                                     ? "查看并启动调研"

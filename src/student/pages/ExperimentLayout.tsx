@@ -334,7 +334,7 @@ function ExperimentWorkspace() {
                                     variant="outline"
                                     data-testid="student-refresh-experiment"
                                     onClick={reloadPage}
-                                    className="h-7 border-destructive-border bg-card px-2.5 text-meta text-destructive hover:bg-destructive-muted hover:text-destructive"
+                                    className="h-7 border-destructive-border bg-card px-2.5 text-meta text-destructive hover:border-destructive-border hover:bg-destructive-muted hover:text-destructive"
                                 >
                                     <RefreshCw className="h-3.5 w-3.5" />
                                     刷新页面
@@ -447,10 +447,11 @@ function ExperimentWorkspace() {
                         )}
                     </div>
                     <DialogFooter className="shrink-0 border-t border-border pt-3">
-                        <Button type="button" variant="outline" onClick={() => setInspectStage(null)}>返回当前阶段</Button>
+                        <Button type="button" variant="secondary" onClick={() => setInspectStage(null)}>返回当前阶段</Button>
                         <Button
                             type="button"
-                            variant="destructive"
+                            variant="outline"
+                            className="border-destructive-border text-destructive hover:border-destructive-border hover:bg-destructive-muted"
                             onClick={() => {
                                 const stage = inspectStage;
                                 setInspectStage(null);

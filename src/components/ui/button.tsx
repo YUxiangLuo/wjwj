@@ -6,8 +6,11 @@ import { cva, type VariantProps } from "class-variance-authority";
 import type { AccessibleLabelProps } from "@/components/ui/accessible-name";
 import { cn } from "@/lib/utils";
 
-// Google Material Design 3 capsule buttons: flat elevation, crisp state layers,
-// zero ripple, immediate color response without flashing transitions.
+// Google Material Design 3 four-tier button emphasis hierarchy:
+// - default (Filled): single primary CTA per screen (#0b57d0 solid)
+// - secondary (Filled Tonal): medium-high emphasis (#c2e7ff tonal pill + #001d35 ink)
+// - outline (Outlined): medium emphasis (#dde3ea crisp border + #0b57d0 primary ink)
+// - ghost (Text): low emphasis (subtle hover state layer, zero chrome)
 const buttonVariants = cva(
   "inline-flex min-w-0 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-pill text-label font-medium shadow-none transition-none outline-none disabled:cursor-not-allowed disabled:border-border disabled:bg-muted disabled:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background aria-invalid:border-destructive aria-invalid:ring-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
@@ -19,11 +22,11 @@ const buttonVariants = cva(
         success:
           "bg-success text-success-foreground hover:bg-success-hover",
         outline:
-          "border border-input bg-card text-foreground hover:border-primary-border hover:bg-primary-muted hover:text-primary",
+          "border border-border bg-card text-primary hover:border-primary-border hover:bg-primary-muted",
         secondary:
-          "border border-transparent bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground",
+          "border border-transparent bg-accent text-accent-foreground hover:bg-primary-border active:bg-primary-border",
         ghost:
-          "bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground",
+          "bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground",
         link: "bg-transparent text-primary underline-offset-4 hover:bg-transparent hover:underline",
       },
       size: {

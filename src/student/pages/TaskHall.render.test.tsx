@@ -197,3 +197,34 @@ test("TaskHall continues in-progress experiments and opens not-yet-started topic
     fireEvent.click(view.getByTestId("student-task-primary-9"));
     await waitFor(() => expect(view.getByTestId("location-probe").textContent).toBe("/task/9/experiment"));
 });
+
+test("TaskHall enforces single primary Filled CTA in spotlight and compact Tonal/Outlined capsules on grid cards", async () => {
+    installFetch([
+        buildTask({ id: 1, status: "not_started", name: "未开始任务" }),
+        buildTask({ id: 2, status: "in_progress", name: "进行中任务", progress: 40, currentStage: 2 }),
+        buildTask({ id: 3, status: "submitted", name: "已提交任务", progress: 100, currentStage: 5 }),
+        buildTask({ id: 4, status: "graded", name: "已批改任务", progress: 100, currentStage: 5, score: 92 }),
+        buildTask({ id: 5, status: "rejected", name: "退回任务", progress: 100, currentStage: 5, rejectReason: "补充检验" }),
+    ]);
+
+    const view = renderTaskHall();
+    await waitFor(() => expect(view.getByTestId("student-task-card-2")).toBeTruthy());
+
+    // Entire hall renders exactly 1 default (Filled) button inside spotlightTask.
+    const defaultButtons = view.container.querySelectorAll('[data-slot="button"][data-variant="default"]');
+    expect(defaultButtons).toHaveLength(1);
+    expect(view.getByTestId("student-hall-spotlight").contains(defaultButtons[0]!)).toBe(true);
+
+    // Grid cards use compact capsules (no w-full) with Tonal secondary for in_progress and Outlined for others.
+    const inProgressBtn = view.getByTestId("student-task-primary-2");
+    const notStartedBtn = view.getByTestId("student-task-primary-1");
+    const rejectedBtn = view.getByTestId("student-task-primary-5");
+    expect(inProgressBtn.getAttribute("data-variant")).toBe("secondary");
+    expect(notStartedBtn.getAttribute("data-variant")).toBe("outline");
+    expect(rejectedBtn.getAttribute("data-variant")).toBe("outline");
+    expect(rejectedBtn.className).toContain("text-destructive");
+
+    for (const id of [1, 2, 3, 4, 5]) {
+        expect(view.getByTestId(`student-task-primary-${id}`).className).not.toContain("w-full");
+    }
+});

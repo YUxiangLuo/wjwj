@@ -161,7 +161,7 @@ export function TopicDetails() {
     return (
         <div className="space-y-4 pb-4" data-testid="student-task-detail">
             <div>
-                <Button asChild variant="ghost" size="sm" className="-ml-2.5 h-8 gap-1.5 px-2.5 text-label text-muted-foreground hover:text-foreground">
+                <Button asChild variant="ghost" size="sm" className="-ml-2.5 h-8 gap-1.5 px-2.5">
                     <Link to="/">
                         <ArrowLeft className="h-4 w-4" />
                         返回实验大厅
@@ -185,19 +185,19 @@ export function TopicDetails() {
                             <span>{notOpenYet ? getOpeningLabel(task.publishedAt) : getDeadlineLabel(task.deadline)}</span>
                         </div>
                     </div>
-                    <div className="shrink-0 space-y-2 text-right" data-testid="student-task-action">
+                    <div className="shrink-0 space-y-1.5 text-right" data-testid="student-task-action">
                         {task.status === "graded" && task.score !== undefined && (
                             <p className="text-label font-medium tabular-nums text-success">实验成绩：{task.score}</p>
                         )}
                         {action.link && !action.disabled ? (
-                            <Button asChild size="lg">
+                            <Button asChild variant={task.status === "submitted" || task.status === "graded" ? "secondary" : "default"}>
                                 <Link to={action.link}>
                                     {action.text}
                                     <ChevronRight className="h-4 w-4" />
                                 </Link>
                             </Button>
                         ) : (
-                            <Button size="lg" disabled>
+                            <Button variant="outline" disabled>
                                 {action.text}
                             </Button>
                         )}
@@ -336,13 +336,13 @@ export function TopicDetails() {
                             <section className="space-y-2 border-t border-border pt-3.5" data-testid="student-task-built-in-questionnaire-resource">
                                 <h2 className="text-subheading font-medium text-foreground">标准问卷设计资料</h2>
                                 <p className="text-label text-muted-foreground">调查问卷设计规范与模板</p>
-                                <div className="flex gap-2">
+                                <div className="flex flex-wrap gap-2">
                                     <Button asChild variant="outline" size="sm">
                                         <a href="/templates/调查问卷设计规范与模板.pdf" target="_blank" rel="noreferrer">
                                             预览 PDF
                                         </a>
                                     </Button>
-                                    <Button asChild size="sm">
+                                    <Button asChild variant="outline" size="sm">
                                         <a href="/templates/调查问卷设计规范与模板.docx" download>
                                             下载 DOCX
                                         </a>

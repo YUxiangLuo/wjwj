@@ -103,7 +103,7 @@ export function Profile() {
                     </h1>
                     <p className="mt-1 text-label text-muted-foreground">查看你的账号资料与安全设置</p>
                 </div>
-                <Button variant="outline" onClick={() => navigate("/")}>
+                <Button variant="outline" size="sm" onClick={() => navigate("/")}>
                     <ArrowLeft className="h-4 w-4" />
                     返回首页
                 </Button>
@@ -237,15 +237,17 @@ export function Profile() {
                                 密码已更新
                             </div>
                         )}
-                        <Button
-                            className="mt-2 w-full"
-                            onClick={handleChangePassword}
-                            disabled={saving}
-                            aria-busy={saving}
-                            data-testid="student-profile-password-save"
-                        >
-                            {saving ? "保存中..." : "保存新密码"}
-                        </Button>
+                        <div className="flex justify-end pt-1">
+                            <Button
+                                variant="secondary"
+                                onClick={handleChangePassword}
+                                disabled={saving}
+                                aria-busy={saving}
+                                data-testid="student-profile-password-save"
+                            >
+                                {saving ? "保存中..." : "保存新密码"}
+                            </Button>
+                        </div>
                     </CardContent>
                 </Card>
             </div>

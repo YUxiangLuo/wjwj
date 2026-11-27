@@ -56,7 +56,7 @@ export function SubmissionDetailPage() {
     return (
         <div className="mx-auto max-w-4xl space-y-5" data-testid="student-submission-detail" data-submission-status={detail.status}>
             <div className="flex items-center justify-between gap-4">
-                <Button asChild variant="ghost" size="sm" className="-ml-2.5 h-8 gap-1.5 px-2.5 text-label text-muted-foreground hover:text-foreground">
+                <Button asChild variant="ghost" size="sm" className="-ml-2.5 h-8 gap-1.5 px-2.5">
                     <Link to={`/task/${detail.taskId}`}><ArrowLeft className="h-4 w-4" />返回任务</Link>
                 </Button>
             </div>
@@ -120,19 +120,21 @@ export function SubmissionDetailPage() {
                     data-testid="student-submission-rejection"
                     className="rounded-surface border border-destructive-border bg-card p-5"
                 >
-                    <div className="flex flex-wrap items-center gap-2">
-                        <StatusBadge intent="destructive">
-                            <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
-                            已驳回
-                        </StatusBadge>
-                        <h2 className="text-subheading font-medium text-foreground">需要修改后重新提交</h2>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <StatusBadge intent="destructive">
+                                <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                                已驳回
+                            </StatusBadge>
+                            <h2 className="text-subheading font-medium text-foreground">需要修改后重新提交</h2>
+                        </div>
+                        <Button asChild variant="default" size="sm">
+                            <Link to={`/task/${detail.taskId}/experiment`}>继续修改</Link>
+                        </Button>
                     </div>
                     <p className="mt-3 whitespace-pre-line rounded-control bg-destructive-muted px-4 py-3 text-label leading-relaxed text-destructive">
                         {detail.rejectReason}
                     </p>
-                    <Button asChild className="mt-4">
-                        <Link to={`/task/${detail.taskId}/experiment`}>继续修改</Link>
-                    </Button>
                 </section>
             )}
 

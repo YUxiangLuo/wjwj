@@ -200,3 +200,42 @@ test("AuthLoginScreen renders centered Google Workspace Paper card without legac
     expect(view.container.querySelector(".MuiPaper-root")).not.toBeNull();
     expect(view.getByRole("heading", { name: "学生登录" })).not.toBeNull();
 });
+
+test("Button enforces Google MD3 four-tier emphasis hierarchy (Filled, Filled Tonal, Outlined, Text)", () => {
+    const view = render(
+        <MaterialThemeProvider>
+            <div>
+                <Button variant="default">主操作</Button>
+                <Button variant="secondary">次主操作</Button>
+                <Button variant="outline">描边次级</Button>
+                <Button variant="ghost">文本低强调</Button>
+                <Button variant="ghost" className="text-primary hover:text-primary">主色文本</Button>
+            </div>
+        </MaterialThemeProvider>,
+    );
+
+    const filled = view.getByRole("button", { name: "主操作" });
+    const tonal = view.getByRole("button", { name: "次主操作" });
+    const outlined = view.getByRole("button", { name: "描边次级" });
+    const textBtn = view.getByRole("button", { name: "文本低强调" });
+    const primaryTextBtn = view.getByRole("button", { name: "主色文本" });
+
+    expect(filled.className).toContain("bg-primary");
+    expect(filled.className).toContain("text-primary-foreground");
+
+    expect(tonal.className).toContain("bg-accent");
+    expect(tonal.className).toContain("text-accent-foreground");
+    expect(tonal.className).toContain("hover:bg-primary-border");
+
+    expect(outlined.className).toContain("border-border");
+    expect(outlined.className).toContain("bg-card");
+    expect(outlined.className).toContain("text-primary");
+    expect(outlined.className).not.toContain("border-input");
+
+    expect(textBtn.className).toContain("bg-transparent");
+    expect(textBtn.className).toContain("text-muted-foreground");
+    expect(textBtn.className).toContain("hover:bg-muted");
+
+    expect(primaryTextBtn.classList.contains("text-primary")).toBe(true);
+    expect(primaryTextBtn.classList.contains("text-muted-foreground")).toBe(false);
+});

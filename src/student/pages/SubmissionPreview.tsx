@@ -204,7 +204,7 @@ export function SubmissionPreview() {
     return (
         <div className="mx-auto max-w-4xl space-y-5" data-testid="student-submission-preview">
             <div>
-                <Button asChild variant="ghost" size="sm" className="-ml-2.5 h-8 gap-1.5 px-2.5 text-label text-muted-foreground hover:text-foreground">
+                <Button asChild variant="ghost" size="sm" className="-ml-2.5 h-8 gap-1.5 px-2.5">
                     <Link to={`/task/${task.id}/experiment`}>
                         <ArrowLeft className="h-4 w-4" />
                         返回修改
@@ -218,7 +218,7 @@ export function SubmissionPreview() {
                             实验课题：<span className="font-medium text-foreground">{task.name}</span>
                         </p>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => setShowFullPreview(true)}>
+                    <Button variant="secondary" size="sm" onClick={() => setShowFullPreview(true)}>
                         <Maximize2 className="h-4 w-4" />
                         全屏预览
                     </Button>
@@ -246,11 +246,11 @@ export function SubmissionPreview() {
                     )}
                 </div>
                 <Button
-                    size="lg"
+                    variant="default"
                     onClick={() => setConfirmOpen(true)}
                     disabled={!canSubmit || submitting || refreshRequired}
                     data-testid="student-preview-submit"
-                    className="shrink-0 px-7"
+                    className="shrink-0"
                 >
                     {submitting ? (
                         <>
