@@ -173,4 +173,36 @@ describe("fieldwork-wave-service empirical variance verification (QA-S2-03)", ()
             fieldworkConfig: teaPricingFieldworkConfig,
         })).toBeNull();
     });
+
+    test("C-05 rejects tampered Wave 1 fieldwork records or mismatched sampling indices via replay verification", () => {
+        const { population, dictionary, wave1 } = createMultiMethodWave1Fixture();
+
+        const tamperedDisposition = structuredClone(wave1);
+        tamperedDisposition.fieldwork!.methods.simple!.records[0]!.durationSec += 1;
+        expect(getVerifiedWave1EmpiricalVariances({
+            waves: [tamperedDisposition],
+            population,
+            fieldMapping: teaPricingFieldMapping,
+            fieldworkConfig: teaPricingFieldworkConfig,
+            dictionary,
+        })).toEqual([]);
+        expect(getVerifiedWave1EmpiricalVariance({
+            waves: [tamperedDisposition],
+            population,
+            fieldMapping: teaPricingFieldMapping,
+            fieldworkConfig: teaPricingFieldworkConfig,
+            dictionary,
+        })).toBeNull();
+
+        const tamperedIndices = structuredClone(wave1);
+        const sr = tamperedIndices.samplingResults as Record<string, { indices: number[] }>;
+        sr.simple!.indices = [...sr.simple!.indices.slice(1), 239];
+        expect(getVerifiedWave1EmpiricalVariances({
+            waves: [tamperedIndices],
+            population,
+            fieldMapping: teaPricingFieldMapping,
+            fieldworkConfig: teaPricingFieldworkConfig,
+            dictionary,
+        })).toEqual([]);
+    });
 });

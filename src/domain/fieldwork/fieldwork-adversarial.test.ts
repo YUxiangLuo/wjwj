@@ -1263,4 +1263,140 @@ describe("Diagnostics mathematical invariants, zero-count guards, post-stratific
         expect(diag.strata).toHaveLength(2);
         expect(diag.estimates.find((e) => e.key === "full_invited_benchmark")?.standardError).not.toBeNull();
     });
+
+    test("C-01..C-04 fieldwork diagnostics regressions: exact cancellation, subnormal SE underflow, 1e300 benchmark SE, and post-stratification caveat", () => {
+        // C-01 & C-04: asymmetric opposite-sign large numbers (~3e100 / 3 / -1e100) with [1, 2, 3] strata/PPS weights -> exact +1
+        const base = 2 ** 332 + 2 ** 281;
+        const triple = 3 * base;
+        const cancelPop = [
+            { id: "1", grp: "A", y: triple },
+            { id: "2", grp: "B", y: 3 },
+            { id: "3", grp: "B", y: 3 },
+            { id: "4", grp: "C", y: -base },
+            { id: "5", grp: "C", y: -base },
+            { id: "6", grp: "C", y: -base },
+        ];
+        const cancelFw: MethodFieldworkResult = {
+            method: "stratified",
+            dispatchSeed: 101,
+            dispatchedAt: "2026-11-27T00:00:00Z",
+            invitedCount: 3,
+            records: [0, 1, 3].map((populationIndex) => ({
+                populationIndex,
+                disposition: "valid_complete" as const,
+                durationSec: 45,
+                answeredQuestionCount: 2,
+            })),
+        };
+        const cancelDiag = buildMethodFieldworkDiagnostics({
+            method: "stratified",
+            population: cancelPop,
+            samplingIndices: [0, 1, 3],
+            stratifyBy: "grp",
+            layers: [
+                { name: "A", count: 1, sampleCount: 1 },
+                { name: "B", count: 2, sampleCount: 1 },
+                { name: "C", count: 3, sampleCount: 1 },
+            ],
+            fieldworkResult: cancelFw,
+            questionnaire: qSimple,
+            frameFields: ["id", "grp"],
+            identifierField: "id",
+            analysisTarget: { kind: "mean", field: "y" },
+        });
+        expect(cancelDiag.populationTruth).toBe(1);
+        for (const key of ["cleaned_design", "uncleaned_raw", "nonresponse_calibrated", "full_invited_benchmark"] as const) {
+            expect(cancelDiag.estimates.find((e) => e.key === key)?.estimate).toBe(1);
+        }
+        // C-04: nonresponse_calibrated explicitly states the within-stratum MAR premise and MNAR limitation
+        const calDesc = cancelDiag.estimates.find((e) => e.key === "nonresponse_calibrated")!.description;
+        expect(calDesc).toContain("仅在层内无回答近似随机时缓解层间应答率差异，不能消除层内选择性无回答偏差");
+
+        const ppsCancelDiag = buildMethodFieldworkDiagnostics({
+            method: "pps",
+            population: cancelPop,
+            samplingIndices: [0, 1, 3],
+            inclusionProbabilities: [1, 1 / 2, 1 / 3],
+            fieldworkResult: { ...cancelFw, method: "pps" },
+            questionnaire: qSimple,
+            frameFields: ["id", "grp"],
+            identifierField: "id",
+            analysisTarget: { kind: "mean", field: "y" },
+        });
+        expect(ppsCancelDiag.estimates.find((e) => e.key === "cleaned_design")?.estimate).toBe(1);
+        expect(ppsCancelDiag.estimates.find((e) => e.key === "nonresponse_calibrated")?.estimate).toBe(1);
+        expect(ppsCancelDiag.estimates.find((e) => e.key === "full_invited_benchmark")?.estimate).toBe(1);
+
+        // C-02: N = 50 subnormal binary population, n = 35 invited, 25 valid (24 zeros + 1 MIN_VALUE) -> SE must be null, never fake 0
+        const subnormalPop = Array.from({ length: 50 }, (_, i) => ({
+            id: `S${i}`,
+            grp: i < 25 ? "A" : "B",
+            y: i < 25 ? 0 : Number.MIN_VALUE,
+        }));
+        const subSampleIdx = Array.from({ length: 35 }, (_, i) => i);
+        const subRecords = subSampleIdx.map((populationIndex, pos) => ({
+            populationIndex,
+            disposition: pos < 24 || pos === 25 ? ("valid_complete" as const) : ("refused" as const),
+            durationSec: pos < 24 || pos === 25 ? 40 : 0,
+            answeredQuestionCount: pos < 24 || pos === 25 ? 2 : 0,
+        }));
+        // Make sure Stratum B has >= 2 respondents for stratified/post-stratified non-census check too
+        subRecords[26] = { populationIndex: 26, disposition: "valid_complete", durationSec: 40, answeredQuestionCount: 2 };
+        // Add one 0 in Stratum B so Stratum B itself has nonzero subnormal dispersion (0 and MIN_VALUE)
+        subnormalPop[26] = { id: "S26", grp: "B", y: 0 };
+
+        const subDiag = buildMethodFieldworkDiagnostics({
+            method: "simple",
+            population: subnormalPop,
+            samplingIndices: subSampleIdx,
+            fieldworkResult: {
+                method: "simple",
+                dispatchSeed: 102,
+                dispatchedAt: "2026-11-27T00:00:00Z",
+                invitedCount: 35,
+                records: subRecords,
+            },
+            questionnaire: qSimple,
+            frameFields: ["id", "grp"],
+            identifierField: "id",
+            analysisTarget: { kind: "mean", field: "y" },
+        });
+        for (const key of ["cleaned_design", "uncleaned_raw", "nonresponse_calibrated", "full_invited_benchmark"] as const) {
+            const est = subDiag.estimates.find((e) => e.key === key)!;
+            expect(est.standardError).toBeNull();
+            expect(est.halfWidth).toBeNull();
+        }
+        assertNoNonFiniteOrNegZero(subDiag);
+
+        // C-03: [1e300, 1e300 + 1e284, 1e300 - 1e284] (N = 3, n = 2) SRS full_invited_benchmark retains finite SE
+        const hugeClosePop = [
+            { id: "H1", grp: "A", y: 1e300 },
+            { id: "H2", grp: "A", y: 1e300 + 1e284 },
+            { id: "H3", grp: "B", y: 1e300 - 1e284 },
+        ];
+        const hugeDiag = buildMethodFieldworkDiagnostics({
+            method: "simple",
+            population: hugeClosePop,
+            samplingIndices: [0, 1],
+            fieldworkResult: {
+                method: "simple",
+                dispatchSeed: 103,
+                dispatchedAt: "2026-11-27T00:00:00Z",
+                invitedCount: 2,
+                records: [
+                    { populationIndex: 0, disposition: "valid_complete", durationSec: 40, answeredQuestionCount: 2 },
+                    { populationIndex: 1, disposition: "valid_complete", durationSec: 40, answeredQuestionCount: 2 },
+                ],
+            },
+            questionnaire: qSimple,
+            frameFields: ["id", "grp"],
+            identifierField: "id",
+            analysisTarget: { kind: "mean", field: "y" },
+        });
+        const hugeBench = hugeDiag.estimates.find((e) => e.key === "full_invited_benchmark")!;
+        expect(hugeBench.standardError).not.toBeNull();
+        expect(Math.abs(hugeBench.standardError! / 6.070721107769136e+283 - 1)).toBeLessThan(1e-12);
+        expect(hugeBench.halfWidth).not.toBeNull();
+        assertNoNonFiniteOrNegZero(hugeDiag);
+    });
 });

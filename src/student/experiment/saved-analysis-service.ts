@@ -207,7 +207,14 @@ export async function createSavedAnalysis(studentId: number, classId: number, ta
             if (cause.code === "INVALID_ANALYSIS_INPUT") {
                 throw new AnalysisConflict(cause.message, cause.code, 400);
             }
-            if (["MISSING_FIELDWORK", "EMPTY_RESPONDENTS", "EMPTY_STRATUM_RESPONDENTS", "INVALID_GROUP_VARIABLE"].includes(cause.code)) {
+            if ([
+                "MISSING_FIELDWORK",
+                "EMPTY_RESPONDENTS",
+                "EMPTY_STRATUM_RESPONDENTS",
+                "INVALID_GROUP_VARIABLE",
+                "REPLAY_MISMATCH",
+                "INVALID_SAMPLE",
+            ].includes(cause.code)) {
                 throw new AnalysisConflict(cause.message, cause.code, 409);
             }
         }

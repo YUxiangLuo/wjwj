@@ -62,7 +62,7 @@ export function buildTargetAnalysis(params: {
     const populationValue = scaledMean(populationValues)!;
     const populationSd = sampleStandardDeviation(populationValues);
     const populationVar = populationSd * populationSd;
-    if (!Number.isFinite(populationValue) || !Number.isFinite(populationVar)) return null;
+    if (!Number.isFinite(populationValue) || !Number.isFinite(populationSd) || populationSd < 0) return null;
 
     const simpleRows = (params.samplingResults?.simple?.data ?? []) as Array<Record<string, unknown>>;
     const systematicRows = (params.samplingResults?.systematic?.data ?? []) as Array<Record<string, unknown>>;

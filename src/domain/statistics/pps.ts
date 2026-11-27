@@ -1,4 +1,4 @@
-import { toTrimmedCategory, type NumericAccessor, fieldAccessor } from "./values";
+import { toTrimmedCategory, type NumericAccessor, addExactProduct, fieldAccessor, powerOfTwoScale } from "./values";
 import { createSafeRecord } from "../../lib/safe-record";
 import { preparePPSSampling } from "./sampling";
 import { exactPpsStandardErrors } from "./pps-exact";
@@ -86,23 +86,31 @@ export function estimateWeightedValue(
     const valueScale = valid.reduce((maximum, item) => Math.max(maximum, Math.abs(item.value)), 0);
     if (valueScale === 0) return 0;
     const minimumProbability = valid.reduce((minimum, item) => Math.min(minimum, item.probability), Infinity);
+    const probabilityScale = powerOfTwoScale(minimumProbability);
+    const pow2ValueScale = powerOfTwoScale(valueScale);
     const numerator = new StableSum();
     const unscaledNumerator = new StableSum();
     const denominator = new StableSum();
     let productUnderflow = false;
     for (const item of valid) {
-        // min(π)/π is proportional to 1/π without overflowing for tiny π.
-        const normalizedWeight = minimumProbability / item.probability;
-        const product = normalizedWeight * item.value;
+        // pow2(min(π))/π shifts only the binary exponent relative to 1/π without overflowing for tiny π.
+        const normalizedWeight = probabilityScale / item.probability;
+        const product = addExactProduct(unscaledNumerator, normalizedWeight, item.value);
         // Subnormal products lose precision even when they do not round to zero.
         if (item.value !== 0 && normalizedWeight > 0 && Math.abs(product) < 2 ** -1022) productUnderflow = true;
-        unscaledNumerator.add(product);
-        numerator.add(normalizedWeight * (item.value / valueScale));
+        addExactProduct(numerator, normalizedWeight, item.value / pow2ValueScale);
         denominator.add(normalizedWeight);
     }
     // Preserve cancellation residuals unless original-unit products/sums lose range.
-    if (denominator.value > 0 && !productUnderflow && Number.isFinite(unscaledNumerator.value)) return unscaledNumerator.value / denominator.value;
-    return denominator.value > 0 ? (numerator.value / denominator.value) * valueScale : null;
+    if (denominator.value > 0 && !productUnderflow && Number.isFinite(unscaledNumerator.value)) {
+        const out = unscaledNumerator.value / denominator.value;
+        return Object.is(out, -0) ? 0 : out;
+    }
+    if (denominator.value > 0) {
+        const out = (numerator.value / denominator.value) * pow2ValueScale;
+        return Object.is(out, -0) ? 0 : out;
+    }
+    return null;
 }
 
 export function estimateWeightedMean(
@@ -131,6 +139,7 @@ export function estimateWeightedDistribution(
         (minimum, probability) => Math.min(minimum, probability),
         Infinity,
     );
+    const probabilityScale = powerOfTwoScale(minimumProbability);
     const counts = createSafeRecord<StableSum>();
     const totalWeight = new StableSum();
 
@@ -140,9 +149,8 @@ export function estimateWeightedDistribution(
         if (!Number.isFinite(inclusionProbability) || inclusionProbability <= 0) {
             continue;
         }
-        // min(π)/π is proportional to 1/π, but cannot overflow when a valid
-        // inclusion probability is too small for its reciprocal to be finite.
-        const weight = minimumProbability / inclusionProbability;
+        // pow2(min(π))/π is proportional to 1/π without overflowing when π is tiny.
+        const weight = probabilityScale / inclusionProbability;
         (counts[category] ??= new StableSum()).add(weight);
         totalWeight.add(weight);
     }

@@ -60,7 +60,7 @@ test("analysis metrics use the true population mean as the numeric comparison ba
     expect(numericX.populationMean).toBe(25);
     expect(numericX.methods.simple.estimate).toBe(10);
     expect(numericX.methods.systematic.estimate).toBe(20);
-    expect(numericX.methods.systematic.standardError).toBe(5);
+    expect(numericX.methods.systematic.standardError).toBeCloseTo(5, 14);
     expect(numericX.methods.stratified.estimate).toBe(25);
 });
 

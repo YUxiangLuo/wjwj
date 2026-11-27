@@ -1,9 +1,11 @@
 import { expect, test } from "bun:test";
 import { buildAnalysisMetrics } from "./analysis";
 import { buildPopulationNumericStats, buildStratifiedNumericStats } from "./population";
-import { sampleVariance, scaledMean } from "./values";
-import { buildPpsStandardErrorContext, estimateWeightedMean } from "./pps";
+import { sampleStandardDeviation, sampleVariance, scaledMean } from "./values";
+import { buildPpsStandardErrorContext, estimateWeightedMean, estimateWeightedValue } from "./pps";
 import { performPPSSampling, performSystematicSampling } from "./sampling";
+import { computeSimpleRandomValueSe, computeFinitePopulationEquivalentSampleSize } from "./srs";
+import { computeStratifiedValueEstimate } from "./stratified";
 import { StableSum } from "./stable-sum";
 import { computeSystematicExactMeanSe, computeSystematicExactValueSe } from "./systematic";
 import { calculateUnivariate } from "../variables/analysis";
@@ -215,4 +217,149 @@ test("QA-S2-04 StableSum adaptive expansion retains multi-tier nested cancellati
     const tieDown = new StableSum();
     for (const value of [1, 2 ** -53, -(2 ** -100)]) tieDown.add(value);
     expect(tieDown.value).toBe(1);
+});
+
+test("C-01 asymmetric opposite-sign large values and non-power-of-two weights/strata preserve exact +1 residual", () => {
+    // 1. Exact 3:1 dyadic ~3e100 / 3 / -1e100 (53-bit odd triple = 3 * base, exact real sum = 6, exact mean = +1)
+    //    plus decimal 3e20 / 3 / -1e20 (exact in both decimal and IEEE-754 binary64).
+    for (const [triple, base] of [
+        [3 * (2 ** 332 + 2 ** 281), 2 ** 332 + 2 ** 281],
+        [3e20, 1e20],
+    ] as const) {
+        const population = [
+            { grp: "A", y: triple },
+            { grp: "B", y: 3 },
+            { grp: "B", y: 3 },
+            { grp: "C", y: -base },
+            { grp: "C", y: -base },
+            { grp: "C", y: -base },
+        ];
+        expect(scaledMean(population.map((r) => r.y))).toBe(1);
+
+        const sample = [population[0]!, population[1]!, population[3]!];
+        const layers = [
+            { name: "A", count: 1, sampleCount: 1 },
+            { name: "B", count: 2, sampleCount: 1 },
+            { name: "C", count: 3, sampleCount: 1 },
+        ];
+        expect(computeStratifiedValueEstimate(sample, "grp", layers, 6, (r) => Number(r.y))).toBe(1);
+        expect(estimateWeightedValue(sample, (r) => Number(r.y), [1, 1 / 2, 1 / 3])).toBe(1);
+
+        const weightedRes = calculateUnivariate({
+            population: sample,
+            indices: [0, 1, 2],
+            variable: { field: "y", label: "y", unit: "", kind: "continuous", categories: [], missing: [] },
+            weighted: true,
+            weights: [1, 2, 3],
+        });
+        expect(weightedRes).toMatchObject({ kind: "numeric", mean: 1 });
+    }
+
+    // 2. Literal 1e100 / -1e100 with asymmetric weights [1, 2, 3, 1] (sum = 7, exact weighted sum = 7 -> mean = +1)
+    const litRows = [{ grp: "A", y: 1e100 }, { grp: "B", y: 1e100 }, { grp: "C", y: -1e100 }, { grp: "D", y: 7 }];
+    expect(computeStratifiedValueEstimate(
+        litRows,
+        "grp",
+        [
+            { name: "A", count: 1, sampleCount: 1 },
+            { name: "B", count: 2, sampleCount: 1 },
+            { name: "C", count: 3, sampleCount: 1 },
+            { name: "D", count: 1, sampleCount: 1 },
+        ],
+        7,
+        (r) => Number(r.y),
+    )).toBe(1);
+    expect(calculateUnivariate({
+        population: litRows,
+        indices: [0, 1, 2, 3],
+        variable: { field: "y", label: "y", unit: "", kind: "continuous", categories: [], missing: [] },
+        weighted: true,
+        weights: [1, 2, 3, 1],
+    })).toMatchObject({ kind: "numeric", mean: 1 });
+
+    // 3. Literal [3e100, 3, 3, -1e100, -1e100, -1e100] agrees across unweighted, stratified, and [1,2,3]-weighted
+    //    with the independent exact BigInt sum of the IEEE-754 binary64 inputs (never absorbed to 0 or 3x-amplified).
+    const exactLiteralMean = Number(BigInt(3e100) + 6n + 3n * BigInt(-1e100)) / 6;
+    const literalPop = [{ grp: "A", y: 3e100 }, { grp: "B", y: 3 }, { grp: "B", y: 3 }, { grp: "C", y: -1e100 }, { grp: "C", y: -1e100 }, { grp: "C", y: -1e100 }];
+    expect(scaledMean(literalPop.map((r) => r.y))).toBe(exactLiteralMean);
+    expect(computeStratifiedValueEstimate(
+        [literalPop[0]!, literalPop[1]!, literalPop[3]!],
+        "grp",
+        [{ name: "A", count: 1, sampleCount: 1 }, { name: "B", count: 2, sampleCount: 1 }, { name: "C", count: 3, sampleCount: 1 }],
+        6,
+        (r) => Number(r.y),
+    )).toBe(exactLiteralMean);
+
+    // 4. Overflow fallback at Number.MAX_VALUE clamps power-of-two exponent to 2^1023 (never 2^1024 = Infinity).
+    const maxOverflowMean = scaledMean([Number.MAX_VALUE, Number.MAX_VALUE, 0]);
+    expect(Number.isFinite(maxOverflowMean)).toBe(true);
+    expect(maxOverflowMean! / Number.MAX_VALUE).toBeCloseTo(2 / 3, 14);
+});
+
+test("C-02 non-census subnormal dispersion returns unavailable SE rather than underflowed fake 0", () => {
+    const population = Array.from({ length: 50 }, (_, i) => ({
+        grp: i < 25 ? "A" : "B",
+        y: i < 25 ? 0 : Number.MIN_VALUE,
+    }));
+    const popSd = sampleStandardDeviation(population.map((r) => r.y));
+    expect(popSd).toBeGreaterThan(0);
+
+    // Non-census n = 35 < 50: true SE > 0 underflows below 5e-324 -> must return null, matching systematic
+    expect(computeSimpleRandomValueSe(popSd * popSd, 50, 35, popSd)).toBeNull();
+    const nonCensusMetrics = buildAnalysisMetrics({
+        population,
+        fieldMapping: { numeric: ["y"], analysisTarget: { kind: "mean", field: "y" } },
+        samplingResults: {
+            simple: { completed: true, sampleCount: 35, data: population.slice(10, 45) },
+            systematic: { completed: true, sampleCount: 35, interval: 50 / 35, data: population.slice(10, 45) },
+        },
+    });
+    expect(nonCensusMetrics.target!.methods.simple).toMatchObject({
+        standardError: null,
+        marginOfError: null,
+        sampleSize: 35,
+        effectiveSampleSize: null,
+        reliability: { status: "unavailable" },
+    });
+    expect(nonCensusMetrics.target!.methods.systematic.standardError).toBeNull();
+
+    // True census n = 50 and constant subnormal population still return exact 0 SE
+    expect(computeSimpleRandomValueSe(popSd * popSd, 50, 50, popSd)).toBe(0);
+    const constantSubnormal = Array.from({ length: 50 }, () => ({ y: Number.MIN_VALUE }));
+    const constantMetrics = buildAnalysisMetrics({
+        population: constantSubnormal,
+        fieldMapping: { numeric: ["y"], analysisTarget: { kind: "mean", field: "y" } },
+        samplingResults: { simple: { completed: true, sampleCount: 35, data: constantSubnormal.slice(0, 35) } },
+    });
+    expect(constantMetrics.target!.methods.simple.standardError).toBe(0);
+});
+
+test("C-03 close huge numbers around 1e300 compute finite target SE and effectiveSampleSize without squaring SD to Infinity", () => {
+    const population = [
+        { y: 1e300 },
+        { y: 1e300 + 1e284 },
+        { y: 1e300 - 1e284 },
+    ];
+    const popSd = sampleStandardDeviation(population.map((r) => r.y));
+    expect(Number.isFinite(popSd)).toBe(true);
+    expect(popSd * popSd).toBe(Number.POSITIVE_INFINITY);
+
+    const expectedSe = popSd * Math.sqrt((1 - 2 / 3) / 2);
+    const metrics = buildAnalysisMetrics({
+        population,
+        fieldMapping: { numeric: ["y"], analysisTarget: { kind: "mean", field: "y" } },
+        samplingResults: { simple: { completed: true, sampleCount: 2, data: population.slice(0, 2) } },
+    });
+    expect(metrics.target).not.toBeNull();
+    const simple = metrics.target!.methods.simple;
+    expect(simple.estimate).toBe(1e300);
+    expect(simple.standardError).not.toBeNull();
+    expect(Math.abs(simple.standardError! / expectedSe - 1)).toBeLessThan(1e-12);
+    expect(simple.marginOfError! / (1.96 * expectedSe)).toBeCloseTo(1, 12);
+    expect(simple.effectiveSampleSize!).toBeCloseTo(2, 12);
+    expect(JSON.stringify(metrics)).not.toMatch(/NaN|Infinity/);
+
+    // Unpassed populationStandardDeviation with infinite variance still fails closed
+    expect(computeSimpleRandomValueSe(Number.POSITIVE_INFINITY, 3, 2)).toBeNull();
+    expect(computeFinitePopulationEquivalentSampleSize(Number.POSITIVE_INFINITY, 3, 1)).toBeNull();
 });

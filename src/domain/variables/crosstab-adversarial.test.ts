@@ -636,4 +636,45 @@ describe("Subgroup cross-tab (calculateCrossTab) adversarial & mathematical regr
         expect(asym.groups[1]!.categories![0]!.proportion!).toBeCloseTo(0.25, 12);
         expect(asym.groups[1]!.categories![1]!.proportion!).toBeCloseTo(0.75, 12);
     });
+
+    test("C-01 weighted cross-tab and univariate preserve exact +1 residual under non-power-of-two weights [1, 2, 3]", () => {
+        const gVar: VariableDefinition = {
+            field: "g",
+            label: "组",
+            unit: "",
+            kind: "nominal",
+            categories: [{ value: "G1", label: "G1" }, { value: "G2", label: "G2" }],
+            missing: [],
+        };
+        const yVar: VariableDefinition = {
+            field: "y",
+            label: "值",
+            unit: "",
+            kind: "continuous",
+            categories: [],
+            missing: [],
+        };
+
+        const base = 2 ** 332 + 2 ** 281;
+        const triple = 3 * base;
+        const rows = [
+            { g: "G1", y: triple },
+            { g: "G1", y: 3 },
+            { g: "G1", y: -base },
+            { g: "G2", y: 1e100 },
+            { g: "G2", y: 1e100 },
+            { g: "G2", y: -1e100 },
+            { g: "G2", y: 7 },
+        ];
+        const res = calculateCrossTab({
+            rows,
+            indices: [0, 1, 2, 3, 4, 5, 6],
+            variable: yVar,
+            groupVariable: gVar,
+            weighted: true,
+            weights: [1, 2, 3, 1, 2, 3, 1],
+        });
+        expect(res.groups[0]!.mean).toBe(1);
+        expect(res.groups[1]!.mean).toBe(1);
+    });
 });

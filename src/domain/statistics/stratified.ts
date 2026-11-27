@@ -1,4 +1,4 @@
-import { type NumericAccessor, fieldAccessor, extractAccessorValues, sampleStandardDeviation, scaledMean } from "./values";
+import { type NumericAccessor, addExactProduct, fieldAccessor, extractAccessorValues, powerOfTwoScale, sampleStandardDeviation, scaledMean } from "./values";
 import { estimateSimpleDistribution } from "./distributions";
 import { createSafeRecord } from "../../lib/safe-record";
 import { stratumKey } from "./sampling";
@@ -15,7 +15,11 @@ export function computeStratifiedValueEstimate(
         return null;
     }
 
-    const estimate = new StableSum();
+    const strataMeans: Array<{ count: number; mean: number }> = [];
+    const unscaledTotal = new StableSum();
+    let unscaledOverflow = false;
+    let maxAbsMean = 0;
+
     for (const layer of layers) {
         const layerRows = rows.filter((row) => stratumKey(row[stratifyBy]) === stratumKey(layer.name));
         const values = extractAccessorValues(layerRows, accessor);
@@ -23,10 +27,32 @@ export function computeStratifiedValueEstimate(
             return null;
         }
         const layerMean = scaledMean(values)!;
-        estimate.add((layer.count / totalPopulation) * layerMean);
+        if (!Number.isFinite(layerMean)) return null;
+        strataMeans.push({ count: layer.count, mean: layerMean });
+        const absMean = Math.abs(layerMean);
+        if (absMean > maxAbsMean) maxAbsMean = absMean;
+        const stratumSum = layer.count * layerMean;
+        if (!Number.isFinite(stratumSum)) {
+            unscaledOverflow = true;
+        } else {
+            addExactProduct(unscaledTotal, layer.count, layerMean);
+        }
     }
 
-    return estimate.value;
+    if (maxAbsMean === 0) return 0;
+    if (!unscaledOverflow && Number.isFinite(unscaledTotal.value)) {
+        const out = unscaledTotal.value / totalPopulation;
+        return Object.is(out, -0) ? 0 : out;
+    }
+
+    const countScale = powerOfTwoScale(totalPopulation);
+    const meanScale = powerOfTwoScale(maxAbsMean);
+    const scaledTotal = new StableSum();
+    for (const item of strataMeans) {
+        addExactProduct(scaledTotal, item.count / countScale, item.mean / meanScale);
+    }
+    const out = (scaledTotal.value / (totalPopulation / countScale)) * meanScale;
+    return Object.is(out, -0) ? 0 : out;
 }
 
 function hasCompleteStratifiedDesign(

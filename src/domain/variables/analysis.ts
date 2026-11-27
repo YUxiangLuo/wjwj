@@ -1,7 +1,7 @@
 import { interpretNumeric, valueKey } from "./dictionary";
 import type { AnalysisResult, CrossTabAnalysisResult, VariableDefinition } from "./types";
 import { StableSum } from "../statistics/stable-sum";
-import { scaledMean, sampleStandardDeviation as computeSampleStandardDeviation } from "../statistics/values";
+import { addExactProduct, powerOfTwoScale, scaledMean, sampleStandardDeviation as computeSampleStandardDeviation } from "../statistics/values";
 
 function normalizeZero(value: number): number {
     return Object.is(value, -0) ? 0 : value;
@@ -14,8 +14,9 @@ function finite(value: number): number {
 
 function weightedMean(values: number[], weights: number[]): number | null {
     if (!values.length) return null;
-    const weightScale = weights.reduce((maximum, weight) => Math.max(maximum, weight), 0);
-    if (!(weightScale > 0)) return null;
+    const maxWeight = weights.reduce((maximum, weight) => Math.max(maximum, weight), 0);
+    if (!(maxWeight > 0)) return null;
+    const weightScale = powerOfTwoScale(maxWeight);
 
     let minimum = Infinity;
     let maximum = -Infinity;
@@ -40,6 +41,7 @@ function weightedMean(values: number[], weights: number[]): number | null {
         shiftedScale = Math.max(shiftedScale, Math.abs(value - sterbenzCenter));
     }
     if (shiftedScale === 0) return normalizeZero(sterbenzCenter);
+    const pow2ShiftedScale = powerOfTwoScale(shiftedScale);
 
     const numerator = new StableSum(), denominator = new StableSum();
     const unscaledNumerator = new StableSum();
@@ -53,16 +55,15 @@ function weightedMean(values: number[], weights: number[]): number | null {
                 throw new Error("统计计算发生数值溢出或尺度不可靠");
             }
         }
-        const product = weight * shifted;
+        const product = addExactProduct(unscaledNumerator, weight, shifted);
         if (shifted !== 0 && weight > 0 && Math.abs(product) < 2 ** -1022) productUnderflow = true;
-        unscaledNumerator.add(product);
-        numerator.add(weight * (shifted / shiftedScale));
+        addExactProduct(numerator, weight, shifted / pow2ShiftedScale);
         denominator.add(weight);
     }
     if (!(denominator.value > 0)) return null;
     const offset = !productUnderflow && Number.isFinite(unscaledNumerator.value)
         ? unscaledNumerator.value / denominator.value
-        : (numerator.value / denominator.value) * shiftedScale;
+        : (numerator.value / denominator.value) * pow2ShiftedScale;
     return finite(sterbenzCenter + offset);
 }
 
@@ -135,9 +136,10 @@ export function calculateUnivariate({
     const counts = Array(activeCategories.length).fill(0) as number[];
     const weightedCounts = Array(activeCategories.length).fill(0).map(() => new StableSum());
     let validCount = 0;
-    const weightScale = weighted && weights!.length
+    const maxWeight = weighted && weights!.length
         ? weights!.reduce((maximum, weight) => Math.max(maximum, weight), 0)
         : 1;
+    const weightScale = maxWeight > 0 ? powerOfTwoScale(maxWeight) : 1;
     const totalWeight = new StableSum();
     for (let i = 0; i < rows.length; i++) {
         const category = read(rows[i]!);
@@ -304,7 +306,7 @@ export function calculateCrossTab({
         if (weighted && bucket.validCount > 0 && bucket.catMaxWeight > 0) {
             catWeightedCounts = Array.from({ length: activeTargetCategories.length }, () => new StableSum());
             groupTotalWeight = new StableSum();
-            const groupWeightScale = bucket.catMaxWeight;
+            const groupWeightScale = powerOfTwoScale(bucket.catMaxWeight);
             for (let i = 0; i < bucket.catTargetIndices.length; i += 1) {
                 const scaledW = bucket.catWeights[i]! / groupWeightScale;
                 catWeightedCounts[bucket.catTargetIndices[i]!]!.add(scaledW);

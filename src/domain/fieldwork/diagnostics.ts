@@ -9,7 +9,7 @@ import { computeSimpleRandomValueSe } from "../statistics/srs";
 import { StableSum } from "../statistics/stable-sum";
 import { computeStratifiedValueEstimate, computeStratifiedValueSe } from "../statistics/stratified";
 import { computeSystematicExactValueSe } from "../statistics/systematic";
-import { type NumericAccessor, sampleStandardDeviation, scaledMean } from "../statistics/values";
+import { type NumericAccessor, addExactProduct, powerOfTwoScale, sampleStandardDeviation, scaledMean } from "../statistics/values";
 import type { VariableDictionary } from "../variables/types";
 import {
     checkNumericQuestionRangeConflict,
@@ -124,12 +124,13 @@ function readTargetIndicatorOrNumeric(
 
 function computeStableWeightedMean(values: number[], weights: number[]): number | null {
     if (values.length === 0 || values.length !== weights.length) return null;
-    let weightScale = 0;
+    let maxWeight = 0;
     for (const w of weights) {
         if (!Number.isFinite(w) || w < 0) return null;
-        if (w > weightScale) weightScale = w;
+        if (w > maxWeight) maxWeight = w;
     }
-    if (!(weightScale > 0)) return null;
+    if (!(maxWeight > 0)) return null;
+    const weightScale = powerOfTwoScale(maxWeight);
 
     let minimum = Infinity;
     let maximum = -Infinity;
@@ -153,6 +154,7 @@ function computeStableWeightedMean(values: number[], weights: number[]): number 
         shiftedScale = Math.max(shiftedScale, Math.abs(v - sterbenzCenter));
     }
     if (shiftedScale === 0) return normalizeZero(sterbenzCenter);
+    const pow2ShiftedScale = powerOfTwoScale(shiftedScale);
 
     const numerator = new StableSum();
     const unscaledNumerator = new StableSum();
@@ -163,17 +165,16 @@ function computeStableWeightedMean(values: number[], weights: number[]): number 
         const w = weights[i]! / weightScale;
         if (w <= 0) continue;
         const shifted = values[i]! - sterbenzCenter;
-        const product = w * shifted;
+        const product = addExactProduct(unscaledNumerator, w, shifted);
         if (shifted !== 0 && Math.abs(product) < 2 ** -1022) productUnderflow = true;
-        unscaledNumerator.add(product);
-        numerator.add(w * (shifted / shiftedScale));
+        addExactProduct(numerator, w, shifted / pow2ShiftedScale);
         denominator.add(w);
     }
 
     if (!(denominator.value > 0)) return null;
     const offset = !productUnderflow && Number.isFinite(unscaledNumerator.value)
         ? unscaledNumerator.value / denominator.value
-        : (numerator.value / denominator.value) * shiftedScale;
+        : (numerator.value / denominator.value) * pow2ShiftedScale;
     const result = sterbenzCenter + offset;
     return Number.isFinite(result) ? normalizeZero(result) : null;
 }
@@ -231,8 +232,9 @@ function computeRespondentHajekEstimateAndSe(params: {
             return { estimate: null, standardError: null, halfWidth: null, n };
         }
     }
+    const probScale = params.inclusionProbabilities ? powerOfTwoScale(minProb) : 1;
 
-    const weights = valid.map((item) => (item.prob !== null ? minProb / item.prob : 1));
+    const weights = valid.map((item) => (item.prob !== null ? probScale / item.prob : 1));
     if (weights.some((w) => !Number.isFinite(w) || w <= 0)) {
         return { estimate: null, standardError: null, halfWidth: null, n };
     }
@@ -274,20 +276,24 @@ function computeRespondentHajekEstimateAndSe(params: {
     const dfFactor = n / (n - 1);
 
     let rootNorm = 0;
+    let hasPositiveContribution = false;
     for (let i = 0; i < n; i += 1) {
         const item = valid[i]!;
         const unitFpc = item.prob !== null
             ? Math.max(0, 1 - Math.min(1, item.prob * responseRatio))
             : globalFpc;
         if (unitFpc <= 0) continue;
+        const diff = item.value - estimate;
+        if (diff === 0) continue;
+        hasPositiveContribution = true;
         const wNorm = weights[i]! / weightTotal.value;
-        const devNorm = (item.value - estimate) / devScale;
+        const devNorm = diff / devScale;
         const term = Math.sqrt(dfFactor * unitFpc) * wNorm * devNorm;
         rootNorm = Math.hypot(rootNorm, term);
     }
 
     const standardError = normalizeZero(rootNorm * devScale);
-    if (!Number.isFinite(standardError)) {
+    if (!Number.isFinite(standardError) || (hasPositiveContribution && standardError === 0)) {
         return { estimate, standardError: null, halfWidth: null, n };
     }
     const rawHalfWidth = normalizeZero(params.z * standardError);
@@ -360,7 +366,10 @@ function computeStratifiedRespondentEstimateAndSe(params: {
         return { estimate: null, standardError: null, halfWidth: null, n: 0, hasEmptyStratum: true };
     }
 
-    const overallEstimate = new StableSum();
+    const strataMeans: Array<{ frameCount: number; mean: number }> = [];
+    const unscaledTotal = new StableSum();
+    let unscaledOverflow = false;
+    let maxAbsMean = 0;
     let totalSe = 0;
     let seAvailable = true;
 
@@ -380,8 +389,17 @@ function computeStratifiedRespondentEstimateAndSe(params: {
             return { estimate: null, standardError: null, halfWidth: null, n: totalValidN, hasEmptyStratum: true };
         }
 
+        strataMeans.push({ frameCount: spec.frameCount, mean: stratumMean });
+        const absMean = Math.abs(stratumMean);
+        if (absMean > maxAbsMean) maxAbsMean = absMean;
+        const stratumSum = spec.frameCount * stratumMean;
+        if (!Number.isFinite(stratumSum)) {
+            unscaledOverflow = true;
+        } else {
+            addExactProduct(unscaledTotal, spec.frameCount, stratumMean);
+        }
+
         const Wh = spec.frameCount / params.populationSize;
-        overallEstimate.add(Wh * stratumMean);
 
         const uniqueInStratum = new Set(items.map((it) => it.popIdx)).size;
         if (uniqueInStratum >= spec.frameCount && mh === uniqueInStratum) {
@@ -403,7 +421,8 @@ function computeStratifiedRespondentEstimateAndSe(params: {
         }
         if (devScale === 0) continue;
 
-        const wScale = items.reduce((acc, it) => Math.max(acc, it.weight), 0);
+        const maxItemWeight = items.reduce((acc, it) => Math.max(acc, it.weight), 0);
+        const wScale = powerOfTwoScale(maxItemWeight);
         const wTotal = new StableSum();
         const scaledWeights = items.map((it) => {
             const sw = it.weight / wScale;
@@ -423,14 +442,30 @@ function computeStratifiedRespondentEstimateAndSe(params: {
             rootH = Math.hypot(rootH, Math.sqrt(dfH * fpcH) * wNorm * devNorm);
         }
         const seH = rootH * devScale;
-        if (!Number.isFinite(seH)) {
+        const weightedSeH = Wh * seH;
+        if (!Number.isFinite(seH) || !Number.isFinite(weightedSeH) || rootH === 0 || seH === 0 || weightedSeH === 0) {
             seAvailable = false;
             continue;
         }
-        totalSe = Math.hypot(totalSe, Wh * seH);
+        totalSe = Math.hypot(totalSe, weightedSeH);
     }
 
-    const estimate = clampProportionIfNeeded(overallEstimate.value, params.target);
+    let rawOverallEstimate: number;
+    if (maxAbsMean === 0) {
+        rawOverallEstimate = 0;
+    } else if (!unscaledOverflow && Number.isFinite(unscaledTotal.value)) {
+        rawOverallEstimate = unscaledTotal.value / params.populationSize;
+    } else {
+        const countScale = powerOfTwoScale(params.populationSize);
+        const meanScale = powerOfTwoScale(maxAbsMean);
+        const scaledTotal = new StableSum();
+        for (const item of strataMeans) {
+            addExactProduct(scaledTotal, item.frameCount / countScale, item.mean / meanScale);
+        }
+        rawOverallEstimate = (scaledTotal.value / (params.populationSize / countScale)) * meanScale;
+    }
+
+    const estimate = clampProportionIfNeeded(rawOverallEstimate, params.target);
     if (estimate === null) {
         return { estimate: null, standardError: null, halfWidth: null, n: totalValidN, hasEmptyStratum: false };
     }
@@ -807,7 +842,8 @@ export function buildMethodFieldworkDiagnostics(params: {
                     calibrationWeightsValid = false;
                 } else if (probs.length > 0) {
                     const minP = probs.reduce((acc, p) => Math.min(acc, p), Infinity);
-                    baseWeightsForCalibration = probs.map((p) => minP / p);
+                    const probScale = powerOfTwoScale(minP);
+                    baseWeightsForCalibration = probs.map((p) => probScale / p);
                 }
             } else if (params.method === "stratified" && normalizedStratifyBy && normalizedStratifyBy !== chosenStratumField && params.layers?.length) {
                 const layerMap = new Map(params.layers.map((l) => [stratumKey(l.name), l]));
@@ -837,7 +873,7 @@ export function buildMethodFieldworkDiagnostics(params: {
                 label: `客群无回答权重校准估计（按${chosenStratumField}事后分层）`,
                 description: calEst.hasEmptyStratum
                     ? "存在有效目标观测为 0 的客群空层，事后分层权重校准不可用，需在二轮对该层补量"
-                    : "利用框内已知客群规模校正差异化拒访偏差（要求各层均有有效回收）",
+                    : "利用框内已知客群规模校正差异化拒访偏差（要求各层均有有效回收）；仅在层内无回答近似随机时缓解层间应答率差异，不能消除层内选择性无回答偏差",
                 sampleSize: calEst.n,
                 estimate: calEst.estimate,
                 standardError: calEst.standardError,
@@ -879,7 +915,9 @@ export function buildMethodFieldworkDiagnostics(params: {
             if (params.method === "simple") {
                 const estVals = fullInvitedRows.map(accessor).filter((v): v is number => v !== null);
                 fullEstimate = clampProportionIfNeeded(scaledMean(estVals), target);
-                fullSe = computeSimpleRandomValueSe(popVar, populationSize, fullN, popSd);
+                fullSe = Number.isFinite(popSd) && popSd >= 0
+                    ? computeSimpleRandomValueSe(popVar, populationSize, fullN, popSd)
+                    : null;
                 exactSeAttempted = true;
             } else if (params.method === "systematic") {
                 const estVals = fullInvitedRows.map(accessor).filter((v): v is number => v !== null);

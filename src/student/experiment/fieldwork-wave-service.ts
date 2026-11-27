@@ -276,6 +276,15 @@ export function getVerifiedWave1EmpiricalVariances(params: {
 }): number[] {
     const wave1 = params.waves.find((w) => w.waveNumber === 1);
     if (!wave1) return [];
+    if (!verifyExperimentWavesReplay({
+        waves: [wave1],
+        population: params.population,
+        fieldMapping: params.fieldMapping,
+        fieldworkConfig: params.fieldworkConfig,
+        dictionary: params.dictionary,
+    })) {
+        return [];
+    }
     const diagMap = buildWaveDiagnosticsMap({
         wave: wave1,
         population: params.population,
