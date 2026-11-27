@@ -1,29 +1,73 @@
-import * as React from "react"
-import * as SwitchPrimitive from "@radix-ui/react-switch"
+import * as React from "react";
+import MuiSwitch from "@mui/material/Switch";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
+
+type SwitchProps = Omit<React.ComponentProps<"button">, "onChange" | "value"> & {
+  checked?: boolean;
+  defaultChecked?: boolean;
+  onCheckedChange?: (checked: boolean) => void;
+  name?: string;
+  value?: string;
+  required?: boolean;
+};
 
 function Switch({
   className,
-  ...props
-}: React.ComponentProps<typeof SwitchPrimitive.Root>) {
+  checked,
+  defaultChecked,
+  onCheckedChange,
+  disabled,
+  id,
+  name,
+  value,
+  required,
+  "aria-label": ariaLabel,
+  "aria-labelledby": ariaLabelledBy,
+  "aria-describedby": ariaDescribedBy,
+  ...restProps
+}: SwitchProps) {
+  const [internalChecked, setInternalChecked] = React.useState(defaultChecked ?? false);
+  const actualChecked = checked ?? internalChecked;
+
   return (
-    <SwitchPrimitive.Root
+    <MuiSwitch
+      id={id}
+      name={name}
+      value={value}
+      required={required}
+      checked={actualChecked}
+      disabled={disabled}
+      disableRipple
+      onChange={(_event, nextChecked) => {
+        setInternalChecked(nextChecked);
+        onCheckedChange?.(nextChecked);
+      }}
       data-slot="switch"
+      data-state={actualChecked ? "checked" : "unchecked"}
       className={cn(
-        "peer inline-flex h-6 w-10 shrink-0 items-center rounded-toggle border border-input transition-colors outline-none data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=unchecked]:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:border-border disabled:bg-muted",
-        className
+        "peer inline-flex h-6 w-11 shrink-0 items-center overflow-visible p-0 align-middle",
+        "[&_.MuiSwitch-switchBase]:top-0.5 [&_.MuiSwitch-switchBase]:left-0.5 [&_.MuiSwitch-switchBase]:p-0",
+        "[&_.MuiSwitch-switchBase.Mui-checked]:translate-x-5",
+        "[&_.MuiSwitch-thumb]:size-5 [&_.MuiSwitch-thumb]:rounded-circle [&_.MuiSwitch-thumb]:border [&_.MuiSwitch-thumb]:border-border [&_.MuiSwitch-thumb]:bg-card [&_.MuiSwitch-thumb]:shadow-none",
+        "[&_.MuiSwitch-track]:h-6 [&_.MuiSwitch-track]:w-11 [&_.MuiSwitch-track]:rounded-toggle [&_.MuiSwitch-track]:border [&_.MuiSwitch-track]:border-input [&_.MuiSwitch-track]:bg-muted [&_.MuiSwitch-track]:opacity-100",
+        "[&_.MuiSwitch-switchBase.Mui-checked+.MuiSwitch-track]:border-primary [&_.MuiSwitch-switchBase.Mui-checked+.MuiSwitch-track]:bg-primary [&_.MuiSwitch-switchBase.Mui-checked+.MuiSwitch-track]:opacity-100",
+        "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background focus-within:rounded-toggle",
+        disabled && "cursor-not-allowed [&_.MuiSwitch-track]:border-border [&_.MuiSwitch-track]:bg-muted",
+        className,
       )}
-      {...props}
-    >
-      <SwitchPrimitive.Thumb
-        data-slot="switch-thumb"
-        className={cn(
-          "pointer-events-none block size-5 rounded-circle border border-border bg-card transition-transform data-[state=checked]:translate-x-[calc(100%-2px)] data-[state=unchecked]:translate-x-0"
-        )}
-      />
-    </SwitchPrimitive.Root>
-  )
+      slotProps={{
+        input: {
+          ...restProps,
+          role: "switch",
+          "aria-checked": actualChecked,
+          "aria-label": ariaLabel,
+          "aria-labelledby": ariaLabelledBy,
+          "aria-describedby": ariaDescribedBy,
+        } as React.InputHTMLAttributes<HTMLInputElement>,
+      }}
+    />
+  );
 }
 
-export { Switch }
+export { Switch };

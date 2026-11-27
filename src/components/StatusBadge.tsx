@@ -4,7 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-const statusBadgeVariants = cva("gap-1 border transition-colors", {
+const statusBadgeVariants = cva("gap-1 rounded-control border px-2.5 py-0.5 font-medium transition-colors", {
     variants: {
         intent: {
             success: "border-success-border bg-success-muted text-success [a&]:hover:border-success",

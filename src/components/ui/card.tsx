@@ -1,4 +1,5 @@
 import * as React from "react";
+import MuiPaper from "@mui/material/Paper";
 
 import { cn } from "@/lib/utils";
 
@@ -7,10 +8,12 @@ function Card({
   ...props
 }: React.ComponentProps<"div">) {
   return (
-    <div
+    <MuiPaper
+      component="div"
+      elevation={0}
       data-slot="card"
       className={cn(
-        "flex flex-col gap-5 rounded-surface border border-border bg-card py-5 text-card-foreground",
+        "flex flex-col gap-5 rounded-surface border border-border bg-card py-5 text-card-foreground shadow-none",
         className,
       )}
       {...props}
@@ -32,7 +35,7 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
-  return <div data-slot="card-title" className={cn("text-subheading font-semibold", className)} {...props} />;
+  return <div data-slot="card-title" className={cn("text-subheading font-medium text-foreground", className)} {...props} />;
 }
 
 function CardDescription({ className, ...props }: React.ComponentProps<"div">) {

@@ -68,7 +68,7 @@ const hardcodedColorClassPattern = new RegExp(
     "g"
 );
 // The project is light-only: any dark: variant is dead code.
-const darkClassPattern = /(?<![\w-])dark:/g;
+const darkClassPattern = /(?<![\w-])dark:(?=\S)/g;
 const sameIntentFilledClassPattern = new RegExp(
     `bg-(${semanticIntentPattern})(?![-/\\w])(?=[^\"\`\\n]*text-\\1(?!-foreground))`,
     "g"
@@ -92,7 +92,7 @@ const semanticColorRolePattern = [
     "warning(?:-(?:hover|foreground|muted|border))?",
     "info(?:-(?:hover|foreground|muted|border))?",
     "auxiliary(?:-(?:hover|foreground|strong|muted|border))?",
-    "navigation(?:-(?:foreground|muted|active|active-foreground|border))?",
+    "navigation(?:-(?:foreground|muted|hover|hover-foreground|active|active-foreground|border))?",
     "heatmap-(?:low|moderate|high|maximum)",
     "border",
     "input",
@@ -116,6 +116,8 @@ const DESIGN_SYSTEM_FILES = new Set([
     "src/components/AuthLoginScreen.tsx",
     "src/components/DatetimePicker24.tsx",
     "src/components/IconTile.tsx",
+    "src/components/KpiStatCard.tsx",
+    "src/components/MaterialThemeProvider.tsx",
     "src/components/PageHeader.tsx",
     "src/components/SkipLink.tsx",
     "src/components/StatusBadge.tsx",
@@ -540,12 +542,14 @@ async function main() {
     const contrastContracts: Array<[string, string, string, number]> = [
         ["foreground on background", "foreground", "background", 4.5],
         ["foreground on card", "foreground", "card", 4.5],
-        ["muted foreground on background", "muted-foreground", "background", 7],
-        ["muted foreground on card", "muted-foreground", "card", 7],
+        ["muted foreground on background", "muted-foreground", "background", 8],
+        ["muted foreground on card", "muted-foreground", "card", 8],
         ["primary foreground on primary", "primary-foreground", "primary", 4.5],
         ["primary on primary muted", "primary", "primary-muted", 4.5],
+        ["accent foreground on accent", "accent-foreground", "accent", 7],
         ["navigation foreground on navigation", "navigation-foreground", "navigation", 4.5],
-        ["navigation muted on navigation", "navigation-muted", "navigation", 7],
+        ["navigation muted on navigation", "navigation-muted", "navigation", 8],
+        ["navigation active foreground on navigation active", "navigation-active-foreground", "navigation-active", 7],
         ["success foreground on success", "success-foreground", "success", 4.5],
         ["success on success muted", "success", "success-muted", 4.5],
         ["warning foreground on warning", "warning-foreground", "warning", 4.5],
@@ -560,7 +564,7 @@ async function main() {
         ["foreground on heatmap moderate", "foreground", "heatmap-moderate", 4.5],
         ["foreground on heatmap high", "foreground", "heatmap-high", 4.5],
         ["foreground on heatmap maximum", "foreground", "heatmap-maximum", 4.5],
-        ["input boundary on card", "input", "card", 3],
+        ["input boundary on card", "input", "card", 4.5],
     ];
     for (const [label, foregroundToken, backgroundToken, minimum] of contrastContracts) {
         const foreground = readThemeHex(themeCss, foregroundToken);
@@ -577,6 +581,7 @@ async function main() {
 
     if (
         themeCss.includes("source(none)")
+        || !themeCss.includes("@layer theme, base, mui, components, utilities;")
         || !themeCss.includes('@import "tailwindcss";')
         || !themeCss.includes('@source not "../*.md";')
         || !themeCss.includes('@source not "../**/*.md";')
@@ -586,7 +591,13 @@ async function main() {
         || !themeCss.includes('@source not "../src/test-utils";')
     ) {
         failures.push(
-            "styles/theme.css must use the Bun-compatible Tailwind import and exclude non-runtime markdown and script sources.",
+            "styles/theme.css must declare @layer theme, base, mui, components, utilities, use the Bun-compatible Tailwind import, and exclude non-runtime markdown and script sources.",
+        );
+    }
+
+    if (themeCss.includes("institutional-grid") || /#0c213b/i.test(themeCss)) {
+        failures.push(
+            "styles/theme.css must not reintroduce legacy .institutional-grid decorative patterns or dark #0c213b navigation chrome.",
         );
     }
 

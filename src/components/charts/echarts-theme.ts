@@ -6,52 +6,52 @@ import type {
 } from "./echarts-core";
 
 export const CHART_FONT_FAMILY =
-    '"Inter", "Noto Sans SC", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    '"Roboto", "Noto Sans SC", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
 export const EXECUTIVE_TOOLTIP_EXTRA_CSS =
-    "border-radius: 12px; box-shadow: 0 10px 28px -8px rgba(15, 23, 42, 0.14); font-variant-numeric: tabular-nums;";
+    "border-radius: 12px; box-shadow: 0 8px 24px rgba(31, 31, 31, 0.12); font-variant-numeric: tabular-nums;";
 
 /**
  * Exact hex fallbacks matching `:root` in `styles/theme.css` so ECharts renders
- * identical Executive BI colors in HappyDOM / headless unit tests where
- * `getComputedStyle(document.documentElement)` returns empty strings.
+ * identical Google Material Design 3 / Looker Studio colors in HappyDOM / headless
+ * unit tests where `getComputedStyle(document.documentElement)` returns empty strings.
  */
 export const EXECUTIVE_CHART_FALLBACK_TOKENS = {
-    chart1: "#475569",
-    chart2: "#175cd3",
-    chart3: "#0b6e87",
-    chart4: "#5948b1",
-    chart5: "#b85c00",
-    chart6: "#8a6a00",
-    chart7: "#0f764a",
-    chart8: "#b42318",
-    primary: "#175cd3",
-    primaryMuted: "#eff4ff",
-    primaryBorder: "#b2ccff",
-    success: "#0f764a",
-    successMuted: "#ecfdf3",
-    successBorder: "#abefc6",
-    warning: "#8a4b08",
-    warningMuted: "#fffaeb",
-    warningBorder: "#fedf89",
-    info: "#0b6e87",
-    infoMuted: "#ecfdff",
-    infoBorder: "#a5f0fc",
-    destructive: "#b42318",
-    destructiveMuted: "#fef3f2",
-    destructiveBorder: "#fecdca",
-    auxiliary: "#4e5ba6",
-    auxiliaryStrong: "#363f72",
-    auxiliaryMuted: "#eef4ff",
-    auxiliaryBorder: "#c7d7fe",
-    foreground: "#0f172a",
-    mutedForeground: "#3e5066",
-    background: "#f4f7fb",
+    chart1: "#5f6368",
+    chart2: "#0b57d0",
+    chart3: "#007b83",
+    chart4: "#7627bb",
+    chart5: "#e37400",
+    chart6: "#b06000",
+    chart7: "#146c2e",
+    chart8: "#b3261e",
+    primary: "#0b57d0",
+    primaryMuted: "#edf2fc",
+    primaryBorder: "#a8c7fa",
+    success: "#146c2e",
+    successMuted: "#e6f4ea",
+    successBorder: "#ceead6",
+    warning: "#8c4a00",
+    warningMuted: "#fef7e0",
+    warningBorder: "#fde293",
+    info: "#00639b",
+    infoMuted: "#e8f0fe",
+    infoBorder: "#c2e7ff",
+    destructive: "#b3261e",
+    destructiveMuted: "#fce8e6",
+    destructiveBorder: "#f9dedc",
+    auxiliary: "#65558f",
+    auxiliaryStrong: "#4f378b",
+    auxiliaryMuted: "#f3edf7",
+    auxiliaryBorder: "#eaddff",
+    foreground: "#1f1f1f",
+    mutedForeground: "#444746",
+    background: "#f8fafd",
     card: "#ffffff",
     popover: "#ffffff",
-    popoverForeground: "#0f172a",
-    border: "#d5dfec",
-    muted: "#eef2f6",
+    popoverForeground: "#1f1f1f",
+    border: "#dde3ea",
+    muted: "#f0f4f9",
 } as const;
 
 export type ChartSemanticTone =
@@ -365,7 +365,7 @@ export function buildExecutiveTooltip(
                 type: "dashed",
             },
             shadowStyle: {
-                color: "rgba(15, 23, 42, 0.04)",
+                color: "rgba(31, 31, 31, 0.04)",
             },
             ...axisPointer,
         },

@@ -1,3 +1,4 @@
+import { MaterialThemeProvider } from "@/components/MaterialThemeProvider";
 import { RouteErrorBoundary } from "@/components/PageErrorBoundary";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -8,9 +9,11 @@ import { TeacherApp } from "./TeacherApp";
 const elem = document.getElementById("root")!;
 const app = (
     <StrictMode>
-        <BrowserRouter basename="/teacher">
-            <RouteErrorBoundary><TeacherApp /></RouteErrorBoundary>
-        </BrowserRouter>
+        <MaterialThemeProvider>
+            <BrowserRouter basename="/teacher">
+                <RouteErrorBoundary><TeacherApp /></RouteErrorBoundary>
+            </BrowserRouter>
+        </MaterialThemeProvider>
     </StrictMode>
 );
 

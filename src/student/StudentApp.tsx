@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { MaterialThemeProvider } from "@/components/MaterialThemeProvider";
 import { RouteErrorBoundary } from "@/components/PageErrorBoundary";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { ArrowLeft, BarChart3, KeyRound, LogOut, User } from "lucide-react";
@@ -177,7 +178,11 @@ function StudentAppContent() {
 }
 
 export function StudentApp() {
-    return <StudentProvider><StudentAppContent /></StudentProvider>;
+    return (
+        <MaterialThemeProvider>
+            <StudentProvider><StudentAppContent /></StudentProvider>
+        </MaterialThemeProvider>
+    );
 }
 
 export default StudentApp;

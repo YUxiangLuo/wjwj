@@ -36,20 +36,20 @@ describe("Executive BI ECharts theme helpers", () => {
     test("returns theme.css hex fallbacks in HappyDOM and respects live CSS custom properties when set", () => {
         const fallbackTokens = getExecutiveChartTokens();
         expect(fallbackTokens.chart1).toBe(EXECUTIVE_CHART_FALLBACK_TOKENS.chart1);
-        expect(fallbackTokens.chart2).toBe("#175cd3");
-        expect(fallbackTokens.primary).toBe("#175cd3");
-        expect(fallbackTokens.success).toBe("#0f764a");
-        expect(fallbackTokens.warning).toBe("#8a4b08");
-        expect(fallbackTokens.info).toBe("#0b6e87");
-        expect(fallbackTokens.destructive).toBe("#b42318");
-        expect(fallbackTokens.auxiliary).toBe("#4e5ba6");
-        expect(fallbackTokens.foreground).toBe("#0f172a");
-        expect(fallbackTokens.mutedForeground).toBe("#3e5066");
+        expect(fallbackTokens.chart2).toBe("#0b57d0");
+        expect(fallbackTokens.primary).toBe("#0b57d0");
+        expect(fallbackTokens.success).toBe("#146c2e");
+        expect(fallbackTokens.warning).toBe("#8c4a00");
+        expect(fallbackTokens.info).toBe("#00639b");
+        expect(fallbackTokens.destructive).toBe("#b3261e");
+        expect(fallbackTokens.auxiliary).toBe("#65558f");
+        expect(fallbackTokens.foreground).toBe("#1f1f1f");
+        expect(fallbackTokens.mutedForeground).toBe("#444746");
         expect(fallbackTokens.popover).toBe("#ffffff");
-        expect(fallbackTokens.border).toBe("#d5dfec");
+        expect(fallbackTokens.border).toBe("#dde3ea");
         expect(fallbackTokens.chartSeries.length).toBe(8);
-        expect(resolveChartToneColor("primary", fallbackTokens)).toBe("#175cd3");
-        expect(resolveChartToneColor("success", fallbackTokens)).toBe("#0f764a");
+        expect(resolveChartToneColor("primary", fallbackTokens)).toBe("#0b57d0");
+        expect(resolveChartToneColor("success", fallbackTokens)).toBe("#146c2e");
 
         document.documentElement.style.setProperty("--chart-2", "#123456");
         try {
@@ -63,7 +63,7 @@ describe("Executive BI ECharts theme helpers", () => {
         const tooltip = buildExecutiveTooltip();
         expect(tooltip.extraCssText).toBe(EXECUTIVE_TOOLTIP_EXTRA_CSS);
         expect(tooltip.backgroundColor).toBe("#ffffff");
-        expect(tooltip.borderColor).toBe("#d5dfec");
+        expect(tooltip.borderColor).toBe("#dde3ea");
 
         const valueAxis = buildExecutiveValueAxis({ name: "有效样本量" });
         expect(valueAxis.name).toBe("有效样本量");

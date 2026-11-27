@@ -1,8 +1,8 @@
 import * as React from "react";
 
 /**
- * Radix Select hides background siblings from the accessibility tree. Mirror
- * that state to native inert so their focusable descendants are unavailable too.
+ * Mirrors `aria-hidden="true"` background siblings hidden by modal/menu portals
+ * onto native `inert` so background descendants cannot receive focus.
  */
 export function useInertAriaHiddenBackground(content: HTMLElement | null) {
   React.useEffect(() => {
@@ -10,17 +10,18 @@ export function useInertAriaHiddenBackground(content: HTMLElement | null) {
 
     const inerted = new Set<HTMLElement>();
     const applyInert = () => {
-      const hiddenElements = document.querySelectorAll<HTMLElement>(
-        '[data-aria-hidden="true"][aria-hidden="true"]',
-      );
+      const hiddenElements = document.querySelectorAll<HTMLElement>('[aria-hidden="true"]');
       for (const element of hiddenElements) {
         if (
-          element.hasAttribute("data-radix-focus-guard")
+          (element.parentElement !== document.body && !element.hasAttribute("data-aria-hidden"))
           || element.contains(content)
           || element.inert
           || inerted.has(element)
-        ) continue;
+        ) {
+          continue;
+        }
         element.inert = true;
+        element.setAttribute("inert", "");
         inerted.add(element);
       }
     };
@@ -38,7 +39,10 @@ export function useInertAriaHiddenBackground(content: HTMLElement | null) {
       cancelAnimationFrame(frame);
       observer.disconnect();
       for (const element of inerted) {
-        if (element.isConnected) element.inert = false;
+        if (element.isConnected) {
+          element.inert = false;
+          element.removeAttribute("inert");
+        }
       }
     };
   }, [content]);

@@ -1,34 +1,35 @@
-import * as React from "react"
-import * as ProgressPrimitive from "@radix-ui/react-progress"
+import * as React from "react";
+import MuiLinearProgress from "@mui/material/LinearProgress";
 
-import type { AccessibleNameProps } from "@/components/ui/accessible-name"
-import { cn } from "@/lib/utils"
+import type { AccessibleNameProps } from "@/components/ui/accessible-name";
+import { cn } from "@/lib/utils";
 
-type ProgressProps = React.ComponentProps<typeof ProgressPrimitive.Root> &
-  AccessibleNameProps
+type ProgressProps = Omit<React.ComponentProps<"div">, "aria-label" | "aria-labelledby"> & {
+  value?: number | null;
+  max?: number;
+} & AccessibleNameProps;
 
 function Progress({
   className,
   value,
+  max = 100,
   ...props
 }: ProgressProps) {
+  const safeMax = max > 0 ? max : 100;
+  const normalized = Math.min(100, Math.max(0, ((value ?? 0) / safeMax) * 100));
+
   return (
-    <ProgressPrimitive.Root
+    <MuiLinearProgress
+      variant="determinate"
+      value={normalized}
       data-slot="progress"
-      value={value}
       className={cn(
-        "relative h-2 w-full overflow-hidden rounded-control bg-primary-muted",
-        className
+        "relative h-2 w-full overflow-hidden rounded-pill bg-primary-muted [&_.MuiLinearProgress-bar]:rounded-pill [&_.MuiLinearProgress-bar]:bg-primary",
+        className,
       )}
-      {...props}
-    >
-      <ProgressPrimitive.Indicator
-        data-slot="progress-indicator"
-        className="h-full w-full flex-1 bg-primary transition-transform duration-300"
-        style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
-      />
-    </ProgressPrimitive.Root>
-  )
+      {...(props as Omit<React.ComponentProps<typeof MuiLinearProgress>, "value" | "variant">)}
+    />
+  );
 }
 
-export { Progress }
+export { Progress };

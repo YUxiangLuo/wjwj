@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { MaterialThemeProvider } from "@/components/MaterialThemeProvider";
 import { RouteErrorBoundary } from "@/components/PageErrorBoundary";
 import { lazy, Suspense, useState } from "react";
 import { BarChart3, BookOpen, ClipboardList, Download, KeyRound, LayoutDashboard, LogOut, PenLine, School } from "lucide-react";
@@ -118,17 +119,17 @@ export function TeacherApp() {
     const { user, checking, error, retry } = useWorkspaceAuth(authApi.me);
     useDocumentTitle(getTeacherDocumentTitle(location.pathname));
 
-    if (checking) return <LoadingStatus className="min-h-screen bg-background" label="正在验证教师登录状态" />;
-    if (error) return <main className="min-h-screen bg-background p-8"><RequestError message={error} onRetry={() => void retry()} /></main>;
-    if (location.pathname === "/login") return user ? <Navigate to="/" replace /> : <Login />;
-    if (!user) return <Navigate to="/login" replace />;
-    return <TeacherWorkspace
+    if (checking) return <MaterialThemeProvider><LoadingStatus className="min-h-screen bg-background" label="正在验证教师登录状态" /></MaterialThemeProvider>;
+    if (error) return <MaterialThemeProvider><main className="min-h-screen bg-background p-8"><RequestError message={error} onRetry={() => void retry()} /></main></MaterialThemeProvider>;
+    if (location.pathname === "/login") return <MaterialThemeProvider>{user ? <Navigate to="/" replace /> : <Login />}</MaterialThemeProvider>;
+    if (!user) return <MaterialThemeProvider><Navigate to="/login" replace /></MaterialThemeProvider>;
+    return <MaterialThemeProvider><TeacherWorkspace
         user={user}
         onLogout={async () => {
             const response = await authApi.logout();
             if (!response.success) { toast.error("尚未安全退出，请检查网络后重试。不要将设备交给他人。"); return; }
         }}
-    />;
+    /></MaterialThemeProvider>;
 }
 
 export default TeacherApp;

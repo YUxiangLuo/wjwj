@@ -64,7 +64,8 @@ const prefillCredentialsPlugin: Bun.BunPlugin = {
 };
 
 let outputCount = 0;
-const MAX_INITIAL_JS_GZIP_BYTES = 350 * 1024;
+// Accommodates @mui/material + @emotion shared runtime while enforcing a strict upper bound.
+const MAX_INITIAL_JS_GZIP_BYTES = 650 * 1024;
 const MAX_FONT_BYTES = 300 * 1024;
 
 // Building the HTML entrypoints separately lets identical minified Tailwind

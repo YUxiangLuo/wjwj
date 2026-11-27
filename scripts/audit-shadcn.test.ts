@@ -1,26 +1,26 @@
 import { expect, test } from "bun:test";
 
 import {
+  auditUiPrimitives,
+  MUI_UI_PRIMITIVES,
   resolveAuditComponents,
-  SHADCN_CLI_VERSION,
   SHADCN_REGISTRY_COMPONENTS,
 } from "./audit-shadcn";
 
-test("the shadcn audit is pinned and covers every locally owned registry primitive", async () => {
-  expect(SHADCN_CLI_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
-  expect(resolveAuditComponents([])).toEqual([...SHADCN_REGISTRY_COMPONENTS]);
+test("the UI primitive audit covers every locally owned @mui/material primitive", async () => {
+  expect(SHADCN_REGISTRY_COMPONENTS).toEqual(MUI_UI_PRIMITIVES);
+  expect(resolveAuditComponents([])).toEqual([...MUI_UI_PRIMITIVES]);
 
-  for (const component of SHADCN_REGISTRY_COMPONENTS) {
-    expect(await Bun.file(`src/components/ui/${component}.tsx`).exists()).toBe(true);
-  }
+  const issues = await auditUiPrimitives(MUI_UI_PRIMITIVES);
+  expect(issues).toEqual([]);
 });
 
-test("the shadcn audit accepts a deduplicated subset and rejects unknown components", () => {
+test("the UI primitive audit accepts a deduplicated subset and rejects unknown components", () => {
   expect(resolveAuditComponents(["select", "button", "select"])).toEqual([
     "select",
     "button",
   ]);
   expect(() => resolveAuditComponents(["datetime-picker"])).toThrow(
-    "Unknown local shadcn component",
+    "Unknown local UI primitive",
   );
 });

@@ -1,3 +1,4 @@
+@layer theme, base, mui, components, utilities;
 @import "tailwindcss";
 @source not "../*.md";
 @source not "../**/*.md";
@@ -28,8 +29,8 @@
 }
 
 @theme inline {
-    --font-sans: "Noto Sans SC", ui-sans-serif, system-ui, -apple-system,
-        BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC",
+    --font-sans: "Roboto", "Noto Sans SC", ui-sans-serif, system-ui, -apple-system,
+        BlinkMacSystemFont, "Segoe UI", "PingFang SC",
         "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC",
         "WenQuanYi Micro Hei", sans-serif, "Apple Color Emoji",
         "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
@@ -103,14 +104,15 @@
     --color-chart-8: var(--chart-8);
     --color-overlay: var(--overlay);
 
-    /* Semantic shape utilities — Executive BI geometric hierarchy */
+    /* Semantic shape utilities — Google Material Design 3 geometry */
     --radius-control: var(--shape-control);
+    --radius-pill: var(--shape-pill);
     --radius-surface: var(--shape-surface);
     --radius-overlay: var(--shape-overlay);
     --radius-circle: var(--shape-circle);
     --radius-toggle: var(--shape-toggle);
 
-    /* Regular surfaces are border-led; elevation is reserved for floating UI. */
+    /* Regular surfaces are tonal/border-led; elevation is reserved for floating UI. */
     --shadow-floating: var(--elevation-floating);
 
     /* Semantic type roles. Normal HTML content never drops below 14px. */
@@ -156,111 +158,109 @@
 :root {
     color-scheme: light;
 
-    /* Executive BI Light Color Roles (WCAG AA/AAA verified) */
-    --background: #f4f7fb;
-    --foreground: #0f172a;
+    /* Google Material Design 3 Productivity Light Color Roles (WCAG AA/AAA verified) */
+    --background: #f8fafd;
+    --foreground: #1f1f1f;
     --card: #ffffff;
-    --card-foreground: #0f172a;
+    --card-foreground: #1f1f1f;
     --popover: #ffffff;
-    --popover-foreground: #0f172a;
-    --primary: #175cd3;
-    --primary-hover: #144bb3;
-    --primary-active: #103c8f;
+    --popover-foreground: #1f1f1f;
+    --primary: #0b57d0;
+    --primary-hover: #0842a0;
+    --primary-active: #062e6f;
     --primary-foreground: #ffffff;
-    --primary-muted: #eff4ff;
-    --primary-border: #b2ccff;
-    --secondary: #eef2f7;
-    --secondary-foreground: #1e293b;
-    --muted: #eef2f6;
-    --muted-foreground: #3e5066;
-    --accent: #e8effa;
-    --accent-foreground: #133a7c;
-    --destructive: #b42318;
-    --destructive-hover: #8f1c14;
+    --primary-muted: #edf2fc;
+    --primary-border: #a8c7fa;
+    --secondary: #e9eef6;
+    --secondary-foreground: #1f1f1f;
+    --muted: #f0f4f9;
+    --muted-foreground: #444746;
+    --accent: #c2e7ff;
+    --accent-foreground: #001d35;
+    --destructive: #b3261e;
+    --destructive-hover: #8c1d18;
     --destructive-foreground: #ffffff;
-    --destructive-muted: #fef3f2;
-    --destructive-border: #fecdca;
-    --border: #d5dfec;
-    --input: #7c8ea6;
-    --ring: #175cd3;
-    --success: #0f764a;
-    --success-hover: #0b5d3a;
+    --destructive-muted: #fce8e6;
+    --destructive-border: #f9dedc;
+    --border: #dde3ea;
+    --input: #747775;
+    --ring: #0b57d0;
+    --success: #146c2e;
+    --success-hover: #0f5223;
     --success-foreground: #ffffff;
-    --success-muted: #ecfdf3;
-    --success-border: #abefc6;
-    --warning: #8a4b08;
-    --warning-hover: #713c06;
+    --success-muted: #e6f4ea;
+    --success-border: #ceead6;
+    --warning: #8c4a00;
+    --warning-hover: #6e3900;
     --warning-foreground: #ffffff;
-    --warning-muted: #fffaeb;
-    --warning-border: #fedf89;
-    --info: #0b6e87;
-    --info-hover: #08586c;
+    --warning-muted: #fef7e0;
+    --warning-border: #fde293;
+    --info: #00639b;
+    --info-hover: #004a77;
     --info-foreground: #ffffff;
-    --info-muted: #ecfdff;
-    --info-border: #a5f0fc;
-    --auxiliary: #4e5ba6;
-    --auxiliary-hover: #3e4784;
+    --info-muted: #e8f0fe;
+    --info-border: #c2e7ff;
+    --auxiliary: #65558f;
+    --auxiliary-hover: #4f378b;
     --auxiliary-foreground: #ffffff;
-    --auxiliary-strong: #363f72;
-    --auxiliary-muted: #eef4ff;
-    --auxiliary-border: #c7d7fe;
-    --navigation: #0c213b;
-    --navigation-foreground: #ffffff;
-    --navigation-muted: #c2d4e8;
-    --navigation-hover: #153256;
-    --navigation-hover-foreground: #ffffff;
-    --navigation-active: #184980;
-    --navigation-active-foreground: #ffffff;
-    --navigation-border: #223f63;
-    --heatmap-low: #eff5fb;
-    --heatmap-moderate: #dceaf7;
-    --heatmap-high: #c2d9ee;
-    --heatmap-maximum: #9fc4e5;
+    --auxiliary-strong: #4f378b;
+    --auxiliary-muted: #f3edf7;
+    --auxiliary-border: #eaddff;
+    --navigation: #f0f4f9;
+    --navigation-foreground: #1f1f1f;
+    --navigation-muted: #444746;
+    --navigation-hover: #e1e7ef;
+    --navigation-hover-foreground: #1f1f1f;
+    --navigation-active: #c2e7ff;
+    --navigation-active-foreground: #001d35;
+    --navigation-border: #dde3ea;
+    --heatmap-low: #f0f4f9;
+    --heatmap-moderate: #d3e3fd;
+    --heatmap-high: #a8c7fa;
+    --heatmap-maximum: #7cacf8;
 
-    /* Categorical data colors stay distinct from semantic status intents. */
-    --chart-1: #475569;
-    --chart-2: #175cd3;
-    --chart-3: #0b6e87;
-    --chart-4: #5948b1;
-    --chart-5: #b85c00;
-    --chart-6: #8a6a00;
-    --chart-7: #0f764a;
-    --chart-8: #b42318;
+    /* Google Material / Looker Studio categorical & status chart palette */
+    --chart-1: #5f6368;
+    --chart-2: #0b57d0;
+    --chart-3: #007b83;
+    --chart-4: #7627bb;
+    --chart-5: #e37400;
+    --chart-6: #b06000;
+    --chart-7: #146c2e;
+    --chart-8: #b3261e;
 
     /* Quiet categorical business case identities */
     --task-tone-1-muted: #ffffff;
-    --task-tone-1-border: #d5dfec;
-    --task-tone-1-accent: #175cd3;
+    --task-tone-1-border: #dde3ea;
+    --task-tone-1-accent: #0b57d0;
     --task-tone-2-muted: #ffffff;
-    --task-tone-2-border: #d5dfec;
-    --task-tone-2-accent: #0f764a;
+    --task-tone-2-border: #dde3ea;
+    --task-tone-2-accent: #146c2e;
     --task-tone-3-muted: #ffffff;
-    --task-tone-3-border: #d5dfec;
-    --task-tone-3-accent: #b85c00;
+    --task-tone-3-border: #dde3ea;
+    --task-tone-3-accent: #e37400;
     --task-tone-4-muted: #ffffff;
-    --task-tone-4-border: #d5dfec;
-    --task-tone-4-accent: #4e5ba6;
+    --task-tone-4-border: #dde3ea;
+    --task-tone-4-accent: #65558f;
     --task-tone-5-muted: #ffffff;
-    --task-tone-5-border: #d5dfec;
-    --task-tone-5-accent: #0b6e87;
+    --task-tone-5-border: #dde3ea;
+    --task-tone-5-accent: #00639b;
     --task-tone-6-muted: #ffffff;
-    --task-tone-6-border: #d5dfec;
-    --task-tone-6-accent: #8a4b08;
-    --overlay: rgb(12 33 59 / 0.54);
+    --task-tone-6-border: #dde3ea;
+    --task-tone-6-accent: #8c4a00;
+    --overlay: rgb(31 31 31 / 0.42);
 
-    /* Modern Shape Roles — Crisp 8px/12px/16px architectural radii */
+    /* Material Design 3 Shape Roles — 8px controls, pill actions/nav, 12px cards, 24px dialogs */
     --radius: 0.5rem;
     --shape-control: 0.5rem;
+    --shape-pill: 9999px;
     --shape-surface: 0.75rem;
-    --shape-overlay: 1rem;
+    --shape-overlay: 1.5rem;
     --shape-circle: 9999px;
     --shape-toggle: 9999px;
 
     /* Elevation roles */
-    --elevation-floating: 0 12px 32px rgb(12 33 59 / 0.14), 0 2px 6px rgb(12 33 59 / 0.06);
-
-    /* Shared decorative details */
-    --decorative-grid: rgb(255 255 255 / 0.055);
+    --elevation-floating: 0 8px 24px rgb(31 31 31 / 0.12), 0 2px 6px rgb(31 31 31 / 0.06);
 
     /* WCAG 2.2 Focus Not Obscured sticky chrome scroll offsets */
     --scroll-offset-top: 5rem;
@@ -289,7 +289,7 @@ html:has([data-testid="student-experiment-navigation"]) {
     }
 
     body {
-        @apply bg-background text-foreground antialiased;
+        @apply bg-background font-sans text-foreground antialiased;
         font-size: 1rem;
         line-height: 1.625rem;
         font-feature-settings: "rlig" 1, "calt" 1;
@@ -372,9 +372,9 @@ html:has([data-testid="student-experiment-navigation"]) {
         --task-card-accent: var(--task-tone-6-accent);
     }
 
-    /* Modern inset capsule navigation item inside WorkspaceSidebar */
+    /* Google Drive / Classroom MD3 capsule navigation item inside WorkspaceSidebar */
     .workspace-nav-link {
-        @apply relative mx-3 my-0.5 flex min-h-10 items-center gap-3 rounded-control border border-transparent px-3.5 py-2 text-label font-medium text-navigation-muted outline-none;
+        @apply relative mx-3 my-0.5 flex min-h-10 items-center gap-3 rounded-pill px-4 py-2 text-label font-medium text-navigation-muted outline-none;
     }
 
     .workspace-nav-link:not([aria-current="page"]) {
@@ -388,11 +388,11 @@ html:has([data-testid="student-experiment-navigation"]) {
     }
 
     .workspace-nav-link[aria-current="page"] {
-        @apply border-navigation-border bg-navigation-active font-semibold text-navigation-active-foreground;
+        @apply bg-navigation-active font-medium text-navigation-active-foreground;
     }
 
     .workspace-nav-link:focus-visible {
-        outline: 2px solid var(--navigation-foreground);
+        outline: 2px solid var(--ring);
         outline-offset: -2px;
     }
 
@@ -444,13 +444,6 @@ html:has([data-testid="student-experiment-navigation"]) {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background-color: color-mix(in srgb, var(--muted-foreground) 45%, transparent);
-}
-
-.institutional-grid {
-    background-image:
-        linear-gradient(to right, var(--decorative-grid) 1px, transparent 1px),
-        linear-gradient(to bottom, var(--decorative-grid) 1px, transparent 1px);
-    background-size: 28px 28px;
 }
 
 /* Tiptap placeholder */

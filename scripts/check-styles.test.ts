@@ -16,9 +16,12 @@ import {
 } from "./check-styles";
 
 describe("style guard", () => {
-    test("excludes test fixtures from Tailwind production source detection", async () => {
+    test("excludes test fixtures from Tailwind production source detection and declares MD3 cascade layers", async () => {
         const themeCss = await Bun.file("styles/theme.css").text();
 
+        expect(themeCss).toContain("@layer theme, base, mui, components, utilities;");
+        expect(themeCss).not.toContain("institutional-grid");
+        expect(themeCss.toLowerCase()).not.toContain("#0c213b");
         expect(themeCss).toContain('@source not "../scripts";');
         expect(themeCss).toContain('@source not "../src/**/*.test.ts";');
         expect(themeCss).toContain('@source not "../src/**/*.test.tsx";');
@@ -45,7 +48,7 @@ describe("style guard", () => {
     });
 
     test("requires semantic shape and elevation classes in maintained design-system files", () => {
-        expect(countNonSemanticRadiusClasses("rounded-xs rounded-sm rounded-md rounded-2xl rounded-control rounded-full")).toBe(5);
+        expect(countNonSemanticRadiusClasses("rounded-xs rounded-sm rounded-md rounded-2xl rounded-control rounded-pill rounded-full")).toBe(5);
         expect(countNonSemanticShadowClasses("shadow-2xs shadow-sm shadow-lg shadow-surface shadow-primary/20")).toBe(3);
     });
 
@@ -62,20 +65,25 @@ describe("style guard", () => {
         expect(countDecorativeEffectClasses("bg-primary bg-primary-muted transition-colors animate-spin")).toBe(0);
     });
 
-    test("keeps body, muted, status, and input-boundary contrast readable", async () => {
+    test("keeps body, muted, navigation, status, and input-boundary contrast readable under MD3 Light", async () => {
         const themeCss = await Bun.file("styles/theme.css").text();
         const foreground = readThemeHex(themeCss, "foreground");
         const mutedForeground = readThemeHex(themeCss, "muted-foreground");
         const background = readThemeHex(themeCss, "background");
         const card = readThemeHex(themeCss, "card");
+        const navigation = readThemeHex(themeCss, "navigation");
+        const navigationActive = readThemeHex(themeCss, "navigation-active");
+        const navigationActiveForeground = readThemeHex(themeCss, "navigation-active-foreground");
         const success = readThemeHex(themeCss, "success");
         const successMuted = readThemeHex(themeCss, "success-muted");
         const input = readThemeHex(themeCss, "input");
 
         expect(contrastRatio(foreground!, background!)).toBeGreaterThanOrEqual(4.5);
-        expect(contrastRatio(mutedForeground!, background!)).toBeGreaterThanOrEqual(7);
+        expect(contrastRatio(mutedForeground!, background!)).toBeGreaterThanOrEqual(8);
+        expect(contrastRatio(mutedForeground!, navigation!)).toBeGreaterThanOrEqual(8);
+        expect(contrastRatio(navigationActiveForeground!, navigationActive!)).toBeGreaterThanOrEqual(7);
         expect(contrastRatio(success!, successMuted!)).toBeGreaterThanOrEqual(4.5);
-        expect(contrastRatio(input!, card!)).toBeGreaterThanOrEqual(3);
+        expect(contrastRatio(input!, card!)).toBeGreaterThanOrEqual(4.5);
     });
 
     test("defines shared cursors for enabled and disabled interactive controls", async () => {

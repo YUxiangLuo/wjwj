@@ -45,6 +45,9 @@
     "test:db": "REQUIRE_TEST_DATABASE=1 bun test --isolate src/db/postgresql.integration.test.ts src/db/concurrency.integration.test.ts src/db/variable-analysis.integration.test.ts src/db/variable-dictionary.integration.test.ts src/db/variable-permissions.integration.test.ts scripts/refresh-happiness-demo.integration.test.ts"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^9.6.0",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-compose-refs": "^1.1.2",

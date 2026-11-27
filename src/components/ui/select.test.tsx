@@ -15,7 +15,7 @@ afterAll(() => {
   restoreDom = null;
 });
 
-test("open Select content makes the Radix-hidden application background inert", async () => {
+test("open Select content makes the modal-hidden application background inert", async () => {
   const {
     Select,
     SelectContent,
@@ -45,9 +45,7 @@ test("open Select content makes the Radix-hidden application background inert", 
   const view = render(<ControlledSelect />);
   const application = view.getByTestId("application");
   await view.findByRole("listbox");
-  const applicationBackground = application.closest<HTMLElement>(
-    '[data-aria-hidden="true"][aria-hidden="true"]',
-  );
+  const applicationBackground = application.closest<HTMLElement>('[aria-hidden="true"]');
   expect(applicationBackground).not.toBeNull();
   await waitFor(() => expect(applicationBackground?.inert).toBe(true));
 

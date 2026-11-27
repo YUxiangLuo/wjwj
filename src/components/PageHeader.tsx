@@ -1,4 +1,5 @@
 import * as React from "react";
+import MuiBox from "@mui/material/Box";
 
 import { cn } from "@/lib/utils";
 
@@ -15,16 +16,17 @@ function PageHeader({
     ...props
 }: PageHeaderProps) {
     return (
-        <Component
+        <MuiBox
+            component={Component}
             className={cn(
-                "flex gap-4 flex-row items-center justify-between",
+                "flex flex-row items-center justify-between gap-4",
                 border && "border-b border-border pb-4",
                 className,
             )}
             {...props}
         >
             {children}
-        </Component>
+        </MuiBox>
     );
 }
 
