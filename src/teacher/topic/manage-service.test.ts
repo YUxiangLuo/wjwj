@@ -205,6 +205,85 @@ test("renaming a topic retitles only its generated study-contract question", asy
     });
 });
 
+test("published unassigned topics cannot revert to draft and renaming preserves frozen studyContract", async () => {
+    const target = { kind: "mean" as const, field: "score" };
+    const frozenMapping = {
+        identifier: "id",
+        stratified: ["gender"],
+        numeric: ["score"],
+        analysisTarget: target,
+        studyContract: {
+            version: 1,
+            researchQuestion: "原课题中score的平均水平是多少？",
+            targetPopulation: "测试总体",
+            unitOfAnalysis: "一行",
+            target,
+        },
+    };
+    const { module, operations } = await loadManageService({
+        select: [
+            [{
+                name: "原课题",
+                status: 1,
+                excelFilePath: "/storage/uploads/topic.xlsx",
+                fieldMapping: frozenMapping,
+                weightConfig: { questionnaire: 30, process: 40, report: 30 },
+            }],
+            [],
+            [{
+                name: "原课题",
+                status: 1,
+                excelFilePath: "/storage/uploads/topic.xlsx",
+                fieldMapping: frozenMapping,
+                weightConfig: { questionnaire: 30, process: 40, report: 30 },
+            }],
+            [],
+        ],
+    });
+
+    const revertResult = await module.updateTeacherTopicBasics({
+        teacherId: 9,
+        topicId: 12,
+        body: { status: 0 },
+    });
+    expect(revertResult).toEqual({
+        ok: false,
+        code: "FORBIDDEN",
+        message: "已发布的实验模板不能退回草稿；如需调整配置请复制为新模板",
+        status: 403,
+    });
+    expect(operations.filter((operation) => operation.kind === "update")).toHaveLength(0);
+
+    const renameResult = await module.updateTeacherTopicBasics({
+        teacherId: 9,
+        topicId: 12,
+        body: { name: "发布后新课题名" },
+    });
+    expect(renameResult).toEqual({ ok: true });
+    const updates = operations.filter((operation) => operation.kind === "update");
+    expect(updates).toHaveLength(1);
+    expect(updates[0]?.set).toMatchObject({ name: "发布后新课题名" });
+    expect(updates[0]?.set).not.toHaveProperty("fieldMapping");
+    expect(frozenMapping.studyContract.researchQuestion).toBe("原课题中score的平均水平是多少？");
+});
+
+test("updateTopicWeightConfig accepts decimal hundredth weights and strips unknown extra keys", async () => {
+    const { module, operations } = await loadManageService({
+        select: [[{ status: 0 }], []],
+    });
+
+    const result = await module.updateTopicWeightConfig({
+        teacherId: 9,
+        topicId: 12,
+        weightConfig: { questionnaire: 10.03, process: 57.98, report: 31.99, extra: 1 } as never,
+    });
+    expect(result).toEqual({ ok: true });
+    const update = operations.find((operation) => operation.kind === "update");
+    const persisted = (update?.set as { weightConfig?: Record<string, unknown> })?.weightConfig;
+    expect(persisted).toEqual({ questionnaire: 10.03, process: 57.98, report: 31.99 });
+    expect(persisted).not.toHaveProperty("extra");
+});
+
 test("assigned topic basics remain immutable after the mutation lock is acquired", async () => {
     const { module, operations } = await loadManageService({
         select: [[{

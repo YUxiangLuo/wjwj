@@ -4,6 +4,7 @@ import { parseStudyContract, resolveAnalysisTarget, validateAnalysisTarget, vali
 import { buildDefaultSamplingPolicy, filterPpsEligibleFields, resolveSamplingPolicy, validateSamplingPolicy } from "../../lib/sampling-policy";
 import { identityKey, normalizeIdentityText } from "../../lib/identity-text";
 import { isNumericText, parseNumericText } from "../../lib/numeric-text";
+import { isScoringWeightTotalValid, isValidScoringWeightValue } from "../../lib/scoring-weights";
 import { isRowEmpty } from "./file-utils";
 import { valueKey } from "../../domain/variables/dictionary";
 import type { VariableDictionary } from "../../domain/variables/types";
@@ -403,13 +404,19 @@ export function validateTopicAttachmentUpload(input: TopicAttachmentInput, attac
 }
 
 export function validateWeightConfig(weightConfig: TopicWeightConfigInput | null | undefined) {
-    if (!weightConfig) return "评分权重不能为空";
+    if (!weightConfig || typeof weightConfig !== "object") return "评分权重不能为空";
 
     const { questionnaire, process, report } = weightConfig;
+    if ([questionnaire, process, report].some((value) => typeof value !== "number" || !Number.isFinite(value))) {
+        return "评分权重格式无效";
+    }
+    if ([questionnaire, process, report].some((value) => !isValidScoringWeightValue(value))) {
+        return "评分权重最多保留两位小数";
+    }
     if (questionnaire < 10 || questionnaire > 50) return "问卷设计权重需在10-50%之间";
     if (process < 20 || process > 60) return "实验过程权重需在20-60%之间";
     if (report < 10 || report > 50) return "实验报告权重需在10-50%之间";
-    if (questionnaire + process + report !== 100) return "评分权重总和必须等于100";
+    if (!isScoringWeightTotalValid({ questionnaire, process, report })) return "评分权重总和必须等于100";
 
     return null;
 }

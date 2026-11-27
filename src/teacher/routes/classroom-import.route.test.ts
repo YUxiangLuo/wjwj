@@ -480,13 +480,110 @@ test("student deletion with confirmation removes the graded work", async () => {
         ],
     });
     const response = await module.studentRoutes.DELETE!(withStudentParam(new Request(
-        "https://example.com/api/teacher/students/44?confirm=1",
-        { method: "DELETE" },
+        "https://example.com/api/teacher/students/44",
+        {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                confirm: true,
+                expectedImpact: { experiments: 1, submitted: 0, graded: 1 },
+            }),
+        },
     ), "44"));
 
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ data: { success: true } });
     expect(operations.some((operation) => operation.kind === "delete" && operation.table === student)).toBe(true);
+});
+
+test("student deletion rejects a stale preview when concurrent grading or submission changes the cascade", async () => {
+    const { module, operations } = await loadClassroomRoutes({
+        teacherId: 9,
+        select: [
+            [{ id: 44, studentId: "S044", classId: 3 }],
+            [{ id: 91 }, { id: 92 }],
+            [{ status: "submitted", count: 1 }, { status: "graded", count: 1 }],
+        ],
+    });
+    const response = await module.studentRoutes.DELETE!(withStudentParam(new Request(
+        "https://example.com/api/teacher/students/44",
+        {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                confirm: true,
+                expectedImpact: { experiments: 1, submitted: 1, graded: 0 },
+            }),
+        },
+    ), "44"));
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+        error: { code: "DELETION_IMPACT_CHANGED" },
+    });
+    expect(operations.some((operation) => operation.kind === "delete" || operation.kind === "insert")).toBe(false);
+
+    // Also block when total experiments stay 1 but a submitted record was newly graded
+    const gradedRace = await loadClassroomRoutes({
+        teacherId: 9,
+        select: [
+            [{ id: 44, studentId: "S044", classId: 3 }],
+            [{ id: 91 }],
+            [{ status: "graded", count: 1 }],
+        ],
+    });
+    const gradedResponse = await gradedRace.module.studentRoutes.DELETE!(withStudentParam(new Request(
+        "https://example.com/api/teacher/students/44",
+        {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                confirm: true,
+                expectedImpact: { experiments: 1, submitted: 1, graded: 0 },
+            }),
+        },
+    ), "44"));
+    expect(gradedResponse.status).toBe(409);
+    expect(await gradedResponse.json()).toMatchObject({
+        error: { code: "DELETION_IMPACT_CHANGED" },
+    });
+    expect(gradedRace.operations.some((operation) => operation.kind === "delete" || operation.kind === "insert")).toBe(false);
+});
+
+test("confirmed student deletion requires expectedImpact and validates body shape", async () => {
+    const { module, operations } = await loadClassroomRoutes({
+        teacherId: 9,
+        select: [
+            [{ id: 44, studentId: "S044", classId: 3 }],
+            [{ id: 91 }],
+            [{ status: "graded", count: 1 }],
+        ],
+    });
+    const missingSnapshot = await module.studentRoutes.DELETE!(withStudentParam(new Request(
+        "https://example.com/api/teacher/students/44?confirm=1",
+        { method: "DELETE" },
+    ), "44"));
+    expect(missingSnapshot.status).toBe(409);
+    expect(await missingSnapshot.json()).toMatchObject({
+        error: { code: "DELETION_IMPACT_CHANGED" },
+    });
+    expect(operations.some((operation) => operation.kind === "delete")).toBe(false);
+
+    const invalidPayload = await module.studentRoutes.DELETE!(withStudentParam(new Request(
+        "https://example.com/api/teacher/students/44",
+        {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                confirm: true,
+                expectedImpact: { experiments: 1, submitted: 2, graded: 0 },
+            }),
+        },
+    ), "44"));
+    expect(invalidPayload.status).toBe(400);
+    expect(await invalidPayload.json()).toMatchObject({
+        error: { code: "VALIDATION_ERROR" },
+    });
 });
 
 test("student deletion of an unsubmitted roster entry stays a one-step delete", async () => {

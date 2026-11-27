@@ -1,6 +1,7 @@
 import { CsvFileReviewDialog } from "@/components/CsvFileReviewDialog";
 import { RequestError } from "@/components/RequestError";
 import { parseNumericText } from "@/lib/numeric-text";
+import { formatScoringWeightTotal, isScoringWeightTotalValid, isValidScoringWeightValue } from "@/lib/scoring-weights";
 import { assignFieldRole } from "../topic/field-roles";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, CheckCircle2, Download, FileText, HelpCircle, Loader2, Pencil, Play, School, Sparkles, Trash2, Upload, Users, X } from "lucide-react";
@@ -1498,11 +1499,16 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         )}
 
                         {!loadingDetail && currentStep === 7 && (() => {
-                            const qOut = weightConfig.questionnaire < 10 || weightConfig.questionnaire > 50;
-                            const pOut = weightConfig.process < 20 || weightConfig.process > 60;
-                            const rOut = weightConfig.report < 10 || weightConfig.report > 50;
-                            const sum = weightConfig.questionnaire + weightConfig.process + weightConfig.report;
-                            const weightsValid = !qOut && !pOut && !rOut && sum === 100;
+                            const qPrecisionErr = !isValidScoringWeightValue(weightConfig.questionnaire);
+                            const pPrecisionErr = !isValidScoringWeightValue(weightConfig.process);
+                            const rPrecisionErr = !isValidScoringWeightValue(weightConfig.report);
+                            const hasPrecisionErr = qPrecisionErr || pPrecisionErr || rPrecisionErr;
+                            const qOut = qPrecisionErr || weightConfig.questionnaire < 10 || weightConfig.questionnaire > 50;
+                            const pOut = pPrecisionErr || weightConfig.process < 20 || weightConfig.process > 60;
+                            const rOut = rPrecisionErr || weightConfig.report < 10 || weightConfig.report > 50;
+                            const totalValid = isScoringWeightTotalValid(weightConfig);
+                            const formattedSum = formatScoringWeightTotal(weightConfig);
+                            const weightsValid = !qOut && !pOut && !rOut && totalValid;
                             return (
                                 <div className="space-y-5">
                                     {isPublishedTopic ? (
@@ -1527,6 +1533,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                     type="number"
                                                     min={10}
                                                     max={50}
+                                                    step={0.01}
                                                     aria-invalid={!isPublishedTopic && qOut}
                                                     disabled={isPublishedTopic}
                                                     value={weightConfig.questionnaire}
@@ -1551,6 +1558,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                     type="number"
                                                     min={20}
                                                     max={60}
+                                                    step={0.01}
                                                     aria-invalid={!isPublishedTopic && pOut}
                                                     disabled={isPublishedTopic}
                                                     value={weightConfig.process}
@@ -1575,6 +1583,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                     type="number"
                                                     min={10}
                                                     max={50}
+                                                    step={0.01}
                                                     aria-invalid={!isPublishedTopic && rOut}
                                                     disabled={isPublishedTopic}
                                                     value={weightConfig.report}
@@ -1593,14 +1602,16 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                             <span className="text-label text-muted-foreground">当前总权重</span>
                                             {!isPublishedTopic && !weightsValid && (
                                                 <p className="mt-0.5 text-meta text-destructive">
-                                                    {sum !== 100
-                                                        ? `当前总和为 ${sum}%，须调整至 100%`
-                                                        : "存在超出允许范围的分项权重，请按卡片范围提示调整"}
+                                                    {hasPrecisionErr
+                                                        ? "分项权重最多保留两位小数"
+                                                        : !totalValid
+                                                            ? `当前总和为 ${formattedSum}%，须调整至 100%`
+                                                            : "存在超出允许范围的分项权重，请按卡片范围提示调整"}
                                                 </p>
                                             )}
                                         </div>
                                         <span className={`text-page-title font-medium tabular-nums ${weightsValid ? "text-success" : "text-destructive"}`}>
-                                            {sum}%
+                                            {formattedSum}%
                                         </span>
                                     </div>
                                 </div>

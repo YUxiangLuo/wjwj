@@ -41,29 +41,85 @@ test("a cancelled student's late deletion preview cannot overwrite the next dial
     expect(view.getByTestId("teacher-student-delete-impact").textContent).toContain("已提交 3 条");
 });
 
-test("a 409 keeps the dialog open and only the second click confirms; pending clicks do not duplicate writes", async () => {
+test("a 409 refreshes deletion impact, keeps the dialog open, and sends updated expectedImpact on second confirm without duplicate writes", async () => {
     const first = Promise.withResolvers<Response>();
     const second = Promise.withResolvers<Response>();
-    const deletions: string[] = [];
+    const deletions: Array<{ url: string; body: unknown }> = [];
+    let previewCalls = 0;
     const view = mount((url, init) => {
-        if (url.endsWith("/deletion-preview")) return Promise.resolve(Response.json({ success: false, error: { code: "INTERNAL_ERROR", message: "预览暂不可用" } }, { status: 500 }));
-        if (init?.method === "DELETE") { deletions.push(url); return deletions.length === 1 ? first.promise : second.promise; }
+        if (url.endsWith("/deletion-preview")) {
+            previewCalls += 1;
+            return Promise.resolve(success(previewCalls === 1
+                ? { requiresConfirmation: true, impact: { experiments: 1, submitted: 1, graded: 0 } }
+                : { requiresConfirmation: true, impact: { experiments: 2, submitted: 1, graded: 1 } }));
+        }
+        if (init?.method === "DELETE") {
+            deletions.push({ url, body: init.body ? JSON.parse(String(init.body)) : null });
+            return deletions.length === 1 ? first.promise : second.promise;
+        }
     });
     await waitFor(() => expect(view.getByTestId("teacher-student-delete-1")).toBeTruthy());
     fireEvent.click(view.getByTestId("teacher-student-delete-1"));
-    await waitFor(() => expect((view.getByTestId("teacher-student-confirm-submit") as HTMLButtonElement).disabled).toBe(false));
+    await waitFor(() => expect(view.getByTestId("teacher-student-delete-impact").textContent).toContain("已提交 1 条"));
+    expect((view.getByTestId("teacher-student-confirm-submit") as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(view.getByTestId("teacher-student-confirm-submit"));
     fireEvent.click(view.getByTestId("teacher-student-confirm-submit"));
     expect(deletions).toHaveLength(1);
-    expect(deletions[0]).not.toContain("confirm=1");
+    expect(deletions[0]?.body).toEqual({
+        confirm: true,
+        expectedImpact: { experiments: 1, submitted: 1, graded: 0 },
+    });
     expect(view.getByRole("alertdialog")).toBeTruthy();
-    await act(async () => { first.resolve(Response.json({ success: false, error: { code: "SUBMISSIONS_EXIST", message: "该学生存在 3 条已提交实验，请再次确认" } }, { status: 409 })); });
-    await waitFor(() => expect(view.getByTestId("teacher-student-delete-impact").textContent).toContain("请再次确认"));
+
+    await act(async () => {
+        first.resolve(Response.json(
+            { success: false, error: { code: "DELETION_IMPACT_CHANGED", message: "删除范围已发生变化，请刷新预览后重新确认" } },
+            { status: 409 },
+        ));
+    });
+    await waitFor(() => expect(view.getByTestId("teacher-student-delete-impact").textContent).toContain("已批改 1 条"));
+    expect(previewCalls).toBe(2);
+
     fireEvent.click(view.getByTestId("teacher-student-confirm-submit"));
     expect(deletions).toHaveLength(2);
-    expect(deletions[1]).toContain("confirm=1");
+    expect(deletions[1]?.body).toEqual({
+        confirm: true,
+        expectedImpact: { experiments: 2, submitted: 1, graded: 1 },
+    });
     await act(async () => { second.resolve(success({ success: true })); });
     await waitFor(() => expect(view.queryByRole("alertdialog")).toBeNull());
+});
+
+test("failed deletion preview retries loading impact before sending any DELETE request", async () => {
+    let previewCalls = 0;
+    const deletions: unknown[] = [];
+    const view = mount((url, init) => {
+        if (url.endsWith("/deletion-preview")) {
+            previewCalls += 1;
+            if (previewCalls === 1) {
+                return Promise.resolve(Response.json({ success: false, error: { code: "INTERNAL_ERROR", message: "预览暂不可用" } }, { status: 500 }));
+            }
+            return Promise.resolve(success({ requiresConfirmation: false, impact: { experiments: 0, submitted: 0, graded: 0 } }));
+        }
+        if (init?.method === "DELETE") {
+            deletions.push(init.body ? JSON.parse(String(init.body)) : null);
+            return Promise.resolve(success({ success: true }));
+        }
+    });
+    await waitFor(() => expect(view.getByTestId("teacher-student-delete-1")).toBeTruthy());
+    fireEvent.click(view.getByTestId("teacher-student-delete-1"));
+    await waitFor(() => expect(view.getByTestId("teacher-student-delete-impact").textContent).toContain("删除范围加载失败"));
+
+    fireEvent.click(view.getByTestId("teacher-student-confirm-submit"));
+    expect(deletions).toHaveLength(0);
+    await waitFor(() => expect(previewCalls).toBe(2));
+    await waitFor(() => expect(view.getByTestId("teacher-student-delete-impact").textContent).toContain("该学生没有实验记录"));
+
+    fireEvent.click(view.getByTestId("teacher-student-confirm-submit"));
+    await waitFor(() => expect(deletions).toEqual([{
+        confirm: false,
+        expectedImpact: { experiments: 0, submitted: 0, graded: 0 },
+    }]));
 });
 
 test("student management header pairs primary Filled add button with Tonal secondary batch import", async () => {

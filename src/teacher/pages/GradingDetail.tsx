@@ -225,7 +225,7 @@ export function GradingDetail() {
                 </CardHeader>
                 <CardContent className="px-5">
                     <Tabs ref={navigationRef} value={activeSection} onValueChange={selectSection} className="scroll-mt-20">
-                        <TabsList className="sticky top-16 z-20 flex h-auto w-full flex-wrap justify-start gap-1 p-1" aria-label="提交材料">
+                        <TabsList className="sticky top-16 z-20 flex h-auto w-full flex-wrap justify-start gap-1 bg-card p-1" aria-label="提交材料">
                             {hasWaveLoop && (
                                 <TabsTrigger value="waves" className="h-auto px-3 py-1.5 text-meta">试投质检与调优</TabsTrigger>
                             )}

@@ -339,7 +339,7 @@ export function TaskManagement() {
                                     <TableHead className="text-muted-foreground">截止时间 (UTC+8)</TableHead>
                                     <TableHead className="text-muted-foreground">完成进度</TableHead>
                                     <TableHead className="text-muted-foreground">待批改</TableHead>
-                                    <TableHead className="sticky right-0 z-10 border-l border-border bg-muted text-right text-muted-foreground">操作</TableHead>
+                                    <TableHead className="sticky right-0 z-10 border-l border-border bg-muted text-right text-muted-foreground before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-border">操作</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -370,7 +370,7 @@ export function TaskManagement() {
                                                 <span className="text-meta text-muted-foreground">-</span>
                                             )}
                                         </TableCell>
-                                        <TableCell className="sticky right-0 z-10 border-l border-border bg-card text-right group-hover:bg-muted">
+                                        <TableCell className="sticky right-0 z-10 border-l border-border bg-card text-right before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-border group-hover:bg-muted">
                                             <div className="flex items-center justify-end gap-1 whitespace-nowrap">
                                                 <Button variant="ghost" size="sm" asChild className="h-8 px-2.5">
                                                     <Link to={`/task/${task.id}/progress${listSearch ? `?${listSearch}` : ""}`}>

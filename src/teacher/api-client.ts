@@ -169,9 +169,9 @@ export const teacherApi = {
     },
     addStudent: (classId: number, data: { studentId: string; name: string; email?: string }) => request<{ success: boolean }>(`/api/teacher/classes/${classId}/students`, { method: "POST", body: JSON.stringify(data) }),
     updateStudent: (id: number, data: { action: "reset_password" }) => request<{ success: boolean }>(`/api/teacher/students/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-    deleteStudent: (id: number, options?: { confirm?: boolean }) => request<{ success: boolean }>(
-        `/api/teacher/students/${id}${options?.confirm ? "?confirm=1" : ""}`,
-        { method: "DELETE" },
+    deleteStudent: (id: number, options?: { confirm?: boolean; expectedImpact?: DeletionImpact }) => request<{ success: boolean }>(
+        `/api/teacher/students/${id}`,
+        { method: "DELETE", body: JSON.stringify(options ?? {}) },
     ),
     getStudentDeletionImpact: (id: number) => request<{ impact: DeletionImpact; requiresConfirmation: boolean }>(`/api/teacher/students/${id}/deletion-preview`),
     importStudents: (classId: number, file: File) => upload<{

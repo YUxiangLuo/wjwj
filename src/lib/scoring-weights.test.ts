@@ -1,10 +1,31 @@
 import { expect, test } from "bun:test";
-import { DEFAULT_SCORING_WEIGHTS, isValidScore, scoringWeightsFrom, weightedScore } from "./scoring-weights";
+import {
+    DEFAULT_SCORING_WEIGHTS,
+    formatScoringWeightTotal,
+    isScoringWeightTotalValid,
+    isValidScore,
+    sanitizeScoringWeights,
+    scoringWeightsFrom,
+    weightedScore,
+} from "./scoring-weights";
 
 test("scoringWeightsFrom accepts stored objects and JSON strings", () => {
     const weights = { questionnaire: 40, process: 35, report: 25 };
     expect(scoringWeightsFrom(weights)).toEqual(weights);
     expect(scoringWeightsFrom(JSON.stringify(weights))).toEqual(weights);
+});
+
+test("decimal weights summing to 100 in hundredths avoid IEEE-754 float rejection and strip extra keys", () => {
+    const raw = { questionnaire: 10.03, process: 57.98, report: 31.99, extra: 1 };
+    expect(10.03 + 57.98 + 31.99).not.toBe(100);
+    expect(isScoringWeightTotalValid(raw)).toBe(true);
+    expect(formatScoringWeightTotal(raw)).toBe("100");
+    expect(sanitizeScoringWeights(raw)).toEqual({ questionnaire: 10.03, process: 57.98, report: 31.99 });
+    expect("extra" in sanitizeScoringWeights(raw)).toBe(false);
+    expect(scoringWeightsFrom(raw)).toEqual({ questionnaire: 10.03, process: 57.98, report: 31.99 });
+    expect("extra" in scoringWeightsFrom(raw)).toBe(false);
+    expect(scoringWeightsFrom(JSON.stringify(raw))).toEqual({ questionnaire: 10.03, process: 57.98, report: 31.99 });
+    expect(scoringWeightsFrom({ questionnaire: 10.004, process: 59.996, report: 30 })).toEqual(DEFAULT_SCORING_WEIGHTS);
 });
 
 test("scoringWeightsFrom falls back for missing or invalid totals", () => {

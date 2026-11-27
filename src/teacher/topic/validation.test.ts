@@ -400,11 +400,13 @@ describe("topic validation helpers", () => {
         ).toBe("第1题选项数量需在2-10个之间");
     });
 
-    test("validateWeightConfig enforces ranges and total", () => {
+    test("validateWeightConfig enforces ranges, hundredths precision, and exact decimal total", () => {
         expect(validateWeightConfig(null)).toBe("评分权重不能为空");
         expect(validateWeightConfig({ questionnaire: 5, process: 45, report: 50 })).toBe("问卷设计权重需在10-50%之间");
         expect(validateWeightConfig({ questionnaire: 20, process: 10, report: 70 })).toBe("实验过程权重需在20-60%之间");
         expect(validateWeightConfig({ questionnaire: 20, process: 40, report: 20 })).toBe("评分权重总和必须等于100");
+        expect(validateWeightConfig({ questionnaire: 10.03, process: 57.98, report: 31.99 })).toBeNull();
+        expect(validateWeightConfig({ questionnaire: 10.004, process: 59.996, report: 30 })).toBe("评分权重最多保留两位小数");
     });
 
     test("validateTopicName trims and validates names", () => {

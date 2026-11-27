@@ -13,7 +13,9 @@ import { clearUserSessionsForUser } from "../../server/user-session";
 import { STUDENT_USER_TYPE } from "../../student/routes/auth";
 import { getPrimaryTeacherIdOrThrow } from "./auth";
 import {
+    deletionImpactsEqual,
     deletionRequiresConfirmation,
+    isDeletionImpact,
     loadDeletionImpact,
     type DeletionImpact,
 } from "../deletion-impact";
@@ -109,7 +111,8 @@ function describeStudentConflict(
 export type StudentDeletionResult =
     | { ok: true }
     | { ok: false; code: "NOT_FOUND" }
-    | { ok: false; code: "SUBMISSIONS_EXIST"; impact: DeletionImpact };
+    | { ok: false; code: "SUBMISSIONS_EXIST"; impact: DeletionImpact }
+    | { ok: false; code: "DELETION_IMPACT_CHANGED"; impact: DeletionImpact };
 
 /** Counts what a hard delete would cascade away, before anything is removed. */
 export async function getStudentDeletionImpact(params: { teacherId: number; studentId: number }) {
@@ -124,6 +127,7 @@ export async function deleteTeacherStudent(params: {
     teacherId: number;
     studentId: number;
     confirm?: boolean;
+    expectedImpact?: DeletionImpact;
 }): Promise<StudentDeletionResult> {
     return db.transaction(async (tx) => {
         const owned = await findOwnedStudent(params.studentId, params.teacherId, tx);
@@ -137,6 +141,10 @@ export async function deleteTeacherStudent(params: {
             .orderBy(experiment.id)
             .for("update");
         const impact = await loadDeletionImpact(tx, eq(experiment.studentId, params.studentId));
+        if ((params.confirm && params.expectedImpact === undefined)
+            || (params.expectedImpact !== undefined && !deletionImpactsEqual(params.expectedImpact, impact))) {
+            return { ok: false, code: "DELETION_IMPACT_CHANGED", impact };
+        }
         if (!params.confirm && deletionRequiresConfirmation(impact)) {
             return { ok: false, code: "SUBMISSIONS_EXIST", impact };
         }
@@ -456,9 +464,26 @@ const studentRoutes: RouteDefinition = {
         const id = parseRouteId(req, "id");
         if (!id) return error("无效的学生ID", "INVALID_ID");
         const teacherId = getPrimaryTeacherIdOrThrow(req);
-        const confirm = getSearchParams(req).get("confirm") === "1";
-        const removed = await deleteTeacherStudent({ teacherId, studentId: id, confirm });
+        const body = req.body ? await parseBody<{ confirm?: unknown; expectedImpact?: unknown }>(req) : {};
+        if ((body.confirm !== undefined && typeof body.confirm !== "boolean")
+            || (body.expectedImpact !== undefined && !isDeletionImpact(body.expectedImpact))) {
+            return error("删除确认参数无效", "VALIDATION_ERROR", 400);
+        }
+        const confirm = body.confirm === true || getSearchParams(req).get("confirm") === "1";
+        const removed = await deleteTeacherStudent({
+            teacherId,
+            studentId: id,
+            confirm,
+            expectedImpact: body.expectedImpact,
+        });
         if (!removed.ok) {
+            if (removed.code === "DELETION_IMPACT_CHANGED") {
+                return error(
+                    "删除范围已发生变化，请刷新预览后重新确认",
+                    "DELETION_IMPACT_CHANGED",
+                    409,
+                );
+            }
             if (removed.code === "SUBMISSIONS_EXIST") {
                 return error(
                     `该学生存在 ${removed.impact.submitted + removed.impact.graded} 条已提交或已批改的实验记录，永久删除会一并清除；确认后请重试`,

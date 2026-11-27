@@ -11,6 +11,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { resolveStudyContract } from "@/lib/analysis-target";
 import { resolveFieldworkConfig, type FieldworkPreset } from "@/domain/fieldwork";
 import { resolveSamplingPolicy, SAMPLING_METHODS } from "@/lib/sampling-policy";
+import { formatScoringWeightTotal, isScoringWeightTotalValid } from "@/lib/scoring-weights";
 import { VariableDictionaryEditor } from "./VariableDictionaryEditor";
 
 const FIELDWORK_PRESET_LABELS: Record<FieldworkPreset, string> = {
@@ -141,14 +142,21 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                 </DialogHeader>
 
                 {/* Tab navigation */}
-                <div className="custom-scrollbar flex gap-1 overflow-x-auto border-b border-border">
+                <div
+                    role="tablist"
+                    aria-label="实验模板详情页签"
+                    className="custom-scrollbar flex gap-1 overflow-x-auto border-b border-border"
+                >
                     {TABS.map(({ key, label, icon: Icon }) => (
                         <button
                             key={key}
+                            id={`topic-view-tab-${key}`}
                             type="button"
-                            aria-pressed={activeTab === key}
+                            role="tab"
+                            aria-selected={activeTab === key}
+                            aria-controls="topic-view-tabpanel"
                             onClick={() => setActiveTab(key)}
-                            className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-meta font-medium transition-none outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                            className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-meta font-medium transition-none outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
                                 activeTab === key
                                     ? "border-primary text-primary"
                                     : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -162,8 +170,9 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
 
                 {/* Tab content */}
                 <div
-                    role="region"
-                    aria-label="实验模板详情内容，可滚动查看"
+                    id="topic-view-tabpanel"
+                    role="tabpanel"
+                    aria-labelledby={`topic-view-tab-${activeTab}`}
                     tabIndex={0}
                     className="custom-scrollbar flex-1 overflow-y-auto"
                 >
@@ -535,8 +544,8 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                     <div className="space-y-2.5 rounded-surface bg-muted p-4">
                                         <div className="flex items-center justify-between text-label">
                                             <span className="text-muted-foreground">总权重</span>
-                                            <span className={`font-medium tabular-nums ${(weightConfig.questionnaire + weightConfig.process + weightConfig.report) === 100 ? "text-success" : "text-destructive"}`}>
-                                                {weightConfig.questionnaire + weightConfig.process + weightConfig.report}%
+                                            <span className={`font-medium tabular-nums ${isScoringWeightTotalValid(weightConfig) ? "text-success" : "text-destructive"}`}>
+                                                {formatScoringWeightTotal(weightConfig)}%
                                             </span>
                                         </div>
                                         <div className="flex h-2.5 overflow-hidden rounded-pill bg-secondary">

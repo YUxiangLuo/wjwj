@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { buildDefaultSamplingPolicy, resolveSamplingPolicy, type SamplingPolicyV1 } from "@/lib/sampling-policy";
+import { isScoringWeightTotalValid, isValidScoringWeightValue, sanitizeScoringWeights } from "@/lib/scoring-weights";
 import { DEFAULT_FIELDWORK_CONFIG, resolveFieldworkConfig, type FieldworkSimulationConfig } from "@/domain/fieldwork";
 import { clearTeacherDraft, readTeacherDraft, useTeacherId, writeTeacherDraft } from "../teacher-draft";
 
@@ -431,6 +432,10 @@ export function TopicManagement() {
             return;
         }
         const { questionnaire, process, report } = weightConfig;
+        if (![questionnaire, process, report].every(isValidScoringWeightValue)) {
+            reportSaveError("评分权重最多保留两位小数");
+            return;
+        }
         if (questionnaire < 10 || questionnaire > 50) {
             reportSaveError("问卷设计权重需在10-50%之间");
             return;
@@ -443,12 +448,11 @@ export function TopicManagement() {
             reportSaveError("实验报告权重需在10-50%之间");
             return;
         }
-        const total = questionnaire + process + report;
-        if (total !== 100) {
+        if (!isScoringWeightTotalValid(weightConfig)) {
             reportSaveError("权重总和必须等于100");
             return;
         }
-        const res = await teacherApi.updateWeightConfig(editingTopicId, weightConfig);
+        const res = await teacherApi.updateWeightConfig(editingTopicId, sanitizeScoringWeights(weightConfig));
         if (res.success) {
             toast.success("模板配置已保存，发布后可分配给班级");
             setShowCreateModal(false);

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, mock, test } from "bun:test";
+import { getAccessibilityViolations } from "@/test-utils/accessibility";
 import { installDomGlobals } from "@/test-utils/dom";
 
 const bootstrapDom = installDomGlobals();
@@ -90,7 +91,19 @@ test("read-only sampling policy shows only the configured PPS size fields", asyn
     );
 
     await view.findByText("测试描述");
-    fireEvent.click(view.getByRole("button", { name: "抽样策略" }));
+    const tablist = view.getByRole("tablist", { name: "实验模板详情页签" });
+    const tabs = view.getAllByRole("tab");
+    expect(tablist).toBeTruthy();
+    expect(tabs).toHaveLength(8);
+    expect(tabs[0]?.getAttribute("aria-selected")).toBe("true");
+    for (const tab of tabs) {
+        expect(tab.hasAttribute("aria-pressed")).toBe(false);
+        expect(tab.className).toContain("focus-visible:ring-inset");
+    }
+
+    fireEvent.click(view.getByRole("tab", { name: "抽样策略" }));
+    expect(view.getByRole("tab", { name: "抽样策略" }).getAttribute("aria-selected")).toBe("true");
+    expect(view.getByRole("tab", { name: "基本信息" }).getAttribute("aria-selected")).toBe("false");
 
     expect(view.getByText("PPS 规模变量")).toBeTruthy();
     expect(view.getByText("历史同期客流量")).toBeTruthy();
@@ -99,7 +112,7 @@ test("read-only sampling policy shows only the configured PPS size fields", asyn
     expect(view.getByTestId("teacher-topic-view-fieldwork-config").textContent).toContain("22%");
     expect(view.getByTestId("teacher-topic-view-fieldwork-config").textContent).toContain("5 元 / 18 元");
 
-    fireEvent.click(view.getByRole("button", { name: "字段映射" }));
+    fireEvent.click(view.getByRole("tab", { name: "字段映射" }));
     expect(view.getByTestId("teacher-topic-view-study-contract").textContent).toContain("优化午间高峰窗口排班配置");
 });
 
@@ -167,7 +180,7 @@ test("read-only fieldwork config renders differential stratum rates and item ski
     );
 
     await view.findByText("测试分层拒访展示");
-    fireEvent.click(view.getByRole("button", { name: "抽样策略" }));
+    fireEvent.click(view.getByRole("tab", { name: "抽样策略" }));
 
     const fwPanel = view.getByTestId("teacher-topic-view-fieldwork-config");
     expect(fwPanel.textContent).toContain("细分客群差异化拒访");
@@ -175,4 +188,42 @@ test("read-only fieldwork config renders differential stratum rates and item ski
     expect(fwPanel.textContent).toContain("差异化应答分层字段：会员等级");
     expect(fwPanel.textContent).toContain("普通会员：无回答 30%");
     expect(fwPanel.textContent).toContain("黑金会员：无回答 6%");
+});
+
+test("read-only weights tab formats 10.03 + 57.98 + 31.99 as 100% without float artifact", async () => {
+    getTopicDetail.mockResolvedValueOnce({
+        success: true,
+        data: {
+            topic: {
+                name: "小数权重模板",
+                description: "测试小数权重",
+                weightConfig: { questionnaire: 10.03, process: 57.98, report: 31.99 },
+            },
+            hasExcelFile: false,
+            attachments: [],
+            recommendQuestions: [],
+            excelInfo: null,
+        },
+    } as never);
+
+    const view = render(
+        <TopicViewDialog
+            open
+            onOpenChange={() => undefined}
+            topic={{
+                id: 11,
+                name: "小数权重模板",
+                description: "测试小数权重",
+                status: 1,
+                dataRows: 0,
+                createdAt: "2026-09-10T00:00:00.000Z",
+            }}
+        />,
+    );
+
+    await view.findByText("测试小数权重");
+    fireEvent.click(view.getByRole("tab", { name: "评分规则" }));
+    expect(view.container.textContent).not.toContain("99.99999999999999");
+    expect(view.getByText("100%").className).toContain("text-success");
+    expect(await getAccessibilityViolations(view.getByRole("dialog"))).toEqual([]);
 });

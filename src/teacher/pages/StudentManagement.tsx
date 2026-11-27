@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StudentAddDialog } from "../components/StudentAddDialog";
 import { StudentConfirmDialog } from "../components/StudentConfirmDialog";
 import { StudentImportDialog } from "../components/StudentImportDialog";
-import { teacherApi, type Student, type TeacherClass } from "../api-client";
+import { teacherApi, type DeletionImpact, type Student, type TeacherClass } from "../api-client";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { isValidOptionalEmail } from "@/lib/email";
@@ -41,6 +41,7 @@ export function StudentManagement() {
         loading: boolean;
         requiresConfirmation: boolean;
         summary: string | null;
+        impact?: DeletionImpact;
     } | null>(null);
 
     const confirmRequestRef = useRef(0);
@@ -190,23 +191,34 @@ export function StudentManagement() {
                 loading: false,
                 requiresConfirmation: res.data.requiresConfirmation,
                 summary: describeCascadeImpact(res.data.impact, "student"),
+                impact: res.data.impact,
             });
         } else {
-            // Unknown impact: let the server decide and report on confirm.
-            setDeleteImpact({ loading: false, requiresConfirmation: false, summary: null });
+            setDeleteImpact({
+                loading: false,
+                requiresConfirmation: false,
+                summary: "删除范围加载失败，请重试后再确认。",
+            });
         }
     }
 
     async function executeConfirmAction() {
         const { type, student } = confirmDialog;
         if (!student || !type || confirmingRef.current || (type === "delete" && deleteImpact?.loading)) return;
+        if (type === "delete" && !deleteImpact?.impact) {
+            await handleDelete(student);
+            return;
+        }
         const requestId = confirmRequestRef.current;
         confirmingRef.current = true;
         setConfirming(true);
         try {
             const res = type === "reset"
                 ? await teacherApi.updateStudent(student.id, { action: "reset_password" })
-                : await teacherApi.deleteStudent(student.id, { confirm: deleteImpact?.requiresConfirmation === true });
+                : await teacherApi.deleteStudent(student.id, {
+                    confirm: deleteImpact?.requiresConfirmation === true,
+                    expectedImpact: deleteImpact?.impact,
+                });
             if (requestId !== confirmRequestRef.current) return;
             if (res.success) {
                 if (type === "reset") toast.success("密码已重置为学号");
@@ -214,13 +226,11 @@ export function StudentManagement() {
                 void loadData(false);
                 return;
             }
-            if (type === "delete" && res.error?.code === "SUBMISSIONS_EXIST") {
-                // Keep the dialog open so the next click is an explicit confirmation.
-                setDeleteImpact({
-                    loading: false,
-                    requiresConfirmation: true,
-                    summary: res.error.message,
-                });
+            if (type === "delete" && (res.error?.code === "SUBMISSIONS_EXIST" || res.error?.code === "DELETION_IMPACT_CHANGED")) {
+                toast.error("删除范围已变化，请核对最新数量后再次确认。");
+                confirmingRef.current = false;
+                setConfirming(false);
+                await handleDelete(student);
                 return;
             }
             toast.error("操作失败: " + res.error?.message);

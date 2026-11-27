@@ -3,6 +3,7 @@ import { db } from "../../db";
 import { task, topic, topicAttachment } from "../../db/schema";
 import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
 import { resolveAnalysisTarget, retitleGeneratedStudyContract } from "../../lib/analysis-target";
+import { sanitizeScoringWeights } from "../../lib/scoring-weights";
 import { hasSameSamplingMapping } from "./sampling-mapping";
 import { buildDefaultSamplingPolicy, filterPpsEligibleFields, parseSamplingPolicy, validateSamplingPolicy } from "../../lib/sampling-policy";
 import { validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
@@ -104,6 +105,7 @@ export async function updateTeacherTopicBasics(params: {
         const [topicInfo] = await tx
             .select({
                 name: topic.name,
+                status: topic.status,
                 excelFilePath: topic.excelFilePath,
                 fieldMapping: topic.fieldMapping,
                 samplingPolicy: topic.samplingPolicy,
@@ -126,8 +128,15 @@ export async function updateTeacherTopicBasics(params: {
                 409,
             );
         }
+        if (topicInfo.status === 1 && params.body.status === 0) {
+            return fail(
+                "已发布的实验模板不能退回草稿；如需调整配置请复制为新模板",
+                "FORBIDDEN",
+                403,
+            );
+        }
 
-        if (typeof updateData.name === "string" && updateData.name !== topicInfo.name) {
+        if (topicInfo.status !== 1 && typeof updateData.name === "string" && updateData.name !== topicInfo.name) {
             const renamedMapping = retitleGeneratedStudyContract(
                 topicInfo.fieldMapping,
                 topicInfo.name,
@@ -512,7 +521,8 @@ export async function updateTopicWeightConfig(params: {
     weightConfig: { questionnaire: number; process: number; report: number } | null | undefined;
 }) {
     const weightError = validateWeightConfig(params.weightConfig);
-    if (weightError) return fail(weightError);
+    if (weightError || !params.weightConfig) return fail(weightError ?? "评分权重不能为空");
+    const cleanWeights = sanitizeScoringWeights(params.weightConfig);
 
     return db.transaction(async (tx) => {
         await acquireStorageMutationLock(tx);
@@ -527,7 +537,7 @@ export async function updateTopicWeightConfig(params: {
         }
         const [updated] = await tx
             .update(topic)
-            .set({ weightConfig: params.weightConfig, updatedAt: new Date() })
+            .set({ weightConfig: cleanWeights, updatedAt: new Date() })
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)))
             .returning({ id: topic.id });
         return updated ? { ok: true as const } : fail("实验模板不存在", "NOT_FOUND", 404);

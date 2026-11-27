@@ -22,6 +22,7 @@ type ApiResult<T> = { success: boolean; data?: T; error?: { code: string; messag
 const emptyDetail = (): ApiResult<TopicDetail> => ({ success: true, data: { topic: null, hasExcelFile: false, attachments: [], recommendQuestions: [] } });
 const getTopicDetail = mock(async (_id: number): Promise<ApiResult<TopicDetail>> => emptyDetail());
 const updateFieldMapping = mock(async (_id: number, _mapping: FieldMappingState): Promise<ApiResult<{ success: boolean }>> => ({ success: true, data: { success: true } }));
+const updateWeightConfig = mock(async (_id: number, _weights: { questionnaire: number; process: number; report: number }): Promise<ApiResult<{ success: boolean }>> => ({ success: true, data: { success: true } }));
 const getVariableDictionary = mock(async (_id: number): Promise<ApiResult<VariableDictionaryResponse>> => ({ success: false }));
 const updateVariableDictionary = mock(async (_id: number, _body: { source: string; observedRevision: number; dictionary: VariableDictionary }): Promise<ApiResult<{ success: boolean; revision: number }>> => ({ success: false }));
 const realClient = await import("../api-client");
@@ -36,6 +37,7 @@ mock.module("../api-client", () => ({
         createTopic,
         getTopicDetail,
         updateFieldMapping,
+        updateWeightConfig,
         getVariableDictionary,
         updateVariableDictionary,
         uploadTopicExcel: async () => ({ success: true, data: { rowCount: 0, columns: [], preview: [] } }),
@@ -70,6 +72,7 @@ beforeEach(() => {
     copyTopic.mockClear();
     getTopicDetail.mockReset().mockImplementation(async () => emptyDetail());
     updateFieldMapping.mockReset().mockResolvedValue({ success: true, data: { success: true } });
+    updateWeightConfig.mockReset().mockResolvedValue({ success: true, data: { success: true } });
     getVariableDictionary.mockReset().mockResolvedValue({ success: false });
     updateVariableDictionary.mockReset().mockResolvedValue({ success: false });
 });
@@ -435,4 +438,35 @@ test("TopicManagement enforces single Filled CTA on page and Tonal/Outlined row 
     for (const btn of view.container.querySelectorAll('[data-slot="button"]')) {
         expect(btn.className).not.toContain("w-full");
     }
+});
+
+test("TopicManagement saves 10.03 + 57.98 + 31.99 decimal weights without float rejection", async () => {
+    getTopics.mockResolvedValue({ success: true, data: [draft] });
+    getTopicDetail.mockResolvedValueOnce({
+        success: true,
+        data: {
+            topic: {
+                ...draft,
+                weightConfig: { questionnaire: 10.03, process: 57.98, report: 31.99, extra: 1 },
+            },
+            hasExcelFile: false,
+            attachments: [],
+            recommendQuestions: [],
+        },
+    });
+    const view = renderPage();
+    fireEvent.click(await view.findByTestId("teacher-topic-edit-1"));
+    await waitFor(() => expect((view.getByTestId("teacher-topic-jump-7") as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(view.getByTestId("teacher-topic-jump-7"));
+    expect(await view.findByText("100%")).toBeTruthy();
+
+    fireEvent.click(view.getByTestId("teacher-topic-finish"));
+    await waitFor(() => expect(updateWeightConfig).toHaveBeenCalledTimes(1));
+    expect(updateWeightConfig.mock.calls[0]?.[1]).toEqual({
+        questionnaire: 10.03,
+        process: 57.98,
+        report: 31.99,
+    });
+    expect("extra" in (updateWeightConfig.mock.calls[0]?.[1] ?? {})).toBe(false);
+    expect(toastError).not.toHaveBeenCalled();
 });

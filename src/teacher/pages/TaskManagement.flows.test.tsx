@@ -142,6 +142,15 @@ test("summarises tasks and renders per-row status", async () => {
     expect(openRow.getByText("2")).toBeTruthy();
     expect(within(view.getByTestId("teacher-task-row-2")).getByText("尚未开放")).toBeTruthy();
     expect(within(view.getByTestId("teacher-task-row-3")).getByText("已截止")).toBeTruthy();
+
+    const actionHeader = view.getByRole("columnheader", { name: "操作" });
+    expect(actionHeader.className).toContain("sticky");
+    expect(actionHeader.className).toContain("before:bg-border");
+    expect(actionHeader.className).not.toContain("shadow-[");
+    const actionCell = view.getByTestId("teacher-task-row-1").querySelectorAll("td")[6]!;
+    expect(actionCell.className).toContain("sticky");
+    expect(actionCell.className).toContain("before:bg-border");
+    expect(actionCell.className).not.toContain("shadow-[");
 });
 
 test("search filters tasks and shows an explicit empty state", async () => {

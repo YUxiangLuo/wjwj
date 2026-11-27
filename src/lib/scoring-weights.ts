@@ -10,9 +10,55 @@ export const DEFAULT_SCORING_WEIGHTS: ScoringWeights = {
     report: 40,
 };
 
+export const SCORING_WEIGHT_TOTAL_HUNDREDTHS = 10_000;
+
 export function isValidScore(value: unknown): value is number {
     return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100
         && Math.round(value * 100) / 100 === value;
+}
+
+export function isValidScoringWeightValue(value: unknown): value is number {
+    return typeof value === "number"
+        && Number.isFinite(value)
+        && Math.round(value * 100) / 100 === value;
+}
+
+export function scoringWeightHundredths(value: number): number {
+    return Math.round(value * 100);
+}
+
+export function isScoringWeightTotalValid(weights: ScoringWeights): boolean {
+    return isValidScoringWeightValue(weights.questionnaire)
+        && isValidScoringWeightValue(weights.process)
+        && isValidScoringWeightValue(weights.report)
+        && (
+            scoringWeightHundredths(weights.questionnaire)
+            + scoringWeightHundredths(weights.process)
+            + scoringWeightHundredths(weights.report)
+        ) === SCORING_WEIGHT_TOTAL_HUNDREDTHS;
+}
+
+export function formatScoringWeightTotal(weights: ScoringWeights): string {
+    if (
+        isValidScoringWeightValue(weights.questionnaire)
+        && isValidScoringWeightValue(weights.process)
+        && isValidScoringWeightValue(weights.report)
+    ) {
+        const hundredths = scoringWeightHundredths(weights.questionnaire)
+            + scoringWeightHundredths(weights.process)
+            + scoringWeightHundredths(weights.report);
+        return String(hundredths / 100);
+    }
+    const rawSum = weights.questionnaire + weights.process + weights.report;
+    return Number.isFinite(rawSum) ? String(Number(rawSum.toPrecision(12))) : "0";
+}
+
+export function sanitizeScoringWeights(weights: ScoringWeights): ScoringWeights {
+    return {
+        questionnaire: weights.questionnaire,
+        process: weights.process,
+        report: weights.report,
+    };
 }
 
 // Scores are integer hundredths. Scale decimal percentage weights to integers
@@ -43,27 +89,31 @@ export function scoringWeightsFrom(value: unknown): ScoringWeights {
     if (!parsed || typeof parsed !== "object") return { ...DEFAULT_SCORING_WEIGHTS };
 
     const candidate = parsed as Partial<ScoringWeights>;
-    const weights = [candidate.questionnaire, candidate.process, candidate.report];
-    if (weights.some((weight) => typeof weight !== "number" || !Number.isFinite(weight))) {
+    if (
+        !isValidScoringWeightValue(candidate.questionnaire)
+        || !isValidScoringWeightValue(candidate.process)
+        || !isValidScoringWeightValue(candidate.report)
+    ) {
         return { ...DEFAULT_SCORING_WEIGHTS };
     }
-    if (candidate.questionnaire! + candidate.process! + candidate.report! !== 100) {
+    const clean = sanitizeScoringWeights({
+        questionnaire: candidate.questionnaire,
+        process: candidate.process,
+        report: candidate.report,
+    });
+    if (!isScoringWeightTotalValid(clean)) {
         return { ...DEFAULT_SCORING_WEIGHTS };
     }
     if (
-        candidate.questionnaire! < 10
-        || candidate.questionnaire! > 50
-        || candidate.process! < 20
-        || candidate.process! > 60
-        || candidate.report! < 10
-        || candidate.report! > 50
+        clean.questionnaire < 10
+        || clean.questionnaire > 50
+        || clean.process < 20
+        || clean.process > 60
+        || clean.report < 10
+        || clean.report > 50
     ) {
         return { ...DEFAULT_SCORING_WEIGHTS };
     }
 
-    return {
-        questionnaire: candidate.questionnaire!,
-        process: candidate.process!,
-        report: candidate.report!,
-    };
+    return clean;
 }

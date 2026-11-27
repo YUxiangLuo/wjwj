@@ -140,6 +140,7 @@ test("reading different materials keeps scores, comments and student identity in
     expect((within(panel).getByLabelText("教师评语") as HTMLTextAreaElement).value).toBe("阅读时保留");
     expect(panel.closest('[role="tabpanel"]')).toBeNull();
     expect(view.getByRole("tablist", { name: "提交材料" }).classList.contains("sticky")).toBe(true);
+    expect(view.getByRole("tablist", { name: "提交材料" }).classList.contains("bg-card")).toBe(true);
     fireEvent.change(view.getByLabelText("问卷设计（30%）"), { target: { value: "101" } });
     expect((view.getByText("提交评分") as HTMLButtonElement).disabled).toBe(true);
     expect(panel.textContent).toContain("分项分数需在 0–100 之间");

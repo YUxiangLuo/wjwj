@@ -620,6 +620,26 @@ test("step 7 weight inputs ignore non-finite values so total weight never become
     expect(view.getByText("70%")).toBeTruthy();
 });
 
+test("step 7 renders 100% cleanly for decimal hundredth weights and flags >2 decimal places", () => {
+    const view = render(<TopicWizardDialog {...makeProps({
+        currentStep: 7,
+        weightConfig: { questionnaire: 10.03, process: 57.98, report: 31.99 },
+    })} />);
+    expect(view.container.textContent).not.toContain("99.99999999999999");
+    const totalBadge = view.getByText("100%");
+    expect(totalBadge.className).toContain("text-success");
+    expect(view.getByTestId("teacher-topic-weight-questionnaire").getAttribute("aria-invalid")).toBe("false");
+    expect(view.getByTestId("teacher-topic-weight-process").getAttribute("aria-invalid")).toBe("false");
+    expect(view.getByTestId("teacher-topic-weight-report").getAttribute("aria-invalid")).toBe("false");
+
+    view.rerender(<TopicWizardDialog {...makeProps({
+        currentStep: 7,
+        weightConfig: { questionnaire: 10.004, process: 59.996, report: 30 },
+    })} />);
+    expect(view.getByText("分项权重最多保留两位小数")).toBeTruthy();
+    expect(view.getByTestId("teacher-topic-weight-questionnaire").getAttribute("aria-invalid")).toBe("true");
+});
+
 test("footer hint explains disabled prerequisites on steps 2, 3 and 4 and clears when satisfied", () => {
     const step2 = render(<TopicWizardDialog {...makeProps({ currentStep: 2, excelInfo: null })} />);
     expect(step2.getByTestId("teacher-topic-footer-hint").textContent).toContain("请先上传并确认总体数据文件");
