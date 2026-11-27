@@ -5,7 +5,6 @@ import { Plus, Trash2, Star, Loader2, Pencil, School, Search } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
@@ -221,46 +220,58 @@ export function SemesterManagement() {
     }, [semesters, searchTerm, statusFilter]);
 
     return (
-        <div className="space-y-5">
+        <div className="space-y-4">
             <PageHeader border={false}>
                 <div>
-                    <h2 className="text-subheading font-semibold text-foreground">学期管理</h2>
-                    <p className="mt-1 text-label text-muted-foreground">维护教学学年学期档案，指定全平台默认活跃学期。</p>
+                    <h2 className="text-subheading font-medium text-foreground">学期管理</h2>
+                    <p className="mt-0.5 text-label text-muted-foreground">维护教学学年学期档案，指定全平台默认活跃学期。</p>
                 </div>
                 <Button data-testid="semester-create-open" onClick={openAddModal}>
-                    <Plus className="mr-1 h-4 w-4" />
+                    <Plus className="h-4 w-4" aria-hidden="true" />
                     创建学期
                 </Button>
             </PageHeader>
 
-            <dl aria-label="学期概览" className="grid grid-cols-4 gap-4 border-b border-border pb-4">
-                {[["学期总数", summary.total], ["当前学期", summary.currentName], ["历史学期", summary.history], ["已建班学期", summary.withClasses]].map(([label, value]) => (
-                    <div key={label}>
-                        <dt className="text-meta text-muted-foreground">{label}</dt>
-                        <dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : value}</dd>
-                    </div>
-                ))}
-            </dl>
+            <section
+                aria-labelledby="semester-list-heading"
+                className="overflow-hidden rounded-surface border border-border bg-card"
+            >
+                <dl aria-label="学期概览" className="grid grid-cols-4 divide-x divide-border border-b border-border bg-muted px-4 py-2.5">
+                    {([
+                        ["学期总数", summary.total],
+                        ["当前学期", summary.currentName],
+                        ["历史学期", summary.history],
+                        ["已建班学期", summary.withClasses],
+                    ] as const).map(([label, value]) => (
+                        <div key={label} className="flex items-baseline justify-between gap-2 px-3 first:pl-0 last:pr-0">
+                            <dt className="text-meta text-muted-foreground">{label}</dt>
+                            <dd className="truncate text-label font-medium tabular-nums text-foreground">
+                                {loading || loadError ? "-" : value}
+                            </dd>
+                        </div>
+                    ))}
+                </dl>
 
-            <Card>
-                <PageHeader as={CardHeader} className="flex-wrap">
-                    <div>
-                        <CardTitle className="text-body text-foreground">学期列表</CardTitle>
-                        <p className="mt-1 text-meta text-muted-foreground">{loading || loadError ? "共 - 条数据" : `共 ${filteredSemesters.length} 条数据`}</p>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
+                    <div className="flex items-baseline gap-2.5">
+                        <h3 id="semester-list-heading" className="text-body font-medium text-foreground">学期列表</h3>
+                        <span className="text-meta tabular-nums text-muted-foreground">
+                            {loading || loadError ? "共 - 条数据" : `共 ${filteredSemesters.length} 条数据`}
+                        </span>
                     </div>
-                    <div className="flex w-auto flex-row flex-wrap items-center gap-2.5">
+                    <div className="flex flex-wrap items-center gap-2">
                         <Input
                             placeholder="搜索学期名称..."
                             aria-label="搜索学期名称"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-56 border-input bg-card text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring"
+                            className="w-52"
                         />
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "current" | "history")}>
-                            <SelectTrigger aria-label="按学期状态筛选" className="w-36 border-input bg-card text-foreground focus:ring-ring">
+                            <SelectTrigger aria-label="按学期状态筛选" className="w-36">
                                 <SelectValue placeholder="状态筛选" />
                             </SelectTrigger>
-                            <SelectContent className="border-border bg-card text-foreground">
+                            <SelectContent>
                                 <SelectItem value="all">全部状态</SelectItem>
                                 <SelectItem value="current">当前学期</SelectItem>
                                 <SelectItem value="history">历史学期</SelectItem>
@@ -272,119 +283,122 @@ export function SemesterManagement() {
                             </Button>
                         )}
                     </div>
-                </PageHeader>
-                <CardContent className="pt-0">
-                    {loadError ? <RequestError message={loadError} onRetry={() => void loadSemesters()} /> : loading ? (
-                        <LoadingStatus className="py-12" iconClassName="text-muted-foreground" label="正在加载学期列表" />
-                    ) : (
-                        <Table aria-label="学期列表">
-                            <TableHeader>
-                                <TableRow className="border-border">
-                                    <TableHead className="px-3 text-muted-foreground">学期名称</TableHead>
-                                    <TableHead className="px-3 text-muted-foreground">状态</TableHead>
-                                    <TableHead className="px-3 text-muted-foreground">班级数量</TableHead>
-                                    <TableHead className="px-3 text-muted-foreground">创建时间</TableHead>
-                                    <TableHead className="px-3 text-right text-muted-foreground">操作</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredSemesters.map((semester) => {
-                                    const blockers = deleteBlockers(semester);
-                                    return (
-                                        <TableRow key={semester.id} className="border-border transition-none hover:bg-muted">
-                                            <TableCell className="px-3 font-medium text-foreground">{semester.name}</TableCell>
-                                            <TableCell className="px-3">
-                                                {semester.isCurrent ? (
-                                                    <StatusBadge intent="success">当前学期</StatusBadge>
-                                                ) : (
-                                                    <StatusBadge intent="neutral">历史学期</StatusBadge>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="px-3 tabular-nums text-foreground">
-                                                <div className="flex items-center gap-1.5">
-                                                    <School className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-                                                    {semester.classCount}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="px-3 tabular-nums text-muted-foreground">{formatDate(semester.createdAt)}</TableCell>
-                                            <TableCell className="px-3 text-right">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    {!semester.isCurrent && (
-                                                        <Button
-                                                            data-testid={`semester-set-current-${semester.id}`}
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            disabled={settingCurrentId !== null}
-                                                            onClick={() => void handleSetCurrent(semester)}
-                                                            className="h-8 px-2 text-muted-foreground hover:bg-success-muted hover:text-success"
-                                                        >
-                                                            <Star className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-                                                            设为当前
-                                                        </Button>
-                                                    )}
+                </div>
+
+                {loadError ? (
+                    <div className="p-4">
+                        <RequestError message={loadError} onRetry={() => void loadSemesters()} />
+                    </div>
+                ) : loading ? (
+                    <LoadingStatus className="py-12" iconClassName="text-muted-foreground" label="正在加载学期列表" />
+                ) : (
+                    <Table aria-label="学期列表">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="px-4">学期名称</TableHead>
+                                <TableHead className="px-4">状态</TableHead>
+                                <TableHead className="px-4">班级数量</TableHead>
+                                <TableHead className="px-4">创建时间</TableHead>
+                                <TableHead className="px-4 text-right">操作</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredSemesters.map((semester) => {
+                                const blockers = deleteBlockers(semester);
+                                return (
+                                    <TableRow key={semester.id} className="hover:bg-muted">
+                                        <TableCell className="px-4 font-medium text-foreground">{semester.name}</TableCell>
+                                        <TableCell className="px-4">
+                                            {semester.isCurrent ? (
+                                                <StatusBadge intent="success">当前学期</StatusBadge>
+                                            ) : (
+                                                <StatusBadge intent="neutral">历史学期</StatusBadge>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="px-4 tabular-nums text-foreground">
+                                            <div className="flex items-center gap-1.5">
+                                                <School className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                                                {semester.classCount}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="px-4 tabular-nums text-muted-foreground">{formatDate(semester.createdAt)}</TableCell>
+                                        <TableCell className="px-4 text-right">
+                                            <div className="flex items-center justify-end gap-1">
+                                                {!semester.isCurrent && (
                                                     <Button
-                                                        data-testid={`semester-edit-open-${semester.id}`}
+                                                        data-testid={`semester-set-current-${semester.id}`}
                                                         variant="ghost"
                                                         size="sm"
-                                                        onClick={() => openEdit(semester)}
-                                                        className="h-8 px-2 text-muted-foreground hover:bg-primary-muted hover:text-primary"
+                                                        disabled={settingCurrentId !== null}
+                                                        onClick={() => void handleSetCurrent(semester)}
+                                                        className="h-8 px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                                                     >
-                                                        <Pencil className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-                                                        编辑
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        data-testid={`semester-delete-${semester.id}`}
-                                                        onClick={() => void handleDelete(semester)}
-                                                        className="h-8 px-2 text-muted-foreground hover:bg-destructive-muted hover:text-destructive"
-                                                        disabled={blockers.length > 0}
-                                                        title={blockers.length > 0 ? `已有 ${blockers.join("、")}，无法删除` : "删除学期"}
-                                                    >
-                                                        <Trash2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-                                                        删除
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                                {filteredSemesters.length === 0 && (
-                                    <TableRow>
-                                        <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
-                                            <div className="flex flex-col items-center gap-2.5">
-                                                <div className="flex h-11 w-11 items-center justify-center rounded-control border border-border bg-muted">
-                                                    <Search className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                                                </div>
-                                                <p className="font-medium text-foreground">
-                                                    {hasFilters ? "未找到符合筛选条件的学期" : "暂无符合条件的数据"}
-                                                </p>
-                                                {hasFilters && (
-                                                    <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
-                                                        清除筛选
+                                                        <Star className="h-3.5 w-3.5" aria-hidden="true" />
+                                                        设为当前
                                                     </Button>
                                                 )}
+                                                <Button
+                                                    data-testid={`semester-edit-open-${semester.id}`}
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => openEdit(semester)}
+                                                    className="h-8 px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                                >
+                                                    <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                                                    编辑
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    data-testid={`semester-delete-${semester.id}`}
+                                                    onClick={() => void handleDelete(semester)}
+                                                    className="h-8 px-2.5 text-muted-foreground hover:bg-destructive-muted hover:text-destructive"
+                                                    disabled={blockers.length > 0}
+                                                    title={blockers.length > 0 ? `已有 ${blockers.join("、")}，无法删除` : "删除学期"}
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                                                    删除
+                                                </Button>
                                             </div>
                                         </TableCell>
                                     </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    )}
-                </CardContent>
-            </Card>
+                                );
+                            })}
+                            {filteredSemesters.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
+                                        <div className="flex flex-col items-center gap-2.5">
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-surface bg-muted text-muted-foreground">
+                                                <Search className="h-5 w-5" aria-hidden="true" />
+                                            </div>
+                                            <p className="font-medium text-foreground">
+                                                {hasFilters ? "未找到符合筛选条件的学期" : "暂无符合条件的数据"}
+                                            </p>
+                                            {hasFilters && (
+                                                <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
+                                                    清除筛选
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                )}
+            </section>
 
             <Dialog open={showAddModal} onOpenChange={handleAddModalOpenChange}>
-                <DialogContent className="border-border bg-card text-foreground" showCloseButton={!submitting}>
+                <DialogContent showCloseButton={!submitting}>
                     <form onSubmit={(event) => { event.preventDefault(); void handleAddSemester(); }} className="space-y-4">
                         <DialogHeader>
-                            <DialogTitle className="text-foreground">创建学期</DialogTitle>
-                            <DialogDescription className="text-muted-foreground">用于组织班级和教学任务，名称限 1–20 个字符。</DialogDescription>
+                            <DialogTitle>创建学期</DialogTitle>
+                            <DialogDescription>用于组织班级和教学任务，名称限 1–20 个字符。</DialogDescription>
                         </DialogHeader>
-                        <div className="space-y-4 py-2">
+                        <div className="space-y-4 py-1">
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                    <Label htmlFor="semesterName" className="text-foreground">学期名称</Label>
+                                    <Label htmlFor="semesterName">学期名称</Label>
                                     <span className="text-meta tabular-nums text-muted-foreground">{newSemesterName.trim().length}/20</span>
                                 </div>
                                 <Input
@@ -396,7 +410,6 @@ export function SemesterManagement() {
                                     disabled={submitting}
                                     value={newSemesterName}
                                     onChange={(e) => setNewSemesterName(e.target.value)}
-                                    className="border-input bg-card text-foreground placeholder:text-muted-foreground focus:border-ring"
                                 />
                                 <p className={newSemesterName.trim() && isRecommendedSemesterName(newSemesterName) ? "text-meta text-success" : "text-meta text-muted-foreground"}>
                                     {newSemesterName.trim() && isRecommendedSemesterName(newSemesterName)
@@ -404,9 +417,9 @@ export function SemesterManagement() {
                                         : "建议格式：YYYY-YYYY-1 或 YYYY-YYYY-2（例如 2026-2027-1）"}
                                 </p>
                             </div>
-                            <div className="flex items-center justify-between rounded-surface border border-border bg-background p-3">
+                            <div className="flex items-center justify-between rounded-surface border border-border bg-muted px-3.5 py-3">
                                 <div className="space-y-0.5">
-                                    <Label htmlFor="setAsCurrent" className="cursor-pointer text-body text-foreground">设为当前学期</Label>
+                                    <Label htmlFor="setAsCurrent" className="cursor-pointer text-body font-medium text-foreground">设为当前学期</Label>
                                     <p className="text-meta text-muted-foreground">创建后立即切换为默认教学学期</p>
                                 </div>
                                 <Switch
@@ -414,16 +427,15 @@ export function SemesterManagement() {
                                     disabled={submitting}
                                     checked={setAsCurrent}
                                     onCheckedChange={setSetAsCurrent}
-                                    className="data-[state=checked]:bg-primary"
                                 />
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => handleAddModalOpenChange(false)} disabled={submitting} className="text-muted-foreground hover:bg-muted hover:text-foreground">
+                            <Button type="button" variant="outline" onClick={() => handleAddModalOpenChange(false)} disabled={submitting}>
                                 取消
                             </Button>
                             <Button type="submit" data-testid="semester-create-submit" disabled={submitting || !newSemesterName.trim()}>
-                                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
+                                {submitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
                                 确认创建
                             </Button>
                         </DialogFooter>
@@ -432,16 +444,16 @@ export function SemesterManagement() {
             </Dialog>
 
             <Dialog open={showEditModal} onOpenChange={(open) => { if (!submitting) { setShowEditModal(open); if (!open) setEditingSemester(null); } }}>
-                <DialogContent className="border-border bg-card text-foreground" showCloseButton={!submitting}>
+                <DialogContent showCloseButton={!submitting}>
                     <form onSubmit={(event) => { event.preventDefault(); void handleEditSemester(); }} className="space-y-4">
                         <DialogHeader>
-                            <DialogTitle className="text-foreground">编辑学期</DialogTitle>
-                            <DialogDescription className="text-muted-foreground">修改学期名称（1–20 个字符）。</DialogDescription>
+                            <DialogTitle>编辑学期</DialogTitle>
+                            <DialogDescription>修改学期名称（1–20 个字符）。</DialogDescription>
                         </DialogHeader>
-                        <div className="space-y-4 py-2">
+                        <div className="space-y-4 py-1">
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                    <Label htmlFor="editSemesterName" className="text-foreground">学期名称</Label>
+                                    <Label htmlFor="editSemesterName">学期名称</Label>
                                     <span className="text-meta tabular-nums text-muted-foreground">{editName.trim().length}/20</span>
                                 </div>
                                 <Input
@@ -452,17 +464,18 @@ export function SemesterManagement() {
                                     disabled={submitting}
                                     value={editName}
                                     onChange={(e) => setEditName(e.target.value)}
-                                    className="border-input bg-card text-foreground placeholder:text-muted-foreground focus:border-ring"
                                 />
-                                <p className="text-meta text-muted-foreground">建议格式：YYYY-YYYY-1 或 YYYY-YYYY-2（例如 2026-2027-1）</p>
                             </div>
+                            <p className="rounded-surface border border-border bg-muted px-3.5 py-2.5 text-meta text-muted-foreground">
+                                建议格式：YYYY-YYYY-1 或 YYYY-YYYY-2（例如 2026-2027-1），修改名称不会改变已关联班级的归属关系。
+                            </p>
                         </div>
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => { setShowEditModal(false); setEditingSemester(null); }} disabled={submitting} className="text-muted-foreground hover:bg-muted hover:text-foreground">
+                            <Button type="button" variant="outline" onClick={() => { setShowEditModal(false); setEditingSemester(null); }} disabled={submitting}>
                                 取消
                             </Button>
                             <Button type="submit" data-testid="semester-edit-submit" disabled={submitting || !editName.trim()}>
-                                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
+                                {submitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
                                 保存
                             </Button>
                         </DialogFooter>

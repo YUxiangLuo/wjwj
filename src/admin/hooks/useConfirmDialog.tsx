@@ -59,7 +59,7 @@ export function useConfirmDialog() {
             }}
         >
             <AlertDialogContent
-                className="bg-card border-border text-foreground data-[state=closed]:animate-none"
+                className="rounded-overlay border-border bg-card p-6 text-foreground"
                 onCloseAutoFocus={(event) => {
                     event.preventDefault();
                     const opener = openerRef.current;
@@ -80,12 +80,12 @@ export function useConfirmDialog() {
                 }}
             >
                 <AlertDialogHeader>
-                    <AlertDialogTitle className="text-foreground">{options?.title}</AlertDialogTitle>
-                    <AlertDialogDescription className="text-muted-foreground whitespace-pre-line">
+                    <AlertDialogTitle className="text-subheading font-medium text-foreground">{options?.title}</AlertDialogTitle>
+                    <AlertDialogDescription className="whitespace-pre-line text-label text-muted-foreground">
                         {options?.description}
                     </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
+                <AlertDialogFooter className="gap-2 pt-1">
                     <AlertDialogCancel
                         data-testid="confirm-dialog-cancel"
                         onClick={() => close(false)}

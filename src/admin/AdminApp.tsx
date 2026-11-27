@@ -7,6 +7,7 @@ import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { AppToaster } from "@/components/AppToaster";
+import { IconTile } from "@/components/IconTile";
 import { LoadingStatus } from "@/components/LoadingStatus";
 import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
 import { WorkspaceShell } from "@/components/WorkspaceShell";
@@ -45,10 +46,10 @@ function AdminNotFound({ pathname }: { pathname: string }) {
             data-testid="admin-not-found"
             className="mx-auto max-w-xl rounded-surface border border-border bg-card p-8 text-center"
         >
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-control border border-primary-border bg-primary-muted text-primary">
+            <IconTile intent="neutral" className="mx-auto mb-4 h-12 w-12">
                 <Compass aria-hidden="true" className="h-6 w-6" />
-            </div>
-            <h2 className="text-section-title font-semibold text-foreground">未找到该管理页面</h2>
+            </IconTile>
+            <h2 className="text-section-title font-medium text-foreground">未找到该管理页面</h2>
             <p className="mt-2 text-label text-muted-foreground">
                 当前访问路径 <code className="rounded-control bg-muted px-1.5 py-0.5 font-mono text-meta text-foreground">/admin{pathname}</code> 不存在，请核对地址或前往常用管理模块。
             </p>
@@ -106,12 +107,12 @@ function AdminWorkspace({ user, onLogout }: { user: AdminUser; onLogout: () => P
                 sidebarFooter={
                     <div className="flex items-center gap-3">
                         <Avatar className="h-9 w-9">
-                            <AvatarFallback className="bg-navigation-active text-navigation-active-foreground">
+                            <AvatarFallback className="bg-navigation-active font-medium text-navigation-active-foreground">
                                 {user.username.charAt(0).toUpperCase()}
                             </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
-                            <p className="truncate text-label font-medium">{user.username}</p>
+                            <p className="truncate text-label font-medium text-navigation-foreground">{user.username}</p>
                             <p className="truncate text-meta text-navigation-muted">管理员</p>
                         </div>
                     </div>
@@ -139,7 +140,7 @@ function AdminWorkspace({ user, onLogout }: { user: AdminUser; onLogout: () => P
                             size="sm"
                             aria-label="退出登录"
                             disabled={loggingOut}
-                            className="text-destructive hover:bg-destructive-muted hover:text-destructive"
+                            className="text-muted-foreground hover:bg-muted hover:text-foreground"
                             onClick={() => void handleLogout()}
                         >
                             <LogOut className="h-4 w-4" aria-hidden="true" />

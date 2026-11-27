@@ -10,7 +10,6 @@ import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { formatDateTimeDisplay } from "@/utils/format";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Dialog,
     DialogContent,
@@ -177,27 +176,30 @@ export function StudentManagement() {
     };
 
     return (
-        <div className="space-y-5">
+        <div className="space-y-4">
             <PageHeader border={false}>
                 <div>
-                    <h2 className="text-subheading font-semibold text-foreground">学生管理</h2>
-                    <p className="mt-1 text-label text-muted-foreground">
+                    <h2 className="text-subheading font-medium text-foreground">学生管理</h2>
+                    <p className="mt-0.5 text-label text-muted-foreground">
                         跨班级查看学生名册与五阶段实验进度，支持重置登录密码；班级学生导入与调班由授课教师在教师端维护。
                     </p>
                 </div>
             </PageHeader>
 
-            <Card>
-                <PageHeader as={CardHeader} className="flex-wrap">
-                    <div>
-                        <CardTitle className="text-body text-foreground">学生名册</CardTitle>
-                        <p className="mt-1 text-meta text-muted-foreground">
+            <section
+                aria-labelledby="student-roster-heading"
+                className="overflow-hidden rounded-surface border border-border bg-card"
+            >
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
+                    <div className="flex items-baseline gap-2.5">
+                        <h3 id="student-roster-heading" className="text-body font-medium text-foreground">学生名册</h3>
+                        <span className="text-meta tabular-nums text-muted-foreground">
                             {loading || loadError
                                 ? "共 - 名学生"
                                 : selectedClassName
                                     ? `${selectedClassName} · 共 ${total} 名学生`
                                     : `全部班级 · 共 ${total} 名学生`}
-                        </p>
+                        </span>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         <div className="w-52">
@@ -208,7 +210,6 @@ export function StudentManagement() {
                                 onChange={(event) => setSearch(event.target.value)}
                                 onKeyDown={(event) => event.key === "Enter" && applySearch()}
                                 placeholder="搜索学号或姓名"
-                                className="border-input bg-card"
                             />
                         </div>
                         <Button variant="outline" onClick={applySearch}>
@@ -216,7 +217,7 @@ export function StudentManagement() {
                             搜索
                         </Button>
                         <Select value={classId} onValueChange={setClassFilter}>
-                            <SelectTrigger aria-label="按班级筛选学生" className="w-44 border-input bg-card">
+                            <SelectTrigger aria-label="按班级筛选学生" className="w-44">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -230,138 +231,165 @@ export function StudentManagement() {
                             <Button variant="ghost" size="sm" onClick={clearFilters}>清除筛选</Button>
                         )}
                     </div>
-                </PageHeader>
+                </div>
 
-                <CardContent className="pt-0">
-                    {loadError && (
-                        <div className="mb-3">
-                            <RequestError message={loadError} onRetry={() => void load()} />
-                        </div>
-                    )}
-                    {loading ? (
-                        <LoadingStatus className="py-12" label="正在加载学生列表" />
-                    ) : loadError ? null : filtered.length === 0 ? (
-                        <div className="grid place-items-center gap-3 rounded-surface border border-dashed border-border px-4 py-12 text-center">
-                            <span className="rounded-control bg-muted p-3 text-muted-foreground">
-                                <Users className="h-6 w-6" aria-hidden="true" />
-                            </span>
-                            <div>
-                                <p className="font-medium text-foreground">
-                                    {selectedClassName && !appliedSearch
-                                        ? `${selectedClassName}暂无学生`
-                                        : hasFilters
-                                            ? "没有符合当前条件的学生"
-                                            : "暂无学生"}
-                                </p>
-                                <p className="mt-1 text-label text-muted-foreground">
-                                    {hasFilters
-                                        ? "请更改搜索关键词或切换班级筛选。"
-                                        : "教师在班级内导入或添加学生后将显示在此处。"}
-                                </p>
-                            </div>
-                            {hasFilters && <Button variant="outline" onClick={clearFilters}>查看全部学生</Button>}
-                        </div>
-                    ) : (
-                        <Table aria-label="学生列表">
-                            <TableHeader>
+                {loadError ? (
+                    <div className="p-4">
+                        <RequestError message={loadError} onRetry={() => void load()} />
+                    </div>
+                ) : loading ? (
+                    <LoadingStatus className="py-12" label="正在加载学生列表" />
+                ) : (
+                    <Table aria-label="学生列表">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="px-4">学号</TableHead>
+                                <TableHead className="px-4">姓名</TableHead>
+                                <TableHead className="px-4">班级</TableHead>
+                                <TableHead className="px-4">实验进度</TableHead>
+                                <TableHead className="px-4 text-right">操作</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filtered.length === 0 ? (
                                 <TableRow>
-                                    <TableHead className="px-3">学号</TableHead>
-                                    <TableHead className="px-3">姓名</TableHead>
-                                    <TableHead className="px-3">班级</TableHead>
-                                    <TableHead className="px-3">实验进度</TableHead>
-                                    <TableHead className="px-3 text-right">操作</TableHead>
+                                    <TableCell colSpan={5} className="py-12 text-center">
+                                        <div className="flex flex-col items-center gap-2.5 text-muted-foreground">
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-surface bg-muted text-muted-foreground">
+                                                <Users className="h-5 w-5" aria-hidden="true" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-foreground">
+                                                    {selectedClassName && !appliedSearch
+                                                        ? `${selectedClassName}暂无学生`
+                                                        : hasFilters
+                                                            ? "没有符合当前条件的学生"
+                                                            : "暂无学生"}
+                                                </p>
+                                                <p className="mt-1 text-label text-muted-foreground">
+                                                    {hasFilters
+                                                        ? "请更改搜索关键词或切换班级筛选。"
+                                                        : "教师在班级内导入或添加学生后将显示在此处。"}
+                                                </p>
+                                            </div>
+                                            {hasFilters && (
+                                                <Button variant="outline" size="sm" onClick={clearFilters}>
+                                                    查看全部学生
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </TableCell>
                                 </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filtered.map((item) => (
-                                    <TableRow key={item.id} className="hover:bg-muted">
-                                        <TableCell className="px-3 font-mono">{item.studentId}</TableCell>
-                                        <TableCell className="px-3 font-medium text-foreground">{item.name}</TableCell>
-                                        <TableCell className="px-3">{item.className ?? "-"}</TableCell>
-                                        <TableCell className="px-3">
-                                            <div className="flex items-center gap-2">
-                                                <Progress
-                                                    aria-label={`${item.name}实验进度`}
-                                                    value={item.progress}
-                                                    className="h-1.5 w-20"
-                                                />
-                                                <span aria-hidden="true" className="text-meta tabular-nums text-muted-foreground">{item.progress}%</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="px-3">
-                                            <div className="flex justify-end gap-1">
-                                                <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => void openExperiments(item)}>
-                                                    <Eye className="mr-1 h-3.5 w-3.5" aria-hidden="true" />实验
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-8 px-2"
-                                                    disabled={resetting}
-                                                    onClick={() => void resetPassword(item)}
-                                                >
-                                                    <RotateCcw className="mr-1 h-3.5 w-3.5" aria-hidden="true" />重置密码
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    )}
-                    {!loading && !loadError && total > 0 && (
-                        <div className="mt-3 flex items-center justify-between border-t border-border pt-3" data-testid="student-list-pagination">
-                            <p className="text-meta tabular-nums text-muted-foreground">
-                                共 {total} 人 · 第 {page} / {Math.max(1, Math.ceil(total / PAGE_SIZE))} 页
-                            </p>
-                            <div className="flex gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={page <= 1}
-                                    onClick={() => void load({ nextPage: page - 1 })}
-                                    aria-label="上一页"
-                                    data-testid="student-list-prev-page"
-                                >
-                                    <ChevronLeft className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={page >= Math.ceil(total / PAGE_SIZE)}
-                                    onClick={() => void load({ nextPage: page + 1 })}
-                                    aria-label="下一页"
-                                    data-testid="student-list-next-page"
-                                >
-                                    <ChevronRight className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </div>
-                    )}
-                </CardContent>
+                            ) : filtered.map((item) => (
+                                <TableRow key={item.id} className="hover:bg-muted">
+                                    <TableCell className="px-4 font-mono">{item.studentId}</TableCell>
+                                    <TableCell className="px-4 font-medium text-foreground">{item.name}</TableCell>
+                                    <TableCell className="px-4">{item.className ?? "-"}</TableCell>
+                                    <TableCell className="px-4">
+                                        <div className="flex items-center gap-2">
+                                            <Progress
+                                                aria-label={`${item.name}实验进度`}
+                                                value={item.progress}
+                                                className="h-1.5 w-20"
+                                            />
+                                            <span aria-hidden="true" className="text-meta tabular-nums text-muted-foreground">{item.progress}%</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="px-4 text-right">
+                                        <div className="flex justify-end gap-1">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-8 px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                                onClick={() => void openExperiments(item)}
+                                            >
+                                                <Eye className="h-3.5 w-3.5" aria-hidden="true" />实验
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-8 px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                                disabled={resetting}
+                                                onClick={() => void resetPassword(item)}
+                                            >
+                                                <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />重置密码
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                )}
 
-                {dialog}
-                <Dialog open={selected !== null} onOpenChange={(open) => {
-                    if (!open) { cancelExperiments(); setSelected(null); }
-                }}>
-                    <DialogContent className="max-w-3xl">
-                        <DialogHeader>
-                            <DialogTitle>{selected?.name} 的实验记录</DialogTitle>
-                            <DialogDescription>
-                                {selected
-                                    ? `学号：${selected.studentId} · 班级：${selected.className ?? "未分班"} · 查看五阶段实验状态、进度与成绩`
-                                    : "查看该学生各项实验的阶段、进度、状态与成绩。"}
-                            </DialogDescription>
-                        </DialogHeader>
+                {!loading && !loadError && total > 0 && (
+                    <div className="flex items-center justify-between border-t border-border bg-card px-4 py-3" data-testid="student-list-pagination">
+                        <p className="text-meta tabular-nums text-muted-foreground">
+                            共 {total} 人 · 第 {page} / {Math.max(1, Math.ceil(total / PAGE_SIZE))} 页
+                        </p>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={page <= 1}
+                                onClick={() => void load({ nextPage: page - 1 })}
+                                aria-label="上一页"
+                                data-testid="student-list-prev-page"
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={page >= Math.ceil(total / PAGE_SIZE)}
+                                onClick={() => void load({ nextPage: page + 1 })}
+                                aria-label="下一页"
+                                data-testid="student-list-next-page"
+                            >
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </section>
+
+            {dialog}
+            <Dialog open={selected !== null} onOpenChange={(open) => {
+                if (!open) { cancelExperiments(); setSelected(null); }
+            }}>
+                <DialogContent className="max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle>{selected?.name} 的实验记录</DialogTitle>
+                        <DialogDescription>
+                            查看该学生各项实验的阶段、进度、状态与成绩明细。
+                        </DialogDescription>
+                    </DialogHeader>
+                    {selected && (
+                        <dl className="grid grid-cols-3 gap-3 rounded-surface border border-border bg-muted px-3.5 py-2.5">
+                            <div>
+                                <dt className="text-meta text-muted-foreground">学号</dt>
+                                <dd className="font-mono text-label font-medium text-foreground">{selected.studentId}</dd>
+                            </div>
+                            <div>
+                                <dt className="text-meta text-muted-foreground">所属班级</dt>
+                                <dd className="truncate text-label font-medium text-foreground">{selected.className ?? "未分班"}</dd>
+                            </div>
+                            <div>
+                                <dt className="text-meta text-muted-foreground">整体完成度</dt>
+                                <dd className="text-label font-medium tabular-nums text-foreground">{selected.progress}%</dd>
+                            </div>
+                        </dl>
+                    )}
+                    <div className="overflow-hidden rounded-surface border border-border bg-card">
                         <Table aria-label="该学生的实验记录">
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="px-3">任务</TableHead>
-                                    <TableHead className="px-3">阶段</TableHead>
-                                    <TableHead className="px-3">状态</TableHead>
-                                    <TableHead className="px-3">进度</TableHead>
-                                    <TableHead className="px-3">成绩</TableHead>
-                                    <TableHead className="px-3">最后更新</TableHead>
+                                    <TableHead className="px-4">任务</TableHead>
+                                    <TableHead className="px-4">阶段</TableHead>
+                                    <TableHead className="px-4">状态</TableHead>
+                                    <TableHead className="px-4">进度</TableHead>
+                                    <TableHead className="px-4">成绩</TableHead>
+                                    <TableHead className="px-4">最后更新</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -369,14 +397,14 @@ export function StudentManagement() {
                                     const badgeIntent = experimentStatusIntent[item.status] ?? "neutral";
                                     return (
                                         <TableRow key={item.id}>
-                                            <TableCell className="px-3 font-medium text-foreground">{item.taskName ?? "未命名任务"}</TableCell>
-                                            <TableCell className="px-3 tabular-nums">第 {item.currentStage} / 5 阶段</TableCell>
-                                            <TableCell className="px-3">
+                                            <TableCell className="px-4 font-medium text-foreground">{item.taskName ?? "未命名任务"}</TableCell>
+                                            <TableCell className="px-4 tabular-nums">第 {item.currentStage} / 5 阶段</TableCell>
+                                            <TableCell className="px-4">
                                                 <StatusBadge intent={badgeIntent}>{item.statusText ?? "进行中"}</StatusBadge>
                                             </TableCell>
-                                            <TableCell className="px-3 tabular-nums">{item.progress}%</TableCell>
-                                            <TableCell className="px-3 tabular-nums">{item.score ?? "-"}</TableCell>
-                                            <TableCell className="px-3 text-meta tabular-nums text-muted-foreground">
+                                            <TableCell className="px-4 tabular-nums">{item.progress}%</TableCell>
+                                            <TableCell className="px-4 tabular-nums">{item.score ?? "-"}</TableCell>
+                                            <TableCell className="px-4 text-meta tabular-nums text-muted-foreground">
                                                 {formatDateTimeDisplay(item.lastUpdate, "-")}
                                             </TableCell>
                                         </TableRow>
@@ -396,9 +424,9 @@ export function StudentManagement() {
                                 )}
                             </TableBody>
                         </Table>
-                    </DialogContent>
-                </Dialog>
-            </Card>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
