@@ -1,6 +1,6 @@
 import { formatStatistic } from "@/utils/statistic-format";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/StatusBadge";
 import { TrendingUp, Sigma, Target, Minus, Plus } from "lucide-react";
 import type { MeanSampleSizeMetrics, SampleSizeMetrics } from "../experiment/sample-plan";
 import { formatMarginOfError, formatSamplePlanNumber } from "../experiment/sample-plan-display";
@@ -8,10 +8,10 @@ import { formatMarginOfError, formatSamplePlanNumber } from "../experiment/sampl
 interface EnhancedMetricsCardProps {
     metrics: SampleSizeMetrics | MeanSampleSizeMetrics | null;
     estimationType?: "proportion" | "mean";
-    confidenceLevel?: string; // "90" | "95" | "99"
-    p?: number;        // 估计比例，默认0.5
+    confidenceLevel?: string;
+    p?: number;
     populationVariance?: number;
-    finalSampleSize?: number; // 学生实际选择的样本量（用于对比提示）
+    finalSampleSize?: number;
 }
 
 export function EnhancedMetricsCard({
@@ -26,32 +26,30 @@ export function EnhancedMetricsCard({
     const isMeanEstimation = estimationType === "mean";
     const formattedMeanMetricMargin = formatMarginOfError(metrics.marginOfError, "mean");
 
-    // 格式化百分比
     const formatPercent = (value: number | null) => value === null ? "不可定义" : formatStatistic(value * 100, 2) + "%";
     const formatIntermediateSize = (value: number) => value < 1e12
         ? Math.ceil(value).toLocaleString()
         : formatSamplePlanNumber(Math.ceil(value));
 
-    // 格式化置信区间
     const formatCI = (value: number | undefined) => value === undefined ? "—" : formatStatistic(value * 100, 1) + "%";
 
     const sizeDeviation = finalSampleSize !== undefined && finalSampleSize !== metrics.n;
 
     return (
-        <Card className="rounded-surface border-primary-border bg-primary-muted ">
+        <Card className="rounded-surface border-border bg-card">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <TrendingUp className="w-5 h-5 text-primary" />
-                        <CardTitle className="text-body text-primary">
+                        <CardTitle className="text-body text-foreground">
                             常规推荐方案的精度
                         </CardTitle>
                     </div>
-                    <Badge variant="outline" className="text-meta bg-primary-muted border-primary-border text-primary">
+                    <StatusBadge intent="neutral">
                         {isMeanEstimation ? `基于 σ²=${populationVariance ?? "—"}` : `基于 p=${p}`}
-                    </Badge>
+                    </StatusBadge>
                 </div>
-                <CardDescription className="text-primary">
+                <CardDescription className="text-muted-foreground">
                     按公式推荐邀请数 n = {metrics.n.toLocaleString()} 计算；预期完成约 {formatSamplePlanNumber(metrics.expectedCompleted)} 个有效样本，并考虑设计效应。
                 </CardDescription>
                 {metrics.cappedAtPopulation && (
@@ -71,17 +69,16 @@ export function EnhancedMetricsCard({
                 )}
             </CardHeader>
             <CardContent className="space-y-4">
-                {/* 核心指标 */}
                 <div className={`grid gap-3 ${isMeanEstimation ? "grid-cols-3" : "grid-cols-2"}`}>
-                    <div className="rounded-surface border border-primary bg-background p-3">
+                    <div className="rounded-surface bg-muted p-3">
                         <div className="flex items-center gap-1.5 mb-1">
-                            <Sigma className="w-3.5 h-3.5 text-primary" />
-                            <span className="text-meta text-primary">标准误差 (SE)</span>
+                            <Sigma className="w-3.5 h-3.5 text-muted-foreground" />
+                            <span className="text-meta text-muted-foreground">标准误差 (SE)</span>
                         </div>
-                        <div className="text-subheading font-bold text-primary">
+                        <div className="text-subheading font-medium tabular-nums text-foreground">
                             {isMeanEstimation ? formatStatistic(metrics.standardError) : formatPercent(metrics.standardError)}
                         </div>
-                        <div className="text-meta text-primary mt-1">
+                        <div className="text-meta text-muted-foreground mt-1">
                             {isMeanEstimation ? "SE(ȳ) = √[deff × σ²/m × (N−m)/(N−1)]" : "SE = √[deff × p(1−p)/m × (N−m)/(N−1)]"}
                             <span className="block">m 为预期完成量，n 为计划发放量</span>
                         </div>
@@ -89,41 +86,41 @@ export function EnhancedMetricsCard({
 
                     {isMeanEstimation ? (
                         <>
-                            <div className="rounded-surface border border-primary bg-background p-3">
+                            <div className="rounded-surface bg-muted p-3">
                                 <div className="flex items-center gap-1.5 mb-1">
-                                    <Target className="w-3.5 h-3.5 text-primary" />
-                                    <span className="text-meta text-primary">误差限 (ME)</span>
+                                    <Target className="w-3.5 h-3.5 text-muted-foreground" />
+                                    <span className="text-meta text-muted-foreground">误差限 (ME)</span>
                                 </div>
-                                <div className="text-subheading font-bold text-primary">
+                                <div className="text-subheading font-medium tabular-nums text-foreground">
                                     {formattedMeanMetricMargin}
                                 </div>
-                                <div className="text-meta text-primary mt-1">
+                                <div className="text-meta text-muted-foreground mt-1">
                                     ME = Z × SE
                                 </div>
                             </div>
-                            <div className="rounded-surface border border-primary bg-background p-3">
+                            <div className="rounded-surface bg-muted p-3">
                                 <div className="flex items-center gap-1.5 mb-1">
-                                    <Target className="w-3.5 h-3.5 text-primary" />
-                                    <span className="text-meta text-primary">预期完成样本量</span>
+                                    <Target className="w-3.5 h-3.5 text-muted-foreground" />
+                                    <span className="text-meta text-muted-foreground">预期完成样本量</span>
                                 </div>
-                                <div className="text-subheading font-bold text-primary">
+                                <div className="text-subheading font-medium tabular-nums text-foreground">
                                     {formatSamplePlanNumber(metrics.expectedCompleted)}
                                 </div>
-                                <div className="text-meta text-primary mt-1">
+                                <div className="text-meta text-muted-foreground mt-1">
                                     m = n × (1−无回答率)
                                 </div>
                             </div>
                         </>
                     ) : (
-                        <div className="rounded-surface border border-primary bg-background p-3">
+                        <div className="rounded-surface bg-muted p-3">
                             <div className="flex items-center gap-1.5 mb-1">
-                                <Target className="w-3.5 h-3.5 text-primary" />
-                                <span className="text-meta text-primary">变异系数 (CV)</span>
+                                <Target className="w-3.5 h-3.5 text-muted-foreground" />
+                                <span className="text-meta text-muted-foreground">变异系数 (CV)</span>
                             </div>
-                            <div className="text-subheading font-bold text-primary">
+                            <div className="text-subheading font-medium tabular-nums text-foreground">
                                 {formatPercent(metrics.relativeStandardError)}
                             </div>
-                            <div className="text-meta text-primary mt-1">
+                            <div className="text-meta text-muted-foreground mt-1">
                                 RSE = SE / p
                             </div>
                         </div>
@@ -131,62 +128,57 @@ export function EnhancedMetricsCard({
                 </div>
 
                 {isMeanEstimation ? (
-                    <div className="rounded-surface border border-primary bg-background p-4">
+                    <div className="rounded-surface bg-muted p-4">
                         <div className="flex items-center gap-2 mb-3">
-                            <span className="text-label font-medium text-primary">{confidenceLevel}% 规划假设下的预期半宽</span>
-                            <Badge variant="outline" className="text-meta text-primary border-primary">
-                                均值估计
-                            </Badge>
+                            <span className="text-label font-medium text-foreground">{confidenceLevel}% 规划假设下的预期半宽</span>
+                            <StatusBadge intent="neutral">均值估计</StatusBadge>
                         </div>
-                        <div className="space-y-2 text-label text-primary">
-                            <div className="rounded-surface bg-primary-muted px-3 py-2">
-                                <span className="font-mono">ȳ ± Z×SE = ȳ ± {formatStatistic(metrics.marginOfError)}</span>
+                        <div className="space-y-2 text-label text-foreground">
+                            <div className="rounded-control border border-border bg-card px-3 py-2">
+                                <span className="font-mono tabular-nums">ȳ ± Z×SE = ȳ ± {formatStatistic(metrics.marginOfError)}</span>
                             </div>
-                            <p className="text-meta leading-relaxed text-primary">
+                            <p className="text-meta leading-relaxed text-muted-foreground">
                                 这里展示的是公式推荐样本量下的理论区间半宽。正式区间应以实际样本均值 ȳ 为中心，而不是预先假定一个真值中心。
                             </p>
                         </div>
                     </div>
                 ) : (
-                    <div className="rounded-surface border border-primary bg-background p-4">
+                    <div className="rounded-surface bg-muted p-4">
                         <div className="flex items-center gap-2 mb-3">
-                            <span className="text-label font-medium text-primary">{confidenceLevel}% 规划假设下的预期误差带</span>
-                            <Badge variant="outline" className="text-meta text-primary border-primary">
-                                比例估计
-                            </Badge>
+                            <span className="text-label font-medium text-foreground">{confidenceLevel}% 规划假设下的预期误差带</span>
+                            <StatusBadge intent="neutral">比例估计</StatusBadge>
                         </div>
-                        <div className="flex items-stretch justify-between gap-y-4 flex-nowrap gap-x-4">
+                        <div className="flex items-stretch justify-between gap-y-4 flex-nowrap gap-x-4 rounded-control border border-border bg-card p-3">
                             <div className="min-w-[5.5rem] flex-1 text-center">
-                                <div className="text-meta text-primary mb-1">下限</div>
-                                <div className="flex items-center justify-center gap-1 text-success">
-                                    <Minus className="w-3 h-3 shrink-0" />
-                                    <span className="font-bold tabular-nums">{formatCI(metrics.confidenceInterval?.lower)}</span>
+                                <div className="text-meta text-muted-foreground mb-1">下限</div>
+                                <div className="flex items-center justify-center gap-1 text-foreground">
+                                    <Minus className="w-3 h-3 shrink-0 text-muted-foreground" />
+                                    <span className="font-medium tabular-nums">{formatCI(metrics.confidenceInterval?.lower)}</span>
                                 </div>
                             </div>
-                            <div className="min-h-[2.5rem] w-px shrink-0 self-center bg-primary" aria-hidden />
+                            <div className="min-h-[2.5rem] w-px shrink-0 self-center bg-border" aria-hidden />
                             <div className="min-w-[5.5rem] flex-1 text-center">
-                                <div className="text-meta text-primary mb-1">规划假设 p</div>
-                                <div className="font-bold tabular-nums text-primary">{formatCI(p)}</div>
+                                <div className="text-meta text-muted-foreground mb-1">规划假设 p</div>
+                                <div className="font-medium tabular-nums text-primary">{formatCI(p)}</div>
                             </div>
-                            <div className="min-h-[2.5rem] w-px shrink-0 self-center bg-primary" aria-hidden />
+                            <div className="min-h-[2.5rem] w-px shrink-0 self-center bg-border" aria-hidden />
                             <div className="min-w-[5.5rem] flex-1 text-center">
-                                <div className="text-meta text-primary mb-1">上限</div>
-                                <div className="flex items-center justify-center gap-1 text-success">
-                                    <Plus className="w-3 h-3 shrink-0" />
-                                    <span className="font-bold tabular-nums">{formatCI(metrics.confidenceInterval?.upper)}</span>
+                                <div className="text-meta text-muted-foreground mb-1">上限</div>
+                                <div className="flex items-center justify-center gap-1 text-foreground">
+                                    <Plus className="w-3 h-3 shrink-0 text-muted-foreground" />
+                                    <span className="font-medium tabular-nums">{formatCI(metrics.confidenceInterval?.upper)}</span>
                                 </div>
                             </div>
                         </div>
-                        <p className="text-meta text-primary mt-3 leading-relaxed">
+                        <p className="text-meta text-muted-foreground mt-3 leading-relaxed">
                             该范围基于规划假设 p 与公式推荐样本量对应的理论误差限，用于教学说明。正式区间估计需以实际样本比例为中心重新计算。
                         </p>
                     </div>
                 )}
 
-                {/* 样本量计算过程 */}
-                <div className="rounded-surface border border-border bg-background p-3">
+                <div className="rounded-surface bg-muted p-3.5">
                     <div className="text-meta font-medium text-foreground mb-2">样本量计算过程</div>
-                    <div className="space-y-1.5 text-meta font-mono">
+                    <div className="space-y-1.5 text-meta font-mono tabular-nums">
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">初始样本量 n₀</span>
                             <span className="text-foreground">{formatIntermediateSize(metrics.n0)}</span>
@@ -203,8 +195,8 @@ export function EnhancedMetricsCard({
                             <span className="text-muted-foreground">预期完成</span>
                             <span className="text-foreground">{formatSamplePlanNumber(metrics.expectedCompleted)}</span>
                         </div>
-                        <div className="flex justify-between font-medium">
-                            <span className="text-primary">计划邀请数 n</span>
+                        <div className="flex justify-between font-medium border-t border-border pt-1.5">
+                            <span className="text-foreground">计划邀请数 n</span>
                             <span className="text-primary">{metrics.n.toLocaleString()}</span>
                         </div>
                     </div>

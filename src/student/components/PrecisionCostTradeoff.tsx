@@ -24,9 +24,9 @@ import { primarySliderClassName } from "./sample-planning-styles";
 interface CostScenario {
     id: string;
     name: string;
-    fixedCost: number;      // 固定成本（培训、督导等）
-    variableCostPerUnit: number; // 每个发放单位的成本（含未完成者）
-    totalBudget: number;     // 总预算
+    fixedCost: number;
+    variableCostPerUnit: number;
+    totalBudget: number;
 }
 
 interface PrecisionCostTradeoffProps {
@@ -86,7 +86,6 @@ export function PrecisionCostTradeoff({
     onApplyBudget,
     onSnapshot,
 }: PrecisionCostTradeoffProps) {
-    /** 与左侧决策面板解耦：继承为初值，在工具内可任意调整 */
     const [confidenceLevelLocal, setConfidenceLevelLocal] = useState(() => confidenceLevel);
     const [designEffectLocal, setDesignEffectLocal] = useState(() => designEffect);
     const [nonResponseRateLocal, setNonResponseRateLocal] = useState(() => nonResponseRate);
@@ -103,11 +102,9 @@ export function PrecisionCostTradeoff({
     const [targetMarginOfError, setTargetMarginOfError] = useState(() => {
         const m = initialMarginOfError;
         if (m == null || !Number.isFinite(m)) return 5;
-        // 与下方「目标精度」滑块 min/max 一致
         return Math.min(15, Math.max(1, Math.round(m)));
     });
 
-    // 父级决策参数变化时同步本地（避免挂载后 props 更新而演算仍用旧初值）
     useEffect(() => {
         setConfidenceLevelLocal(confidenceLevel);
     }, [confidenceLevel]);
@@ -125,7 +122,6 @@ export function PrecisionCostTradeoff({
 
     const currentScenario = useCustom ? customScenario : selectedScenario;
 
-    // 计算预算约束下的最大样本量
     const maxFeasibleSampleSize = useMemo(() => {
         const { fixedCost, variableCostPerUnit, totalBudget } = currentScenario;
         if (totalBudget < fixedCost) return 0;
@@ -134,12 +130,9 @@ export function PrecisionCostTradeoff({
         return Math.max(0, Math.min(maxSample, populationSize));
     }, [currentScenario, populationSize]);
 
-    // 计算预算约束下的精度
     const achievablePrecision = useMemo(() => {
         if (maxFeasibleSampleSize <= 0) return null;
 
-        // 从计划发放量先得到预期完成量 m=n(1-NRR)，再按
-        // SE²≈deff×p(1-p)×FPC(m)/m 计算；FPC 必须使用完成量，不能使用除以 deff 后的“等效样本量”。
         const z = zForConfidenceLevel(confidenceLevelLocal);
         const p = 0.5;
 
@@ -155,7 +148,6 @@ export function PrecisionCostTradeoff({
         };
     }, [maxFeasibleSampleSize, confidenceLevelLocal, populationSize, designEffectLocal, nonResponseRateLocal, currentScenario]);
 
-    // 计算目标精度所需的样本量和成本
     const targetAnalysis = useMemo(() => calculateCostPlan({
         confidenceLevel: confidenceLevelLocal,
         targetMarginOfError,
@@ -178,23 +170,22 @@ export function PrecisionCostTradeoff({
         currentScenario, maxFeasibleSampleSize, targetAnalysis]);
 
     return (
-        <Card className="rounded-surface border-primary-border bg-primary-muted ">
+        <Card className="rounded-surface border-border bg-card">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <DollarSign className="w-5 h-5 text-primary" />
-                        <CardTitle className="text-body text-primary">
+                        <CardTitle className="text-body text-foreground">
                             精度与成本权衡
                         </CardTitle>
                     </div>
                 </div>
-                <CardDescription className="text-foreground">
+                <CardDescription className="text-muted-foreground">
                     在给定预算约束下，评估可达到的精度水平
                 </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-4">
-                {/* 场景选择 */}
                 <div className="space-y-2">
                     <Label className="text-meta font-medium text-foreground">调查场景</Label>
                     <div className="grid grid-cols-3 gap-2">
@@ -207,11 +198,7 @@ export function PrecisionCostTradeoff({
                                     setSelectedScenario(scenario);
                                     setUseCustom(false);
                                 }}
-                                className={`text-meta h-auto py-2 ${
-                                    !useCustom && selectedScenario.id === scenario.id
-                                        ? "bg-primary text-primary-foreground hover:bg-primary-hover "
-                                        : "border-primary bg-background text-primary hover:bg-primary-muted"
-                                }`}
+                                className="text-meta h-auto py-2"
                             >
                                 {scenario.name}
                             </Button>
@@ -221,19 +208,14 @@ export function PrecisionCostTradeoff({
                         variant={useCustom ? "default" : "outline"}
                         size="sm"
                         onClick={() => setUseCustom(true)}
-                        className={`w-full text-meta ${
-                            useCustom
-                                ? "bg-primary text-primary-foreground hover:bg-primary-hover"
-                                : "border-primary bg-background text-primary hover:bg-primary-muted"
-                        }`}
+                        className="w-full text-meta"
                     >
                         自定义成本参数
                     </Button>
                 </div>
 
-                {/* 自定义参数 */}
                 {useCustom && (
-                    <div className="space-y-3 p-3 rounded-surface border border-primary-border bg-background">
+                    <div className="space-y-3 p-3.5 rounded-surface bg-muted">
                         <div className="space-y-2">
                             <Label htmlFor="precision-fixed-cost" className="text-meta text-foreground">固定成本（元）</Label>
                             <Input
@@ -246,7 +228,7 @@ export function PrecisionCostTradeoff({
                                     ...customScenario,
                                     fixedCost: Math.max(0, Number(e.target.value) || 0)
                                 })}
-                                className="bg-card border-primary text-foreground"
+                                className="bg-card border-input text-foreground"
                             />
                             <p className="text-meta text-muted-foreground">培训、督导、设备等固定支出</p>
                         </div>
@@ -262,7 +244,7 @@ export function PrecisionCostTradeoff({
                                     ...customScenario,
                                     variableCostPerUnit: Math.max(0, Number(e.target.value) || 0)
                                 })}
-                                className="bg-card border-primary text-foreground"
+                                className="bg-card border-input text-foreground"
                             />
                             <p className="text-meta text-muted-foreground">按发放单位数计费，未完成者也计入成本；不按成功回收份数计费。</p>
                         </div>
@@ -278,41 +260,39 @@ export function PrecisionCostTradeoff({
                                     ...customScenario,
                                     totalBudget: Math.max(0, Number(e.target.value) || 0)
                                 })}
-                                className="bg-card border-primary text-foreground"
+                                className="bg-card border-input text-foreground"
                             />
                         </div>
                     </div>
                 )}
 
-                {/* 当前场景摘要 */}
-                <div className="rounded-surface border border-primary-border bg-background p-3 space-y-2">
+                <div className="rounded-surface bg-muted p-3.5 space-y-2">
                     <div className="flex justify-between text-label">
-                        <span className="text-foreground">固定成本</span>
-                        <span className="font-mono text-primary">
+                        <span className="text-muted-foreground">固定成本</span>
+                        <span className="font-mono tabular-nums text-foreground">
                             ¥{currentScenario.fixedCost.toLocaleString()}
                         </span>
                     </div>
                     <div className="flex justify-between text-label">
-                        <span className="text-foreground">单位发放成本</span>
-                        <span className="font-mono text-primary">
+                        <span className="text-muted-foreground">单位发放成本</span>
+                        <span className="font-mono tabular-nums text-foreground">
                             ¥{currentScenario.variableCostPerUnit}/发放单位
                         </span>
                     </div>
                     <div className="flex justify-between text-label font-medium">
                         <span className="text-foreground">总预算</span>
-                        <span className="font-mono text-primary">
+                        <span className="font-mono tabular-nums text-primary">
                             ¥{currentScenario.totalBudget.toLocaleString()}
                         </span>
                     </div>
                 </div>
 
-                {/* 抽样假设：继承决策面板初值，仅影响本工具内演算 */}
-                <div className="rounded-surface border border-primary-border bg-background p-3 space-y-4">
+                <div className="rounded-surface bg-muted p-3.5 space-y-4">
                     <p className="text-meta font-medium text-foreground">抽样假设（可在此调整）</p>
                     <div className="space-y-1.5">
-                        <Label className="text-meta text-muted-foreground">置信水平</Label>
+                        <Label className="text-meta text-foreground">置信水平</Label>
                         <Select value={confidenceLevelLocal} onValueChange={setConfidenceLevelLocal}>
-                            <SelectTrigger aria-label="成本分析置信水平" className="h-9 text-label bg-card border-primary">
+                            <SelectTrigger aria-label="成本分析置信水平" className="h-9 text-label bg-card border-input text-foreground">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -324,8 +304,8 @@ export function PrecisionCostTradeoff({
                     </div>
                     <div className="space-y-1.5">
                         <div className="flex justify-between text-meta">
-                            <span className="text-muted-foreground">设计效应</span>
-                            <span className="font-bold tabular-nums text-primary">
+                            <span className="text-foreground">设计效应</span>
+                            <span className="font-medium tabular-nums text-foreground">
                                 {designEffectLocal.toFixed(1)}
                             </span>
                         </div>
@@ -341,8 +321,8 @@ export function PrecisionCostTradeoff({
                     </div>
                     <div className="space-y-1.5">
                         <div className="flex justify-between text-meta">
-                            <span className="text-muted-foreground">无回答率</span>
-                            <span className="font-bold tabular-nums text-destructive">
+                            <span className="text-foreground">无回答率</span>
+                            <span className="font-medium tabular-nums text-foreground">
                                 {Math.round(nonResponseRateLocal * 100)}%
                             </span>
                         </div>
@@ -358,17 +338,16 @@ export function PrecisionCostTradeoff({
                     </div>
                 </div>
 
-                {/* 预算约束分析 */}
-                <div className="rounded-surface border-2 border-primary-border bg-background p-4 ">
-                    <div className="flex items-center gap-2 mb-3">
+                <div className="rounded-surface bg-muted p-4 space-y-3">
+                    <div className="flex items-center gap-2">
                         <Target className="w-5 h-5 text-primary" />
-                        <span className="font-bold text-primary">预算约束分析</span>
+                        <span className="font-medium text-foreground">预算约束分析</span>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-2.5">
                         <div className="flex justify-between items-center">
-                            <span className="text-label text-foreground">预算可支持的最大样本量</span>
-                            <span className="text-section-title font-bold tabular-nums text-primary">
+                            <span className="text-label text-muted-foreground">预算可支持的最大样本量</span>
+                            <span className="text-section-title font-medium tabular-nums text-primary">
                                 {maxFeasibleSampleSize.toLocaleString()}
                             </span>
                         </div>
@@ -376,14 +355,14 @@ export function PrecisionCostTradeoff({
                         {achievablePrecision && (
                             <>
                                 <div className="flex justify-between items-center">
-                                    <span className="text-label text-foreground">预算内预期误差限</span>
-                                    <span className="text-subheading font-bold tabular-nums text-info">
+                                    <span className="text-label text-muted-foreground">预算内预期误差限</span>
+                                    <span className="text-subheading font-medium tabular-nums text-foreground">
                                         ±{achievablePrecision.marginOfError.toFixed(1)}%
                                     </span>
                                 </div>
                                 <div className="flex justify-between items-center text-label">
-                                    <span className="text-foreground">实际总成本</span>
-                                    <span className="font-mono text-primary">
+                                    <span className="text-muted-foreground">实际总成本</span>
+                                    <span className="font-mono tabular-nums text-foreground">
                                         ¥{achievablePrecision.totalCost.toLocaleString()}
                                     </span>
                                 </div>
@@ -392,7 +371,7 @@ export function PrecisionCostTradeoff({
                     </div>
 
                     {achievablePrecision && achievablePrecision.totalCost > currentScenario.totalBudget * 0.9 && (
-                        <div className="mt-3 rounded-surface border border-warning-border bg-warning-muted p-2">
+                        <div className="rounded-surface border border-warning-border bg-warning-muted p-2.5">
                             <div className="flex items-center gap-2 text-meta text-warning">
                                 <AlertCircle className="w-4 h-4 shrink-0 text-warning" />
                                 <span>预算已接近上限，继续增加发放量可能需要追加预算</span>
@@ -401,7 +380,6 @@ export function PrecisionCostTradeoff({
                     )}
                 </div>
 
-                {/* 目标精度分析（与决策面板「允许误差」1～10% 可保存值不同，此处为工具内试算 1～15%） */}
                 <div className="space-y-3">
                     <div>
                         <Label className="text-meta font-medium text-foreground">
@@ -424,17 +402,17 @@ export function PrecisionCostTradeoff({
                         className={primarySliderClassName}
                     />
 
-                    {targetAnalysis ? <div className="rounded-surface border border-primary-border bg-background p-3">
+                    {targetAnalysis ? <div className="rounded-surface bg-muted p-4 space-y-2.5">
                         <div className="space-y-2">
                             <div className="flex justify-between text-label">
-                                <span className="text-foreground">所需样本量</span>
-                                <span className="font-mono text-primary">
+                                <span className="text-muted-foreground">所需样本量</span>
+                                <span className="font-mono font-medium tabular-nums text-primary">
                                     {targetAnalysis.requiredSampleSize.toLocaleString()}
                                 </span>
                             </div>
                             <div className="flex justify-between text-label">
-                                <span className="text-foreground">预估总成本</span>
-                                <span className="font-mono text-primary">
+                                <span className="text-muted-foreground">预估总成本</span>
+                                <span className="font-mono font-medium tabular-nums text-foreground">
                                     ¥{targetAnalysis.totalCost.toLocaleString()}
                                 </span>
                             </div>
@@ -452,13 +430,12 @@ export function PrecisionCostTradeoff({
                             </div>
                             {!targetAnalysis.budgetFeasible && <p className="text-meta text-destructive">还需 ¥{targetAnalysis.budgetGap.toLocaleString()}，请增加预算或调整目标。</p>}
                             {!targetAnalysis.precisionReached && <p className="text-meta text-warning">发放量已达到总体上限，按当前无回答率仍无法达到目标精度。请改善回答率或调整目标；增加预算本身不能解决这一限制。</p>}
-
                         </div>
 
                         {targetAnalysis.budgetFeasible && (
-                            <>
-                                <p className="text-meta text-muted-foreground leading-relaxed mt-3">
-                                    「应用」仅将样本量写入最终样本量。若抽样假设与左侧不一致，理解此 n 时以本工具为准；左侧不会随本工具更新，勿用左侧参数代回验算。
+                            <div className="space-y-2 pt-2">
+                                <p className="text-meta text-muted-foreground leading-relaxed">
+                                     「应用」仅将样本量写入最终样本量。若抽样假设与左侧不一致，理解此 n 时以本工具为准；左侧不会随本工具更新，勿用左侧参数代回验算。
                                 </p>
                                 <Button
                                     onClick={() => {
@@ -480,44 +457,39 @@ export function PrecisionCostTradeoff({
                                         });
                                         onApplyBudget(currentScenario.totalBudget, targetAnalysis.requiredSampleSize);
                                     }}
-                                    className="w-full mt-2 bg-primary text-primary-foreground hover:bg-primary-hover"
+                                    className="w-full"
                                     size="sm"
                                 >
                                     {targetAnalysis.precisionReached ? "应用此样本量" : "采用此未达标样本量"}
                                     <ChevronRight className="w-4 h-4 ml-1" />
                                 </Button>
-                            </>
+                            </div>
                         )}
                     </div> : <p role="alert" className="text-label text-destructive">参数无效，无法计算成本与精度。</p>}
                 </div>
 
-                {/* 精度-成本曲线图 */}
-                <div className="rounded-surface border border-primary-border bg-background p-3">
-                    <div className="flex items-center gap-2 mb-3">
+                <div className="space-y-2.5 border-t border-border pt-4">
+                    <div className="flex items-center gap-2">
                         <TrendingUp className="w-4 h-4 text-primary" />
-                        <span className="font-medium text-primary text-label">
+                        <span className="font-medium text-foreground text-label">
                             精度-成本关系
                         </span>
                     </div>
 
                     <CostPrecisionChart {...curveData} targetMarginOfError={targetMarginOfError} budget={currentScenario.totalBudget} />
-
                 </div>
 
-                {/* 决策建议（与比例对比卡片的说明区一致：浅青绿提示框） */}
-                <div className="rounded-surface border border-info-border bg-info-muted p-3">
-                    <div className="flex items-start gap-2">
-                        <Info className="w-4 h-4 text-info shrink-0 mt-0.5" />
-                        <div className="text-meta space-y-1 text-info">
-                            <p className="font-medium">决策建议</p>
-                            <ul className="space-y-1 list-disc list-inside text-info">
-                                <li>在抽样比很小且其他参数固定时，所需样本量近似与误差限平方的倒数成比例</li>
-                                <li>例如误差限减半，线性单位成本下的样本量和变动成本约为原来的 4 倍</li>
-                                <li>有限总体校正和发放量封顶会改变上述倍数，应以本页当前情景的计算结果为准</li>
-                                <li>最终精度应由研究目标、关键子总体、预算与错误决策代价共同确定，不存在通用最优百分比</li>
-                            </ul>
-                        </div>
+                <div className="rounded-surface bg-muted p-3.5 text-meta space-y-1.5 text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                        <Info className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <p className="font-medium text-foreground">决策建议</p>
                     </div>
+                    <ul className="space-y-1 list-disc list-inside leading-relaxed">
+                        <li>在抽样比很小且其他参数固定时，所需样本量近似与误差限平方的倒数成比例</li>
+                        <li>例如误差限减半，线性单位成本下的样本量和变动成本约为原来的 4 倍</li>
+                        <li>有限总体校正和发放量封顶会改变上述倍数，应以本页当前情景的计算结果为准</li>
+                        <li>最终精度应由研究目标、关键子总体、预算与错误决策代价共同确定，不存在通用最优百分比</li>
+                    </ul>
                 </div>
             </CardContent>
         </Card>

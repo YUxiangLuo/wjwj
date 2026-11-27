@@ -207,8 +207,8 @@ export function ImmersiveSamplePlanning({
                     {phase.type === "reference" && <PlanningReference params={params}/>}
                     {phase.type === "confirm" && <div className="mx-auto max-w-4xl space-y-5">
                         <PlanningHeading title="确认这份样本量方案" description="核对实际抽样数量和预期精度。如需修改，可返回调整；确认后立即保存并进入抽样执行。"/>
-                        <section className="space-y-5 rounded-surface border border-primary-border bg-card p-6">
-                            <div><p className="text-label text-muted-foreground">最终计划邀请</p><p className="mt-1 text-display font-bold tabular-nums text-primary">{finalSampleSize} <span className="text-body font-normal">个单位</span></p></div>
+                        <section className="space-y-5 rounded-surface border border-border bg-card p-6">
+                            <div><p className="text-label text-muted-foreground">最终计划邀请</p><p className="mt-1 text-display font-medium tabular-nums text-primary">{finalSampleSize} <span className="text-body font-normal text-muted-foreground">个单位</span></p></div>
                             <PlanningOutcome params={params}/>
                             <SamplingObservationNotice nonResponseRate={nonResponseRate}/>
                             <dl className="grid grid-cols-4 gap-3">

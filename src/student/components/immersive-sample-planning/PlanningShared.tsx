@@ -7,7 +7,7 @@ import type { SampleParams } from "./types";
 export function PlanningHeading({ title, description }: { title: string; description: string }) {
     return <PageHeader border={false} className="items-start">
         <div className="space-y-2">
-            <h2 tabIndex={-1} className="text-page-title font-bold text-foreground outline-none">{title}</h2>
+            <h2 tabIndex={-1} className="text-page-title font-medium text-foreground outline-none">{title}</h2>
             <p className="text-body text-muted-foreground leading-relaxed">{description}</p>
         </div>
     </PageHeader>;

@@ -159,7 +159,7 @@ function samplingMethodPanelForKey(
                         {r.layers && r.layers.length > 0 && (
                             <div className="overflow-hidden rounded-surface border border-border">
                                 <Table aria-label="分层抽样各层样本量">
-                                    <TableHeader className="bg-card">
+                                    <TableHeader className="bg-muted">
                                         <TableRow className="border-border">
                                             <TableHead className="text-meta">层</TableHead>
                                             <TableHead className="text-meta text-right">Nₕ</TableHead>
@@ -207,12 +207,12 @@ export function SamplePlanDecisionPanel({
 
     return (
         <div className="space-y-4">
-            <div className="rounded-surface border border-warning-border bg-warning-muted p-3">
+            <div className="rounded-surface bg-muted p-3.5">
                 <div className="flex gap-2">
-                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-                    <div className="space-y-1.5 text-meta leading-relaxed text-warning">
-                        <p className="font-medium text-warning">关于高级工具（子总体、多变量、成本/CV/整群等）</p>
-                        <p className="text-warning">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div className="space-y-1.5 text-meta leading-relaxed text-muted-foreground">
+                        <p className="font-medium text-foreground">关于高级工具（子总体、多变量、成本/CV/整群等）</p>
+                        <p>
                             成本、多变量、CV 和整群工具应用时的输入与结果快照会保存，并在下方展示。基础参数保持独立；后续分析仍采用基础置信水平和目标误差限。
                         </p>
                     </div>
@@ -220,11 +220,11 @@ export function SamplePlanDecisionPanel({
             </div>
 
             {!samplePlan ? (
-                <div className="rounded-surface border border-dashed border-input bg-background py-12 text-center text-label text-muted-foreground">
+                <div className="rounded-surface border border-dashed border-border bg-muted py-12 text-center text-label text-muted-foreground">
                     尚未保存样本量规划数据
                 </div>
             ) : (
-                <div className="rounded-surface border border-border bg-background p-4">
+                <div className="rounded-surface border border-border bg-card p-4">
                     <SamplingObservationNotice nonResponseRate={samplePlan.nonResponseRate} />
 <p className="mb-2 text-label font-medium">基础规划参数</p>
                     <ParamRow label="总体规模 N" value={populationSize > 0 ? populationSize.toLocaleString() : "—"} />
@@ -290,7 +290,7 @@ export function SamplingMethodParamsPanel({
 }) {
     if (!samplingResults) {
         return (
-            <div className="rounded-surface border border-dashed border-input bg-background py-12 text-center text-label text-muted-foreground">
+            <div className="rounded-surface border border-dashed border-border bg-muted py-12 text-center text-label text-muted-foreground">
                 暂无抽样结果数据（请先在阶段三完成抽样）
             </div>
         );
@@ -322,13 +322,13 @@ export function SamplingMethodParamsPanel({
                 return (
                     <div
                         key={key}
-                        className="rounded-surface border border-border bg-background p-4"
+                        className="rounded-surface border border-border bg-card p-4"
                         data-testid={`student-analysis-sampling-params-${key}`}
                     >
                         <div className="mb-3 flex items-center justify-between gap-2">
-                            <h4 className="text-label font-semibold text-foreground">{meta.label}</h4>
+                            <h4 className="text-label font-medium text-foreground">{meta.label}</h4>
                             <div className="flex items-center gap-2">
-                                <span className={`rounded-control border px-2 py-0.5 text-meta font-medium ${policy.methods[key] === "required" ? "border-primary-border bg-primary-muted text-primary" : "border-border bg-card text-muted-foreground"}`}>
+                                <span className={`rounded-control border px-2 py-0.5 text-meta font-medium ${policy.methods[key] === "required" ? "border-primary-border bg-primary-muted text-primary" : "border-border bg-muted text-muted-foreground"}`}>
                                     {policy.methods[key] === "required" ? "必做" : "选做"}
                                 </span>
                                 <span

@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
     AlertCircle, ArrowDown, ArrowRight, ArrowUp, Calculator, CheckCircle2,
-    ChevronLeft, Coins, Edit2, FileEdit, Layers, Loader2, Play, Plus,
-    RefreshCw, Send, Sparkles, Trash2
+    ChevronLeft, Coins, Edit2, FileEdit, Layers, Link2, Loader2, Play, Plus,
+    RefreshCw, Send, Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -745,7 +745,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
             )}
 
             {/* Top Closed-Loop Adjustment Brief Banner */}
-            <section className="rounded-surface border border-primary-border bg-primary-muted p-5">
+            <section className="rounded-surface border border-border bg-card p-5">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
@@ -760,13 +760,13 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                             ))}
                         </div>
                         <p className="text-label text-foreground">
-                            <strong>本轮调优动作：</strong>
+                            <strong className="font-medium">本轮调优动作：</strong>
                             {experiment?.adjustmentPlan?.plannedActions.map((a) => ADJUSTMENT_ACTION_LABELS[a] ?? a).join("；") || "结合首轮实测参数优化问卷、样本量与抽样策略"}
                         </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         {formalWaves.length >= 2 && (
-                            <div className="flex flex-wrap items-center gap-1 rounded-control border border-border bg-card p-1" data-testid="student-refinement-wave-switcher">
+                            <div className="flex flex-wrap items-center gap-1 rounded-control bg-muted p-1" data-testid="student-refinement-wave-switcher">
                                 {formalWaves.map((fw) => {
                                     const isCurrentActive = fw.waveNumber === (activeWave?.waveNumber ?? activeWaveNum);
                                     const isSelected = fw.waveNumber === viewingWaveNum;
@@ -817,10 +817,10 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                 <div
                     role="status"
                     data-testid="student-refinement-wave3-onboarding"
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-surface border border-info-border bg-info-muted px-4 py-3 text-label text-foreground"
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-surface bg-muted px-4 py-3 text-label text-foreground"
                 >
                     <span>
-                        已进入<strong>第 {activeWave.waveNumber} 轮进阶微调工作台</strong>：已继承上一轮问卷与样本量基线。请按需调整问卷（步骤 1）或样本量（步骤 2），随后在步骤 3 重新执行抽样与问卷投放。
+                        已进入<strong className="font-medium">第 {activeWave.waveNumber} 轮进阶微调工作台</strong>：已继承上一轮问卷与样本量基线。请按需调整问卷（步骤 1）或样本量（步骤 2），随后在步骤 3 重新执行抽样与问卷投放。
                     </span>
                     {formalWaves.length >= 2 && (
                         <Button
@@ -865,7 +865,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
             ) : (
             /* Three Studio Sub-Tabs */
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as RefinementTab)} className="space-y-5">
-                <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-surface border border-border bg-card p-1.5">
+                <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-control bg-muted p-1">
                     <TabsTrigger value="questionnaire" className="gap-2 py-2.5 text-label" data-testid="student-refinement-tab-questionnaire">
                         <FileEdit className="h-4 w-4" />
                         1. 问卷精简与规则修订（按需）
@@ -905,8 +905,8 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2">
                                     {dictionary && (
-                                        <Button type="button" variant="outline" size="sm" onClick={handleAutoBindWaveQuestions}>
-                                            <Sparkles className="mr-1.5 h-3.5 w-3.5 text-primary" />
+                                        <Button type="button" variant="secondary" size="sm" onClick={handleAutoBindWaveQuestions}>
+                                            <Link2 className="mr-1.5 h-3.5 w-3.5" />
                                             一键智能绑定变量
                                         </Button>
                                     )}
@@ -1070,12 +1070,11 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                 {wave1Diag && (
                                     <Button
                                         type="button"
-                                        variant="outline"
+                                        variant="secondary"
                                         onClick={handleImportWave1Empirical}
                                         data-testid="student-refinement-import-empirical"
-                                        className="border-primary-border bg-primary-muted text-primary hover:bg-primary-muted hover:text-primary"
                                     >
-                                        <Sparkles className="mr-1.5 h-4 w-4" />
+                                        <RefreshCw className="mr-1.5 h-4 w-4" />
                                         {estimationType === "proportion" ? "一键代入首轮实测无回答率" : "一键代入首轮实测无回答率与样本方差"}
                                     </Button>
                                 )}
@@ -1083,12 +1082,12 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                         </CardHeader>
                         <CardContent className="space-y-5 pt-5">
                             {isPlanInheritedPrior && (
-                                <p role="status" className="rounded-control border border-info-border bg-info-muted px-3.5 py-2 text-meta text-info">
+                                <p role="status" className="rounded-control bg-muted px-3.5 py-2.5 text-meta text-muted-foreground">
                                     正式投放阶段须采用首轮实测样本方差 s² 或抽样框总体方差 σ²（不能沿用试投轮的先验猜测值），请核对下方参数并保存正式轮样本量。
                                 </p>
                             )}
                             {!isPlanInheritedPrior && isPlanUnconfirmedFromPilot && (
-                                <p role="status" data-testid="student-refinement-pilot-plan-notice" className="rounded-control border border-info-border bg-info-muted px-3.5 py-2 text-meta text-info">
+                                <p role="status" data-testid="student-refinement-pilot-plan-notice" className="rounded-control bg-muted px-3.5 py-2.5 text-meta text-muted-foreground">
                                     当前表单初始沿用了首轮试投参数（n={wave1?.samplePlan?.finalSampleSize}）。建议点击右上角「一键代入首轮实测无回答率」并收紧正式轮目标误差限，随后点击底部「保存正式轮样本量并去抽样」。
                                 </p>
                             )}
@@ -1102,7 +1101,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                             setCustomFinalSizeInput(null);
                                         }}
                                     >
-                                        <SelectTrigger aria-label="选择正式轮置信水平" className="bg-background">
+                                        <SelectTrigger aria-label="选择正式轮置信水平" className="bg-card">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -1131,14 +1130,14 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                             setMarginOfErrorInput(e.target.value);
                                             setCustomFinalSizeInput(null);
                                         }}
-                                        className="bg-background tabular-nums"
+                                        className="bg-card tabular-nums"
                                     />
                                 </div>
 
                                 <div className="space-y-2">
                                     <Label htmlFor="formal-nrr" className="text-foreground">
                                         预期无回答/损耗率 (%)
-                                        {wave1Diag && <span className="ml-1 text-meta text-primary">（首轮实测 {wave1Diag.empiricalNonResponseRatePct}%）</span>}
+                                        {wave1Diag && <span className="ml-1 text-meta text-muted-foreground">（首轮实测 {wave1Diag.empiricalNonResponseRatePct}%）</span>}
                                     </Label>
                                     <Input
                                         id="formal-nrr"
@@ -1152,13 +1151,13 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                             setNonResponsePctInput(e.target.value);
                                             setCustomFinalSizeInput(null);
                                         }}
-                                        className="bg-background tabular-nums"
+                                        className="bg-card tabular-nums"
                                     />
                                 </div>
                             </div>
 
                             {estimationType === "mean" && (
-                                <div className="grid grid-cols-2 gap-4 rounded-surface border border-border bg-background p-4">
+                                <div className="grid grid-cols-2 gap-4 rounded-surface bg-muted p-4">
                                     <div className="space-y-2">
                                         <Label className="text-foreground">正式轮方差参数依据</Label>
                                         <Select
@@ -1195,7 +1194,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-2 gap-4 rounded-surface border border-border bg-muted p-4">
+                            <div className="grid grid-cols-2 gap-4 rounded-surface bg-muted p-4">
                                 <div className="space-y-2">
                                     <div className="flex flex-wrap items-center justify-between gap-2 text-meta text-muted-foreground">
                                         <span>四步推导（{stepDetails.formulaLabel}）</span>
@@ -1204,7 +1203,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                         </span>
                                     </div>
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <Label htmlFor="formal-final-size" className="shrink-0 text-label font-semibold text-foreground">
+                                        <Label htmlFor="formal-final-size" className="shrink-0 text-label font-medium text-foreground">
                                             正式轮发放样本量：
                                         </Label>
                                         <Input
@@ -1216,7 +1215,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                             aria-invalid={!isFinalSizeValid || undefined}
                                             onChange={(e) => setCustomFinalSizeInput(e.target.value)}
                                             data-testid="student-refinement-final-size"
-                                            className="h-9 w-28 bg-card font-mono font-bold tabular-nums"
+                                            className="h-9 w-28 bg-card font-mono font-medium tabular-nums"
                                         />
                                         <Button
                                             type="button"
@@ -1238,10 +1237,10 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                     )}
                                 </div>
 
-                                <div className="flex flex-col justify-between rounded-control border border-info-border bg-info-muted p-3">
-                                    <div className="flex items-center justify-between text-meta font-semibold text-info">
+                                <div className="flex flex-col justify-between rounded-control border border-border bg-card p-3">
+                                    <div className="flex items-center justify-between text-meta font-medium text-foreground">
                                         <span className="flex items-center gap-1.5">
-                                            <Coins className="h-4 w-4" />
+                                            <Coins className="h-4 w-4 text-muted-foreground" />
                                             正式轮参考经费预估
                                         </span>
                                         <span className="tabular-nums">¥{formatStatistic(estimatedFormalCost, 0)}</span>
@@ -1273,7 +1272,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                             setDesignEffectInput(e.target.value);
                                             setCustomFinalSizeInput(null);
                                         }}
-                                        className="h-8 w-20 bg-background text-center font-mono text-meta"
+                                        className="h-8 w-20 bg-card text-center font-mono text-meta"
                                     />
                                 </div>
                                 <Button
@@ -1339,7 +1338,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                             </div>
 
                             <Tabs value={activeMethod} onValueChange={(v) => setActiveMethod(v as MethodKey)} className="space-y-4">
-                                <TabsList className="flex h-auto w-full flex-wrap gap-1 rounded-surface border border-border bg-card p-1">
+                                <TabsList className="flex h-auto w-full flex-wrap gap-1 rounded-control bg-muted p-1">
                                     {enabledMethods.map((method) => {
                                         const req = effectivePolicy.methods[method];
                                         const done = completedFormalMethods.includes(method);
@@ -1379,7 +1378,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                                         </CardDescription>
                                                     </CardHeader>
                                                     <CardContent className="space-y-4">
-                                                        <div className="flex flex-wrap items-end justify-between gap-4 rounded-surface border border-border bg-background p-4">
+                                                        <div className="flex flex-wrap items-end justify-between gap-4 rounded-surface bg-muted p-4">
                                                             <div className="flex flex-wrap items-end gap-4">
                                                                 {method === "pps" && (
                                                                     <>
@@ -1489,7 +1488,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                             </Tabs>
 
                             {/* Formal Fieldwork Dispatch & QC Card */}
-                            <Card className="rounded-surface border-primary-border bg-card" data-testid="student-refinement-dispatch-card">
+                            <Card className="rounded-surface border-border bg-card" data-testid="student-refinement-dispatch-card">
                                 <CardHeader className="border-b border-border pb-4">
                                     <div className="flex flex-wrap items-center justify-between gap-3">
                                         <div>
@@ -1509,7 +1508,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                     </div>
                                 </CardHeader>
                                 <CardContent className="space-y-4 pt-4">
-                                    <div className="flex flex-wrap items-center justify-between gap-4 rounded-surface border border-border bg-background p-4">
+                                    <div className="flex flex-wrap items-center justify-between gap-4 rounded-surface bg-muted p-4">
                                         <div className="flex flex-wrap items-center gap-5">
                                             <div className="flex items-center gap-2">
                                                 <Switch
@@ -1551,7 +1550,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                             {dispatching ? (
                                                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" />正在投放并质检…</>
                                             ) : (
-                                                <><Sparkles className="mr-2 h-4 w-4" />{allCompletedMethodsDispatched ? "重新发放当前正式轮问卷" : "执行正式问卷投放与回收"}</>
+                                                <><Send className="mr-2 h-4 w-4" />{allCompletedMethodsDispatched ? "重新发放当前正式轮问卷" : "执行正式问卷投放与回收"}</>
                                             )}
                                         </Button>
                                     </div>

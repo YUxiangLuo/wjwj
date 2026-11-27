@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import {
     Select,
@@ -126,36 +126,36 @@ export function StratifiedAllocationComparison({
     const hasIncompleteAllocation = visibleComparisons.some((comparison) => comparison.totalVariance == null);
 
     return (
-        <Card className="rounded-surface border-auxiliary-border bg-auxiliary-muted ">
+        <Card className="rounded-surface border-border bg-card">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <BarChart3 className="w-5 h-5 text-auxiliary" />
-                        <CardTitle className="text-body text-auxiliary-strong">
+                        <BarChart3 className="w-5 h-5 text-primary" />
+                        <CardTitle className="text-body text-foreground">
                             分配方法对比分析
                         </CardTitle>
                     </div>
                 </div>
-                <CardDescription className="text-auxiliary-strong">
+                <CardDescription className="text-muted-foreground">
                     不同分配方法的样本分布与效率比较
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 {/* 目标变量选择器 */}
                 {numericFields && numericFields.length > 0 && (
-                    <div className="rounded-surface border border-auxiliary-border bg-background p-3">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Calculator className="w-4 h-4 text-auxiliary" />
-                            <span className="text-label font-medium text-auxiliary-strong">目标估计变量</span>
+                    <div className="rounded-surface bg-muted p-4">
+                        <div className="flex items-center gap-2 mb-1.5">
+                            <Calculator className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-label font-medium text-foreground">目标估计变量</span>
                         </div>
-                        <p className="text-meta text-auxiliary mb-2">
+                        <p className="text-meta text-muted-foreground mb-3">
                             选择目标变量后才会计算奈曼分配，并用真实层内标准差比较相对效率。未选择时只比较分配份额，不展示效率。
                         </p>
                         <Select
                             value={targetVariable ?? "__none__"}
                             onValueChange={(v) => setTargetVariable(v === "__none__" ? null : v)}
                         >
-                            <SelectTrigger aria-label="分层分配目标估计变量" className="bg-card border-auxiliary-border text-auxiliary-strong">
+                            <SelectTrigger aria-label="分层分配目标估计变量" className="bg-card border-input text-foreground">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -168,11 +168,11 @@ export function StratifiedAllocationComparison({
                             </SelectContent>
                         </Select>
                         {targetVariable && layerStdDevs && (
-                            <div className="mt-2 text-meta text-auxiliary space-y-0.5">
+                            <div className="mt-3 text-meta text-muted-foreground space-y-1">
                                 {layers.map((l, i) => (
-                                    <div key={l.name} className="flex justify-between">
+                                    <div key={l.name} className="flex justify-between tabular-nums">
                                         <span>{l.name}</span>
-                                        <span className="font-mono">S = {layerStdDevs[i]?.toFixed(2)}</span>
+                                        <span className="font-mono text-foreground">S = {layerStdDevs[i]?.toFixed(2)}</span>
                                     </div>
                                 ))}
                             </div>
@@ -188,22 +188,22 @@ export function StratifiedAllocationComparison({
                         return (
                             <div
                                 key={comparison.method}
-                                className={`rounded-surface border p-4 transition-colors ${
+                                className={`rounded-surface border p-4 ${
                                     isBest
-                                        ? "border-auxiliary bg-auxiliary-muted"
-                                        : "border-auxiliary-border bg-background"
+                                        ? "border-primary-border bg-card"
+                                        : "border-border bg-card"
                                 }`}
                             >
                                 {/* 头部信息 */}
-                                <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-2">
-                                        <span className="font-bold text-auxiliary-strong">
+                                        <span className="font-medium text-foreground">
                                             {comparison.name}
                                         </span>
                                         {isBest && (
-                                            <Badge className="bg-auxiliary text-auxiliary-foreground text-meta">
+                                            <StatusBadge intent="primary">
                                                 当前对比最低
-                                            </Badge>
+                                            </StatusBadge>
                                         )}
                                     </div>
                                     {onApplyAllocation && comparison.method !== "optimal" && (
@@ -218,14 +218,13 @@ export function StratifiedAllocationComparison({
                                                     sampleCount: a.sampleSize,
                                                 })));
                                             }}
-                                            className="text-meta h-7 border-auxiliary-border hover:bg-auxiliary-muted hover:text-foreground hover:border-auxiliary-border"
                                         >
                                             应用此分配
                                         </Button>
                                     )}
                                 </div>
 
-                                <p className="text-meta text-auxiliary-strong mb-3">
+                                <p className="text-meta text-muted-foreground mb-3">
                                     {comparison.description}
                                 </p>
 
@@ -233,25 +232,19 @@ export function StratifiedAllocationComparison({
                                 <div className="space-y-2 mb-3">
                                     {comparison.allocation.map((layer) => (
                                         <div key={layer.layerName} className="flex items-center gap-3">
-                                            <span className="text-meta text-auxiliary w-16 truncate">
+                                            <span className="text-meta text-muted-foreground w-16 truncate">
                                                 {layer.layerName}
                                             </span>
-                                            <div className="flex-1 h-5 rounded-control bg-auxiliary-muted overflow-hidden relative">
-                                                {/* 总体占比背景 */}
+                                            <div className="flex-1 h-6 rounded-control bg-muted overflow-hidden relative">
                                                 <div
-                                                    className="absolute top-0 left-0 h-full bg-auxiliary-muted"
-                                                    style={{ width: `${(layer.populationSize / layers.reduce((a, l) => a + l.count, 0)) * 100}%` }}
-                                                />
-                                                {/* 样本占比前景 */}
-                                                <div
-                                                    className="absolute top-0 left-0 h-full bg-auxiliary transition-[width]"
+                                                    className="absolute top-0 left-0 h-full bg-accent transition-[width]"
                                                     style={{ width: `${layer.proportion * 100}%` }}
                                                 />
-                                                <span className="absolute inset-0 flex items-center justify-center text-meta font-medium text-auxiliary-strong z-10">
+                                                <span className="absolute inset-0 flex items-center justify-center text-meta font-medium tabular-nums text-accent-foreground z-10">
                                                     {layer.sampleSize}
                                                 </span>
                                             </div>
-                                            <span className="text-meta text-auxiliary w-10 text-right">
+                                            <span className="text-meta tabular-nums text-muted-foreground w-10 text-right">
                                                 {Math.round(layer.proportion * 100)}%
                                             </span>
                                         </div>
@@ -259,18 +252,18 @@ export function StratifiedAllocationComparison({
                                 </div>
 
                                 {/* 指标 */}
-                                <div className="grid grid-cols-2 gap-3 pt-3 border-t border-auxiliary-border">
+                                <div className="grid grid-cols-2 gap-3 rounded-control bg-muted p-3">
                                     <div className="text-center">
-                                        <div className="text-meta text-auxiliary mb-1">设计方差</div>
-                                        <div className="font-bold text-auxiliary-strong">
+                                        <div className="text-meta text-muted-foreground mb-1">设计方差</div>
+                                        <div className="font-medium tabular-nums text-foreground">
                                             {canCompareVariance && comparison.totalVariance != null
                                                 ? formatStatistic(comparison.totalVariance)
                                                 : "—"}
                                         </div>
                                     </div>
                                     <div className="text-center">
-                                        <div className="text-meta text-auxiliary mb-1">相对效率</div>
-                                        <div className={`font-bold ${isBest ? "text-success" : "text-auxiliary-strong"}`}>
+                                        <div className="text-meta text-muted-foreground mb-1">相对效率</div>
+                                        <div className={`font-medium tabular-nums ${isBest ? "text-primary" : "text-foreground"}`}>
                                             {canCompareVariance && comparison.efficiency != null
                                                 ? `${comparison.efficiency.toFixed(2)}×`
                                                 : "—"}
@@ -298,7 +291,7 @@ export function StratifiedAllocationComparison({
                     <Button
                         type="button"
                         variant="outline"
-                        className="w-full border-auxiliary-border text-auxiliary-strong"
+                        className="w-full"
                         onClick={() => setShowExtraMethods((value) => !value)}
                     >
                         {showExtraMethods ? "收起更多方法" : `更多方法（${extraComparisons.length}）`}
@@ -306,21 +299,18 @@ export function StratifiedAllocationComparison({
                 )}
 
                 {canCompareVariance && !hasIncompleteAllocation && (
-                    <div className="rounded-surface border border-warning-border bg-warning-muted p-3">
-                        <div className="flex gap-2">
-                            <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-                            <div className="text-meta text-warning space-y-1">
-                                <p className="font-medium">效率解读</p>
-                                <p className="text-warning">
-                                    相对效率以按比例分配为基准（1.00×）。&gt; 1 表示比按比例分配更精确。
-                                    奈曼方案在固定总样本量、层内 SRS 和等单位成本下，用边际方差下降量求整数最优分配；改变目标变量、成本或域精度目标后，结论也会改变。已知层内方差为零时仍保留该层的最低覆盖样本。
-                                </p>
-                            </div>
+                    <div className="rounded-surface bg-muted p-3.5">
+                        <div className="text-meta text-muted-foreground space-y-1">
+                            <p className="font-medium text-foreground">效率解读</p>
+                            <p className="leading-relaxed">
+                                相对效率以按比例分配为基准（1.00×）。&gt; 1 表示比按比例分配更精确。
+                                奈曼方案在固定总样本量、层内 SRS 和等单位成本下，用边际方差下降量求整数最优分配；改变目标变量、成本或域精度目标后，结论也会改变。已知层内方差为零时仍保留该层的最低覆盖样本。
+                            </p>
                         </div>
                     </div>
                 )}
 
-                <p className="text-meta leading-relaxed text-auxiliary">
+                <p className="text-meta leading-relaxed text-muted-foreground">
                     所有方案都遵守层容量和总样本量约束。奈曼按边际方差下降量分配，其他方法在某层达到 Nₕ 后重新分配剩余份额；当非空层数≤n≤ΣNₕ 时，各层样本量合计等于计划 n，并覆盖每层。
                 </p>
             </CardContent>

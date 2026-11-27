@@ -306,19 +306,18 @@ export function StratifiedSamplingTab({
 
     return (
         <div className="min-w-0 space-y-4">
-            <Card className="rounded-surface border-border bg-card ">
+            <Card className="rounded-surface border-border bg-card">
                 <CardHeader>
-                    <CardTitle className="text-foreground flex items-center gap-2">
-                        <div className="w-2 h-6 bg-warning rounded-control mr-2"></div>
+                    <CardTitle className="text-foreground">
                         分层抽样
                     </CardTitle>
                     <CardDescription className="text-muted-foreground pt-1">
                         按分层变量将总体分层，然后从各层中抽取样本。
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-5 pt-4">
+                <CardContent className="space-y-5 pt-2">
                     {/* 参数区：分层变量 + 随机种子 */}
-                    <div className="grid gap-4 rounded-surface border border-border bg-background p-4 grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] items-end">
+                    <div className="grid gap-4 rounded-surface bg-muted p-4 grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] items-end">
                         <div className="space-y-2">
                             <Label className="text-meta text-foreground">选择分层变量</Label>
                             <Select value={stratifyBy} onValueChange={setStratifyBy}>
@@ -364,7 +363,7 @@ export function StratifiedSamplingTab({
                     {/* 层表 */}
                     <div className="rounded-surface border border-border overflow-hidden">
                         <Table aria-label="分层抽样结果">
-                            <TableHeader className="bg-background">
+                            <TableHeader className="bg-muted">
                                 <TableRow className="border-border">
                                     <TableHead className="text-muted-foreground">层 (Layer)</TableHead>
                                     <TableHead className="text-muted-foreground">单位数 (N<sub>h</sub>)</TableHead>
@@ -376,8 +375,8 @@ export function StratifiedSamplingTab({
                                 {layers.length > 0 ? layers.map((layer, index) => (
                                     <TableRow key={layer.name} className="border-border hover:bg-muted">
                                         <TableCell className="font-medium text-foreground">{layer.name}</TableCell>
-                                        <TableCell className="text-muted-foreground">{layer.count.toLocaleString()}</TableCell>
-                                        <TableCell className="text-muted-foreground">{layer.ratio}%</TableCell>
+                                        <TableCell className="tabular-nums text-muted-foreground">{layer.count.toLocaleString()}</TableCell>
+                                        <TableCell className="tabular-nums text-muted-foreground">{layer.ratio}%</TableCell>
                                         <TableCell>
                                             <Input
                                                 type="number"
@@ -385,7 +384,7 @@ export function StratifiedSamplingTab({
                                                 value={layer.sampleCount}
                                                 onChange={(e) => updateLayerCount(index, parseInt(e.target.value) || 0)}
                                                 data-testid={`student-sampling-layer-count-${index + 1}`}
-                                                className={`w-20 h-8 bg-card text-foreground text-center ${
+                                                className={`w-20 h-8 bg-card text-foreground text-center tabular-nums ${
                                                     layerOverflows[index] || layerUnderflows[index]
                                                         ? "border-destructive"
                                                         : "border-input"
@@ -401,10 +400,10 @@ export function StratifiedSamplingTab({
                                         </TableCell>
                                     </TableRow>
                                 )}
-                                <TableRow className="bg-background border-t border-input font-medium">
+                                <TableRow className="bg-muted border-t border-border font-medium">
                                     <TableCell colSpan={3} className="text-right text-foreground pr-4">合计 Total</TableCell>
                                     <TableCell>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 tabular-nums">
                                             <span className={isStratifiedValid ? "text-success" : "text-destructive"}>
                                                 {stratifiedTotal}
                                             </span>
@@ -436,18 +435,16 @@ export function StratifiedSamplingTab({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => applyQuickAllocation("proportional")}
-                                className="h-7 text-meta border-warning text-warning hover:bg-warning-muted hover:text-warning hover:border-warning"
                             >
-                                <Percent className="w-3 h-3 mr-1" />
+                                <Percent className="w-3.5 h-3.5" />
                                 按比例
                             </Button>
                             <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => applyQuickAllocation("equal")}
-                                className="h-7 text-meta border-warning text-warning hover:bg-warning-muted hover:text-warning hover:border-warning"
                             >
-                                <Equal className="w-3 h-3 mr-1" />
+                                <Equal className="w-3.5 h-3.5" />
                                 等额
                             </Button>
                             <Button
@@ -457,19 +454,17 @@ export function StratifiedSamplingTab({
                                 disabled={!neymanStdDevs}
                                 title={neymanNotice}
                                 aria-describedby="student-neyman-target-notice"
-                                className="h-7 text-meta border-warning text-warning hover:bg-warning-muted hover:text-warning hover:border-warning"
                             >
-                                <TrendingUp className="w-3 h-3 mr-1" />
+                                <TrendingUp className="w-3.5 h-3.5" />
                                 奈曼
                             </Button>
                             <div className="flex-1" />
                             <Button
-                                variant="outline"
+                                variant="secondary"
                                 size="sm"
                                 onClick={() => setShowAllocationComparison(true)}
-                                className="h-7 text-meta border-auxiliary-border text-auxiliary-strong hover:bg-auxiliary-muted hover:text-auxiliary-strong hover:border-auxiliary-border"
                             >
-                                <BarChart3 className="w-3 h-3 mr-1" />
+                                <BarChart3 className="w-3.5 h-3.5" />
                                 对比分析全部方法
                             </Button>
                         </div>
@@ -487,15 +482,14 @@ export function StratifiedSamplingTab({
             <div className="min-w-0 space-y-4">
                 <div className="min-w-0">
                     <Card className="rounded-surface border-border bg-card w-full flex flex-col justify-center">
-                        <CardContent className="py-6 px-6">
+                        <CardContent className="py-5 px-5">
                             {!result?.completed ? (
-                                <div className="text-center space-y-3">
-                                    <p className="text-label text-muted-foreground">确认各层样本数后执行</p>
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <p className="text-label text-muted-foreground">确认各层样本数后执行分层抽样</p>
                                     <Button
                                         onClick={() => void executeStratified()}
                                         disabled={executing !== null || !isStratifiedValid || layers.length === 0 || refreshRequired}
                                         data-testid="student-sampling-stratified-run"
-                                        className="w-full bg-warning text-warning-foreground hover:bg-warning-hover"
                                     >
                                         {executing === "stratified" ? (
                                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -523,7 +517,7 @@ export function StratifiedSamplingTab({
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <CardTitle className="text-body text-foreground">已保存的入样记录</CardTitle>
-                                <Badge variant="outline" className="border-input text-muted-foreground">分页预览</Badge>
+                                <Badge variant="outline" className="border-border bg-muted text-muted-foreground">分页预览</Badge>
                             </div>
                             <CardDescription className="text-muted-foreground">每页查看 20 条记录，完整数据可在分析阶段导出。</CardDescription>
                         </CardHeader>

@@ -32,15 +32,15 @@ export function FourStepPhase({ params, estimationType, populationVariance, onNe
     return <div className="space-y-6">
         <PlanningHeading title={`${details.n3} 个单位，是这样算出来的`} description="把当前实验的条件依次代入。中间步骤保留小数，只在最后向上取整，避免重复取整改变建议值。"/>
         <ol className="space-y-3">
-            {steps.map((step, index) => <li key={step.title} className={`rounded-surface border p-5 ${index === 3 ? "border-primary-border bg-primary-muted" : "border-border bg-card"}`}>
+            {steps.map((step, index) => <li key={step.title} className={`rounded-surface border p-5 ${index === 3 ? "border-primary-border bg-card" : "border-border bg-card"}`}>
                 <div className="flex flex-wrap items-start gap-4">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-muted text-label font-semibold text-muted-foreground">{index+1}</span>
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-label font-medium ${index === 3 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>{index+1}</span>
                     <div className="min-w-0 flex-1 space-y-2">
-                        <h3 className="text-subheading font-semibold text-foreground">{step.title}</h3>
+                        <h3 className="text-subheading font-medium text-foreground">{step.title}</h3>
                         <p className="text-label text-muted-foreground leading-relaxed">{step.text}</p>
                         <p className="break-words font-mono text-meta text-muted-foreground">{step.formula}</p>
                     </div>
-                    <p className={`text-right text-section-title font-bold tabular-nums ${index===3 ? "text-primary" : "text-foreground"}`}>{fmt(step.value)}</p>
+                    <p className={`text-right text-section-title font-medium tabular-nums ${index===3 ? "text-primary" : "text-foreground"}`}>{fmt(step.value)}</p>
                 </div>
             </li>)}
         </ol>

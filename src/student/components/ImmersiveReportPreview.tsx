@@ -82,7 +82,7 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
     return (
         <>
             {/* top bar */}
-            <div className="flex shrink-0 items-center justify-between border-b border-border bg-background px-6 py-3">
+            <div className="flex shrink-0 items-center justify-between border-b border-border bg-card px-6 py-3">
                 <div className="flex items-center gap-3">
                     <FileText className="w-4 h-4 text-primary" />
                     <span className="text-label font-medium text-foreground">{taskName}</span>
@@ -100,7 +100,7 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
 
             <div className="flex min-h-0 flex-1">
                 {/* sidebar nav */}
-                <nav className="w-48 shrink-0 space-y-1 border-r border-border p-3" aria-label="报告预览章节导航">
+                <nav className="w-52 shrink-0 space-y-1 border-r border-border bg-navigation p-3" aria-label="报告预览章节导航">
                     {visibleSections.map((s) => {
                         const Icon = s.icon;
                         const isActive = activeSection === s.key;
@@ -109,10 +109,10 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
                                 key={s.key}
                                 type="button"
                                 onClick={() => setActiveSection(s.key)}
-                                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-surface text-label transition-none ${
+                                className={`w-full flex items-center gap-2.5 px-3.5 py-2 rounded-pill text-label transition-none ${
                                     isActive
-                                        ? "bg-primary-muted text-primary border border-primary-border"
-                                        : "text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent"
+                                        ? "bg-navigation-active text-navigation-active-foreground font-medium"
+                                        : "text-navigation-muted hover:bg-navigation-hover hover:text-navigation-hover-foreground"
                                 }`}
                             >
                                 <Icon className="w-4 h-4 shrink-0" />
@@ -263,7 +263,7 @@ function OverviewSection({
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="text-display font-bold text-foreground mb-2">{taskName}</h1>
+                <h1 className="text-display font-medium text-foreground mb-2">{taskName}</h1>
                 <p className="text-muted-foreground">实验报告预览</p>
             </div>
 
@@ -271,7 +271,7 @@ function OverviewSection({
                 {stats.map((s) => (
                     <div key={s.label} className="rounded-surface border border-border bg-card p-4">
                         <div className="text-meta text-muted-foreground mb-1">{s.label}</div>
-                        <div className="text-section-title font-bold text-foreground font-mono tabular-nums">
+                        <div className="text-section-title font-medium text-foreground font-mono tabular-nums">
                             {s.value}
                             {s.sub && <span className="text-meta font-normal text-muted-foreground ml-1">{s.sub}</span>}
                         </div>
@@ -333,7 +333,7 @@ function QuestionnaireSection({ questionnaire }: { questionnaire: ExperimentData
     return (
         <div className="space-y-6">
             <div>
-                <h2 className="text-page-title font-bold text-foreground mb-1">{questionnaire.title || "未命名问卷"}</h2>
+                <h2 className="text-page-title font-medium text-foreground mb-1">{questionnaire.title || "未命名问卷"}</h2>
                 <p className="text-label text-muted-foreground">{questionnaire.questions?.length ?? 0} 道题目</p>
             </div>
 
@@ -348,7 +348,7 @@ function QuestionnaireSection({ questionnaire }: { questionnaire: ExperimentData
                 {(questionnaire.questions ?? []).map((q, i) => (
                     <div key={q.id} className="rounded-surface border border-border bg-card p-4">
                         <div className="flex items-start gap-3">
-                            <span className="flex-shrink-0 w-7 h-7 rounded-control bg-primary-muted text-primary flex items-center justify-center text-label font-bold">
+                            <span className="flex-shrink-0 w-7 h-7 rounded-control bg-muted text-foreground flex items-center justify-center text-label font-medium">
                                 {i + 1}
                             </span>
                             <div className="flex-1 space-y-2">
@@ -438,7 +438,7 @@ function SamplingSection({
     return (
         <div className="space-y-6">
             <div>
-                <h2 className="text-page-title font-bold text-foreground mb-1">抽样执行结果</h2>
+                <h2 className="text-page-title font-medium text-foreground mb-1">抽样执行结果</h2>
                 <p className="text-label text-muted-foreground">
                     规划样本量: {samplePlan?.finalSampleSize?.toLocaleString() ?? "—"}
                 </p>
@@ -515,7 +515,7 @@ function ReportSection({ content }: { content: string }) {
 
     return (
         <div className="space-y-6">
-            <h2 className="text-page-title font-bold text-foreground">分析报告</h2>
+            <h2 className="text-page-title font-medium text-foreground">分析报告</h2>
             <div className="rounded-surface border border-border bg-card p-8">
                 <RichTextContent
                     html={content}

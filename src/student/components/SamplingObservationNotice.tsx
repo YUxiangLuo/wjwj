@@ -1,7 +1,7 @@
 /** Keep the planning response scenario distinct from the fully observed simulation. */
 export function SamplingObservationNotice({ nonResponseRate = 0 }: { nonResponseRate?: number }) {
     return (
-        <p className="rounded-surface border border-info-border bg-info-muted p-3 text-meta leading-relaxed text-info" data-testid="sampling-observation-assumption">
+        <p className="rounded-surface bg-muted p-3 text-meta leading-relaxed text-muted-foreground" data-testid="sampling-observation-assumption">
             抽样执行采用完全观测假设：所有入样记录都直接进入分析。
             {nonResponseRate > 0
                 ? `规划中的 ${Math.round(nonResponseRate * 100)}% 无回答率只用于发放量与预期完成量的情景计算，本阶段不模拟无回答；分析精度对应全部入样记录已观测的情景。`

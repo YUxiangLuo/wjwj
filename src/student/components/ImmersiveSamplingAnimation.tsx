@@ -65,10 +65,10 @@ const METHOD_META: Record<SamplingMethod, {
     accentBg: string; accentBgLight: string; accentText: string;
     accentRing: string; accentBorder: string;
 }> = {
-    simple: { label: "简单随机抽样", accent: "indigo", icon: Shuffle, accentBg: "bg-primary", accentBgLight: "bg-primary-muted", accentText: "text-primary", accentRing: "ring-primary", accentBorder: "border-primary-border" },
-    systematic: { label: "系统抽样", accent: "teal", icon: Target, accentBg: "bg-info", accentBgLight: "bg-info-muted", accentText: "text-info", accentRing: "ring-info", accentBorder: "border-info-border" },
-    pps: { label: "PPS抽样", accent: "purple", icon: Target, accentBg: "bg-auxiliary", accentBgLight: "bg-auxiliary-muted", accentText: "text-auxiliary", accentRing: "ring-auxiliary", accentBorder: "border-auxiliary-border" },
-    stratified: { label: "分层抽样", accent: "amber", icon: Layers, accentBg: "bg-warning", accentBgLight: "bg-warning-muted", accentText: "text-warning", accentRing: "ring-warning", accentBorder: "border-warning-border" },
+    simple: { label: "简单随机抽样", accent: "primary", icon: Shuffle, accentBg: "bg-primary", accentBgLight: "bg-muted", accentText: "text-primary", accentRing: "ring-primary", accentBorder: "border-border" },
+    systematic: { label: "系统抽样", accent: "primary", icon: Target, accentBg: "bg-primary", accentBgLight: "bg-muted", accentText: "text-primary", accentRing: "ring-primary", accentBorder: "border-border" },
+    pps: { label: "PPS抽样", accent: "primary", icon: Target, accentBg: "bg-primary", accentBgLight: "bg-muted", accentText: "text-primary", accentRing: "ring-primary", accentBorder: "border-border" },
+    stratified: { label: "分层抽样", accent: "primary", icon: Layers, accentBg: "bg-primary", accentBgLight: "bg-muted", accentText: "text-primary", accentRing: "ring-primary", accentBorder: "border-border" },
 };
 
 const METHOD_PROGRESS_COPY: Record<SamplingMethod, { populating: string; sampling: string; complete: string }> = {
@@ -634,13 +634,13 @@ export function ImmersiveSamplingAnimation({
             </div>
 
             {/* Header */}
-            <div className="flex items-center justify-between px-6 pt-5 pb-3 z-10">
+            <div className="flex items-center justify-between border-b border-border bg-card px-6 py-3.5 z-10">
                 <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-surface flex items-center justify-center ${meta.accentBgLight}`}>
                         <Icon className={`w-5 h-5 ${meta.accentText}`} />
                     </div>
                     <div>
-                        <h2 id="sampling-animation-title" className="text-label font-semibold text-foreground">{meta.label}</h2>
+                        <h2 id="sampling-animation-title" className="text-label font-medium text-foreground">{meta.label}</h2>
                         <p className="text-meta text-muted-foreground">
                             {phase.type === "intro" && "准备中..."}
                             {phase.type === "populating" && progressCopy.populating}
@@ -714,7 +714,7 @@ export function ImmersiveSamplingAnimation({
                 )}
             </div>
 
-            <div className="px-6 pb-3 space-y-2">
+            <div className="px-6 pt-3 pb-3 space-y-2">
                 {!canIllustrate && <p role="status" className="text-label text-muted-foreground">该历史结果缺少演示所需参数，仅显示已保存结果和独立方法示例，不补造随机过程。</p>}
                 <details className="text-meta text-muted-foreground">
                     <summary className="cursor-pointer">方法说明</summary>
@@ -741,11 +741,11 @@ export function ImmersiveSamplingAnimation({
             <div className={`flex-1 flex px-6 pb-6 overflow-hidden min-h-0 ${phase.type === "complete" ? "flex-col" : "items-center justify-center"}`}>
                 {/* Intro phase */}
                 {phase.type === "intro" && (
-                    <div className="text-center space-y-6 animate-in fade-in zoom-in-95 duration-500 max-w-lg">
-                        <div className={`w-20 h-20 mx-auto rounded-surface flex items-center justify-center ${meta.accentBgLight}`}>
-                            <Icon className={`w-10 h-10 ${meta.accentText}`} />
+                    <div className="text-center space-y-6 max-w-lg">
+                        <div className={`w-16 h-16 mx-auto rounded-surface flex items-center justify-center ${meta.accentBgLight}`}>
+                            <Icon className={`w-8 h-8 ${meta.accentText}`} />
                         </div>
-                        <h1 className="text-page-title font-bold text-foreground">{meta.label}</h1>
+                        <h1 className="text-page-title font-medium text-foreground">{meta.label}</h1>
                         <p className="text-muted-foreground leading-relaxed">{introText}</p>
                         <div className="flex items-center justify-center gap-6 text-label">
                             <div className="flex items-center gap-2 text-muted-foreground">
@@ -868,25 +868,25 @@ export function ImmersiveSamplingAnimation({
                                         <DotGrid totalDots={visualPopulationSize} gridColumns={visualScale.gridColumns} visiblePopCount={visualPopulationSize} currentSelectIndex={selectionOrder.length} dotSelectedAt={dotSelectedAt} layerAssignment={layerAssignment} dotWeights={dotWeights} method={method} />
                                     </div>
                                 </details>}
-                                <section className="shrink-0 rounded-surface border border-success-border bg-success-muted p-3" data-testid="sampling-animation-receipt">
-                                    <div className="mb-2 flex items-center gap-2 text-success">
-                                        <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
-                                        <h3 className="text-subheading font-semibold">抽样结果凭证</h3>
+                                <section className="shrink-0 rounded-surface border border-border bg-card p-4" data-testid="sampling-animation-receipt">
+                                    <div className="mb-3 flex items-center gap-2">
+                                        <CheckCircle2 className="h-5 w-5 text-success" aria-hidden="true" />
+                                        <h3 className="text-subheading font-medium text-foreground">抽样结果凭证</h3>
                                         <span className="text-meta text-muted-foreground">参数来自本次已保存的抽样结果</span>
                                     </div>
-                                    <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-2">
+                                    <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-2.5">
                                         {receiptItems.map(item => (
-                                            <div key={item.label} className="rounded-control border border-success-border bg-card px-3 py-1.5">
+                                            <div key={item.label} className="rounded-control bg-muted px-3 py-2">
                                                 <dt className="text-meta text-muted-foreground">{item.label}</dt>
                                                 <dd className="mt-1 break-words text-label font-medium text-foreground">{item.value}</dd>
                                             </div>
                                         ))}
                                     </dl>
                                     {method === "stratified" && layers && layers.length > 0 && (
-                                        <details className="mt-2" data-testid="sampling-animation-layer-details">
+                                        <details className="mt-3" data-testid="sampling-animation-layer-details">
                                             <summary className="cursor-pointer text-meta font-medium text-foreground">查看各层 Nₕ → nₕ（{layers.length} 层，可滚动查看全部）</summary>
                                             <div
-                                                className="mt-2 max-h-24 overflow-auto rounded-control border border-success-border bg-card p-2"
+                                                className="mt-2 max-h-24 overflow-auto rounded-control bg-muted p-2.5"
                                                 data-testid="sampling-animation-layer-list"
                                                 role="region"
                                                 tabIndex={0}

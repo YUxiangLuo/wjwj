@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
     AlertTriangle, ArrowRight, CheckCircle2, ChevronLeft, ClipboardCheck,
-    Coins, Filter, Loader2, ShieldAlert, Sparkles, Users
+    Coins, Filter, Loader2, ShieldAlert, Users
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -405,8 +405,8 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                                 {cleaningError}
                             </div>
                         )}
-                        <div className="space-y-2.5">
-                            <div className="flex items-center justify-between gap-3 rounded-control border border-border bg-background p-3">
+                        <div className="divide-y divide-border rounded-surface bg-muted px-4">
+                            <div className="flex items-center justify-between gap-3 py-3">
                                 <div>
                                     <Label htmlFor="clean-speeder-switch" className="cursor-pointer text-label font-medium text-foreground">
                                         剔除「闪电敷衍卷」（Speeder）
@@ -423,7 +423,7 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                                 />
                             </div>
 
-                            <div className="flex items-center justify-between gap-3 rounded-control border border-border bg-background p-3">
+                            <div className="flex items-center justify-between gap-3 py-3">
                                 <div>
                                     <Label htmlFor="clean-straight-switch" className="cursor-pointer text-label font-medium text-foreground">
                                         剔除「直线机械作答卷」（Straight-liner）
@@ -440,7 +440,7 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                                 />
                             </div>
 
-                            <div className="flex items-center justify-between gap-3 rounded-control border border-border bg-background p-3">
+                            <div className="flex items-center justify-between gap-3 py-3">
                                 <div>
                                     <Label htmlFor="clean-target-switch" className="cursor-pointer text-label font-medium text-foreground">
                                         强制要求核心商业指标有效完答
@@ -594,8 +594,8 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
             </Card>
 
             {/* Stage 3 Structured Adjustment Decision Form */}
-            <Card className="scroll-mt-36 rounded-surface border-primary-border bg-card" data-testid="student-adjustment-plan-form">
-                <CardHeader className="border-b border-border bg-primary-muted pb-4">
+            <Card className="scroll-mt-36 rounded-surface border-border bg-card" data-testid="student-adjustment-plan-form">
+                <CardHeader className="border-b border-border pb-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <CardTitle className="flex items-center gap-2 text-section-title text-foreground">
@@ -608,13 +608,12 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                         </div>
                         <Button
                             type="button"
-                            variant="outline"
+                            variant="secondary"
                             size="sm"
                             onClick={handleSmartExtractFindings}
                             data-testid="student-adjustment-auto-fill"
-                            className="border-primary-border bg-card text-primary hover:bg-card"
                         >
-                            <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                            <ClipboardCheck className="mr-1.5 h-3.5 w-3.5" />
                             智能提取首轮诊断要点
                         </Button>
                     </div>
@@ -623,7 +622,7 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                     <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-6">
                         <div className="space-y-2.5">
                             <div className="flex items-center justify-between gap-2">
-                                <Label className="text-foreground font-semibold">1. 首轮试投识别的数据与抽样问题（至少勾选 1 项）</Label>
+                                <Label className="text-foreground font-medium">1. 首轮试投识别的数据与抽样问题（至少勾选 1 项）</Label>
                                 <StatusBadge intent={identifiedIssues.length > 0 ? "success" : "neutral"}>
                                     已选 {identifiedIssues.length} 项
                                 </StatusBadge>
@@ -636,8 +635,8 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                                             key={issue}
                                             className={`flex cursor-pointer items-start gap-2.5 rounded-control border p-3 text-label ${
                                                 checked
-                                                    ? "border-warning-border bg-warning-muted text-foreground"
-                                                    : "border-border bg-background text-muted-foreground hover:text-foreground"
+                                                    ? "border-primary-border bg-primary-muted text-foreground"
+                                                    : "border-border bg-card text-foreground hover:bg-muted"
                                             }`}
                                         >
                                             <input
@@ -645,7 +644,7 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                                                 checked={checked}
                                                 onChange={() => toggleIssue(issue)}
                                                 data-testid={`student-adjustment-issue-${issue}`}
-                                                className="mt-1"
+                                                className="mt-1 accent-primary"
                                             />
                                             <span>{ADJUSTMENT_ISSUE_LABELS[issue]}</span>
                                         </label>
@@ -656,7 +655,7 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
 
                         <div className="space-y-2.5">
                             <div className="flex items-center justify-between gap-2">
-                                <Label className="text-foreground font-semibold">2. 二轮正式投放拟采取的调优动作（至少勾选 1 项）</Label>
+                                <Label className="text-foreground font-medium">2. 二轮正式投放拟采取的调优动作（至少勾选 1 项）</Label>
                                 <StatusBadge intent={plannedActions.length > 0 ? "success" : "neutral"}>
                                     已选 {plannedActions.length} 项
                                 </StatusBadge>
@@ -669,8 +668,8 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                                             key={action}
                                             className={`flex cursor-pointer items-start gap-2.5 rounded-control border p-3 text-label ${
                                                 checked
-                                                    ? "border-success-border bg-success-muted text-foreground"
-                                                    : "border-border bg-background text-muted-foreground hover:text-foreground"
+                                                    ? "border-primary-border bg-primary-muted text-foreground"
+                                                    : "border-border bg-card text-foreground hover:bg-muted"
                                             }`}
                                         >
                                             <input
@@ -678,7 +677,7 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                                                 checked={checked}
                                                 onChange={() => toggleAction(action)}
                                                 data-testid={`student-adjustment-action-${action}`}
-                                                className="mt-1"
+                                                className="mt-1 accent-primary"
                                             />
                                             <span>{ADJUSTMENT_ACTION_LABELS[action]}</span>
                                         </label>
@@ -690,12 +689,12 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
 
                     <div className="space-y-2">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                            <Label htmlFor="adjustment-rationale" className="text-foreground font-semibold">
+                            <Label htmlFor="adjustment-rationale" className="text-foreground font-medium">
                                 3. 调优依据与二轮抽样统计思路说明（15–2000 字）
                             </Label>
                             <span className={`text-meta tabular-nums ${
                                 trimmedRationaleLen > 2000
-                                    ? "text-destructive font-semibold"
+                                    ? "text-destructive font-medium"
                                     : trimmedRationaleLen >= 15
                                         ? "text-success"
                                         : trimmedRationaleLen > 0
@@ -719,7 +718,7 @@ export function FieldworkDiagnosticsStage({ onPrev }: { onPrev: () => void }) {
                             value={rationale}
                             onChange={(e) => setRationale(e.target.value)}
                             data-testid="student-adjustment-rationale"
-                            className="bg-background"
+                            className="bg-card"
                         />
                         {planValidationError && (
                             <p className="text-meta text-warning" role="status">{planValidationError}</p>

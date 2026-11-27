@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Calculator, Info } from "lucide-react";
+import { Calculator } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface DesignEffectEstimatorProps {
@@ -48,30 +48,30 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
     const method = SAMPLING_METHODS.find((item) => item.key === selectedMethod)!;
 
     return (
-        <Card className="rounded-surface border-primary-border bg-primary-muted ">
+        <Card className="rounded-surface border-border bg-card">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                         <Calculator className="w-5 h-5 text-primary" />
-                        <CardTitle className="text-body text-primary">设计效应假设检查</CardTitle>
+                        <CardTitle className="text-body text-foreground">设计效应假设检查</CardTitle>
                     </div>
-                    <Badge variant="outline" className="text-meta bg-primary-muted border-primary-border text-primary">
+                    <StatusBadge intent="neutral">
                         当前假设 deff = {currentDeff.toFixed(1)}
-                    </Badge>
+                    </StatusBadge>
                 </div>
-                <CardDescription className="text-foreground">
+                <CardDescription className="text-muted-foreground">
                     抽样方法不能直接决定设计效应。请核验以下条件，不要使用无来源的默认值。
                 </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-4">
                 <div className="space-y-2">
-                    <label className="text-meta text-primary font-medium">查看方法的假设</label>
+                    <label className="text-meta text-foreground font-medium">查看方法的假设</label>
                     <Select value={selectedMethod} onValueChange={(value) => setSelectedMethod(value as typeof selectedMethod)}>
-                        <SelectTrigger aria-label="选择抽样方法" className="bg-card border-primary text-foreground">
+                        <SelectTrigger aria-label="选择抽样方法" className="bg-card border-input text-foreground">
                             <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-background border-primary">
+                        <SelectContent>
                             {SAMPLING_METHODS.map((item) => (
                                 <SelectItem key={item.key} value={item.key}>{item.name}</SelectItem>
                             ))}
@@ -79,36 +79,30 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
                     </Select>
                 </div>
 
-                <div className="rounded-surface border border-primary bg-background p-3 space-y-3">
+                <div className="rounded-surface bg-muted p-4 space-y-2.5">
                     <div className="flex items-center justify-between gap-2">
-                        <span className="text-label font-medium text-primary">{method.name}</span>
+                        <span className="text-label font-medium text-foreground">{method.name}</span>
                         {method.key === "srs" && (
                             <Button
                                 type="button"
                                 size="sm"
                                 variant="outline"
                                 onClick={() => onDeffChange(1)}
-                                className="h-7 border-primary text-meta text-primary hover:bg-primary-muted"
                             >
                                 应用基准 1.0
                             </Button>
                         )}
                     </div>
-                    <p className="text-meta leading-relaxed text-primary">{method.description}</p>
-                    <ul className="list-disc space-y-1 pl-4 text-meta text-primary">
+                    <p className="text-meta leading-relaxed text-muted-foreground">{method.description}</p>
+                    <ul className="list-disc space-y-1 pl-4 text-meta text-muted-foreground">
                         {method.assumptions.map((assumption) => <li key={assumption}>{assumption}</li>)}
                     </ul>
                 </div>
 
-                <div className="rounded-surface border border-info-border bg-info-muted p-3">
-                    <div className="flex items-start gap-2">
-                        <Info className="w-4 h-4 text-info shrink-0 mt-0.5" />
-                        <div className="space-y-1.5 text-meta leading-relaxed text-info">
-                            <p className="font-medium">如何设置当前参数</p>
-                            <p>优先使用同一目标总体、同一估计量和相近抽样设计的历史方差，或用预调查/设计模拟估计 deff；同时记录来源和不确定性。</p>
-                            <p>预期回答率也应来自同总体、同调查方式、同招募和跟访方案的数据。按回答率膨胀只能补足数量，不能消除非随机无回答偏差。</p>
-                        </div>
-                    </div>
+                <div className="rounded-surface bg-muted p-3.5 space-y-1.5 text-meta leading-relaxed text-muted-foreground">
+                    <p className="font-medium text-foreground">如何设置当前参数</p>
+                    <p>优先使用同一目标总体、同一估计量和相近抽样设计的历史方差，或用预调查/设计模拟估计 deff；同时记录来源和不确定性。</p>
+                    <p>预期回答率也应来自同总体、同调查方式、同招募和跟访方案的数据。按回答率膨胀只能补足数量，不能消除非随机无回答偏差。</p>
                 </div>
             </CardContent>
         </Card>

@@ -79,7 +79,7 @@ export function TargetMetricsPanel({ target, methods = availableTargetMethods(ta
         <p className="text-meta text-muted-foreground" data-testid="student-target-margin-caveat">设计标准误依赖教学系统已知的完整虚拟总体；现实调查通常不知道总体真值，不能仅凭当前样本得到这些数值。正态近似教学半宽 = z × 设计标准误；它不表示覆盖率已经验证，也不是正式置信区间。半宽达标只表示本次达到规划精度，不能单独证明无偏、代表性或某种方法更好。{systematicMuchTighter ? <span data-testid="student-target-systematic-caveat"> 系统抽样半宽更小通常源于总体排序，不能推断「系统抽样总是更准」。</span> : null}</p>
         {target.contract.inferred && <p className="text-meta leading-relaxed text-muted-foreground">当前研究目标由对照变量推断：{contract.researchQuestion}</p>}
         <details className="border-t border-border pt-4">
-            <summary className="cursor-pointer text-label font-semibold text-foreground">查看标准误、等效样本量与近似条件</summary>
+            <summary className="cursor-pointer text-label font-medium text-foreground">查看标准误、等效样本量与近似条件</summary>
             <p className="mt-3 text-meta leading-relaxed text-muted-foreground">下列提示用于筛查，样本数 30、事件数 5 等经验阈值不是充分条件。等效 SRS 样本量用于表达设计精度，不是实际调查人数。</p>
             <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,24rem),1fr))] gap-3">
                 {methods.map(method => {
@@ -88,11 +88,11 @@ export function TargetMetricsPanel({ target, methods = availableTargetMethods(ta
                         : metrics.reliability.status === "ok"
                             ? metrics.standardError === 0 ? "已知设计下估计不随抽样变化" : "未触发筛查提示；区间覆盖率尚未验证"
                             : metrics.reliability.status === "census" ? "覆盖完整虚拟总体" : "暂无可用的近似条件评估。";
-                    return <section key={method} className="space-y-3 rounded-surface bg-background p-4">
-                        <h3 className="text-label font-semibold">{METHOD_META[method].label}</h3>
+                    return <section key={method} className="space-y-3 rounded-surface bg-muted p-4">
+                        <h3 className="text-label font-medium">{METHOD_META[method].label}</h3>
                         <dl className="grid grid-cols-2 gap-3 text-meta">
-                            <div><dt className="text-muted-foreground">{kind === "proportion" ? "设计 SE（百分点）" : `设计 SE${target.unit ? `（${target.unit}）` : ""}`}</dt><dd className="mt-1 font-semibold tabular-nums">{metrics.standardError === null ? "—" : formatStatistic(kind === "proportion" ? metrics.standardError * 100 : metrics.standardError)}</dd></div>
-                            <div><dt className="text-muted-foreground">等效 SRS 样本量</dt><dd className="mt-1 font-semibold tabular-nums">{metrics.effectiveSampleSize?.toFixed(0) ?? "—"}</dd></div>
+                            <div><dt className="text-muted-foreground">{kind === "proportion" ? "设计 SE（百分点）" : `设计 SE${target.unit ? `（${target.unit}）` : ""}`}</dt><dd className="mt-1 font-medium tabular-nums">{metrics.standardError === null ? "—" : formatStatistic(kind === "proportion" ? metrics.standardError * 100 : metrics.standardError)}</dd></div>
+                            <div><dt className="text-muted-foreground">等效 SRS 样本量</dt><dd className="mt-1 font-medium tabular-nums">{metrics.effectiveSampleSize?.toFixed(0) ?? "—"}</dd></div>
                         </dl>
                         <p className={`text-meta leading-relaxed ${metrics.reliability.status === "caution" ? "text-warning" : "text-muted-foreground"}`}>{reason}</p>
                     </section>;

@@ -179,23 +179,23 @@ export function MultiVariableSamplePlan({
     };
 
     return (
-        <Card className="rounded-surface border-primary-border bg-primary-muted ">
+        <Card className="rounded-surface border-border bg-card">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <BarChart3 className="w-5 h-5 text-primary" />
-                        <CardTitle className="text-body text-primary">
+                        <CardTitle className="text-body text-foreground">
                             多变量样本量规划
                         </CardTitle>
                     </div>
                     <Badge
                         variant="outline"
-                        className="text-meta bg-primary-muted border-primary-border text-primary"
+                        className="text-meta bg-muted border-border text-muted-foreground"
                     >
                         {variables.length} 个变量
                     </Badge>
                 </div>
-                <CardDescription className="text-foreground">
+                <CardDescription className="text-muted-foreground">
                     将每个已配置变量的精度作为约束，取所需样本量的最大值
                 </CardDescription>
             </CardHeader>
@@ -203,18 +203,18 @@ export function MultiVariableSamplePlan({
             <CardContent className="space-y-4">
                 {/* 说明卡片 */}
                 {showExplanation && (
-                    <div className="rounded-surface border border-warning-border bg-warning-muted p-3">
+                    <div className="rounded-surface bg-muted p-3.5">
                         <div className="flex gap-2">
-                            <Info className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-                            <div className="text-meta text-warning space-y-1">
-                                <p className="font-medium">为什么需要多变量规划？</p>
-                                <p className="text-warning">
+                            <Info className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                            <div className="text-meta text-muted-foreground space-y-1">
+                                <p className="font-medium text-foreground">为什么需要多变量规划？</p>
+                                <p className="leading-relaxed">
                                     一个调查通常包含多个指标（如满意度、知晓率、消费金额等）。不同指标的变异程度不同，
                                     所需样本量也不同。系统会取全部已配置变量所需样本量的最大值；重要性只标记研究优先级，不会静默取消精度约束。
                                 </p>
                                 <button
                                     onClick={() => setShowExplanation(false)}
-                                    className="text-warning hover:text-warning text-meta underline"
+                                    className="text-primary hover:underline text-meta font-medium"
                                 >
                                     隐藏说明
                                 </button>
@@ -229,7 +229,6 @@ export function MultiVariableSamplePlan({
                         const importanceConfig = getImportanceConfig(variable.importance);
                         const isExpanded = expandedVariable === variable.id;
 
-                        // 如果找不到配置，使用默认值
                         if (!importanceConfig) {
                             return null;
                         }
@@ -237,10 +236,10 @@ export function MultiVariableSamplePlan({
                         return (
                             <div
                                 key={variable.id}
-                                className={`rounded-surface border transition-colors ${
+                                className={`rounded-surface border bg-card ${
                                     isExpanded
-                                        ? "border-primary bg-background "
-                                        : "border-primary-border bg-background"
+                                        ? "border-primary-border"
+                                        : "border-border"
                                 }`}
                             >
                                 {/* 变量头部 */}
@@ -254,15 +253,15 @@ export function MultiVariableSamplePlan({
                                         onClick={() => setExpandedVariable(isExpanded ? null : variable.id)}
                                     >
                                         <div className="flex min-w-0 items-center gap-3">
-                                            <div className={`w-8 h-8 shrink-0 rounded-control flex items-center justify-center text-primary-foreground font-bold text-label ${importanceConfig.color}`}>
+                                            <div className="w-8 h-8 shrink-0 rounded-control bg-muted flex items-center justify-center text-foreground font-medium text-label tabular-nums">
                                                 {index + 1}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <div className="font-medium text-primary truncate">
+                                                <div className="font-medium text-foreground truncate">
                                                     {variable.name}
                                                 </div>
-                                                <div className="flex items-center gap-2 text-meta text-primary">
-                                                    <span className="px-1.5 py-0.5 rounded-control bg-primary text-primary-foreground">
+                                                <div className="flex items-center gap-2 text-meta text-muted-foreground tabular-nums">
+                                                    <span className="px-2 py-0.5 rounded-control bg-muted text-foreground font-medium">
                                                         {importanceConfig.label}
                                                     </span>
                                                     <span>{variableErrors.some(error => error.id === variable.id) ? "无法计算" : `需 n ≥ ${variable.requiredSampleSize.toLocaleString()}`}</span>
@@ -271,12 +270,12 @@ export function MultiVariableSamplePlan({
                                         </div>
                                         <div className="flex shrink-0 items-center gap-2">
                                             {variable.importance === "primary" && (
-                                                <Star className="w-4 h-4 text-destructive fill-destructive" />
+                                                <Star className="w-4 h-4 text-primary fill-primary" />
                                             )}
                                             {isExpanded ? (
-                                                <ChevronUp className="w-4 h-4 text-primary" />
+                                                <ChevronUp className="w-4 h-4 text-muted-foreground" />
                                             ) : (
-                                                <ChevronDown className="w-4 h-4 text-primary" />
+                                                <ChevronDown className="w-4 h-4 text-muted-foreground" />
                                             )}
                                         </div>
                                     </button>
@@ -294,23 +293,21 @@ export function MultiVariableSamplePlan({
                                 {/* 展开的配置面板 */}
                                 {isExpanded && (
                                     <div id={`sample-variable-panel-${variable.id}`} className="px-4 pb-4 space-y-4">
-                                        <div className="h-px bg-primary-border" />
+                                        <div className="h-px bg-border" />
 
-                                        {/* 名称 */}
                                         <div className="space-y-2">
-                                            <Label htmlFor={`sample-variable-name-${variable.id}`} className="text-meta text-primary">变量名称</Label>
+                                            <Label htmlFor={`sample-variable-name-${variable.id}`} className="text-meta text-foreground">变量名称</Label>
                                             <Input
                                                 id={`sample-variable-name-${variable.id}`}
                                                 value={variable.name}
                                                 onChange={(e) => updateVariable(variable.id, { name: e.target.value })}
-                                                className="bg-card border-primary text-foreground"
+                                                className="bg-card border-input text-foreground"
                                                 placeholder="如：满意度、知晓率、消费金额"
                                             />
                                         </div>
 
-                                        {/* 变量类型 */}
                                         <div className="space-y-2">
-                                            <Label className="text-meta text-primary">变量类型</Label>
+                                            <Label className="text-meta text-foreground">变量类型</Label>
                                             <Select
                                                 value={variable.type}
                                                 onValueChange={(value: "proportion" | "mean") =>
@@ -324,19 +321,18 @@ export function MultiVariableSamplePlan({
                                                     })
                                                 }
                                             >
-                                                <SelectTrigger aria-label={`${variable.name || "变量"}类型`} className="bg-card border-primary text-foreground">
+                                                <SelectTrigger aria-label={`${variable.name || "变量"}类型`} className="bg-card border-input text-foreground">
                                                     <SelectValue />
                                                 </SelectTrigger>
-                                                <SelectContent className="bg-background border-primary">
+                                                <SelectContent>
                                                     <SelectItem value="proportion">比例（如知晓率、满意度）</SelectItem>
                                                     <SelectItem value="mean">均值（如消费金额、年龄）</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
 
-                                        {/* 估计值 */}
                                         <div className="space-y-2">
-                                            <Label htmlFor={`sample-variable-estimate-${variable.id}`} className="text-meta text-primary">
+                                            <Label htmlFor={`sample-variable-estimate-${variable.id}`} className="text-meta text-foreground">
                                                 {variable.type === "proportion" ? "估计比例 p（0-1）" : "估计均值"}
                                             </Label>
                                             <div className="flex items-center gap-2">
@@ -347,17 +343,17 @@ export function MultiVariableSamplePlan({
                                                     onChange={(e) => updateVariable(variable.id, {
                                                         estimatedValue: parseFloat(e.target.value) || 0
                                                     })}
-                                                    className="bg-card border-primary text-foreground"
+                                                    className="bg-card border-input text-foreground"
                                                     step={0.01}
                                                     min={variable.type === "proportion" ? 0 : undefined}
                                                     max={variable.type === "proportion" ? 1 : undefined}
                                                 />
                                                 {variable.type === "proportion" && (
-                                                    <span className="text-primary text-label">0-1</span>
+                                                    <span className="text-muted-foreground text-label">0-1</span>
                                                 )}
                                             </div>
                                             {variable.type === "proportion" ? (
-                                                <p className="text-meta text-primary">
+                                                <p className="text-meta text-muted-foreground">
                                                     输入 0-1 小数，例如 0.5 = 50%。若填 0 或 1，系统视为缺少可靠先验并按 p=0.5 保守规划。
                                                 </p>
                                             ) : Math.abs(variable.estimatedValue) === 0 ? (
@@ -365,16 +361,15 @@ export function MultiVariableSamplePlan({
                                                     均值为 0 时相对误差没有稳定含义，请填写非零先验均值，或改用主流程的绝对误差限。
                                                 </p>
                                             ) : (
-                                                <p className="text-meta text-primary">
+                                                <p className="text-meta text-muted-foreground">
                                                     相对误差按估计均值的绝对值计算；均值接近 0 时结果会不稳定，宜改用绝对误差限。
                                                 </p>
                                             )}
                                         </div>
 
-                                        {/* 标准差（均值类型时） */}
                                         {variable.type === "mean" && (
                                             <div className="space-y-2">
-                                                <Label htmlFor={`sample-variable-deviation-${variable.id}`} className="text-meta text-primary">估计标准差 (σ)</Label>
+                                                <Label htmlFor={`sample-variable-deviation-${variable.id}`} className="text-meta text-foreground">估计标准差 (σ)</Label>
                                                 <Input
                                                     id={`sample-variable-deviation-${variable.id}`}
                                                     type="number"
@@ -382,62 +377,45 @@ export function MultiVariableSamplePlan({
                                                     onChange={(e) => updateVariable(variable.id, {
                                                         estimatedStdDev: parseFloat(e.target.value) || undefined
                                                     })}
-                                                    className="bg-card border-primary text-foreground"
+                                                    className="bg-card border-input text-foreground"
                                                     placeholder="输入估计的标准差"
                                                 />
                                             </div>
                                         )}
 
-                                        {/* 重要性 */}
                                         <div className="space-y-2">
-                                            <Label className="text-meta text-primary">重要性</Label>
+                                            <Label className="text-meta text-foreground">重要性</Label>
                                             <Select
                                                 value={variable.importance}
                                                 onValueChange={(value: "primary" | "secondary" | "tertiary") =>
                                                     updateVariable(variable.id, { importance: value })
                                                 }
                                             >
-                                                <SelectTrigger aria-label={`${variable.name || "变量"}重要性`} className="bg-card border-primary text-foreground">
+                                                <SelectTrigger aria-label={`${variable.name || "变量"}重要性`} className="bg-card border-input text-foreground">
                                                     <SelectValue />
                                                 </SelectTrigger>
-                                                <SelectContent className="bg-background border-primary">
-                                                    <SelectItem value="primary">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-2 h-2 rounded-circle bg-destructive" />
-                                                            主要变量（必须满足）
-                                                        </div>
-                                                    </SelectItem>
-                                                    <SelectItem value="secondary">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-2 h-2 rounded-circle bg-warning" />
-                                                            次要变量（仍满足所填精度）
-                                                        </div>
-                                                    </SelectItem>
-                                                    <SelectItem value="tertiary">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-2 h-2 rounded-circle bg-input" />
-                                                            参考变量（仍参与约束）
-                                                        </div>
-                                                    </SelectItem>
+                                                <SelectContent>
+                                                    <SelectItem value="primary">主要变量（必须满足）</SelectItem>
+                                                    <SelectItem value="secondary">次要变量（仍满足所填精度）</SelectItem>
+                                                    <SelectItem value="tertiary">参考变量（仍参与约束）</SelectItem>
                                                 </SelectContent>
                                             </Select>
-                                            <p className="text-meta text-primary">
+                                            <p className="text-meta text-muted-foreground">
                                                 {importanceConfig?.description || "设置变量重要性等级"}
                                             </p>
                                         </div>
 
-                                        {/* 精度要求 */}
                                         <div className="grid grid-cols-2 gap-3">
                                             <div className="space-y-2">
-                                                <Label className="text-meta text-primary">置信水平</Label>
+                                                <Label className="text-meta text-foreground">置信水平</Label>
                                                 <Select
                                                     value={variable.confidenceLevel}
                                                     onValueChange={(value) => updateVariable(variable.id, { confidenceLevel: value })}
                                                 >
-                                                    <SelectTrigger aria-label={`${variable.name || "变量"}置信水平`} className="bg-card border-primary text-foreground">
+                                                    <SelectTrigger aria-label={`${variable.name || "变量"}置信水平`} className="bg-card border-input text-foreground">
                                                         <SelectValue />
                                                     </SelectTrigger>
-                                                    <SelectContent className="bg-background border-primary">
+                                                    <SelectContent>
                                                         <SelectItem value="90">90%</SelectItem>
                                                         <SelectItem value="95">95%</SelectItem>
                                                         <SelectItem value="99">99%</SelectItem>
@@ -445,7 +423,7 @@ export function MultiVariableSamplePlan({
                                                 </Select>
                                             </div>
                                             <div className="space-y-2">
-                                                <Label htmlFor={`sample-variable-margin-${variable.id}`} className="text-meta text-primary">
+                                                <Label htmlFor={`sample-variable-margin-${variable.id}`} className="text-meta text-foreground">
                                                     {variable.type === "mean" ? "允许相对误差" : "允许误差"}
                                                 </Label>
                                                 <div className="flex items-center gap-1">
@@ -456,26 +434,25 @@ export function MultiVariableSamplePlan({
                                                         onChange={(e) => updateVariable(variable.id, {
                                                             marginOfError: parseFloat(e.target.value) || 0
                                                         })}
-                                                        className="bg-card border-primary text-foreground"
+                                                        className="bg-card border-input text-foreground"
                                                         min={0.1}
                                                         max={50}
                                                         step={0.1}
                                                     />
-                                                    <span className="text-primary text-label">%</span>
+                                                    <span className="text-muted-foreground text-label">%</span>
                                                 </div>
                                                 {variable.type === "mean" && (
-                                                    <p className="text-meta text-primary">
+                                                    <p className="text-meta text-muted-foreground">
                                                         绝对误差限 e =（上方相对误差百分数 ÷ 100）× |估计均值|。左侧主流程直接填写绝对误差限，两者单位不同。
                                                     </p>
                                                 )}
                                             </div>
                                         </div>
 
-                                        {/* 计算结果 */}
-                                        <div className="rounded-surface border border-primary bg-background p-3">
+                                        <div className="rounded-surface bg-muted p-3">
                                             <div className="flex items-center justify-between">
                                                 <span className="text-meta text-muted-foreground">所需样本量</span>
-                                                <span className="text-subheading font-bold tabular-nums text-info">
+                                                <span className="text-subheading font-medium tabular-nums text-primary">
                                                     {variableErrors.some(error => error.id === variable.id) ? "无法计算" : variable.requiredSampleSize.toLocaleString()}
                                                 </span>
                                             </div>
@@ -491,24 +468,21 @@ export function MultiVariableSamplePlan({
                 <Button
                     variant="outline"
                     onClick={addVariable}
-                    className="w-full border-primary text-primary hover:bg-primary-muted"
+                    className="w-full"
                 >
                     <Plus className="w-4 h-4 mr-2" />
                     添加调查变量
                 </Button>
 
-                {/* 无变量时不展示「应用」：避免误触清空父级状态；有变量后在下方卡片内应用 */}
-
                 {/* 总样本量计算 */}
                 {variables.length > 0 && (
-                    <div className="rounded-surface border-2 border-primary bg-background p-4 ">
-                        <div className="flex items-center gap-2 mb-4">
+                    <div className="rounded-surface bg-muted p-4 space-y-4">
+                        <div className="flex items-center gap-2">
                             <Target className="w-5 h-5 text-primary" />
-                            <span className="font-bold text-primary">样本量决策</span>
+                            <span className="font-medium text-foreground">样本量决策</span>
                         </div>
 
-                        {/* 按重要性分组显示 */}
-                        <div className="space-y-3 mb-4">
+                        <div className="space-y-2.5">
                             {["primary", "secondary", "tertiary"].map(importance => {
                                 const vars = variables.filter(v => v.importance === importance);
                                 if (vars.length === 0) return null;
@@ -520,13 +494,10 @@ export function MultiVariableSamplePlan({
 
                                 return (
                                     <div key={importance} className="flex items-center justify-between text-label">
-                                        <div className="flex items-center gap-2">
-                                            <div className={`w-2 h-2 rounded-circle ${config?.color || "bg-input"}`} />
-                                            <span className="text-primary">
-                                                {config?.label || importance}（{vars.length}个）
-                                            </span>
-                                        </div>
-                                        <span className="font-mono text-primary">
+                                        <span className="text-muted-foreground">
+                                            {config?.label || importance}（{vars.length}个）
+                                        </span>
+                                        <span className="font-mono tabular-nums text-foreground">
                                             {vars.some(variable => variableErrors.some(error => error.id === variable.id)) ? "无法计算" : `max = ${maxSampleSize.toLocaleString()}`}
                                         </span>
                                     </div>
@@ -534,16 +505,16 @@ export function MultiVariableSamplePlan({
                             })}
                         </div>
 
-                        <div className="mb-4 h-px bg-primary-border" />
+                        <div className="h-px bg-border" />
 
                         <div className="flex justify-between items-center">
-                            <span className="font-bold text-primary">建议总样本量</span>
-                            <span className="text-page-title font-bold tabular-nums text-info">
+                            <span className="font-medium text-foreground">建议总样本量</span>
+                            <span className="text-page-title font-medium tabular-nums text-primary">
                                 {hasInvalidVariables ? "无法计算" : recommendedSampleSize.toLocaleString()}
                             </span>
                         </div>
 
-                        <p className="text-meta text-primary mt-3 leading-relaxed">
+                        <p className="text-meta text-muted-foreground leading-relaxed">
                             原则：取全部已配置变量所需样本量的最大值。重要性只用于标记分析优先级；如某变量不需要精度保证，请删除它或明确放宽误差限。
                         </p>
 
@@ -552,7 +523,7 @@ export function MultiVariableSamplePlan({
                                 type="button"
                                 onClick={() => onApplyToPlan({ variables, recommendedSampleSize })}
                                 disabled={hasInvalidVariables || recommendedSampleSize <= 0}
-                                className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary-hover"
+                                className="w-full"
                             >
                                 应用到样本量规划
                                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -563,8 +534,8 @@ export function MultiVariableSamplePlan({
 
                 {/* 各变量样本量对比 */}
                 {variables.length > 1 && !hasInvalidVariables && (
-                    <div className="rounded-surface border border-primary bg-background p-3">
-                        <div className="text-meta font-medium text-primary mb-3">
+                    <div className="rounded-surface bg-muted p-3.5">
+                        <div className="text-meta font-medium text-foreground mb-3">
                             各变量样本量需求对比
                         </div>
                         <div className="space-y-2">
@@ -578,24 +549,23 @@ export function MultiVariableSamplePlan({
 
                                     return (
                                         <div key={variable.id} className="flex items-center gap-3">
-                                            <div className={`w-2 h-2 rounded-circle ${importanceConfig?.color || "bg-input"}`} />
-                                            <span className="text-meta text-primary flex-1 truncate">
+                                            <span className="text-meta text-foreground flex-1 truncate">
                                                 {variable.name}
                                             </span>
                                             <div className="flex items-center gap-2">
-                                                <div className="w-20 h-1.5 rounded-control bg-primary">
+                                                <div className="w-24 h-2 rounded-control bg-secondary overflow-hidden">
                                                     <div
-                                                        className={`h-full rounded-control ${isMax ? "bg-destructive" : "bg-primary"}`}
+                                                        className="h-full rounded-control bg-primary"
                                                         style={{
                                                             width: `${Math.min(100, (variable.requiredSampleSize / recommendedSampleSize) * 100)}%`
                                                         }}
                                                     />
                                                 </div>
-                                                <span className={`text-meta font-mono w-12 text-right ${isMax ? "font-bold text-destructive" : "text-primary"}`}>
+                                                <span className={`text-meta font-mono tabular-nums w-12 text-right ${isMax ? "font-medium text-primary" : "text-muted-foreground"}`}>
                                                     {variable.requiredSampleSize.toLocaleString()}
                                                 </span>
                                                 {isMax && (
-                                                    <Badge className="bg-destructive text-destructive-foreground text-meta px-1">
+                                                    <Badge variant="outline" className="border-primary-border bg-primary-muted text-primary text-meta px-1.5">
                                                         决定因素
                                                     </Badge>
                                                 )}

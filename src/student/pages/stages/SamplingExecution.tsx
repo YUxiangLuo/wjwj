@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import {
     Select,
     SelectContent,
@@ -379,22 +378,22 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     if (!hasValidSamplePlan) {
         return (
             <div className="min-w-0 space-y-5" data-testid="student-stage-sampling-blocked">
-                <Card className="rounded-surface border-destructive-border bg-destructive-muted ">
+                <Card className="rounded-surface border-border bg-card">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-destructive">
                             <AlertCircle className="h-5 w-5" />
                             无法开始抽样执行
                         </CardTitle>
-                        <CardDescription className="text-destructive">
+                        <CardDescription className="text-muted-foreground">
                             当前实验没有有效的最终样本量。
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="rounded-surface border border-destructive-border bg-background px-4 py-3 text-label text-foreground">
+                        <div className="rounded-surface bg-muted px-4 py-3 text-label text-foreground">
                             返回“样本量规划”，确认并保存最终样本量后重试。
                         </div>
                         <div className="flex justify-between">
-                            <Button variant="outline" onClick={onPrev} data-testid="student-sampling-blocked-prev" className="border-input bg-muted text-foreground hover:bg-muted hover:text-foreground">
+                            <Button variant="outline" onClick={onPrev} data-testid="student-sampling-blocked-prev">
                                 上一阶段
                             </Button>
                         </div>
@@ -412,16 +411,16 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 </p>
             )}
             {statsState === "loading" && (
-                <Card role="status" aria-live="polite" className="rounded-surface border-info-border bg-info-muted " data-testid="student-sampling-stats-loading">
-                    <CardContent className="flex items-center gap-3 px-4 py-3 text-label text-info">
-                        <Loader2 aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin" />
+                <Card role="status" aria-live="polite" className="rounded-surface border-border bg-muted py-0" data-testid="student-sampling-stats-loading">
+                    <CardContent className="flex items-center gap-3 px-4 py-3 text-label text-muted-foreground">
+                        <Loader2 aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin text-primary" />
                         正在加载总体统计信息和 PPS 可用字段…
                     </CardContent>
                 </Card>
             )}
 
             {statsState === "error" && (
-                <Card className="rounded-surface border-destructive-border bg-destructive-muted " data-testid="student-sampling-stats-error">
+                <Card className="rounded-surface border-destructive-border bg-destructive-muted py-0" data-testid="student-sampling-stats-error">
                     <CardContent className="flex items-center justify-between gap-4 px-4 py-3">
                         <div className="flex min-w-0 items-center gap-3 text-label text-destructive">
                             <AlertCircle className="h-4 w-4 shrink-0" />
@@ -432,7 +431,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                             variant="outline"
                             onClick={() => setStatsReloadKey((value) => value + 1)}
                             data-testid="student-sampling-stats-retry"
-                            className="shrink-0 border-destructive-border bg-background text-destructive hover:bg-destructive-muted hover:text-destructive"
+                            className="shrink-0 border-destructive-border bg-card text-destructive hover:bg-destructive-muted hover:text-destructive"
                         >
                             <RefreshCw className="mr-1.5 h-4 w-4" />
                             重试
@@ -441,11 +440,11 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 </Card>
             )}
 
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-surface border border-border bg-card p-3" data-testid="student-sampling-policy-summary">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-surface border border-border bg-card p-4" data-testid="student-sampling-policy-summary">
                 <dl className="flex flex-wrap items-center gap-x-6 gap-y-1 text-label">
-                    <div className="flex items-baseline gap-2"><dt className="text-muted-foreground">规划样本量</dt><dd className="font-semibold tabular-nums">{n} 个单位</dd></div>
-                    <div className="flex items-baseline gap-2"><dt className="text-muted-foreground">调查总体</dt><dd className="font-semibold tabular-nums">{N.toLocaleString()} 个单位</dd></div>
-                    <div className="flex items-baseline gap-2"><dt className="text-muted-foreground">已保存结果</dt><dd className={`font-semibold tabular-nums ${allCompleted ? "text-success" : "text-foreground"}`}>{completedMethodCount} / {enabledMethods.length} 种方法</dd></div>
+                    <div className="flex items-baseline gap-2"><dt className="text-muted-foreground">规划样本量</dt><dd className="font-medium tabular-nums">{n} 个单位</dd></div>
+                    <div className="flex items-baseline gap-2"><dt className="text-muted-foreground">调查总体</dt><dd className="font-medium tabular-nums">{N.toLocaleString()} 个单位</dd></div>
+                    <div className="flex items-baseline gap-2"><dt className="text-muted-foreground">已保存结果</dt><dd className={`font-medium tabular-nums ${allCompleted ? "text-success" : "text-foreground"}`}>{completedMethodCount} / {enabledMethods.length} 种方法</dd></div>
                 </dl>
                 <div className="flex shrink-0 items-center gap-2">
                     <Switch id="show-sampling-animation" checked={showAnimation} onCheckedChange={value => {setShowAnimation(value); try {sessionStorage.setItem(SAMPLING_ANIMATION_SKIP_KEY, value ? "0" : "1");} catch { /* Session preference is optional. */ }}}/>
@@ -455,28 +454,28 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
             </div>
             {/* Sampling methods tabs */}
             <Tabs value={activeMethod} onValueChange={value => setActiveMethod(value as PolicySamplingMethod)} className="min-w-0 space-y-5">
-                <TabsList ref={methodNavigationRef} className="scroll-mt-36 bg-card border border-border p-1 rounded-surface w-full min-w-0 flex flex-wrap h-auto gap-1" data-testid="student-sampling-tabs">
-                    <TabsTrigger value="simple" data-testid="student-sampling-tab-simple" className="scroll-mt-48 min-w-0 flex-1 basis-48 rounded-surface py-2.5 px-3 text-label data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
+                <TabsList ref={methodNavigationRef} className="scroll-mt-36 w-full min-w-0 flex flex-wrap h-auto gap-1 border-b border-border bg-transparent p-0" data-testid="student-sampling-tabs">
+                    <TabsTrigger value="simple" data-testid="student-sampling-tab-simple" className="scroll-mt-48 min-w-0 flex-1 basis-48 py-2.5 px-3">
                         <span>简单随机抽样</span>
                         <RequirementLabel value={samplingPolicy.methods.simple} />
                         {simpleResult?.completed && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
                     </TabsTrigger>
                     {samplingPolicy.methods.systematic !== "disabled" && (
-                    <TabsTrigger value="systematic" data-testid="student-sampling-tab-systematic" className="scroll-mt-48 min-w-0 flex-1 basis-48 rounded-surface py-2.5 px-3 text-label data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
+                    <TabsTrigger value="systematic" data-testid="student-sampling-tab-systematic" className="scroll-mt-48 min-w-0 flex-1 basis-48 py-2.5 px-3">
                         <span>系统抽样</span>
                         <RequirementLabel value={samplingPolicy.methods.systematic} />
                         {systematicCompletedForCurrentPlan && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
                     </TabsTrigger>
                     )}
                     {samplingPolicy.methods.pps !== "disabled" && (
-                    <TabsTrigger value="pps" data-testid="student-sampling-tab-pps" className="scroll-mt-48 min-w-0 flex-1 basis-48 rounded-surface py-2.5 px-3 text-label data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
+                    <TabsTrigger value="pps" data-testid="student-sampling-tab-pps" className="scroll-mt-48 min-w-0 flex-1 basis-48 py-2.5 px-3">
                         <span>PPS抽样</span>
                         <RequirementLabel value={samplingPolicy.methods.pps} />
                         {ppsResult?.completed && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
                     </TabsTrigger>
                     )}
                     {samplingPolicy.methods.stratified !== "disabled" && (
-                    <TabsTrigger value="stratified" data-testid="student-sampling-tab-stratified" className="scroll-mt-48 min-w-0 flex-1 basis-48 rounded-surface py-2.5 px-3 text-label data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
+                    <TabsTrigger value="stratified" data-testid="student-sampling-tab-stratified" className="scroll-mt-48 min-w-0 flex-1 basis-48 py-2.5 px-3">
                         <span>分层抽样</span>
                         <RequirementLabel value={samplingPolicy.methods.stratified} />
                         {stratifiedResult?.completed && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
@@ -490,12 +489,11 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                         <div className="min-w-0 space-y-4">
                             <Card className="gap-0 rounded-surface border-border bg-card py-0">
                                 <CardHeader className="flex flex-wrap items-center justify-between gap-4 p-5">
-                                    <div className="min-w-0 flex-1 basis-80 space-y-2">
-                                    <CardTitle className="text-foreground flex items-center gap-2">
-                                        <div className="w-2 h-6 bg-primary rounded-control mr-2"></div>
+                                    <div className="min-w-0 flex-1 basis-80 space-y-1.5">
+                                    <CardTitle className="text-foreground">
                                         简单随机抽样
                                     </CardTitle>
-                                    <CardDescription className="text-muted-foreground pt-1">
+                                    <CardDescription className="text-muted-foreground">
                                         从 {N.toLocaleString()} 个总体单位中不放回抽取 {n} 个。每个单位的入样概率相等，且不会重复入样。
                                     </CardDescription>
                                     </div>
@@ -505,8 +503,8 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                     </Button>}
                                 </CardHeader>
                                 <CardContent className="space-y-4 px-5 pb-5">
-                                    <details className="max-w-xl">
-                                        <summary className="cursor-pointer text-meta font-medium text-muted-foreground">复现同一组结果（可选）</summary>
+                                    <details className="max-w-xl rounded-surface bg-muted p-3">
+                                        <summary className="cursor-pointer text-meta font-medium text-foreground">复现同一组结果（可选）</summary>
                                         <div className="mt-3">
                                         <Label htmlFor="simpleSeed" className="text-foreground text-meta">随机种子（可选）</Label>
                                         <Input
@@ -516,7 +514,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                             onChange={(e) => setSimpleSeed(e.target.value)}
                                             placeholder="留空则每次随机"
                                             data-testid="student-sampling-simple-seed"
-                                            className="mt-2 bg-card border-input text-foreground focus:border-ring"
+                                            className="mt-2 bg-card border-input text-foreground"
                                         />
                                         <p className="text-meta text-muted-foreground mt-2">设置后可复现同一组软件抽样结果，但这只是复现实验，不足以证明实际调查的随机化质量。</p>
                                         </div>
@@ -539,7 +537,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                 <CardHeader>
                                     <div className="flex items-center justify-between">
                                         <CardTitle className="text-body text-foreground">已保存的入样记录</CardTitle>
-                                        <Badge variant="outline" className="border-input text-muted-foreground">分页预览</Badge>
+                                        <StatusBadge intent="neutral">分页预览</StatusBadge>
                                     </div>
                                     <CardDescription className="text-muted-foreground">每页查看 20 条记录，完整数据可在分析阶段导出。</CardDescription>
                                 </CardHeader>
@@ -562,37 +560,36 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 <TabsContent value="systematic" className="mt-0 focus-visible:outline-none">
                     <div className="min-w-0 space-y-4">
                         <div className="min-w-0 space-y-4">
-                            <Card className="rounded-surface border-border bg-card ">
+                            <Card className="rounded-surface border-border bg-card">
                                 <CardHeader>
-                                    <CardTitle className="text-foreground flex items-center gap-2">
-                                        <div className="w-2 h-6 bg-info rounded-control mr-2"></div>
+                                    <CardTitle className="text-foreground">
                                         系统抽样
                                     </CardTitle>
                                     <CardDescription className="text-muted-foreground pt-1">
                                         使用分数间隔 K=N/n 和随机起点，按当前抽样框顺序抽取并确保样本量等于规划值 {n}。抽样框排序可能影响效率；若周期结构与 K 同步，结果可能失真。
                                     </CardDescription>
                                 </CardHeader>
-                                <CardContent className="space-y-6 pt-4">
-                                    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-4 p-4 bg-background rounded-surface border border-border">
-                                        <div className="space-y-3">
+                                <CardContent className="space-y-6 pt-2">
+                                    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-4 rounded-surface bg-muted p-4">
+                                        <div className="space-y-2.5">
                                             <p className="text-label font-medium text-foreground">抽样间隔 K=N/n</p>
                                             <div
-                                                className="flex h-10 items-center rounded-control border border-input bg-card px-3 font-mono font-semibold text-foreground"
+                                                className="flex h-10 items-center rounded-control border border-border bg-card px-3 font-mono font-medium tabular-nums text-foreground"
                                                 data-testid="student-sampling-systematic-k"
                                             >
                                                 {formatSystematicInterval(systematicInterval)}
                                             </div>
                                             <p className="text-meta text-muted-foreground">按总体规模除以规划样本量计算，间隔可以是小数。</p>
                                         </div>
-                                        <div className="space-y-3">
+                                        <div className="space-y-2.5">
                                             <p className="text-label font-medium text-foreground">精确抽取数量</p>
-                                            <div className="flex h-10 items-center justify-between rounded-control border border-input bg-card px-3">
-                                                <span className="font-mono font-bold text-foreground">{n}</span>
+                                            <div className="flex h-10 items-center justify-between rounded-control border border-border bg-card px-3">
+                                                <span className="font-mono font-medium tabular-nums text-foreground">{n}</span>
                                                 <span className="text-meta text-success">与规划值一致</span>
                                             </div>
                                             <p className="text-meta text-muted-foreground">随机起点保证随机化，但不能自动消除抽样框中的排序或周期性风险。</p>
                                         </div>
-                                        <div className="space-y-3">
+                                        <div className="space-y-2.5">
                                             <Label htmlFor="systematicSeed" className="text-foreground">随机种子（可选）</Label>
                                             <Input
                                                 id="systematicSeed"
@@ -601,7 +598,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 onChange={(e) => setSystematicSeed(e.target.value)}
                                                 placeholder="留空则每次随机"
                                                 data-testid="student-sampling-systematic-seed"
-                                                className="bg-card border-input text-foreground focus:border-info"
+                                                className="bg-card border-input text-foreground"
                                             />
                                             <p className="text-meta text-muted-foreground">
                                                 设置后可复现软件结果，但不能据此证明实际调查的随机化质量。
@@ -617,7 +614,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 </p>
                                             )}
                                             <div className="flex justify-end">
-                                            <Button onClick={() => void executeSystematic()} disabled={executing !== null || systematicInterval === null || refreshRequired} data-testid="student-sampling-systematic-run" className="w-auto bg-info px-8 text-info-foreground hover:bg-info-hover">
+                                            <Button onClick={() => void executeSystematic()} disabled={executing !== null || systematicInterval === null || refreshRequired} data-testid="student-sampling-systematic-run">
                                                 {executing === "systematic" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -645,7 +642,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                 <CardHeader>
                                     <div className="flex items-center justify-between">
                                         <CardTitle className="text-body text-foreground">已保存的入样记录</CardTitle>
-                                        <Badge variant="outline" className="border-input text-muted-foreground">分页预览</Badge>
+                                        <StatusBadge intent="neutral">分页预览</StatusBadge>
                                     </div>
                                     <CardDescription className="text-muted-foreground">每页查看 20 条记录，完整数据可在分析阶段导出。</CardDescription>
                                 </CardHeader>
@@ -669,23 +666,23 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 <TabsContent value="pps" className="mt-0 focus-visible:outline-none">
                     <div className="min-w-0 space-y-4">
                         <div className="min-w-0 space-y-4">
-                            <Card className="rounded-surface border-border bg-card ">
+                            <Card className="rounded-surface border-border bg-card">
                                 <CardHeader>
-                                    <CardTitle className="text-foreground flex items-center gap-2">
-                                        <div className="w-2 h-6 bg-auxiliary rounded-control mr-2"></div>
+                                    <CardTitle className="text-foreground">
                                         PPS抽样（概率与规模成比例抽样）
                                     </CardTitle>
                                     <CardDescription>选择规模变量并设置抽取数量。规模越大，单位的入样概率通常越高。</CardDescription>
-                                    <details className="rounded-surface border border-border bg-background p-3"><summary className="cursor-pointer text-label font-medium">了解 PPS 的条件与本实验规则</summary>                                    <p className="mt-3 text-meta leading-relaxed text-muted-foreground">
+                                    <details className="rounded-surface bg-muted p-3"><summary className="cursor-pointer text-label font-medium text-foreground">了解 PPS 的条件与本实验规则</summary>
+                                    <p className="mt-3 text-meta leading-relaxed text-muted-foreground">
                                         不放回 πps：普通单位的一阶包含概率与规模成正比；若初始 n·xᵢ/Σxᵢ 达到 1，该单位必然入样，剩余名额会在其他单位间重新按规模分配。分析阶段用 Hájek 加权均值，不是 Horvitz–Thompson 均值。规模变量应在抽样前对总体单位可获得；它与目标变量相关时 PPS 才更可能提高效率，相关性弱时未必优于等概率设计。抽取数量允许在规划目标的 80%–120% 调整，这是本实验的操作规则，不是 PPS 理论要求。
                                     </p></details>
                                 </CardHeader>
-                                <CardContent className="space-y-6 pt-4">
-                                    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-4 p-4 bg-background rounded-surface border border-border">
-                                        <div className="space-y-3">
+                                <CardContent className="space-y-6 pt-2">
+                                    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-4 rounded-surface bg-muted p-4">
+                                        <div className="space-y-2.5">
                                             <Label className="text-foreground">选择规模变量</Label>
                                             {!statsLoaded ? (
-                                                <div className="flex h-10 items-center rounded-control border border-info-border bg-info-muted px-3 text-label text-info" data-testid="student-sampling-pps-fields-pending">
+                                                <div className="flex h-10 items-center rounded-control border border-border bg-card px-3 text-label text-muted-foreground" data-testid="student-sampling-pps-fields-pending">
                                                     {statsState === "loading" ? "正在加载可用规模变量…" : "规模变量信息加载失败，请先重试"}
                                                 </div>
                                             ) : hasPpsNumericField ? (
@@ -714,7 +711,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                         : PPS_UNAVAILABLE_REASON}
                                             </p>
                                         </div>
-                                        <div className="space-y-3">
+                                        <div className="space-y-2.5">
                                             <Label htmlFor="ppsSampleSize" className="text-foreground">抽样数量</Label>
                                             <Input
                                                 id="ppsSampleSize"
@@ -727,14 +724,14 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 aria-invalid={!isPpsSizeValid}
                                                 aria-describedby="pps-sample-size-hint"
                                                 data-testid="student-sampling-pps-sample-size"
-                                                className={`bg-card border-input text-foreground focus:border-auxiliary ${!isPpsSizeValid ? "border-destructive" : ""}`}
+                                                className={`bg-card border-input text-foreground ${!isPpsSizeValid ? "border-destructive" : ""}`}
                                             />
                                             <p id="pps-sample-size-hint" className={`text-meta leading-relaxed ${isPpsSizeValid ? "text-muted-foreground" : "text-destructive"}`}>
                                                 有效范围: {ppsMinSize}-{ppsMaxSize}（本实验按目标值 {n} 的 80%-120%，且无放回抽样不能超过总体 N={N}）
                                                 {!isPpsSizeValid && `；请输入 ${ppsMinSize}-${ppsMaxSize} 之间的整数`}
                                             </p>
                                         </div>
-                                        <div className="space-y-3">
+                                        <div className="space-y-2.5">
                                             <Label htmlFor="ppsSeed" className="text-foreground">随机种子（可选）</Label>
                                             <Input
                                                 id="ppsSeed"
@@ -743,7 +740,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 onChange={(e) => setPpsSeed(e.target.value)}
                                                 placeholder="留空则每次随机"
                                                 data-testid="student-sampling-pps-seed"
-                                                className="bg-card border-input text-foreground focus:border-auxiliary"
+                                                className="bg-card border-input text-foreground"
                                             />
                                             <p className="text-meta leading-relaxed text-muted-foreground">
                                                 设置后可复现同一组软件 PPS 结果，但不能据此证明实际调查的随机化质量。
@@ -753,7 +750,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
                                     {!ppsResult?.completed ? (
                                         <div className="flex justify-end">
-                                            <Button onClick={() => void executePPS()} disabled={executing !== null || !hasPpsNumericField || !ppsSizeField || !isPpsSizeValid || refreshRequired} data-testid="student-sampling-pps-run" className="w-auto bg-auxiliary px-8 text-auxiliary-foreground hover:bg-auxiliary-hover">
+                                            <Button onClick={() => void executePPS()} disabled={executing !== null || !hasPpsNumericField || !ppsSizeField || !isPpsSizeValid || refreshRequired} data-testid="student-sampling-pps-run">
                                                 {executing === "pps" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -781,7 +778,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                 <CardHeader>
                                     <div className="flex items-center justify-between">
                                         <CardTitle className="text-body text-foreground">已保存的入样记录</CardTitle>
-                                        <Badge variant="outline" className="border-input text-muted-foreground">分页预览</Badge>
+                                        <StatusBadge intent="neutral">分页预览</StatusBadge>
                                     </div>
                                     <CardDescription className="text-muted-foreground">每页查看 20 条记录，完整数据可在分析阶段导出。</CardDescription>
                                 </CardHeader>

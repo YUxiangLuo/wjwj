@@ -268,7 +268,7 @@ export function DecisionPhase({
                         variant="outline"
                         size="sm"
                         onClick={onClearAdvancedSource}
-                        className="shrink-0 border-warning bg-background text-warning hover:bg-warning-muted hover:text-warning hover:border-warning"
+                        className="shrink-0 bg-card"
                     >
                         按常规继续
                     </Button>
@@ -278,7 +278,7 @@ export function DecisionPhase({
             <div className="grid grid-cols-2 items-start gap-5" data-testid="planning-workspace">
                 {/* Keep controls and live results side by side, without a separate navigation rail. */}
                 <section aria-label="规划参数" className="rounded-surface border border-border bg-card p-5 space-y-4">
-                    <h2 tabIndex={-1} className="text-subheading font-semibold text-foreground outline-none">设置目标与假设</h2>
+                    <h2 tabIndex={-1} className="text-subheading font-medium text-foreground outline-none">设置目标与假设</h2>
 
                     <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -287,7 +287,7 @@ export function DecisionPhase({
                             value={params.confidenceLevel}
                             onValueChange={onConfidenceLevelChange}
                         >
-                            <SelectTrigger aria-label="常规公式置信水平" className="w-full min-h-11 text-label bg-background border-input">
+                            <SelectTrigger aria-label="常规公式置信水平" className="w-full min-h-11 text-label bg-card border-input">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -304,7 +304,7 @@ export function DecisionPhase({
                             type="number" value={params.marginOfError || ""} min={isMeanEstimation ? undefined : 1} max={isMeanEstimation ? undefined : 10} step="any"
                             onChange={event => onMarginOfErrorChange(Number(event.target.value))}
                             aria-invalid={!Number.isFinite(params.marginOfError) || params.marginOfError <= 0 || (!isMeanEstimation && (params.marginOfError < 1 || params.marginOfError > 10))}
-                            className="h-11 bg-background border-input"/>
+                            className="h-11 bg-card border-input"/>
                     </div>
                     </div>
                     <p className="text-meta text-muted-foreground">{isMeanEstimation ? "误差限必须为正数，与研究指标同单位；数值越小，要求越严格。" : "误差限以百分点计，可输入 1～10 之间的小数；数值越小，要求越严格。"}</p>
@@ -312,7 +312,7 @@ export function DecisionPhase({
                     <div className="space-y-1.5">
                         <div className="flex justify-between">
                             <Label className="text-label text-foreground">设计效应</Label>
-                            <span className={`text-meta font-bold tabular-nums ${designEffectValueTone(params.designEffect)}`}>{params.designEffect.toFixed(1)}</span>
+                            <span className={`text-meta font-medium tabular-nums ${designEffectValueTone(params.designEffect)}`}>{params.designEffect.toFixed(1)}</span>
                         </div>
                         <Slider
                             aria-label="设计效应"
@@ -326,7 +326,7 @@ export function DecisionPhase({
                     <div className="space-y-1.5">
                         <div className="flex justify-between">
                             <Label className="text-label text-foreground">预期无回答率</Label>
-                            <span className={`text-meta font-bold tabular-nums ${nonResponseRateValueTone(params.nonResponseRate)}`}>{Math.round(params.nonResponseRate * 100)}%</span>
+                            <span className={`text-meta font-medium tabular-nums ${nonResponseRateValueTone(params.nonResponseRate)}`}>{Math.round(params.nonResponseRate * 100)}%</span>
                         </div>
                         <Slider
                             aria-label="预期无回答率"
@@ -350,12 +350,12 @@ export function DecisionPhase({
                 className={cn(
                     "rounded-surface border p-5 space-y-3 transition-colors",
                     isValidSize
-                        ? "border-primary-border bg-card"
+                        ? "border-border bg-card"
                         : "border-destructive bg-destructive-muted",
                 )}
             >
-                <h3 className="text-subheading font-semibold text-foreground">你准备采用的样本量</h3>
-                {minSize > 1 && <p className="text-meta text-info">本课题要求完成分层抽样。至少需要 {minSize} 个样本，才能在一个可用分层方案中覆盖每个非空层；分层更细时还需相应增加样本量。</p>}
+                <h3 className="text-subheading font-medium text-foreground">你准备采用的样本量</h3>
+                {minSize > 1 && <p className="text-meta text-muted-foreground">本课题要求完成分层抽样。至少需要 {minSize} 个样本，才能在一个可用分层方案中覆盖每个非空层；分层更细时还需相应增加样本量。</p>}
                 <div className="flex flex-wrap items-end gap-3">
                     <div className="w-full flex-1 space-y-2">
                         <div className="flex flex-wrap justify-between gap-2 text-meta">
@@ -379,8 +379,8 @@ export function DecisionPhase({
                                 max={maxSize}
                                 data-testid="immersive-sp-final-size"
                                 className={cn(
-                                    "h-11 pr-24 text-section-title font-semibold bg-background border-input",
-                                    isValidSize ? "text-primary" : "text-destructive",
+                                    "h-11 pr-24 text-section-title font-medium bg-card border-input tabular-nums",
+                                    isValidSize ? "text-foreground" : "text-destructive",
                                 )}
                             />
                             <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground text-label">个单位</span>
@@ -441,8 +441,8 @@ export function DecisionPhase({
             )}
 
             {/* Advanced tools */}
-            <details className="rounded-surface border border-border bg-background p-5 ">
-                <summary className="cursor-pointer text-label font-semibold text-foreground">
+            <details className="rounded-surface border border-border bg-card p-5">
+                <summary className="cursor-pointer text-label font-medium text-foreground">
                     <Wrench className="mx-2 inline h-4 w-4 text-muted-foreground" />
                     高级工具（可选）
                 </summary>
@@ -467,11 +467,12 @@ export function DecisionPhase({
                                     setActiveAdvancedTab(key);
                                 }}
                                 className={cn(
-                                    "rounded-surface border px-2.5 py-2 text-meta font-medium transition-none",
-                                    isDisabled && "opacity-45 cursor-not-allowed",
-                                    isActiveSource
-                                        ? "ring-2 ring-primary border-primary bg-primary text-primary-foreground "
-                                        : "border-border bg-card text-muted-foreground hover:bg-primary-muted hover:border-primary hover:text-primary",
+                                    "rounded-control border px-3 py-2 text-meta font-medium transition-none",
+                                    isDisabled
+                                        ? "cursor-not-allowed border-border bg-muted text-muted-foreground"
+                                        : isActiveSource
+                                            ? "border-primary bg-primary text-primary-foreground"
+                                            : "border-border bg-card text-foreground hover:bg-muted",
                                 )}
                             >
                                 {label}
@@ -485,7 +486,7 @@ export function DecisionPhase({
             {/* Advanced tool Dialog */}
             <Dialog open={activeAdvancedTab !== null} onOpenChange={(open) => { if (!open) setActiveAdvancedTab(null); }}>
                 <DialogContent
-                    className={`bg-background border-border text-foreground ${
+                    className={`bg-card border-border text-foreground ${
                         activeAdvancedTab === "metrics"
                             ? "w-[96vw] max-w-[90rem]"
                             : "max-w-3xl"
@@ -495,7 +496,7 @@ export function DecisionPhase({
                         const config = ADVANCED_TAB_CONFIG.find(c => c.key === activeAdvancedTab);
                         return (
                             <DialogHeader className="border-b border-border pb-4 mb-1 space-y-2">
-                                <DialogTitle className="text-section-title font-semibold tracking-tight text-foreground pr-8">
+                                <DialogTitle className="text-section-title font-medium tracking-tight text-foreground pr-8">
                                     {config?.title}
                                 </DialogTitle>
                                 <DialogDescription className="text-muted-foreground text-label leading-relaxed">
@@ -503,16 +504,16 @@ export function DecisionPhase({
                                 </DialogDescription>
                                 {config && (
                                     <div className="grid grid-cols-3 gap-2 pt-2 text-meta leading-relaxed" data-testid="student-advanced-tool-scope">
-                                        <div className="rounded-surface border border-border bg-card p-2">
-                                            <p className="font-semibold text-foreground">目标估计量</p>
+                                        <div className="rounded-control bg-muted p-2.5">
+                                            <p className="font-medium text-foreground">目标估计量</p>
                                             <p className="mt-1 text-muted-foreground">{config.targetEstimand}</p>
                                         </div>
-                                        <div className="rounded-surface border border-border bg-card p-2">
-                                            <p className="font-semibold text-foreground">假设与数据来源</p>
+                                        <div className="rounded-control bg-muted p-2.5">
+                                            <p className="font-medium text-foreground">假设与数据来源</p>
                                             <p className="mt-1 text-muted-foreground">{config.assumptionsAndSource}</p>
                                         </div>
-                                        <div className="rounded-surface border border-border bg-card p-2">
-                                            <p className="font-semibold text-foreground">适用范围与限制</p>
+                                        <div className="rounded-control bg-muted p-2.5">
+                                            <p className="font-medium text-foreground">适用范围与限制</p>
                                             <p className="mt-1 text-muted-foreground">{config.scopeAndLimitations}</p>
                                         </div>
                                     </div>
@@ -740,10 +741,11 @@ export function DecisionPhase({
             {!hideNext && <div className="flex justify-center pt-2">
                 <Button
                     type="button"
+                    size="lg"
                     onClick={onNext}
                     disabled={!isValidPlan}
                     data-testid="immersive-sp-decision-next"
-                    className="rounded-surface bg-primary px-8 py-5 text-primary-foreground hover:bg-primary-hover disabled:border-border disabled:bg-muted disabled:text-muted-foreground"
+                    className="px-8"
                 >
                     检查并确认方案
                     <ChevronRight className="w-5 h-5 ml-2" />
@@ -781,8 +783,8 @@ function SensitivityGrid({
                         {meValues.map((me) => (
                             <th
                                 key={me}
-                                className={`text-center font-normal pb-2 px-1 tabular-nums ${
-                                    me === currentME ? "text-info font-bold" : "text-muted-foreground"
+                                className={`text-center pb-2 px-1 tabular-nums ${
+                                    me === currentME ? "text-primary font-medium" : "text-muted-foreground font-normal"
                                 }`}
                             >
                                 &plusmn;{me}%
@@ -796,7 +798,7 @@ function SensitivityGrid({
                         return (
                             <tr key={cl}>
                                 <td className={`pr-2 py-1 whitespace-nowrap ${
-                                    cl === currentCL ? "text-primary font-bold" : "text-muted-foreground"
+                                    cl === currentCL ? "text-primary font-medium" : "text-muted-foreground"
                                 }`}>
                                     {clDisplay}
                                 </td>
@@ -808,8 +810,8 @@ function SensitivityGrid({
                                             <button type="button" onClick={() => onSelect(cl, me, n)} aria-pressed={isCurrent} aria-label={`采用 ${cl}% 置信、误差 ${me} 个百分点的方案：${n} 个单位`}
                                                 className={`min-h-11 w-full rounded-control px-1.5 py-1 text-center tabular-nums transition-colors ${
                                                     isCurrent
-                                                        ? "bg-primary text-primary-foreground font-bold ring-2 ring-primary ring-offset-1"
-                                                        : "bg-muted text-foreground hover:bg-primary-muted"
+                                                        ? "bg-primary text-primary-foreground font-medium"
+                                                        : "bg-muted text-foreground hover:bg-accent hover:text-accent-foreground"
                                                 }`}
                                             >
                                                 {n.toLocaleString()}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
     AlertCircle, ArrowRight, Calculator, CheckCircle2, ChevronLeft,
-    Coins, Loader2, Play, RefreshCw, Send, Sparkles, Users
+    Coins, Loader2, Play, RefreshCw, Send, Users
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -464,7 +464,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                             setCustomFinalSizeInput(null);
                                         }}
                                     >
-                                        <SelectTrigger aria-label="选择试投置信水平" className="w-full min-w-0 bg-background [&>span]:truncate">
+                                        <SelectTrigger aria-label="选择试投置信水平" className="w-full min-w-0 bg-card [&>span]:truncate">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -491,7 +491,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                             setMarginOfErrorInput(e.target.value);
                                             setCustomFinalSizeInput(null);
                                         }}
-                                        className="bg-background tabular-nums"
+                                        className="bg-card tabular-nums"
                                     />
                                 </div>
 
@@ -511,13 +511,13 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                             setNonResponsePctInput(e.target.value);
                                             setCustomFinalSizeInput(null);
                                         }}
-                                        className="bg-background tabular-nums"
+                                        className="bg-card tabular-nums"
                                     />
                                 </div>
                             </div>
 
                             {estimationType === "mean" && (
-                                <div className="space-y-3 rounded-surface border border-border bg-background p-4">
+                                <div className="space-y-3 rounded-surface bg-muted p-4">
                                     <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-4">
                                         <div className="min-w-0 space-y-2">
                                             <Label className="text-foreground">均值规划的先验离散度来源</Label>
@@ -563,7 +563,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                         ) : (
                                             <div className="min-w-0 space-y-2">
                                                 <Label className="text-foreground">抽样框已知总体方差 σ²（及标准差 σ）</Label>
-                                                <div className="flex h-9 items-center rounded-control border border-border bg-muted px-3 font-mono text-meta tabular-nums text-foreground">
+                                                <div className="flex h-9 items-center rounded-control border border-border bg-card px-3 font-mono text-meta tabular-nums text-foreground">
                                                     {populationVariance
                                                         ? `σ² = ${formatStatistic(populationVariance, 2)}（σ = ${formatStatistic(Math.sqrt(populationVariance), 2)}）`
                                                         : "加载中…"}
@@ -577,7 +577,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-4 rounded-surface border border-border bg-muted p-4">
+                            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-4 rounded-surface bg-muted p-4">
                                 <div className="space-y-2">
                                     <div className="flex flex-wrap items-center justify-between gap-2 text-meta text-muted-foreground">
                                         <span>公式四步推导（{stepDetails.formulaLabel}）</span>
@@ -586,7 +586,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                         </span>
                                     </div>
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <Label htmlFor="pilot-final-size" className="shrink-0 text-label font-semibold text-foreground">
+                                        <Label htmlFor="pilot-final-size" className="shrink-0 text-label font-medium text-foreground">
                                             首轮试投发放量：
                                         </Label>
                                         <Input
@@ -598,7 +598,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                             aria-invalid={!isFinalSizeValid || undefined}
                                             onChange={(e) => setCustomFinalSizeInput(e.target.value)}
                                             data-testid="student-pilot-final-size"
-                                            className="h-9 w-28 bg-card font-mono font-bold tabular-nums"
+                                            className="h-9 w-28 bg-card font-mono font-medium tabular-nums"
                                         />
                                         <Button
                                             type="button"
@@ -612,10 +612,10 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                         {showPracticalPilotShortcut && (
                                             <Button
                                                 type="button"
-                                                variant="outline"
+                                                variant="secondary"
                                                 size="sm"
                                                 onClick={() => setCustomFinalSizeInput(String(practicalPilotTarget))}
-                                                className="border-primary-border bg-primary-muted text-meta text-primary hover:bg-card hover:text-primary"
+                                                className="text-meta"
                                             >
                                                 设为稳健试投量 {practicalPilotTarget}
                                             </Button>
@@ -625,16 +625,16 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                         允许范围：{bounds.min} – {bounds.max.toLocaleString()} 份（总体 N = {N.toLocaleString()}）
                                     </p>
                                     {showPracticalPilotShortcut && (
-                                        <p className="text-meta leading-relaxed text-info">
+                                        <p className="text-meta leading-relaxed text-muted-foreground">
                                             实务提示：当前试投仅 {effectiveFinalSize} 份，扣除拒访与废卷后有效样本可能偏少；实务中常投放 {practicalPilotTarget} 份左右以稳健探底各层应答率。
                                         </p>
                                     )}
                                 </div>
 
-                                <div className="flex flex-col justify-between rounded-control border border-info-border bg-info-muted p-3">
-                                    <div className="flex items-center justify-between text-meta font-semibold text-info">
+                                <div className="flex flex-col justify-between rounded-control border border-border bg-card p-3">
+                                    <div className="flex items-center justify-between text-meta font-medium text-foreground">
                                         <span className="flex items-center gap-1.5">
-                                            <Coins className="h-4 w-4" />
+                                            <Coins className="h-4 w-4 text-muted-foreground" />
                                             首轮参考调研经费估算
                                         </span>
                                         <span className="tabular-nums">¥{formatStatistic(estimatedPilotCost, 0)}</span>
@@ -672,7 +672,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                             setDesignEffectInput(e.target.value);
                                             setCustomFinalSizeInput(null);
                                         }}
-                                        className="h-8 w-20 bg-background text-center font-mono text-meta"
+                                        className="h-8 w-20 bg-card text-center font-mono text-meta"
                                     />
                                 </div>
                                 <Button
@@ -710,12 +710,12 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                         </CardHeader>
                         <CardContent className="space-y-4 pt-5">
                             {!hasSavedPlan ? (
-                                <div className="rounded-control border border-dashed border-border bg-background p-6 text-center text-label text-muted-foreground">
+                                <div className="rounded-surface border border-dashed border-border bg-muted p-6 text-center text-label text-muted-foreground">
                                     请先完成上方「步骤 1 · 保存首轮样本量方案」，再抽取试投受访者名单。
                                 </div>
                             ) : (
                                 <Tabs value={activeMethod} onValueChange={(v) => setActiveMethod(v as MethodKey)} className="space-y-4">
-                                    <TabsList className="h-auto flex-wrap gap-1 rounded-surface border border-border bg-background p-1">
+                                    <TabsList className="h-auto flex-wrap gap-1 rounded-control bg-muted p-1">
                                         {enabledMethods.map((method) => (
                                             <TabsTrigger key={method} value={method} className="gap-1.5 px-3.5 py-2 text-label" data-testid={`student-pilot-tab-${method}`}>
                                                 <span>{METHOD_LABELS[method]}</span>
@@ -733,7 +733,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                             const completed = isCompletedSamplingResult(currentRes);
                                             return (
                                                 <TabsContent key={method} value={method} className="space-y-4">
-                                                    <div className="flex flex-wrap items-end justify-between gap-4 rounded-surface border border-border bg-background p-4">
+                                                    <div className="flex flex-wrap items-end justify-between gap-4 rounded-surface bg-muted p-4">
                                                         <div className="flex flex-wrap items-end gap-4">
                                                             {method === "pps" && (
                                                                 <div className="space-y-1.5">
@@ -840,7 +840,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
 
                     {/* Step 3: Virtual Questionnaire Dispatch */}
                     <Card
-                        className={`rounded-surface border ${allPilotMethodsDispatched ? "border-success-border bg-card" : "border-primary-border bg-card"}`}
+                        className="rounded-surface border border-border bg-card"
                         data-testid="student-pilot-dispatch-card"
                     >
                         <CardHeader className="border-b border-border pb-4">
@@ -866,7 +866,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4 pt-5">
-                            <div className="flex flex-wrap items-end justify-between gap-4 rounded-surface border border-border bg-background p-4">
+                            <div className="flex flex-wrap items-end justify-between gap-4 rounded-surface bg-muted p-4">
                                 <div className="space-y-1.5">
                                     <Label htmlFor="pilot-dispatch-seed" className="text-meta text-muted-foreground">
                                         实地发放模拟种子（可选，留空自动生成随机回执流）
@@ -890,7 +890,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                     {dispatching ? (
                                         <><Loader2 className="mr-2 h-4 w-4 animate-spin" />正在发放并回收答卷…</>
                                     ) : (
-                                        <><Sparkles className="mr-2 h-4 w-4" />{allPilotMethodsDispatched ? "重新模拟发放试投问卷" : "发放首轮试投问卷"}</>
+                                        <><Send className="mr-2 h-4 w-4" />{allPilotMethodsDispatched ? "重新模拟发放试投问卷" : "发放首轮试投问卷"}</>
                                     )}
                                 </Button>
                             </div>
@@ -910,8 +910,8 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                             )}
 
                             {completedPilotMethods.length > 0 && !allPilotMethodsDispatched && !hasStalePilotSampling && !isPlanDirty && (
-                                <div role="status" className="flex items-center gap-2.5 rounded-control border border-primary-border bg-primary-muted px-4 py-3 text-meta text-primary">
-                                    <Sparkles className="h-4 w-4 shrink-0" />
+                                <div role="status" className="flex items-center gap-2.5 rounded-control bg-muted px-4 py-3 text-meta text-foreground">
+                                    <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
                                     <span>首轮受访者名单已就绪！请点击上方「发放首轮试投问卷」执行虚拟市场触达与回收模拟。</span>
                                 </div>
                             )}
@@ -1001,31 +1001,31 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                 const step3Done = allPilotMethodsDispatched;
                                 return (
                                     <>
-                                        <div className={`flex items-center gap-2.5 rounded-control border p-3 ${step1Done ? "border-success-border bg-success-muted text-success" : isPlanDirty ? "border-warning-border bg-warning-muted text-warning" : "border-border bg-background text-muted-foreground"}`}>
+                                        <div className={`flex items-center gap-2.5 rounded-control p-3 ${step1Done ? "bg-muted text-foreground" : isPlanDirty ? "border border-warning-border bg-warning-muted text-warning" : "bg-muted text-muted-foreground"}`}>
                                             {step1Done ? (
-                                                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                                                <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
                                             ) : isPlanDirty ? (
                                                 <AlertCircle className="h-4 w-4 shrink-0" />
                                             ) : (
-                                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-circle border border-border bg-muted font-mono text-meta">1</span>
+                                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-circle border border-border bg-card font-mono text-meta">1</span>
                                             )}
                                             <span>{step1Done ? `1. 保存试投样本量规划（${planSavedSize} 份）` : isPlanDirty ? "1. 参数已改动，需更新方案" : "1. 保存试投样本量规划"}</span>
                                         </div>
-                                        <div className={`flex items-center gap-2.5 rounded-control border p-3 ${step2Done ? "border-success-border bg-success-muted text-success" : "border-border bg-background text-muted-foreground"}`}>
+                                        <div className={`flex items-center gap-2.5 rounded-control p-3 ${step2Done ? "bg-muted text-foreground" : "bg-muted text-muted-foreground"}`}>
                                             {step2Done ? (
-                                                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                                                <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
                                             ) : (
-                                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-circle border border-border bg-muted font-mono text-meta">2</span>
+                                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-circle border border-border bg-card font-mono text-meta">2</span>
                                             )}
                                             <span>2. 抽取首轮受访者名单{step2Done ? "（已就绪）" : ""}</span>
                                         </div>
-                                        <div className={`flex items-center gap-2.5 rounded-control border p-3 ${step3Done ? "border-success-border bg-success-muted text-success" : hasStalePilotSampling ? "border-warning-border bg-warning-muted text-warning" : "border-border bg-background text-muted-foreground"}`}>
+                                        <div className={`flex items-center gap-2.5 rounded-control p-3 ${step3Done ? "bg-muted text-foreground" : hasStalePilotSampling ? "border border-warning-border bg-warning-muted text-warning" : "bg-muted text-muted-foreground"}`}>
                                             {step3Done ? (
-                                                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                                                <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
                                             ) : hasStalePilotSampling ? (
                                                 <AlertCircle className="h-4 w-4 shrink-0" />
                                             ) : (
-                                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-circle border border-border bg-muted font-mono text-meta">3</span>
+                                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-circle border border-border bg-card font-mono text-meta">3</span>
                                             )}
                                             <span>
                                                 3. {hasStalePilotSampling ? "名单已更新，需重新发放问卷" : `发放问卷并回收试投答卷${pilotDiag && step3Done ? `（有效 ${pilotDiag.cleanedValidCount} 份）` : ""}`}
@@ -1037,9 +1037,9 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-surface border-border bg-muted">
+                    <Card className="rounded-surface border-border bg-card">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-label font-semibold text-foreground">为什么商业调研必须先试投？</CardTitle>
+                            <CardTitle className="text-label font-medium text-foreground">为什么商业调研必须先试投？</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2 text-meta leading-relaxed text-muted-foreground">
                             <p>1. 检验问卷长度与题序是否引发受访者中途弃答或闪电敷衍作答。</p>

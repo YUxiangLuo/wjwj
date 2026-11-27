@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BarChart3, CheckCircle2, Layers, Loader2, RefreshCw, Sparkles } from "lucide-react";
+import { BarChart3, CheckCircle2, Layers, Loader2, RefreshCw } from "lucide-react";
 import { createApiClient } from "@/lib/api-client";
 import { createRequestId } from "@/lib/request-id";
 import { Button } from "@/components/ui/button";
@@ -324,7 +324,7 @@ export function UnivariateWorkspace({
                                     支持对单一指标做描述统计，或选择客群维度（如会员等级、城市线级、活跃分层）执行交叉透视表并一键引用至商业决策报告附录
                                 </CardDescription>
                             </div>
-                            <StatusBadge intent="info">容量 {records.length}/{capacity}</StatusBadge>
+                            <StatusBadge intent="neutral">容量 {records.length}/{capacity}</StatusBadge>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4 pt-5">
@@ -335,7 +335,7 @@ export function UnivariateWorkspace({
                                 </Label>
                                 <span className={`text-meta tabular-nums ${
                                     trimmedQuestionLen > 500
-                                        ? "text-destructive font-semibold"
+                                        ? "text-destructive font-medium"
                                         : trimmedQuestionLen >= 5
                                             ? "text-success"
                                             : "text-muted-foreground"
@@ -349,7 +349,7 @@ export function UnivariateWorkspace({
                                 value={config.question}
                                 onChange={(event) => update({ question: event.target.value })}
                                 rows={2}
-                                className="bg-background"
+                                className="bg-card"
                             />
                         </div>
 
@@ -360,7 +360,7 @@ export function UnivariateWorkspace({
                                     value={config.method}
                                     onValueChange={(val) => update({ method: val as AnalysisConfig["method"] })}
                                 >
-                                    <SelectTrigger aria-label="选择抽样方法来源" className="bg-background">
+                                    <SelectTrigger aria-label="选择抽样方法来源" className="bg-card">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -379,7 +379,7 @@ export function UnivariateWorkspace({
                                     value={config.field}
                                     onValueChange={(val) => update({ field: val })}
                                 >
-                                    <SelectTrigger aria-label="选择目标分析变量" className="bg-background">
+                                    <SelectTrigger aria-label="选择目标分析变量" className="bg-card">
                                         <SelectValue placeholder="请选择目标指标" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -400,7 +400,7 @@ export function UnivariateWorkspace({
                                         update({ groupByField: val === NONE_GROUP_VALUE ? undefined : val })
                                     }
                                 >
-                                    <SelectTrigger aria-label="选择交叉分组维度" className="bg-background">
+                                    <SelectTrigger aria-label="选择交叉分组维度" className="bg-card">
                                         <SelectValue placeholder="不分组（单变量描述）" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -415,7 +415,7 @@ export function UnivariateWorkspace({
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-center gap-4 rounded-surface border border-border bg-background p-3.5">
+                        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-center gap-4 rounded-surface bg-muted p-3.5">
                             {waves && waves.length > 0 ? (
                                 <div className="space-y-1.5">
                                     <Label className="text-meta text-muted-foreground">数据所属波次</Label>
@@ -437,7 +437,7 @@ export function UnivariateWorkspace({
                                 </div>
                             ) : (
                                 <div className="text-meta text-muted-foreground">
-                                    <Layers className="mr-1.5 inline h-4 w-4 text-primary" />
+                                    <Layers className="mr-1.5 inline h-4 w-4 text-muted-foreground" />
                                     使用当前抽样批次样本
                                 </div>
                             )}
@@ -476,7 +476,7 @@ export function UnivariateWorkspace({
                             <div
                                 role="status"
                                 data-testid="student-univariate-unbound-notice"
-                                className="flex flex-wrap items-center justify-between gap-2 rounded-control border border-info-border bg-info-muted px-3.5 py-2 text-meta text-foreground"
+                                className="flex flex-wrap items-center justify-between gap-2 rounded-control bg-muted px-3.5 py-2.5 text-meta text-muted-foreground"
                             >
                                 <span>
                                     提示：所选变量「{unboundRespondentFields.join("、")}」未关联当前波次问卷题目；若非抽样框固有分层字段，在“质检有效回收答卷”口径下将计为未采集缺失，可按需切换完整入样名单做框内对照。
@@ -518,7 +518,7 @@ export function UnivariateWorkspace({
                                     {running ? (
                                         <><Loader2 className="mr-2 h-4 w-4 animate-spin" />正在计算…</>
                                     ) : (
-                                        <><Sparkles className="mr-2 h-4 w-4" />执行并保存分析卡片</>
+                                        <><BarChart3 className="mr-2 h-4 w-4" />执行并保存分析卡片</>
                                     )}
                                 </Button>
                             </div>
@@ -534,7 +534,7 @@ export function UnivariateWorkspace({
             )}
 
             <section className="space-y-3">
-                <h2 className="text-section-title font-semibold text-foreground">
+                <h2 className="text-section-title font-medium text-foreground">
                     已保存实证分析卡片（{records.length}/{capacity}）
                 </h2>
                 {records.length === 0 ? (
@@ -549,12 +549,12 @@ export function UnivariateWorkspace({
                                 <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-3">
                                     <div className="min-w-0 flex-1 space-y-1">
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <h3 className="text-subheading font-semibold text-foreground">{record.config.question}</h3>
+                                            <h3 className="text-subheading font-medium text-foreground">{record.config.question}</h3>
                                             {record.result.kind === "crosstab" && (
                                                 <StatusBadge intent="primary">客群交叉对比</StatusBadge>
                                             )}
                                             {record.waveNumber && (
-                                                <StatusBadge intent="info">Wave {record.waveNumber}</StatusBadge>
+                                                <StatusBadge intent="neutral">Wave {record.waveNumber}</StatusBadge>
                                             )}
                                             {isReferenced && (
                                                 <StatusBadge intent="success">

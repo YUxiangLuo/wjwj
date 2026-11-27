@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/StatusBadge";
 import { Activity, Info } from "lucide-react";
 
 interface SensitivityAnalysisCardProps {
@@ -20,7 +20,6 @@ export function SensitivityAnalysisCard({
 }: SensitivityAnalysisCardProps) {
     if (!matrix || matrix.length === 0) return null;
 
-    // 组织数据：按置信水平分组
     const groupedByConfidence: Record<string, typeof matrix> = {};
     matrix?.forEach(item => {
         const group = groupedByConfidence[item.confidenceLevel];
@@ -31,7 +30,6 @@ export function SensitivityAnalysisCard({
         }
     });
 
-    // 找出最大样本量（用于颜色编码）
     const maxSampleSize = matrix ? Math.max(...matrix.map(m => m.sampleSize)) : 0;
     const minSampleSize = matrix ? Math.min(...matrix.map(m => m.sampleSize)) : 0;
     const currentConfidenceItems = groupedByConfidence[currentConfidenceLevel] ?? [];
@@ -41,24 +39,15 @@ export function SensitivityAnalysisCard({
         ? sampleAtThreePercent / sampleAtFivePercent
         : null;
 
-    // 获取颜色强度
     const getIntensity = (sampleSize: number) => {
         const ratio = maxSampleSize > minSampleSize
             ? (sampleSize - minSampleSize) / (maxSampleSize - minSampleSize)
             : 0;
-        // 返回 20-100 的范围
         return 20 + Math.round(ratio * 80);
     };
 
-    // 置信水平颜色映射
-    const confidenceColors: Record<string, string> = {
-        "90": "bg-success",
-        "95": "bg-info",
-        "99": "bg-auxiliary",
-    };
-
     return (
-        <Card className="rounded-surface border border-primary-border bg-primary-muted ">
+        <Card className="rounded-surface border-border bg-card">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -68,46 +57,37 @@ export function SensitivityAnalysisCard({
                         </CardTitle>
                     </div>
                 </div>
-                <CardDescription className="text-foreground">
+                <CardDescription className="text-muted-foreground">
                     样本量随置信水平和允许误差的变化
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                {/* 热力图表格 */}
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto rounded-surface border border-border">
                     <table className="w-full text-label">
                         <thead>
                             <tr className="border-b border-border bg-muted">
-                                <th className="text-left py-2 px-2 text-foreground font-medium">置信水平 \ 允许误差</th>
-                                <th className="text-center py-2 px-2 text-foreground font-medium">±1%</th>
-                                <th className="text-center py-2 px-2 text-foreground font-medium">±2%</th>
-                                <th className="text-center py-2 px-2 text-foreground font-medium">±3%</th>
-                                <th className="text-center py-2 px-2 text-foreground font-medium">±5%</th>
-                                <th className="text-center py-2 px-2 text-foreground font-medium">±7%</th>
-                                <th className="text-center py-2 px-2 text-foreground font-medium">±10%</th>
+                                <th className="text-left py-2.5 px-3 text-muted-foreground font-medium">置信水平 \ 允许误差</th>
+                                <th className="text-center py-2.5 px-2 text-muted-foreground font-medium tabular-nums">±1%</th>
+                                <th className="text-center py-2.5 px-2 text-muted-foreground font-medium tabular-nums">±2%</th>
+                                <th className="text-center py-2.5 px-2 text-muted-foreground font-medium tabular-nums">±3%</th>
+                                <th className="text-center py-2.5 px-2 text-muted-foreground font-medium tabular-nums">±5%</th>
+                                <th className="text-center py-2.5 px-2 text-muted-foreground font-medium tabular-nums">±7%</th>
+                                <th className="text-center py-2.5 px-2 text-muted-foreground font-medium tabular-nums">±10%</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="divide-y divide-border">
                             {Object.entries(groupedByConfidence).map(([confidenceLevel, items]) => {
                                 const isCurrentConfidence = confidenceLevel === currentConfidenceLevel;
 
                                 return (
-                                    <tr
-                                        key={confidenceLevel}
-                                        className={`border-b border-border ${
-                                            isCurrentConfidence ? "bg-background" : ""
-                                        }`}
-                                    >
-                                        <td className="py-2 px-2">
+                                    <tr key={confidenceLevel} className="bg-card">
+                                        <td className="py-2 px-3">
                                             <div className="flex items-center gap-2">
-                                                <div className={`w-2 h-2 rounded-circle ${confidenceColors[confidenceLevel] || "bg-input"}`} />
-                                                <span className={`font-medium ${isCurrentConfidence ? "text-foreground" : "text-foreground"}`}>
+                                                <span className="font-medium tabular-nums text-foreground">
                                                     {confidenceLevel}%
                                                 </span>
                                                 {isCurrentConfidence && (
-                                                    <Badge variant="outline" className="text-meta border-primary-border text-primary bg-primary-muted">
-                                                        当前
-                                                    </Badge>
+                                                    <StatusBadge intent="primary">当前</StatusBadge>
                                                 )}
                                             </div>
                                         </td>
@@ -116,12 +96,12 @@ export function SensitivityAnalysisCard({
                                             const intensity = getIntensity(item.sampleSize);
 
                                             return (
-                                                <td key={idx} className="py-1 px-1">
+                                                <td key={idx} className="py-1.5 px-1">
                                                     <div
                                                         className={`
-                                                            rounded-surface py-2 px-2 text-center font-mono text-meta
+                                                            rounded-control py-2 px-2 text-center font-mono text-meta
                                                             ${getSensitivityHeatClass(intensity, isCurrentCell)}
-                                                            ${isCurrentCell ? "font-bold" : ""}
+                                                            ${isCurrentCell ? "font-medium" : ""}
                                                         `}
                                                     >
                                                         <span className="text-foreground tabular-nums">
@@ -138,35 +118,18 @@ export function SensitivityAnalysisCard({
                     </table>
                 </div>
 
-                {/* 说明 */}
-                <div className="flex items-start gap-2 text-meta text-foreground rounded-surface border border-border bg-background p-3">
-                    <Info className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
-                    <div className="space-y-1">
+                <div className="flex items-start gap-2 text-meta text-muted-foreground rounded-surface bg-muted p-3.5">
+                    <Info className="w-4 h-4 shrink-0 mt-0.5 text-muted-foreground" />
+                    <div className="space-y-1 leading-relaxed">
                         <p>
-                            <span className="font-medium">颜色深浅</span>：颜色越深表示样本量越大。行/列高亮显示当前设置。
+                            <span className="font-medium text-foreground">颜色深浅</span>：颜色越深表示样本量越大，描边高亮显示当前设置。
                         </p>
                         <p>
-                            <span className="font-medium">规律</span>：置信水平越高、允许误差越小，所需样本量越大。仅在未校正 n₀ 且其他参数固定时，5%降至3%的理论倍数为 (5/3)²≈2.78；
+                            <span className="font-medium text-foreground">规律</span>：置信水平越高、允许误差越小，所需样本量越大。仅在未校正 n₀ 且其他参数固定时，5%降至3%的理论倍数为 (5/3)²≈2.78；
                             {correctedRatio !== null
                                 ? `当前表格在 ${currentConfidenceLevel}% 置信水平下，经有限总体、设计效应、无回答和封顶处理后的实际倍数为 ${correctedRatio.toFixed(2)}。`
                                 : "有限总体校正和封顶后应以表格计算值为准。"}
                         </p>
-                    </div>
-                </div>
-
-                {/* 图例 */}
-                <div className="flex flex-wrap items-center gap-4 text-meta text-foreground">
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded-circle bg-success" />
-                        <span>90% 置信度</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded-circle bg-info" />
-                        <span>95% 置信度</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded-circle bg-auxiliary" />
-                        <span>99% 置信度</span>
                     </div>
                 </div>
             </CardContent>

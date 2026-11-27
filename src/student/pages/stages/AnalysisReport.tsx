@@ -14,7 +14,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Download, FileText, Send, Loader2, Maximize2, AlertCircle, ArrowRight, ChevronLeft, Sparkles } from "lucide-react";
+import { Download, FileText, Send, Loader2, Maximize2, AlertCircle, ArrowRight, ChevronLeft } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { StageActions } from "../../components/StageActions";
 import { getRichTextPlainLength } from "@/utils/rich-text";
@@ -520,11 +520,11 @@ function ChartTabPanel({
                 </div>
             </div>
             {rows.length === 0 ? (
-                <div className="flex h-72 items-center justify-center rounded-surface border border-border bg-background text-label text-muted-foreground">
+                <div className="flex h-72 items-center justify-center rounded-surface border border-dashed border-border bg-muted text-label text-muted-foreground">
                     {emptyMessage}
                 </div>
             ) : (
-                <div className="rounded-surface border border-border bg-background p-4">
+                <div className="rounded-surface border border-border bg-card p-4">
                     <EChartBox
                         option={option}
                         height={height}
@@ -1600,7 +1600,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         <div
             role="group"
             aria-label="分布对比视图切换"
-            className="inline-flex items-center gap-1 rounded-control border border-border bg-card p-1"
+            className="inline-flex items-center gap-1 rounded-control bg-muted p-1"
         >
             <Button
                 type="button"
@@ -1695,7 +1695,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 <div ref={workspaceNavigationRef} className="scroll-mt-36 flex flex-wrap items-center justify-between gap-2">
                     <TabsList
                         aria-label="分析与报告工作区"
-                        className="flex h-auto flex-wrap gap-0.5 rounded-surface border border-border bg-card p-1"
+                        className="flex h-auto flex-wrap gap-1 rounded-control bg-muted p-1"
                         data-testid="student-analysis-workspace-tabs"
                     >
                         <TabsTrigger value="overview" className="min-h-10 px-2.5 text-label" data-testid="student-analysis-workspace-overview">
@@ -1826,34 +1826,34 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         <CardContent className="min-w-0">
                             <Tabs value={chartTab} onValueChange={setChartTab}>
                                 <TabsList
-                                    className="bg-background border border-border p-1 rounded-surface w-full flex h-auto"
+                                    className="flex h-auto w-full gap-1 rounded-control bg-muted p-1"
                                     data-testid="student-analysis-tabs"
                                 >
                                     <TabsTrigger
                                         value="mean"
                                         data-testid="student-analysis-tab-mean"
-                                        className="flex-1 rounded-surface py-2 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground"
+                                        className="flex-1 py-2"
                                     >
                                         均值对比
                                     </TabsTrigger>
                                     <TabsTrigger
                                         value="dist"
                                         data-testid="student-analysis-tab-dist"
-                                        className="flex-1 rounded-surface py-2 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground"
+                                        className="flex-1 py-2"
                                     >
                                         分布对比
                                     </TabsTrigger>
                                     <TabsTrigger
                                         value="error"
                                         data-testid="student-analysis-tab-error"
-                                        className="flex-1 rounded-surface py-2 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground"
+                                        className="flex-1 py-2"
                                     >
                                         设计标准误
                                     </TabsTrigger>
                                     <TabsTrigger
                                         value="represent"
                                         data-testid="student-analysis-tab-represent"
-                                        className="flex-1 rounded-surface py-2 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground"
+                                        className="flex-1 py-2"
                                     >
                                         总体对照偏差
                                     </TabsTrigger>
@@ -1941,7 +1941,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 <TabsContent value="represent" data-testid="student-analysis-representativeness-chart">
                                     {representRadarOption && (
                                         <div
-                                            className="mt-5 rounded-surface border border-border bg-background p-4"
+                                            className="mt-5 rounded-surface border border-border bg-card p-4"
                                             data-testid="student-analysis-represent-radar"
                                         >
                                             <div className="mb-2">
@@ -2047,13 +2047,12 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 </div>
                                 <Button
                                     type="button"
-                                    variant="outline"
+                                    variant="secondary"
                                     size="sm"
                                     onClick={insertBusinessReportOutline}
                                     data-testid="student-report-insert-outline"
-                                    className="border-primary-border bg-primary-muted text-primary hover:bg-primary-muted hover:text-primary"
                                 >
-                                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                                    <FileText className="mr-1.5 h-3.5 w-3.5" />
                                     插入商业决策提纲框架
                                 </Button>
                             </CardHeader>
@@ -2270,11 +2269,11 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                     </DialogHeader>
                     {activeZoom && (
                         activeZoom.rows.length === 0 ? (
-                            <div className="flex h-96 items-center justify-center rounded-surface border border-border bg-background text-label text-muted-foreground">
+                            <div className="flex h-96 items-center justify-center rounded-surface border border-dashed border-border bg-muted text-label text-muted-foreground">
                                 {activeZoom.emptyMessage}
                             </div>
                         ) : (
-                            <div className="rounded-surface border border-border bg-background p-4">
+                            <div className="rounded-surface border border-border bg-card p-4">
                                 <EChartBox
                                     option={activeZoom.option}
                                     height={440}

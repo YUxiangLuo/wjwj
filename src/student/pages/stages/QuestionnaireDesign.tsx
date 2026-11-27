@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, GripVertical, Trash2, Edit2, CheckCircle, AlertCircle, Copy, ArrowUp, ArrowDown, BookOpen, HelpCircle, MessageSquare, List, Play, RotateCcw, Loader2, ArrowRight, ChevronDown, Sparkles, Link2, Clock } from "lucide-react";
+import { Plus, GripVertical, Trash2, Edit2, CheckCircle, AlertCircle, Copy, ArrowUp, ArrowDown, BookOpen, HelpCircle, MessageSquare, List, Play, RotateCcw, Loader2, ArrowRight, ChevronDown, Link2, Clock } from "lucide-react";
 import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
 import { QuestionEditor } from "@/components/questionnaire/QuestionEditor";
@@ -53,11 +53,11 @@ const questionTypeLabels: Record<QuestionType, string> = {
 };
 
 const questionTypeColors: Record<QuestionType, string> = {
-    boolean: "bg-primary-muted text-primary border-primary-border",
-    single: "bg-info-muted text-info border-info-border",
-    multiple: "bg-success-muted text-success border-success-border",
-    scale: "bg-warning-muted text-warning border-warning-border",
-    numeric: "bg-auxiliary-muted text-auxiliary-strong border-auxiliary-border",
+    boolean: "border-border bg-muted text-muted-foreground",
+    single: "border-border bg-muted text-muted-foreground",
+    multiple: "border-border bg-muted text-muted-foreground",
+    scale: "border-border bg-muted text-muted-foreground",
+    numeric: "border-border bg-muted text-muted-foreground",
 };
 
 interface QuestionnaireStepValidation {
@@ -593,7 +593,6 @@ export function QuestionnaireDesign() {
                                         onClick={handleAddQuestion}
                                         disabled={questions.length >= 50}
                                         data-testid="student-questionnaire-add-question"
-                                        className="bg-primary hover:bg-primary-hover text-primary-foreground"
                                     >
                                         <Plus className="w-4 h-4 mr-1" />
                                         添加题目
@@ -601,7 +600,7 @@ export function QuestionnaireDesign() {
                                 </CardHeader>
                                 <CardContent className="space-y-4 pt-6" data-testid="student-questionnaire-list">
                                     {questions.length === 0 ? (
-                                        <div className="text-center py-16 text-muted-foreground bg-background rounded-surface border border-dashed border-border">
+                                        <div className="text-center py-16 text-muted-foreground bg-muted rounded-surface border border-dashed border-border">
                                             <p>暂无题目，请先添加题目</p>
                                         </div>
                                     ) : (
@@ -759,13 +758,13 @@ export function QuestionnaireDesign() {
                                                 <Button
                                                     type="button"
                                                     size="sm"
-                                                    variant="outline"
+                                                    variant="secondary"
                                                     onClick={handleUseAllRecommend}
                                                     disabled={questions.length >= 50 || allRecommendedImported}
                                                     data-testid="student-questionnaire-use-all-recommend"
-                                                    className="w-full border-primary-border bg-primary-muted text-primary hover:bg-primary-muted hover:text-primary"
+                                                    className="w-full"
                                                 >
-                                                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                                                    <Plus className="mr-1.5 h-3.5 w-3.5" />
                                                     {allRecommendedImported ? "全部推荐题已在问卷中" : "一键导入全部推荐题并绑定"}
                                                 </Button>
                                             </div>
@@ -848,8 +847,8 @@ export function QuestionnaireDesign() {
                                         <span className="text-muted-foreground">{endingTextLength}/1000</span>
                                     </div>
                                 </div>
-                                <div className="rounded-surface bg-primary-muted border border-primary-border p-3 text-meta text-primary flex items-start gap-2">
-                                    <HelpCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                                <div className="rounded-surface bg-muted p-3.5 text-meta text-muted-foreground flex items-start gap-2">
+                                    <HelpCircle className="w-4 h-4 shrink-0 mt-0.5 text-muted-foreground" />
                                     可在结束语中说明后续操作或联系方式。
                                 </div>
                             </CardContent>
@@ -859,18 +858,18 @@ export function QuestionnaireDesign() {
 
             case 4:
                 return (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div className="space-y-6">
                         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))] gap-4">
                         <Card className="rounded-surface border-border bg-card overflow-hidden h-fit">
                             {isPreviewValid ? (
                                 <CardContent className="py-5">
                                     <div className="flex flex-wrap items-center justify-between gap-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-surface bg-success-muted border border-success-border flex items-center justify-center shrink-0">
+                                            <div className="w-10 h-10 rounded-surface bg-success-muted flex items-center justify-center shrink-0">
                                                 <CheckCircle className="w-5 h-5 text-success" />
                                             </div>
                                             <div>
-                                                <h3 className="text-body font-semibold text-success">受访者视角试填已完成</h3>
+                                                <h3 className="text-body font-medium text-foreground">受访者视角试填已完成</h3>
                                                 <p className="text-label text-muted-foreground">已完成交互自检；这不代表已验证题意、信度或效度。正式认知预试还需邀请目标人群代表，记录理解偏差与修订依据。</p>
                                             </div>
                                         </div>
@@ -879,7 +878,7 @@ export function QuestionnaireDesign() {
                                             variant="outline"
                                             onClick={() => setPreviewOpen(true)}
                                             data-testid="student-questionnaire-redo-preview"
-                                            className="border-input text-foreground hover:bg-muted hover:text-foreground shrink-0"
+                                            className="shrink-0"
                                         >
                                             <RotateCcw className="w-4 h-4 mr-2" />
                                             重新预试
@@ -890,11 +889,11 @@ export function QuestionnaireDesign() {
                                 <div>
                                     <div className="border-b border-border px-6 py-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-surface bg-primary-muted flex items-center justify-center">
+                                            <div className="w-10 h-10 rounded-surface bg-muted flex items-center justify-center">
                                                 <Play className="w-5 h-5 text-primary" />
                                             </div>
                                             <div>
-                                                <h3 className="text-subheading font-semibold text-foreground">受访者视角试填</h3>
+                                                <h3 className="text-subheading font-medium text-foreground">受访者视角试填</h3>
                                                 <p className="text-meta text-muted-foreground mt-0.5">以受访者身份完整填写一次问卷</p>
                                             </div>
                                         </div>
@@ -910,7 +909,7 @@ export function QuestionnaireDesign() {
                                                 disabled={!basicValidationPassed}
                                                 size="lg"
                                                 data-testid="student-questionnaire-start-preview"
-                                                className="bg-primary px-8 text-primary-foreground hover:bg-primary-hover"
+                                                className="px-8"
                                             >
                                                 <Play className="w-5 h-5 mr-2" />
                                                 开始受访者视角试填
@@ -934,125 +933,127 @@ export function QuestionnaireDesign() {
                                 <CardTitle className="text-label text-foreground">校验清单</CardTitle>
                                 <CardDescription className="text-muted-foreground">完成以下项目后可进入下一阶段</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-1.5">
-                                <div className={`flex items-center justify-between gap-2.5 px-3 py-2 rounded-surface border ${validation.title ? "bg-success-muted border-success-border" : "bg-destructive-muted border-destructive-border"}`}>
-                                    <div className="flex items-center gap-2.5">
-                                        {validation.title ? (
-                                            <CheckCircle className="w-4 h-4 text-success shrink-0" />
-                                        ) : (
-                                            <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
-                                        )}
-                                        <span className={`text-label ${validation.title ? "text-success" : "text-destructive"}`}>
-                                            问卷标题：{title ? "已填写" : "未填写"}
-                                        </span>
-                                    </div>
-                                    {!validation.title && (
-                                        <Button type="button" size="sm" variant="outline" onClick={() => setStep(1)} className="h-7 shrink-0 bg-card px-2 text-meta">
-                                            去填写
-                                        </Button>
-                                    )}
-                                </div>
-                                <div className={`flex items-center justify-between gap-2.5 px-3 py-2 rounded-surface border ${validation.welcomeText ? "bg-success-muted border-success-border" : "bg-destructive-muted border-destructive-border"}`}>
-                                    <div className="flex items-center gap-2.5">
-                                        {validation.welcomeText ? (
-                                            <CheckCircle className="w-4 h-4 text-success shrink-0" />
-                                        ) : (
-                                            <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
-                                        )}
-                                        <span className={`text-label ${validation.welcomeText ? "text-success" : "text-destructive"}`}>
-                                            欢迎语：{welcomeTextLength} 字 {validation.welcomeText ? "" : "(20-1000字)"}
-                                        </span>
-                                    </div>
-                                    {!validation.welcomeText && (
-                                        <Button type="button" size="sm" variant="outline" onClick={() => setStep(1)} className="h-7 shrink-0 bg-card px-2 text-meta">
-                                            去填写
-                                        </Button>
-                                    )}
-                                </div>
-                                <div className={`flex items-center justify-between gap-2.5 px-3 py-2 rounded-surface border ${validation.questionCount ? "bg-success-muted border-success-border" : "bg-destructive-muted border-destructive-border"}`}>
-                                    <div className="flex items-center gap-2.5">
-                                        {validation.questionCount ? (
-                                            <CheckCircle className="w-4 h-4 text-success shrink-0" />
-                                        ) : (
-                                            <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
-                                        )}
-                                        <span className={`text-label ${validation.questionCount ? "text-success" : "text-destructive"}`}>
-                                            题目数量：{questions.length} 道 {validation.questionCount ? "" : "(本实验要求5-50道)"}
-                                        </span>
-                                    </div>
-                                    {!validation.questionCount && (
-                                        <Button type="button" size="sm" variant="outline" onClick={() => setStep(2)} className="h-7 shrink-0 bg-card px-2 text-meta">
-                                            去补齐
-                                        </Button>
-                                    )}
-                                </div>
-                                <div className={`flex items-center justify-between gap-2.5 px-3 py-2 rounded-surface border ${validation.optionCount ? "bg-success-muted border-success-border" : "bg-destructive-muted border-destructive-border"}`}>
-                                    <div className="flex items-center gap-2.5">
-                                        {validation.optionCount ? (
-                                            <CheckCircle className="w-4 h-4 text-success shrink-0" />
-                                        ) : (
-                                            <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
-                                        )}
-                                        <span className={`text-label ${validation.optionCount ? "text-success" : "text-destructive"}`}>
-                                            选项配置：{validation.optionCount ? "配置有效" : `Q${invalidOptionQuestions.slice(0, 5).join("、")} 需检查`}
-                                        </span>
-                                    </div>
-                                    {!validation.optionCount && (
-                                        <Button type="button" size="sm" variant="outline" onClick={() => setStep(2)} className="h-7 shrink-0 bg-card px-2 text-meta">
-                                            去修正
-                                        </Button>
-                                    )}
-                                </div>
-                                <div className={`flex items-center justify-between gap-2.5 px-3 py-2 rounded-surface border ${validation.endingText ? "bg-success-muted border-success-border" : "bg-destructive-muted border-destructive-border"}`}>
-                                    <div className="flex items-center gap-2.5">
-                                        {validation.endingText ? (
-                                            <CheckCircle className="w-4 h-4 text-success shrink-0" />
-                                        ) : (
-                                            <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
-                                        )}
-                                        <span className={`text-label ${validation.endingText ? "text-success" : "text-destructive"}`}>
-                                            结束语：{endingTextLength} 字 {validation.endingText ? "" : "(20-1000字)"}
-                                        </span>
-                                    </div>
-                                    {!validation.endingText && (
-                                        <Button type="button" size="sm" variant="outline" onClick={() => setStep(3)} className="h-7 shrink-0 bg-card px-2 text-meta">
-                                            去填写
-                                        </Button>
-                                    )}
-                                </div>
-                                {requiresTargetBinding && (
-                                    <div className={`flex items-center justify-between gap-2.5 px-3 py-2 rounded-surface border ${targetBindingPassed ? "bg-success-muted border-success-border" : "bg-destructive-muted border-destructive-border"}`}>
+                            <CardContent className="space-y-3">
+                                <div className="divide-y divide-border rounded-surface bg-muted px-3.5">
+                                    <div className="flex items-center justify-between gap-2.5 py-2.5">
                                         <div className="flex items-center gap-2.5">
-                                            {targetBindingPassed ? (
+                                            {validation.title ? (
                                                 <CheckCircle className="w-4 h-4 text-success shrink-0" />
                                             ) : (
                                                 <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
                                             )}
-                                            <span className={`text-label ${targetBindingPassed ? "text-success" : "text-destructive"}`}>
-                                                核心指标绑定（{primaryTargetField}）：{targetBindingPassed ? `已关联 Q${(burdenProfile.primaryTargetQuestionIndex ?? 0) + 1}` : "尚未绑定对应测量题"}
+                                            <span className={`text-label ${validation.title ? "text-foreground" : "text-destructive"}`}>
+                                                问卷标题：{title ? "已填写" : "未填写"}
                                             </span>
                                         </div>
-                                        {!targetBindingPassed && (
-                                            <div className="flex shrink-0 items-center gap-1.5">
-                                                <Button type="button" size="sm" variant="outline" onClick={handleAutoBindVariables} className="h-7 px-2 text-meta">
-                                                    智能绑定
-                                                </Button>
-                                                <Button type="button" size="sm" variant="ghost" onClick={() => setStep(2)} className="h-7 px-2 text-meta">
-                                                    去题目列表
-                                                </Button>
-                                            </div>
+                                        {!validation.title && (
+                                            <Button type="button" size="sm" variant="outline" onClick={() => setStep(1)} className="h-7 shrink-0 bg-card px-2 text-meta">
+                                                去填写
+                                            </Button>
                                         )}
                                     </div>
-                                )}
-                                <div className={`flex items-center gap-2.5 px-3 py-2 rounded-surface border ${validation.previewCompleted ? "bg-success-muted border-success-border" : "bg-destructive-muted border-destructive-border"}`}>
-                                    {validation.previewCompleted ? (
-                                        <CheckCircle className="w-4 h-4 text-success shrink-0" />
-                                    ) : (
-                                        <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                                    <div className="flex items-center justify-between gap-2.5 py-2.5">
+                                        <div className="flex items-center gap-2.5">
+                                            {validation.welcomeText ? (
+                                                <CheckCircle className="w-4 h-4 text-success shrink-0" />
+                                            ) : (
+                                                <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                                            )}
+                                            <span className={`text-label ${validation.welcomeText ? "text-foreground" : "text-destructive"}`}>
+                                                欢迎语：{welcomeTextLength} 字 {validation.welcomeText ? "" : "(20-1000字)"}
+                                            </span>
+                                        </div>
+                                        {!validation.welcomeText && (
+                                            <Button type="button" size="sm" variant="outline" onClick={() => setStep(1)} className="h-7 shrink-0 bg-card px-2 text-meta">
+                                                去填写
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center justify-between gap-2.5 py-2.5">
+                                        <div className="flex items-center gap-2.5">
+                                            {validation.questionCount ? (
+                                                <CheckCircle className="w-4 h-4 text-success shrink-0" />
+                                            ) : (
+                                                <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                                            )}
+                                            <span className={`text-label ${validation.questionCount ? "text-foreground" : "text-destructive"}`}>
+                                                题目数量：{questions.length} 道 {validation.questionCount ? "" : "(本实验要求5-50道)"}
+                                            </span>
+                                        </div>
+                                        {!validation.questionCount && (
+                                            <Button type="button" size="sm" variant="outline" onClick={() => setStep(2)} className="h-7 shrink-0 bg-card px-2 text-meta">
+                                                去补齐
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center justify-between gap-2.5 py-2.5">
+                                        <div className="flex items-center gap-2.5">
+                                            {validation.optionCount ? (
+                                                <CheckCircle className="w-4 h-4 text-success shrink-0" />
+                                            ) : (
+                                                <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                                            )}
+                                            <span className={`text-label ${validation.optionCount ? "text-foreground" : "text-destructive"}`}>
+                                                选项配置：{validation.optionCount ? "配置有效" : `Q${invalidOptionQuestions.slice(0, 5).join("、")} 需检查`}
+                                            </span>
+                                        </div>
+                                        {!validation.optionCount && (
+                                            <Button type="button" size="sm" variant="outline" onClick={() => setStep(2)} className="h-7 shrink-0 bg-card px-2 text-meta">
+                                                去修正
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center justify-between gap-2.5 py-2.5">
+                                        <div className="flex items-center gap-2.5">
+                                            {validation.endingText ? (
+                                                <CheckCircle className="w-4 h-4 text-success shrink-0" />
+                                            ) : (
+                                                <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                                            )}
+                                            <span className={`text-label ${validation.endingText ? "text-foreground" : "text-destructive"}`}>
+                                                结束语：{endingTextLength} 字 {validation.endingText ? "" : "(20-1000字)"}
+                                            </span>
+                                        </div>
+                                        {!validation.endingText && (
+                                            <Button type="button" size="sm" variant="outline" onClick={() => setStep(3)} className="h-7 shrink-0 bg-card px-2 text-meta">
+                                                去填写
+                                            </Button>
+                                        )}
+                                    </div>
+                                    {requiresTargetBinding && (
+                                        <div className="flex items-center justify-between gap-2.5 py-2.5">
+                                            <div className="flex items-center gap-2.5">
+                                                {targetBindingPassed ? (
+                                                    <CheckCircle className="w-4 h-4 text-success shrink-0" />
+                                                ) : (
+                                                    <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                                                )}
+                                                <span className={`text-label ${targetBindingPassed ? "text-foreground" : "text-destructive"}`}>
+                                                    核心指标绑定（{primaryTargetField}）：{targetBindingPassed ? `已关联 Q${(burdenProfile.primaryTargetQuestionIndex ?? 0) + 1}` : "尚未绑定对应测量题"}
+                                                </span>
+                                            </div>
+                                            {!targetBindingPassed && (
+                                                <div className="flex shrink-0 items-center gap-1.5">
+                                                    <Button type="button" size="sm" variant="outline" onClick={handleAutoBindVariables} className="h-7 bg-card px-2 text-meta">
+                                                        智能绑定
+                                                    </Button>
+                                                    <Button type="button" size="sm" variant="ghost" onClick={() => setStep(2)} className="h-7 px-2 text-meta">
+                                                        去题目列表
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
                                     )}
-                                    <span className={`text-label ${validation.previewCompleted ? "text-success" : "text-destructive"}`}>
-                                        受访者视角试填：{validation.previewCompleted ? "已完成" : "未完成（必须以受访者身份完整填写一次；答案不进入估计）"}
-                                    </span>
+                                    <div className="flex items-center gap-2.5 py-2.5">
+                                        {validation.previewCompleted ? (
+                                            <CheckCircle className="w-4 h-4 text-success shrink-0" />
+                                        ) : (
+                                            <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                                        )}
+                                        <span className={`text-label ${validation.previewCompleted ? "text-foreground" : "text-destructive"}`}>
+                                            受访者视角试填：{validation.previewCompleted ? "已完成" : "未完成（必须以受访者身份完整填写一次；答案不进入估计）"}
+                                        </span>
+                                    </div>
                                 </div>
                                 {requiredMissingCount === 0 ? (
                                     <div className="rounded-surface border border-success-border bg-success-muted px-3 py-2 text-label text-success">
@@ -1128,7 +1129,7 @@ export function QuestionnaireDesign() {
                         const isCompleted = canAdvanceQuestionnaireStep(s.num as 1 | 2 | 3 | 4, validation);
                         return <button key={s.num} type="button" onClick={() => setStep(s.num as 1 | 2 | 3 | 4)}
                             data-testid={`student-questionnaire-step-${s.num}`} aria-current={isCurrent ? "step" : undefined} aria-label={`第 ${s.num} 步: ${s.title}`}
-                            className={`flex min-h-11 items-center gap-2 rounded-control border px-3 text-label font-medium ${isCurrent ? "border-primary-border bg-primary-muted text-primary" : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
+                            className={`flex min-h-10 items-center gap-2 rounded-pill border px-4 text-label font-medium ${isCurrent ? "border-transparent bg-accent text-accent-foreground" : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
                             {isCompleted ? <CheckCircle className="h-4 w-4 text-success"/> : <span className="tabular-nums">{s.num}</span>}{s.title}
                         </button>;
                     })}
@@ -1143,16 +1144,16 @@ export function QuestionnaireDesign() {
             >
                 <div className="flex flex-wrap items-center gap-4 text-meta">
                     <span className="inline-flex items-center gap-1.5 text-foreground">
-                        <Clock className="h-4 w-4 text-primary" />
-                        预估填答耗时：<strong className="tabular-nums">{burdenProfile.estimatedDurationSec} 秒</strong>
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        预估填答耗时：<strong className="font-medium tabular-nums">{burdenProfile.estimatedDurationSec} 秒</strong>
                         <span className={burdenProfile.burdenLevel === "high" ? "text-warning font-medium" : "text-success"}>
                             （{burdenProfile.burdenLevel === "low" ? "轻量化易回收" : burdenProfile.burdenLevel === "moderate" ? "时长适中" : "题量偏重，易触发中途弃答"}）
                         </span>
                     </span>
                     {dictionary && (
                         <span className="inline-flex items-center gap-1.5 text-foreground">
-                            <Link2 className="h-4 w-4 text-info" />
-                            数据字典测量绑定：<strong className="tabular-nums">{burdenProfile.boundFields.length} / {dictionary.variables.filter((v) => v.kind !== "identifier").length}</strong> 个指标
+                            <Link2 className="h-4 w-4 text-muted-foreground" />
+                            数据字典测量绑定：<strong className="font-medium tabular-nums">{burdenProfile.boundFields.length} / {dictionary.variables.filter((v) => v.kind !== "identifier").length}</strong> 个指标
                             {primaryTargetField && (
                                 <span className={burdenProfile.primaryTargetBound ? "text-success font-medium" : "text-destructive font-medium"}>
                                     · 主指标「{primaryTargetField}」{burdenProfile.primaryTargetBound ? "已绑定" : "待绑定"}
@@ -1165,23 +1166,22 @@ export function QuestionnaireDesign() {
                     <Button
                         type="button"
                         size="sm"
-                        variant="outline"
+                        variant="secondary"
                         onClick={handleAutoBindVariables}
                         data-testid="student-questionnaire-auto-bind"
-                        className="border-primary-border bg-primary-muted text-primary hover:bg-primary-muted hover:text-primary"
                     >
-                        <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                        <Link2 className="mr-1.5 h-3.5 w-3.5" />
                         一键智能绑定变量
                     </Button>
                 )}
             </div>
 
             {templateHintOpen && (
-                <div role="status" className="flex flex-wrap items-start justify-between gap-3 rounded-surface border border-info-border bg-info-muted p-3 text-label text-info" data-testid="student-questionnaire-template-hint">
+                <div role="status" className="flex flex-wrap items-start justify-between gap-3 rounded-surface bg-muted p-3.5 text-label text-foreground" data-testid="student-questionnaire-template-hint">
                     <p>{templateResearchQuestion
                         ? `已套用通用骨架。「目标行为」「类别一」等是占位措辞，请改成研究目标中的具体对象：${templateResearchQuestion}`
                         : "已套用通用骨架。「目标行为」「类别一」等是占位措辞，请对照页面上方的研究目标修改。"}</p>
-                    <Button type="button" variant="ghost" size="sm" className="shrink-0 text-info hover:bg-info-muted hover:text-info" onClick={() => setTemplateHintOpen(false)}>知道了</Button>
+                    <Button type="button" variant="ghost" size="sm" className="shrink-0" onClick={() => setTemplateHintOpen(false)}>知道了</Button>
                 </div>
             )}
 

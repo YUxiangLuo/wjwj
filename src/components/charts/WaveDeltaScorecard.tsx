@@ -317,25 +317,25 @@ export function WaveDeltaScorecard({
     }, [dimensionMeta, firstSeriesName, finalSeriesName]);
 
     return (
-        <div className="rounded-surface border border-primary-border bg-primary-muted p-5" data-testid="wave-delta-scorecard">
+        <div className="rounded-surface border border-border bg-card p-5" data-testid="wave-delta-scorecard">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
                     <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" />
-                    <h3 className="text-subheading font-bold text-foreground">
+                    <h3 className="text-subheading font-medium text-foreground">
                         多轮调研调优演进对比（Wave {firstWave.waveNumber} 试投 → Wave {finalWave.waveNumber} 正式投放）
                     </h3>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 text-meta font-medium text-primary">
+                <div className="flex flex-wrap items-center gap-2 rounded-pill bg-muted px-3 py-1 text-meta font-medium text-foreground">
                     <span>{firstWave.methodLabel}</span>
-                    <ArrowRight className="h-4 w-4 shrink-0" />
+                    <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <span>{finalWave.methodLabel}</span>
                 </div>
             </div>
 
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10.5rem),1fr))] gap-3">
-                <div className="min-w-0 rounded-control border border-border bg-card p-3.5">
+                <div className="min-w-0 rounded-surface bg-muted p-3.5">
                     <p className="text-meta text-muted-foreground">质检后有效样本量</p>
-                    <p className="mt-1.5 break-words text-section-title font-bold tabular-nums text-foreground">
+                    <p className="mt-1.5 break-words text-section-title font-medium tabular-nums text-foreground">
                         {firstValid} <span className="text-meta font-normal text-muted-foreground">→</span> {finalValid} 份
                     </p>
                     <p className="mt-1 text-meta tabular-nums text-muted-foreground">
@@ -343,10 +343,10 @@ export function WaveDeltaScorecard({
                     </p>
                 </div>
 
-                <div className="min-w-0 rounded-control border border-border bg-card p-3.5">
+                <div className="min-w-0 rounded-surface bg-muted p-3.5">
                     <p className="text-meta text-muted-foreground">有效答卷转化率</p>
                     <div className="mt-1.5 flex flex-wrap items-baseline gap-2 tabular-nums">
-                        <span className="text-section-title font-bold text-foreground">{formatStatistic(finalRate, 1)}%</span>
+                        <span className="text-section-title font-medium text-foreground">{formatStatistic(finalRate, 1)}%</span>
                         <StatusBadge intent={rateDelta >= 0 ? "success" : "warning"}>
                             {rateDelta >= 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
                             {rateDelta >= 0 ? "+" : ""}{formatStatistic(rateDelta, 1)} pp
@@ -355,10 +355,10 @@ export function WaveDeltaScorecard({
                     <p className="mt-1 text-meta tabular-nums text-muted-foreground">首轮 {formatStatistic(firstRate, 1)}%</p>
                 </div>
 
-                <div className="min-w-0 rounded-control border border-border bg-card p-3.5">
+                <div className="min-w-0 rounded-surface bg-muted p-3.5">
                     <p className="text-meta text-muted-foreground">最大客群结构偏差</p>
                     <div className="mt-1.5 flex flex-wrap items-baseline gap-2 tabular-nums">
-                        <span className="text-section-title font-bold text-foreground">
+                        <span className="text-section-title font-medium text-foreground">
                             {finalBias !== null ? `${formatStatistic(finalBias, 1)} pp` : "—"}
                         </span>
                         {biasDelta !== null && (
@@ -372,10 +372,10 @@ export function WaveDeltaScorecard({
                     </p>
                 </div>
 
-                <div className="min-w-0 rounded-control border border-border bg-card p-3.5">
+                <div className="min-w-0 rounded-surface bg-muted p-3.5">
                     <p className="text-meta text-muted-foreground">主指标估计标准误 SE</p>
                     <div className="mt-1.5 flex flex-wrap items-baseline gap-2 tabular-nums">
-                        <span className="break-words text-section-title font-bold text-foreground">
+                        <span className="break-words text-section-title font-medium text-foreground">
                             {finalSe !== null ? formatSeWithUnit(finalSe, finalWave.unitLabel) : "—"}
                         </span>
                         {seDeltaPct !== null && (
@@ -390,7 +390,7 @@ export function WaveDeltaScorecard({
                 </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,16.5rem),1fr))] items-center gap-3.5 rounded-surface border border-border bg-card p-4">
+            <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,16.5rem),1fr))] items-center gap-4 border-t border-border pt-4">
                 <div className="min-w-0">
                     <p className="mb-1 text-meta font-medium text-muted-foreground">四维调研质量跃升雷达（0–100 标准化指数）</p>
                     <EChartBox

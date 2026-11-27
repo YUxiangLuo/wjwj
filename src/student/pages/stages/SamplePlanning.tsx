@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ClipboardList, Sparkles, ChevronLeft, ChevronRight, Info, Loader2 } from "lucide-react";
+import { ClipboardList, Calculator, ChevronLeft, ChevronRight, Info, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useExperiment } from "../ExperimentLayout";
 import { experimentApi } from "../../api-client";
@@ -263,8 +263,8 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                 />
             )}
 
-            <div className="flex items-start gap-2 rounded-surface border border-info-border bg-info-muted p-3 text-meta leading-relaxed text-info" data-testid="student-sample-plan-scope-notice">
-                <Info className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="flex items-start gap-2 rounded-surface bg-muted p-3.5 text-meta leading-relaxed text-muted-foreground" data-testid="student-sample-plan-scope-notice">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 <span>
                     本实验使用完整虚拟总体。样本量、设计效应和无回答率计算基于当前目标与假设，属于规划近似，不能替代预调查、抽样框评估和专业统计设计；现实调查通常无法得知未入样单位的真值。
                 </span>
@@ -273,13 +273,13 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             {/* Population info */}
             <dl className="flex items-baseline gap-3 border-b border-border pb-4">
                 <dt className="text-label text-muted-foreground">总体规模 (N)</dt>
-                <dd className="text-label font-semibold tabular-nums">{N.toLocaleString()} <span className="font-normal text-muted-foreground">个总体单位</span></dd>
+                <dd className="text-label font-medium tabular-nums">{N.toLocaleString()} <span className="font-normal text-muted-foreground">个总体单位</span></dd>
             </dl>
 
             {displayData ? (
                 <>
                     {/* Parameter summary (read-only) */}
-                    <Card className="gap-2 py-4 rounded-surface border-border bg-card ">
+                    <Card className="gap-2 py-4 rounded-surface border-border bg-card">
                         <CardHeader className="border-b border-border px-4 pb-3 pt-0 [.border-b]:pb-3">
                             <CardTitle className="flex items-center gap-2 text-section-title text-foreground">
                                 <ClipboardList className="w-4 h-4 shrink-0 text-muted-foreground" />
@@ -308,12 +308,12 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                             </div>
                             <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4">
                                 <div>
-                                    <p className="text-meta font-medium uppercase tracking-wide text-muted-foreground">建议样本量</p>
-                                    <p className="text-body font-semibold tabular-nums text-foreground">{displayData.recommendedSize.toLocaleString()}</p>
+                                    <p className="text-meta text-muted-foreground">建议样本量</p>
+                                    <p className="text-body font-medium tabular-nums text-foreground">{displayData.recommendedSize.toLocaleString()}</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-meta font-medium uppercase tracking-wide text-muted-foreground">最终设定</p>
-                                    <p className="text-subheading font-bold font-mono tabular-nums text-primary">{displayData.finalSampleSize.toLocaleString()}</p>
+                                    <p className="text-meta text-muted-foreground">最终设定</p>
+                                    <p className="text-subheading font-medium font-mono tabular-nums text-primary">{displayData.finalSampleSize.toLocaleString()}</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -324,12 +324,11 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                         <Button
                             ref={planningTriggerRef}
                             type="button"
-                            variant="outline"
+                            variant="secondary"
                             onClick={() => setImmersiveOpen(true)}
                             disabled={!targetVarianceReady || confirmNextSaving}
-                            className="border-primary text-primary hover:bg-primary-muted"
                         >
-                            <Sparkles className="w-4 h-4 mr-1.5" />
+                            <Calculator className="w-4 h-4 mr-1.5" />
                             {wizardDraft ? "继续规划样本量" : "重新规划样本量"}
                         </Button>
                     </div>
@@ -346,7 +345,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                 <Card className="gap-2 py-8 rounded-surface border-border bg-card">
                     <CardContent className="flex flex-col items-center text-center space-y-4 px-6">
                         <div className="space-y-1">
-                            <h3 className="text-section-title font-semibold text-foreground">{wizardDraft ? "继续样本量规划" : "开始样本量规划"}</h3>
+                            <h3 className="text-section-title font-medium text-foreground">{wizardDraft ? "继续样本量规划" : "开始样本量规划"}</h3>
                             <p className="text-label text-muted-foreground max-w-sm">
                                 调整参数并查看预期精度，确认后保存。计算原理可按需展开。
                             </p>
@@ -357,10 +356,10 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                             onClick={() => setImmersiveOpen(true)}
                             disabled={!targetVarianceReady}
                             data-testid="student-sample-plan-start"
-                            className="bg-primary hover:bg-primary-hover text-primary-foreground px-8 "
+                            className="px-8"
                         >
                             {targetVarianceReady ? (
-                                <Sparkles className="w-4 h-4 mr-1.5" />
+                                <Calculator className="w-4 h-4 mr-1.5" />
                             ) : (
                                 <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
                             )}
@@ -377,7 +376,6 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                     onClick={onPrev}
                     disabled={confirmNextSaving}
                     data-testid="student-sample-plan-prev"
-                    className="border-input bg-muted text-foreground hover:bg-muted hover:text-foreground"
                 >
                     <ChevronLeft className="w-4 h-4 mr-1" />
                     上一阶段
@@ -388,7 +386,6 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                         onClick={handleConfirmNext}
                         disabled={!targetVarianceReady || !isValidFinalSize || confirmNextSaving || refreshRequired}
                         data-testid="student-sample-plan-next"
-                        className="bg-primary text-primary-foreground hover:bg-primary-hover disabled:border-border disabled:bg-muted disabled:text-muted-foreground"
                     >
                         {confirmNextSaving ? (
                             <><Loader2 className="w-4 h-4 mr-2 animate-spin" />保存中…</>
