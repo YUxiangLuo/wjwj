@@ -256,33 +256,33 @@ function ExperimentWorkspace() {
             completeStage,
         }}>
             <div className="pb-6" data-testid="student-experiment-layout">
-                <div className="sticky top-16 z-40 -mt-2 border-b border-border bg-background" data-testid="student-experiment-navigation">
-                    <div className="space-y-1.5 py-2">
+                <div className="sticky top-16 z-40 -mt-4 border-b border-border bg-background" data-testid="student-experiment-navigation">
+                    <div className="space-y-1 py-1.5">
                         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
                             <div className="flex min-w-0 flex-1 items-center gap-2">
-                                <Button asChild variant="ghost" size="sm" className="h-7 gap-1.5 px-2 shrink-0">
+                                <Button asChild variant="ghost" size="sm" className="h-7 shrink-0 gap-1.5 px-2">
                                     <Link to={`/task/${numericTaskId}`}>
                                         <ArrowLeft className="h-4 w-4" />
                                         课题书
                                     </Link>
                                 </Button>
-                                <h1 tabIndex={-1} title={taskName} className="min-w-0 truncate text-label font-semibold text-foreground outline-none">
+                                <h1 tabIndex={-1} title={taskName} className="min-w-0 truncate text-label font-medium text-foreground outline-none">
                                     {taskName}
                                 </h1>
-                                <StatusBadge intent={experiment.activeWaveNumber && experiment.activeWaveNumber >= 2 ? "primary" : "info"} className="shrink-0">
-                                    <Layers className="h-3 w-3" />
+                                <StatusBadge intent="neutral" className="shrink-0">
+                                    <Layers className="h-3 w-3" aria-hidden="true" />
                                     {waveBadgeLabel}
                                 </StatusBadge>
                             </div>
                             {deadlineInfo && (
-                                <span className={`flex shrink-0 items-center gap-1 text-meta tabular-nums ${deadlineInfo.urgent ? "text-destructive" : "text-muted-foreground"}`}>
-                                    {deadlineInfo.urgent ? <AlertCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
+                                <span className={`flex shrink-0 items-center gap-1 text-meta tabular-nums ${deadlineInfo.urgent ? "font-medium text-destructive" : "text-muted-foreground"}`}>
+                                    {deadlineInfo.urgent ? <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" /> : <Clock className="h-3.5 w-3.5" aria-hidden="true" />}
                                     {deadlineInfo.text}
                                 </span>
                             )}
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-1.5" data-testid="student-experiment-stages">
+                        <div className="flex flex-wrap items-center gap-1" data-testid="student-experiment-stages">
                             {stages.map((stage, index) => {
                                 const number = index + 1;
                                 const isCurrent = number === currentStage;
@@ -295,23 +295,27 @@ function ExperimentWorkspace() {
                                         ? `点击查看「${stage.name}」快照或重新编辑`
                                         : `需先完成「${stages[currentStage - 1]!.name}」后按顺序解锁`;
                                 return (
-                                    <span key={stage.name} className="flex items-center gap-1.5" title={tooltip}>
-                                        {index > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+                                    <span key={stage.name} className="flex items-center gap-1" title={tooltip}>
+                                        {index > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground" aria-hidden="true" />}
                                         <button
                                             type="button"
                                             aria-current={isCurrent ? "step" : undefined}
                                             aria-label={`${isCurrent ? "当前阶段" : canInspect ? "查看已完成阶段" : "未完成阶段"} ${number}：${stage.name}`}
                                             disabled={!canInspect}
                                             onClick={() => setInspectStage(number)}
-                                            className={`flex items-center gap-1.5 whitespace-nowrap rounded-control px-2.5 py-1 text-meta font-medium ${
+                                            className={`flex items-center gap-1.5 whitespace-nowrap rounded-pill px-2.5 py-0.5 text-meta font-medium outline-none transition-none focus-visible:ring-2 focus-visible:ring-ring ${
                                                 isCurrent
-                                                    ? "border border-primary-border bg-primary-muted font-semibold text-primary"
+                                                    ? "bg-accent text-accent-foreground"
                                                     : canInspect
-                                                        ? "border border-success-border bg-success-muted text-success hover:bg-card"
-                                                        : "text-muted-foreground"
+                                                        ? "bg-muted text-foreground hover:bg-secondary"
+                                                        : "bg-transparent text-muted-foreground"
                                             }`}
                                         >
-                                            {canInspect ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
+                                            {canInspect ? (
+                                                <CheckCircle2 className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                                            ) : (
+                                                <Icon className={`h-3.5 w-3.5 ${isCurrent ? "text-primary" : ""}`} aria-hidden="true" />
+                                            )}
                                             <span>{stage.name}</span>
                                         </button>
                                     </span>
@@ -321,7 +325,7 @@ function ExperimentWorkspace() {
                     </div>
 
                     {saveError && (
-                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-surface border border-destructive-border bg-destructive-muted px-3 py-2 text-label text-destructive">
+                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-control border border-destructive-border bg-destructive-muted px-3 py-1.5 text-meta text-destructive">
                             <span>{saveError.message}</span>
                             {saveError.refresh && (
                                 <Button
@@ -330,9 +334,9 @@ function ExperimentWorkspace() {
                                     variant="outline"
                                     data-testid="student-refresh-experiment"
                                     onClick={reloadPage}
-                                    className="border-destructive-border bg-background text-destructive hover:bg-destructive-muted hover:text-destructive"
+                                    className="h-7 border-destructive-border bg-card px-2.5 text-meta text-destructive hover:bg-destructive-muted hover:text-destructive"
                                 >
-                                    <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                                    <RefreshCw className="h-3.5 w-3.5" />
                                     刷新页面
                                 </Button>
                             )}
@@ -341,25 +345,25 @@ function ExperimentWorkspace() {
                 </div>
 
                 <PageHeader border={false} className="my-4 flex-wrap items-baseline">
-                    <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-2">
-                        <h2 className="text-page-title font-bold text-foreground">{stages[currentStage - 1]!.name}</h2>
+                    <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1.5">
+                        <h2 className="text-page-title font-medium text-foreground">{stages[currentStage - 1]!.name}</h2>
                         <p className="text-label text-muted-foreground">{stages[currentStage - 1]!.description}。</p>
                     </div>
-                    <span className="shrink-0 rounded-control border border-border bg-card px-2.5 py-1 text-meta font-medium tabular-nums text-muted-foreground">
+                    <span className="shrink-0 rounded-pill bg-muted px-3 py-1 text-meta font-medium tabular-nums text-muted-foreground">
                         阶段 {currentStage} / 5
                     </span>
                 </PageHeader>
 
-                <details className="mb-5 rounded-surface border border-border bg-card px-4 py-3" data-testid="student-study-context">
+                <details className="mb-4 rounded-surface border border-border bg-muted px-4 py-2.5" data-testid="student-study-context">
                     <summary className="cursor-pointer text-label font-medium text-foreground">
                         商业研究立项书：{experiment.studyContract?.contract.businessDecision ?? experiment.studyContract?.contract.researchQuestion ?? "查看本次实验的研究目标与约定"}
                     </summary>
-                    <p className="mt-3 text-label leading-relaxed text-muted-foreground" data-testid="student-analysis-target-summary">
+                    <p className="mt-2.5 text-label leading-relaxed text-muted-foreground" data-testid="student-analysis-target-summary">
                         {formatStudyContractSummary(experiment.studyContract ?? null, experiment.samplePlan
                             ? { marginLabel: formatMarginOfError(experiment.samplePlan.marginOfError, experiment.studyContract?.contract.target.kind ?? experiment.samplePlan.estimationType) }
                             : undefined)}
                     </p>
-                    <p className="mt-2 text-meta leading-relaxed text-muted-foreground">
+                    <p className="mt-1.5 text-meta leading-relaxed text-muted-foreground">
                         编辑草稿保存在当前浏览器（保留 7 天）；抽样抽取、虚拟问卷发放与质检规则变更立即持久化至服务端，确保首轮试投至正式投放的多波次演进轨迹完整可追溯。
                     </p>
                 </details>
@@ -367,22 +371,22 @@ function ExperimentWorkspace() {
                 {experiment.status === "rejected" && experiment.rejectReason?.trim() && (
                     <div
                         role="alert"
-                        className="mb-6 flex flex-wrap items-start justify-between gap-4 rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3 text-destructive"
+                        className="mb-5 flex flex-wrap items-start justify-between gap-4 rounded-surface border border-destructive-border bg-destructive-muted px-4 py-3 text-destructive"
                         data-testid="student-experiment-rejection-notice"
                     >
-                        <div className="flex min-w-0 flex-1 items-start gap-3">
-                            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                            <div className="min-w-0 space-y-1.5">
-                                <p className="text-label font-semibold">本次提交已被驳回，请按教师意见重新调整后提交</p>
+                        <div className="flex min-w-0 flex-1 items-start gap-2.5">
+                            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                            <div className="min-w-0 space-y-1">
+                                <p className="text-label font-medium">本次提交已被驳回，请按教师意见重新调整后提交</p>
                                 <p className="whitespace-pre-line text-label leading-relaxed">{experiment.rejectReason}</p>
                                 <p className="text-meta text-muted-foreground">
                                     操作说明：{currentStage === 5
-                                        ? "若仅需修订报告内容，请切换到下方「商业决策报告」页签修改并点击右下角预览提交；若需调整问卷、样本量或抽样方案，请点击上方绿色已完成阶段标签选择「重新编辑此阶段」。"
+                                        ? "若仅需修订报告内容，请切换到下方「商业决策报告」页签修改并点击右下角预览提交；若需调整问卷、样本量或抽样方案，请点击上方已完成阶段标签选择「重新编辑此阶段」。"
                                         : "完成当前阶段修订后按阶段顺序重新推进至第五阶段即可再次提交。"}
                                 </p>
                             </div>
                         </div>
-                        <Button asChild variant="outline" size="sm" className="shrink-0 bg-card text-foreground hover:bg-muted hover:text-foreground">
+                        <Button asChild variant="outline" size="sm" className="shrink-0">
                             <Link to={`/task/${numericTaskId}/result`}>查看上次提交快照</Link>
                         </Button>
                     </div>
@@ -397,7 +401,7 @@ function ExperimentWorkspace() {
                         <DialogTitle>查看“{inspectStage ? stages[inspectStage - 1]!.name : ""}”</DialogTitle>
                         <DialogDescription>这是已完成阶段的只读快照。关闭查看后会返回当前阶段，不会清空或修改任何数据。</DialogDescription>
                     </DialogHeader>
-                    <div className="min-h-0 flex-1 overflow-y-auto py-2 pr-1 space-y-4">
+                    <div className="min-h-0 flex-1 space-y-4 overflow-y-auto py-2 pr-1">
                         {inspectStage === 1 && (
                             <QuestionnaireSnapshot questionnaire={wave1Snapshot?.questionnaire ?? experiment.questionnaire} />
                         )}

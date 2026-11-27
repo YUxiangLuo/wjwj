@@ -1,9 +1,11 @@
+import MuiAppBar from "@mui/material/AppBar";
+import MuiToolbar from "@mui/material/Toolbar";
 import { toast } from "sonner";
 import { MaterialThemeProvider } from "@/components/MaterialThemeProvider";
 import { RouteErrorBoundary } from "@/components/PageErrorBoundary";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { ArrowLeft, BarChart3, KeyRound, LogOut, User } from "lucide-react";
-import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -26,6 +28,7 @@ import { STUDENT_PASSWORD_POLICY } from "@/lib/password-policy";
 import { usePasswordChange } from "@/hooks/usePasswordChange";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { getStudentDocumentTitle } from "@/lib/document-title";
+import { cn } from "@/lib/utils";
 import { authApi } from "./api-client";
 import { StudentProvider, useStudent } from "./contexts/StudentContext";
 import { Login } from "./pages/Login";
@@ -79,71 +82,144 @@ function StudentAppContent() {
     return (
         <div className="student-portal-shell min-h-screen bg-background font-sans text-foreground selection:bg-primary-muted">
             <SkipLink />
-            <header className="sticky top-0 z-50 border-b border-navigation-border bg-navigation text-navigation-foreground">
-                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-8">
-                    <div className="flex items-center gap-3">
+            <MuiAppBar
+                component="header"
+                position="sticky"
+                elevation={0}
+                color="inherit"
+                className="top-0 z-50 border-b border-navigation-border bg-navigation text-navigation-foreground shadow-none"
+            >
+                <MuiToolbar
+                    disableGutters
+                    className="mx-auto flex h-16 min-h-16 w-full max-w-7xl items-center justify-between gap-4 px-8"
+                >
+                    <div className="flex min-w-0 items-center gap-3">
                         {!isTaskHall && (
-                            <Button className="text-navigation-foreground hover:bg-navigation-active hover:text-navigation-active-foreground focus-visible:ring-navigation-foreground focus-visible:ring-offset-navigation" variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="返回">
+                            <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                className="text-navigation-foreground hover:bg-navigation-hover hover:text-navigation-hover-foreground focus-visible:ring-offset-navigation"
+                                onClick={() => navigate(-1)}
+                                aria-label="返回"
+                            >
                                 <ArrowLeft className="h-5 w-5" />
                             </Button>
                         )}
-                        <Link to="/" className="flex items-center gap-3 rounded-control outline-none focus-visible:ring-2 focus-visible:ring-navigation-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-navigation">
-                            <span className="grid h-9 w-9 place-items-center rounded-control border border-navigation-border bg-navigation-active text-navigation-active-foreground">
-                                <BarChart3 className="h-5 w-5" />
+                        <Link
+                            to="/"
+                            className="flex items-center gap-3 rounded-pill pr-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-navigation"
+                        >
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-surface bg-navigation-active text-navigation-active-foreground">
+                                <BarChart3 className="h-5 w-5" aria-hidden="true" />
                             </span>
-                            <span>
-                                <span className="block text-body font-semibold text-navigation-foreground">商务统计虚拟仿真系统</span>
-                                <span className="block text-meta tracking-wide text-navigation-muted">Business Statistics Simulation Studio</span>
+                            <span className="truncate text-subheading font-medium text-navigation-foreground">
+                                商务统计虚拟仿真系统
                             </span>
                         </Link>
+                        <nav aria-label="学生端主导航" className="ml-2 flex items-center gap-1">
+                            <NavLink
+                                to="/"
+                                end
+                                className={({ isActive }) =>
+                                    cn(
+                                        "inline-flex h-9 items-center rounded-pill px-4 text-label font-medium outline-none transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-navigation",
+                                        isActive
+                                            ? "bg-navigation-active text-navigation-active-foreground"
+                                            : "text-navigation-muted hover:bg-navigation-hover hover:text-navigation-hover-foreground",
+                                    )
+                                }
+                            >
+                                实验大厅
+                            </NavLink>
+                            <NavLink
+                                to="/profile"
+                                className={({ isActive }) =>
+                                    cn(
+                                        "inline-flex h-9 items-center rounded-pill px-4 text-label font-medium outline-none transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-navigation",
+                                        isActive
+                                            ? "bg-navigation-active text-navigation-active-foreground"
+                                            : "text-navigation-muted hover:bg-navigation-hover hover:text-navigation-hover-foreground",
+                                    )
+                                }
+                            >
+                                账号资料
+                            </NavLink>
+                        </nav>
                     </div>
 
                     <Popover open={showAccountMenu} onOpenChange={setShowAccountMenu}>
-                        <PopoverTrigger asChild><Button
-                            ref={accountMenuTriggerRef}
-                            variant="ghost"
-                            className="h-10 rounded-control px-1 text-navigation-foreground hover:bg-navigation-active hover:text-navigation-active-foreground focus-visible:ring-navigation-foreground focus-visible:ring-offset-navigation"
-                            aria-label="打开账户菜单"
-                            aria-expanded={showAccountMenu}
-                            // Radix points aria-controls at the popover content, which is
-                            // unmounted while closed; axe flags a dangling reference.
-                            aria-controls={showAccountMenu ? "student-account-menu" : undefined}
+                        <PopoverTrigger asChild>
+                            <Button
+                                ref={accountMenuTriggerRef}
+                                variant="ghost"
+                                className={cn(
+                                    "h-10 gap-2.5 rounded-pill pr-3 pl-1.5 font-medium focus-visible:ring-offset-navigation",
+                                    showAccountMenu
+                                        ? "bg-navigation-active text-navigation-active-foreground hover:bg-navigation-active hover:text-navigation-active-foreground"
+                                        : "text-navigation-foreground hover:bg-navigation-hover hover:text-navigation-hover-foreground",
+                                )}
+                                aria-label="打开账户菜单"
+                                aria-expanded={showAccountMenu}
+                                // Unmounted popover content must not leave a dangling aria-controls target for axe.
+                                aria-controls={showAccountMenu ? "student-account-menu" : undefined}
+                            >
+                                <Avatar className="h-8 w-8">
+                                    <AvatarFallback
+                                        className="bg-navigation-active text-meta font-medium text-navigation-active-foreground"
+                                        data-testid="student-avatar"
+                                    >
+                                        {currentUser.name.charAt(0)}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <span className="max-w-28 truncate text-label">{currentUser.name}</span>
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                            id="student-account-menu"
+                            align="end"
+                            aria-label="账户操作"
+                            className="w-60 overflow-hidden rounded-surface border border-border bg-popover p-1.5 text-popover-foreground shadow-floating"
                         >
-                            <Avatar className="h-9 w-9">
-                                <AvatarFallback className="bg-navigation-active text-navigation-active-foreground" data-testid="student-avatar">
-                                    {currentUser.name.charAt(0)}
-                                </AvatarFallback>
-                            </Avatar>
-                        </Button></PopoverTrigger>
-                            <PopoverContent id="student-account-menu" align="end" aria-label="账户操作" className="w-56 overflow-hidden bg-card py-1 text-foreground">
-                                <div className="border-b border-border px-3 py-2.5">
-                                    <p className="text-label font-medium">{currentUser.name}</p>
-                                    <p className="mt-1 text-meta text-muted-foreground">{currentUser.studentId}</p>
-                                </div>
-                                <button className="flex w-full items-center px-3 py-2.5 text-label hover:bg-muted" onClick={() => { setShowAccountMenu(false); navigate("/profile"); }}>
-                                    <User className="mr-2 h-4 w-4" />个人信息
-                                </button>
-                                <button className="flex w-full items-center px-3 py-2.5 text-label hover:bg-muted" onClick={() => { setShowAccountMenu(false); passwordChange.reset(); setShowPassword(true); }}>
-                                    <KeyRound className="mr-2 h-4 w-4" />修改密码
-                                </button>
-                                <button className="flex w-full items-center px-3 py-2.5 text-label text-destructive hover:bg-destructive-muted" onClick={() => { setShowAccountMenu(false); setShowLogout(true); }}>
-                                    <LogOut className="mr-2 h-4 w-4" />退出登录
-                                </button>
-                            </PopoverContent>
+                            <div className="mb-1 border-b border-border px-3 py-2.5">
+                                <p className="text-label font-medium text-foreground">{currentUser.name}</p>
+                                <p className="mt-0.5 text-meta tabular-nums text-muted-foreground">{currentUser.studentId}</p>
+                            </div>
+                            <button
+                                type="button"
+                                className="flex w-full items-center gap-2.5 rounded-control px-3 py-2 text-label text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+                                onClick={() => { setShowAccountMenu(false); navigate("/profile"); }}
+                            >
+                                <User className="h-4 w-4 text-muted-foreground" aria-hidden="true" />个人信息
+                            </button>
+                            <button
+                                type="button"
+                                className="flex w-full items-center gap-2.5 rounded-control px-3 py-2 text-label text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+                                onClick={() => { setShowAccountMenu(false); passwordChange.reset(); setShowPassword(true); }}
+                            >
+                                <KeyRound className="h-4 w-4 text-muted-foreground" aria-hidden="true" />修改密码
+                            </button>
+                            <button
+                                type="button"
+                                className="flex w-full items-center gap-2.5 rounded-control px-3 py-2 text-label text-destructive outline-none hover:bg-destructive-muted focus-visible:ring-2 focus-visible:ring-ring"
+                                onClick={() => { setShowAccountMenu(false); setShowLogout(true); }}
+                            >
+                                <LogOut className="h-4 w-4" aria-hidden="true" />退出登录
+                            </button>
+                        </PopoverContent>
                     </Popover>
-                </div>
-            </header>
+                </MuiToolbar>
+            </MuiAppBar>
 
-            <main id="main-content" tabIndex={-1} className="mx-auto max-w-7xl py-8 px-8">
+            <main id="main-content" tabIndex={-1} className="mx-auto max-w-7xl px-8 py-6 outline-none">
                 <RouteErrorBoundary><Suspense fallback={<LoadingScreen />}><Routes>
-                        <Route index element={<TaskHall />} />
-                        <Route path="task/:taskId" element={<TopicDetails />} />
-                        <Route path="task/:taskId/experiment" element={<ExperimentLayout />} />
-                        <Route path="task/:taskId/preview" element={<SubmissionPreview />} />
-                        <Route path="task/:taskId/result" element={<SubmissionDetailPage />} />
-                        <Route path="profile" element={<Profile />} />
-                        <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes></Suspense></RouteErrorBoundary>
+                    <Route index element={<TaskHall />} />
+                    <Route path="task/:taskId" element={<TopicDetails />} />
+                    <Route path="task/:taskId/experiment" element={<ExperimentLayout />} />
+                    <Route path="task/:taskId/preview" element={<SubmissionPreview />} />
+                    <Route path="task/:taskId/result" element={<SubmissionDetailPage />} />
+                    <Route path="profile" element={<Profile />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes></Suspense></RouteErrorBoundary>
             </main>
 
             <PasswordChangeDialog

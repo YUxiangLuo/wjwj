@@ -2,9 +2,8 @@ import { StudentStatusPage } from "../components/StudentStatusPage";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link, Navigate } from "react-router-dom";
-import { ArrowLeft, FileText, Send, Loader2, AlertCircle, Maximize2 } from "lucide-react";
+import { ArrowLeft, Send, Loader2, AlertCircle, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     AlertDialog,
@@ -18,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { RichTextContent } from "@/components/RichTextContent";
 import { LoadingStatus } from "@/components/LoadingStatus";
+import { PageHeader } from "@/components/PageHeader";
 import { experimentApi, tasksApi } from "../api-client";
 import type { ExperimentData } from "@/domain/experiment/types";
 import type { TaskDetail } from "@/domain/experiment/student-contracts";
@@ -52,50 +52,50 @@ const SAMPLING_METHOD_LABELS: Record<SamplingMethod, string> = {
 function QuestionPreview({ question, index }: { question: Question; index: number }) {
     return (
         <div className="border-b border-border py-4 last:border-b-0">
-                <div className="flex items-start gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-control bg-primary-muted text-primary flex items-center justify-center text-label font-bold mt-0.5">
-                        {index + 1}
-                    </span>
-                    <div className="space-y-2 flex-1">
-                        <div className="text-label font-medium text-foreground">
-                            {question.content}
-                        </div>
-                        {question.type === "boolean" && (
-                            <div className="text-meta text-muted-foreground bg-card inline-block px-2 py-1 rounded-control border border-input">
-                                选项：是 / 否
-                            </div>
-                        )}
-                        {(question.type === "single" || question.type === "multiple") && (
-                            <ul className="text-label text-muted-foreground space-y-1 mt-2">
-                                {(question.options ?? []).map((opt, i) => (
-                                    <li key={`${question.id}-opt-${i}`} className="flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-circle bg-input" />
-                                        {opt}
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                        {question.type === "scale" && (
-                            <div className="text-meta text-muted-foreground bg-card inline-flex items-center gap-2 px-3 py-1.5 rounded-control border border-input">
-                                <span>量表范围：{question.scaleMin ?? 1} - {question.scaleMax ?? 10}</span>
-                                {(question.scaleMinLabel || question.scaleMaxLabel) && (
-                                    <span className="text-muted-foreground">
-                                        ({question.scaleMinLabel ?? "Min"} ~ {question.scaleMaxLabel ?? "Max"})
-                                    </span>
-                                )}
-                            </div>
-                        )}
-                        {question.type === "numeric" && (
-                            <div className="text-meta text-muted-foreground bg-card inline-flex flex-wrap items-center gap-2 px-3 py-1.5 rounded-control border border-input">
-                                <span>数值题{question.unit ? `（单位：${question.unit}）` : ""}</span>
-                                <span>小数位：{question.decimalPlaces ?? 0}</span>
-                                {(question.numericMin !== undefined || question.numericMax !== undefined) && (
-                                    <span>范围：[{question.numericMin ?? "-∞"}, {question.numericMax ?? "+∞"}]</span>
-                                )}
-                            </div>
-                        )}
+            <div className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-control bg-muted text-meta font-medium tabular-nums text-muted-foreground">
+                    {index + 1}
+                </span>
+                <div className="flex-1 space-y-2">
+                    <div className="text-label font-medium text-foreground">
+                        {question.content}
                     </div>
+                    {question.type === "boolean" && (
+                        <div className="inline-block rounded-control bg-muted px-2.5 py-1 text-meta text-muted-foreground">
+                            选项：是 / 否
+                        </div>
+                    )}
+                    {(question.type === "single" || question.type === "multiple") && (
+                        <ul className="mt-2 space-y-1 text-label text-muted-foreground">
+                            {(question.options ?? []).map((opt, i) => (
+                                <li key={`${question.id}-opt-${i}`} className="flex items-center gap-2">
+                                    <div className="h-1.5 w-1.5 rounded-circle bg-muted-foreground" aria-hidden="true" />
+                                    {opt}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                    {question.type === "scale" && (
+                        <div className="inline-flex items-center gap-2 rounded-control bg-muted px-3 py-1 text-meta text-muted-foreground">
+                            <span>量表范围：{question.scaleMin ?? 1} - {question.scaleMax ?? 10}</span>
+                            {(question.scaleMinLabel || question.scaleMaxLabel) && (
+                                <span className="text-muted-foreground">
+                                    ({question.scaleMinLabel ?? "Min"} ~ {question.scaleMaxLabel ?? "Max"})
+                                </span>
+                            )}
+                        </div>
+                    )}
+                    {question.type === "numeric" && (
+                        <div className="inline-flex flex-wrap items-center gap-2 rounded-control bg-muted px-3 py-1 text-meta text-muted-foreground">
+                            <span>数值题{question.unit ? `（单位：${question.unit}）` : ""}</span>
+                            <span>小数位：{question.decimalPlaces ?? 0}</span>
+                            {(question.numericMin !== undefined || question.numericMax !== undefined) && (
+                                <span>范围：[{question.numericMin ?? "-∞"}, {question.numericMax ?? "+∞"}]</span>
+                            )}
+                        </div>
+                    )}
                 </div>
+            </div>
         </div>
     );
 }
@@ -155,7 +155,7 @@ export function SubmissionPreview() {
         return <StudentStatusPage title="提交预览" error={{ message: loadError, onRetry: () => void loadData() }} />;
     }
     if (loading) {
-        return <LoadingStatus className="py-24" iconClassName="h-8 w-8 text-info" label="正在加载提交预览" />;
+        return <LoadingStatus className="py-24" iconClassName="h-8 w-8 text-primary" label="正在加载提交预览" />;
     }
 
     if (!task || !experiment) return <StudentStatusPage title="提交预览" message="未找到实验数据，请先完成实验各阶段。" />;
@@ -202,235 +202,235 @@ export function SubmissionPreview() {
     });
 
     return (
-        <div className="space-y-6 max-w-4xl mx-auto" data-testid="student-submission-preview">
-            <Button asChild variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground hover:bg-muted">
-                <Link to={`/task/${task.id}/experiment`}>
-                    <ArrowLeft className="w-4 h-4" />
-                    返回修改
-                </Link>
-            </Button>
+        <div className="mx-auto max-w-4xl space-y-5" data-testid="student-submission-preview">
+            <div>
+                <Button asChild variant="ghost" size="sm" className="-ml-2.5 h-8 gap-1.5 px-2.5 text-label text-muted-foreground hover:text-foreground">
+                    <Link to={`/task/${task.id}/experiment`}>
+                        <ArrowLeft className="h-4 w-4" />
+                        返回修改
+                    </Link>
+                </Button>
 
-            <Card className="border-border bg-card">
-                <CardHeader className="border-b border-input pb-4">
-                    <div className="flex items-center justify-between">
-                        <h1 className="flex items-center gap-3 text-page-title font-semibold text-foreground">
-                            <FileText className="w-6 h-6 text-primary" />
-                            提交前预览
-                        </h1>
-                        <Button variant="outline" size="sm" className="border-primary-border bg-primary-muted text-primary hover:bg-primary-muted hover:text-primary" onClick={() => setShowFullPreview(true)}>
-                            <Maximize2 className="w-4 h-4 mr-1.5" />
-                            全屏预览
-                        </Button>
+                <PageHeader border={false} className="mt-1.5">
+                    <div className="min-w-0">
+                        <h1 className="text-page-title font-medium text-foreground">提交前预览</h1>
+                        <p className="mt-1 text-label text-muted-foreground">
+                            实验课题：<span className="font-medium text-foreground">{task.name}</span>
+                        </p>
                     </div>
-                    <CardDescription className="text-muted-foreground">
-                        实验模板：<span className="text-foreground font-medium">{task.name}</span>
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6 pt-6">
-                    <section data-testid="student-preview-submit-panel" aria-labelledby="preview-submit-heading" className="flex flex-wrap items-center justify-between gap-4 rounded-surface bg-primary-muted p-5">
-                        <div>
-                            <h2 id="preview-submit-heading" className="text-section-title text-foreground">确认内容并提交</h2>
-                            <p className="mt-1 text-label text-muted-foreground">提交后内容冻结；教师驳回后，可重开阶段修改。</p>
-                            {!canSubmit && (
-                                <div className="mt-3 flex items-center gap-2 text-label text-destructive">
-                                    <AlertCircle className="h-4 w-4" />{submitBlocker}
-                                </div>
-                            )}
-                            {error && (
-                                <div role="alert" data-testid="student-preview-submit-error" className="mt-3 text-label text-destructive">
-                                    {error}
-                                </div>
-                            )}
-                        </div>
-                        <Button
-                            onClick={() => setConfirmOpen(true)}
-                            disabled={!canSubmit || submitting || refreshRequired}
-                            data-testid="student-preview-submit"
-                            className="h-12 shrink-0 px-8 text-subheading"
-                        >
-                            {submitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />提交中...</> : <><Send className="mr-2 h-5 w-5" />确认提交</>}
-                        </Button>
-                    </section>
+                    <Button variant="outline" size="sm" onClick={() => setShowFullPreview(true)}>
+                        <Maximize2 className="h-4 w-4" />
+                        全屏预览
+                    </Button>
+                </PageHeader>
+            </div>
 
-                    <section aria-labelledby="preview-content-heading">
-                        <div className="mb-4">
-                            <h2 id="preview-content-heading" className="text-section-title">提交内容</h2>
-                            <p className="mt-1 text-label text-muted-foreground">报告为主要提交内容，问卷供核对。</p>
+            <section
+                data-testid="student-preview-submit-panel"
+                aria-labelledby="preview-submit-heading"
+                className="flex flex-wrap items-center justify-between gap-4 rounded-surface border border-border bg-card p-5"
+            >
+                <div className="min-w-0 flex-1">
+                    <h2 id="preview-submit-heading" className="text-subheading font-medium text-foreground">确认内容并提交</h2>
+                    <p className="mt-1 text-label text-muted-foreground">提交后内容冻结；教师驳回后，可重开阶段修改。</p>
+                    {!canSubmit && (
+                        <div className="mt-2.5 flex items-center gap-2 text-label text-destructive">
+                            <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+                            <span>{submitBlocker}</span>
                         </div>
-                    <Tabs defaultValue="report" className="w-full">
-                        <TabsList className="bg-muted border border-input p-1 w-auto h-auto rounded-surface" data-testid="student-preview-tabs">
-                            <TabsTrigger
-                                value="report"
-                                data-testid="student-preview-tab-report"
-                                className="px-6 py-2 rounded-control data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-muted-foreground data-[state=inactive]:hover:text-foreground transition-none"
-                            >
-                                商业报告与过程摘要
+                    )}
+                    {error && (
+                        <div role="alert" data-testid="student-preview-submit-error" className="mt-2.5 text-label text-destructive">
+                            {error}
+                        </div>
+                    )}
+                </div>
+                <Button
+                    size="lg"
+                    onClick={() => setConfirmOpen(true)}
+                    disabled={!canSubmit || submitting || refreshRequired}
+                    data-testid="student-preview-submit"
+                    className="shrink-0 px-7"
+                >
+                    {submitting ? (
+                        <>
+                            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                            提交中...
+                        </>
+                    ) : (
+                        <>
+                            <Send className="h-4 w-4" aria-hidden="true" />
+                            确认提交
+                        </>
+                    )}
+                </Button>
+            </section>
+
+            <section aria-labelledby="preview-content-heading" className="rounded-surface border border-border bg-card p-5">
+                <div>
+                    <h2 id="preview-content-heading" className="text-subheading font-medium text-foreground">提交内容</h2>
+                    <p className="mt-1 text-label text-muted-foreground">报告为主要提交内容，问卷与波次轨迹供核对。</p>
+                </div>
+
+                <Tabs defaultValue="report" className="mt-4 w-full">
+                    <TabsList className="w-full justify-start" data-testid="student-preview-tabs">
+                        <TabsTrigger value="report" data-testid="student-preview-tab-report">
+                            商业报告与过程摘要
+                        </TabsTrigger>
+                        {(experiment.waves?.length ?? 0) > 0 && (
+                            <TabsTrigger value="waves" data-testid="student-preview-tab-waves">
+                                试投质检与二轮调优轨迹
                             </TabsTrigger>
+                        )}
+                        <TabsTrigger value="questionnaire" data-testid="student-preview-tab-questionnaire">
+                            正式轮问卷核对
+                        </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="report" className="mt-5">
+                        <div className="divide-y divide-border">
+                            <div className="pb-4">
+                                <h3 className="mb-2 text-body font-medium text-foreground">阶段一：商业问卷设计</h3>
+                                <div className="space-y-1 text-label text-foreground">
+                                    <p>问卷标题：{questionnaire?.title || "未填写"}</p>
+                                    <p>题目数量：{questionnaireQuestions.length} 题</p>
+                                    {questionnaireQuestions.slice(0, 3).map((question, index) => (
+                                        <p key={question.id ?? index} className="text-muted-foreground">第 {index + 1} 题：{question.content}</p>
+                                    ))}
+                                    {questionnaireQuestions.length > 3 && (
+                                        <p className="text-meta text-muted-foreground">其余题目见「正式轮问卷核对」。</p>
+                                    )}
+                                </div>
+                            </div>
+
                             {(experiment.waves?.length ?? 0) > 0 && (
-                                <TabsTrigger
-                                    value="waves"
-                                    data-testid="student-preview-tab-waves"
-                                    className="px-6 py-2 rounded-control data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-muted-foreground data-[state=inactive]:hover:text-foreground transition-none"
-                                >
-                                    试投质检与二轮调优轨迹
-                                </TabsTrigger>
+                                <div className="py-4">
+                                    <h3 className="mb-2 text-body font-medium text-foreground">阶段二至三：首轮试投、回收质检与调优决策</h3>
+                                    <div className="space-y-1 text-label text-foreground">
+                                        <p>已完成波次数：共 {experiment.waves!.length} 轮（含首轮试投及正式调优投放）</p>
+                                        {experiment.adjustmentPlan && (
+                                            <p className="text-muted-foreground">
+                                                调优依据摘要：{experiment.adjustmentPlan.rationale}
+                                            </p>
+                                        )}
+                                        <p className="text-meta text-muted-foreground">完整漏斗、客群结构偏差与森林对比图见「试投质检与二轮调优轨迹」。</p>
+                                    </div>
+                                </div>
                             )}
-                            <TabsTrigger
-                                value="questionnaire"
-                                data-testid="student-preview-tab-questionnaire"
-                                className="px-6 py-2 rounded-control data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-muted-foreground data-[state=inactive]:hover:text-foreground transition-none"
-                            >
-                                正式轮问卷核对
-                            </TabsTrigger>
-                        </TabsList>
 
-                        <TabsContent value="report" className="mt-6 space-y-4">
-                            <div className="min-h-[300px] rounded-surface bg-muted p-6">
-                                <div className="border-b border-border py-4 first:pt-0">
-                                    <h2 className="text-body font-semibold text-foreground mb-3">阶段一：商业问卷设计</h2>
-                                    <div className="text-label text-foreground space-y-1">
-                                        <p>问卷标题：{questionnaire?.title || "未填写"}</p>
-                                        <p>题目数量：{questionnaireQuestions.length} 题</p>
-                                        {questionnaireQuestions.slice(0, 3).map((question, index) => (
-                                            <p key={question.id ?? index} className="text-muted-foreground">第 {index + 1} 题：{question.content}</p>
-                                        ))}
-                                        {questionnaireQuestions.length > 3 && (
-                                            <p className="text-meta text-muted-foreground">其余题目见「正式轮问卷核对」。</p>
+                            <div className="py-4">
+                                <h3 className="mb-2 text-body font-medium text-foreground">阶段四：正式轮样本量规划</h3>
+                                {samplePlan ? (
+                                    <div className="space-y-1 text-label text-foreground">
+                                        <p>估计类型：{getEstimationTypeLabel(samplePlan.estimationType)}</p>
+                                        {advancedSourceLabel && (
+                                            <p>最终样本量来源：{advancedSourceLabel}（高级工具）</p>
+                                        )}
+                                        <p>置信水平：{samplePlan.confidenceLevel}%</p>
+                                        <p>
+                                            {getMarginOfErrorLabel(samplePlan.estimationType)}：
+                                            {formatMarginOfError(samplePlan.marginOfError, samplePlan.estimationType)}
+                                        </p>
+                                        {samplePlan.estimationType === "mean" && samplePlan.populationVariance != null && (
+                                            <p>
+                                                {samplePlan.varianceSource === "wave1_empirical"
+                                                    ? "首轮实测样本方差 s²"
+                                                    : "抽样框总体方差 σ²"}：{formatSamplePlanNumber(samplePlan.populationVariance)}
+                                            </p>
+                                        )}
+                                        {typeof samplePlan.nonResponseRate === "number" && (
+                                            <p>预期无回答率：{Math.round(samplePlan.nonResponseRate * 100)}%</p>
+                                        )}
+                                        <p>建议样本量：{samplePlan.recommendedSize}</p>
+                                        <p>最终样本量：{samplePlan.finalSampleSize}</p>
+                                        {advancedSourceLabel && (
+                                            <p className="text-meta text-muted-foreground">
+                                                说明：推荐样本量仍对应常规公式建议，当前最终样本量来自「{advancedSourceLabel}」。
+                                            </p>
                                         )}
                                     </div>
-                                </div>
-
-                                {(experiment.waves?.length ?? 0) > 0 && (
-                                    <div className="border-b border-border py-4">
-                                        <h2 className="text-body font-semibold text-foreground mb-3">阶段二至三：首轮试投、回收质检与调优决策</h2>
-                                        <div className="text-label text-foreground space-y-1">
-                                            <p>已完成波次数：共 {experiment.waves!.length} 轮（含首轮试投及正式调优投放）</p>
-                                            {experiment.adjustmentPlan && (
-                                                <p className="text-muted-foreground">
-                                                    调优依据摘要：{experiment.adjustmentPlan.rationale}
-                                                </p>
-                                            )}
-                                            <p className="text-meta text-muted-foreground">完整漏斗、客群结构偏差与森林对比图见「试投质检与二轮调优轨迹」。</p>
-                                        </div>
-                                    </div>
+                                ) : (
+                                    <div className="text-label text-muted-foreground">暂无样本量规划数据</div>
                                 )}
+                            </div>
 
-                                <div className="border-b border-border py-4">
-                                    <h2 className="text-body font-semibold text-foreground mb-3">阶段四：正式轮样本量规划</h2>
-                                    {samplePlan ? (
-                                        <div className="text-label text-foreground space-y-1">
-                                            <p>估计类型：{getEstimationTypeLabel(samplePlan.estimationType)}</p>
-                                            {advancedSourceLabel && (
-                                                <p>最终样本量来源：{advancedSourceLabel}（高级工具）</p>
-                                            )}
-                                            <p>置信水平：{samplePlan.confidenceLevel}%</p>
-                                            <p>
-                                                {getMarginOfErrorLabel(samplePlan.estimationType)}：
-                                                {formatMarginOfError(samplePlan.marginOfError, samplePlan.estimationType)}
-                                            </p>
-                                            {samplePlan.estimationType === "mean" && samplePlan.populationVariance != null && (
-                                                <p>
-                                                    {samplePlan.varianceSource === "wave1_empirical"
-                                                        ? "首轮实测样本方差 s²"
-                                                        : "抽样框总体方差 σ²"}：{formatSamplePlanNumber(samplePlan.populationVariance)}
-                                                </p>
-                                            )}
-                                            {typeof samplePlan.nonResponseRate === "number" && (
-                                                <p>预期无回答率：{Math.round(samplePlan.nonResponseRate * 100)}%</p>
-                                            )}
-                                            <p>建议样本量：{samplePlan.recommendedSize}</p>
-                                            <p>最终样本量：{samplePlan.finalSampleSize}</p>
-                                            {advancedSourceLabel && (
-                                                <p className="text-meta text-warning">
-                                                    说明：推荐样本量仍对应常规公式建议，当前最终样本量来自「{advancedSourceLabel}」。
-                                                </p>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div className="text-label text-muted-foreground italic">暂无样本量规划数据</div>
-                                    )}
+                            <div className="py-4">
+                                <h3 className="mb-2 text-body font-medium text-foreground">阶段四：正式轮抽样与投放执行</h3>
+                                <div className="space-y-1 text-label text-foreground">
+                                    {samplingMethodRows.map((row) => (
+                                        <p key={row.method} data-testid={`student-preview-sampling-${row.method}`}>{row.label}：{row.status}</p>
+                                    ))}
                                 </div>
+                            </div>
 
-                                <div className="border-b border-border py-4">
-                                    <h2 className="text-body font-semibold text-foreground mb-3">阶段四：正式轮抽样与投放执行</h2>
-                                    <div className="text-label text-foreground space-y-1">
-                                        {samplingMethodRows.map((row) => (
-                                            <p key={row.method} data-testid={`student-preview-sampling-${row.method}`}>{row.label}：{row.status}</p>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="pt-4">
-                                    <h2 className="text-body font-semibold text-foreground mb-3 flex items-center gap-2">
-                                        <FileText className="w-4 h-4 text-success" />
-                                        阶段五：商务分析与决策报告
-                                    </h2>
-                                    {reportContent ? (
+                            <div className="pt-4">
+                                <h3 className="mb-3 text-body font-medium text-foreground">
+                                    阶段五：商务分析与决策报告
+                                </h3>
+                                {reportContent ? (
+                                    <div className="rounded-surface bg-muted p-5">
                                         <RichTextContent
                                             html={reportContent}
-                                            className="text-label text-foreground leading-relaxed pl-4 border-l-2 border-input"
+                                            className="text-label leading-relaxed text-foreground"
                                         />
+                                    </div>
+                                ) : (
+                                    <div className="text-label text-muted-foreground">暂无报告内容</div>
+                                )}
+                                <AnalysisAppendices records={experiment.analysisAppendices ?? []} />
+                            </div>
+                        </div>
+                    </TabsContent>
+
+                    {(experiment.waves?.length ?? 0) > 0 && (
+                        <TabsContent value="waves" className="mt-5">
+                            <WaveLoopSnapshot
+                                waves={experiment.waves}
+                                adjustmentPlan={experiment.adjustmentPlan}
+                                analysisTarget={experiment.analysisTarget}
+                                unitLabel={previewUnitLabel}
+                                confidenceLevel={samplePlan?.confidenceLevel}
+                            />
+                        </TabsContent>
+                    )}
+
+                    <TabsContent value="questionnaire" className="mt-5">
+                        {!questionnaire ? (
+                            <div className="rounded-surface bg-muted p-5 text-label text-muted-foreground">暂无问卷内容</div>
+                        ) : (
+                            <div>
+                                <div className="mb-4 border-b border-border pb-4">
+                                    <h3 className="mb-2 text-section-title font-medium text-foreground">{questionnaire.title || "未命名问卷"}</h3>
+                                    <RichTextContent
+                                        html={questionnaire.welcomeText ?? ""}
+                                        className="text-label text-muted-foreground"
+                                    />
+                                </div>
+
+                                <div>
+                                    {questionnaireQuestions.length === 0 ? (
+                                        <div className="py-4 text-label text-muted-foreground">暂无题目</div>
                                     ) : (
-                                        <div className="text-label text-muted-foreground italic">暂无报告内容</div>
+                                        questionnaireQuestions.map((q, index) => (
+                                            <QuestionPreview key={q.id} question={q} index={index} />
+                                        ))
                                     )}
-                                    <AnalysisAppendices records={experiment.analysisAppendices ?? []} />
+                                </div>
+
+                                <div className="mt-4 border-t border-border pt-4">
+                                    <RichTextContent
+                                        html={questionnaire.endingText ?? ""}
+                                        className="text-label text-muted-foreground"
+                                    />
                                 </div>
                             </div>
-                        </TabsContent>
-
-                        {(experiment.waves?.length ?? 0) > 0 && (
-                            <TabsContent value="waves" className="mt-6">
-                                <WaveLoopSnapshot
-                                    waves={experiment.waves}
-                                    adjustmentPlan={experiment.adjustmentPlan}
-                                    analysisTarget={experiment.analysisTarget}
-                                    unitLabel={previewUnitLabel}
-                                    confidenceLevel={samplePlan?.confidenceLevel}
-                                />
-                            </TabsContent>
                         )}
-
-                        <TabsContent value="questionnaire" className="mt-6 space-y-4">
-                            <div className="rounded-surface bg-muted p-6">
-                                {!questionnaire ? (
-                                    <div className="text-label text-muted-foreground italic">暂无问卷内容</div>
-                                ) : (
-                                    <>
-                                        <div className="mb-6 pb-4 border-b border-border">
-                                            <h2 className="text-section-title font-bold text-foreground mb-2">{questionnaire.title || "未命名问卷"}</h2>
-                                            <RichTextContent
-                                                html={questionnaire.welcomeText ?? ""}
-                                                className="text-label text-muted-foreground"
-                                            />
-                                        </div>
-
-                                        <div className="space-y-3">
-                                            {questionnaireQuestions.length === 0 ? (
-                                                <div className="text-label text-muted-foreground">暂无题目</div>
-                                            ) : (
-                                                questionnaireQuestions.map((q, index) => (
-                                                    <QuestionPreview key={q.id} question={q} index={index} />
-                                                ))
-                                            )}
-                                        </div>
-
-                                        <div className="mt-6 pt-4 border-t border-border">
-                                            <RichTextContent
-                                                html={questionnaire.endingText ?? ""}
-                                                className="text-label text-muted-foreground"
-                                            />
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </TabsContent>
-                    </Tabs>
-                    </section>
-                </CardContent>
-            </Card>
+                    </TabsContent>
+                </Tabs>
+            </section>
 
             <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-                <AlertDialogContent className="bg-card border-border text-foreground" data-testid="student-preview-submit-dialog">
+                <AlertDialogContent className="border-border bg-card text-foreground" data-testid="student-preview-submit-dialog">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-foreground">确认提交实验</AlertDialogTitle>
                         <AlertDialogDescription className="text-muted-foreground">

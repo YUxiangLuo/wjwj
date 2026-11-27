@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, User, Key, Shield } from "lucide-react";
+import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/PageHeader";
 import { STUDENT_PASSWORD_POLICY, evaluatePasswordRules } from "@/lib/password-policy";
 import { authApi } from "../api-client";
 import { useStudent } from "../contexts/StudentContext";
@@ -93,71 +95,76 @@ export function Profile() {
     };
 
     return (
-        <div className="space-y-6 max-w-5xl mx-auto">
-            <div className="flex items-center justify-between">
+        <div className="mx-auto max-w-5xl space-y-6">
+            <PageHeader border={false}>
                 <div>
-                    <h1 className="text-page-title font-semibold text-foreground">
+                    <h1 className="text-page-title font-medium text-foreground">
                         个人信息
                     </h1>
-                    <p className="text-muted-foreground text-label mt-1">查看你的账号资料与安全设置</p>
+                    <p className="mt-1 text-label text-muted-foreground">查看你的账号资料与安全设置</p>
                 </div>
-                <Button variant="outline" onClick={() => navigate("/")} className="border-input hover:bg-muted text-foreground">
-                    <ArrowLeft className="w-4 h-4 mr-2" />
+                <Button variant="outline" onClick={() => navigate("/")}>
+                    <ArrowLeft className="h-4 w-4" />
                     返回首页
                 </Button>
-            </div>
+            </PageHeader>
 
             <div className="grid grid-cols-3 gap-6">
-                <Card className="col-span-2 overflow-hidden border-primary-border bg-card">
-                    <div className="absolute top-0 left-0 h-1 w-full bg-primary" />
-                    <CardHeader className="border-b border-input pb-4">
-                        <CardTitle className="flex items-center gap-2 text-foreground">
-                            <User className="w-5 h-5 text-primary" />
-                            基础资料
-                        </CardTitle>
-                        <CardDescription className="text-muted-foreground">这些信息来自教务系统，无法直接修改。</CardDescription>
+                <Card className="col-span-2 border-border bg-card">
+                    <CardHeader className="border-b border-border pb-4">
+                        <div className="flex items-center gap-3.5">
+                            <Avatar className="h-12 w-12">
+                                <AvatarFallback className="bg-muted text-subheading font-medium text-foreground">
+                                    {currentUser?.name?.charAt(0) ?? "学"}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <CardTitle className="text-subheading font-medium text-foreground">
+                                    基础资料
+                                </CardTitle>
+                                <CardDescription className="text-muted-foreground">
+                                    这些信息同步自教务系统，不支持在此直接修改。
+                                </CardDescription>
+                            </div>
+                        </div>
                     </CardHeader>
-                    <CardContent className="space-y-6 pt-6">
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label className="text-muted-foreground">姓名</Label>
-                                <div className="px-3 py-2 rounded-control bg-muted border border-input text-foreground" data-testid="student-profile-name">
+                    <CardContent className="space-y-5 pt-2">
+                        <dl className="divide-y divide-border">
+                            <div className="flex items-center justify-between gap-4 py-3.5">
+                                <dt className="w-28 shrink-0 text-label text-muted-foreground">姓名</dt>
+                                <dd className="min-w-0 flex-1 text-label font-medium text-foreground" data-testid="student-profile-name">
                                     {currentUser?.name ?? "-"}
-                                </div>
+                                </dd>
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-muted-foreground">学号</Label>
-                                <div className="px-3 py-2 rounded-control bg-muted border border-input text-foreground font-mono" data-testid="student-profile-id">
+                            <div className="flex items-center justify-between gap-4 py-3.5">
+                                <dt className="w-28 shrink-0 text-label text-muted-foreground">学号</dt>
+                                <dd className="min-w-0 flex-1 text-label font-medium tabular-nums text-foreground" data-testid="student-profile-id">
                                     {currentUser?.studentId ?? "-"}
-                                </div>
+                                </dd>
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-muted-foreground">班级</Label>
-                                <div className="px-3 py-2 rounded-control bg-muted border border-input text-foreground" data-testid="student-profile-class">
+                            <div className="flex items-center justify-between gap-4 py-3.5">
+                                <dt className="w-28 shrink-0 text-label text-muted-foreground">所属班级</dt>
+                                <dd className="min-w-0 flex-1 text-label font-medium text-foreground" data-testid="student-profile-class">
                                     {currentUser?.className ?? "-"}
-                                </div>
+                                </dd>
                             </div>
-                        </div>
+                        </dl>
 
-                        <div className="bg-warning-muted border border-warning-border rounded-surface p-4 flex items-start gap-3">
-                            <Shield className="w-5 h-5 text-warning mt-0.5" />
-                            <div className="text-label text-warning leading-relaxed">
-                                如需修改基础信息，请联系管理员或任课教师。
-                            </div>
-                        </div>
+                        <p className="rounded-surface bg-muted px-4 py-3 text-meta leading-relaxed text-muted-foreground">
+                            如需变更姓名或班级归属，请联系任课教师或系统管理员协助处理。
+                        </p>
                     </CardContent>
                 </Card>
 
-                <Card className="border-primary-border bg-card">
-                    <CardHeader className="border-b border-input pb-4">
-                        <CardTitle className="flex items-center gap-2 text-foreground">
-                            <Key className="w-5 h-5 text-primary" />
+                <Card className="border-border bg-card">
+                    <CardHeader className="border-b border-border pb-4">
+                        <CardTitle className="text-subheading font-medium text-foreground">
                             修改密码
                         </CardTitle>
                         <CardDescription className="text-muted-foreground">建议定期更新密码以保护账号安全。</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4 pt-6">
-                        <div className="space-y-2">
+                    <CardContent className="space-y-4 pt-2">
+                        <div className="space-y-1.5">
                             <Label htmlFor="currentPassword" className="text-foreground">当前密码</Label>
                             <Input
                                 id="currentPassword"
@@ -168,10 +175,9 @@ export function Profile() {
                                 aria-describedby={error ? "student-profile-password-error" : undefined}
                                 autoComplete="current-password"
                                 data-testid="student-profile-password-current"
-                                className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring"
                             />
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                             <Label htmlFor="newPassword" className="text-foreground">新密码</Label>
                             <Input
                                 id="newPassword"
@@ -182,10 +188,9 @@ export function Profile() {
                                 aria-describedby={error ? "student-profile-password-error" : undefined}
                                 autoComplete="new-password"
                                 data-testid="student-profile-password-new"
-                                className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring"
                             />
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                             <Label htmlFor="confirmPassword" className="text-foreground">确认新密码</Label>
                             <Input
                                 id="confirmPassword"
@@ -196,32 +201,44 @@ export function Profile() {
                                 aria-describedby={error ? "student-profile-password-error" : undefined}
                                 autoComplete="new-password"
                                 data-testid="student-profile-password-confirm"
-                                className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring"
                             />
                         </div>
-                        <div className="rounded-surface border border-input bg-background p-3 text-meta space-y-1.5">
+                        <div className="space-y-1.5 rounded-surface bg-muted p-3.5 text-meta">
                             <div className="flex items-center justify-between text-muted-foreground">
                                 <span>密码强度</span>
-                                <span className={strengthScore <= 2 ? "text-destructive" : strengthScore <= 4 ? "text-warning" : "text-success"}>
+                                <span className={strengthScore <= 2 ? "font-medium text-destructive" : strengthScore <= 4 ? "font-medium text-warning" : "font-medium text-success"}>
                                     {passwordStrengthLabel}
                                 </span>
                             </div>
-                            <div className={passwordRules.minLength ? "text-success" : "text-muted-foreground"}>{passwordRules.minLength ? "✓" : "✗"} 至少8个字符</div>
-                            <div className={passwordRules.hasLetter ? "text-success" : "text-muted-foreground"}>{passwordRules.hasLetter ? "✓" : "✗"} 包含字母</div>
-                            <div className={passwordRules.hasNumber ? "text-success" : "text-muted-foreground"}>{passwordRules.hasNumber ? "✓" : "✗"} 包含数字</div>
-                            <div className={passwordRules.hasSpecial ? "text-success" : "text-muted-foreground"}>{passwordRules.hasSpecial ? "✓" : "✗"} 包含特殊字符</div>
-                            <div className={passwordRules.noStudentId ? "text-success" : "text-muted-foreground"}>{passwordRules.noStudentId ? "✓" : "✗"} 不包含学号</div>
-                            <div className={passwordRules.matched ? "text-success" : "text-muted-foreground"}>{passwordRules.matched ? "✓" : "✗"} 两次密码一致</div>
+                            <div className={passwordRules.minLength ? "text-success" : "text-muted-foreground"}>{passwordRules.minLength ? "✓" : "·"} 至少 8 个字符</div>
+                            <div className={passwordRules.hasLetter ? "text-success" : "text-muted-foreground"}>{passwordRules.hasLetter ? "✓" : "·"} 包含字母</div>
+                            <div className={passwordRules.hasNumber ? "text-success" : "text-muted-foreground"}>{passwordRules.hasNumber ? "✓" : "·"} 包含数字</div>
+                            <div className={passwordRules.hasSpecial ? "text-success" : "text-muted-foreground"}>{passwordRules.hasSpecial ? "✓" : "·"} 包含特殊字符</div>
+                            <div className={passwordRules.noStudentId ? "text-success" : "text-muted-foreground"}>{passwordRules.noStudentId ? "✓" : "·"} 不包含学号</div>
+                            <div className={passwordRules.matched ? "text-success" : "text-muted-foreground"}>{passwordRules.matched ? "✓" : "·"} 两次密码一致</div>
                         </div>
-                        {error && <div id="student-profile-password-error" role="alert" aria-atomic="true" className="text-label text-destructive bg-destructive-muted p-2 rounded-control border border-destructive-border">{error}</div>}
+                        {error && (
+                            <div
+                                id="student-profile-password-error"
+                                role="alert"
+                                aria-atomic="true"
+                                className="rounded-control border border-destructive-border bg-destructive-muted px-3 py-2 text-label text-destructive"
+                            >
+                                {error}
+                            </div>
+                        )}
                         {success && (
-                            <div role="status" aria-live="polite" className="flex items-center gap-2 text-label text-success bg-success-muted p-2 rounded-control border border-success-border">
-                                <CheckCircle2 aria-hidden="true" className="w-4 h-4" />
+                            <div
+                                role="status"
+                                aria-live="polite"
+                                className="flex items-center gap-2 rounded-control border border-success-border bg-success-muted px-3 py-2 text-label text-success"
+                            >
+                                <CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0" />
                                 密码已更新
                             </div>
                         )}
                         <Button
-                            className="mt-2 w-full bg-primary text-primary-foreground hover:bg-primary-hover"
+                            className="mt-2 w-full"
                             onClick={handleChangePassword}
                             disabled={saving}
                             aria-busy={saving}
