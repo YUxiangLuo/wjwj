@@ -1,4 +1,4 @@
-import { and, count, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, ilike, inArray, or, type SQL } from "drizzle-orm";
 import { db } from "../../db";
 import { announcement, class_, experiment, semester, student, task, teacher, topic, userSession } from "../../db/schema";
 import { experimentProgress } from "../../lib/experiment-progress";
@@ -9,6 +9,7 @@ import type { RouteDefinition } from "../../server/route-types";
 import { clearUserSessionsForUser } from "../../server/user-session";
 import { deleteAuditEventsForEntities, hashEntityIdentifier, writeAuditEvent } from "../../server/audit-event";
 import { getAdminUser } from "./auth";
+import { lockSemesterMutations } from "./semester";
 import { STUDENT_USER_TYPE } from "../../student/routes/auth";
 import { TEACHER_USER_TYPE } from "../../teacher/routes/auth";
 import { getRichTextPlainText } from "../../utils/rich-text";
@@ -27,12 +28,6 @@ async function loadCounts<T extends number>(
 ) {
     if (ids.length === 0) return new Map<number, number>();
     return new Map((await loader()).map((row) => [row.key, row.count]));
-}
-
-// All current-semester changes and deletions share this short transaction lock.
-// "WJ" / "SE" is separate from the storage mutation lock.
-async function lockSemesterMutations(tx: Pick<typeof db, "execute">) {
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(${0x574a}, ${0x5345})`);
 }
 
 const semesterRoutes: RouteDefinition = {
@@ -319,14 +314,27 @@ const classRoutes: RouteDefinition = {
         ) {
             return error("班级名称须为1-100个字符，且必须选择有效的学期和教师", "VALIDATION_ERROR");
         }
-        const [validSemester] = await db.select({ id: semester.id }).from(semester).where(eq(semester.id, body.semesterId));
-        const [validTeacher] = await db.select({ id: teacher.id }).from(teacher).where(eq(teacher.id, body.teacherId));
-        if (!validSemester || !validTeacher) return error("学期或教师不存在", "NOT_FOUND", 404);
-        const [created] = await db
-            .insert(class_)
-            .values({ name, semesterId: body.semesterId, teacherId: body.teacherId })
-            .returning({ id: class_.id });
-        return json({ id: created!.id }, 201);
+        const semesterId = body.semesterId;
+        const teacherId = body.teacherId;
+        return db.transaction(async (tx) => {
+            await lockSemesterMutations(tx);
+            const [validSemester] = await tx
+                .select({ id: semester.id })
+                .from(semester)
+                .where(eq(semester.id, semesterId))
+                .for("share");
+            const [validTeacher] = await tx
+                .select({ id: teacher.id })
+                .from(teacher)
+                .where(eq(teacher.id, teacherId))
+                .for("share");
+            if (!validSemester || !validTeacher) return error("学期或教师不存在", "NOT_FOUND", 404);
+            const [created] = await tx
+                .insert(class_)
+                .values({ name, semesterId, teacherId })
+                .returning({ id: class_.id });
+            return json({ id: created!.id }, 201);
+        });
     },
 };
 

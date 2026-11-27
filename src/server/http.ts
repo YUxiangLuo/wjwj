@@ -50,8 +50,10 @@ export function withPrivateApiHeaders(response: Response): Response {
 
 export function validateApiRequest(req: Request): Response | null {
     if (!(["POST", "PUT", "PATCH", "DELETE"] as const).includes(req.method as "POST")) return null;
-    const fetchSite = req.headers.get("sec-fetch-site");
-    if (fetchSite === "cross-site") return error("不允许跨站请求", "CROSS_SITE_REQUEST", 403);
+    const fetchSite = req.headers.get("sec-fetch-site")?.trim().toLowerCase();
+    if (fetchSite === "cross-site" || fetchSite === "same-site") {
+        return error("不允许跨站请求", "CROSS_SITE_REQUEST", 403);
+    }
     const origin = req.headers.get("origin");
     if (origin && origin !== getEffectiveRequestOrigin(req)) return error("请求来源无效", "INVALID_ORIGIN", 403);
     const referer = req.headers.get("referer");
@@ -193,12 +195,15 @@ export function handleServerError(cause: unknown): Response {
     }
 
     // Drizzle wraps Bun's PostgreSQL error in Error.cause. A concurrent
-    // insert may race the friendly duplicate preflight in a route.
+    // insert or parent deletion may race a route's preflight check.
     let databaseCause: unknown = cause;
     for (let depth = 0; depth < 5 && databaseCause instanceof Error; depth++) {
         const details = databaseCause as Error & { errno?: string; code?: string };
         if (details.errno === "23505" || details.code === "23505") {
             return error("数据已存在或已被其他操作更新，请刷新后重试", "CONFLICT", 409);
+        }
+        if (details.errno === "23503" || details.code === "23503") {
+            return error("关联数据已被删除或变更，请刷新后重试", "CONFLICT", 409);
         }
         databaseCause = databaseCause.cause;
     }

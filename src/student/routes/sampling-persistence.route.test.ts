@@ -465,3 +465,38 @@ test("stage completion ignores client results and does not rewrite stored author
     expect(update?.set).toMatchObject({ version: 7, currentStage: 5 });
     expect(update?.set).not.toHaveProperty("samplingGeneration");
 });
+
+test("first experiment entry returns 404 NOT_FOUND instead of 500 when the parent task or student is concurrently deleted before insert", async () => {
+    const { db, operations } = createMockDb({
+        // 1st select: loadOwnedExperiment -> []; 2nd select: workflow load -> [];
+        // 3rd select: student FOR SHARE -> [{ id: 2 }]; 4th select: task FOR SHARE -> [] (deleted!)
+        select: [[], [], [{ id: 2 }], []],
+    });
+    mock.module("../../db", () => ({ db }));
+    mock.module("./auth", () => createStudentAuthModuleMock({
+        requireAuth: async () => ({ student: { id: 2, studentId: "S001", name: "学生一", classId: 7 }, error: null }),
+    }));
+    mock.module("../experiment/task-access", () => ({
+        getStudentTaskAccessError: async () => null,
+        getStudentTopicAttachmentAccessError: async () => null,
+    }));
+    mock.module("../experiment/task-info", () => ({
+        findStudentTaskPopulationSize: async () => 4,
+        findStudentTaskSamplingInfo: async () => ({ excelFilePath: populationPath, fieldMapping: {} }),
+        findStudentTaskSchedule: async () => ({ openTime: null, deadline: new Date(Date.now() + 60_000) }),
+        findStudentTaskSubmitInfo: async () => null,
+        findStudentTaskTopicInfo: async () => ({ id: 3, topicId: 4 }),
+    }));
+
+    const module = await import(`./experiment.ts?concurrent-delete=${crypto.randomUUID()}`);
+    const request = new Request("https://example.com/api/student/tasks/3/experiment");
+    (request as Request & { params?: Record<string, string> }).params = { id: "3" };
+
+    const response = await module.experimentRoutes.GET!(request);
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({
+        success: false,
+        error: { code: "NOT_FOUND", message: "任务不存在" },
+    });
+    expect(operations.some((op) => op.kind === "insert")).toBe(false);
+});

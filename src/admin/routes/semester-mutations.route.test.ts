@@ -12,16 +12,21 @@ function request(method: string, body?: unknown) {
     return req;
 }
 
-for (const action of ["create", "current", "delete"] as const) {
+for (const action of ["create", "rename", "current", "delete"] as const) {
     test(`${action} semester takes the shared transaction lock before reading mutable state`, async () => {
-        const { db, operations } = createMockDb({ select: action === "create" ? [[]] : [[{ id: 2, isCurrent: 0 }], [{ count: 0 }]] });
+        const { db, operations } = createMockDb({
+            select: action === "create" || action === "rename" ? [[]] : [[{ id: 2, isCurrent: 0 }], [{ count: 0 }]],
+        });
         mock.module("../../db", () => ({ db }));
         const routes = await import(`./management.ts?semester=${crypto.randomUUID()}`);
+        const renameRoutes = await import(`./semester.ts?semester=${crypto.randomUUID()}`);
         const response = action === "create"
             ? await routes.semesterRoutes.POST!(request("POST", { name: "新学期", setAsCurrent: true }))
-            : action === "current"
-                ? await routes.semesterCurrentRoutes.PUT!(request("PUT"))
-                : await routes.semesterDeleteRoutes.DELETE!(request("DELETE"));
+            : action === "rename"
+                ? await renameRoutes.semesterUpdateRoutes.PUT!(request("PUT", { name: "重命名学期" }))
+                : action === "current"
+                    ? await routes.semesterCurrentRoutes.PUT!(request("PUT"))
+                    : await routes.semesterDeleteRoutes.DELETE!(request("DELETE"));
         expect(response.status).toBe(action === "create" ? 201 : 200);
         expect(operations[0]?.kind).toBe("transaction");
         expect(operations[1]?.kind).toBe("execute");

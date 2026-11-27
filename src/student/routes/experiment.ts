@@ -405,7 +405,7 @@ const experimentRoutes: RouteDefinition = {
             return error("任务不存在", "NOT_FOUND", 404);
         }
         record ??= await getOrCreateStudentExperiment(auth.student.id, taskId);
-        if (!record) return error("创建实验记录失败", "CREATE_FAILED", 500);
+        if (!record) return error("任务不存在", "NOT_FOUND", 404);
         const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
         const response = await buildExperimentResponse(record, populationSize, taskId, auth.student.classId);
         if (!response.ok) return error(response.message, response.code, response.code === "SOURCE_CONFLICT" ? 409 : 500);

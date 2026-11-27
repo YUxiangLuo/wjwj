@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, mock, test } from "bun:test";
 import { basename } from "node:path";
 import { getTemplateContentDisposition, getTemplateContentType, resolveTemplatePath } from "./template-files";
 
@@ -45,4 +45,41 @@ test("questionnaire template artifacts are present and nonempty", async () => {
         expect(await file.exists()).toBeTrue();
         expect(file.size).toBeGreaterThan(1_000);
     }
+});
+
+test("root and template routes enforce GET/HEAD and include Allow + security headers on 405", async () => {
+    mock.module("../db", () => ({ db: {}, closeDatabase: async () => undefined }));
+    const { rootRoute, templateRoute } = await import(`../index.ts?static-routes=${crypto.randomUUID()}`);
+
+    for (const method of ["GET", "HEAD"] as const) {
+        const res = rootRoute(new Request("https://example.com/", { method }));
+        expect(res.status).toBe(302);
+        expect(res.headers.get("location")).toBe("/student");
+        expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    }
+
+    for (const method of ["POST", "PUT", "DELETE", "PATCH"] as const) {
+        const rootRes = rootRoute(new Request("https://example.com/", { method }));
+        expect(rootRes.status).toBe(405);
+        expect(rootRes.headers.get("allow")).toBe("GET, HEAD");
+        expect(rootRes.headers.get("x-content-type-options")).toBe("nosniff");
+
+        const tplReq = Object.assign(
+            new Request("https://example.com/templates/%E6%95%B0%E6%8D%AE%E6%A8%A1%E6%9D%BF.csv", { method }),
+            { params: { name: "数据模板.csv" } },
+        );
+        const tplRes = await templateRoute(tplReq);
+        expect(tplRes.status).toBe(405);
+        expect(tplRes.headers.get("allow")).toBe("GET, HEAD");
+        expect(tplRes.headers.get("x-content-type-options")).toBe("nosniff");
+    }
+
+    const headReq = Object.assign(
+        new Request("https://example.com/templates/%E6%95%B0%E6%8D%AE%E6%A8%A1%E6%9D%BF.csv", { method: "HEAD" }),
+        { params: { name: "数据模板.csv" } },
+    );
+    const headRes = await templateRoute(headReq);
+    expect(headRes.status).toBe(200);
+    expect(headRes.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(await headRes.text()).toBe("");
 });

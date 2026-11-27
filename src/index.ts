@@ -153,8 +153,47 @@ function legacyFaviconRoute(req: Request) {
   });
 }
 
+export function rootRoute(req: Request) {
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    return securedResponse("Method Not Allowed", {
+      status: 405,
+      headers: { Allow: "GET, HEAD" },
+    });
+  }
+  return securedResponse(null, { status: 302, headers: { Location: "/student" } });
+}
+
+export async function templateRoute(req: RouteRequest) {
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    return securedResponse("Method Not Allowed", {
+      status: 405,
+      headers: { Allow: "GET, HEAD" },
+    });
+  }
+
+  const fileName = req.params.name ?? "";
+  const fullPath = resolveTemplatePath(fileName);
+  if (!fullPath) return securedResponse("Not Found", { status: 404 });
+
+  const file = Bun.file(fullPath);
+  if (!(await file.exists())) {
+    return securedResponse("Not Found", { status: 404 });
+  }
+
+  const headers = {
+    "Content-Type": getTemplateContentType(fileName),
+    "Content-Disposition": getTemplateContentDisposition(fileName),
+  };
+
+  if (req.method === "HEAD") {
+    return securedResponse(null, { headers });
+  }
+
+  return securedResponse(file, { headers });
+}
+
 const routes = {
-  "/": securedResponse(null, { status: 302, headers: { Location: "/student" } }),
+  "/": rootRoute,
   "/favicon.svg": faviconRoute,
   "/favicon.ico": legacyFaviconRoute,
   "/student": studentRoute,
@@ -184,64 +223,42 @@ const routes = {
   ...securedDemoApiRoutes,
 
   // Static templates (teacher upload guides and csv templates)
-  "/templates/:name": async (req: RouteRequest) => {
-    if (req.method !== "GET" && req.method !== "HEAD") {
-      return securedResponse("Method Not Allowed", { status: 405 });
-    }
-
-    const fileName = req.params.name ?? "";
-    const fullPath = resolveTemplatePath(fileName);
-    if (!fullPath) return securedResponse("Not Found", { status: 404 });
-
-    const file = Bun.file(fullPath);
-    if (!(await file.exists())) {
-      return securedResponse("Not Found", { status: 404 });
-    }
-
-    const headers = {
-      "Content-Type": getTemplateContentType(fileName),
-      "Content-Disposition": getTemplateContentDisposition(fileName),
-    };
-
-    if (req.method === "HEAD") {
-      return securedResponse(null, { headers });
-    }
-
-    return securedResponse(file, { headers });
-  },
+  "/templates/:name": templateRoute,
 };
 
-const server = serve({
-  hostname: process.env.HOST || "0.0.0.0",
-  port: Number(process.env.PORT) || 3000,
-  // Keep Bun's global ceiling explicit. Individual spreadsheet routes enforce 20 MiB.
-  maxRequestBodySize: 128 * 1024 * 1024,
-  // Allow the analysis queue/worker's 30-second deadline to return its JSON error.
-  idleTimeout: 60,
-  routes,
-  error: handleServerError,
+if (import.meta.main) {
+  const server = serve({
+    hostname: process.env.HOST || "0.0.0.0",
+    port: Number(process.env.PORT) || 3000,
+    // Keep Bun's global ceiling explicit. Individual spreadsheet routes enforce 20 MiB.
+    maxRequestBodySize: 128 * 1024 * 1024,
+    // Allow the analysis queue/worker's 30-second deadline to return its JSON error.
+    idleTimeout: 60,
+    routes,
+    error: handleServerError,
 
-  development: process.env.NODE_ENV !== "production" && {
-    // Enable browser hot reloading in development
-    hmr: true,
+    development: process.env.NODE_ENV !== "production" && {
+      // Enable browser hot reloading in development
+      hmr: true,
 
-    // Echo console logs from the browser to the server
-    console: true,
-  },
-});
-
-console.log(`🚀 Server running at ${server.url}`);
-if (demoMode) console.warn("⚠️  DEMO_MODE=1：演示凭据端点已启用，请勿对外公开部署。");
-
-registerLongRunningProcessSignals({
-    onShutdown: async () => {
-        // Graceful drain with a 5s timeout to avoid hanging on long-lived connections.
-        const drain = server.stop();
-        const timeout = new Promise<void>((resolve) => setTimeout(resolve, 5000));
-        await Promise.race([drain, timeout]);
-        analysisService.close();
-        populationStatsService.close();
-        univariateService.close();
-        await closeDatabase();
+      // Echo console logs from the browser to the server
+      console: true,
     },
-});
+  });
+
+  console.log(`🚀 Server running at ${server.url}`);
+  if (demoMode) console.warn("⚠️  DEMO_MODE=1：演示凭据端点已启用，请勿对外公开部署。");
+
+  registerLongRunningProcessSignals({
+      onShutdown: async () => {
+          // Graceful drain with a 5s timeout to avoid hanging on long-lived connections.
+          const drain = server.stop();
+          const timeout = new Promise<void>((resolve) => setTimeout(resolve, 5000));
+          await Promise.race([drain, timeout]);
+          analysisService.close();
+          populationStatsService.close();
+          univariateService.close();
+          await closeDatabase();
+      },
+  });
+}

@@ -14,6 +14,7 @@ import {
     INVALID_SAMPLING_STORAGE_CODE,
     INVALID_SAMPLING_STORAGE_MESSAGE,
 } from "../experiment/sampling-storage";
+import { verifySamplingReplay } from "../experiment/sampling-replay";
 import { parseStoredJson } from "../experiment/serialization";
 import {
     buildSamplingResultsCsvExport,
@@ -115,6 +116,13 @@ const exportRoutes: RouteDefinition = {
             if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
             const hydrated = hydrateSamplingResults(storedResults, population);
             if (!hydrated.ok) return error(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
+            if (!(await verifySamplingReplay({
+                samplingResults: storedResults,
+                population,
+                fieldMapping: exp.fieldMapping,
+            }))) {
+                return error("抽样结果无法由可信设计重演", "REPLAY_MISMATCH", 409);
+            }
             results = hydrated.value;
         }
         if (!results) {

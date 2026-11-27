@@ -80,7 +80,7 @@ test("export route hydrates compact sampling indices from the immutable populati
                 [{ id: 40 }],
                 [{
                     excelFilePath: populationPath,
-                    samplingResults: { simple: { completed: true, sampleCount: 1, indices: [1] } },
+                    samplingResults: { simple: { completed: true, serverGenerated: true, seed: 1, sampleCount: 1, indices: [1] } },
                 }],
             ],
         });
@@ -108,7 +108,7 @@ test("frozen exports reject changed or missing source bytes and recover after re
                 const module = await loadFilesRoutes({ select: [[{ id: 40 }], [{
                     status, excelFilePath: path,
                     submissionSnapshot: { populationFileSha256: hash },
-                    samplingResults: { simple: { completed: true, sampleCount: 1, indices: [1] } },
+                    samplingResults: { simple: { completed: true, serverGenerated: true, seed: 1, sampleCount: 1, indices: [1] } },
                 }]] });
                 const response = await module.exportRoutes.GET!(withRouteParam(
                     createRequest("https://example.com/api/student/tasks/40/export?type=simple"), "40",
@@ -237,4 +237,40 @@ test("attachment download returns identical 404 NOT_FOUND for missing and other-
     expect(missingRes.status).toBe(404);
     expect(otherClassRes.status).toBe(404);
     expect(await otherClassRes.json()).toEqual(await missingRes.json());
+});
+
+test("export route rejects tampered or non-server-generated compact sampling indices with 409 REPLAY_MISMATCH", async () => {
+    const populationPath = `/storage/tampered-export-${crypto.randomUUID()}.csv`;
+    const absolutePath = `${process.cwd()}${populationPath}`;
+    await Bun.write(absolutePath, "id,city\n1,北京\n2,上海\n");
+
+    try {
+        for (const forgedSection of [
+            // seed 1 genuinely replays to [1] ("上海"); tampering in-range index to [0] must fail replay
+            { completed: true, serverGenerated: true, seed: 1, sampleCount: 1, indices: [0] },
+            // compact indices missing serverGenerated/seed must fail replay
+            { completed: true, sampleCount: 1, indices: [1] },
+        ]) {
+            const module = await loadFilesRoutes({
+                select: [
+                    [{ id: 40 }],
+                    [{
+                        excelFilePath: populationPath,
+                        samplingResults: { simple: forgedSection },
+                    }],
+                ],
+            });
+            const response = await module.exportRoutes.GET!(withRouteParam(
+                createRequest("https://example.com/api/student/tasks/40/export?type=simple"),
+                "40",
+            ));
+            expect(response.status).toBe(409);
+            expect(await response.json()).toMatchObject({
+                success: false,
+                error: { code: "REPLAY_MISMATCH" },
+            });
+        }
+    } finally {
+        await unlink(absolutePath).catch(() => undefined);
+    }
 });

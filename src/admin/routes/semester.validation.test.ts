@@ -99,3 +99,27 @@ test("semester update returns not found when the target row does not exist", asy
         error: { code: "NOT_FOUND", message: "学期不存在" },
     });
 });
+
+test("semester update returns 409 DUPLICATE_NAME under the transaction lock when name collides", async () => {
+    const { db, operations } = createMockDb({ select: [[{ id: 3 }]] });
+    mock.module("../../db", () => ({ db }));
+
+    const module = await import(`./semester?semester-update-duplicate-test=${crypto.randomUUID()}`);
+    const req = Object.assign(createJsonRequest(
+        "https://example.com/api/admin/semesters/8/update",
+        "PUT",
+        { name: "2026 春季" },
+    ), {
+        params: { id: "8" },
+    });
+
+    const response = await module.semesterUpdateRoutes.PUT!(req);
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+        success: false,
+        error: { code: "DUPLICATE_NAME", message: "学期名称已存在" },
+    });
+    expect(operations[0]?.kind).toBe("transaction");
+    expect(operations.some((op) => op.kind === "update")).toBe(false);
+});

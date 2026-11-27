@@ -46,15 +46,26 @@ test("pagination rejects malformed and overflowing values before querying Postgr
     expect(parsePagination(new URLSearchParams("page=999999&pageSize=100"))).toEqual({ page: 999999, pageSize: 100, offset: 99999800 });
 });
 
-test("concurrent unique constraint failures return a conflict without database details", async () => {
+test("concurrent unique and foreign-key constraint failures return a conflict without database details", async () => {
     for (const property of ["errno", "code"]) {
-        const postgres = Object.assign(new Error("private SQL and values"), { [property]: "23505" });
-        for (const cause of [postgres, new Error("Failed query", { cause: postgres })]) {
+        const uniqueErr = Object.assign(new Error("private SQL and values"), { [property]: "23505" });
+        for (const cause of [uniqueErr, new Error("Failed query", { cause: uniqueErr })]) {
             const response = handleServerError(cause);
             expect(response.status).toBe(409);
             expect(await response.json()).toEqual({ success: false, error: {
                 code: "CONFLICT", message: "数据已存在或已被其他操作更新，请刷新后重试",
             } });
+        }
+
+        const fkErr = Object.assign(new Error("insert or update on table \"class\" violates foreign key constraint"), { [property]: "23503" });
+        for (const cause of [fkErr, new Error("Failed query", { cause: fkErr })]) {
+            const response = handleServerError(cause);
+            expect(response.status).toBe(409);
+            const payload = await response.json();
+            expect(payload).toEqual({ success: false, error: {
+                code: "CONFLICT", message: "关联数据已被删除或变更，请刷新后重试",
+            } });
+            expect(JSON.stringify(payload)).not.toContain("foreign key");
         }
     }
 });
@@ -166,13 +177,21 @@ test("handleServerError returns the standard 400 payload for invalid JSON", asyn
     });
 });
 
-test("API request guard rejects cross-site and non-JSON mutation bodies", async () => {
+test("API request guard rejects cross-site, same-site, and non-JSON mutation bodies while preserving bodyless same-origin writes", async () => {
     const crossSite = validateApiRequest(new Request("https://app.example/api/student/stage", {
         method: "POST",
         headers: { "Content-Type": "application/json", Origin: "https://evil.example", "Sec-Fetch-Site": "cross-site" },
         body: "{}",
     }));
     expect(crossSite?.status).toBe(403);
+    expect(await crossSite?.json()).toMatchObject({ error: { code: "CROSS_SITE_REQUEST" } });
+
+    const sameSiteSubdomain = validateApiRequest(new Request("https://app.uni.edu.cn/api/teacher/topics/1/copy", {
+        method: "POST",
+        headers: { "Sec-Fetch-Site": "same-site" },
+    }));
+    expect(sameSiteSubdomain?.status).toBe(403);
+    expect(await sameSiteSubdomain?.json()).toMatchObject({ error: { code: "CROSS_SITE_REQUEST" } });
 
     const text = validateApiRequest(new Request("https://app.example/api/student/stage", {
         method: "POST",
@@ -189,8 +208,18 @@ test("API request guard rejects cross-site and non-JSON mutation bodies", async 
 
     expect(validateApiRequest(new Request("https://app.example/api/student/stage", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Origin: "https://app.example" },
+        headers: { "Content-Type": "application/json", Origin: "https://app.example", "Sec-Fetch-Site": "same-origin" },
         body: "{}",
+    }))).toBeNull();
+
+    expect(validateApiRequest(new Request("https://app.example/api/teacher/topics/1/copy", {
+        method: "POST",
+        headers: { Origin: "https://app.example", "Sec-Fetch-Site": "none" },
+    }))).toBeNull();
+
+    expect(validateApiRequest(new Request("https://app.example/api/admin/semesters/2", {
+        method: "DELETE",
+        headers: { Origin: "https://app.example", "Sec-Fetch-Site": "same-origin" },
     }))).toBeNull();
 });
 

@@ -18,6 +18,7 @@ import {
     INVALID_SAMPLING_STORAGE_CODE,
     INVALID_SAMPLING_STORAGE_MESSAGE,
 } from "../../student/experiment/sampling-storage";
+import { verifySamplingReplay } from "../../student/experiment/sampling-replay";
 import { parseStoredJson } from "../../student/experiment/serialization";
 import { getTeacherUser } from "./auth";
 import { resolveSamplingPolicy } from "../../lib/sampling-policy";
@@ -409,6 +410,13 @@ const gradingSamplingExportRoutes: RouteDefinition = {
             const hydrated = hydrateSamplingResults(storedSamplingResults, population);
             if (!hydrated.ok) {
                 return error(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
+            }
+            if (!(await verifySamplingReplay({
+                samplingResults: storedSamplingResults,
+                population,
+                fieldMapping: row.fieldMapping,
+            }))) {
+                return error("抽样结果无法由可信设计重演", "REPLAY_MISMATCH", 409);
             }
             samplingResults = hydrated.value;
         }

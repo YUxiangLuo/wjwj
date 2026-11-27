@@ -116,3 +116,66 @@ test("teacher sampling export returns every row from the immutable submission sn
     expect(csv).toContain("提交-60");
     expect(csv).not.toContain("当前值");
 });
+
+test("teacher sampling export verifies replay on compact server-generated results and rejects tampered indices with 409", async () => {
+    const path = `/storage/teacher-compact-export-${crypto.randomUUID()}.csv`;
+    const absolute = `${process.cwd()}${path}`;
+    const content = "id,city\n1,北京\n2,上海\n";
+    await Bun.write(absolute, content);
+    const hash = new Bun.CryptoHasher("sha256").update(content).digest("hex");
+
+    try {
+        // Valid compact server-generated result (seed 1 -> index [1] "上海")
+        const validDb = createMockDb({ select: [[{
+            id: 99,
+            status: "submitted",
+            excelFilePath: path,
+            fieldMapping: null,
+            submissionSnapshot: {
+                populationFileSha256: hash,
+                samplingResults: {
+                    simple: { completed: true, serverGenerated: true, seed: 1, sampleCount: 1, indices: [1] },
+                },
+            },
+            samplingResults: null,
+        }]] });
+        mock.module("../../db", () => ({ db: validDb.db }));
+        mock.module("./auth", () => createTeacherAuthModuleMock());
+        const validModule = await import(`./grading.ts?teacher-export-valid=${crypto.randomUUID()}`);
+        const okRes = await validModule.gradingSamplingExportRoutes.GET!(withId(
+            new Request("https://example.com/api/teacher/grading/99/sampling-export?type=simple"),
+            "99",
+        ));
+        expect(okRes.status).toBe(200);
+        expect(await okRes.text()).toContain("上海");
+
+        // Tampered in-range index ([0] instead of [1] for seed 1) must be rejected with 409 REPLAY_MISMATCH
+        const tamperedDb = createMockDb({ select: [[{
+            id: 99,
+            status: "submitted",
+            excelFilePath: path,
+            fieldMapping: null,
+            submissionSnapshot: {
+                populationFileSha256: hash,
+                samplingResults: {
+                    simple: { completed: true, serverGenerated: true, seed: 1, sampleCount: 1, indices: [0] },
+                },
+            },
+            samplingResults: null,
+        }]] });
+        mock.module("../../db", () => ({ db: tamperedDb.db }));
+        mock.module("./auth", () => createTeacherAuthModuleMock());
+        const tamperedModule = await import(`./grading.ts?teacher-export-tampered=${crypto.randomUUID()}`);
+        const badRes = await tamperedModule.gradingSamplingExportRoutes.GET!(withId(
+            new Request("https://example.com/api/teacher/grading/99/sampling-export?type=simple"),
+            "99",
+        ));
+        expect(badRes.status).toBe(409);
+        expect(await badRes.json()).toMatchObject({
+            success: false,
+            error: { code: "REPLAY_MISMATCH" },
+        });
+    } finally {
+        await Bun.file(absolute).delete().catch(() => undefined);
+    }
+});
