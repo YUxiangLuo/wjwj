@@ -2,7 +2,7 @@ import { RequestError } from "@/components/RequestError";
 import { requireApiData, useAsyncLoad } from "@/hooks/useAsyncLoad";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Search, Layers } from "lucide-react";
+import { Search, Layers } from "lucide-react";
 import { getRichTextPlainText } from "@/utils/rich-text";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -492,62 +492,68 @@ export function TopicManagement() {
     }, [filteredTopics, copiedTopicId]);
 
     return (
-        <div className="space-y-6">
-            <dl aria-label="实验模板概览" className="grid grid-cols-4 gap-4">
-                <div className="rounded-surface border border-border bg-card p-4"><dt className="text-meta font-medium text-muted-foreground">商业实验模板总数</dt><dd className="mt-1.5 text-page-title font-bold tabular-nums text-foreground">{loading || loadError ? "-" : summary.total}</dd></div>
-                <div className="rounded-surface border border-border bg-card p-4"><dt className="text-meta font-medium text-muted-foreground">已发布模板</dt><dd className="mt-1.5 text-page-title font-bold tabular-nums text-success">{loading || loadError ? "-" : summary.published}</dd></div>
-                <div className="rounded-surface border border-border bg-card p-4"><dt className="text-meta font-medium text-muted-foreground">草稿配置中</dt><dd className="mt-1.5 text-page-title font-bold tabular-nums text-warning">{loading || loadError ? "-" : summary.draft}</dd></div>
-                <div className="rounded-surface border border-border bg-card p-4"><dt className="text-meta font-medium text-muted-foreground">虚拟总体总行数</dt><dd className="mt-1.5 text-page-title font-bold tabular-nums text-primary">{loading || loadError ? "-" : summary.totalRows.toLocaleString()}</dd></div>
+        <div className="space-y-5">
+            <dl aria-label="实验模板概览" className="grid grid-cols-4 gap-3.5">
+                <div className="rounded-surface border border-border bg-card px-4 py-3.5"><dt className="text-meta font-medium text-muted-foreground">商业实验模板总数</dt><dd className="mt-1.5 text-page-title font-medium tabular-nums text-foreground">{loading || loadError ? "-" : summary.total}</dd></div>
+                <div className="rounded-surface border border-border bg-card px-4 py-3.5"><dt className="text-meta font-medium text-muted-foreground">已发布模板</dt><dd className="mt-1.5 text-page-title font-medium tabular-nums text-foreground">{loading || loadError ? "-" : summary.published}</dd></div>
+                <div className="rounded-surface border border-border bg-card px-4 py-3.5"><dt className="text-meta font-medium text-muted-foreground">草稿配置中</dt><dd className="mt-1.5 text-page-title font-medium tabular-nums text-foreground">{loading || loadError ? "-" : summary.draft}</dd></div>
+                <div className="rounded-surface border border-border bg-card px-4 py-3.5"><dt className="text-meta font-medium text-muted-foreground">虚拟总体总行数</dt><dd className="mt-1.5 text-page-title font-medium tabular-nums text-foreground">{loading || loadError ? "-" : summary.totalRows.toLocaleString()}</dd></div>
             </dl>
 
-            <Card>
-                <PageHeader as={CardHeader}>
+            <Card className="gap-0 overflow-hidden border-border bg-card py-0">
+                <PageHeader as={CardHeader} className="flex-wrap border-b border-border px-5 py-4 [.border-b]:pb-4">
                     <div>
-                        <h2 className="text-section-title font-semibold text-foreground">实验模板列表</h2>
-                        <p className="text-meta text-muted-foreground mt-1">
+                        <h2 className="text-section-title font-medium text-foreground">实验模板列表</h2>
+                        <p className="mt-0.5 text-meta text-muted-foreground">
                             {loading || loadError ? "共 - 条数据" : `共 ${filteredTopics.length} 条数据`}
                         </p>
                     </div>
-                    <div className="flex flex-wrap gap-3 flex-row w-auto">
+                    <div className="flex w-auto flex-row flex-wrap items-center gap-3">
                         <div className="relative w-56">
-                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 data-testid="teacher-topic-search"
                                 aria-label="搜索实验模板名称"
                                 placeholder="搜索实验模板名称"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
+                                className="pl-9"
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "draft" | "published")}>
-                            <SelectTrigger aria-label="按实验模板状态筛选" data-testid="teacher-topic-status-filter" className="bg-card border-input text-foreground w-28">
+                            <SelectTrigger aria-label="按实验模板状态筛选" data-testid="teacher-topic-status-filter" className="w-32 bg-card">
                                 <SelectValue placeholder="全部状态" />
                             </SelectTrigger>
-                            <SelectContent className="bg-card border-border text-foreground">
+                            <SelectContent>
                                 <SelectItem value="all">全部状态</SelectItem>
                                 <SelectItem value="draft">草稿</SelectItem>
                                 <SelectItem value="published">已发布</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Button data-testid="teacher-topic-create-open" onClick={openCreateModal} className="bg-primary hover:bg-primary-hover text-primary-foreground">
+                        <Button data-testid="teacher-topic-create-open" onClick={openCreateModal}>
                             + 创建实验模板
                         </Button>
                     </div>
                 </PageHeader>
-                <CardContent className="space-y-4 pt-4">
-                    {loadError ? <RequestError message={loadError} onRetry={() => void loadTopics()} backTo="/" backLabel="返回教学概览" /> : loading ? <div role="status" aria-live="polite" className="text-center py-12 text-muted-foreground">加载中...</div> : topics.length === 0 ? (
-                        <div className="rounded-surface border border-dashed border-border py-16 text-center">
+                <CardContent className="divide-y divide-border p-0">
+                    {loadError ? (
+                        <div className="p-5">
+                            <RequestError message={loadError} onRetry={() => void loadTopics()} backTo="/" backLabel="返回教学概览" />
+                        </div>
+                    ) : loading ? (
+                        <div role="status" aria-live="polite" className="py-12 text-center text-label text-muted-foreground">加载中...</div>
+                    ) : topics.length === 0 ? (
+                        <div className="px-6 py-14 text-center">
                             <p className="text-subheading font-medium text-foreground">还没有实验模板</p>
-                            <p className="mt-2 text-label text-muted-foreground">创建模板后可配置总体数据、研究目标、虚拟投放环境与抽样策略。</p>
-                            <Button onClick={openCreateModal} className="mt-4 bg-primary hover:bg-primary-hover text-primary-foreground">
+                            <p className="mt-1.5 text-label text-muted-foreground">创建模板后可配置总体数据、研究目标、虚拟投放环境与抽样策略。</p>
+                            <Button onClick={openCreateModal} className="mt-4">
                                 + 创建首个实验模板
                             </Button>
                         </div>
                     ) : filteredTopics.length === 0 ? (
-                        <div className="rounded-surface border border-dashed border-border py-16 text-center">
+                        <div className="px-6 py-14 text-center">
                             <p className="text-subheading font-medium text-foreground">没有符合条件的实验模板</p>
-                            <p className="mt-2 text-label text-muted-foreground">请清空搜索或更改状态筛选。</p>
+                            <p className="mt-1.5 text-label text-muted-foreground">请清空搜索或更改状态筛选。</p>
                             <Button
                                 type="button"
                                 variant="outline"
@@ -562,75 +568,73 @@ export function TopicManagement() {
                             </Button>
                         </div>
                     ) : filteredTopics.map((topic) => (
-                        <div data-testid={`teacher-topic-row-${topic.id}`} key={topic.id} className="border border-border rounded-surface p-5 bg-background">
-                            <div className="flex gap-3 flex-row items-start justify-between mb-4">
-                                <div className="flex min-w-0 flex-1 items-start gap-4">
-                                    <div className="w-12 h-12 shrink-0 rounded-surface bg-primary-muted text-primary flex items-center justify-center border border-primary-border">
-                                        <BookOpen className="w-6 h-6" />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <h3 className="break-words font-semibold text-foreground text-subheading">{topic.name}</h3>
-                                            {topic.status === 1 ? (
-                                                <StatusBadge intent="success">已发布</StatusBadge>
-                                            ) : (
-                                                <StatusBadge intent="warning">草稿</StatusBadge>
-                                            )}
-                                            {topic.hasTasks && <StatusBadge intent="info">实验任务已分配 · 内容只读</StatusBadge>}
-                                        </div>
-                                        <div className="text-meta text-muted-foreground mt-1">创建于 {new Date(topic.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}</div>
-                                        <div className="text-label text-muted-foreground mt-2 line-clamp-2 max-w-2xl">{getRichTextPlainText(topic.description) || "暂无描述"}</div>
-                                    </div>
+                        <div
+                            data-testid={`teacher-topic-row-${topic.id}`}
+                            key={topic.id}
+                            className="flex items-start justify-between gap-6 px-5 py-4 transition-none hover:bg-muted"
+                        >
+                            <div className="min-w-0 flex-1 space-y-1.5">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h3 className="break-words text-subheading font-medium text-foreground">{topic.name}</h3>
+                                    {topic.status === 1 ? (
+                                        <StatusBadge intent="success">已发布</StatusBadge>
+                                    ) : (
+                                        <StatusBadge intent="neutral">草稿</StatusBadge>
+                                    )}
+                                    {topic.hasTasks && <StatusBadge intent="neutral">实验任务已分配 · 内容只读</StatusBadge>}
                                 </div>
-                            </div>
-                            <div className="flex items-center justify-between border-t border-border pt-4 mt-2">
-                                <div className="flex items-center gap-6 text-label text-muted-foreground">
-                                    <span className="flex items-center gap-2">
-                                        <Layers className="w-4 h-4" />
-                                        数据行数：<span className="text-foreground">{topic.dataRows > 0 ? topic.dataRows.toLocaleString() : "未上传"}</span>
+                                <p className="max-w-3xl line-clamp-2 text-label text-muted-foreground">
+                                    {getRichTextPlainText(topic.description) || "暂无描述"}
+                                </p>
+                                <div className="flex flex-wrap items-center gap-3 pt-0.5 text-meta text-muted-foreground">
+                                    <span>创建于 {new Date(topic.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}</span>
+                                    <span aria-hidden="true">·</span>
+                                    <span className="inline-flex items-center gap-1.5 tabular-nums">
+                                        <Layers className="h-3.5 w-3.5 shrink-0" />
+                                        数据行数：<span className="font-medium text-foreground">{topic.dataRows > 0 ? topic.dataRows.toLocaleString() : "未上传"}</span>
                                     </span>
                                 </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {topic.status === 1 && <Button asChild size="sm" variant="outline"><Link to={`/task?topicId=${topic.id}`}>分配到班级</Link></Button>}
-                                    {topic.hasTasks ? (
-                                        <>
-                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-info hover:bg-info-muted" onClick={() => openViewModal(topic)}>查看</Button>
-                                            <Button
-                                                data-testid={`teacher-topic-copy-${topic.id}`}
-                                                variant="ghost"
-                                                size="sm"
-                                                disabled={copyingTopicId !== null}
-                                                className="text-muted-foreground hover:text-info hover:bg-info-muted"
-                                                onClick={() => void copyTopic(topic)}
-                                            >
-                                                {copyingTopicId === topic.id ? "正在复制…" : "复制"}
-                                            </Button>
-                                        </>
-                                    ) : topic.status === 0 ? (
-                                        <>
-                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-info hover:bg-info-muted" onClick={() => openViewModal(topic)}>查看</Button>
-                                            <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary-muted" onClick={() => openEditModal(topic)}>编辑</Button>
-                                            <Button data-testid={`teacher-topic-publish-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-success hover:bg-success-muted" onClick={() => requestPublish(topic)}>发布</Button>
-                                            <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive hover:bg-destructive-muted" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-info hover:bg-info-muted" onClick={() => openViewModal(topic)}>查看</Button>
-                                            <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary-muted" onClick={() => openEditModal(topic)}>编辑</Button>
-                                            <Button
-                                                data-testid={`teacher-topic-copy-${topic.id}`}
-                                                variant="ghost"
-                                                size="sm"
-                                                disabled={copyingTopicId !== null}
-                                                className="text-muted-foreground hover:text-info hover:bg-info-muted"
-                                                onClick={() => void copyTopic(topic)}
-                                            >
-                                                {copyingTopicId === topic.id ? "正在复制…" : "复制"}
-                                            </Button>
-                                            <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive hover:bg-destructive-muted" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
-                                        </>
-                                    )}
-                                </div>
+                            </div>
+                            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 pt-0.5">
+                                {topic.status === 1 && <Button asChild size="sm" variant="outline"><Link to={`/task?topicId=${topic.id}`}>分配到班级</Link></Button>}
+                                {topic.hasTasks ? (
+                                    <>
+                                        <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:bg-secondary hover:text-foreground" onClick={() => openViewModal(topic)}>查看</Button>
+                                        <Button
+                                            data-testid={`teacher-topic-copy-${topic.id}`}
+                                            variant="ghost"
+                                            size="sm"
+                                            disabled={copyingTopicId !== null}
+                                            className="text-muted-foreground hover:bg-secondary hover:text-foreground"
+                                            onClick={() => void copyTopic(topic)}
+                                        >
+                                            {copyingTopicId === topic.id ? "正在复制…" : "复制"}
+                                        </Button>
+                                    </>
+                                ) : topic.status === 0 ? (
+                                    <>
+                                        <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:bg-secondary hover:text-foreground" onClick={() => openViewModal(topic)}>查看</Button>
+                                        <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:bg-secondary hover:text-foreground" onClick={() => openEditModal(topic)}>编辑</Button>
+                                        <Button data-testid={`teacher-topic-publish-${topic.id}`} variant="ghost" size="sm" className="text-primary hover:bg-primary-muted hover:text-primary" onClick={() => requestPublish(topic)}>发布</Button>
+                                        <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:bg-destructive-muted hover:text-destructive" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:bg-secondary hover:text-foreground" onClick={() => openViewModal(topic)}>查看</Button>
+                                        <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:bg-secondary hover:text-foreground" onClick={() => openEditModal(topic)}>编辑</Button>
+                                        <Button
+                                            data-testid={`teacher-topic-copy-${topic.id}`}
+                                            variant="ghost"
+                                            size="sm"
+                                            disabled={copyingTopicId !== null}
+                                            className="text-muted-foreground hover:bg-secondary hover:text-foreground"
+                                            onClick={() => void copyTopic(topic)}
+                                        >
+                                            {copyingTopicId === topic.id ? "正在复制…" : "复制"}
+                                        </Button>
+                                        <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:bg-destructive-muted hover:text-destructive" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     ))}

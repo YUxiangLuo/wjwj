@@ -19,18 +19,18 @@ import { formatDateTimeDisplay } from "@/utils/format";
 import { teacherApi, type TaskProgressData } from "../api-client";
 
 const STATUS_CONFIG = {
-    not_started: { label: "未开始", color: "text-muted-foreground", intent: "neutral" },
-    stage1: { label: "商业问卷设计", color: "text-info", intent: "info" },
-    stage2: { label: "首轮试投发放", color: "text-info", intent: "info" },
-    stage3: { label: "回收质检与诊断", color: "text-auxiliary-strong", intent: "auxiliary" },
-    stage4: { label: "调整思路与二轮投放", color: "text-primary", intent: "primary" },
-    stage5: { label: "商务分析与决策报告", color: "text-warning", intent: "warning" },
-    submitted: { label: "已提交", color: "text-warning", intent: "warning" },
-    graded: { label: "已批改", color: "text-success", intent: "success" },
-    rejected: { label: "已驳回", color: "text-destructive", intent: "destructive" },
+    not_started: { label: "未开始", intent: "neutral" },
+    stage1: { label: "商业问卷设计", intent: "info" },
+    stage2: { label: "首轮试投发放", intent: "info" },
+    stage3: { label: "回收质检与诊断", intent: "auxiliary" },
+    stage4: { label: "调整思路与二轮投放", intent: "primary" },
+    stage5: { label: "商务分析与决策报告", intent: "warning" },
+    submitted: { label: "已提交", intent: "warning" },
+    graded: { label: "已批改", intent: "success" },
+    rejected: { label: "已驳回", intent: "destructive" },
 } as const;
 
-type StatusConfig = { label: string; color: string; intent: StatusBadgeIntent };
+type StatusConfig = { label: string; intent: StatusBadgeIntent };
 
 type StatusKey = TaskProgressStatusKey;
 
@@ -77,12 +77,12 @@ export function TaskProgressDetail() {
     const ppsUnavailable = data.ppsUnavailable;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             {ppsUnavailable && ppsUnavailable.count > 0 && (
                 <div
                     role="status"
                     data-testid="teacher-progress-pps-unavailable"
-                    className="rounded-surface border border-warning-border bg-warning-muted p-4 text-label text-warning"
+                    className="rounded-surface border border-warning-border bg-warning-muted px-4 py-3 text-label text-warning"
                 >
                     <p className="font-medium">有 {ppsUnavailable.count} 名学生的 PPS 因总体数据不可用而被跳过</p>
                     <p className="mt-1">
@@ -91,18 +91,18 @@ export function TaskProgressDetail() {
                     </p>
                 </div>
             )}
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-muted" onClick={() => navigate(`/task${search}`)}>
-                    <ArrowLeft className="w-4 h-4 mr-1" />
+            <div className="flex items-center gap-3">
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => navigate(`/task${search}`)}>
+                    <ArrowLeft className="mr-1 h-4 w-4" />
                     返回列表
                 </Button>
-                <div className="h-6 w-px bg-muted"></div>
+                <div className="h-5 w-px bg-border" aria-hidden="true" />
                 <div>
-                    <h2 className="text-subheading font-semibold text-foreground">{data.task.topicName}</h2>
-                    <div className="flex items-center gap-3 text-meta text-muted-foreground">
-                        <span className="flex items-center gap-1"><Users className="w-3 h-3" />{data.task.className}</span>
+                    <h2 className="text-subheading font-medium text-foreground">{data.task.topicName}</h2>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-3 text-meta text-muted-foreground">
+                        <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{data.task.className}</span>
                         <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
+                            <Clock className="h-3.5 w-3.5" />
                             {data.task.deadline ? `截止：${formatDateTimeDisplay(data.task.deadline)}（UTC+8）` : "无截止时间"}
                         </span>
                         <span className="tabular-nums">{total} 名学生</span>
@@ -112,8 +112,8 @@ export function TaskProgressDetail() {
 
             {/* Executive BI Status Donut + 5-Stage Pipeline Bar */}
             {total > 0 && (
-                <div className="rounded-surface bg-muted p-4" data-testid="teacher-progress-distribution">
-                    <Button variant="ghost" aria-expanded={distributionOpen} aria-controls="teacher-progress-charts" onClick={() => setDistributionOpen(open => !open)}>
+                <div className="rounded-surface border border-border bg-muted px-4 py-2.5" data-testid="teacher-progress-distribution">
+                    <Button variant="ghost" size="sm" aria-expanded={distributionOpen} aria-controls="teacher-progress-charts" onClick={() => setDistributionOpen(open => !open)}>
                         {distributionOpen ? "收起阶段分布" : "查看阶段分布"} · {total} 名学生
                     </Button>
                     {distributionOpen && (
@@ -127,28 +127,28 @@ export function TaskProgressDetail() {
             )}
 
             {/* Student list */}
-            <Card data-testid="teacher-progress-students">
-                <div className="p-4 border-b border-border flex flex-wrap items-center justify-between gap-3">
-                    <span className="text-label font-medium text-foreground">
+            <Card className="gap-0 overflow-hidden border-border bg-card py-0" data-testid="teacher-progress-students">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5">
+                    <span className="text-section-title font-medium text-foreground">
                         学生列表
                         {(searchTerm || statusFilter !== "all") && (
                             <span className="ml-2 text-meta font-normal text-muted-foreground">（匹配 {filteredStudents.length} / {data.students.length} 人）</span>
                         )}
                     </span>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2.5">
                         <div className="relative w-52">
                             <Label htmlFor="teacher-progress-search" className="sr-only">搜索学号或姓名</Label>
-                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 id="teacher-progress-search"
                                 placeholder="搜索学号/姓名"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-card border-input text-foreground placeholder:text-muted-foreground h-8 text-label"
+                                className="h-9 bg-card pl-9 text-label"
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as TaskProgressFilterValue)}>
-                            <SelectTrigger aria-label="按实验状态筛选学生" className="h-8 w-44 bg-card text-label">
+                            <SelectTrigger aria-label="按实验状态筛选学生" className="h-9 w-48 bg-card text-label">
                                 <SelectValue placeholder="全部状态" />
                             </SelectTrigger>
                             <SelectContent>
@@ -167,7 +167,7 @@ export function TaskProgressDetail() {
                         </Select>
                     </div>
                 </div>
-                <CardContent className="pt-0">
+                <CardContent className="p-0">
                     <Table aria-label="任务学生进度">
                         <TableHeader>
                             <TableRow className="border-border">
@@ -176,25 +176,25 @@ export function TaskProgressDetail() {
                                 <TableHead className="text-muted-foreground">状态</TableHead>
                                 <TableHead className="text-muted-foreground">当前阶段</TableHead>
                                 <TableHead className="text-muted-foreground">最近活动 (UTC+8)</TableHead>
-                                <TableHead className="text-muted-foreground text-right">操作</TableHead>
+                                <TableHead className="text-right text-muted-foreground">操作</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {filteredStudents.map((s) => {
                                 const cfg: StatusConfig = STATUS_CONFIG[s.status as StatusKey] ?? STATUS_CONFIG.not_started;
                                 return (
-                                    <TableRow key={s.studentId} className="border-border hover:bg-muted transition-none">
-                                        <TableCell className="font-mono text-foreground text-label">{s.studentId}</TableCell>
-                                        <TableCell className="text-foreground">{s.name}</TableCell>
+                                    <TableRow key={s.studentId} className="border-border transition-none hover:bg-muted">
+                                        <TableCell className="font-mono text-label text-foreground">{s.studentId}</TableCell>
+                                        <TableCell className="font-medium text-foreground">{s.name}</TableCell>
                                         <TableCell>
                                             <StatusBadge intent={cfg.intent}>
                                                 {cfg.label}
                                             </StatusBadge>
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground text-label tabular-nums">
+                                        <TableCell className="text-label tabular-nums text-muted-foreground">
                                             {s.stage !== null ? `阶段 ${s.stage}` : "-"}
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground text-meta tabular-nums">
+                                        <TableCell className="text-meta tabular-nums text-muted-foreground">
                                             {s.lastActivity ? formatDateTimeDisplay(s.lastActivity) : "-"}
                                         </TableCell>
                                         <TableCell className="text-right">
@@ -202,13 +202,13 @@ export function TaskProgressDetail() {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    className="h-7 text-meta text-primary hover:text-primary hover:bg-primary-muted"
+                                                    className="h-8 text-meta text-primary hover:bg-primary-muted hover:text-primary"
                                                     onClick={() => navigate(`/grading/${s.submissionId}`)}
                                                 >
                                                     {s.status === "submitted" ? (
-                                                        <><FileEdit className="w-3 h-3 mr-1" />进入批改</>
+                                                        <><FileEdit className="mr-1 h-3.5 w-3.5" />进入批改</>
                                                     ) : (
-                                                        <><Eye className="w-3 h-3 mr-1" />查看详情</>
+                                                        <><Eye className="mr-1 h-3.5 w-3.5" />查看详情</>
                                                     )}
                                                 </Button>
                                             ) : s.status === "not_started" ? (
@@ -222,7 +222,7 @@ export function TaskProgressDetail() {
                             })}
                             {filteredStudents.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground whitespace-normal">
+                                    <TableCell colSpan={6} className="whitespace-normal py-12 text-center text-muted-foreground">
                                         <div className="space-y-2">
                                             <p>暂无数据</p>
                                             {(searchTerm || statusFilter !== "all") && (

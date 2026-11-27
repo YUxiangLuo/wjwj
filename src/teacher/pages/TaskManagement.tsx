@@ -277,53 +277,59 @@ export function TaskManagement() {
     }, [tasks, classFilter, searchTerm]);
 
     return (
-        <div className="space-y-6">
-            <dl aria-label="实验任务概览" className="grid grid-cols-4 gap-5 border-b border-border pb-5">
-                <div><dt className="text-meta text-muted-foreground">实验任务总数</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.total}</dd></div>
-                <div><dt className="text-meta text-muted-foreground">待批改</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : <StatusBadge intent={summary.pendingTotal > 0 ? "warning" : "neutral"}>{summary.pendingTotal}</StatusBadge>}</dd></div>
-                <div><dt className="text-meta text-muted-foreground">已完成</dt><dd className="mt-1 text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.completedTotal}</dd></div>
-                <div><dt className="text-meta text-muted-foreground">应交人次</dt><dd className="mt-1"><span className="text-subheading font-semibold tabular-nums">{loading || loadError ? "-" : summary.expectedCount}</span><p className="mt-1 text-meta text-muted-foreground">按任务覆盖班级学生数累计，非实际提交数</p></dd></div>
+        <div className="space-y-4">
+            <dl aria-label="实验任务概览" className="grid grid-cols-4 gap-3.5">
+                <div className="rounded-surface border border-border bg-card px-4 py-3"><dt className="text-meta font-medium text-muted-foreground">实验任务总数</dt><dd className="mt-1 text-page-title font-medium tabular-nums text-foreground">{loading || loadError ? "-" : summary.total}</dd></div>
+                <div className="rounded-surface border border-border bg-card px-4 py-3"><dt className="text-meta font-medium text-muted-foreground">待批改</dt><dd className="mt-1 text-page-title font-medium tabular-nums text-foreground">{loading || loadError ? "-" : summary.pendingTotal}</dd></div>
+                <div className="rounded-surface border border-border bg-card px-4 py-3"><dt className="text-meta font-medium text-muted-foreground">已完成</dt><dd className="mt-1 text-page-title font-medium tabular-nums text-foreground">{loading || loadError ? "-" : summary.completedTotal}</dd></div>
+                <div className="rounded-surface border border-border bg-card px-4 py-3"><dt className="text-meta font-medium text-muted-foreground">应交人次</dt><dd className="mt-1 flex items-baseline justify-between gap-2"><span className="text-page-title font-medium tabular-nums text-foreground">{loading || loadError ? "-" : summary.expectedCount}</span><span className="truncate text-meta text-muted-foreground">覆盖班级累计</span></dd></div>
             </dl>
 
-            <Card>
-                <PageHeader as={CardHeader} className="flex-wrap">
+            <Card className="gap-0 overflow-hidden border-border bg-card py-0">
+                <PageHeader as={CardHeader} className="flex-wrap border-b border-border px-5 py-3.5 [.border-b]:pb-3.5">
                     <div>
-                        <CardTitle className="text-section-title text-foreground">实验任务列表</CardTitle>
-                        <p className="text-meta text-muted-foreground mt-1">
+                        <CardTitle className="text-section-title font-medium text-foreground">实验任务列表</CardTitle>
+                        <p className="mt-0.5 text-meta text-muted-foreground">
                             {loading || loadError ? "共 - 条数据" : `共 ${filteredTasks.length} 条数据`}
                         </p>
                     </div>
-                    <div className="flex flex-wrap gap-3 flex-row w-auto">
+                    <div className="flex w-auto flex-row flex-wrap items-center gap-3">
                         <div className="relative w-56">
                             <Label htmlFor="teacher-task-search" className="sr-only">搜索实验模板</Label>
-                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 id="teacher-task-search"
                                 data-testid="teacher-task-search"
                                 placeholder="搜索实验模板"
                                 value={searchTerm}
                                 onChange={(e) => updateFilter("keyword", e.target.value)}
-                                className="pl-9 bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
+                                className="pl-9"
                             />
                         </div>
                         <Select value={classFilter} onValueChange={value => updateFilter("className", value === "all" ? "" : value)}>
-                            <SelectTrigger aria-label="按班级筛选任务" data-testid="teacher-task-class-filter" className="bg-card border-input text-foreground w-40">
+                            <SelectTrigger aria-label="按班级筛选任务" data-testid="teacher-task-class-filter" className="w-40 bg-card">
                                 <SelectValue placeholder="全部班级" />
                             </SelectTrigger>
-                            <SelectContent className="bg-card border-border text-foreground">
+                            <SelectContent>
                                 <SelectItem value="all">全部班级</SelectItem>
                                 {Array.from(new Set(tasks.map((task) => task.className))).map((name) => (
                                     <SelectItem key={name} value={name}>{name}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
-                        <Button data-testid="teacher-task-publish-open" onClick={() => setShowPublishModal(true)} className="bg-primary hover:bg-primary-hover text-primary-foreground ">
-                            <Plus className="w-4 h-4 mr-1" /> 发布实验任务
+                        <Button data-testid="teacher-task-publish-open" onClick={() => setShowPublishModal(true)}>
+                            <Plus className="mr-1 h-4 w-4" /> 发布实验任务
                         </Button>
                     </div>
                 </PageHeader>
-                <CardContent className="pt-0">
-                    {loadError ? <RequestError message={loadError} onRetry={() => void loadTasks()} backTo="/" backLabel="返回教学概览" /> : loading ? <div role="status" aria-live="polite" className="text-center py-12 text-muted-foreground">加载中...</div> : (
+                <CardContent className="p-0">
+                    {loadError ? (
+                        <div className="p-5">
+                            <RequestError message={loadError} onRetry={() => void loadTasks()} backTo="/" backLabel="返回教学概览" />
+                        </div>
+                    ) : loading ? (
+                        <div role="status" aria-live="polite" className="py-12 text-center text-label text-muted-foreground">加载中...</div>
+                    ) : (
                         <Table aria-label="实验任务列表">
                             <TableHeader>
                                 <TableRow className="border-border">
@@ -333,12 +339,12 @@ export function TaskManagement() {
                                     <TableHead className="text-muted-foreground">截止时间 (UTC+8)</TableHead>
                                     <TableHead className="text-muted-foreground">完成进度</TableHead>
                                     <TableHead className="text-muted-foreground">待批改</TableHead>
-                                    <TableHead className="sticky right-0 z-10 border-l border-border bg-secondary text-right text-muted-foreground">操作</TableHead>
+                                    <TableHead className="sticky right-0 z-10 border-l border-border bg-muted text-right text-muted-foreground">操作</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {filteredTasks.map((task) => (
-                                    <TableRow data-testid={`teacher-task-row-${task.id}`} key={task.id} className="group border-border hover:bg-muted transition-none">
+                                    <TableRow data-testid={`teacher-task-row-${task.id}`} key={task.id} className="group border-border transition-none hover:bg-muted">
                                         <TableCell className="min-w-[10.5rem] max-w-[15rem] whitespace-normal font-medium text-foreground">
                                             <div className="flex flex-wrap items-center gap-1.5">
                                                 <span className="leading-snug">{task.topic}</span>
@@ -347,11 +353,11 @@ export function TaskManagement() {
                                             </div>
                                         </TableCell>
                                         <TableCell className="min-w-[7.5rem] whitespace-normal text-foreground">{task.className}</TableCell>
-                                        <TableCell className="text-muted-foreground text-meta tabular-nums">{formatDateTimeDisplay(task.publishedAt, "-")}</TableCell>
-                                        <TableCell className="text-muted-foreground text-meta tabular-nums">{task.deadline ? formatDateTimeDisplay(task.deadline) : "无"}</TableCell>
+                                        <TableCell className="text-meta tabular-nums text-muted-foreground">{formatDateTimeDisplay(task.publishedAt, "-")}</TableCell>
+                                        <TableCell className="text-meta tabular-nums text-muted-foreground">{task.deadline ? formatDateTimeDisplay(task.deadline) : "无"}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <Progress aria-label={`${task.topic}完成进度`} value={task.total > 0 ? Math.round((task.completed / task.total) * 100) : 0} className="w-16 h-1.5 bg-muted [&>div]:bg-success" />
+                                                <Progress aria-label={`${task.topic}完成进度`} value={task.total > 0 ? Math.round((task.completed / task.total) * 100) : 0} className="h-1.5 w-16" />
                                                 <span className="text-meta tabular-nums text-muted-foreground">{task.completed}/{task.total}</span>
                                             </div>
                                         </TableCell>
@@ -361,14 +367,14 @@ export function TaskManagement() {
                                                     {task.pending}
                                                 </StatusBadge>
                                             ) : (
-                                                <span className="text-muted-foreground text-meta">-</span>
+                                                <span className="text-meta text-muted-foreground">-</span>
                                             )}
                                         </TableCell>
                                         <TableCell className="sticky right-0 z-10 border-l border-border bg-card text-right group-hover:bg-muted">
                                             <div className="flex items-center justify-end gap-1 whitespace-nowrap">
-                                                <Button variant="ghost" size="sm" asChild className="h-8 px-2 text-muted-foreground hover:text-success hover:bg-success-muted">
+                                                <Button variant="ghost" size="sm" asChild className="h-8 px-2 text-muted-foreground hover:bg-secondary hover:text-foreground">
                                                     <Link to={`/task/${task.id}/progress${listSearch ? `?${listSearch}` : ""}`}>
-                                                        <BarChart3 className="w-3.5 h-3.5 mr-1" />
+                                                        <BarChart3 className="mr-1 h-3.5 w-3.5" />
                                                         进度
                                                     </Link>
                                                 </Button>
@@ -382,12 +388,12 @@ export function TaskManagement() {
                                                         setExtendError(null);
                                                         setShowExtendModal(true);
                                                     }}
-                                                    className="h-8 px-2 text-muted-foreground hover:text-primary hover:bg-primary-muted"
+                                                    className="h-8 px-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
                                                 >
-                                                    <Clock className="w-3.5 h-3.5 mr-1" />
+                                                    <Clock className="mr-1 h-3.5 w-3.5" />
                                                     延时
                                                 </Button>
-                                                <Button variant="ghost" size="sm" asChild className="h-8 px-2 text-muted-foreground hover:text-primary hover:bg-primary-muted">
+                                                <Button variant="ghost" size="sm" asChild className="h-8 px-2 text-primary hover:bg-primary-muted hover:text-primary">
                                                     <Link to={`/grading?taskId=${task.id}`}>批改</Link>
                                                 </Button>
                                                 <Button
@@ -397,10 +403,10 @@ export function TaskManagement() {
                                                     type="button"
                                                     aria-label={`删除任务：${task.topic}`}
                                                     onClick={() => void openDeleteDialog(task)}
-                                                    className="h-8 px-2 text-muted-foreground hover:text-destructive hover:bg-destructive-muted"
+                                                    className="h-8 px-2 text-muted-foreground hover:bg-destructive-muted hover:text-destructive"
                                                     title="删除任务"
                                                 >
-                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                    <Trash2 className="h-3.5 w-3.5" />
                                                 </Button>
                                             </div>
                                         </TableCell>
@@ -408,11 +414,9 @@ export function TaskManagement() {
                                 ))}
                                 {filteredTasks.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-16 text-muted-foreground whitespace-normal">
+                                        <TableCell colSpan={7} className="whitespace-normal py-14 text-center text-muted-foreground">
                                             <div className="flex flex-col items-center gap-2">
-                                                <div className="w-12 h-12 rounded-control bg-card border border-border flex items-center justify-center">
-                                                    <Search className="w-5 h-5 text-muted-foreground" />
-                                                </div>
+                                                <Search className="h-6 w-6 text-muted-foreground" />
                                                 {tasks.length === 0 ? (
                                                     <>
                                                         <p className="text-label font-medium text-foreground">还没有实验任务</p>
@@ -423,7 +427,7 @@ export function TaskManagement() {
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <p>暂无符合条件的数据</p>
+                                                        <p className="text-label text-muted-foreground">暂无符合条件的数据</p>
                                                         {(searchTerm || classFilter !== "all") && (
                                                             <Button
                                                                 type="button"

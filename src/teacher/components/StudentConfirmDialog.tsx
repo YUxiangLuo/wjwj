@@ -34,9 +34,9 @@ export function StudentConfirmDialog(props: StudentConfirmDialogProps) {
 
     return (
         <AlertDialog open={state.open} onOpenChange={onOpenChange}>
-            <AlertDialogContent className="bg-card border-border text-foreground">
+            <AlertDialogContent className="border-border bg-card text-foreground">
                 <AlertDialogHeader>
-                    <AlertDialogTitle className="text-foreground">确认操作</AlertDialogTitle>
+                    <AlertDialogTitle className="font-medium text-foreground">确认操作</AlertDialogTitle>
                     <AlertDialogDescription className="text-muted-foreground">
                         {state.type === "delete" && "将永久删除该学生账号、全部实验进度、提交、成绩和抽样记录。此操作不可恢复；之后再次导入同一学号会创建全新账号。"}
                         {state.type === "delete" && impactPending && (

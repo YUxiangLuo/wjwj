@@ -115,7 +115,7 @@ export function VariableDictionaryEditor({ topicId, readOnly = false, disabled =
             {!readOnly && !snapshot?.locked && <Button onClick={save} disabled={locked}>{saving ? "保存中…" : "明确确认并保存"}</Button>}
         </div>
         {!readOnly && !snapshot?.locked && !isConfirmed && (
-            <p className="rounded-surface border border-info-border bg-info-muted px-3.5 py-2.5 text-meta text-info">
+            <p className="rounded-surface border border-border bg-muted px-3.5 py-2.5 text-meta text-muted-foreground">
                 当前展示的是系统自动推断草案，尚未对学生启用。若需开放学生端「题目变量绑定」与「单变量/交叉分析工作台」，请核对后点击右上角「明确确认并保存」；若本实验无需变量绑定，可直接继续下一步。
             </p>
         )}
@@ -125,9 +125,9 @@ export function VariableDictionaryEditor({ topicId, readOnly = false, disabled =
             </p>
         )}
         <p className="text-label text-muted-foreground">标记为缺失的值不作为该变量的有效数据。以下是处理规则，不代表数据中一定存在缺失。</p>
-        {error && <div role="alert" className="rounded-surface border border-destructive-border bg-destructive-muted p-3 text-label text-destructive">{error} <Button data-testid="teacher-dictionary-reload" variant="outline" className="ml-2" disabled={saving || disabled} onClick={reload}>重新载入</Button></div>}
-        {draft.variables.map((variable, index) => <section key={variable.field} className="rounded-surface border border-border bg-background p-4 space-y-3">
-            <div className="text-subheading font-medium">{variable.field}</div>
+        {error && <div role="alert" className="rounded-surface border border-destructive-border bg-destructive-muted p-3 text-label text-destructive">{error} <Button data-testid="teacher-dictionary-reload" variant="outline" className="ml-2 bg-card" disabled={saving || disabled} onClick={reload}>重新载入</Button></div>}
+        {draft.variables.map((variable, index) => <section key={variable.field} className="space-y-3 rounded-surface border border-border bg-card p-4">
+            <div className="text-subheading font-medium text-foreground">{variable.field}</div>
             <div className="grid grid-cols-3 gap-3">
                 <Input aria-label={`${variable.field} 标签`} maxLength={120} disabled={locked} value={variable.label} onChange={e => update(index, { label: e.target.value })} />
                 <Input aria-label={`${variable.field} 单位`} maxLength={60} disabled={locked} placeholder="单位（可空）" value={variable.unit} onChange={e => update(index, { unit: e.target.value })} />
@@ -135,18 +135,18 @@ export function VariableDictionaryEditor({ topicId, readOnly = false, disabled =
                     <SelectTrigger aria-label={`${variable.field} 测量类型`}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="continuous">连续数值</SelectItem><SelectItem value="nominal">无序类别</SelectItem><SelectItem value="ordinal">有序类别</SelectItem><SelectItem value="identifier">标识 / 不用于分析</SelectItem></SelectContent>
                 </Select>
             </div>
-            {(variable.kind === "nominal" || variable.kind === "ordinal") && <div className="space-y-2"><div className="text-label font-medium">类别（显示类型，可调整顺序；缺失编码会在确认时排除）</div>{variable.categories.map((category, categoryIndex) => <div key={`${scalarText(category.value)}-${categoryIndex}`} className="grid grid-cols-[1fr_1fr_auto] gap-2">
+            {(variable.kind === "nominal" || variable.kind === "ordinal") && <div className="space-y-2"><div className="text-label font-medium text-foreground">类别（显示类型，可调整顺序；缺失编码会在确认时排除）</div>{variable.categories.map((category, categoryIndex) => <div key={`${scalarText(category.value)}-${categoryIndex}`} className="grid grid-cols-[1fr_1fr_auto] gap-2">
                 <Input disabled value={`${typeof category.value} · ${scalarText(category.value)}`} aria-label="类别类型和值" />
                 <Input disabled={locked} maxLength={120} aria-label={`${variable.field} 类别标签 ${categoryIndex + 1}`} value={category.label} onChange={e => update(index, { categories: variable.categories.map((item, i) => i === categoryIndex ? { ...item, label: e.target.value } : item) })} />
                 <div className="flex gap-1"><Button type="button" variant="outline" size="icon" disabled={locked || categoryIndex === 0} aria-label="类别上移" onClick={() => { const categories = [...variable.categories]; [categories[categoryIndex - 1], categories[categoryIndex]] = [categories[categoryIndex]!, categories[categoryIndex - 1]!]; update(index, { categories }); }}><ArrowUp /></Button><Button type="button" variant="outline" size="icon" disabled={locked || categoryIndex === variable.categories.length - 1} aria-label="类别下移" onClick={() => { const categories = [...variable.categories]; [categories[categoryIndex], categories[categoryIndex + 1]] = [categories[categoryIndex + 1]!, categories[categoryIndex]!]; update(index, { categories }); }}><ArrowDown /></Button></div>
             </div>)}</div>}
             <div className="space-y-2">
                 <p className="text-label" data-testid={`teacher-missing-summary-${index}`}><span className="font-medium">缺失值处理：</span><span className="whitespace-pre-wrap break-words">{missingValuesDescription(missingInputs[variable.field] ?? "[]")}</span></p>
-                {!readOnly && !snapshot?.locked && <details className="rounded-control border border-border p-3">
+                {!readOnly && !snapshot?.locked && <details className="rounded-control border border-border bg-muted p-3">
                     <summary data-testid={`teacher-missing-settings-${index}`} className="cursor-pointer text-label text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring">高级设置：自定义缺失值</summary>
                     <div className="mt-3 space-y-2">
-                        <label className="text-label font-medium" htmlFor={`missing-${index}`}>缺失值编码（高级）</label>
-                        <Input id={`missing-${index}`} aria-describedby={`missing-help-${index}`} disabled={locked} value={missingInputs[variable.field] ?? "[]"} onChange={e => setMissingInputs(current => ({ ...current, [variable.field]: e.target.value }))} />
+                        <label className="text-label font-medium text-foreground" htmlFor={`missing-${index}`}>缺失值编码（高级）</label>
+                        <Input id={`missing-${index}`} aria-describedby={`missing-help-${index}`} disabled={locked} value={missingInputs[variable.field] ?? "[]"} onChange={e => setMissingInputs(current => ({ ...current, [variable.field]: e.target.value }))} className="bg-card" />
                         <p id={`missing-help-${index}`} className="text-meta text-muted-foreground">仅在数据使用特殊编码表示缺失时修改。请填写 JSON 数组，例如 [null, "NA", -999]；null 表示空白单元格，文本需带双引号。数值 0 只有列入这里才会按缺失值处理。</p>
                     </div>
                 </details>}

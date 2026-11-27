@@ -204,11 +204,11 @@ export function GradingDetail() {
         report: `实验报告（${weights.report}%）`,
     };
     return (
-        <div className="space-y-5">
+        <div className="space-y-4">
             {loadError && <RequestError message={loadError} onRetry={() => void load()} retrying={loading} />}
-            {conflict && <div role="alert" className="space-y-3 rounded-surface border border-warning-border bg-warning-muted p-4 text-label text-warning"><p>记录已在其他页面更新，请加载最新记录后重新核对。</p><Button variant="outline" disabled={loading} onClick={() => void load()}>重新加载最新记录</Button></div>}
+            {conflict && <div role="alert" className="space-y-3 rounded-surface border border-warning-border bg-warning-muted p-4 text-label text-warning"><p>记录已在其他页面更新，请加载最新记录后重新核对。</p><Button variant="outline" className="bg-card" disabled={loading} onClick={() => void load()}>重新加载最新记录</Button></div>}
             <div className="flex items-center justify-between">
-                <Button variant="ghost" disabled={saving} onClick={returnToList}><ArrowLeft className="mr-2 h-4 w-4" />返回列表</Button>
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-muted hover:text-foreground" disabled={saving} onClick={returnToList}><ArrowLeft className="mr-1.5 h-4 w-4" />返回列表</Button>
                 <div className="flex items-center gap-2">
                     <StatusBadge intent={data.status === "graded" ? "success" : data.status === "rejected" ? "destructive" : "warning"}>
                         {data.status === "graded" ? "已批改" : data.status === "rejected" ? "已驳回" : "待批改"}
@@ -216,23 +216,23 @@ export function GradingDetail() {
                 </div>
             </div>
             <div className="flex items-start gap-4" data-testid="teacher-grading-workspace">
-            <Card className="min-w-0 flex-1 gap-3 py-4">
-                <CardHeader className="px-3.5">
+            <Card className="min-w-0 flex-1 gap-3 border-border bg-card py-4">
+                <CardHeader className="px-5">
                     <CardTitle>
-                        <h2 ref={identityRef} tabIndex={-1} aria-describedby="grading-student-identity" className="text-section-title font-semibold outline-none">{data.studentName} · {data.topic}</h2>
+                        <h2 ref={identityRef} tabIndex={-1} aria-describedby="grading-student-identity" className="text-section-title font-medium text-foreground outline-none">{data.studentName} · {data.topic}</h2>
                     </CardTitle>
-                    <p id="grading-student-identity" className="text-label text-muted-foreground">{data.className} · {data.studentId}</p>
+                    <p id="grading-student-identity" className="text-meta text-muted-foreground">{data.className} · {data.studentId}</p>
                 </CardHeader>
-                <CardContent className="px-3.5">
+                <CardContent className="px-5">
                     <Tabs ref={navigationRef} value={activeSection} onValueChange={selectSection} className="scroll-mt-20">
                         <TabsList className="sticky top-16 z-20 flex h-auto w-full flex-wrap justify-start gap-1 p-1" aria-label="提交材料">
                             {hasWaveLoop && (
-                                <TabsTrigger value="waves" className="h-auto px-2.5 py-1.5 text-meta">试投质检与调优</TabsTrigger>
+                                <TabsTrigger value="waves" className="h-auto px-3 py-1.5 text-meta">试投质检与调优</TabsTrigger>
                             )}
-                            <TabsTrigger value="questionnaire" className="h-auto px-2.5 py-1.5 text-meta">问卷</TabsTrigger>
-                            <TabsTrigger value="plan" className="h-auto px-2.5 py-1.5 text-meta">正式轮方案</TabsTrigger>
-                            <TabsTrigger value="sampling" className="h-auto px-2.5 py-1.5 text-meta">抽样结果</TabsTrigger>
-                            <TabsTrigger value="report" className="h-auto px-2.5 py-1.5 text-meta">商业报告</TabsTrigger>
+                            <TabsTrigger value="questionnaire" className="h-auto px-3 py-1.5 text-meta">问卷</TabsTrigger>
+                            <TabsTrigger value="plan" className="h-auto px-3 py-1.5 text-meta">正式轮方案</TabsTrigger>
+                            <TabsTrigger value="sampling" className="h-auto px-3 py-1.5 text-meta">抽样结果</TabsTrigger>
+                            <TabsTrigger value="report" className="h-auto px-3 py-1.5 text-meta">商业报告</TabsTrigger>
                         </TabsList>
                         {hasWaveLoop && (
                             <TabsContent value="waves" className="mt-4">
@@ -250,15 +250,15 @@ export function GradingDetail() {
                         <TabsContent value="plan" className="mt-4"><SamplePlanSnapshot value={data.samplePlan} populationSize={data.populationSize} /></TabsContent>
                         <TabsContent value="sampling" className="mt-4 space-y-4">
                             {data.samplingResults && (
-                                <div className="flex flex-wrap items-center justify-between gap-3 rounded-surface border border-info-border bg-info-muted p-4">
-                                    <p className="min-w-0 flex-1 text-label text-info">页面最多预览每种抽样方法的前 50 行；CSV 包含本次提交的完整样本。</p>
-                                    <Button asChild variant="outline" className="shrink-0 border-info-border text-info hover:bg-info-muted hover:text-info hover:border-info-border">
+                                <div className="flex flex-wrap items-center justify-between gap-3 rounded-surface border border-border bg-muted px-4 py-3">
+                                    <p className="min-w-0 flex-1 text-label text-muted-foreground">页面最多预览每种抽样方法的前 50 行；CSV 包含本次提交的完整样本。</p>
+                                    <Button asChild variant="outline" size="sm" className="shrink-0 bg-card">
                                         <a
                                             href={teacherResourceUrl(`/api/teacher/grading/${id}/sampling-export?type=all`)}
                                             download
                                             data-testid="teacher-sampling-export"
                                         >
-                                            <Download className="mr-2 h-4 w-4" />
+                                            <Download className="mr-1.5 h-4 w-4" />
                                             导出完整样本
                                         </a>
                                     </Button>
@@ -266,10 +266,10 @@ export function GradingDetail() {
                             )}
                             <SamplingResultsSnapshot value={data.samplingResults} samplingPolicy={data.samplingPolicy} />
                             <div className="rounded-surface border border-border bg-card p-4">
-                                <h3 className="flex items-center gap-2 font-medium"><History className="h-4 w-4 text-primary" />抽样执行记录</h3>
+                                <h3 className="flex items-center gap-2 text-label font-medium text-foreground"><History className="h-4 w-4 text-muted-foreground" />抽样执行记录</h3>
                                 <p className="mt-1 text-meta text-muted-foreground">每个实验保留最近 100 次服务端抽样记录。</p>
                                 {data.samplingAttempts?.length ? (
-                                    <div className="mt-3 max-h-64 space-y-2 overflow-y-auto custom-scrollbar">
+                                    <div className="custom-scrollbar mt-3 max-h-64 space-y-1.5 overflow-y-auto">
                                         {data.samplingAttempts.map((attempt) => {
                                             const methodLabel = {
                                                 simple: "简单随机",
@@ -279,9 +279,9 @@ export function GradingDetail() {
                                             }[attempt.method];
                                             const waveNumber = (attempt as { waveNumber?: number | null }).waveNumber;
                                             return (
-                                                <div key={attempt.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-surface bg-muted px-3 py-2 text-label">
-                                                    <span className="font-medium tabular-nums">{waveNumber ? `第 ${waveNumber} 轮 · ` : ""}{methodLabel} · {attempt.sampleCount.toLocaleString()} 个</span>
-                                                    <span className="text-meta text-muted-foreground">seed {attempt.seed} · {formatDateTimeDisplay(attempt.createdAt)}</span>
+                                                <div key={attempt.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-control bg-muted px-3 py-2 text-label">
+                                                    <span className="font-medium tabular-nums text-foreground">{waveNumber ? `第 ${waveNumber} 轮 · ` : ""}{methodLabel} · {attempt.sampleCount.toLocaleString()} 个</span>
+                                                    <span className="text-meta tabular-nums text-muted-foreground">seed {attempt.seed} · {formatDateTimeDisplay(attempt.createdAt)}</span>
                                                 </div>
                                             );
                                         })}
@@ -289,20 +289,20 @@ export function GradingDetail() {
                                 ) : <p className="mt-3 text-label text-muted-foreground">暂无执行记录（旧提交不会补记历史尝试）。</p>}
                             </div>
                         </TabsContent>
-                        <TabsContent value="report" className="mt-4 rounded-surface border border-border p-5"><RichTextContent html={data.reportContent} />{data.targetMetrics && <div className="mt-6"><TargetMetricsPanel target={data.targetMetrics} /></div>}<AnalysisAppendices records={data.analysisAppendices ?? []} /></TabsContent>
+                        <TabsContent value="report" className="mt-4 space-y-6 pt-1"><RichTextContent html={data.reportContent} />{data.targetMetrics && <div className="mt-6"><TargetMetricsPanel target={data.targetMetrics} /></div>}<AnalysisAppendices records={data.analysisAppendices ?? []} /></TabsContent>
                     </Tabs>
                 </CardContent>
             </Card>
             {data.status === "rejected" ? (
-                <Card className="sticky top-20 w-[19rem] shrink-0 border-destructive-border">
-                    <CardHeader><CardTitle className="flex items-center gap-2 text-destructive"><XCircle className="h-5 w-5" />驳回理由</CardTitle></CardHeader>
-                    <CardContent><p className="whitespace-pre-wrap text-label">{data.rejectReason}</p></CardContent>
+                <Card className="sticky top-20 w-[20rem] shrink-0 border-destructive-border bg-card">
+                    <CardHeader><CardTitle className="flex items-center gap-2 text-subheading font-medium text-destructive"><XCircle className="h-5 w-5" />驳回理由</CardTitle></CardHeader>
+                    <CardContent><p className="whitespace-pre-wrap text-label text-foreground">{data.rejectReason}</p></CardContent>
                 </Card>
             ) : (
-                <Card className="sticky top-20 max-h-[calc(100dvh-6rem)] w-[19rem] shrink-0 gap-3 overflow-y-auto py-4" data-testid="teacher-grading-panel">
-                    <CardHeader className="border-b border-border px-4">
+                <Card className="sticky top-20 max-h-[calc(100dvh-6rem)] w-[20rem] shrink-0 gap-3 overflow-y-auto border-border bg-card py-4" data-testid="teacher-grading-panel">
+                    <CardHeader className="border-b border-border px-4 [.border-b]:pb-3.5">
                         <div className="flex items-center justify-between gap-2">
-                            <CardTitle className="text-section-title">评分</CardTitle>
+                            <CardTitle className="text-section-title font-medium text-foreground">评分</CardTitle>
                             {data.status === "graded" && <StatusBadge intent="success">可重评</StatusBadge>}
                         </div>
                         <p className="break-words text-meta text-muted-foreground">{data.studentName} · {data.studentId}</p>
@@ -310,15 +310,15 @@ export function GradingDetail() {
                             <p className="text-meta text-muted-foreground">修改分项或评语后点击「更新评分」即可覆盖原记录。</p>
                         )}
                     </CardHeader>
-                    <CardContent className="space-y-3 px-4">
-                        <div className="grid gap-2 grid-cols-3">
+                    <CardContent className="space-y-3.5 px-4">
+                        <div className="space-y-2.5">
                             {(["questionnaire", "process", "report"] as const).map((key) => {
                                 const inputId = `grading-score-${key}`;
                                 const rawVal = scores[key];
                                 const fieldInvalid = rawVal.trim() !== "" && parseScoreField(rawVal) === null;
                                 return (
-                                    <div key={key}>
-                                        <Label htmlFor={inputId} className={`block text-meta ${fieldInvalid ? "text-destructive" : ""}`}>{scoreLabels[key]}</Label>
+                                    <div key={key} className="flex items-center justify-between gap-3">
+                                        <Label htmlFor={inputId} className={`text-meta font-medium ${fieldInvalid ? "text-destructive" : "text-foreground"}`}>{scoreLabels[key]}</Label>
                                         <Input
                                             id={inputId}
                                             type="number"
@@ -329,7 +329,7 @@ export function GradingDetail() {
                                             value={rawVal}
                                             placeholder="0–100"
                                             disabled={!canGrade}
-                                            className={`tabular-nums ${fieldInvalid ? "border-destructive" : ""}`}
+                                            className={`h-9 w-28 text-right tabular-nums ${fieldInvalid ? "border-destructive" : ""}`}
                                             onChange={(event) => {
                                                 setScores((current) => ({ ...current, [key]: event.target.value }));
                                                 setDraftChanged(true);
@@ -339,19 +339,19 @@ export function GradingDetail() {
                                 );
                             })}
                         </div>
-                        <div>
+                        <div className="space-y-1.5">
                             <Label htmlFor="grading-comment">教师评语</Label>
                             <Textarea id="grading-comment" rows={3} maxLength={2000} value={comment} disabled={!canGrade} onChange={(event) => { setComment(event.target.value); setDraftChanged(true); }} />
                         </div>
-                        <div className="space-y-2 rounded-surface bg-muted p-3">
+                        <div className="space-y-2.5 rounded-surface bg-muted p-3.5">
                             {!scoresReady && (
                                 <p className={`text-meta ${([scores.questionnaire, scores.process, scores.report]).some((v) => v.trim() !== "" && parseScoreField(v) === null) ? "text-destructive" : "text-muted-foreground"}`} role="status">
                                     {scoreFieldMessage(scores)}
                                 </p>
                             )}
-                            <p>加权总分：<span className="text-page-title font-bold tabular-nums text-primary">{total === null ? "—" : total.toFixed(2)}</span></p>
+                            <p className="text-label text-muted-foreground">加权总分：<span className="text-page-title font-medium tabular-nums text-foreground">{total === null ? "—" : total.toFixed(2)}</span></p>
                             <div className="flex flex-wrap gap-2">
-                                {data.status === "submitted" && <Button variant="destructive" disabled={!canGrade || saving} onClick={() => setRejectOpen(true)}>驳回修改</Button>}
+                                {data.status === "submitted" && <Button variant="destructive" size="sm" disabled={!canGrade || saving} onClick={() => setRejectOpen(true)}>驳回修改</Button>}
                                 {gradeConfirmOpen ? (
                                     <>
                                         <p className="w-full text-label text-muted-foreground" role="status">
@@ -362,6 +362,8 @@ export function GradingDetail() {
                                         </p>
                                         <Button
                                             variant="outline"
+                                            size="sm"
+                                            className="bg-card"
                                             disabled={saving}
                                             onClick={() => {
                                                 setGradeConfirmOpen(false);
@@ -370,15 +372,16 @@ export function GradingDetail() {
                                         >
                                             取消
                                         </Button>
-                                        <Button ref={confirmGradeRef} data-testid="teacher-grade-confirm" disabled={!canGrade || !scoresReady} onClick={() => void grade()}>确认提交</Button>
+                                        <Button ref={confirmGradeRef} size="sm" data-testid="teacher-grade-confirm" disabled={!canGrade || !scoresReady} onClick={() => void grade()}>确认提交</Button>
                                         {data.status === "submitted" && <>
-                                            <Button variant="outline" data-testid="teacher-grade-next" disabled={!canGrade || !scoresReady} onClick={() => void grade(true)}>保存并批改下一份</Button>
+                                            <Button variant="outline" size="sm" className="bg-card" data-testid="teacher-grade-next" disabled={!canGrade || !scoresReady} onClick={() => void grade(true)}>保存并批改下一份</Button>
                                             <p className="w-full text-meta text-muted-foreground">{new URLSearchParams(search).has("taskId") ? "仅继续批改当前任务及搜索范围内的待批改作业。" : "继续批改当前搜索范围内的待批改作业。"}</p>
                                         </>}
                                     </>
                                 ) : (
                                     <Button
                                         ref={submitTriggerRef}
+                                        size="sm"
                                         disabled={!canGrade || saving || !scoresReady}
                                         onClick={() => {
                                             setGradeConfirmOpen(true);

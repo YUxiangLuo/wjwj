@@ -21,9 +21,9 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="bg-card border-border text-foreground max-w-[425px]">
+            <DialogContent className="max-w-[425px] border-border bg-card text-foreground">
                 <DialogHeader>
-                    <DialogTitle className="text-foreground">添加学生</DialogTitle>
+                    <DialogTitle className="font-medium text-foreground">添加学生</DialogTitle>
                     <DialogDescription className="sr-only">
                         录入学生学号、姓名和邮箱信息。
                     </DialogDescription>
@@ -34,8 +34,8 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                         if (!submitting && isStudentAddFormComplete(form)) onSubmit();
                     }}
                 >
-                    <div className="space-y-4 py-4">
-                        <p className="rounded-control border border-info-border bg-info-muted px-3 py-2 text-meta text-info">
+                    <div className="space-y-4 py-3">
+                        <p className="rounded-surface bg-muted px-3.5 py-2.5 text-meta text-muted-foreground">
                             新建学生的初始登录密码默认与学号一致，学生首次登录后可自行修改密码。
                         </p>
                         <div className="space-y-2">
@@ -48,7 +48,6 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                                 required
                                 value={form.id}
                                 onChange={(e) => onFormChange({ ...form, id: e.target.value })}
-                                className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
                             />
                         </div>
                         <div className="space-y-2">
@@ -61,7 +60,6 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                                 required
                                 value={form.name}
                                 onChange={(e) => onFormChange({ ...form, name: e.target.value })}
-                                className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
                             />
                         </div>
                         <div className="space-y-2">
@@ -76,7 +74,6 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                                 onChange={(e) => onFormChange({ ...form, email: e.target.value })}
                                 aria-invalid={emailInvalid}
                                 aria-describedby={emailInvalid ? "studentEmail-error" : undefined}
-                                className="bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
                             />
                             {emailInvalid && (
                                 <p id="studentEmail-error" role="alert" className="text-meta text-destructive">
@@ -86,14 +83,13 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground hover:bg-muted">取消</Button>
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
                         <Button
                             type="submit"
                             data-testid="teacher-student-add-submit"
                             disabled={submitting || !isStudentAddFormComplete(form)}
-                            className="bg-primary hover:bg-primary-hover text-primary-foreground"
                         >
-                            {submitting ? <><Loader2 aria-hidden="true" className="w-4 h-4 mr-2 animate-spin" />添加中...</> : "确认添加"}
+                            {submitting ? <><Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />添加中...</> : "确认添加"}
                         </Button>
                     </DialogFooter>
                 </form>

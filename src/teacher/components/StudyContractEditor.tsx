@@ -186,9 +186,9 @@ export function StudyContractEditor({
     };
 
     return (
-        <div className="space-y-3 rounded-surface border border-border bg-background p-4" data-testid="teacher-study-contract-editor">
+        <div className="space-y-3.5 rounded-surface border border-border bg-muted p-4" data-testid="teacher-study-contract-editor">
             <div>
-                <Label className="text-foreground">研究目标（必填）</Label>
+                <Label className="font-medium text-foreground">研究目标（必填）</Label>
                 <p className="mt-1 text-meta text-muted-foreground">
                     先选估计类型和字段，再核对研究问题、目标总体、分析单位与商业管理决策。课堂受访者试填仅用于自检，虚拟发放则依据题目变量绑定采集观测值。
                 </p>

@@ -70,16 +70,39 @@ function TeacherWorkspace({
                 menuItems={menu}
                 sidebarFooter={
                     <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9"><AvatarFallback className="bg-navigation-active text-navigation-active-foreground">{user.name.charAt(0)}</AvatarFallback></Avatar>
-                        <div className="min-w-0 flex-1"><p className="truncate text-label font-medium">{user.name}</p><p className="truncate text-meta text-navigation-muted">{user.employeeId}</p></div>
+                        <Avatar className="h-9 w-9">
+                            <AvatarFallback className="bg-navigation-active font-medium text-navigation-active-foreground">
+                                {user.name.charAt(0)}
+                            </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                            <p className="truncate text-label font-medium text-navigation-foreground">{user.name}</p>
+                            <p className="truncate text-meta text-navigation-muted">{user.employeeId}</p>
+                        </div>
                     </div>
                 }
                 pageTitle={title}
                 pageSubtitle="商务统计虚拟仿真系统"
                 headerActions={
                     <div className="flex items-center gap-1">
-                        <IconButton aria-label="修改密码" variant="ghost" title="修改密码" onClick={() => { passwordChange.reset(); setPasswordOpen(true); }}><KeyRound className="h-5 w-5" /></IconButton>
-                        <IconButton aria-label="退出登录" variant="ghost" title="退出登录" className="text-destructive hover:bg-destructive-muted hover:text-destructive" onClick={() => void onLogout()}><LogOut className="h-5 w-5" /></IconButton>
+                        <IconButton
+                            aria-label="修改密码"
+                            variant="ghost"
+                            title="修改密码"
+                            className="text-muted-foreground hover:bg-muted hover:text-foreground"
+                            onClick={() => { passwordChange.reset(); setPasswordOpen(true); }}
+                        >
+                            <KeyRound className="h-5 w-5" />
+                        </IconButton>
+                        <IconButton
+                            aria-label="退出登录"
+                            variant="ghost"
+                            title="退出登录"
+                            className="text-muted-foreground hover:bg-destructive-muted hover:text-destructive"
+                            onClick={() => void onLogout()}
+                        >
+                            <LogOut className="h-5 w-5" />
+                        </IconButton>
                     </div>
                 }
             >

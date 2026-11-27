@@ -242,34 +242,29 @@ export function StudentManagement() {
     if (!classInfo && !loading) return <div className="p-12 text-center text-muted-foreground">未找到班级</div>;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             {loadError && <RequestError message={loadError} onRetry={() => void loadData()} retrying={loading} backTo="/class" backLabel="返回班级列表" />}
             <div className="flex items-center gap-3">
-                <Button asChild variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-muted">
+                <Button asChild variant="ghost" size="sm" className="text-muted-foreground hover:bg-muted hover:text-foreground">
                     <Link to="/class">
-                        <ArrowLeft className="w-4 h-4 mr-1" />
+                        <ArrowLeft className="mr-1 h-4 w-4" />
                         返回
                     </Link>
                 </Button>
-                <span className="text-muted-foreground">/</span>
+                <span className="text-muted-foreground" aria-hidden="true">/</span>
                 <span className="text-label text-muted-foreground">班级</span>
                 <span className="text-label font-medium text-foreground">{classInfo?.name}</span>
             </div>
 
-            <div>
-                <h2 className="text-subheading font-semibold text-foreground">学生管理</h2>
-                <p className="text-label text-muted-foreground mt-1">维护班级学生名单。</p>
-            </div>
-
-            <Card>
-                <PageHeader as={CardHeader}>
+            <Card className="gap-0 overflow-hidden border-border bg-card py-0">
+                <PageHeader as={CardHeader} className="flex-wrap border-b border-border px-5 py-4 [.border-b]:pb-4">
                     <div>
-                        <CardTitle className="text-body text-foreground">学生列表</CardTitle>
-                        <p className="text-meta text-muted-foreground mt-1">
+                        <CardTitle className="text-section-title font-medium text-foreground">学生列表</CardTitle>
+                        <p className="mt-0.5 text-meta text-muted-foreground">
                             {loading || loadError ? "共 - 人" : `共 ${totalStudents} 人${appliedSearch ? `（筛选：${appliedSearch}）` : ""}`}
                         </p>
                     </div>
-                    <div className="flex flex-wrap gap-3 flex-row w-auto">
+                    <div className="flex w-auto flex-row flex-wrap items-center gap-2.5">
                         <form role="search" aria-label="学生搜索" className="flex items-center gap-2" onSubmit={(event) => {
                             event.preventDefault();
                             const next = searchQuery.trim();
@@ -278,14 +273,14 @@ export function StudentManagement() {
                             void loadData(true, { search: next, page: 1 });
                         }}>
                             <div className="relative w-52">
-                                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                                 <Input
                                     data-testid="teacher-student-search"
                                     aria-label="搜索学生"
                                     placeholder="搜索学号、姓名或邮箱"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-9 bg-card border-input text-foreground placeholder:text-muted-foreground focus:border-ring"
+                                    className="pl-9"
                                 />
                             </div>
                             <Button type="submit" variant="outline">搜索</Button>
@@ -305,34 +300,32 @@ export function StudentManagement() {
                                 </Button>
                             )}
                         </form>
-                        <Button data-testid="teacher-student-import-open" variant="outline" onClick={() => setShowImportModal(true)} className="border-input bg-muted text-foreground hover:bg-muted hover:text-foreground">
-                            <Upload className="w-4 h-4 mr-2" />
+                        <Button data-testid="teacher-student-import-open" variant="outline" onClick={() => setShowImportModal(true)}>
+                            <Upload className="mr-1.5 h-4 w-4" />
                             批量导入
                         </Button>
-                        <Button data-testid="teacher-student-add-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary-hover text-primary-foreground">
-                            <UserPlus className="w-4 h-4 mr-2" />
+                        <Button data-testid="teacher-student-add-open" onClick={() => setShowAddModal(true)}>
+                            <UserPlus className="mr-1.5 h-4 w-4" />
                             添加学生
                         </Button>
                     </div>
                 </PageHeader>
-                <CardContent className="pt-0">
+                <CardContent className="p-0">
                     <Table aria-label="学生列表">
                         <TableHeader>
                             <TableRow className="border-border">
                                 <TableHead className="text-muted-foreground">学号</TableHead>
                                 <TableHead className="text-muted-foreground">姓名</TableHead>
                                 <TableHead className="text-muted-foreground">邮箱</TableHead>
-                                <TableHead className="text-muted-foreground text-right">操作</TableHead>
+                                <TableHead className="text-right text-muted-foreground">操作</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {filteredStudents.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="text-center py-12 text-muted-foreground whitespace-normal">
+                                    <TableCell colSpan={4} className="whitespace-normal py-14 text-center text-muted-foreground">
                                         <div className="flex flex-col items-center gap-2">
-                                            <div className="w-12 h-12 rounded-control bg-card border border-border flex items-center justify-center">
-                                                <Search className="w-5 h-5 text-muted-foreground" />
-                                            </div>
+                                            <Search className="h-6 w-6 text-muted-foreground" />
                                             {appliedSearch ? (
                                                 <>
                                                     <p>暂无符合条件的数据</p>
@@ -361,17 +354,17 @@ export function StudentManagement() {
                                     </TableCell>
                                 </TableRow>
                             ) : filteredStudents.map((student) => (
-                                <TableRow data-testid={`teacher-student-row-${student.id}`} key={student.id} className="border-border hover:bg-muted transition-none">
-                                    <TableCell className="font-mono text-primary">{student.studentId}</TableCell>
+                                <TableRow data-testid={`teacher-student-row-${student.id}`} key={student.id} className="border-border transition-none hover:bg-muted">
+                                    <TableCell className="font-mono text-foreground">{student.studentId}</TableCell>
                                     <TableCell className="font-medium text-foreground">{student.name}</TableCell>
                                     <TableCell className="text-muted-foreground">{student.email || "-"}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
-                                            <Button data-testid={`teacher-student-reset-${student.id}`} variant="ghost" size="sm" aria-label={`重置${student.name}的密码`} title="重置密码" onClick={() => handleResetPassword(student)} className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary-muted">
-                                                <RotateCcw className="w-4 h-4" />
+                                            <Button data-testid={`teacher-student-reset-${student.id}`} variant="ghost" size="sm" aria-label={`重置${student.name}的密码`} title="重置密码" onClick={() => handleResetPassword(student)} className="h-8 w-8 p-0 text-muted-foreground hover:bg-secondary hover:text-foreground">
+                                                <RotateCcw className="h-4 w-4" />
                                             </Button>
-                                            <Button data-testid={`teacher-student-delete-${student.id}`} variant="ghost" size="sm" aria-label={`删除学生${student.name}`} className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive-muted" title="删除" onClick={() => handleDelete(student)}>
-                                                <Trash2 className="w-4 h-4" />
+                                            <Button data-testid={`teacher-student-delete-${student.id}`} variant="ghost" size="sm" aria-label={`删除学生${student.name}`} className="h-8 w-8 p-0 text-muted-foreground hover:bg-destructive-muted hover:text-destructive" title="删除" onClick={() => void handleDelete(student)}>
+                                                <Trash2 className="h-4 w-4" />
                                             </Button>
                                         </div>
                                     </TableCell>
@@ -380,8 +373,8 @@ export function StudentManagement() {
                         </TableBody>
                     </Table>
                     {!loading && !loadError && totalStudents > 0 && (
-                        <div className="flex items-center justify-between pt-4" data-testid="teacher-student-pagination">
-                            <p className="text-label text-muted-foreground">
+                        <div className="flex items-center justify-between border-t border-border px-5 py-3" data-testid="teacher-student-pagination">
+                            <p className="text-meta tabular-nums text-muted-foreground">
                                 共 {totalStudents} 人，第 {page} / {totalPages} 页
                             </p>
                             <div className="flex gap-2">

@@ -509,6 +509,7 @@ test("field search filters long lists without changing roles or the research tar
     fireEvent.click(view.getByText("显示全部字段"));
     expect((view.getByTestId("teacher-topic-mapping-numeric-score") as HTMLInputElement).checked).toBe(true);
     expect(view.getByTestId("teacher-topic-mapping-others-extra_59")).toBeTruthy();
+    expect(document.querySelector("#teacher-field-search + label input") === view.getByLabelText("仅看已选")).toBe(true);
     fireEvent.click(view.getByLabelText("仅看已选"));
     expect(view.queryByTestId("teacher-topic-mapping-numeric-Area")).toBeNull();
     expect(view.queryByTestId("teacher-topic-mapping-others-extra_59")).toBeNull();

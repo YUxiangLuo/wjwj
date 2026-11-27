@@ -35,15 +35,15 @@ export function TaskExtendDialog(props: TaskExtendDialogProps) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="bg-card border-border text-foreground max-w-md">
+            <DialogContent className="max-w-md border-border bg-card text-foreground">
                 <DialogHeader>
-                    <DialogTitle className="text-foreground">延长截止时间</DialogTitle>
+                    <DialogTitle className="font-medium text-foreground">延长截止时间</DialogTitle>
                     <DialogDescription className="sr-only">
                         为所选任务设置新的截止时间。
                     </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                    <div className="space-y-1 rounded-control border border-border bg-background p-3">
+                <div className="space-y-4 py-3">
+                    <div className="space-y-1 rounded-surface bg-muted px-4 py-3">
                         <div className="text-label font-medium text-foreground">
                             {selectedTask ? `${selectedTask.topic} · ${selectedTask.className}` : ""}
                         </div>
@@ -73,8 +73,8 @@ export function TaskExtendDialog(props: TaskExtendDialogProps) {
                     )}
                 </div>
                 <DialogFooter>
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground hover:bg-muted">取消</Button>
-                    <Button data-testid="teacher-task-extend-submit" disabled={!extendDeadline.trim()} onClick={onConfirm} className="bg-primary hover:bg-primary-hover text-primary-foreground">确认延长</Button>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
+                    <Button data-testid="teacher-task-extend-submit" disabled={!extendDeadline.trim()} onClick={onConfirm}>确认延长</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
