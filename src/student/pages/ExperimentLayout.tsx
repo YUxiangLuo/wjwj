@@ -89,7 +89,18 @@ function ExperimentWorkspace() {
     const [saveError, setSaveError] = useState<{ message: string; refresh: boolean } | null>(null);
     const [reopenStage, setReopenStage] = useState<number | null>(null);
     const [inspectStage, setInspectStage] = useState<number | null>(null);
+    const backToTaskLinkRef = useRef<HTMLAnchorElement>(null);
+    const headingFocusRef = useRef<HTMLHeadingElement>(null);
+    const inspectOpenerRef = useRef<HTMLElement | null>(null);
+    const reopenFallbackRef = useRef<HTMLElement | null>(null);
     const refreshRequired = saveError?.refresh === true;
+
+    const openInspectStage = useCallback((stage: number) => {
+        if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+            inspectOpenerRef.current = document.activeElement;
+        }
+        setInspectStage(stage);
+    }, []);
 
     const requireRefresh = useCallback(() => {
         setSaveError({ message: "实验进度已更新，请刷新页面后继续。", refresh: true });
@@ -116,20 +127,30 @@ function ExperimentWorkspace() {
             experimentApi.get(numericTaskId),
             tasksApi.get(numericTaskId),
         ]);
-        return {
-            experiment: requireApiData(experimentResponse, "实验加载失败，请重试"),
-            task: requireApiData(taskResponse, "任务加载失败，请重试"),
-        };
-    }, ({ experiment: loaded, task }) => {
-        setExperiment(loaded);
-        setTaskName(task.name);
-        setDeadline(task.deadline);
-        setRedirect(getExperimentRouteRedirect({
+        const task = requireApiData(taskResponse, "任务加载失败，请重试");
+        const routeRedirect = getExperimentRouteRedirect({
             taskId: numericTaskId,
             publishedAt: task.publishedAt,
             deadline: task.deadline,
             status: task.status,
-        }));
+        });
+        if (routeRedirect) {
+            return {
+                experiment: null,
+                task,
+                redirect: routeRedirect,
+            };
+        }
+        return {
+            experiment: requireApiData(experimentResponse, "实验加载失败，请重试"),
+            task,
+            redirect: null,
+        };
+    }, ({ experiment: loaded, task, redirect: nextRedirect }) => {
+        setExperiment(loaded);
+        setTaskName(task.name);
+        setDeadline(task.deadline);
+        setRedirect(nextRedirect);
         setSaveError(null);
     }), [numericTaskId, run]);
 
@@ -217,11 +238,16 @@ function ExperimentWorkspace() {
 
     const renderStage = () => {
         if (currentStage === 1) return <QuestionnaireDesign />;
-        if (currentStage === 2) return <PilotWaveStage onPrev={() => setInspectStage(1)} />;
-        if (currentStage === 3) return <FieldworkDiagnosticsStage onPrev={() => setInspectStage(2)} />;
-        if (currentStage === 4) return <AdaptiveRefinementStage onPrev={() => setInspectStage(3)} />;
-        return <AnalysisReport onPrev={() => setInspectStage(4)} onSubmit={() => navigate(`/task/${numericTaskId}/preview`)} />;
+        if (currentStage === 2) return <PilotWaveStage onPrev={() => openInspectStage(1)} />;
+        if (currentStage === 3) return <FieldworkDiagnosticsStage onPrev={() => openInspectStage(2)} />;
+        if (currentStage === 4) return <AdaptiveRefinementStage onPrev={() => openInspectStage(3)} />;
+        return <AnalysisReport onPrev={() => openInspectStage(4)} onSubmit={() => navigate(`/task/${numericTaskId}/preview`)} />;
     };
+
+    reopenFallbackRef.current =
+        inspectOpenerRef.current?.isConnected && !inspectOpenerRef.current.hasAttribute("disabled")
+            ? inspectOpenerRef.current
+            : backToTaskLinkRef.current ?? headingFocusRef.current;
 
     const reopenImpact =
         reopenStage === 1
@@ -261,12 +287,12 @@ function ExperimentWorkspace() {
                         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
                             <div className="flex min-w-0 flex-1 items-center gap-2">
                                 <Button asChild variant="ghost" size="sm" className="h-7 shrink-0 gap-1.5 px-2">
-                                    <Link to={`/task/${numericTaskId}`}>
+                                    <Link ref={backToTaskLinkRef} to={`/task/${numericTaskId}`}>
                                         <ArrowLeft className="h-4 w-4" />
                                         课题书
                                     </Link>
                                 </Button>
-                                <h1 tabIndex={-1} title={taskName} className="min-w-0 truncate text-label font-medium text-foreground outline-none">
+                                <h1 ref={headingFocusRef} tabIndex={-1} title={taskName} className="min-w-0 truncate text-label font-medium text-foreground outline-none">
                                     {taskName}
                                 </h1>
                                 <StatusBadge intent="neutral" className="shrink-0">
@@ -302,7 +328,7 @@ function ExperimentWorkspace() {
                                             aria-current={isCurrent ? "step" : undefined}
                                             aria-label={`${isCurrent ? "当前阶段" : canInspect ? "查看已完成阶段" : "未完成阶段"} ${number}：${stage.name}`}
                                             disabled={!canInspect}
-                                            onClick={() => setInspectStage(number)}
+                                            onClick={() => openInspectStage(number)}
                                             className={`flex items-center gap-1.5 whitespace-nowrap rounded-pill px-2.5 py-0.5 text-meta font-medium outline-none transition-none focus-visible:ring-2 focus-visible:ring-ring ${
                                                 isCurrent
                                                     ? "bg-accent text-accent-foreground"
@@ -325,7 +351,10 @@ function ExperimentWorkspace() {
                     </div>
 
                     {saveError && (
-                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-control border border-destructive-border bg-destructive-muted px-3 py-1.5 text-meta text-destructive">
+                        <div
+                            role="alert"
+                            className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-control border border-destructive-border bg-destructive-muted px-3 py-1.5 text-meta text-destructive"
+                        >
                             <span>{saveError.message}</span>
                             {saveError.refresh && (
                                 <Button
@@ -464,7 +493,11 @@ function ExperimentWorkspace() {
                 </DialogContent>
             </Dialog>
 
-            <AlertDialog open={reopenStage !== null} onOpenChange={(open) => { if (!open && !isReopening) setReopenStage(null); }}>
+            <AlertDialog
+                open={reopenStage !== null}
+                fallbackFocusRef={reopenFallbackRef}
+                onOpenChange={(open) => { if (!open && !isReopening) setReopenStage(null); }}
+            >
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>重新编辑“{reopenStage ? stages[reopenStage - 1]!.name : ""}”</AlertDialogTitle>

@@ -4,6 +4,8 @@ export function AppToaster() {
     return (
         <Toaster
             richColors
+            closeButton
+            duration={2500}
             position="bottom-right"
             offset={{ bottom: 84, right: 24 }}
             toastOptions={{

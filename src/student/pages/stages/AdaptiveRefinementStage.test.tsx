@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { installDomGlobals } from "@/test-utils/dom";
-import type { ExperimentData, ExperimentWaveView } from "@/domain/experiment/types";
+import type { ExperimentData, ExperimentWaveView, SamplePlanData } from "@/domain/experiment/types";
 import { autoBindQuestionnaireVariables, evaluateQuestionnaireBurden, type MethodFieldworkDiagnostics } from "@/domain/fieldwork";
 import type { VariableDictionary } from "@/domain/variables/types";
+import { validateSamplePlanForSubmit } from "../../experiment/submit-validation";
 
 const mockExperimentApi = {
     getStats: mock(async () => ({
@@ -15,7 +16,11 @@ const mockExperimentApi = {
             stratumNumericStats: {},
         },
     })),
-    saveWavePlan: mock(async () => ({ success: true, data: null as ExperimentData | null })),
+    saveWavePlan: mock(async (_taskId: number, _version: number, payload: SamplePlanData) => ({
+        success: true,
+        data: null as ExperimentData | null,
+        payload,
+    })),
     saveWaveQuestionnaire: mock(async () => ({ success: true, data: null as ExperimentData | null })),
     executeSampling: mock(async () => ({ success: true, data: { success: true, result: { completed: true, sampleCount: 80 } } })),
     dispatchFieldwork: mock(async () => ({ success: true, data: null as ExperimentData | null })),
@@ -331,5 +336,104 @@ describe("Stage 4 AdaptiveRefinementStage step-flow, proportion validation & dis
         fireEvent.click(view.getByTestId("student-refinement-switch-wave-2"));
         expect(view.queryByTestId("student-refinement-prior-wave-view") !== null).toBe(true);
         expect(view.queryByTestId("wave-delta-scorecard") !== null).toBe(true);
+    });
+
+    test("submits exact decimal nonResponseRate (12.5% -> 0.125) matching recommendedSize and requires AlertDialog confirmation with fallback focus on question deletion", async () => {
+        const wave1 = makeVipWave(1, {
+            samplingResults: { simple: { completed: true, sampleCount: 35 } },
+            diagnostics: { simple: makeVipDiag("simple") },
+        });
+        const sixQuestions = [
+            ...wave1.questionnaire.questions,
+            { id: "vq6", type: "boolean" as const, content: "冗余追问题 6" },
+        ];
+        const wave2 = makeVipWave(2, {
+            questionnaire: { ...wave1.questionnaire, questions: sixQuestions },
+        });
+        const exp: ExperimentData = {
+            id: 403,
+            taskId: 4,
+            version: 5,
+            currentStage: 4,
+            activeWaveNumber: 2,
+            status: "in_progress",
+            questionnaire: wave2.questionnaire,
+            samplePlan: wave2.samplePlan,
+            samplingResults: null,
+            waves: [wave1, wave2],
+            adjustmentPlan: {
+                identifiedIssues: ["unit_nonresponse_gap"],
+                plannedActions: ["revise_questionnaire", "recalibrate_sample_size"],
+                rationale: "精简第 6 题并以 12.5% 无回答率重算正式轮样本量。",
+            },
+            reportContent: null,
+            stage1CompletedAt: "2026-11-23T00:00:00Z",
+            stage2CompletedAt: "2026-11-23T00:05:00Z",
+            stage3CompletedAt: "2026-11-23T00:10:00Z",
+            stage4CompletedAt: null,
+            populationSize: 1000,
+            analysisTarget: { inferred: false, target: { kind: "proportion", field: "续费意向", value: "明确续费" } },
+            samplingPolicy: { version: 1, methods: { simple: "required", stratified: "optional", systematic: "optional", pps: "disabled" } },
+        };
+        mockContextValue = {
+            experiment: exp,
+            populationSize: 1000,
+            isSaving: false,
+            refreshRequired: false,
+            requireRefresh: () => undefined,
+            updateExperiment: (next) => { mockContextValue.experiment = next; },
+            reloadExperiment: async () => undefined,
+            completeStage: async () => true,
+        };
+
+        const view = render(<AdaptiveRefinementStage onPrev={() => undefined} />);
+        await waitFor(() => expect(mockExperimentApi.getStats).toHaveBeenCalled());
+
+        // C-26 ②: Deleting Q6 in Step 1 opens AlertDialog confirmation instead of immediate deletion
+        const deleteQ6Btn = view.getByRole("button", { name: "删除第 6 题" });
+        deleteQ6Btn.focus();
+        fireEvent.click(deleteQ6Btn);
+
+        const dialog = await view.findByTestId("student-refinement-delete-question-dialog");
+        expect(dialog.textContent).toContain("冗余追问题 6");
+        expect(dialog.querySelectorAll('[data-slot="button"][data-variant="default"]').length).toBe(0);
+        expect(view.getByText("冗余追问题 6")).toBeTruthy();
+
+        // Cancel preserves Q6 and restores focus to deleteQ6Btn
+        fireEvent.click(view.getByRole("button", { name: "取消" }));
+        await waitFor(() => expect(view.queryByTestId("student-refinement-delete-question-dialog") === null).toBe(true));
+        expect(view.getByText("冗余追问题 6")).toBeTruthy();
+        await waitFor(() => expect(document.activeElement === deleteQ6Btn).toBe(true));
+
+        // Confirm deletes Q6 and restores focus to fallback "新增题目" button rather than document.body
+        deleteQ6Btn.focus();
+        fireEvent.click(deleteQ6Btn);
+        const confirmBtn = await view.findByTestId("student-refinement-delete-question-confirm");
+        expect(confirmBtn.getAttribute("data-variant")).toBe("destructive");
+        fireEvent.click(confirmBtn);
+
+        await waitFor(() => expect(view.queryByText("冗余追问题 6") === null).toBe(true));
+        const addBtn = view.getByRole("button", { name: "新增题目" });
+        await waitFor(() => expect(document.activeElement === addBtn).toBe(true));
+
+        // C-18 ①: Jump to Step 2 and enter 12.5% nonResponsePct with N=1000, CL=95, E=5, deff=1 -> recommendedSize=318, nonResponseRate=0.125
+        fireEvent.mouseDown(view.getByTestId("student-refinement-tab-plan"), { button: 0 });
+        const moeInput = await waitFor(() => view.container.querySelector("#formal-margin-error") as HTMLInputElement);
+        const nrrInput = view.container.querySelector("#formal-nrr") as HTMLInputElement;
+        fireEvent.change(moeInput, { target: { value: "5" } });
+        fireEvent.change(nrrInput, { target: { value: "12.5" } });
+
+        expect(view.queryByTestId("student-refinement-plan-error")).toBeNull();
+        const savePlanBtn = view.getByTestId("student-refinement-save-plan") as HTMLButtonElement;
+        expect(savePlanBtn.disabled).toBe(false);
+
+        await act(async () => {
+            fireEvent.click(savePlanBtn);
+        });
+        expect(mockExperimentApi.saveWavePlan).toHaveBeenCalledTimes(1);
+        const savedPayload = mockExperimentApi.saveWavePlan.mock.calls[0]![2]!;
+        expect(savedPayload.nonResponseRate).toBe(0.125);
+        expect(savedPayload.recommendedSize).toBe(318);
+        expect(validateSamplePlanForSubmit(savedPayload, 1000, "proportion", { minimumSampleSize: 1 })).toBeNull();
     });
 });

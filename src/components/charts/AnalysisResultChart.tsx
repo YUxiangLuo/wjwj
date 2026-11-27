@@ -248,6 +248,30 @@ interface NormalizedCategorySlice {
     pct: number;
 }
 
+function pickAggregatedAxisShortLabel(tailLength: number, occupied: ReadonlySet<string>): string {
+    const primary = `其余 ${tailLength} 类`;
+    if (!occupied.has(primary)) return primary;
+    const secondary = `其余${tailLength}类汇总`;
+    if (!occupied.has(secondary)) return secondary;
+    let suffix = 2;
+    while (occupied.has(`其余${tailLength}类(${suffix})`)) {
+        suffix += 1;
+    }
+    return `其余${tailLength}类(${suffix})`;
+}
+
+function pickAggregatedDisplayLabel(tailLength: number, occupied: ReadonlySet<string>): string {
+    const primary = `其余 ${tailLength} 类合计`;
+    if (!occupied.has(primary)) return primary;
+    const secondary = `其余 ${tailLength} 类汇总`;
+    if (!occupied.has(secondary)) return secondary;
+    let suffix = 2;
+    while (occupied.has(`其余 ${tailLength} 类合计 (${suffix})`)) {
+        suffix += 1;
+    }
+    return `其余 ${tailLength} 类合计 (${suffix})`;
+}
+
 function normalizeCategories(result: CategoricalAnalysisResult): NormalizedCategorySlice[] {
     const duplicateLabels = new Set(
         result.categories
@@ -269,25 +293,30 @@ function normalizeCategories(result: CategoricalAnalysisResult): NormalizedCateg
         })
         .sort((a, b) => b.pct - a.pct || b.count - a.count);
 
-    const shortLabels = disambiguateAxisLabels(validRaw.map((item) => item.displayLabel), 10);
-    const validItems = validRaw.map((item, idx) => ({
-        ...item,
-        shortLabel: shortLabels[idx] ?? truncateAxisLabel(item.displayLabel, 10),
-    }));
-
-    if (validItems.length <= 8) {
-        return validItems;
+    if (validRaw.length <= 8) {
+        const shortLabels = disambiguateAxisLabels(validRaw.map((item) => item.displayLabel), 10);
+        return validRaw.map((item, idx) => ({
+            ...item,
+            shortLabel: shortLabels[idx] ?? truncateAxisLabel(item.displayLabel, 10),
+        }));
     }
 
-    const head = validItems.slice(0, 7);
-    const tail = validItems.slice(7);
+    const headRaw = validRaw.slice(0, 7);
+    const tail = validRaw.slice(7);
+    const headShortLabels = disambiguateAxisLabels(headRaw.map((item) => item.displayLabel), 10);
+    const head = headRaw.map((item, idx) => ({
+        ...item,
+        shortLabel: headShortLabels[idx] ?? truncateAxisLabel(item.displayLabel, 10),
+    }));
+    const occupiedShortLabels = new Set(head.map((item) => item.shortLabel.trim()));
+    const occupiedDisplayLabels = new Set(head.map((item) => item.displayLabel.trim()));
     const tailCount = tail.reduce((sum, item) => sum + item.count, 0);
     const tailPct = tail.reduce((sum, item) => sum + item.pct, 0);
     return [
         ...head,
         {
-            displayLabel: `其余 ${tail.length} 类合计`,
-            shortLabel: `其余 ${tail.length} 类`,
+            displayLabel: pickAggregatedDisplayLabel(tail.length, occupiedDisplayLabels),
+            shortLabel: pickAggregatedAxisShortLabel(tail.length, occupiedShortLabels),
             count: tailCount,
             pct: tailPct,
         },

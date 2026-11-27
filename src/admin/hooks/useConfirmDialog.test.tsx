@@ -95,3 +95,52 @@ test("useConfirmDialog restores focus to fallbackFocusRef when opener becomes di
     await waitFor(() => expect(document.activeElement === input).toBe(true));
     view.unmount();
 });
+
+test("useConfirmDialog restores focus to fallbackFocusRef even when row opener unmounts asynchronously after network delete", async () => {
+    const { useConfirmDialog } = await import(`./useConfirmDialog?async-unmount=${crypto.randomUUID()}`);
+
+    function AsyncRowDeleteHarness() {
+        const { confirm, dialog } = useConfirmDialog();
+        const [rows, setRows] = useState([1, 2]);
+        const createBtnRef = useRef<HTMLButtonElement>(null);
+
+        return (
+            <>
+                <button ref={createBtnRef} type="button">创建记录</button>
+                {rows.map((id) => (
+                    <button
+                        key={id}
+                        type="button"
+                        onClick={async () => {
+                            const ok = await confirm({
+                                title: `删除第 ${id} 行`,
+                                confirmLabel: "确认删除",
+                                tone: "destructive",
+                                fallbackFocusRef: createBtnRef,
+                            });
+                            if (!ok) return;
+                            await new Promise((resolve) => setTimeout(resolve, 40));
+                            setRows((prev) => prev.filter((item) => item !== id));
+                        }}
+                    >
+                        删除行 {id}
+                    </button>
+                ))}
+                {dialog}
+            </>
+        );
+    }
+
+    const view = render(<AsyncRowDeleteHarness />);
+    const createBtn = view.getByRole("button", { name: "创建记录" });
+    const rowDeleteBtn = view.getByRole("button", { name: "删除行 2" });
+    rowDeleteBtn.focus();
+    fireEvent.click(rowDeleteBtn);
+
+    const confirmBtn = await view.findByRole("button", { name: "确认删除" });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => expect(view.queryByRole("button", { name: "删除行 2" }) === null).toBe(true));
+    await waitFor(() => expect(document.activeElement === createBtn).toBe(true));
+    view.unmount();
+});

@@ -23,6 +23,7 @@ export function TeacherManagement() {
     const [form, setForm] = useState({ employeeId: "", name: "" });
     const [saving, setSaving] = useState(false);
     const { confirm, dialog } = useConfirmDialog();
+    const createTeacherBtnRef = useRef<HTMLButtonElement>(null);
     const pending = useRef(false);
     const resetPending = useRef(false);
     const [resetting, setResetting] = useState(false);
@@ -43,6 +44,7 @@ export function TeacherManagement() {
                 description: `将把 ${teacher.name}（${teacher.employeeId}）的密码重置为工号，原密码将失效，全部登录会话将失效，教师需要重新登录。`,
                 confirmLabel: "确认重置",
                 tone: "destructive",
+                fallbackFocusRef: createTeacherBtnRef,
             }) || !mounted.current) return;
             const response = await teacherApi.resetPassword(teacher.id);
             if (!mounted.current) return;
@@ -72,15 +74,13 @@ export function TeacherManagement() {
     }
 
     async function handleDelete(row: Teacher) {
-        if (deleteBlockers(row).length > 0) {
-            toast.error(`该教师仍有 ${deleteBlockers(row).join("、")}，请先删除后再移除账号`);
-            return;
-        }
+        if (deleteBlockers(row).length > 0) return;
         const shouldDelete = await confirm({
             title: `删除教师「${row.name}」`,
             description: `将永久删除工号 ${row.employeeId} 的账号与全部登录会话，保留该教师作为操作者的审计记录。此操作不可恢复。`,
             confirmLabel: "永久删除",
             tone: "destructive",
+            fallbackFocusRef: createTeacherBtnRef,
         });
         if (!shouldDelete) return;
         const response = await teacherApi.delete(row.id);
@@ -158,7 +158,7 @@ export function TeacherManagement() {
                     <h2 className="text-subheading font-medium text-foreground">教师管理</h2>
                     <p className="mt-0.5 text-label text-muted-foreground">新建及重置后的登录密码默认与教师工号相同，教师登录后可自行修改密码。</p>
                 </div>
-                <Button type="button" onClick={() => { setEditing(null); setCreating(true); setForm({ employeeId: "", name: "" }); }}>
+                <Button ref={createTeacherBtnRef} type="button" onClick={() => { setEditing(null); setCreating(true); setForm({ employeeId: "", name: "" }); }}>
                     <Plus className="h-4 w-4" aria-hidden="true" />
                     新增教师
                 </Button>
@@ -281,18 +281,22 @@ export function TeacherManagement() {
                                                 >
                                                     <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />重置密码
                                                 </Button>
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-8 px-2.5 text-destructive hover:bg-destructive-muted hover:text-destructive"
-                                                    data-testid={`admin-teacher-delete-${row.id}`}
-                                                    disabled={blockers.length > 0}
-                                                    title={blockers.length > 0 ? `仍有 ${blockers.join("、")}，无法删除` : "删除教师"}
-                                                    onClick={() => void handleDelete(row)}
+                                                <span
+                                                    className="inline-flex"
+                                                    title={blockers.length > 0 ? `该教师仍有 ${blockers.join("、")}，无法删除` : "删除教师"}
                                                 >
-                                                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />删除
-                                                </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 px-2.5 text-destructive hover:bg-destructive-muted hover:text-destructive"
+                                                        data-testid={`admin-teacher-delete-${row.id}`}
+                                                        disabled={blockers.length > 0}
+                                                        onClick={() => void handleDelete(row)}
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />删除
+                                                    </Button>
+                                                </span>
                                             </div>
                                         </TableCell>
                                     </TableRow>

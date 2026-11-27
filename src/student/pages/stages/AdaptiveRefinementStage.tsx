@@ -1,10 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
     AlertCircle, ArrowDown, ArrowRight, ArrowUp, Calculator, CheckCircle2,
     ChevronLeft, Coins, Edit2, FileEdit, Layers, Link2, Loader2, Play, Plus,
     RefreshCw, Send, Trash2
 } from "lucide-react";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -156,8 +166,10 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
     const [qList, setQList] = useState<Question[]>(sourceQ.questions);
     const [editingQuestion, setEditingQuestion] = useState<Question | undefined>(undefined);
     const [questionEditorOpen, setQuestionEditorOpen] = useState(false);
+    const [questionToDelete, setQuestionToDelete] = useState<Question | null>(null);
     const [bindingQuestion, setBindingQuestion] = useState<Question | null>(null);
     const [savingQuestionnaire, setSavingQuestionnaire] = useState(false);
+    const addWaveQuestionBtnRef = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
         const latest = activeWave?.questionnaire ?? experiment?.questionnaire;
@@ -202,7 +214,11 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
     );
     const [designEffectInput, setDesignEffectInput] = useState<string>(String(savedWavePlan?.designEffect ?? 1));
     const [nonResponsePctInput, setNonResponsePctInput] = useState<string>(
-        String(savedWavePlan ? Math.round(savedWavePlan.nonResponseRate * 100) : (wave1Diag?.empiricalNonResponseRatePct ?? 20)),
+        String(
+            savedWavePlan
+                ? Number((savedWavePlan.nonResponseRate * 100).toPrecision(12))
+                : (wave1Diag?.empiricalNonResponseRatePct ?? 20),
+        ),
     );
     const [customFinalSizeInput, setCustomFinalSizeInput] = useState<string | null>(
         !isPlanInheritedPrior && savedWavePlan?.finalSampleSize != null ? String(savedWavePlan.finalSampleSize) : null,
@@ -228,7 +244,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                 : "population",
         );
         setDesignEffectInput(String(plan.designEffect ?? 1));
-        setNonResponsePctInput(String(Math.round((plan.nonResponseRate ?? 0.2) * 100)));
+        setNonResponsePctInput(String(Number(((plan.nonResponseRate ?? 0.2) * 100).toPrecision(12))));
         setCustomFinalSizeInput(!inheritedPrior && plan.finalSampleSize != null ? String(plan.finalSampleSize) : null);
     }, [activeWave?.waveNumber]);
 
@@ -357,7 +373,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
 
     const bounds = useMemo(() => getFinalSampleSizeBounds(N, minimumSampleSize), [N, minimumSampleSize]);
     const safeNrrFraction = Number.isFinite(nonResponsePct)
-        ? Math.min(0.5, Math.max(0, nonResponsePct / 100))
+        ? Math.min(0.5, Math.max(0, Number((nonResponsePct / 100).toPrecision(12))))
         : 0.2;
     const stepDetails = useMemo(() => calculateSampleSizeStepDetails({
         estimationType,
@@ -425,10 +441,10 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
             varianceSource,
         } : {}),
         designEffect,
-        nonResponseRate: Math.min(0.5, Math.max(0, Math.round(nonResponsePct) / 100)),
+        nonResponseRate: safeNrrFraction,
         recommendedSize,
         finalSampleSize: effectiveFinalSize,
-    }), [estimationType, confidenceLevel, marginOfError, activeVariance, varianceSource, designEffect, nonResponsePct, recommendedSize, effectiveFinalSize]);
+    }), [estimationType, confidenceLevel, marginOfError, activeVariance, varianceSource, designEffect, safeNrrFraction, recommendedSize, effectiveFinalSize]);
 
     const handleSaveWavePlan = async () => {
         if (!taskId || !experiment || savingPlan || planValidationError !== null || refreshRequired) {
@@ -677,16 +693,15 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
     const isPlanDirty = useMemo(() => {
         if (isPlanInheritedPrior || !activeWave?.samplePlan || planValidationError !== null) return false;
         const p = activeWave.samplePlan;
-        const nrrRounded = Math.min(0.5, Math.max(0, Math.round(nonResponsePct) / 100));
         return (
             effectiveFinalSize !== p.finalSampleSize
             || confidenceLevel !== p.confidenceLevel
             || Math.abs(marginOfError - p.marginOfError) > 1e-6
             || Math.abs(designEffect - (p.designEffect ?? 1)) > 1e-6
-            || Math.abs(nrrRounded - (p.nonResponseRate ?? 0)) > 1e-6
+            || Math.abs(safeNrrFraction - (p.nonResponseRate ?? 0)) > 1e-6
             || (estimationType === "mean" && varianceSource !== p.varianceSource)
         );
-    }, [isPlanInheritedPrior, activeWave?.samplePlan, planValidationError, nonResponsePct, effectiveFinalSize, confidenceLevel, marginOfError, designEffect, estimationType, varianceSource]);
+    }, [isPlanInheritedPrior, activeWave?.samplePlan, planValidationError, safeNrrFraction, effectiveFinalSize, confidenceLevel, marginOfError, designEffect, estimationType, varianceSource]);
     const needsFormalPlanSave = lockedTargetN < bounds.min || isPlanDirty || isPlanUnconfirmedFromPilot;
     const needsFormalDispatch = policyProgress.canComplete && !isQuestionnaireDirty && targetBindingPassed && !allCompletedMethodsDispatched;
     const firstWaveMetric = wave1 ? buildWaveSnapshotMetric(wave1, "simple", unitLabel) ?? buildWaveSnapshotMetric(wave1, undefined, unitLabel) : null;
@@ -914,6 +929,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                         </Button>
                                     )}
                                     <Button
+                                        ref={addWaveQuestionBtnRef}
                                         type="button"
                                         size="sm"
                                         disabled={qList.length >= 50}
@@ -1032,7 +1048,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                             aria-label={`删除第 ${idx + 1} 题`}
                                             disabled={qList.length <= 5}
                                             className="text-destructive hover:bg-destructive-muted hover:text-destructive"
-                                            onClick={() => setQList((prev) => prev.filter((item) => item.id !== q.id))}
+                                            onClick={() => setQuestionToDelete(q)}
                                         >
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
@@ -1151,7 +1167,7 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                                         type="number"
                                         min={0}
                                         max={50}
-                                        step={1}
+                                        step="any"
                                         value={nonResponsePctInput}
                                         aria-invalid={!Number.isFinite(nonResponsePct) || nonResponsePct < 0 || nonResponsePct > 50 || undefined}
                                         onChange={(e) => {
@@ -1718,6 +1734,40 @@ export function AdaptiveRefinementStage({ onPrev }: { onPrev: () => void }) {
                     onConfirm={(updated) => setQList((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))}
                 />
             )}
+
+            <AlertDialog
+                open={questionToDelete !== null}
+                onOpenChange={(open) => {
+                    if (!open) setQuestionToDelete(null);
+                }}
+                fallbackFocusRef={addWaveQuestionBtnRef}
+            >
+                <AlertDialogContent className="border-border bg-card text-foreground" data-testid="student-refinement-delete-question-dialog">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-foreground">确认删除</AlertDialogTitle>
+                        <AlertDialogDescription className="text-muted-foreground">
+                            {questionToDelete
+                                ? `确定要删除题目「${questionToDelete.content}」吗？删除后需点击「保存修订问卷」生效。`
+                                : "确定要删除这道题目吗？"}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction
+                            variant="destructive"
+                            data-testid="student-refinement-delete-question-confirm"
+                            onClick={() => {
+                                if (questionToDelete) {
+                                    setQList((prev) => prev.filter((item) => item.id !== questionToDelete.id));
+                                    setQuestionToDelete(null);
+                                }
+                            }}
+                        >
+                            删除
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

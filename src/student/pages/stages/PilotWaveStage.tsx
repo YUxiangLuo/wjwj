@@ -91,7 +91,8 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
     const priorStdDevEditedRef = useRef(false);
     const [priorStdDevInput, setPriorStdDevInput] = useState<string>(() => {
         if (savedPlan?.populationVariance && savedPlan.populationVariance > 0) {
-            return String(Number(Math.sqrt(savedPlan.populationVariance).toFixed(2)));
+            const sd = Math.sqrt(savedPlan.populationVariance);
+            return String(sd >= 1 ? Number(sd.toFixed(4)) : Number(sd.toPrecision(6)));
         }
         return "12";
     });
@@ -183,7 +184,7 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
             return populationVariance && populationVariance > 0 ? populationVariance : null;
         }
         if (!Number.isFinite(priorStdDev) || priorStdDev <= 0) return null;
-        const squared = Number((priorStdDev * priorStdDev).toFixed(4));
+        const squared = priorStdDev * priorStdDev;
         return Number.isFinite(squared) && squared > 0 ? squared : null;
     }, [estimationType, varianceSource, populationVariance, priorStdDev]);
 
@@ -551,8 +552,8 @@ export function PilotWaveStage({ onPrev }: { onPrev: () => void }) {
                                                 <Input
                                                     id="pilot-prior-sd"
                                                     type="number"
-                                                    min={0.1}
-                                                    step={0.5}
+                                                    min={0}
+                                                    step="any"
                                                     value={priorStdDevInput}
                                                     aria-invalid={!Number.isFinite(priorStdDev) || priorStdDev <= 0 || undefined}
                                                     onChange={(e) => {

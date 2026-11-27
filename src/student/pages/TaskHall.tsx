@@ -618,9 +618,8 @@ export function TaskHall() {
                     <div className="mt-4 grid min-h-[380px] grid-cols-2 gap-5">
                         <div
                             role="region"
-                            tabIndex={0}
                             aria-label="公告列表"
-                            className="custom-scrollbar max-h-[380px] space-y-2 overflow-y-auto rounded-control border-r border-border p-1 pr-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="custom-scrollbar max-h-[380px] space-y-2 overflow-y-auto rounded-control border-r border-border p-1 pr-4"
                         >
                             {announcements.length === 0 && (
                                 <div className="py-12 text-center text-label text-muted-foreground">暂无公告</div>

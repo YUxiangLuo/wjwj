@@ -1665,6 +1665,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         setExportError(null);
         try {
             await downloadStudentFile(`/api/student/tasks/${experiment.taskId}/export?type=${type}`, `sampling_${type}.csv`);
+            setExportOpen(false);
         } catch (error) {
             console.error("Export failed:", error);
             setExportError("数据导出失败，请检查网络后重试。报告草稿已保留。");
@@ -1759,7 +1760,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         className="rounded-surface border border-warning-border bg-warning-muted p-3 text-meta text-warning"
                         data-testid="student-analysis-invalid-numeric-warning"
                     >
-                        数值字段 {analysisMetrics!.excludedNumericFields!.join("、")} 含空值或非数值，已停止该字段的均值与标准误分析。请联系教师修正总体数据。
+                        数值字段 {analysisMetrics!.excludedNumericFields!.join("、")} 含空值、非数值或超出可靠浮点精度范围，已停止该字段的均值与标准误分析。请联系教师修正总体数据。
                     </div>
                 )}
 
@@ -2226,7 +2227,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         </Button>
                         <Button
                             type="button"
-                            variant="outline"
+                            variant="secondary"
                             size="sm"
                             onClick={() => handleExport(exportType)}
                             disabled={isExporting || completedAnalysisMethods.length === 0}

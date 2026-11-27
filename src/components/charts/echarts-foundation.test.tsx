@@ -383,4 +383,81 @@ describe("EChartBox SVG rendering, accessibility, export, and lifecycle", () => 
             globalThis.ResizeObserver = OriginalResizeObserver;
         }
     });
+
+    test("exportEChartSvg renders final static geometry even when called at t=0ms during entrance animation, and falls back for mock stubs", () => {
+        const originalUserAgentDescriptor = Object.getOwnPropertyDescriptor(navigator, "userAgent");
+        Object.defineProperty(navigator, "userAgent", {
+            value: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36",
+            configurable: true,
+        });
+
+        try {
+            const animatedRef = { current: null as ECharts | null };
+            const staticRef = { current: null as ECharts | null };
+            const baseOption: ExecutiveChartOption = {
+                grid: buildExecutiveGrid(),
+                xAxis: buildExecutiveCategoryAxis({ data: ["简单随机", "分层抽样", "PPS抽样"] }),
+                yAxis: buildExecutiveValueAxis({ min: 0, max: 30 }),
+                series: [
+                    {
+                        name: "样本点估计",
+                        type: "bar",
+                        data: [20.9, 20.75, 20.66],
+                        markLine: {
+                            silent: true,
+                            symbol: "none",
+                            data: [{ yAxis: 20.72, name: "总体真值" }],
+                        },
+                    },
+                ],
+            };
+
+            const view = render(
+                <div>
+                    <EChartBox
+                        option={{ ...baseOption, animation: true, animationDuration: 1000 }}
+                        height={440}
+                        fallbackWidth={960}
+                        ariaLabel="动画入场中的放大均值对比图"
+                        chartRef={animatedRef}
+                    />
+                    <EChartBox
+                        option={{ ...baseOption, animation: false, animationDuration: 0 }}
+                        height={440}
+                        fallbackWidth={960}
+                        ariaLabel="静止终态对照图"
+                        chartRef={staticRef}
+                    />
+                </div>,
+            );
+
+            expect(animatedRef.current).not.toBeNull();
+            expect(staticRef.current).not.toBeNull();
+
+            // At t=0ms, direct renderToSVGString() on the animating instance captures mid-flight incomplete bars/markLine
+            const normalizeZrClasses = (svg: string | null) => svg?.replace(/\bzr\d+-cls-\d+\b/g, "zr-cls") ?? null;
+            const rawMidAnimationSvg = normalizeZrClasses(animatedRef.current!.renderToSVGString());
+            const expectedStaticSvg = normalizeZrClasses(exportEChartSvg(staticRef.current));
+            const exportedImmediateSvg = normalizeZrClasses(exportEChartSvg(animatedRef.current));
+
+            expect(expectedStaticSvg !== null).toBe(true);
+            expect(rawMidAnimationSvg).not.toBe(expectedStaticSvg);
+            expect(exportedImmediateSvg).toBe(expectedStaticSvg);
+
+            // Standalone mock ECharts stub (not in WeakMap) falls back to instance.renderToSVGString()
+            const mockStub = {
+                isDisposed: () => false,
+                renderToSVGString: () => '<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>',
+            } as unknown as ECharts;
+            expect(exportEChartSvg(mockStub)).toContain("<rect");
+
+            view.unmount();
+        } finally {
+            if (originalUserAgentDescriptor) {
+                Object.defineProperty(navigator, "userAgent", originalUserAgentDescriptor);
+            } else {
+                Object.defineProperty(navigator, "userAgent", { value: "HappyDOM", configurable: true });
+            }
+        }
+    });
 });

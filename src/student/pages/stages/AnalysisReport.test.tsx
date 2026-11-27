@@ -36,9 +36,11 @@ mock.module("../ExperimentLayout", () => ({
     useExperiment: () => mockExperimentContext,
 }));
 
+let mockDownloadStudentFile = createApiClient("student").download;
+
 mock.module("../../api-client", () => ({
     experimentApi: mockExperimentApi,
-    downloadStudentFile: createApiClient("student").download,
+    downloadStudentFile: (url: string, filename: string) => mockDownloadStudentFile(url, filename),
 }));
 
 mock.module("sonner", () => ({
@@ -50,7 +52,9 @@ mock.module("sonner", () => ({
 }));
 
 mock.module("@/components/ui/button", () => ({
-    Button: ({ children, ...props }: ComponentProps<"button">) => <button {...props}>{children}</button>,
+    Button: ({ children, variant, ...props }: ComponentProps<"button"> & { variant?: string }) => (
+        <button data-variant={variant ?? "default"} {...props}>{children}</button>
+    ),
 }));
 
 mock.module("@/components/ui/card", () => ({
@@ -519,5 +523,44 @@ test("AnalysisReport mean chart and outline honor 90% and 99% confidence levels 
         expect(yNameTextNode?.getAttribute("text-anchor")).toBe("start");
 
         cleanup();
+    }
+});
+
+test("excludedNumericFields warning covers precision bounds, and Export CSV uses MD3 secondary tonal variant and auto-closes on success", async () => {
+    mockExperimentApi.getAnalysisMetrics.mockResolvedValueOnce({
+        success: true,
+        data: {
+            excludedNumericFields: ["subnormal_metric"],
+            numericFields: [],
+            categoricalFields: [],
+            numeric: {},
+            categorical: {},
+        },
+    });
+    const downloadedCalls: Array<[string, string]> = [];
+    const defaultDownload = mockDownloadStudentFile;
+    mockDownloadStudentFile = async (url, filename) => {
+        downloadedCalls.push([url, filename]);
+    };
+
+    try {
+        const view = render(<AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />);
+        const warning = await waitFor(() => view.getByTestId("student-analysis-invalid-numeric-warning"));
+        expect(warning.textContent).toContain("subnormal_metric");
+        expect(warning.textContent).toContain("含空值、非数值或超出可靠浮点精度范围");
+
+        await act(async () => {
+            view.getByRole("button", { name: "导出数据" }).click();
+        });
+        const exportCsvBtn = await waitFor(() => view.getByRole("button", { name: "导出 CSV" }));
+        expect(exportCsvBtn.getAttribute("data-variant")).toBe("secondary");
+
+        await act(async () => {
+            exportCsvBtn.click();
+        });
+        expect(downloadedCalls).toEqual([["/api/student/tasks/2/export?type=all", "sampling_all.csv"]]);
+        await waitFor(() => expect(view.queryByRole("button", { name: "导出 CSV" }) === null).toBe(true));
+    } finally {
+        mockDownloadStudentFile = defaultDownload;
     }
 });

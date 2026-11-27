@@ -20,6 +20,19 @@ export function isRecommendedSemesterName(value: string) {
     return /^\d{4}-\d{4}-[12]$/.test(value.trim());
 }
 
+export function formatSemesterDeleteBlockerTitle(blockers: readonly string[]) {
+    if (blockers.length === 0) return "删除学期";
+    const isCurrent = blockers.includes("当前学期");
+    const rest = blockers.filter((item) => item !== "当前学期");
+    if (isCurrent && rest.length > 0) {
+        return `该学期为当前学期且含 ${rest.join("、")}，无法删除`;
+    }
+    if (isCurrent) {
+        return "该学期为当前学期，无法删除";
+    }
+    return `该学期含 ${rest.join("、")}，无法删除`;
+}
+
 export function SemesterManagement() {
     const { confirm, dialog } = useConfirmDialog();
     const [semesters, setSemesters] = useState<Semester[]>([]);
@@ -34,6 +47,7 @@ export function SemesterManagement() {
     const [editName, setEditName] = useState("");
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<"all" | "current" | "history">("all");
+    const createSemesterBtnRef = useRef<HTMLButtonElement>(null);
     const addNameInputRef = useRef<HTMLInputElement>(null);
     const wasSubmittingRef = useRef(false);
 
@@ -160,16 +174,14 @@ export function SemesterManagement() {
     }
 
     async function handleDelete(semester: Semester) {
-        if (deleteBlockers(semester).length > 0) {
-            toast.error(`该学期是${deleteBlockers(semester).join("、")}，无法删除`);
-            return;
-        }
+        if (deleteBlockers(semester).length > 0) return;
 
         const shouldDelete = await confirm({
             title: `删除学期「${semester.name}」`,
             description: "删除后该学期将从列表中移除，且无法恢复。",
             confirmLabel: "删除学期",
             tone: "destructive",
+            fallbackFocusRef: createSemesterBtnRef,
         });
         if (!shouldDelete) {
             return;
@@ -226,7 +238,7 @@ export function SemesterManagement() {
                     <h2 className="text-subheading font-medium text-foreground">学期管理</h2>
                     <p className="mt-0.5 text-label text-muted-foreground">维护教学学年学期档案，指定全平台默认活跃学期。</p>
                 </div>
-                <Button type="button" data-testid="semester-create-open" onClick={openAddModal}>
+                <Button ref={createSemesterBtnRef} type="button" data-testid="semester-create-open" onClick={openAddModal}>
                     <Plus className="h-4 w-4" aria-hidden="true" />
                     创建学期
                 </Button>
@@ -349,19 +361,23 @@ export function SemesterManagement() {
                                                     <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                                                     编辑
                                                 </Button>
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    data-testid={`semester-delete-${semester.id}`}
-                                                    onClick={() => void handleDelete(semester)}
-                                                    className="h-8 px-2.5 text-destructive hover:bg-destructive-muted hover:text-destructive"
-                                                    disabled={blockers.length > 0}
-                                                    title={blockers.length > 0 ? `已有 ${blockers.join("、")}，无法删除` : "删除学期"}
+                                                <span
+                                                    className="inline-flex"
+                                                    title={formatSemesterDeleteBlockerTitle(blockers)}
                                                 >
-                                                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                                                    删除
-                                                </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        data-testid={`semester-delete-${semester.id}`}
+                                                        onClick={() => void handleDelete(semester)}
+                                                        className="h-8 px-2.5 text-destructive hover:bg-destructive-muted hover:text-destructive"
+                                                        disabled={blockers.length > 0}
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                                                        删除
+                                                    </Button>
+                                                </span>
                                             </div>
                                         </TableCell>
                                     </TableRow>

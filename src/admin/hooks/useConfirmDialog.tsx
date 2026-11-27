@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -33,8 +33,18 @@ export function useConfirmDialog() {
     const resolverRef = useRef<((confirmed: boolean) => void) | null>(null);
     const openerRef = useRef<HTMLElement | null>(null);
     const fallbackFocusRef = useRef<RefObject<HTMLElement | null> | null>(null);
+    const lastConfirmedRef = useRef(false);
+    const cleanupAsyncFocusWatchRef = useRef<(() => void) | null>(null);
+
+    useEffect(() => {
+        return () => {
+            cleanupAsyncFocusWatchRef.current?.();
+            cleanupAsyncFocusWatchRef.current = null;
+        };
+    }, []);
 
     const close = (confirmed: boolean) => {
+        lastConfirmedRef.current = confirmed;
         resolverRef.current?.(confirmed);
         resolverRef.current = null;
         setOptions(null);
@@ -42,10 +52,13 @@ export function useConfirmDialog() {
 
     const confirm = (nextOptions: ConfirmDialogOptions) =>
         new Promise<boolean>((resolve) => {
+            cleanupAsyncFocusWatchRef.current?.();
+            cleanupAsyncFocusWatchRef.current = null;
             openerRef.current = typeof document !== "undefined" && document.activeElement instanceof HTMLElement
                 ? document.activeElement
                 : null;
             fallbackFocusRef.current = nextOptions.fallbackFocusRef ?? null;
+            lastConfirmedRef.current = false;
             resolverRef.current = resolve;
             setOptions(nextOptions);
         });
@@ -55,7 +68,7 @@ export function useConfirmDialog() {
             open={options !== null}
             fallbackFocusRef={options?.fallbackFocusRef ?? fallbackFocusRef.current ?? undefined}
             onOpenChange={(open) => {
-                if (!open) close(false);
+                if (!open && resolverRef.current !== null) close(false);
             }}
         >
             <AlertDialogContent
@@ -63,9 +76,11 @@ export function useConfirmDialog() {
                 onCloseAutoFocus={(event) => {
                     event.preventDefault();
                     const opener = openerRef.current;
-                    const fallback = fallbackFocusRef.current?.current ?? null;
+                    const fallbackHolder = fallbackFocusRef.current;
+                    const wasConfirmed = lastConfirmedRef.current;
                     openerRef.current = null;
                     requestAnimationFrame(() => {
+                        const fallback = fallbackHolder?.current ?? null;
                         const target = isFocusableElement(opener)
                             ? opener
                             : isFocusableElement(fallback)
@@ -75,6 +90,47 @@ export function useConfirmDialog() {
                                     ?? null;
                         if (target?.isConnected && !target.closest("[inert]")) {
                             target.focus();
+                        }
+                        if (
+                            wasConfirmed
+                            && target === opener
+                            && opener
+                            && fallbackHolder
+                            && typeof MutationObserver !== "undefined"
+                            && typeof document !== "undefined"
+                            && document.body
+                        ) {
+                            cleanupAsyncFocusWatchRef.current?.();
+                            const stopWatching = () => {
+                                observer.disconnect();
+                                clearTimeout(timer);
+                                document.removeEventListener("pointerdown", stopWatching, true);
+                                document.removeEventListener("keydown", stopWatching, true);
+                                if (cleanupAsyncFocusWatchRef.current === stopWatching) {
+                                    cleanupAsyncFocusWatchRef.current = null;
+                                }
+                            };
+                            const observer = new MutationObserver(() => {
+                                if (opener.isConnected && isFocusableElement(opener)) return;
+                                const active = document.activeElement;
+                                const lostToBody =
+                                    !active
+                                    || active === document.body
+                                    || active === document.documentElement
+                                    || !(active instanceof HTMLElement && active.isConnected);
+                                if (lostToBody) {
+                                    const survivingFallback = fallbackHolder.current;
+                                    if (survivingFallback && isFocusableElement(survivingFallback)) {
+                                        survivingFallback.focus();
+                                    }
+                                }
+                                stopWatching();
+                            });
+                            const timer = setTimeout(stopWatching, 2000);
+                            document.addEventListener("pointerdown", stopWatching, true);
+                            document.addEventListener("keydown", stopWatching, true);
+                            observer.observe(document.body, { childList: true, subtree: true });
+                            cleanupAsyncFocusWatchRef.current = stopWatching;
                         }
                     });
                 }}

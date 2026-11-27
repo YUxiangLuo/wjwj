@@ -231,7 +231,8 @@ test("version conflict asks for one full-page refresh without fetching into the 
     });
     const refresh = await waitFor(() => view.getByTestId("student-refresh-experiment"));
     expect(refresh.textContent).toContain("刷新页面");
-    expect(view.getByText("实验进度已更新，请刷新页面后继续。")).toBeTruthy();
+    const conflictBanner = view.getByText("实验进度已更新，请刷新页面后继续。").closest('[role="alert"]');
+    expect(conflictBanner).not.toBeNull();
     expect((view.getByTestId("student-analysis-preview") as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(view.getByTestId("student-analysis-preview"));
     expect(completeCount).toBe(1);

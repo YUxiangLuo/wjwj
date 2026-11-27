@@ -40,9 +40,80 @@ function syncChartDomAccessibility(container: HTMLElement) {
     }
 }
 
+interface ChartExportMeta {
+    option: EChartsCoreOption;
+    width: number;
+    height: number;
+}
+
+const chartExportMetaMap = new WeakMap<ECharts, ChartExportMeta>();
+
+function disableMarkAnimation(mark: unknown): unknown {
+    if (!mark || typeof mark !== "object" || Array.isArray(mark)) return mark;
+    return { ...(mark as Record<string, unknown>), animation: false };
+}
+
+function disableSeriesAnimation(seriesItem: unknown): unknown {
+    if (!seriesItem || typeof seriesItem !== "object") return seriesItem;
+    const rec = seriesItem as Record<string, unknown>;
+    return {
+        ...rec,
+        animation: false,
+        ...(rec.markLine !== undefined ? { markLine: disableMarkAnimation(rec.markLine) } : {}),
+        ...(rec.markPoint !== undefined ? { markPoint: disableMarkAnimation(rec.markPoint) } : {}),
+        ...(rec.markArea !== undefined ? { markArea: disableMarkAnimation(rec.markArea) } : {}),
+    };
+}
+
+function buildStaticExportOption(option: EChartsCoreOption): EChartsCoreOption {
+    const base = withExecutiveDefaults(option);
+    const rawSeries = base.series;
+    const staticSeries = Array.isArray(rawSeries)
+        ? rawSeries.map(disableSeriesAnimation)
+        : rawSeries && typeof rawSeries === "object"
+            ? disableSeriesAnimation(rawSeries)
+            : rawSeries;
+
+    return {
+        ...base,
+        ...(staticSeries !== undefined ? { series: staticSeries } : {}),
+        animation: false,
+        animationDuration: 0,
+        animationDurationUpdate: 0,
+    };
+}
+
 export function exportEChartSvg(instance: ECharts | null | undefined): string | null {
     if (!instance || instance.isDisposed()) {
         return null;
+    }
+    const meta = chartExportMetaMap.get(instance);
+    if (meta && typeof document !== "undefined") {
+        const width = sanitizePositiveDimension(instance.getWidth(), meta.width);
+        const height = sanitizePositiveDimension(instance.getHeight(), meta.height);
+        const scratchContainer = document.createElement("div");
+        let scratchInstance: ECharts | null = null;
+        try {
+            scratchInstance = echarts.init(scratchContainer, undefined, {
+                renderer: "svg",
+                width,
+                height,
+            });
+            scratchInstance.setOption(buildStaticExportOption(meta.option), {
+                notMerge: true,
+                lazyUpdate: false,
+            });
+            const svg = scratchInstance.renderToSVGString();
+            if (typeof svg === "string" && svg.trim().length > 0) {
+                return svg;
+            }
+        } catch {
+            // Fall back to direct instance SVG rendering when offscreen init is unavailable.
+        } finally {
+            if (scratchInstance && !scratchInstance.isDisposed()) {
+                scratchInstance.dispose();
+            }
+        }
     }
     try {
         const svg = instance.renderToSVGString();
@@ -98,6 +169,11 @@ export function EChartBox({
             notMerge: true,
             lazyUpdate: false,
         });
+        chartExportMetaMap.set(instance, {
+            option: optionRef.current,
+            width: initialWidth,
+            height: heightRef.current,
+        });
         lastAppliedOptionRef.current = optionRef.current;
         syncChartDomAccessibility(container);
 
@@ -120,6 +196,11 @@ export function EChartBox({
                     && (nextWidth !== instance.getWidth() || heightRef.current !== instance.getHeight())
                 ) {
                     instance.resize({ width: nextWidth, height: heightRef.current });
+                    chartExportMetaMap.set(instance, {
+                        option: optionRef.current,
+                        width: nextWidth,
+                        height: heightRef.current,
+                    });
                     syncChartDomAccessibility(container);
                 }
             });
@@ -150,13 +231,18 @@ export function EChartBox({
                 notMerge: true,
                 lazyUpdate: false,
             });
+            chartExportMetaMap.set(instance, {
+                option,
+                width: sanitizePositiveDimension(instance.getWidth(), safeFallbackWidth),
+                height: sanitizePositiveDimension(instance.getHeight(), safeHeight),
+            });
             lastAppliedOptionRef.current = option;
             syncChartDomAccessibility(container);
         }
         if (chartRef) {
             chartRef.current = instance;
         }
-    }, [option, chartRef]);
+    }, [option, chartRef, safeFallbackWidth, safeHeight]);
 
     useEffect(() => {
         const instance = instanceRef.current;
@@ -166,6 +252,11 @@ export function EChartBox({
         const nextWidth = resolveContainerWidth(container, safeFallbackWidth);
         if (instance.getWidth() !== nextWidth || instance.getHeight() !== safeHeight) {
             instance.resize({ width: nextWidth, height: safeHeight });
+            chartExportMetaMap.set(instance, {
+                option: optionRef.current,
+                width: nextWidth,
+                height: safeHeight,
+            });
             syncChartDomAccessibility(container);
         }
     }, [safeHeight, safeFallbackWidth]);

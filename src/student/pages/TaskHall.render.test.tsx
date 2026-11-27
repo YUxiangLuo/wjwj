@@ -123,6 +123,8 @@ test("TaskHall opens a simple read-only announcement", async () => {
 
     fireEvent.click(view.getByText("查看公告"));
     await waitFor(() => expect(view.getByText("今晚 22:00 维护。")).toBeTruthy());
+    const listRegion = view.getByRole("region", { name: "公告列表" });
+    expect(listRegion.hasAttribute("tabindex")).toBe(false);
 
     fireEvent.click(view.getByText("课程安排更新"));
     await waitFor(() => expect(view.getByText("下周实验时间调整。")).toBeTruthy());

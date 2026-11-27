@@ -133,17 +133,20 @@ test("announcement deletion identifies the exact object before the destructive r
         createdAt: "2026-09-22T00:00:00.000Z",
         updatedAt: "2026-09-22T00:00:00.000Z",
     };
+    let rows = [announcement];
     globalThis.fetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
         if (init?.method === "DELETE") {
             deletes += 1;
+            rows = [];
             return Response.json({ success: true, data: { success: true } });
         }
-        return Response.json({ success: true, data: [announcement] });
+        return Response.json({ success: true, data: rows });
     }) as unknown as typeof fetch;
 
     const { AnnouncementManagement } = await import("./AnnouncementManagement");
     const view = render(<AnnouncementManagement />);
     const deleteButton = await view.findByRole("button", { name: "删除公告：课堂安排变更" });
+    deleteButton.focus();
     fireEvent.click(deleteButton);
 
     expect(view.getByRole("alertdialog").textContent).toContain("课堂安排变更");
@@ -153,7 +156,9 @@ test("announcement deletion identifies the exact object before the destructive r
 
     fireEvent.click(view.getByRole("button", { name: "永久删除" }));
     await waitFor(() => expect(deletes).toBe(1));
-    await waitFor(() => expect(view.queryByRole("alertdialog")).toBeNull());
+    await waitFor(() => expect(view.queryByRole("alertdialog") === null).toBe(true));
+    const createAnnouncementBtn = view.getByRole("button", { name: "新建公告" });
+    await waitFor(() => expect(document.activeElement === createAnnouncementBtn).toBe(true));
 });
 
 test.each(["取消", "关闭", "Escape"])("announcement %s protects unsaved fields until discard is confirmed", async (action) => {

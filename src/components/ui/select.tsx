@@ -163,7 +163,11 @@ function SelectValue({ placeholder, children, className, ...props }: SelectValue
   return (
     <span
       data-slot="select-value"
-      className={cn(!hasSelection && children === undefined && "text-muted-foreground", className)}
+      className={cn(
+        "min-w-0 flex-1 truncate text-left [&>svg]:mr-1.5 [&>svg]:inline [&>svg]:align-text-bottom",
+        !hasSelection && children === undefined && "text-muted-foreground",
+        className,
+      )}
       {...props}
     >
       {resolvedLabel}
@@ -241,7 +245,7 @@ function SelectTrigger({
         }
       }}
       className={cn(
-        "flex w-fit items-center justify-between gap-2 whitespace-nowrap rounded-control border border-input bg-card px-3 py-2 text-label text-foreground outline-none transition-[border-color,box-shadow,background-color] hover:border-foreground data-[placeholder]:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background aria-invalid:border-destructive aria-invalid:ring-destructive disabled:cursor-not-allowed disabled:border-border disabled:bg-muted disabled:text-muted-foreground data-[size=default]:h-10 data-[size=sm]:h-9 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground",
+        "flex w-fit items-center justify-between gap-2 whitespace-nowrap rounded-control border border-input bg-card px-3 py-2 text-label text-foreground outline-none transition-[border-color,box-shadow,background-color] hover:border-foreground data-[placeholder]:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background aria-invalid:border-destructive aria-invalid:ring-destructive disabled:cursor-not-allowed disabled:border-border disabled:bg-muted disabled:text-muted-foreground data-[size=default]:h-10 data-[size=sm]:h-9 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground",
         className,
       )}
     >

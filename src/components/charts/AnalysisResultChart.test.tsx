@@ -5,6 +5,7 @@ import { installDomGlobals } from "@/test-utils/dom";
 import { getAccessibilityViolations } from "@/test-utils/accessibility";
 import type { SavedAnalysisView } from "@/domain/variables/types";
 import { AnalysisResultChart } from "./AnalysisResultChart";
+import { echarts } from "./echarts-core";
 
 let restoreDom: (() => void) | null = null;
 
@@ -177,6 +178,59 @@ describe("AnalysisResultChart statistical visualizations & accessibility", () =>
         expect(card.innerHTML).toContain("其余 2 类");
         expect(card.innerHTML).not.toContain("NaN");
         expect(await getAccessibilityViolations(view.container)).toEqual([]);
+    });
+
+    test("deduplicates >8 tail aggregation axis and pie labels when real head categories collide with '其余 N 类'", () => {
+        const collidingCategoricalRecord: SavedAnalysisView = {
+            ...baseRecord,
+            id: 40,
+            variable: {
+                field: "tag",
+                label: "反馈标签",
+                unit: "",
+                kind: "nominal",
+                categories: [],
+                missing: [null],
+            },
+            result: {
+                kind: "categorical",
+                sampleCount: 100,
+                validCount: 100,
+                missingCount: 0,
+                weighted: false,
+                categories: [
+                    { value: "其余 2 类", label: "其余 2 类", count: 30, proportion: 0.3 },
+                    { value: "其余2类汇总", label: "其余2类汇总", count: 20, proportion: 0.2 },
+                    { value: "其余 2 类合计", label: "其余 2 类合计", count: 15, proportion: 0.15 },
+                    { value: "价格合理", label: "价格合理", count: 10, proportion: 0.1 },
+                    { value: "出餐迅速", label: "出餐迅速", count: 8, proportion: 0.08 },
+                    { value: "包装美观", label: "包装美观", count: 7, proportion: 0.07 },
+                    { value: "口味稳定", label: "口味稳定", count: 5, proportion: 0.05 },
+                    { value: "门店整洁", label: "门店整洁", count: 3, proportion: 0.03 },
+                    { value: "停车便利", label: "停车便利", count: 2, proportion: 0.02 },
+                ],
+            },
+        };
+
+        const view = render(<AnalysisResultChart record={collidingCategoricalRecord} testId="cat-collision" />);
+        const card = view.getByTestId("cat-collision");
+        const imgNode = card.querySelector<HTMLElement>('[role="img"]');
+        const instance = imgNode ? echarts.getInstanceByDom(imgNode) : null;
+        expect(instance).not.toBeNull();
+
+        const opt = instance?.getOption() as {
+            yAxis?: Array<{ data?: string[] }>;
+            series?: Array<{ data?: Array<{ name?: string }> }>;
+        } | undefined;
+        const axisLabels = opt?.yAxis?.[0]?.data ?? [];
+        expect(axisLabels).toHaveLength(8);
+        expect(new Set(axisLabels).size).toBe(8);
+        expect(axisLabels).toContain("其余 2 类");
+        expect(axisLabels).toContain("其余2类(2)");
+
+        const pieNames = (opt?.series?.[1]?.data ?? []).map((item) => item.name ?? "");
+        expect(pieNames).toHaveLength(8);
+        expect(new Set(pieNames).size).toBe(8);
     });
 
     test("renders subgroup crosstab continuous mean + ±1 SD whiskers and categorical 100% stacked/grouped toggle", async () => {

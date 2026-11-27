@@ -210,3 +210,73 @@ test("inspecting Stage 2 shows Wave 1 snapshot and double-clicking reopen dispat
         });
     } finally { cleanup(); globalThis.fetch = originalFetch; dom.restore(); }
 });
+
+test.each([
+    {
+        label: "not-yet-open task",
+        taskData: {
+            id: 9,
+            topicId: 3,
+            name: "未开放课题",
+            status: "not_started",
+            currentStage: 0,
+            publishedAt: "2099-09-01T00:00:00Z",
+            deadline: "2099-10-01T00:00:00Z",
+            populationSize: 1000,
+            attachments: [],
+            recommendQuestions: [],
+        },
+        expStatus: 403,
+        expError: { code: "TASK_NOT_OPEN", message: "实验尚未开放" },
+    },
+    {
+        label: "expired unstarted task",
+        taskData: {
+            id: 9,
+            topicId: 3,
+            name: "已截止未立项课题",
+            status: "not_started",
+            currentStage: 0,
+            publishedAt: "2025-09-01T00:00:00Z",
+            deadline: "2025-10-01T00:00:00Z",
+            populationSize: 1000,
+            attachments: [],
+            recommendQuestions: [],
+        },
+        expStatus: 400,
+        expError: { code: "TASK_DEADLINE", message: "任务已截止" },
+    },
+])("deep-linking /experiment on $label redirects cleanly to /task/:id instead of rendering error page", async ({ taskData, expStatus, expError }) => {
+    const dom = installDomGlobals("http://localhost/student/task/9/experiment");
+    const originalFetch = globalThis.fetch;
+    try {
+        globalThis.fetch = (async (input: RequestInfo | URL) => {
+            const url = String(input);
+            if (url.endsWith("/tasks/9/experiment")) {
+                return Response.json({ success: false, error: expError }, { status: expStatus });
+            }
+            if (url.endsWith("/tasks/9")) {
+                return Response.json({ success: true, data: taskData });
+            }
+            throw new Error(`Unexpected request: ${url}`);
+        }) as typeof fetch;
+
+        const view = render(
+            <MemoryRouter initialEntries={["/task/9/experiment"]}>
+                <NavigationProbe />
+                <Routes>
+                    <Route path="/task/:taskId/experiment" element={<ExperimentLayout />} />
+                    <Route path="/task/:taskId" element={<p data-testid="task-detail-destination">课题详情页</p>} />
+                </Routes>
+            </MemoryRouter>,
+        );
+
+        await waitFor(() => expect(view.queryByTestId("task-detail-destination") !== null).toBe(true));
+        expect(view.getByTestId("location").textContent).toBe("/task/9");
+        expect(view.queryByText("实验进度加载失败，请重试或返回任务。") === null).toBe(true);
+    } finally {
+        cleanup();
+        globalThis.fetch = originalFetch;
+        dom.restore();
+    }
+});

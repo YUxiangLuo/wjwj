@@ -145,6 +145,8 @@ export function QuestionnaireDesign() {
     const [previewCompleted, setPreviewCompleted] = useState(restoredDraft?.previewCompleted ?? false);
     const [previewContentHash, setPreviewContentHash] = useState(restoredDraft?.previewContentHash ?? "");
     const previewTriggerRef = useRef<HTMLButtonElement>(null);
+    const addQuestionBtnRef = useRef<HTMLButtonElement>(null);
+    const templatePickerBtnRef = useRef<HTMLButtonElement>(null);
     useControlledOverlayFocusRestore(previewOpen, previewTriggerRef);
 
     useEffect(() => {
@@ -590,6 +592,7 @@ export function QuestionnaireDesign() {
                                         </CardDescription>
                                     </div>
                                     <Button
+                                        ref={addQuestionBtnRef}
                                         type="button"
                                         variant={questions.length > 0 ? "secondary" : "default"}
                                         onClick={handleAddQuestion}
@@ -1140,7 +1143,7 @@ export function QuestionnaireDesign() {
                         </button>;
                     })}
                 </nav>
-                <Button type="button" variant="outline" size="sm" onClick={() => setTemplatePickerOpen(true)}><BookOpen className="h-4 w-4"/>使用问卷模板</Button>
+                <Button ref={templatePickerBtnRef} type="button" variant="outline" size="sm" onClick={() => setTemplatePickerOpen(true)}><BookOpen className="h-4 w-4"/>使用问卷模板</Button>
             </PageHeader>
 
             {/* 商业测量覆盖度与受访负担实时诊断条 */}
@@ -1248,7 +1251,7 @@ export function QuestionnaireDesign() {
             />}
 
             {/* Delete Confirmation Dialog */}
-            <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+            <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen} fallbackFocusRef={addQuestionBtnRef}>
                 <AlertDialogContent className="bg-card border-border text-foreground" data-testid="student-questionnaire-delete-dialog">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-foreground">确认删除</AlertDialogTitle>
@@ -1263,7 +1266,7 @@ export function QuestionnaireDesign() {
                 </AlertDialogContent>
             </AlertDialog>
 
-            <AlertDialog open={pendingTemplate !== null} onOpenChange={(open) => !open && setPendingTemplate(null)}>
+            <AlertDialog open={pendingTemplate !== null} onOpenChange={(open) => !open && setPendingTemplate(null)} fallbackFocusRef={templatePickerBtnRef}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>替换当前问卷内容？</AlertDialogTitle>

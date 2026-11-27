@@ -65,6 +65,7 @@ export function AnnouncementManagement() {
     const [statusFilter, setStatusFilter] = useState<"all" | "published" | "draft">("all");
     const [scopeFilter, setScopeFilter] = useState<"all_scopes" | Announcement["targetScope"]>("all_scopes");
     const pending = useRef(false);
+    const createAnnouncementBtnRef = useRef<HTMLButtonElement>(null);
     const statusPending = useRef(new Set<number>());
     const [statusPendingIds, setStatusPendingIds] = useState(new Set<number>());
 
@@ -196,7 +197,7 @@ export function AnnouncementManagement() {
                     <h2 className="text-subheading font-medium text-foreground">公告管理</h2>
                     <p className="mt-0.5 text-label text-muted-foreground">面向全平台、教师端或学生端发布通知公告，公告向所选对象展示且不记录已读状态。</p>
                 </div>
-                <Button type="button" onClick={() => {
+                <Button ref={createAnnouncementBtnRef} type="button" onClick={() => {
                     setEditing(null);
                     setForm(emptyForm);
                     setShowPreview(false);
@@ -476,6 +477,7 @@ export function AnnouncementManagement() {
 
             <AlertDialog
                 open={announcementToDelete !== null}
+                fallbackFocusRef={createAnnouncementBtnRef}
                 onOpenChange={(nextOpen) => {
                     if (!nextOpen && !deletePending) setAnnouncementToDelete(null);
                 }}

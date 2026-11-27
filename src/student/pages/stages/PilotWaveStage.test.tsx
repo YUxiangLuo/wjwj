@@ -269,4 +269,66 @@ describe("PilotWaveStage dogfood UX & server-contract alignment", () => {
         fireEvent.click(shortcutBtn);
         expect(finalSizeInput.value).toBe("30");
     });
+
+    test("preserves small-magnitude priorStdDev = 0.004 without .toFixed(4) variance truncation to zero", async () => {
+        mockExperimentApi.getStats.mockResolvedValueOnce({
+            success: true,
+            data: {
+                stats: { tier: { 普通会员: 100, 黑金会员: 100 } },
+                numericFields: ["wtp"],
+                ppsEligibleFields: [],
+                populationNumericStats: { wtp: { mean: 0.02, variance: 0.000025, stdDev: 0.005, count: 200 } },
+                stratumNumericStats: {},
+            },
+        });
+
+        const meanExp = makePilotExperiment({
+            analysisTarget: { inferred: false, target: { kind: "mean", field: "wtp" } },
+        });
+        mockContextValue = {
+            experiment: meanExp,
+            populationSize: 200,
+            isSaving: false,
+            refreshRequired: false,
+            requireRefresh: () => undefined,
+            updateExperiment: (next) => { mockContextValue.experiment = next; },
+            reloadExperiment: async () => undefined,
+            completeStage: async () => true,
+        };
+
+        const view = render(<PilotWaveStage onPrev={() => undefined} />);
+        await waitFor(() => expect(mockExperimentApi.getStats).toHaveBeenCalled());
+
+        const moeInput = view.container.querySelector("#pilot-margin-error") as HTMLInputElement;
+        const sdInput = view.container.querySelector("#pilot-prior-sd") as HTMLInputElement;
+        fireEvent.change(moeInput, { target: { value: "0.001" } });
+        fireEvent.change(sdInput, { target: { value: "0.004" } });
+
+        expect(view.queryByTestId("student-pilot-plan-error")).toBeNull();
+        const saveBtn = view.getByTestId("student-pilot-save-plan") as HTMLButtonElement;
+        expect(saveBtn.disabled).toBe(false);
+
+        await act(async () => {
+            fireEvent.click(saveBtn);
+        });
+        expect(mockExperimentApi.saveWavePlan).toHaveBeenCalledTimes(1);
+        const savedPayload = mockExperimentApi.saveWavePlan.mock.calls[0]![2]!;
+        expect(savedPayload.populationVariance).toBeCloseTo(0.000016, 12);
+        expect(validateSamplePlanForSubmit(savedPayload, 200, "mean", { minimumSampleSize: 1 })).toBeNull();
+        view.unmount();
+
+        // Reloading with saved small populationVariance restores 0.004 cleanly
+        const reloadedExp = makePilotExperiment(
+            {
+                analysisTarget: { inferred: false, target: { kind: "mean", field: "wtp" } },
+                samplePlan: savedPayload,
+            },
+            { samplePlan: savedPayload },
+        );
+        mockContextValue.experiment = reloadedExp;
+        const reloadedView = render(<PilotWaveStage onPrev={() => undefined} />);
+        const reloadedSd = reloadedView.container.querySelector("#pilot-prior-sd") as HTMLInputElement;
+        expect(reloadedSd.value).toBe("0.004");
+        expect(reloadedView.queryByTestId("student-pilot-plan-error")).toBeNull();
+    });
 });

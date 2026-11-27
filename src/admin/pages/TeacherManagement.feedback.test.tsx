@@ -90,17 +90,34 @@ test("save completion after unmount does not reload the teacher list", async () 
 
 test("teacher removal is disabled while classes or templates still reference the account", async () => {
     dom = installDomGlobals();
-    const data = [
+    let currentData = [
         { id: 1, employeeId: "T001", name: "在职教师", classCount: 2, topicCount: 3, deleteBlockers: ["2 个班级", "3 个实验模板"], createdAt: "2026-01-01" },
         { id: 2, employeeId: "T002", name: "离职教师", classCount: 0, topicCount: 0, deleteBlockers: [], createdAt: "2026-01-02" },
     ];
-    globalThis.fetch = (async (_url: RequestInfo | URL, init?: RequestInit) => init?.method === "DELETE"
-        ? Response.json({ success: true, data: { success: true } })
-        : Response.json({ success: true, data })) as unknown as typeof fetch;
+    globalThis.fetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === "DELETE") {
+            currentData = currentData.filter((item) => item.id !== 2);
+            return Response.json({ success: true, data: { success: true } });
+        }
+        return Response.json({ success: true, data: currentData });
+    }) as unknown as typeof fetch;
     const { TeacherManagement } = await import("./TeacherManagement");
     const view = render(<TeacherManagement />);
     await waitFor(() => expect(view.getByTestId("admin-teacher-delete-1")).toBeTruthy());
 
-    expect((view.getByTestId("admin-teacher-delete-1") as HTMLButtonElement).disabled).toBe(true);
-    expect((view.getByTestId("admin-teacher-delete-2") as HTMLButtonElement).disabled).toBe(false);
+    const blockedBtn = view.getByTestId("admin-teacher-delete-1") as HTMLButtonElement;
+    const deletableBtn = view.getByTestId("admin-teacher-delete-2") as HTMLButtonElement;
+    expect(blockedBtn.disabled).toBe(true);
+    expect(blockedBtn.parentElement?.tagName).toBe("SPAN");
+    expect(blockedBtn.parentElement?.getAttribute("title")).toBe("该教师仍有 2 个班级、3 个实验模板，无法删除");
+    expect(deletableBtn.disabled).toBe(false);
+
+    deletableBtn.focus();
+    fireEvent.click(deletableBtn);
+    const confirmDelete = await view.findByRole("button", { name: "永久删除" });
+    fireEvent.click(confirmDelete);
+
+    await waitFor(() => expect(view.queryByTestId("admin-teacher-delete-2") === null).toBe(true));
+    const addTeacherBtn = view.getByRole("button", { name: "新增教师" });
+    await waitFor(() => expect(document.activeElement === addTeacherBtn).toBe(true));
 });
