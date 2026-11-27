@@ -124,7 +124,7 @@ export function ClassManagement() {
                                         </TableCell>
                                         <TableCell className="text-meta tabular-nums text-muted-foreground">{new Date(cls.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}</TableCell>
                                         <TableCell className="text-right">
-                                            <Button asChild data-testid={`teacher-class-manage-students-${cls.id}`} variant="ghost" size="sm" className="h-8 text-primary hover:bg-primary-muted hover:text-primary">
+                                            <Button asChild data-testid={`teacher-class-manage-students-${cls.id}`} variant="outline" size="sm" className="h-8 px-3">
                                                 <Link to={`/class/${cls.id}/students`}>
                                                     <Users className="mr-1 h-3.5 w-3.5" />
                                                     管理学生

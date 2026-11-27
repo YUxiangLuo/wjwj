@@ -377,3 +377,25 @@ test("marks only invalid score inputs with aria-invalid and surfaces re-grade st
     expect(pInput.getAttribute("aria-invalid")).toBe("false");
     expect(rInput.getAttribute("aria-invalid")).toBe("true");
 });
+
+test("GradingDetail keeps a single primary Filled CTA, Tonal continue-grading, and Outlined destructive reject without w-full", async () => {
+    globalThis.fetch = (async () => Response.json({ success: true, data: record() })) as unknown as typeof fetch;
+    const view = page();
+    await waitFor(() => expect(view.getByText("提交评分")).toBeTruthy());
+
+    const rejectBtn = view.getByRole("button", { name: "驳回修改" });
+    const submitBtn = view.getByRole("button", { name: "提交评分" });
+    expect(rejectBtn.getAttribute("data-variant")).toBe("outline");
+    expect(rejectBtn.className).toContain("text-destructive");
+    expect(submitBtn.getAttribute("data-variant")).toBe("default");
+    expect(view.container.querySelectorAll('[data-slot="button"][data-variant="default"]')).toHaveLength(1);
+
+    fireEvent.click(submitBtn);
+    await waitFor(() => expect(view.getByTestId("teacher-grade-confirm")).toBeTruthy());
+    expect(view.getByTestId("teacher-grade-confirm").getAttribute("data-variant")).toBe("default");
+    expect(view.getByTestId("teacher-grade-next").getAttribute("data-variant")).toBe("secondary");
+    expect(view.container.querySelectorAll('[data-slot="button"][data-variant="default"]')).toHaveLength(1);
+    for (const btn of view.container.querySelectorAll('[data-slot="button"]')) {
+        expect(btn.className).not.toContain("w-full");
+    }
+});

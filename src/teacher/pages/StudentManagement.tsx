@@ -300,7 +300,7 @@ export function StudentManagement() {
                                 </Button>
                             )}
                         </form>
-                        <Button data-testid="teacher-student-import-open" variant="outline" onClick={() => setShowImportModal(true)}>
+                        <Button data-testid="teacher-student-import-open" variant="secondary" onClick={() => setShowImportModal(true)}>
                             <Upload className="mr-1.5 h-4 w-4" />
                             批量导入
                         </Button>

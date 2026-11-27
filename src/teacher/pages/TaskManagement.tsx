@@ -372,7 +372,7 @@ export function TaskManagement() {
                                         </TableCell>
                                         <TableCell className="sticky right-0 z-10 border-l border-border bg-card text-right group-hover:bg-muted">
                                             <div className="flex items-center justify-end gap-1 whitespace-nowrap">
-                                                <Button variant="ghost" size="sm" asChild className="h-8 px-2 text-muted-foreground hover:bg-secondary hover:text-foreground">
+                                                <Button variant="ghost" size="sm" asChild className="h-8 px-2.5">
                                                     <Link to={`/task/${task.id}/progress${listSearch ? `?${listSearch}` : ""}`}>
                                                         <BarChart3 className="mr-1 h-3.5 w-3.5" />
                                                         进度
@@ -388,12 +388,17 @@ export function TaskManagement() {
                                                         setExtendError(null);
                                                         setShowExtendModal(true);
                                                     }}
-                                                    className="h-8 px-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                                                    className="h-8 px-2.5"
                                                 >
                                                     <Clock className="mr-1 h-3.5 w-3.5" />
                                                     延时
                                                 </Button>
-                                                <Button variant="ghost" size="sm" asChild className="h-8 px-2 text-primary hover:bg-primary-muted hover:text-primary">
+                                                <Button
+                                                    variant={(task.pending ?? 0) > 0 ? "secondary" : "outline"}
+                                                    size="sm"
+                                                    asChild
+                                                    className="h-8 px-3"
+                                                >
                                                     <Link to={`/grading?taskId=${task.id}`}>批改</Link>
                                                 </Button>
                                                 <Button

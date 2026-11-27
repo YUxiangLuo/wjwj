@@ -200,9 +200,9 @@ export function TaskProgressDetail() {
                                         <TableCell className="text-right">
                                             {STATUSES_WITH_SUBMISSION.includes(s.status as StatusKey) && s.submissionId ? (
                                                 <Button
-                                                    variant="ghost"
+                                                    variant={s.status === "submitted" ? "secondary" : "outline"}
                                                     size="sm"
-                                                    className="h-8 text-meta text-primary hover:bg-primary-muted hover:text-primary"
+                                                    className="h-8 px-3"
                                                     onClick={() => navigate(`/grading/${s.submissionId}`)}
                                                 >
                                                     {s.status === "submitted" ? (

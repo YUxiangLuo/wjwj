@@ -81,10 +81,12 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                             <div className="mt-3 break-all font-mono text-meta text-success">已选择：{importFile.name}</div>
                         )}
                     </div>
-                    <Button data-testid="teacher-student-template-download" variant="link" className="h-auto p-0 text-primary hover:text-primary" onClick={onDownloadTemplate}>
-                        <Download className="mr-1 h-4 w-4" />
-                        下载导入模板
-                    </Button>
+                    <div className="flex items-center justify-start">
+                        <Button type="button" data-testid="teacher-student-template-download" variant="outline" size="sm" onClick={onDownloadTemplate}>
+                            <Download className="mr-1.5 h-4 w-4" />
+                            下载导入模板
+                        </Button>
+                    </div>
                     {importResult && (
                         <div className="space-y-2 rounded-surface border border-border bg-muted p-3.5 text-label text-muted-foreground">
                             <div className="flex flex-wrap gap-4 font-medium">
@@ -105,12 +107,14 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                                         ))}
                                     </div>
                                     <Button
+                                        type="button"
                                         data-testid="teacher-student-import-errors-download"
-                                        variant="link"
-                                        className="h-auto p-0 text-primary hover:text-primary"
+                                        variant="outline"
+                                        size="sm"
+                                        className="bg-card"
                                         onClick={onDownloadErrors}
                                     >
-                                        <FileWarning className="mr-1 h-4 w-4" />
+                                        <FileWarning className="mr-1.5 h-4 w-4" />
                                         下载错误明细（CSV）
                                     </Button>
                                 </>

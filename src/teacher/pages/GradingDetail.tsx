@@ -350,8 +350,18 @@ export function GradingDetail() {
                                 </p>
                             )}
                             <p className="text-label text-muted-foreground">加权总分：<span className="text-page-title font-medium tabular-nums text-foreground">{total === null ? "—" : total.toFixed(2)}</span></p>
-                            <div className="flex flex-wrap gap-2">
-                                {data.status === "submitted" && <Button variant="destructive" size="sm" disabled={!canGrade || saving} onClick={() => setRejectOpen(true)}>驳回修改</Button>}
+                            <div className="flex flex-wrap items-center justify-end gap-2">
+                                {data.status === "submitted" && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="border-destructive-border bg-card text-destructive hover:border-destructive-border hover:bg-destructive-muted hover:text-destructive"
+                                        disabled={!canGrade || saving}
+                                        onClick={() => setRejectOpen(true)}
+                                    >
+                                        驳回修改
+                                    </Button>
+                                )}
                                 {gradeConfirmOpen ? (
                                     <>
                                         <p className="w-full text-label text-muted-foreground" role="status">
@@ -374,7 +384,7 @@ export function GradingDetail() {
                                         </Button>
                                         <Button ref={confirmGradeRef} size="sm" data-testid="teacher-grade-confirm" disabled={!canGrade || !scoresReady} onClick={() => void grade()}>确认提交</Button>
                                         {data.status === "submitted" && <>
-                                            <Button variant="outline" size="sm" className="bg-card" data-testid="teacher-grade-next" disabled={!canGrade || !scoresReady} onClick={() => void grade(true)}>保存并批改下一份</Button>
+                                            <Button variant="secondary" size="sm" data-testid="teacher-grade-next" disabled={!canGrade || !scoresReady} onClick={() => void grade(true)}>保存并批改下一份</Button>
                                             <p className="w-full text-meta text-muted-foreground">{new URLSearchParams(search).has("taskId") ? "仅继续批改当前任务及搜索范围内的待批改作业。" : "继续批改当前搜索范围内的待批改作业。"}</p>
                                         </>}
                                     </>

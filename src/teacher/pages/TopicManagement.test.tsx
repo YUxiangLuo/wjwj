@@ -240,7 +240,7 @@ for (const source of [assigned, published]) {
         expect(copyTopic).toHaveBeenCalledWith(source.id);
         expect((view.getByTestId("teacher-topic-search") as HTMLInputElement).value).toBe("");
         expect(view.getByTestId("teacher-topic-status-filter").textContent).toBe("草稿");
-        expect(document.activeElement).toBe(view.getByTestId("teacher-topic-edit-44"));
+        await waitFor(() => expect(document.activeElement === view.getByTestId("teacher-topic-edit-44")).toBe(true));
         expect(toastSuccess).toHaveBeenCalledWith("已复制为草稿，可继续编辑后发布");
     });
 }
@@ -414,4 +414,25 @@ test("an in-place mapping save establishes a clean navigation baseline", async (
     await view.findByLabelText("score 标签");
     expect((view.getByTestId("teacher-topic-mapping-others-group") as HTMLInputElement).checked).toBe(true);
     expect(view.queryByTestId("teacher-topic-save-mapping")).toBeNull();
+});
+
+test("TopicManagement enforces single Filled CTA on page and Tonal/Outlined row capsules without w-full", async () => {
+    getTopics.mockResolvedValueOnce({ success: true, data: [] });
+    const emptyView = renderPage();
+    await waitFor(() => expect(emptyView.getByText("还没有实验模板")).toBeTruthy());
+    expect(emptyView.container.querySelectorAll('[data-slot="button"][data-variant="default"]')).toHaveLength(1);
+    emptyView.unmount();
+
+    getTopics.mockResolvedValueOnce({ success: true, data: [draft, assigned, published] });
+    const view = renderPage();
+    await waitFor(() => expect(view.getByTestId("teacher-topic-row-1")).toBeTruthy());
+
+    const defaultButtons = view.container.querySelectorAll('[data-slot="button"][data-variant="default"]');
+    expect(defaultButtons).toHaveLength(1);
+    expect(defaultButtons[0]?.getAttribute("data-testid")).toBe("teacher-topic-create-open");
+    expect(view.getByTestId("teacher-topic-publish-1").getAttribute("data-variant")).toBe("secondary");
+    expect(view.getByTestId("teacher-topic-edit-1").getAttribute("data-variant")).toBe("outline");
+    for (const btn of view.container.querySelectorAll('[data-slot="button"]')) {
+        expect(btn.className).not.toContain("w-full");
+    }
 });

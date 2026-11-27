@@ -338,10 +338,10 @@ export function GradeExport() {
                                     <TableCell className="whitespace-nowrap text-right">
                                         <Button
                                             data-testid={`teacher-export-single-${task.taskId}`}
-                                            variant="ghost"
+                                            variant="secondary"
                                             size="sm"
                                             disabled={exporting}
-                                            className="h-8 px-2.5 text-primary hover:bg-primary-muted hover:text-primary"
+                                            className="h-8 px-3"
                                             onClick={() => exportExcel(task.taskId)}
                                         >
                                             <Download className="mr-1 h-3.5 w-3.5" />

@@ -729,3 +729,40 @@ test("step 6 one-click question generator builds matching recommended questions 
     expect(questions.map((q) => q.type)).toEqual(["numeric", "single", "boolean"]);
     expect(questions[1]?.options).toEqual(["一线城市", "二线城市"]);
 });
+
+test("TopicWizardDialog maintains at most one primary Filled CTA across steps and Step 3 dictionary dirty states", async () => {
+    const props = makeProps({
+        editingTopicId: 7,
+        currentStep: 3,
+        columns: ["id", "score"],
+        fieldMapping: completeMapping,
+        fieldMappingNeedsSave: true,
+    });
+    const view = render(<TopicWizardDialog {...props} />);
+    const dialog = view.getByRole("dialog");
+
+    // Step 3 with unsaved mapping: save-mapping inside notice is secondary, footer next is the sole default CTA.
+    await view.findByLabelText("score 标签");
+    expect(view.getByTestId("teacher-topic-save-mapping").getAttribute("data-variant")).toBe("secondary");
+    expect(dialog.querySelectorAll('[data-slot="button"][data-variant="default"]')).toHaveLength(1);
+    expect(view.getByTestId("teacher-topic-next").getAttribute("data-variant")).toBe("default");
+
+    // Step 3 with saved mapping & clean dictionary: dictionary save is outline, footer next is default.
+    view.rerender(<TopicWizardDialog {...props} fieldMappingNeedsSave={false} />);
+    expect(view.getByRole("button", { name: "明确确认并保存" }).getAttribute("data-variant")).toBe("outline");
+    expect(dialog.querySelectorAll('[data-slot="button"][data-variant="default"]')).toHaveLength(1);
+
+    // Step 3 with dirty dictionary blocking next: dictionary save promotes to default, footer next drops to outline.
+    fireEvent.change(view.getByLabelText("score 标签"), { target: { value: "新分数标签" } });
+    await waitFor(() => expect(view.getByRole("button", { name: "明确确认并保存" }).getAttribute("data-variant")).toBe("default"));
+    expect(view.getByTestId("teacher-topic-next").getAttribute("data-variant")).toBe("outline");
+    expect(dialog.querySelectorAll('[data-slot="button"][data-variant="default"]')).toHaveLength(1);
+
+    // Step 6: "+ 添加题目" is secondary Tonal, footer next is the sole default CTA.
+    view.rerender(<TopicWizardDialog {...makeProps({ editingTopicId: 7, currentStep: 6, fieldMapping: completeMapping })} />);
+    expect(view.getByTestId("teacher-topic-question-add").getAttribute("data-variant")).toBe("secondary");
+    expect(dialog.querySelectorAll('[data-slot="button"][data-variant="default"]')).toHaveLength(1);
+    for (const btn of dialog.querySelectorAll('[data-slot="button"]')) {
+        expect(btn.className).not.toContain("w-full");
+    }
+});

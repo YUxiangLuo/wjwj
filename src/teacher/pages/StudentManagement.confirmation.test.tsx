@@ -65,3 +65,12 @@ test("a 409 keeps the dialog open and only the second click confirms; pending cl
     await act(async () => { second.resolve(success({ success: true })); });
     await waitFor(() => expect(view.queryByRole("alertdialog")).toBeNull());
 });
+
+test("student management header pairs primary Filled add button with Tonal secondary batch import", async () => {
+    const view = mount(() => undefined);
+    await waitFor(() => expect(view.getByTestId("teacher-student-add-open")).toBeTruthy());
+
+    expect(view.getByTestId("teacher-student-add-open").getAttribute("data-variant")).toBe("default");
+    expect(view.getByTestId("teacher-student-import-open").getAttribute("data-variant")).toBe("secondary");
+    expect(view.container.querySelectorAll('[data-slot="button"][data-variant="default"]')).toHaveLength(1);
+});

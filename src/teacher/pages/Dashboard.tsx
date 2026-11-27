@@ -155,7 +155,7 @@ export function Dashboard() {
                                         <Link to="/topic">前往创建实验模板</Link>
                                     </Button>
                                 )}
-                                <Button asChild variant="outline" size="sm">
+                                <Button asChild variant={topicCount === 0 ? "outline" : "secondary"} size="sm">
                                     <Link to="/task">进入实验任务管理</Link>
                                 </Button>
                             </div>

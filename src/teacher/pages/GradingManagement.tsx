@@ -140,33 +140,49 @@ export function GradingManagement() {
                         <p className="py-12 text-center text-label text-muted-foreground" role="status">加载中...</p>
                     ) : items.length > 0 ? (
                         <div className="divide-y divide-border">
-                            {items.map((item) => (
-                                <button
-                                    key={item.id}
-                                    data-testid={`teacher-grading-item-${item.id}`}
-                                    className="flex w-full flex-row items-center gap-3.5 px-5 py-3.5 text-left transition-none hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
-                                    onClick={() => navigate(`/grading/${item.id}${searchParams.size ? `?${searchParams}` : ""}`)}
-                                >
-                                    <Avatar className="h-9 w-9">
-                                        <AvatarFallback className="bg-accent font-medium text-accent-foreground">
-                                            {item.studentName.charAt(0)}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <div className="min-w-0 flex-1">
-                                        <div className="text-label font-medium text-foreground">
-                                            {item.studentName}{" "}
-                                            <span className="font-mono text-meta font-normal text-muted-foreground">{item.studentId}</span>
+                            {items.map((item) => {
+                                const detailHref = `/grading/${item.id}${searchParams.size ? `?${searchParams}` : ""}`;
+                                const isPending = item.status === "submitted";
+                                return (
+                                    <div
+                                        key={item.id}
+                                        className="flex cursor-pointer flex-row items-center gap-3.5 px-5 py-3.5 transition-none hover:bg-muted"
+                                        onClick={() => navigate(detailHref)}
+                                    >
+                                        <Avatar className="h-9 w-9">
+                                            <AvatarFallback className="bg-accent font-medium text-accent-foreground">
+                                                {item.studentName.charAt(0)}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="text-label font-medium text-foreground">
+                                                {item.studentName}{" "}
+                                                <span className="font-mono text-meta font-normal text-muted-foreground">{item.studentId}</span>
+                                            </div>
+                                            <p className="mt-0.5 truncate text-meta text-muted-foreground">{item.className} · {item.topic}</p>
                                         </div>
-                                        <p className="mt-0.5 truncate text-meta text-muted-foreground">{item.className} · {item.topic}</p>
+                                        <div className="shrink-0 text-right">
+                                            {badge(item)}
+                                            <p className="mt-1 text-meta tabular-nums text-muted-foreground">
+                                                {formatDateTimeDisplay(item.submittedAt, "-")}
+                                            </p>
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            data-testid={`teacher-grading-item-${item.id}`}
+                                            variant={isPending ? "secondary" : "outline"}
+                                            size="sm"
+                                            aria-label={`${isPending ? "批改作业" : "查看详情"}：${item.studentName}`}
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                                navigate(detailHref);
+                                            }}
+                                        >
+                                            {isPending ? "批改作业" : "查看详情"}
+                                        </Button>
                                     </div>
-                                    <div className="shrink-0 text-right">
-                                        {badge(item)}
-                                        <p className="mt-1 text-meta tabular-nums text-muted-foreground">
-                                            {formatDateTimeDisplay(item.submittedAt, "-")}
-                                        </p>
-                                    </div>
-                                </button>
-                            ))}
+                                );
+                            })}
                         </div>
                     ) : !loadError ? (
                         <div className="grid place-items-center gap-2 py-14 text-muted-foreground">

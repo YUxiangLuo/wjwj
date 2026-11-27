@@ -101,6 +101,7 @@ export function VariableDictionaryEditor({ topicId, readOnly = false, disabled =
     if (!draft) return <div className="space-y-3"><p className="text-label text-destructive">{error}</p><Button variant="outline" disabled={disabled} onClick={reload}>重新载入</Button></div>;
     const locked = readOnly || snapshot?.locked || saving || disabled;
     const isConfirmed = Boolean(snapshot?.dictionary);
+    const emphasizeSave = dirty && !readOnly && !disabled && !snapshot?.locked;
     return <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -112,7 +113,15 @@ export function VariableDictionaryEditor({ topicId, readOnly = false, disabled =
                 </div>
                 <p className="mt-1 text-label text-muted-foreground">{readOnly || snapshot?.locked ? "查看各字段的标签、单位、测量类型、类别顺序与缺失值处理规则。" : "逐字段确认标签、单位、测量类型、类别顺序与缺失值处理规则。"}</p>
             </div>
-            {!readOnly && !snapshot?.locked && <Button onClick={save} disabled={locked}>{saving ? "保存中…" : "明确确认并保存"}</Button>}
+            {!readOnly && !snapshot?.locked && (
+                <Button
+                    variant={emphasizeSave ? "default" : isConfirmed ? "outline" : "secondary"}
+                    onClick={save}
+                    disabled={locked}
+                >
+                    {saving ? "保存中…" : "明确确认并保存"}
+                </Button>
+            )}
         </div>
         {!readOnly && !snapshot?.locked && !isConfirmed && (
             <p className="rounded-surface border border-border bg-muted px-3.5 py-2.5 text-meta text-muted-foreground">

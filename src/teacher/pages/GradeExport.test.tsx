@@ -117,3 +117,40 @@ test("grade analytics can retry in place after a transient failure", async () =>
     expect(analyticsCalls).toBe(2);
     expect(view.queryByText("成绩分析暂不可用")).toBeNull();
 });
+
+test("grade export enforces single batch Filled CTA, Tonal per-row export capsules, and export-before-analytics DOM order", async () => {
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith("/api/teacher/classes") || url.endsWith("/api/teacher/topics")) return success([]);
+        if (url.includes("/api/teacher/grade-export/preview")) {
+            return success([
+                { taskId: 11, topic: "咖啡消费", className: "一班", total: 10, graded: 10, avgScore: 88 },
+                { taskId: 12, topic: "茶饮定价", className: "二班", total: 12, graded: 6, avgScore: 84 },
+            ]);
+        }
+        if (url.includes("/api/teacher/grade-export/analytics")) {
+            return success({
+                funnel: { total: 22, notStarted: 2, inProgress: 4, pendingGrading: 0, graded: 16, rejected: 0 },
+                scores: {
+                    count: 16,
+                    average: 86.5,
+                    median: 87,
+                    componentAverages: { questionnaire: 85, process: 86, report: 88 },
+                    bands: ["<60", "60–69", "70–79", "80–89", "90–100"].map((label) => ({ label, count: 0 })),
+                },
+            });
+        }
+        throw new Error(`Unhandled fetch: ${url}`);
+    }) as unknown as typeof fetch;
+
+    const view = render(<GradeExport />);
+    await waitFor(() => expect(view.getByTestId("teacher-export-single-11")).toBeTruthy());
+
+    expect(view.container.querySelectorAll('[data-slot="button"][data-variant="default"]')).toHaveLength(1);
+    expect(view.getByTestId("teacher-export-batch").getAttribute("data-variant")).toBe("default");
+    expect(view.getByTestId("teacher-export-single-11").getAttribute("data-variant")).toBe("secondary");
+    expect(view.getByTestId("teacher-export-single-12").getAttribute("data-variant")).toBe("secondary");
+    const exportList = view.getByTestId("teacher-export-list");
+    const analyticsSection = view.getByRole("region", { name: "成绩统计参考" });
+    expect(Boolean(exportList.compareDocumentPosition(analyticsSection) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+});

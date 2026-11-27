@@ -546,7 +546,7 @@ export function TopicManagement() {
                         <div className="px-6 py-14 text-center">
                             <p className="text-subheading font-medium text-foreground">还没有实验模板</p>
                             <p className="mt-1.5 text-label text-muted-foreground">创建模板后可配置总体数据、研究目标、虚拟投放环境与抽样策略。</p>
-                            <Button onClick={openCreateModal} className="mt-4">
+                            <Button variant="secondary" onClick={openCreateModal} className="mt-4">
                                 + 创建首个实验模板
                             </Button>
                         </div>
@@ -596,16 +596,19 @@ export function TopicManagement() {
                                 </div>
                             </div>
                             <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 pt-0.5">
-                                {topic.status === 1 && <Button asChild size="sm" variant="outline"><Link to={`/task?topicId=${topic.id}`}>分配到班级</Link></Button>}
+                                {topic.status === 1 && (
+                                    <Button asChild size="sm" variant={topic.hasTasks ? "outline" : "secondary"}>
+                                        <Link to={`/task?topicId=${topic.id}`}>分配到班级</Link>
+                                    </Button>
+                                )}
                                 {topic.hasTasks ? (
                                     <>
-                                        <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:bg-secondary hover:text-foreground" onClick={() => openViewModal(topic)}>查看</Button>
+                                        <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" onClick={() => openViewModal(topic)}>查看</Button>
                                         <Button
                                             data-testid={`teacher-topic-copy-${topic.id}`}
-                                            variant="ghost"
+                                            variant="outline"
                                             size="sm"
                                             disabled={copyingTopicId !== null}
-                                            className="text-muted-foreground hover:bg-secondary hover:text-foreground"
                                             onClick={() => void copyTopic(topic)}
                                         >
                                             {copyingTopicId === topic.id ? "正在复制…" : "复制"}
@@ -613,21 +616,20 @@ export function TopicManagement() {
                                     </>
                                 ) : topic.status === 0 ? (
                                     <>
-                                        <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:bg-secondary hover:text-foreground" onClick={() => openViewModal(topic)}>查看</Button>
-                                        <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:bg-secondary hover:text-foreground" onClick={() => openEditModal(topic)}>编辑</Button>
-                                        <Button data-testid={`teacher-topic-publish-${topic.id}`} variant="ghost" size="sm" className="text-primary hover:bg-primary-muted hover:text-primary" onClick={() => requestPublish(topic)}>发布</Button>
+                                        <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" onClick={() => openViewModal(topic)}>查看</Button>
+                                        <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="outline" size="sm" onClick={() => openEditModal(topic)}>编辑</Button>
+                                        <Button data-testid={`teacher-topic-publish-${topic.id}`} variant="secondary" size="sm" onClick={() => requestPublish(topic)}>发布</Button>
                                         <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:bg-destructive-muted hover:text-destructive" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
                                     </>
                                 ) : (
                                     <>
-                                        <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:bg-secondary hover:text-foreground" onClick={() => openViewModal(topic)}>查看</Button>
-                                        <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:bg-secondary hover:text-foreground" onClick={() => openEditModal(topic)}>编辑</Button>
+                                        <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" onClick={() => openViewModal(topic)}>查看</Button>
+                                        <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="outline" size="sm" onClick={() => openEditModal(topic)}>编辑</Button>
                                         <Button
                                             data-testid={`teacher-topic-copy-${topic.id}`}
                                             variant="ghost"
                                             size="sm"
                                             disabled={copyingTopicId !== null}
-                                            className="text-muted-foreground hover:bg-secondary hover:text-foreground"
                                             onClick={() => void copyTopic(topic)}
                                         >
                                             {copyingTopicId === topic.id ? "正在复制…" : "复制"}

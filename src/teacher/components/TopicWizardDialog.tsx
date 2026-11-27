@@ -687,8 +687,12 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 }}
                                             />
                                             <div className="flex items-center justify-center gap-3">
-                                                <Button variant="outline" onClick={() => document.getElementById("excel-upload")?.click()} className="bg-card">
-                                                    选择文件
+                                                <Button
+                                                    variant={excelInfo ? "outline" : "secondary"}
+                                                    onClick={() => document.getElementById("excel-upload")?.click()}
+                                                    className={excelInfo ? "bg-card" : undefined}
+                                                >
+                                                    {excelInfo ? "更换文件" : "选择文件"}
                                                 </Button>
                                             </div>
                                         </>
@@ -948,7 +952,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 />
                                 {mappingNeedsSave && <div role="status" className="space-y-3 rounded-surface border border-warning-border bg-warning-muted p-4 text-label text-warning">
                                     <p>字段配置尚未保存，请先保存，再核对变量字典。更改字段角色或对照变量会使已保存的字典失效，需要重新确认。</p>
-                                    <Button data-testid="teacher-topic-save-mapping" variant="outline" className="bg-card" disabled={busy || !canProceedMapping} onClick={() => void runAction(saveMappingForDictionary)}>保存字段配置并载入字典</Button>
+                                    <Button data-testid="teacher-topic-save-mapping" variant="secondary" disabled={busy || !canProceedMapping} onClick={() => void runAction(saveMappingForDictionary)}>保存字段配置并载入字典</Button>
                                 </div>}
                                 {mappingSavedNotice && !mappingNeedsSave && <p role="status" className="rounded-surface border border-border bg-muted px-4 py-2.5 text-label text-foreground">字段配置已保存，请核对并保存下方变量字典。不需要题目变量绑定与自主分析时，可直接继续。</p>}
                                 {editingTopicId && <details ref={dictionaryDetailsRef} data-testid="teacher-variable-dictionary" className="rounded-surface border border-border bg-muted p-4">
@@ -1219,9 +1223,8 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                             {!isPublishedTopic && stratumCategories.length > 1 && (
                                                                 <Button
                                                                     type="button"
-                                                                    variant="outline"
+                                                                    variant="secondary"
                                                                     size="sm"
-                                                                    className="bg-card"
                                                                     onClick={() => setFieldworkConfig((prev) => ({
                                                                         ...prev,
                                                                         stratumField: activeStratumField,
@@ -1367,6 +1370,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         )}
                                         <Button
                                             data-testid="teacher-topic-question-add"
+                                            variant="secondary"
                                             size="sm"
                                             disabled={recommendQuestions.length >= 30}
                                             onClick={handleAddQuestion}
@@ -1655,6 +1659,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             {!loadingDetail && currentStep === 3 && (
                                 <Button
                                     data-testid="teacher-topic-next"
+                                    variant={!isPublishedTopic && !mappingNeedsSave && dictionaryState.dirty ? "outline" : "default"}
                                     onClick={() => {
                                         if (mappingNeedsSave) void runAction(saveMappingForDictionary);
                                         else if (canLeaveDictionary()) void runAction(() => onSaveFieldMapping());
